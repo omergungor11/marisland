@@ -19,6 +19,9 @@ export interface AmbientEvent {
   /** Two uniform [0,1) draws from the event's own stream, for handlers to pick targets. */
   r: number;
   r2: number;
+  /** Explicit world position when fired by `fire` (e.g. a clicked water point). */
+  x?: number;
+  z?: number;
 }
 export type AmbientHandler = (e: AmbientEvent) => void;
 
@@ -56,6 +59,14 @@ export class AmbientScheduler {
       const i = list.indexOf(handler);
       if (i >= 0) list.splice(i, 1);
     };
+  }
+
+  /** Fire `type` now at a world position (interaction layer). Does not disturb the Poisson streams. */
+  fire(type: AmbientType, x: number, z: number): void {
+    const list = this.handlers.get(type);
+    if (!list) return;
+    const ev: AmbientEvent = { type, t: this.time, id: -1, r: 0.5, r2: 0.5, x, z };
+    for (let h = 0; h < list.length; h++) list[h](ev);
   }
 
   /** Time (s) of the next event of `type`. */

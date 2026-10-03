@@ -25,7 +25,7 @@ export interface Counters {
 
 export interface PickResult {
   kind: string;
-  id: number;
+  id: number | string;
   x: number;
   y: number;
   z: number;

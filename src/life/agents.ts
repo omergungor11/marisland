@@ -67,6 +67,18 @@ export abstract class AgentKind {
   readonly ppitch: Float32Array;
   readonly pscale: Float32Array;
   readonly phase: Float32Array;
+  /**
+   * Reaction overlay (TASK-162): written by the interact layer, applied on top of the simulated
+   * pose in `update`. Defaults are the identity.
+   */
+  readonly ovY: Float32Array;
+  readonly ovYaw: Float32Array;
+  readonly ovRoll: Float32Array;
+  readonly ovSx: Float32Array;
+  readonly ovSy: Float32Array;
+  readonly ovSz: Float32Array;
+  /** Seconds a reaction still freezes the behaviour of agent i (critters stop and let the overlay play). */
+  readonly hold: Float32Array;
   readonly state: Uint8Array;
   readonly timer: Float32Array;
   /** 1 = counted and drawn. */
@@ -104,6 +116,13 @@ export abstract class AgentKind {
     this.sy = new Float32Array(n).fill(1);
     this.sz = new Float32Array(n).fill(1);
     this.phase = new Float32Array(n);
+    this.ovY = new Float32Array(n);
+    this.ovYaw = new Float32Array(n);
+    this.ovRoll = new Float32Array(n);
+    this.ovSx = new Float32Array(n).fill(1);
+    this.ovSy = new Float32Array(n).fill(1);
+    this.ovSz = new Float32Array(n).fill(1);
+    this.hold = new Float32Array(n);
     this.timer = new Float32Array(n);
     this.state = new Uint8Array(n);
     this.active = new Uint8Array(n);
@@ -119,6 +138,23 @@ export abstract class AgentKind {
     if (o.ownsGeometry !== false) o.scope.add(o.geometry);
     o.scope.add(o.material);
     o.scope.add(this.mesh);
+  }
+
+  /** Reset the reaction overlay of agent i. */
+  clearOverlay(i: number): void {
+    this.ovY[i] = 0;
+    this.ovYaw[i] = 0;
+    this.ovRoll[i] = 0;
+    this.ovSx[i] = 1;
+    this.ovSy[i] = 1;
+    this.ovSz[i] = 1;
+  }
+
+  /** Pick-sphere centre (world) for agent i. */
+  pickCenter(i: number, out: { x: number; y: number; z: number }, dy: number): void {
+    out.x = this.x[i];
+    out.y = this.y[i] + this.ovY[i] + dy;
+    out.z = this.z[i];
   }
 
   /** Number of active agents. */
@@ -178,16 +214,20 @@ export abstract class AgentKind {
       top = i + 1;
       _p.set(
         this.px[i] + (this.x[i] - this.px[i]) * a,
-        this.py[i] + (this.y[i] - this.py[i]) * a,
+        this.py[i] + (this.y[i] - this.py[i]) * a + this.ovY[i],
         this.pz[i] + (this.z[i] - this.pz[i]) * a,
       );
-      const yaw = this.pyaw[i] + wrapAngle(this.yaw[i] - this.pyaw[i]) * a;
-      const roll = this.proll[i] + (this.roll[i] - this.proll[i]) * a;
+      const yaw = this.pyaw[i] + wrapAngle(this.yaw[i] - this.pyaw[i]) * a + this.ovYaw[i];
+      const roll = this.proll[i] + (this.roll[i] - this.proll[i]) * a + this.ovRoll[i];
       const pitch = this.ppitch[i] + (this.pitch[i] - this.ppitch[i]) * a;
       const sc = this.pscale[i] + (this.scale[i] - this.pscale[i]) * a;
       _e.set(roll, yaw, pitch, 'YZX');
       _q.setFromEuler(_e);
-      _s.set(sc * this.sx[i], sc * this.sy[i], sc * this.sz[i]);
+      _s.set(
+        sc * this.sx[i] * this.ovSx[i],
+        sc * this.sy[i] * this.ovSy[i],
+        sc * this.sz[i] * this.ovSz[i],
+      );
       _m.compose(_p, _q, _s);
       _m.toArray(arr, i * 16);
     }

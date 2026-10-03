@@ -14,7 +14,7 @@ import { createLoader } from './ui/loader.ts';
 import { injectStyles } from './ui/styles.ts';
 import { createStatsOverlay, readInfo, type StatsOverlay } from './debug/stats.ts';
 import { findShot } from './content/shots.ts';
-import type { Counters, MarislandApi, RenderInfo } from './capture/api.ts';
+import type { Counters, MarislandApi, PickResult, RenderInfo } from './capture/api.ts';
 import { createCameraSystem, type CameraSystem } from './camera/controls.ts';
 import { buildGallery } from './render/gallery-scene.ts';
 import { buildWorldView } from './render/world-view.ts';
@@ -26,6 +26,9 @@ import { createTimeDial } from './ui/time-dial.ts';
 import { createPhotoMode } from './ui/photo.ts';
 import { createEnvState, sampleEnv } from './env/env-state.ts';
 import { createGovernor } from './debug/governor.ts';
+import { createPicker, createReactions, isClick } from './interact/index.ts';
+import { heightAt } from './world/types.ts';
+import type { WorldView } from './render/world-view.ts';
 import { ISLAND_ACCENTS } from './content/islands-ui.ts';
 import type { TestScene } from './render/test-scene.ts';
 
@@ -243,6 +246,91 @@ export async function boot(): Promise<void> {
     });
 
     // ---- world
+    // ---- picking, hover, reactions (TASK-162)
+    let interaction: {
+      pick: (x: number, y: number) => PickResult | null;
+      dispose(): void;
+    } | null = null;
+    const setupInteraction = (wv: WorldView): void => {
+      interaction?.dispose();
+      const picker = createPicker({
+        height: wv.world.height,
+        batcher: wv.props,
+        life: wv.life,
+        seaLevel: 0,
+      });
+      const reactions = createReactions({
+        scope: worldScope,
+        seed: wv.world.seed,
+        life: wv.life,
+        water: wv.water,
+        heightAt: (x, z) => heightAt(wv.world.height, x, z),
+        onEffect: (e) => {
+          if (e.id === 'volcanoBurp') shake = 0.4;
+        },
+      });
+      reactions.setReducedMotion(
+        params.rm || matchMedia('(prefers-reduced-motion: reduce)').matches,
+      );
+      scene.add(reactions.group);
+      worldScope.defer(() => scene.remove(reactions.group));
+      const sys = { name: 'reactions', update: (dt: number) => reactions.update(dt, camera) };
+      loop.add(sys);
+      worldScope.defer(() => loop.remove(sys));
+      const ndc = (ev: PointerEvent): [number, number] => [
+        (ev.clientX / ctx.width) * 2 - 1,
+        -(ev.clientY / ctx.height) * 2 + 1,
+      ];
+      let down: { x: number; y: number; t: number } | null = null;
+      let lastHover = 0;
+      const onDown = (ev: PointerEvent): void => {
+        down = { x: ev.clientX, y: ev.clientY, t: now() };
+      };
+      const onUp = (ev: PointerEvent): void => {
+        if (!down || !isClick(down.x, down.y, ev.clientX, ev.clientY, now() - down.t)) return;
+        const [nx, ny] = ndc(ev);
+        const r = picker.pick(nx, ny, camera);
+        if (r) reactions.react(r);
+      };
+      const onMove = (ev: PointerEvent): void => {
+        const t = now();
+        if (t - lastHover < 100) return;
+        lastHover = t;
+        const [nx, ny] = ndc(ev);
+        const r = picker.hover(nx, ny, camera);
+        reactions.setHover(r);
+        canvas.style.cursor = r && (r.kind === 'prop' || r.kind === 'agent') ? 'pointer' : '';
+        if (r && r.kind === 'water') wv.life.setCursorWorld(r.x, r.z);
+        else wv.life.setCursorWorld(null);
+      };
+      if (!params.freeze) {
+        canvas.addEventListener('pointerdown', onDown);
+        canvas.addEventListener('pointerup', onUp);
+        canvas.addEventListener('pointermove', onMove);
+      }
+      interaction = {
+        pick: (x, y) => {
+          const r = picker.pick((x / ctx.width) * 2 - 1, -(y / ctx.height) * 2 + 1, camera);
+          return r ? { kind: r.kind, id: r.id, x: r.x, y: r.y, z: r.z } : null;
+        },
+        dispose() {
+          canvas.removeEventListener('pointerdown', onDown);
+          canvas.removeEventListener('pointerup', onUp);
+          canvas.removeEventListener('pointermove', onMove);
+        },
+      };
+    };
+    let shake = 0;
+    loop.add({
+      name: 'camera-shake',
+      update: (dt) => {
+        if (shake <= 0) return;
+        shake -= dt;
+        const a = 0.15 * Math.max(0, shake / 0.4);
+        camera.position.x += Math.sin(loop.clock.time * 80) * a;
+        camera.position.y += Math.cos(loop.clock.time * 95) * a;
+      },
+    });
     const buildWorld = (seed: number): TestScene => {
       if (params.gallery) return buildGallery(worldScope);
       const wv = buildWorldView(seed, {
@@ -257,6 +345,7 @@ export async function boot(): Promise<void> {
         now,
       });
       Object.assign(ctx.timings, wv.timings);
+      setupInteraction(wv);
       return { group: wv.group, system: wv.system, hash: wv.hash, cameraWorld: wv.cameraWorld };
     };
     const tGen = now();
@@ -403,7 +492,7 @@ export async function boot(): Promise<void> {
         loop.step(1 / 30, 1);
       }
     };
-    api.pick = () => null;
+    api.pick = (x, y) => interaction?.pick(x, y) ?? null;
     api.perf = async () => {
       // 10 s fly path overview → hero island → village, sampling frame times (real GPU only).
       const times: number[] = [];

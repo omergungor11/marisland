@@ -101,6 +101,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     water,
     counters: d.counters,
     getTier: d.getTier,
+    getHour: d.getHour,
     cameraPos: _camPos,
   });
   group.add(life.group);

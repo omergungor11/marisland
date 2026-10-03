@@ -18,7 +18,14 @@ export interface LifeWorld extends Omit<WorldData, 'boatRoutes' | 'docks'> {
   boatRoutes?: { x: number; z: number }[][];
   /** Dock indices each route passes (parallel to `boatRoutes`). */
   boatStops?: number[][];
-  docks?: { x: number; z: number; rotY: number; segments: number; islandId: number }[];
+  docks?: {
+    x: number;
+    z: number;
+    rotY: number;
+    segments: number;
+    islandId: number;
+    node?: number;
+  }[];
 }
 
 export interface LifeDeps {
@@ -31,6 +38,8 @@ export interface LifeDeps {
   getTier(): number;
   /** Live reference, read every step. */
   cameraPos: THREE.Vector3;
+  /** Game hour 0–24 (cats sleep at night); defaults to noon. */
+  getHour?(): number;
 }
 
 /** Everything the kinds share: world, fields (live motion scale), water, tier. */
@@ -40,6 +49,7 @@ export interface LifeCtx {
   water: WaterSplat;
   cameraPos: THREE.Vector3;
   getTier(): number;
+  getHour(): number;
   gust: GustParams;
   /** Mutable: amplitude follows the reduced-motion scale so boats track the water surface. */
   swell: SwellParams;
@@ -64,6 +74,7 @@ export function makeCtx(deps: LifeDeps): LifeCtx {
     water: deps.water,
     cameraPos: deps.cameraPos,
     getTier: deps.getTier,
+    getHour: deps.getHour ?? (() => 12),
     gust: {
       dir: world.windDir,
       speed: GUST.speed,

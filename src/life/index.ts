@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GULLS, LIFE_PLAN } from '../content/life.ts';
+import { GULLS, LIFE_PLAN, PICK_DEFAULT, PICK_SPHERES } from '../content/life.ts';
 import type { System } from '../core/loop.ts';
 import { AmbientScheduler } from './ambient.ts';
 import {
@@ -15,6 +15,9 @@ import { mooringsOf, resolveRoutes, Rowboats, Sailboats } from './boats.ts';
 import { makeCtx, setMotion, type LifeDeps } from './ctx.ts';
 import { FishSchools } from './fish.ts';
 import { flockCentres, Gulls, type Perch } from './gulls.ts';
+import { Capybaras, Cats, Crabs, Ducks, Sheep } from './animals.ts';
+import type { CritterKind } from './critter-base.ts';
+import { Villagers } from './villagers.ts';
 
 export type { LifeDeps } from './ctx.ts';
 export { AmbientScheduler } from './ambient.ts';
@@ -41,7 +44,20 @@ export interface LifeSystem extends System {
     fish?: FishSchools;
     jumpers?: ArcKind;
     dolphins?: ArcKind;
+    villagers?: Villagers;
+    cats?: Cats;
+    sheep?: Sheep;
+    crabs?: Crabs;
+    ducks?: Ducks;
+    capybaras?: Capybaras;
   };
+  /**
+   * Visit every live agent as a pick sphere (centre in world u). Used by the picker; `kind` is the
+   * kind's `name`, `index` the instance index inside that kind's InstancedMesh.
+   */
+  forEachAgent(
+    cb: (kind: AgentKind, index: number, x: number, y: number, z: number, r: number) => void,
+  ): void;
   /** Seaward dock-end / mooring perches used by landing gulls. */
   readonly counts: { coconutDrops: number };
 }
@@ -108,11 +124,48 @@ export function createLife(deps: LifeDeps): LifeSystem {
     all.push(kinds.dolphins);
   }
 
+  const tiered: CritterKind[] = [];
+  const addCritter = (k: CritterKind | undefined): void => {
+    if (k && k.capacity > 0) {
+      all.push(k);
+      tiered.push(k);
+    }
+  };
+  if (ctx.world.pathGraph.nodes.length > 0) {
+    const v = plan.villagers;
+    const vk = new Villagers(base, ctx, {
+      perIsland: [
+        { archetype: 'hearthholm', count: v.hearth },
+        { archetype: 'millbrook', count: v.other },
+        { archetype: 'mossgrove', count: v.other },
+      ],
+    });
+    if (vk.capacity > 0) kinds.villagers = vk;
+    addCritter(kinds.villagers);
+  }
+  const hour = ctx.getHour;
+  if (plan.cats > 0) addCritter((kinds.cats = new Cats(base, ctx, plan.cats, hour)));
+  if (plan.sheep > 0) addCritter((kinds.sheep = new Sheep(base, ctx, plan.sheep)));
+  if (plan.crabs > 0) addCritter((kinds.crabs = new Crabs(base, ctx, plan.crabs)));
+  if (plan.ducks > 0) addCritter((kinds.ducks = new Ducks(base, ctx, plan.ducks)));
+  if (plan.capybaras > 0) addCritter((kinds.capybaras = new Capybaras(base, ctx, plan.capybaras)));
+  for (const k of Object.keys(kinds) as (keyof typeof kinds)[]) {
+    if (kinds[k] && (kinds[k] as AgentKind).capacity === 0) {
+      (kinds[k] as AgentKind).mesh.visible = false;
+      delete kinds[k];
+    }
+  }
+
   const ambient = new AmbientScheduler(deps.seed);
   const spotRng = ctx.rngFor('spots');
   const counts = { coconutDrops: 0 };
   ambient.on('fishJump', (e) => {
     if (!kinds.jumpers || deps.getTier() < 2) return;
+    if (e.x !== undefined && e.z !== undefined) {
+      const a = e.r * Math.PI * 2 + (e.x * 0.37 + e.z * 0.11);
+      kinds.jumpers.trigger(e.x, e.z, Math.cos(a), Math.sin(a));
+      return;
+    }
     const s = pickJumpSpot(ctx, spotRng, e.r);
     if (s) kinds.jumpers.trigger(s.x, s.z, s.dx, s.dz);
   });
@@ -149,7 +202,9 @@ export function createLife(deps: LifeDeps): LifeSystem {
     counts,
     stats,
     fixedUpdate(dt) {
-      kinds.fish?.syncTier(deps.getTier());
+      const tier = deps.getTier();
+      kinds.fish?.syncTier(tier);
+      for (const k of tiered) k.syncTier(tier);
       ambient.fixedUpdate();
       for (const k of all) k.fixedUpdate(dt);
     },
@@ -159,6 +214,16 @@ export function createLife(deps: LifeDeps): LifeSystem {
     },
     onTier(tier) {
       kinds.fish?.syncTier(tier);
+      for (const k of tiered) k.syncTier(tier);
+    },
+    forEachAgent(cb) {
+      for (const k of all) {
+        const ps = PICK_SPHERES[k.name] ?? PICK_DEFAULT;
+        for (let i = 0; i < k.capacity; i++) {
+          if (!k.active[i]) continue;
+          cb(k, i, k.x[i], k.y[i] + k.ovY[i] + ps.y, k.z[i], ps.r);
+        }
+      }
     },
     setMotionScale(s) {
       setMotion(ctx, s);
