@@ -22,6 +22,7 @@ import {
   type WorldData,
 } from '../types.ts';
 import { slopeAtCell } from './zones.ts';
+import { OCC_STRUCTURE } from './settlements.ts';
 
 /**
  * Prop scatter (ARCHITECTURE §2 step 7): Bridson Poisson per island per rule in
@@ -35,6 +36,8 @@ export interface OccupancyGrid {
   data: Uint8Array;
   isFree(x: number, z: number, radius: number): boolean;
   mark(x: number, z: number, radius: number, value?: number): void;
+  /** Value of the cell containing (x, z) (0 outside). */
+  valueAt(x: number, z: number): number;
 }
 
 export function createOccupancy(): OccupancyGrid {
@@ -70,6 +73,10 @@ export function createOccupancy(): OccupancyGrid {
       void cz;
       return true;
     },
+    valueAt(x, z) {
+      const i = idx(x, z);
+      return i >= 0 ? data[i] : 0;
+    },
     mark(x, z, radius, value = 1) {
       const r = Math.max(0, Math.ceil(radius / cell));
       for (let dz = -r; dz <= r; dz++) {
@@ -102,7 +109,11 @@ export function chunkIdAt(x: number, z: number): number {
   return cz * CHUNKS_PER_SIDE + cx;
 }
 
-/** Scatter every rule over every island. Deterministic: rng.fork('props', islandId, ruleIndex). */
+/**
+ * Scatter every rule over every island. Deterministic: rng.fork('props', islandId, ruleIndex).
+ * Pass the occupancy grid pre-marked by settlements (markSites) so props avoid
+ * lots, docks, landmarks and paths; ground cover only avoids structures.
+ */
 export function scatterProps(
   world: WorldData,
   occupancy: OccupancyGrid = createOccupancy(),
@@ -174,6 +185,7 @@ export function scatterProps(
         const scale = rng.range(rule.scale[0], rule.scale[1]);
         const radius = def.footprint * scale;
         if (!isGround && !occupancy.isFree(x, z, radius)) continue;
+        if (isGround && occupancy.valueAt(x, z) === OCC_STRUCTURE) continue;
         if (isGround && groundCoverTotal >= GROUND_COVER_CAP) break;
         const zone = zoneAt(h, world.zone, x, z);
         const floats = zone === Zone.lagoon && !(def.flags & PropFlag.underwater);

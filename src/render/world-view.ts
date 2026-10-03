@@ -16,10 +16,10 @@ import { FOG, FOG_T0_SCALE } from '../content/lighting.ts';
 import { remap } from '../core/math/index.ts';
 import type { CameraWorld } from '../camera/controls.ts';
 import type { Counters } from '../capture/api.ts';
-import { scatterProps, type ScatterResult } from '../world/gen/scatter.ts';
 import { createPropBatcher, type PropBatcher } from './props/batcher.ts';
 import { createPropMaterials } from './materials/prop-materials.ts';
 import type { PropDef } from '../content/props.ts';
+import type { PropStore } from '../world/prop-store.ts';
 import type { Lod } from '../geo/index.ts';
 
 /**
@@ -37,7 +37,7 @@ export interface WorldView {
   clouds: CloudsView;
   life: LifeSystem;
   props: PropBatcher;
-  scatter: ScatterResult;
+  scatter: { props: PropStore; counts: Record<string, number> };
   env: EnvState;
   system: System;
   cameraWorld: CameraWorld;
@@ -99,7 +99,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   setWind(world.windDir, 1);
 
   const tScatter = d.now();
-  const scatter = scatterProps(world);
+  const scatter = { props: world.props, counts: {} as Record<string, number> };
   timings.scatter = d.now() - tScatter;
   const pm = createPropMaterials(d.scope);
   const props = createPropBatcher(scatter.props, {

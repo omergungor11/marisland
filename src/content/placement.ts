@@ -33,8 +33,21 @@ export interface PlacementRule {
   avoidDist?: number;
 }
 
-const { grass, meadow, forest, field, sandDry, sandWet, rock, cliff, lagoon, sandBlack, crater } =
-  Zone;
+const {
+  grass,
+  meadow,
+  forest,
+  field,
+  sandDry,
+  sandWet,
+  rock,
+  cliff,
+  lagoon,
+  sandBlack,
+  crater,
+  path,
+  plaza,
+} = Zone;
 
 export const PLACEMENT_RULES: readonly PlacementRule[] = [
   // ---- trees (T1)
@@ -63,17 +76,6 @@ export const PLACEMENT_RULES: readonly PlacementRule[] = [
     scale: [0.85, 1.2],
     archetypes: ['palmlagoon'],
     maxPerIsland: 80,
-  },
-  {
-    def: 'palm',
-    zones: [sandDry],
-    minDist: 3,
-    density: 1,
-    slopeMax: 0.6,
-    heights: [0.2, 3],
-    scale: [1.1, 1.3],
-    archetypes: ['lonelypalm'],
-    maxPerIsland: 1,
   },
   {
     def: 'roundTree',
@@ -220,7 +222,7 @@ export const PLACEMENT_RULES: readonly PlacementRule[] = [
 ];
 
 /** Keep props out of the crater floor etc. */
-export const BLOCKED_ZONES: number[] = [crater];
+export const BLOCKED_ZONES: number[] = [crater, path, plaza];
 
 /** Occupancy grid resolution in u (ARCHITECTURE §2). */
 export const OCCUPANCY_CELL = 1;

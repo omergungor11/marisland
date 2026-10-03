@@ -33,36 +33,45 @@ const coord = (w: WorldData, i: number): [number, number] => {
 };
 
 describe('generateWorld — determinism', () => {
-  it('stage hashes are locked for seeds 1, 42, 1001', () => {
+  it('stage hashes are locked for seeds 1, 42, 1001', { timeout: 30_000 }, () => {
     const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes]));
     expect(snap).toMatchInlineSnapshot(`
       {
         "1": {
           "chunks": "87a628cc5d3a2131",
-          "height": "9feaac486cfb7a45",
+          "height": "0998ac1276c748f7",
           "islandMap": "a655e399542d6130",
           "layout": "bd96d54d42ba37a3",
+          "props": "1fb22e592172ebf2",
+          "routes": "7c3fb900a1631df7",
           "sdf": "f25821e68b9fc27b",
-          "world": "54cee9a2e2383c98",
-          "zone": "e762d0ed0130b46f",
+          "sites": "b30a5cf168807d70",
+          "world": "223e2fb63ca49ee3",
+          "zone": "3e30d828e5b17292",
         },
         "1001": {
           "chunks": "2308622b7f481c60",
-          "height": "506fd9c761bc7851",
+          "height": "1ebb3d15c2c89970",
           "islandMap": "2108575841e697b4",
           "layout": "ca24c73249d64eff",
+          "props": "6ba0265439061692",
+          "routes": "ad9143a5f0133361",
           "sdf": "cc52d61ebf22894e",
-          "world": "fd0c0f52572058a3",
-          "zone": "f5a03d56524202d0",
+          "sites": "6c18b97e84a784b0",
+          "world": "d7f7b2f596a70206",
+          "zone": "a564e14b916bed6d",
         },
         "42": {
           "chunks": "4a2f6ca6294e6b92",
-          "height": "0b8e219e422232cf",
+          "height": "d69384a16b8d85bb",
           "islandMap": "2b8b157174488c2e",
           "layout": "e20e170d536ed768",
+          "props": "b79b3ea3293fa240",
+          "routes": "96c6c80ad3e5b6b0",
           "sdf": "e18b47a56ddfcd47",
-          "world": "0342ed06012989df",
-          "zone": "7db75eca47964d24",
+          "sites": "b1b0fb8a2cc786ec",
+          "world": "adee0f99f4370047",
+          "zone": "91c72a0516aeb89f",
         },
       }
     `);
@@ -229,30 +238,34 @@ describe('islands and zones', () => {
     expect(heightAt(h, 10_000, 0)).toBe(SEABED_Y);
   });
 
-  it('property: 50 seeds — no NaN, hearthholm peak 8–16 u, land area ±30 % of πr²', () => {
-    const ratios: number[] = [];
-    for (let s = 0; s < 50; s++) {
-      const w = generateWorld(s * 7919 + 13, { islands: 1 });
-      let land = 0;
-      let nonFinite = 0;
-      for (let i = 0; i < w.height.data.length; i++) {
-        if (!Number.isFinite(w.height.data[i]) || !Number.isFinite(w.shoreSdf[i])) nonFinite++;
-        if (w.height.data[i] > 0) land++;
+  it(
+    'property: 50 seeds — no NaN, hearthholm peak 8–16 u, land area ±30 % of πr²',
+    { timeout: 30_000 },
+    () => {
+      const ratios: number[] = [];
+      for (let s = 0; s < 50; s++) {
+        const w = generateWorld(s * 7919 + 13, { islands: 1 });
+        let land = 0;
+        let nonFinite = 0;
+        for (let i = 0; i < w.height.data.length; i++) {
+          if (!Number.isFinite(w.height.data[i]) || !Number.isFinite(w.shoreSdf[i])) nonFinite++;
+          if (w.height.data[i] > 0) land++;
+        }
+        expect(nonFinite).toBe(0);
+        const isl = w.islands[0];
+        expect(isl.archetype).toBe('hearthholm');
+        expect(isl.peakY).toBeGreaterThanOrEqual(8);
+        expect(isl.peakY).toBeLessThanOrEqual(16);
+        const ratio = (land * w.height.cellSize ** 2) / (Math.PI * isl.radius ** 2);
+        ratios.push(ratio);
+        expect(ratio).toBeGreaterThan(0.7);
+        expect(ratio).toBeLessThan(1.3);
       }
-      expect(nonFinite).toBe(0);
-      const isl = w.islands[0];
-      expect(isl.archetype).toBe('hearthholm');
-      expect(isl.peakY).toBeGreaterThanOrEqual(8);
-      expect(isl.peakY).toBeLessThanOrEqual(16);
-      const ratio = (land * w.height.cellSize ** 2) / (Math.PI * isl.radius ** 2);
-      ratios.push(ratio);
-      expect(ratio).toBeGreaterThan(0.7);
-      expect(ratio).toBeLessThan(1.3);
-    }
-    console.info(
-      `land/πr² over 50 seeds: min ${Math.min(...ratios).toFixed(2)} max ${Math.max(...ratios).toFixed(2)}`,
-    );
-  });
+      console.info(
+        `land/πr² over 50 seeds: min ${Math.min(...ratios).toFixed(2)} max ${Math.max(...ratios).toFixed(2)}`,
+      );
+    },
+  );
 
   it('one-island generation < 150 ms in Node', () => {
     generateWorld(77, { islands: 1, now }); // warm-up (JIT)

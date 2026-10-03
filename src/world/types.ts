@@ -2,6 +2,7 @@
  * World data model (ARCHITECTURE §2, D-005). Pure data: typed arrays + plain
  * objects, no three.js. Everything the renderer and Phase 2 editor need.
  */
+import type { PropStore } from './prop-store.ts';
 
 /** 1 u = 1 m. World is WORLD_SIZE × WORLD_SIZE centred on the origin. */
 export const WORLD_SIZE = 768;
@@ -108,12 +109,128 @@ export interface WorldData {
   islandMap: Uint8Array;
   /** Carved streams (optional; Mossgrove). */
   streams?: StreamData[];
+  /** One entry per island with a settlement / outpost (TASK-131). */
+  settlements: SettlementData[];
+  /** Footpath graph for villagers: nodes = x,z pairs (world u), edges = node index pairs. */
+  pathGraph: PathGraph;
+  /** Smoothed footpaths (open polylines, ≈ 2 u spacing) between graph junctions; props follow them. */
+  paths: Polyline[];
+  /** Boat routes: closed loops over water ≥ 1.5 u deep, ≈ 2 u spacing (TASK-133). */
+  boatRoutes: Polyline[];
+  landmarks: LandmarkData[];
+  lots: LotData[];
+  docks: DockData[];
+  /** Boat moorings along docks (life agents spawn here). */
+  moorings: MooringData[];
+  /** Single fixed props placed by settlements (well, buoys, tide pools, message bottle). */
+  fixtures: FixtureData[];
+  /** Fence lines (open polylines, 1.5 u spacing) around Millbrook field patches. */
+  fences: Polyline[];
+  /** Scattered props (scatter runs inside generateWorld, after settlements). */
+  props: PropStore;
   /** Per-chunk flags: bit0 = has land, bit1 = has shallow water (needs a mesh). */
   chunkFlags: Uint8Array;
   /** Stage hashes (hex strings) for determinism snapshots. */
   hashes: Record<string, string>;
   /** Stage timings in ms (informational). */
   timings: Record<string, number>;
+}
+
+export interface XZ {
+  x: number;
+  z: number;
+}
+
+/**
+ * Polyline in world xz. `islandId` −1 = spans islands (boat routes).
+ * `kind`: 'path' | 'stair' | 'boardwalk' (paths), 'route', 'fence'.
+ */
+export interface Polyline {
+  islandId: number;
+  kind: string;
+  closed: boolean;
+  points: XZ[];
+  /** Boat routes: indices into `docks` the loop passes (within 6 u of the dock end). */
+  stops?: number[];
+}
+
+export interface PathGraph {
+  /** x, z pairs (world u). */
+  nodes: Float32Array;
+  /** Node index pairs (undirected). */
+  edges: Uint16Array;
+}
+
+export type LotKind = 'house' | 'stall' | 'barn' | 'cabin' | 'hut' | 'tower';
+
+/**
+ * A building lot. Ground under it is flattened (except kind 'hut' = stilt hut
+ * over water). rotY: facing (door) direction (cos rotY, sin rotY).
+ */
+export interface LotData {
+  defId: string;
+  x: number;
+  z: number;
+  rotY: number;
+  islandId: number;
+  kind: LotKind;
+  /** Footprint width (across the facing) and depth (along it), u. */
+  w: number;
+  d: number;
+  /** pathGraph node at the door. */
+  node: number;
+}
+
+/** Landmark kinds: lighthouse, clocktower, windmill, hotSpring, volcanoCrater, sunkenShip, giantTree, lonelyPalm. */
+export interface LandmarkData {
+  kind: string;
+  x: number;
+  z: number;
+  rotY: number;
+  islandId: number;
+}
+
+/** Dock: starts on the shore at (x, z) and runs `segments` × 2 u along (cos rotY, sin rotY). */
+export interface DockData {
+  x: number;
+  z: number;
+  rotY: number;
+  segments: number;
+  islandId: number;
+  /** pathGraph node at the dock root (−1 if unconnected). */
+  node: number;
+}
+
+export interface MooringData {
+  defId: 'rowboat' | 'sailboat';
+  x: number;
+  z: number;
+  rotY: number;
+  islandId: number;
+  /** Index into `docks`. */
+  dock: number;
+}
+
+export interface FixtureData {
+  defId: string;
+  x: number;
+  z: number;
+  rotY: number;
+  islandId: number;
+}
+
+export interface SettlementData {
+  islandId: number;
+  /** 'village' | 'lighthouse' | 'farm' | 'spring' | 'beachhut' | 'cabin'. */
+  kind: string;
+  /** Hub the paths radiate from (plaza centre or main landmark); `node` in pathGraph. */
+  hub: { x: number; z: number; node: number };
+  /** Plaza disc (Zone.plaza), Hearthholm only. */
+  plaza: { x: number; z: number; r: number } | null;
+  /** Indices into world.lots / landmarks / docks. */
+  lots: number[];
+  landmarks: number[];
+  docks: number[];
 }
 
 /** Bilinear height lookup. Outside the grid → SEABED_Y. */

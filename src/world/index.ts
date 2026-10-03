@@ -1,6 +1,7 @@
 /**
  * World generation entry point (ARCHITECTURE §2). Pure data, no three.js.
- * seed → layout → raw land → shore SDF → shelf/beach heights → zones → chunks → hashes.
+ * seed → layout → raw land → shore SDF → shelf/beach heights → zones → settlements
+ * (pads, paths, docks) → boat routes → chunks → occupancy + prop scatter → hashes.
  */
 import { createRng } from '../core/rng.ts';
 import type { WorldData } from './types.ts';
@@ -20,6 +21,11 @@ import {
 import { generateLayout } from './gen/layout.ts';
 import { Tag } from './gen/profiles.ts';
 import { buildZones } from './gen/zones.ts';
+import { buildSettlements, markSites } from './gen/settlements.ts';
+import { buildRoutes } from './gen/routes.ts';
+import { createOccupancy, scatterProps } from './gen/scatter.ts';
+import { compactPropStore, createPropStore } from './prop-store.ts';
+import { hashPolylines, hashProps, hashSites } from './gen/hash.ts';
 
 export * from './types.ts';
 export { CHUNK_HAS_LAND, CHUNK_HAS_SHALLOW } from './gen/chunks.ts';
@@ -36,7 +42,17 @@ export interface GenerateOptions {
 }
 
 /** Keys combined (in this order) into `hashes.world`. */
-export const STAGE_HASH_KEYS = ['layout', 'height', 'sdf', 'islandMap', 'zone', 'chunks'] as const;
+export const STAGE_HASH_KEYS = [
+  'layout',
+  'height',
+  'sdf',
+  'islandMap',
+  'zone',
+  'chunks',
+  'sites',
+  'routes',
+  'props',
+] as const;
 
 export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldData {
   const now = opts.now ?? ((): number => 0);
@@ -83,20 +99,30 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
   );
   lap('zones');
 
+  const sites = buildSettlements(
+    {
+      h: height,
+      sdf,
+      zone,
+      islandMap: rawLand.islandMap,
+      islands,
+      windDir,
+      streams: rawLand.streams ?? [],
+    },
+    root.fork('sites'),
+  );
+  lap('sites');
+
+  const boatRoutes = buildRoutes(
+    { h: height, sdf, islands, docks: sites.docks },
+    root.fork('routes'),
+  );
+  lap('routes');
+
   const chunkFlags = buildChunkFlags(height);
   lap('chunks');
 
-  hashes.layout = hashLayout(windDir, islands);
-  hashes.height = hashFloats(height.data);
-  hashes.sdf = hashFloats(sdf);
-  hashes.islandMap = hashBytes(rawLand.islandMap);
-  hashes.zone = hashBytes(zone);
-  hashes.chunks = hashBytes(chunkFlags);
-  hashes.world = combineHashes(hashes, STAGE_HASH_KEYS);
-  lap('hash');
-  timings.total = t - t0;
-
-  return {
+  const world: WorldData = {
     seed,
     windDir,
     islands,
@@ -105,8 +131,37 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
     shoreSdf: sdf,
     islandMap: rawLand.islandMap,
     streams: rawLand.streams,
+    settlements: sites.settlements,
+    pathGraph: sites.pathGraph,
+    paths: sites.paths,
+    boatRoutes,
+    landmarks: sites.landmarks,
+    lots: sites.lots,
+    docks: sites.docks,
+    moorings: sites.moorings,
+    fixtures: sites.fixtures,
+    fences: sites.fences,
+    props: createPropStore(0),
     chunkFlags,
     hashes,
     timings,
   };
+  const occupancy = createOccupancy();
+  markSites(occupancy, world, sites.shapes);
+  world.props = compactPropStore(scatterProps(world, occupancy).props);
+  lap('props');
+
+  hashes.layout = hashLayout(windDir, islands);
+  hashes.height = hashFloats(height.data);
+  hashes.sdf = hashFloats(sdf);
+  hashes.islandMap = hashBytes(rawLand.islandMap);
+  hashes.zone = hashBytes(zone);
+  hashes.chunks = hashBytes(chunkFlags);
+  hashes.sites = hashSites(world);
+  hashes.routes = hashPolylines(boatRoutes);
+  hashes.props = hashProps(world.props);
+  hashes.world = combineHashes(hashes, STAGE_HASH_KEYS);
+  lap('hash');
+  timings.total = t - t0;
+  return world;
 }

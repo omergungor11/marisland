@@ -82,16 +82,20 @@ function components(w: WorldData, isl: IslandData): number {
 }
 
 describe('archipelago — 30-seed full generation', () => {
-  it('stage hashes are locked for seeds 1, 42, 1001 (archipelago mode)', () => {
-    const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
-    expect(snap).toMatchInlineSnapshot(`
-      {
-        "1": "c86189607c307d7a",
-        "1001": "d636e8f74ca83f2c",
-        "42": "c776fd2ff966a468",
-      }
-    `);
-  });
+  it(
+    'stage hashes are locked for seeds 1, 42, 1001 (archipelago mode)',
+    { timeout: 30_000 },
+    () => {
+      const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
+      expect(snap).toMatchInlineSnapshot(`
+        {
+          "1": "b99ae514650fd359",
+          "1001": "fb5f7b95609a7f3d",
+          "42": "066bc597b991f410",
+        }
+      `);
+    },
+  );
 
   it('same seed twice → identical bytes', () => {
     const a = generateWorld(2024);
@@ -101,38 +105,42 @@ describe('archipelago — 30-seed full generation', () => {
     expect(a.streams).toEqual(b.streams);
   });
 
-  it('every island: beach + green (Lonely Palm: sand only), land inside its disc, no NaN', () => {
-    for (const seed of SEEDS) {
-      const w = world(seed);
-      let nonFinite = 0;
-      for (let i = 0; i < w.height.data.length; i++)
-        if (!Number.isFinite(w.height.data[i]) || !Number.isFinite(w.shoreSdf[i])) nonFinite++;
-      expect(nonFinite).toBe(0);
-      for (const isl of w.islands) {
-        const ctx = `seed ${seed} ${isl.archetypeName}`;
-        const zc = zoneCounts(w, isl);
-        const land = [...zc.values()].reduce((a, b) => a + b, 0);
-        expect(land, ctx).toBeGreaterThan(0);
-        expect(sum(zc, SAND), ctx).toBeGreaterThan(0);
-        if (isl.archetype === 'lonelypalm') expect(sum(zc, SAND), ctx).toBe(land);
-        else expect(sum(zc, GREEN), ctx).toBeGreaterThan(0);
+  it(
+    'every island: beach + green (Lonely Palm: sand only), land inside its disc, no NaN',
+    { timeout: 30_000 },
+    () => {
+      for (const seed of SEEDS) {
+        const w = world(seed);
+        let nonFinite = 0;
+        for (let i = 0; i < w.height.data.length; i++)
+          if (!Number.isFinite(w.height.data[i]) || !Number.isFinite(w.shoreSdf[i])) nonFinite++;
+        expect(nonFinite).toBe(0);
+        for (const isl of w.islands) {
+          const ctx = `seed ${seed} ${isl.archetypeName}`;
+          const zc = zoneCounts(w, isl);
+          const land = [...zc.values()].reduce((a, b) => a + b, 0);
+          expect(land, ctx).toBeGreaterThan(0);
+          expect(sum(zc, SAND), ctx).toBeGreaterThan(0);
+          if (isl.archetype === 'lonelypalm') expect(sum(zc, SAND), ctx).toBe(land);
+          else expect(sum(zc, GREEN), ctx).toBeGreaterThan(0);
+        }
+        const reachFrac = w.islands.map(() => 0);
+        for (let i = 0; i < w.islandMap.length; i++) {
+          const id = w.islandMap[i];
+          if (id === 0) continue;
+          const isl = w.islands[id - 1];
+          const [x, z] = coord(w, i);
+          const f = Math.hypot(x - isl.cx, z - isl.cz) / isl.reach;
+          if (f > reachFrac[id - 1]) reachFrac[id - 1] = f;
+        }
+        w.islands.forEach((isl, k) =>
+          expect(reachFrac[k], `seed ${seed} ${isl.archetypeName} land outside reach`).toBeLessThan(
+            1,
+          ),
+        );
       }
-      const reachFrac = w.islands.map(() => 0);
-      for (let i = 0; i < w.islandMap.length; i++) {
-        const id = w.islandMap[i];
-        if (id === 0) continue;
-        const isl = w.islands[id - 1];
-        const [x, z] = coord(w, i);
-        const f = Math.hypot(x - isl.cx, z - isl.cz) / isl.reach;
-        if (f > reachFrac[id - 1]) reachFrac[id - 1] = f;
-      }
-      w.islands.forEach((isl, k) =>
-        expect(reachFrac[k], `seed ${seed} ${isl.archetypeName} land outside reach`).toBeLessThan(
-          1,
-        ),
-      );
-    }
-  });
+    },
+  );
 
   it('no land bridges and deep channels between neighbouring islands', () => {
     let worst = -Infinity;

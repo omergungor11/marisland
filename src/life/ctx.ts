@@ -13,8 +13,8 @@ export interface CountersLike {
   agents: number;
 }
 
-/** World data plus the optional TASK-133 outputs this module consumes. */
-export interface LifeWorld extends WorldData {
+/** World data with boat routes flattened to point loops (TASK-133 `Polyline.points`). */
+export interface LifeWorld extends Omit<WorldData, 'boatRoutes' | 'docks'> {
   boatRoutes?: { x: number; z: number }[][];
   docks?: { x: number; z: number; rotY: number; segments: number; islandId: number }[];
 }
@@ -50,7 +50,11 @@ export interface LifeCtx {
 }
 
 export function makeCtx(deps: LifeDeps): LifeCtx {
-  const world: LifeWorld = deps.world;
+  const world: LifeWorld = {
+    ...deps.world,
+    boatRoutes: deps.world.boatRoutes?.map((r) => r.points),
+    docks: deps.world.docks,
+  };
   return {
     world,
     seed: deps.seed,

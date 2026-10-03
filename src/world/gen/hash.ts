@@ -1,5 +1,6 @@
 import { hashString, mix32 } from '../../core/hash.ts';
-import type { IslandData } from '../types.ts';
+import type { PropStore } from '../prop-store.ts';
+import type { IslandData, Polyline, WorldData } from '../types.ts';
 
 /** Floats are quantised to this step before hashing (ARCHITECTURE §2). */
 const Q = 1e4;
@@ -64,5 +65,61 @@ export function hashLayout(windDir: number, islands: IslandData[]): string {
 export function combineHashes(hashes: Record<string, string>, keys: readonly string[]): string {
   const h = new StageHash();
   for (const k of keys) h.str(k).str(hashes[k]);
+  return h.hex();
+}
+
+/** Polylines (kind, island, closed, quantised points). */
+export function hashPolylines(lines: Polyline[], h = new StageHash()): string {
+  h.u32(lines.length);
+  for (const l of lines) {
+    h.str(l.kind)
+      .u32(l.islandId + 1)
+      .u32(l.closed ? 1 : 0)
+      .u32(l.points.length);
+    for (const p of l.points) h.float(p.x).float(p.z);
+    for (const s of l.stops ?? []) h.u32(s);
+  }
+  return h.hex();
+}
+
+/** Settlements stage: lots, landmarks, docks, moorings, fixtures, paths, graph, fences. */
+export function hashSites(w: WorldData): string {
+  const h = new StageHash();
+  h.u32(w.settlements.length);
+  for (const s of w.settlements) {
+    h.u32(s.islandId)
+      .str(s.kind)
+      .float(s.hub.x)
+      .float(s.hub.z)
+      .u32(s.hub.node + 1);
+    h.u32(s.lots.length).u32(s.landmarks.length).u32(s.docks.length);
+  }
+  for (const l of w.lots) h.str(l.defId).float(l.x).float(l.z).float(l.rotY).u32(l.node);
+  for (const l of w.landmarks) h.str(l.kind).float(l.x).float(l.z).float(l.rotY);
+  for (const d of w.docks)
+    h.float(d.x)
+      .float(d.z)
+      .float(d.rotY)
+      .u32(d.segments)
+      .u32(d.node + 1);
+  for (const m of w.moorings) h.str(m.defId).float(m.x).float(m.z).u32(m.dock);
+  for (const f of w.fixtures) h.str(f.defId).float(f.x).float(f.z).float(f.rotY);
+  h.floats(w.pathGraph.nodes);
+  for (let i = 0; i < w.pathGraph.edges.length; i++) h.u32(w.pathGraph.edges[i]);
+  hashPolylines(w.fences, h);
+  return hashPolylines(w.paths, h);
+}
+
+/** Prop store: def ids, quantised transforms. */
+export function hashProps(p: PropStore): string {
+  const h = new StageHash().u32(p.count);
+  for (let i = 0; i < p.count; i++)
+    h.u32(p.defId[i])
+      .u32(p.variant[i])
+      .float(p.x[i])
+      .float(p.y[i])
+      .float(p.z[i])
+      .float(p.rotY[i])
+      .float(p.scale[i]);
   return h.hex();
 }

@@ -1,6 +1,8 @@
 /**
  * Debug minimap: zones colour-coded with the bible palette, hill-shaded by
- * the heightfield, anchors and streams on top. Node-only (pngjs); used by the
+ * the heightfield, anchors and streams on top; settlements overlay: lots
+ * (rects, white door pixel), landmarks (yellow stars), paths (brown), fences,
+ * docks, moorings, fixtures (yellow dots), boat routes (white dashed). Node-only (pngjs); used by the
  * MAR_MINIMAP test to eyeball silhouettes without a GPU (bible P2).
  */
 import { PNG } from 'pngjs';
@@ -15,7 +17,7 @@ import {
   WATER,
   WOOD,
 } from '../../content/palette.ts';
-import type { WorldData } from '../types.ts';
+import type { Polyline, WorldData, XZ } from '../types.ts';
 import { Zone } from '../types.ts';
 
 const hex = (h: string): [number, number, number] => [
@@ -131,6 +133,81 @@ export function renderMinimapPng(world: WorldData, opts: MinimapOptions = {}): B
       for (let t = 0; t <= steps; t++)
         dot(a.x + ((b.x - a.x) * t) / steps, a.z + ((b.z - a.z) * t) / steps, [60, 130, 230], 1);
     }
+  const line = (a: XZ, b: XZ, c: [number, number, number], r: number, dash = 0): void => {
+    const steps = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) * k));
+    for (let t = 0; t <= steps; t++) {
+      if (dash > 0 && Math.floor(((t / steps) * Math.hypot(b.x - a.x, b.z - a.z)) / dash) % 2 === 1)
+        continue;
+      dot(a.x + ((b.x - a.x) * t) / steps, a.z + ((b.z - a.z) * t) / steps, c, r);
+    }
+  };
+  const poly = (p: Polyline, c: [number, number, number], r: number, dash = 0): void => {
+    const pts = p.points;
+    for (let j = 0; j + 1 < pts.length; j++) line(pts[j], pts[j + 1], c, r, dash);
+    if (p.closed && pts.length > 2) line(pts[pts.length - 1], pts[0], c, r, dash);
+  };
+  for (const f of world.fences ?? []) poly(f, [120, 80, 40], 0);
+  for (const p of world.paths ?? [])
+    poly(
+      p,
+      p.kind === 'boardwalk' ? [200, 150, 90] : p.kind === 'stair' ? [150, 60, 30] : [110, 70, 35],
+      0,
+    );
+  for (const r of world.boatRoutes ?? []) poly(r, [255, 255, 255], 0, 3);
+  for (const d of world.docks ?? []) {
+    const L = d.segments * 2;
+    const end = { x: d.x + Math.cos(d.rotY) * L, z: d.z + Math.sin(d.rotY) * L };
+    line(d, end, [150, 95, 50], 1);
+  }
+  const rect = (
+    x: number,
+    z: number,
+    rotY: number,
+    w: number,
+    dd: number,
+    c: [number, number, number],
+  ): void => {
+    const cs = Math.cos(rotY);
+    const sn = Math.sin(rotY);
+    const steps = Math.max(2, Math.ceil(Math.max(w, dd) * k * 2));
+    for (let a = 0; a <= steps; a++)
+      for (let b = 0; b <= steps; b++) {
+        const u = (a / steps - 0.5) * w;
+        const v = (b / steps - 0.5) * dd;
+        const [px0, py0] = toPx(x - u * sn + v * cs, z + u * cs + v * sn);
+        put(px0, py0, c);
+      }
+    // door marker
+    const [dx, dy] = toPx(x + cs * (dd / 2), z + sn * (dd / 2));
+    put(dx, dy, [255, 255, 255]);
+  };
+  for (const l of world.lots ?? [])
+    rect(
+      l.x,
+      l.z,
+      l.rotY,
+      l.w,
+      l.d,
+      l.kind === 'stall' ? [240, 120, 90] : l.kind === 'hut' ? [200, 120, 60] : [235, 225, 210],
+    );
+  for (const m of world.moorings ?? [])
+    rect(
+      m.x,
+      m.z,
+      m.rotY,
+      m.defId === 'sailboat' ? 1.6 : 1,
+      m.defId === 'sailboat' ? 5 : 2.4,
+      [250, 250, 250],
+    );
+  for (const f of world.fixtures ?? []) dot(f.x, f.z, [255, 210, 60], 1);
+  const star = (x: number, z: number, c: [number, number, number]): void => {
+    for (let a = 0; a < 5; a++) {
+      const t = (a / 5) * Math.PI * 2 - Math.PI / 2;
+      line({ x, z }, { x: x + Math.cos(t) * 4, z: z + Math.sin(t) * 4 }, c, 0);
+    }
+    dot(x, z, c, 1);
+  };
+  for (const lm of world.landmarks ?? []) star(lm.x, lm.z, [255, 230, 40]);
   for (const isl of world.islands) {
     if (opts.discs) {
       const steps = Math.ceil(isl.reach * k * 6);

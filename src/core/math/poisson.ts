@@ -48,7 +48,17 @@ export function poissonDisc(
     active.push(idx);
   };
 
-  // Several seeds so disconnected valid regions all get covered.
+  // Seed on a jittered grid (plus a few random throws) so narrow valid bands — beaches,
+  // field strips — always receive at least one active sample.
+  const gridStep = Math.max(radius * 2, Math.min(w, h) / 48);
+  for (let gy = minY + gridStep * 0.5; gy < maxY; gy += gridStep) {
+    for (let gx = minX + gridStep * 0.5; gx < maxX; gx += gridStep) {
+      const x = gx + (rng.next() - 0.5) * gridStep;
+      const y = gy + (rng.next() - 0.5) * gridStep;
+      if (x < minX || y < minY || x >= maxX || y >= maxY) continue;
+      if (accept(x, y) && fits(x, y)) add(x, y);
+    }
+  }
   const seedTries = Math.max(8, Math.ceil((w * h) / (radius * radius * 40)));
   for (let t = 0; t < seedTries; t++) {
     const x = minX + rng.next() * w;
