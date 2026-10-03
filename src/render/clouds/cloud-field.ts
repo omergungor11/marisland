@@ -67,7 +67,8 @@ export function cellU(ix: number, iz: number, salt: number, k: number): number {
 /** Threshold so exactly `count` of the `cells`² candidates are active. */
 export function activeThreshold(salt: number, cells: number, count: number): number {
   const us: number[] = [];
-  for (let iz = 0; iz < cells; iz++) for (let ix = 0; ix < cells; ix++) us.push(cellU(ix, iz, salt, 0));
+  for (let iz = 0; iz < cells; iz++)
+    for (let ix = 0; ix < cells; ix++) us.push(cellU(ix, iz, salt, 0));
   us.sort((a, b) => a - b);
   const n = Math.max(0, Math.min(us.length, count));
   if (n === 0) return 0;
