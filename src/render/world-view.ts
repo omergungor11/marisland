@@ -10,6 +10,7 @@ import { createSky, type SkyView } from './sky/sky.ts';
 import { createLightRig, type LightRig } from './lighting.ts';
 import { createClouds, type CloudsView } from './clouds/clouds.ts';
 import { createLife, type LifeSystem } from '../life/index.ts';
+import { createBeacons } from './beacon.ts';
 import { createEnvState, sampleEnv, type EnvState } from '../env/env-state.ts';
 import { SHARED, setWind, writeEnvUniforms } from './uniforms.ts';
 import { FOG, FOG_T0_SCALE } from '../content/lighting.ts';
@@ -85,6 +86,8 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   const lights = createLightRig(d.quality, d.scope);
   group.add(lights.group);
   const settlement = appendSettlementProps(world);
+  const beacons = createBeacons(world, d.scope);
+  group.add(beacons.group);
   const clouds = createClouds(world, d.quality, d.scope);
   group.add(clouds.group);
   for (const c of settlement.emitters.chimneys)
@@ -143,6 +146,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     water.update(_camPos, d.getTime());
     terrain.update(d.getTime());
     clouds.update(d.getTime(), env, _camPos, tier);
+    beacons.update(d.getTime(), env);
     if (tier !== lastTier) {
       lastTier = tier;
       terrain.onTier(tier);
