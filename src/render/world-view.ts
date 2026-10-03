@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { Scope } from '../core/scope.ts';
 import type { System } from '../core/loop.ts';
 import type { Quality } from '../core/params.ts';
-import { generateWorld, type WorldData, heightAt } from '../world/index.ts';
+import { generateWorld, type WorldData, heightAt, sampleGrid, Zone } from '../world/index.ts';
 import { createWorldTextures, type WorldTextures } from './world-textures.ts';
 import { buildTerrain, type TerrainView } from './terrain/terrain.ts';
 import { createWater, type WaterView } from './water/water.ts';
@@ -190,6 +190,42 @@ function withDefaults(
 ): Record<string, { x: number; z: number; rotY: number }> {
   const out = { ...anchors };
   const wind = world.windDir;
+  // Beach: nearest dry-sand cell (2–4 u inland) to the harbour / lee point, facing the water.
+  const seedPt = out.harbour ??
+    out.landing ?? {
+      x: isl.cx + Math.cos(wind) * isl.radius * 0.8,
+      z: isl.cz + Math.sin(wind) * isl.radius * 0.8,
+      rotY: wind,
+    };
+  if (!out.beach) {
+    const h = world.height;
+    let best: { x: number; z: number; d: number } | null = null;
+    const r = Math.ceil((isl.radius + 20) / h.cellSize);
+    const ci = Math.round((isl.cx - h.originX) / h.cellSize);
+    const cj = Math.round((isl.cz - h.originZ) / h.cellSize);
+    for (let j = Math.max(1, cj - r); j < Math.min(h.n - 1, cj + r); j++) {
+      for (let i = Math.max(1, ci - r); i < Math.min(h.n - 1, ci + r); i++) {
+        const k = j * h.n + i;
+        if (world.zone[k] !== Zone.sandDry && world.zone[k] !== Zone.sandBlack) continue;
+        const sdf = world.shoreSdf[k];
+        if (sdf < 1.5 || sdf > 5) continue;
+        const x = h.originX + i * h.cellSize;
+        const z = h.originZ + j * h.cellSize;
+        const d = Math.hypot(x - seedPt.x, z - seedPt.z);
+        if (!best || d < best.d) best = { x, z, d };
+      }
+    }
+    if (best) {
+      // face the water: along the SDF gradient toward decreasing distance
+      const gx =
+        sampleGrid(h, world.shoreSdf, best.x + 2, best.z, 0) -
+        sampleGrid(h, world.shoreSdf, best.x - 2, best.z, 0);
+      const gz =
+        sampleGrid(h, world.shoreSdf, best.x, best.z + 2, 0) -
+        sampleGrid(h, world.shoreSdf, best.x, best.z - 2, 0);
+      out.beach = { x: best.x, z: best.z, rotY: Math.atan2(-gz, -gx) };
+    }
+  }
   // leeward side of the island = downwind
   const lee = {
     x: isl.cx + Math.cos(wind) * isl.radius * 0.8,
