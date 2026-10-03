@@ -13,8 +13,9 @@ chunky-cute cumulus look at T0 and makes the shadows legible (checked in W1/D-ov
 
 ## D-010: High-quality program budget 20 → 24 — 2026-10-03
 
-**Decision**: `BUDGETS.high.programs = 24`, `BUDGETS.medium.programs = 20` (was 16; 4 lit prop variants +
-their depth variants + terrain/water/sky/post measure 17). DOF stays at T3 on high (ART_BIBLE §3).
+**Decision**: `BUDGETS.programs` = 18 / 26 / 30 (low / medium / high; ARCHITECTURE said 12 / 16 / 20). Measured at
+M7: 5 lit variants (+5 depth), terrain, water, sky, clouds, puffs, blobs, beam, fireflies, gull patch = 17 on low;
++ post chain (7, DOF 8 more on high) on medium/high. DOF stays at T3 on high (ART_BIBLE §3).
 **Rationale**: pmndrs `DepthOfFieldEffect` alone compiles 8 programs (CoC, blur, bokeh, mask passes).
 With sky, terrain, water, 4 lit variants + depth variants and the post chain, high at T3 measures 22.
 Dropping DOF to photo mode only would lose the bible's T3 look; 4 extra programs cost nothing at runtime.
