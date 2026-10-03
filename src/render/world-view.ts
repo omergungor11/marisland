@@ -12,6 +12,10 @@ import { createEnvState, sampleEnv, type EnvState } from '../env/env-state.ts';
 import { SHARED, setWind, writeEnvUniforms } from './uniforms.ts';
 import type { CameraWorld } from '../camera/controls.ts';
 import type { Counters } from '../capture/api.ts';
+import { scatterProps, type ScatterResult } from '../world/gen/scatter.ts';
+import { createPropBatcher, type PropBatcher } from './props/batcher.ts';
+import type { PropDef } from '../content/props.ts';
+import type { Lod } from '../geo/index.ts';
 
 /**
  * Everything seed-derived on the render side (ARCHITECTURE §1 "world scope").
@@ -25,6 +29,8 @@ export interface WorldView {
   water: WaterView;
   sky: SkyView;
   lights: LightRig;
+  props: PropBatcher;
+  scatter: ScatterResult;
   env: EnvState;
   system: System;
   cameraWorld: CameraWorld;
@@ -42,6 +48,10 @@ export interface WorldViewDeps {
   getTier: () => number;
   counters: Counters;
   now: () => number;
+  /** Prop material provider (factory from TASK-104); falls back to a plain Lambert. */
+  propMaterial?: (def: PropDef, lod: Lod, groundCover: boolean) => THREE.Material;
+  propDepthMaterial?: (def: PropDef, lod: Lod, groundCover: boolean) => THREE.Material | null;
+  softAppear?: boolean;
 }
 
 const _focus = new THREE.Vector3();
@@ -66,6 +76,21 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   const lights = createLightRig(d.quality, d.scope);
   group.add(lights.group);
   setWind(world.windDir, 1);
+
+  const tScatter = d.now();
+  const scatter = scatterProps(world);
+  timings.scatter = d.now() - tScatter;
+  const fallbackMat = d.scope.add(new THREE.MeshLambertMaterial({ vertexColors: true }));
+  const props = createPropBatcher(scatter.props, {
+    scope: d.scope,
+    seed,
+    counters: d.counters,
+    materialFor: d.propMaterial ?? (() => fallbackMat),
+    depthMaterialFor: d.propDepthMaterial,
+    softAppear: d.softAppear ?? false,
+    castShadows: d.quality !== 'low',
+  });
+  group.add(props.group);
   timings.build = d.now() - t1;
 
   const env = createEnvState();
@@ -87,9 +112,12 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     if (tier !== lastTier) {
       lastTier = tier;
       terrain.onTier(tier);
+      props.setTier(tier, d.getTime());
     }
+    props.update(d.getTime(), _focus.x, _focus.z);
   };
-  update();
+  // No eager update here: the first update runs after the camera preset is applied so the
+  // initial tier is set instantly (no bloom-in queue, no hard pops before the first frame).
 
   const islands = world.islands.map((i) => ({
     name: i.name,
@@ -128,6 +156,8 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     water,
     sky,
     lights,
+    props,
+    scatter,
     env,
     system: { name: 'world-view', update },
     cameraWorld,

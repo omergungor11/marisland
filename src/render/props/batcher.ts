@@ -256,6 +256,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
 
   // ---- visibility + pop queue
   let tier = -1;
+  let firstUpdate = true;
   const popQueue: { g: Group; k: number }[] = [];
   const stats = { instances, groundCover, groups: groups.length, visibleInstances: 0 };
   const gcRadius = d.groundCoverRadius ?? 60;
@@ -325,10 +326,11 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
             (CHUNKS_PER_SIDE * CHUNK_SIZE) / 2 +
             CHUNK_SIZE / 2;
           const dist = Math.hypot(ccx - fx, ccz - fz);
-          if (dist < gcRadius + CHUNK_SIZE * 0.71) show(g, time, false);
+          if (dist < gcRadius + CHUNK_SIZE * 0.71) show(g, time, firstUpdate);
           else hide(g);
         }
       }
+      firstUpdate = false;
       // drain pops
       let n = 0;
       while (popQueue.length && n < BLOOM_IN.maxPerFrame) {
