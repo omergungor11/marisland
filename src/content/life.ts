@@ -4,6 +4,8 @@
 export interface LifePlan {
   sailboats: number;
   rowboats: number;
+  /** Parked (non-sailing) sailboats at moorings. */
+  parked: number;
   flocks: number;
   gullsPerFlock: [number, number];
   schools: number;
@@ -15,6 +17,7 @@ export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
   low: {
     sailboats: 2,
     rowboats: 2,
+    parked: 0,
     flocks: 2,
     gullsPerFlock: [4, 5],
     schools: 2,
@@ -25,6 +28,7 @@ export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
   medium: {
     sailboats: 3,
     rowboats: 2,
+    parked: 1,
     flocks: 3,
     gullsPerFlock: [5, 6],
     schools: 2,
@@ -35,6 +39,7 @@ export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
   high: {
     sailboats: 4,
     rowboats: 3,
+    parked: 2,
     flocks: 3,
     gullsPerFlock: [5, 8],
     schools: 2,
@@ -49,6 +54,9 @@ export const SIM_LOD = { farDistance: 400, farEvery: 6 } as const;
 
 export const SAILBOAT = {
   speed: 3,
+  /** Speed within `stopRadius` u of a route stop dock end (eased in). */
+  stopSpeed: 1.2,
+  stopRadius: 12,
   heelDeg: 8,
   /** Yaw rate (rad/s) at which the heel saturates. */
   heelRate: 0.25,
@@ -83,7 +91,17 @@ export const GULLS = {
   spread: 0.5,
   radiusJitter: 3,
   /** Landing: descent speed u/s (clamped duration), sit seconds, takeoff seconds. */
-  land: { speed: 9, minTime: 3, maxTime: 14, sit: [4, 8], takeoff: 2.5, perchY: 1.2, pulse: 1.08 },
+  land: {
+    speed: 9,
+    minTime: 3,
+    maxTime: 14,
+    sit: [4, 8],
+    takeoff: 2.5,
+    perchY: 1.2,
+    /** Perch height above terrain at landmark tops. */
+    landmarkTop: { lighthouse: 14, clocktower: 11 } as Record<string, number>,
+    pulse: 1.08,
+  },
 } as const;
 
 export const FISH = {

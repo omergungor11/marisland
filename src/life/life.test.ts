@@ -191,6 +191,31 @@ describe('life: boats', () => {
   });
 });
 
+describe('life: world data wiring', () => {
+  it('moored boats sit exactly on world.moorings; parked sailboats do not sail', () => {
+    const w = world();
+    const r = rig(7, 'high');
+    run(r, 100);
+    const rb = r.life.kinds.rowboats;
+    const pk = r.life.kinds.parked;
+    const row = w.moorings.filter((m) => m.defId === 'rowboat');
+    const sail = w.moorings.filter((m) => m.defId === 'sailboat');
+    if (row.length) {
+      expect(rb).toBeDefined();
+      for (let i = 0; i < rb!.capacity; i++)
+        expect(
+          row.some((m) => Math.abs(m.x - rb!.x[i]) < 1e-3 && Math.abs(m.z - rb!.z[i]) < 1e-3),
+        ).toBe(true);
+    }
+    if (sail.length) {
+      expect(pk).toBeDefined();
+      const x0 = pk!.x[0];
+      run(r, 300);
+      expect(pk!.x[0]).toBe(x0);
+    }
+  });
+});
+
 describe('life: gulls', () => {
   it('stay above 10 u, have unique phases, move, and are ≤ 24', () => {
     const r = rig();

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BLOOM_IN, TREE_SWAY } from '../../content/anim.ts';
+import { BLOOM_IN, TREE_SWAY, WINDMILL } from '../../content/anim.ts';
 import { SHARED } from '../uniforms.ts';
 import { FIELDS_GLSL } from '../shaders/chunks/fields.glsl.ts';
 import { SHARED_LIT_GLSL } from '../shaders/chunks/lit.glsl.ts';
@@ -25,6 +25,11 @@ export interface LitFeatures {
   rim?: boolean;
   /** Smooth normals (creatures, clouds-ish props); default is faceted. */
   smooth?: boolean;
+  /**
+   * Windmill blades: vertices with `aSpin.w > 0.5` rotate about local +z through
+   * `aSpin.xyz` (hub). Orthogonal flag like `smooth` (adds a `:spin` key).
+   */
+  spin?: boolean;
 }
 
 export interface LitOptions {
@@ -75,6 +80,7 @@ export interface ResolvedVariant {
   id: string;
   features: Record<FeatureFlag, boolean>;
   smooth: boolean;
+  spin: boolean;
   /** Program cache key (shared by every material of this variant). */
   key: string;
 }
@@ -92,11 +98,13 @@ export function resolveVariant(req: LitFeatures): ResolvedVariant {
     }
     if (ok) {
       const smooth = !!req.smooth;
+      const spin = !!req.spin;
       return {
         id: v.id,
         features: { ...v.features },
         smooth,
-        key: `mar-lit:${v.id}${smooth ? ':s' : ''}`,
+        spin,
+        key: `mar-lit:${v.id}${smooth ? ':s' : ''}${spin ? ':spin' : ''}`,
       };
     }
   }
@@ -104,6 +112,8 @@ export function resolveVariant(req: LitFeatures): ResolvedVariant {
 }
 
 const f = (v: number): string => v.toFixed(6);
+/** Gust adds up to this many radians of blade angle as a gust front passes. */
+const WINDMILL_GUST_BOOST = 1.5;
 const DEG = Math.PI / 180;
 
 /** Vertex pars shared by the colour and depth programs. Insert after `#include <common>`. */
@@ -118,6 +128,9 @@ uniform float uFadeFar;
 attribute float wind;
 attribute float aSeed;
 attribute float aAppear;
+#ifdef MAR_SPIN
+attribute vec4 aSpin;
+#endif
 varying float vFade;
 ${FIELDS_GLSL}
 float marHash12(vec2 p) {
@@ -138,6 +151,18 @@ const VERTEX_DISPLACE = /* glsl */ `
     mat4 marM = modelMatrix;
   #endif
   vec3 marOrigin = marM[3].xyz;
+  #ifdef MAR_SPIN
+  if (aSpin.w > 0.5) {
+    // ART_BIBLE §7 #18: 6 s/rev × wind (0.5–1.5), extra turn on gusts
+    float marSG = marGustAt(marOrigin.xz, uTime, uWind.xy, uGustSpeed, uWind.w, uWind.z);
+    float marSA = (uTime * ${f((2 * Math.PI) / WINDMILL.secondsPerRev)} * clamp(uWind.z, 0.5, 1.5)
+      + marSG * ${f(WINDMILL_GUST_BOOST)}) * uMotionScale;
+    float marSc = cos(marSA);
+    float marSs = sin(marSA);
+    vec2 marSp = transformed.xy - aSpin.xy;
+    transformed.xy = aSpin.xy + vec2(marSc * marSp.x - marSs * marSp.y, marSs * marSp.x + marSc * marSp.y);
+  }
+  #endif
   #ifdef MAR_BLOOM_IN
     transformed *= marSpringIn(uTime - aAppear, ${f(BLOOM_IN.k)}, ${f(BLOOM_IN.c)});
   #endif
@@ -239,6 +264,7 @@ const DEFAULT_ATTRS = {
   ao: [1],
   aSeed: [0],
   aAppear: [-1e4],
+  aSpin: [0, 0, 0, 0],
   emissive: [0],
 };
 
@@ -253,6 +279,7 @@ function replaceOnce(src: string, find: string, insert: string, where: 'after' |
 function defineMap(v: ResolvedVariant): Record<string, string> {
   const d: Record<string, string> = {};
   for (const fl of FLAGS) if (v.features[fl]) d[DEFINE[fl]] = '';
+  if (v.spin) d.MAR_SPIN = '';
   if (SHADE.enabled) d.MAR_SHADOW_TINT = '';
   return d;
 }

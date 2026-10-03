@@ -16,6 +16,8 @@ export interface CountersLike {
 /** World data with boat routes flattened to point loops (TASK-133 `Polyline.points`). */
 export interface LifeWorld extends Omit<WorldData, 'boatRoutes' | 'docks'> {
   boatRoutes?: { x: number; z: number }[][];
+  /** Dock indices each route passes (parallel to `boatRoutes`). */
+  boatStops?: number[][];
   docks?: { x: number; z: number; rotY: number; segments: number; islandId: number }[];
 }
 
@@ -53,6 +55,7 @@ export function makeCtx(deps: LifeDeps): LifeCtx {
   const world: LifeWorld = {
     ...deps.world,
     boatRoutes: deps.world.boatRoutes?.map((r) => r.points),
+    boatStops: deps.world.boatRoutes?.map((r) => r.stops ?? []),
     docks: deps.world.docks,
   };
   return {

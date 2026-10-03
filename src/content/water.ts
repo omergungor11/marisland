@@ -8,12 +8,14 @@ export const WATER_SHADER = {
   grid: { rings: 48, segments: 64, innerRadius: 1, outerRadius: 3000, snap: 2 },
   /** ± soft edge of the colour bands in u. */
   bandSoft: 1.5,
+  /** Smooth noise added to the shore distance before banding (± u) — hides SDF cell steps. */
+  bandJitter: 0.8,
   /** Alpha per band: sand shows through near the beach. */
   alpha: { lagoon: 0.55, shallow: 0.8, deep: 0.97 },
   /** Seabed depth (u) range over which a steep drop forces deep alpha. */
   alphaDepth: [6, 16] as const,
   /** Darkening (× colour) of near-shore bands where the seabed is actually deep. */
-  depthDarken: { amount: 0.14, from: 2, to: 18 },
+  depthDarken: { amount: 0.14, from: 4, to: 20 },
   /** Swell is 0 for shore distance < flatUntil and ramps to full by fullAt. */
   swellShore: { flatUntil: 2, fullAt: 12 },
   /** Shading-only exaggeration of the swell slope (the 0.15 u swell is nearly flat). */
@@ -21,7 +23,13 @@ export const WATER_SHADER = {
   /** Scrolling ripple normals (shading + glints). */
   ripple: { scale: 0.35, strength: 0.18, speed: [0.21, 0.13] as const, fadeFrom: 60, fadeTo: 320 },
   /** Fresnel sky reflection: base + grazing weight. */
-  fresnel: { base: 0.03, grazing: 0.25 },
+  fresnel: { base: 0.03, grazing: 0.25, max: 0.2, zenith: 0.35 },
+  /** Light on the water: sun colour tint by day; how much of the hemisphere hue survives at night. */
+  light: { sunTint: 0.2, nightTint: 0.3 },
+  /** View-angle haze exponent: pow(1 − |viewDir.y|, k) toward the fog colour. */
+  viewHazePow: 16,
+  /** Low-sun (golden/dusk) warm glitter: active below y[1], full below y[0]. */
+  lowSun: { y: [0.15, 0.35] as const, streak: 2.2, lateral: 220, sparkle: 0.9, sparkleExp: 40 },
   foam: {
     /** Shore lap (ART_BIBLE §7 #2): foam advances 0.8 u, 4.5 s, ease-out in / ease-in out. */
     lapPeriod: 4.5,

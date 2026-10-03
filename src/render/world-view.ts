@@ -20,6 +20,8 @@ import { createPropBatcher, type PropBatcher } from './props/batcher.ts';
 import { createPropMaterials } from './materials/prop-materials.ts';
 import type { PropDef } from '../content/props.ts';
 import type { PropStore } from '../world/prop-store.ts';
+import { appendSettlementProps } from './props/settlement-props.ts';
+import { PUFF_CHIMNEY } from './particles/puffs.ts';
 import type { Lod } from '../geo/index.ts';
 
 /**
@@ -82,8 +84,12 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   if (sky.mesh) group.add(sky.mesh);
   const lights = createLightRig(d.quality, d.scope);
   group.add(lights.group);
+  const settlement = appendSettlementProps(world);
   const clouds = createClouds(world, d.quality, d.scope);
   group.add(clouds.group);
+  for (const c of settlement.emitters.chimneys)
+    clouds.puffs.addEmitter(c.x, c.y, c.z, PUFF_CHIMNEY);
+  clouds.puffs.finalize();
   const life = createLife({
     world,
     scope: d.scope,
@@ -99,7 +105,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   setWind(world.windDir, 1);
 
   const tScatter = d.now();
-  const scatter = { props: world.props, counts: {} as Record<string, number> };
+  const scatter = { props: settlement.props, counts: {} as Record<string, number> };
   timings.scatter = d.now() - tScatter;
   const pm = createPropMaterials(d.scope);
   const props = createPropBatcher(scatter.props, {

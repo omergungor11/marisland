@@ -3,7 +3,6 @@ import { BOAT_BOB } from '../content/anim.ts';
 import { ROWBOAT, SAILBOAT } from '../content/life.ts';
 import { unitHash } from '../core/hash.ts';
 import { arcLengths, pointAtLength, smoothPolyline, type Vec2 } from '../core/math/catmull-rom.ts';
-import type { Rng } from '../core/rng.ts';
 import { PROP_GEO, buildProp } from '../geo/index.ts';
 import { gustAt, swellY } from '../shared/fields.ts';
 import { makeLitMaterial } from '../render/materials/factory.ts';
@@ -14,6 +13,8 @@ import { buildBoatPlaceholder } from './geo/creatures.ts';
 const DEG = Math.PI / 180;
 
 export interface Route {
+  /** Dock-end points the loop slows down for. */
+  stops: Vec2[];
   pts: Vec2[];
   lens: Float32Array;
   total: number;
@@ -23,21 +24,37 @@ export interface Route {
 export function resolveRoutes(ctx: LifeCtx): Route[] {
   const given = ctx.world.boatRoutes;
   const loops: Vec2[][] = [];
+  const stopsOf: Vec2[][] = [];
+  const docks = ctx.world.docks ?? [];
   if (given && given.length > 0) {
-    for (const r of given) if (r.length >= 4) loops.push(r.map((p) => ({ x: p.x, y: p.z })));
+    given.forEach((r, ri) => {
+      if (r.length < 4) return;
+      loops.push(r.map((p) => ({ x: p.x, y: p.z })));
+      stopsOf.push(
+        (ctx.world.boatStops?.[ri] ?? []).flatMap((di) => {
+          const d = docks[di];
+          if (!d) return [];
+          const reach = d.segments * 2;
+          return [{ x: d.x + Math.cos(d.rotY) * reach, y: d.z + Math.sin(d.rotY) * reach }];
+        }),
+      );
+    });
   } else {
     const isl = [...ctx.world.islands]
       .sort((a, b) => b.radius - a.radius)
       .slice(0, SAILBOAT.route.count);
     for (const i of isl) {
       const loop = ringAround(ctx, i.cx, i.cz, i.radius + SAILBOAT.route.margin);
-      if (loop) loops.push(loop);
+      if (loop) {
+        loops.push(loop);
+        stopsOf.push([]);
+      }
     }
   }
-  return loops.map((raw) => {
+  return loops.map((raw, li) => {
     const pts = smoothPolyline(raw, 4, true);
     const lens = arcLengths(pts, true);
-    return { pts, lens, total: lens[lens.length - 1] };
+    return { pts, lens, total: lens[lens.length - 1], stops: stopsOf[li] };
   });
 }
 
@@ -103,6 +120,8 @@ type Opts = Omit<AgentKindOpts, 'name' | 'capacity' | 'geometry' | 'material'>;
 export class Sailboats extends AgentKind {
   private readonly route: Int32Array;
   private readonly d0: Float32Array;
+  /** Arc length travelled (integrated, so the speed can vary). */
+  private readonly dist: Float64Array;
   private readonly dir: Float32Array;
   readonly routes: Route[];
   private readonly p = { x: 0, y: 0 };
@@ -125,6 +144,7 @@ export class Sailboats extends AgentKind {
     this.routes = routes;
     this.route = new Int32Array(count);
     this.d0 = new Float32Array(count);
+    this.dist = new Float64Array(count);
     this.dir = new Float32Array(count).fill(1);
     const per = new Array<number>(routes.length).fill(0);
     for (let i = 0; i < this.capacity; i++) per[i % routes.length]++;
@@ -141,10 +161,27 @@ export class Sailboats extends AgentKind {
     }
   }
 
-  protected stepAgent(i: number, _dt: number, t: number): void {
+  /** Integrate travelled distance; slows to `stopSpeed` near a route stop and passes it. */
+  private advance(i: number, dir: number, dt: number): number {
+    const R = this.routes[this.route[i]];
+    if (R.stops.length > 0 && dt > 0) {
+      const p = pointAtLength(R.pts, R.lens, this.d0[i] + this.dist[i], true, this.p);
+      let near = Infinity;
+      for (const s of R.stops) near = Math.min(near, Math.hypot(s.x - p.x, s.y - p.y));
+      const u = Math.min(1, Math.max(0, near / SAILBOAT.stopRadius));
+      const k = u * u * (3 - 2 * u);
+      const v = SAILBOAT.stopSpeed + (SAILBOAT.speed - SAILBOAT.stopSpeed) * k;
+      this.dist[i] += dir * v * dt;
+    } else {
+      this.dist[i] += dir * SAILBOAT.speed * dt;
+    }
+    return this.dist[i];
+  }
+
+  protected stepAgent(i: number, dt: number, t: number): void {
     const R = this.routes[this.route[i]];
     const dir = this.dir[i];
-    const d = this.d0[i] + dir * SAILBOAT.speed * t;
+    const d = this.d0[i] + this.advance(i, dir, dt);
     const at = (s: number, out: Vec2): Vec2 => pointAtLength(R.pts, R.lens, s, true, out);
     const p = at(d, this.p);
     const ahead = at(d + dir * 1.5, this.a);
@@ -199,55 +236,12 @@ export interface Mooring {
   rotY: number;
 }
 
-/** Water spots beside docks (or the Hearthholm harbour anchor) for moored rowboats. */
-export function findMoorings(ctx: LifeCtx, rng: Rng, count: number): Mooring[] {
-  const out: Mooring[] = [];
-  const wet = (x: number, z: number): boolean => ctx.h(x, z) <= -ROWBOAT.minDepth;
-  const tryAt = (bx: number, bz: number, dx: number, dz: number): void => {
-    if (out.length >= count) return;
-    const px = -dz;
-    const pz = dx;
-    for (const side of [1, -1]) {
-      for (const off of [2.2, 3.2, 4.4]) {
-        const x = bx + px * side * off;
-        const z = bz + pz * side * off;
-        if (wet(x, z) && out.every((m) => Math.hypot(m.x - x, m.z - z) > 3.5)) {
-          out.push({ x, z, rotY: Math.atan2(-dz, dx) + (rng.next() - 0.5) * 0.4 });
-          return;
-        }
-      }
-    }
-  };
-  const docks = ctx.world.docks ?? [];
-  for (const d of docks) {
-    // seaward direction of a dock = local +z rotated by rotY
-    const dx = Math.sin(d.rotY);
-    const dz = Math.cos(d.rotY);
-    const reach = d.segments * 2 * 0.6;
-    tryAt(d.x + dx * reach, d.z + dz * reach, dx, dz);
-  }
-  if (out.length < count) {
-    for (const isl of ctx.world.islands) {
-      const hb = isl.anchors.harbour;
-      if (!hb) continue;
-      // walk seaward (away from the island centre) to the first wet cell
-      let ux = hb.x - isl.cx;
-      let uz = hb.z - isl.cz;
-      const l = Math.hypot(ux, uz) || 1;
-      ux /= l;
-      uz /= l;
-      for (let s = 0; s < 40 && out.length < count; s += 1) {
-        const x = hb.x + ux * s * 2;
-        const z = hb.z + uz * s * 2;
-        if (ctx.h(x, z) <= -1.2) {
-          tryAt(x, z, ux, uz);
-          tryAt(x + ux * 6, z + uz * 6, ux, uz);
-          break;
-        }
-      }
-    }
-  }
-  return out.slice(0, count);
+/** Parked boats exactly at `world.moorings` (heading = rotY, convention (cos, sin)). */
+export function mooringsOf(ctx: LifeCtx, defId: 'rowboat' | 'sailboat', count: number): Mooring[] {
+  const all = (ctx.world.moorings ?? []).filter((m) => m.defId === defId);
+  const rng = ctx.rngFor(`moorings:${defId}`);
+  rng.shuffle(all);
+  return all.slice(0, count).map((m) => ({ x: m.x, z: m.z, rotY: m.rotY }));
 }
 
 export class Rowboats extends AgentKind {
@@ -260,13 +254,14 @@ export class Rowboats extends AgentKind {
     o: Opts,
     private readonly ctx: LifeCtx,
     moorings: Mooring[],
+    name: 'rowboat' | 'parked' = 'rowboat',
   ) {
     super({
       ...o,
-      name: 'rowboat',
+      name,
       capacity: moorings.length,
-      geometry: rowboatGeometry(o.seed),
-      material: litCreatureMaterial('life:rowboat'),
+      geometry: name === 'rowboat' ? rowboatGeometry(o.seed) : sailboatGeometry(o.seed),
+      material: litCreatureMaterial(`life:${name}`),
     });
     const n = this.capacity;
     this.bx = new Float32Array(n);
@@ -276,7 +271,7 @@ export class Rowboats extends AgentKind {
     for (let i = 0; i < n; i++) {
       this.bx[i] = moorings[i].x;
       this.bz[i] = moorings[i].z;
-      this.byaw[i] = moorings[i].rotY;
+      this.byaw[i] = rotYFor(Math.cos(moorings[i].rotY), Math.sin(moorings[i].rotY));
       const [a, b] = ROWBOAT.period;
       this.period[i] = a + (b - a) * unitHash(o.seed, i, 77);
       this.active[i] = 1;

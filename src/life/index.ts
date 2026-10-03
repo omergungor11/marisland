@@ -11,7 +11,7 @@ import {
   pickJumpSpot,
 } from './arcs.ts';
 import type { AgentKind } from './agents.ts';
-import { findMoorings, resolveRoutes, Rowboats, Sailboats } from './boats.ts';
+import { mooringsOf, resolveRoutes, Rowboats, Sailboats } from './boats.ts';
 import { makeCtx, setMotion, type LifeDeps } from './ctx.ts';
 import { FishSchools } from './fish.ts';
 import { flockCentres, Gulls, type Perch } from './gulls.ts';
@@ -36,6 +36,7 @@ export interface LifeSystem extends System {
   readonly kinds: {
     sailboats?: Sailboats;
     rowboats?: Rowboats;
+    parked?: Rowboats;
     gulls?: Gulls;
     fish?: FishSchools;
     jumpers?: ArcKind;
@@ -59,22 +60,30 @@ export function createLife(deps: LifeDeps): LifeSystem {
     kinds.sailboats = new Sailboats(base, ctx, routes, plan.sailboats);
     all.push(kinds.sailboats);
   }
-  const moorings = findMoorings(ctx, ctx.rngFor('moorings'), plan.rowboats);
+  const moorings = mooringsOf(ctx, 'rowboat', plan.rowboats);
   if (moorings.length > 0) {
     kinds.rowboats = new Rowboats(base, ctx, moorings);
     all.push(kinds.rowboats);
   }
+  const parked = mooringsOf(ctx, 'sailboat', plan.parked);
+  if (parked.length > 0) {
+    kinds.parked = new Rowboats(base, ctx, parked, 'parked');
+    all.push(kinds.parked);
+  }
 
   const perches: Perch[] = [];
   for (const d of ctx.world.docks ?? []) {
-    const reach = d.segments * 2 * 0.9;
+    const reach = d.segments * 2;
     perches.push({
-      x: d.x + Math.sin(d.rotY) * reach,
+      x: d.x + Math.cos(d.rotY) * reach,
       y: GULLS.land.perchY,
-      z: d.z + Math.cos(d.rotY) * reach,
+      z: d.z + Math.sin(d.rotY) * reach,
     });
   }
-  for (const m of moorings) perches.push({ x: m.x, y: 0.9, z: m.z });
+  for (const l of ctx.world.landmarks ?? []) {
+    const top = GULLS.land.landmarkTop[l.kind];
+    if (top !== undefined) perches.push({ x: l.x, y: ctx.h(l.x, l.z) + top, z: l.z });
+  }
   const centres = flockCentres(ctx, ctx.rngFor('flocks'));
   if (centres.length > 0 && plan.flocks > 0) {
     kinds.gulls = new Gulls(base, ctx, deps.quality, centres, perches);

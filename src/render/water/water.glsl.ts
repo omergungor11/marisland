@@ -33,6 +33,18 @@ export function waterDefines(): string {
     `#define MAR_RIPPLE_FADE1 ${f(W.ripple.fadeTo)}`,
     `#define MAR_FRES_BASE ${f(W.fresnel.base)}`,
     `#define MAR_FRES_GRAZE ${f(W.fresnel.grazing)}`,
+    `#define MAR_FRES_MAX ${f(W.fresnel.max)}`,
+    `#define MAR_FRES_ZENITH ${f(W.fresnel.zenith)}`,
+    `#define MAR_BAND_JITTER ${f(W.bandJitter)}`,
+    `#define MAR_SUN_TINT ${f(W.light.sunTint)}`,
+    `#define MAR_NIGHT_TINT ${f(W.light.nightTint)}`,
+    `#define MAR_VIEW_HAZE_POW ${f(W.viewHazePow)}`,
+    `#define MAR_LOWSUN_Y0 ${f(W.lowSun.y[0])}`,
+    `#define MAR_LOWSUN_Y1 ${f(W.lowSun.y[1])}`,
+    `#define MAR_SUNSTREAK ${f(W.lowSun.streak)}`,
+    `#define MAR_SUNSTREAK_LAT ${f(W.lowSun.lateral)}`,
+    `#define MAR_SUNSPARK ${f(W.lowSun.sparkle)}`,
+    `#define MAR_SUNSPARK_EXP ${f(W.lowSun.sparkleExp)}`,
     `#define MAR_LAP_PERIOD ${f(fo.lapPeriod)}`,
     `#define MAR_LAP_ADVANCE ${f(fo.lapAdvance)}`,
     `#define MAR_LAP_IN ${f(fo.lapInFraction)}`,
@@ -163,17 +175,21 @@ void main() {
                 marSampleGrid(uSdfTex, xz + vec2(0.0, 1.0)) - sdf);
   float gl = length(g);
   float lee = gl > 1e-4 ? 0.5 - 0.5 * dot(g / gl, uWind.xy) : 0.5;
-  float db = d / mix(1.0, MAR_LEEWARD_SCALE, lee);
+  // smooth ±MAR_BAND_JITTER u wobble hides the 2 u SDF cell steps on the outer contours
+  float bandJit = (marNoise(xz * 0.35 + 7.3) - 0.5) * 2.0 * MAR_BAND_JITTER * smoothstep(4.0, 12.0, d);
+  float db = (d + bandJit) / mix(1.0, MAR_LEEWARD_SCALE, lee);
 
   // --- colour bands by shore distance
   float s1 = smoothstep(MAR_LAGOON_MAX - MAR_BAND_SOFT, MAR_LAGOON_MAX + MAR_BAND_SOFT, db);
   float s2 = smoothstep(MAR_SHALLOW_MAX - MAR_BAND_SOFT, MAR_SHALLOW_MAX + MAR_BAND_SOFT, db);
-  float s3 = smoothstep(MAR_MID_MAX - MAR_BAND_SOFT, MAR_MID_MAX + MAR_BAND_SOFT, db);
+  float s3 = smoothstep(MAR_MID_MAX - MAR_BAND_SOFT * 1.6, MAR_MID_MAX + MAR_BAND_SOFT * 1.6, db);
   vec3 col = mix(uLagoon, uShallow, s1);
   col = mix(col, uMid, s2);
   col = mix(col, uDeep, s3);
   // real shallows read bright; a near-shore band over a steep drop darkens
-  col *= 1.0 - MAR_DARKEN * smoothstep(MAR_DARKEN0, MAR_DARKEN1, depth) * (1.0 - s3);
+  // (gentle over the first few u so carved dock basins / channels blend instead of reading as holes)
+  float dk = smoothstep(MAR_DARKEN0, MAR_DARKEN1, depth);
+  col *= 1.0 - MAR_DARKEN * dk * dk * (1.0 - s3);
 
   float alpha = mix(MAR_A_LAGOON, MAR_A_SHALLOW, s1);
   alpha = mix(alpha, MAR_A_DEEP, s2);
@@ -209,8 +225,11 @@ void main() {
   vec3 L = normalize(uSunDir);
   float ndl = max(dot(n, L), 0.0);
   float dayK = clamp(uSunIntensity / 3.0, 0.0, 1.0);
-  vec3 dayLight = mix(vec3(1.0), uSunColor, 0.35) * (0.88 + 0.12 * ndl) * (0.8 + 0.2 * dayK);
-  vec3 nightLight = uHemiSky * 0.9 + 0.04;
+  vec3 dayLight = mix(vec3(1.0), uSunColor, MAR_SUN_TINT) * (0.88 + 0.12 * ndl) * (0.8 + 0.2 * dayK);
+  // night/dusk: mostly a brightness drop so the water keeps its own hues (the hemisphere sky
+  // is violet at dusk and would turn the sea magenta)
+  float hemiL = dot(uHemiSky, vec3(0.2126, 0.7152, 0.0722));
+  vec3 nightLight = mix(vec3(hemiL), uHemiSky, MAR_NIGHT_TINT) * 0.9 + 0.04;
   vec3 light = mix(dayLight, nightLight, uNight);
   col *= light;
 
@@ -218,8 +237,11 @@ void main() {
   float ndv = max(dot(n, V), 0.0);
   float fres = pow(1.0 - ndv, 5.0);
   vec3 R = reflect(-V, n);
-  vec3 sky = mix(uHorizon, uZenith, smoothstep(0.0, 0.6, R.y));
-  col = mix(col, sky, MAR_FRES_BASE + MAR_FRES_GRAZE * fres);
+  // reflection leans on the horizon colour; band colours stay dominant (≤ MAR_FRES_MAX off-grazing)
+  vec3 sky = mix(uHorizon, uZenith, MAR_FRES_ZENITH * smoothstep(0.2, 0.9, R.y));
+  float graze = 1.0 - smoothstep(0.05, 0.3, V.y);
+  float reflW = min(MAR_FRES_BASE + MAR_FRES_GRAZE * fres, mix(MAR_FRES_MAX, MAR_FRES_BASE + MAR_FRES_GRAZE, graze));
+  col = mix(col, sky, reflW);
 
   // --- foam
   float px = max(fwidth(d), 1e-3);          // u per pixel across the shore
@@ -283,8 +305,16 @@ void main() {
   streak *= smoothstep(0.45, 0.7, marNoise(xz * 2.3 + vec2(t * 0.5, -t * 0.3) * uMotionScale));
   streak *= uNight * MAR_MOON_STRENGTH * (1.0 - foam);
 
-  col += uSunColor * (glint + streak);
-  alpha = max(alpha, min(1.0, glint + streak));
+  // low sun (golden/dusk): warm glitter streak toward the sun + broad sparkle everywhere
+  float lowSun = (1.0 - smoothstep(MAR_LOWSUN_Y0, MAR_LOWSUN_Y1, L.y)) * (1.0 - smoothstep(0.55, 0.9, uNight));
+  float sunLat = 1.0 - dot(rh, mh);
+  float sunStreak = exp(-sunLat * MAR_SUNSTREAK_LAT) * exp(-vert * vert * MAR_MOON_VERT);
+  float broad = pow(max(dot(ng, H), 0.0), MAR_SUNSPARK_EXP) * MAR_SUNSPARK;
+  float warm = lowSun * mask * (sunStreak * MAR_SUNSTREAK + broad) * (1.0 - foam);
+  vec3 warmCol = mix(uSunColor, uSunColor * vec3(1.0, 0.82, 0.6), 0.5);
+
+  col += uSunColor * (glint + streak) + warmCol * warm;
+  alpha = max(alpha, min(1.0, glint + streak + warm));
 
   // --- cloud shadows (TASK-153): same field as the clouds, ×0.82 with a 6 u soft edge
   col *= marCloudShadowMul(xz, uDebugMask);
@@ -293,6 +323,9 @@ void main() {
   // far sea eases into fog, the last stretch into the horizon colour → no hard line
   float rim = length(xz - uCameraPos.xz) / MAR_OUTER_RADIUS;
   float fogF = max(marFogFactor(dist), smoothstep(0.2, 0.9, rim));
+  // view-angle haze: as the view ray flattens the far sea melts into the fog/sky
+  float viewHaze = pow(1.0 - abs(V.y), MAR_VIEW_HAZE_POW) * smoothstep(40.0, 200.0, dist);
+  fogF = max(fogF, viewHaze);
   col = mix(col, uFogColor, fogF);
   col = mix(col, uHorizon, smoothstep(0.7, 1.0, rim));
   alpha = mix(alpha, 1.0, fogF);
@@ -304,7 +337,7 @@ void main() {
 #endif
 
   if (uDebugMask > 0.5) {
-    vec3 m = d < MAR_FOAM_MAX ? uFoam
+    vec3 m = d < MAR_FOAM_MAX ? uFoam  // db carries the same ±jitter as the visible bands
            : db < MAR_LAGOON_MAX ? uLagoon
            : db < MAR_SHALLOW_MAX ? uShallow
            : db < MAR_MID_MAX ? uMid : uDeep;

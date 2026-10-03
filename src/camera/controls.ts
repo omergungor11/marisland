@@ -262,9 +262,11 @@ function splitPreset(preset: string): [string, string] {
 }
 
 function findIsland(world: CameraWorld, name: string): CameraWorld['islands'][number] | undefined {
-  const n = name.toLowerCase().replace(/\s+/g, '');
+  const norm = (v: string | undefined): string => (v ?? '').toLowerCase().replace(/\s+/g, '');
+  const n = norm(name);
   return (
-    world.islands.find((i) => i.name.toLowerCase().replace(/\s+/g, '') === n) ??
+    world.islands.find((i) => norm(i.name) === n) ??
+    world.islands.find((i) => norm(i.archetypeName) === n) ??
     (n === '' ? world.islands[0] : undefined)
   );
 }

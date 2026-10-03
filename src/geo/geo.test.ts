@@ -108,13 +108,29 @@ describe('prop geometry', () => {
           const windMax = def.id === 'windmill' ? 2 : 1;
           expect(wind.every((x) => x >= 0 && x <= windMax)).toBe(true);
           if (def.id === 'windmill') {
-            // blades (and hub) carry wind = 2, the body/cap/door carry 0, nothing in between
-            expect(wind.some((x) => x === 2)).toBe(true);
-            expect(wind.every((x) => x === 0 || x === 2)).toBe(true);
+            // blades (and hub cap) spin via aSpin = (hub, 1) and carry no sway (wind = 0)
+            expect(wind.every((x) => x === 0)).toBe(true);
             const hub = g.userData.hub as number[];
             expect(hub).toHaveLength(3);
             expect(hub.every((x) => Number.isFinite(x))).toBe(true);
             expect(hub[1]).toBeGreaterThan(4);
+            const spin = g.getAttribute('aSpin');
+            expect(spin.itemSize).toBe(4);
+            expect(spin.count).toBe(n);
+            const sa = spin.array as Float32Array;
+            let blades = 0;
+            for (let i = 0; i < n; i++) {
+              const w = sa[i * 4 + 3];
+              expect(w === 0 || w === 1).toBe(true);
+              if (w === 1) {
+                blades++;
+                expect(sa[i * 4]).toBeCloseTo(hub[0], 5);
+                expect(sa[i * 4 + 1]).toBeCloseTo(hub[1], 5);
+                expect(sa[i * 4 + 2]).toBeCloseTo(hub[2], 5);
+              }
+            }
+            expect(blades).toBeGreaterThan(0);
+            expect(blades).toBeLessThan(n);
           } else if (lod === 0 && WINDY_CLOTH.has(def.id)) {
             expect(wind.some((x) => x > 0)).toBe(true);
           }

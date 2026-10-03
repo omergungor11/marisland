@@ -29,6 +29,8 @@ export function propFeatures(def: PropDef, groundCover: boolean): LitFeatures {
     wind: (def.flags & PropFlag.windy) !== 0,
     emissive: true,
     rim: !groundCover && (def.flags & PropFlag.groundCover) === 0,
+    // windmill blades turn about the hub (aSpin); one extra program (+ its depth twin)
+    spin: def.geo === 'windmill',
   };
 }
 

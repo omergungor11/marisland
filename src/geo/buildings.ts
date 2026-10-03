@@ -385,6 +385,20 @@ export function windmill({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry
   const g = acc.finish(rng, false, true);
   const sc = acc.xf?.elements ?? [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
   g.userData.hub = [hub.x * sc[0], hub.y * sc[5], hub.z * sc[10]];
+  // Blade spin (MAR_SPIN): aSpin = (hub xyz, 1) on blade + hub-cap vertices, 0 elsewhere.
+  // Rotation axis is local +z (the blade plane faces +z, like the door-less front).
+  // Blades get wind = 0 so they spin instead of swaying.
+  const windA = g.getAttribute('wind') as THREE.BufferAttribute;
+  const spin = new Float32Array(windA.count * 4);
+  const [hx, hy, hz] = g.userData.hub as number[];
+  for (let i = 0; i < windA.count; i++) {
+    if (windA.getX(i) >= 1.5) {
+      spin.set([hx, hy, hz, 1], i * 4);
+      windA.setX(i, 0);
+    }
+  }
+  g.setAttribute('aSpin', new THREE.BufferAttribute(spin, 4));
+  g.userData.spinAxis = [0, 0, 1];
   return g;
 }
 
