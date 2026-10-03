@@ -1,0 +1,2942 @@
+[
+ {
+  "id": "1000-dock",
+  "seed": 1000,
+  "cam": "dock",
+  "time": 17.75,
+  "hud": false,
+  "error": null,
+  "worldHash": "0fd171f9c80ceb3c",
+  "info": {
+   "calls": 101,
+   "triangles": 172370,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 102,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 708,
+   "groundCover": 0,
+   "agents": 17,
+   "particles": 0,
+   "gpuMemoryMB": 60
+  },
+  "timings": {
+   "gen": 554.9000000003725,
+   "scatter": 0,
+   "build": 957.5999999996275,
+   "total": 1520.5,
+   "compile": 44.10000000009313,
+   "jsHeapMB": 54,
+   "boot": 2583.5
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 2584 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 11760
+ },
+ {
+  "id": "1000-isl1-Palmlagoon",
+  "seed": 1000,
+  "cam": "island:Palmlagoon",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "0fd171f9c80ceb3c",
+  "info": {
+   "calls": 72,
+   "triangles": 109087,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 73,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 439,
+   "groundCover": 0,
+   "agents": 10,
+   "particles": 0,
+   "gpuMemoryMB": 49
+  },
+  "timings": {
+   "gen": 516,
+   "scatter": 0.09999999962747097,
+   "build": 1113.7999999998137,
+   "total": 1643.1000000000931,
+   "compile": 49.3000000002794,
+   "jsHeapMB": 48,
+   "boot": 2743.7000000001863
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 2744 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 11163
+ },
+ {
+  "id": "1000-isl2-Emberpeak",
+  "seed": 1000,
+  "cam": "island:Emberpeak",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "0fd171f9c80ceb3c",
+  "info": {
+   "calls": 107,
+   "triangles": 120261,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 108,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 439,
+   "groundCover": 0,
+   "agents": 10,
+   "particles": 0,
+   "gpuMemoryMB": 63
+  },
+  "timings": {
+   "gen": 571.7000000001863,
+   "scatter": 0,
+   "build": 1064,
+   "total": 1652.3999999999069,
+   "compile": 53.89999999990687,
+   "jsHeapMB": 51,
+   "boot": 2892
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 2892 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 11159
+ },
+ {
+  "id": "1000-night",
+  "seed": 1000,
+  "cam": "village",
+  "time": 22,
+  "hud": false,
+  "error": null,
+  "worldHash": "0fd171f9c80ceb3c",
+  "info": {
+   "calls": 103,
+   "triangles": 173002,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 104,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 708,
+   "groundCover": 0,
+   "agents": 17,
+   "particles": 0,
+   "gpuMemoryMB": 61
+  },
+  "timings": {
+   "gen": 537.1000000000931,
+   "scatter": 0.10000000009313226,
+   "build": 1081.6000000000931,
+   "total": 1626.1000000000931,
+   "compile": 44.40000000037253,
+   "jsHeapMB": 48,
+   "boot": 2486.899999999907
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 2487 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 6853
+ },
+ {
+  "id": "1000-overview",
+  "seed": 1000,
+  "cam": "overview",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "0fd171f9c80ceb3c",
+  "info": {
+   "calls": 99,
+   "triangles": 71143,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 100,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 190,
+   "groundCover": 0,
+   "agents": 10,
+   "particles": 0,
+   "gpuMemoryMB": 59
+  },
+  "timings": {
+   "gen": 770,
+   "scatter": 0,
+   "build": 1295.8999999999069,
+   "total": 2074.100000000093,
+   "compile": 44.39999999990687,
+   "jsHeapMB": 51,
+   "boot": 3221.5
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3222 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 11407
+ },
+ {
+  "id": "1000-overviewhud",
+  "seed": 1000,
+  "cam": "overview",
+  "time": 15,
+  "hud": true,
+  "error": null,
+  "worldHash": "0fd171f9c80ceb3c",
+  "info": {
+   "calls": 99,
+   "triangles": 71143,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 100,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 190,
+   "groundCover": 0,
+   "agents": 10,
+   "particles": 0,
+   "gpuMemoryMB": 59
+  },
+  "timings": {
+   "gen": 534,
+   "scatter": 0,
+   "build": 1016.3999999999069,
+   "total": 1561.5,
+   "compile": 67.60000000009313,
+   "jsHeapMB": 51,
+   "boot": 2482.7000000001863
+  },
+  "labels": "Hearthholm\nMerwensey\nBelisa\nTamma\nToskberka",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 2483 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 6763
+ },
+ {
+  "id": "1000-village",
+  "seed": 1000,
+  "cam": "village",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "0fd171f9c80ceb3c",
+  "info": {
+   "calls": 103,
+   "triangles": 173002,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 104,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 708,
+   "groundCover": 0,
+   "agents": 17,
+   "particles": 0,
+   "gpuMemoryMB": 61
+  },
+  "timings": {
+   "gen": 633.8999999999069,
+   "scatter": 0,
+   "build": 1077.3000000002794,
+   "total": 1719.5999999996275,
+   "compile": 42.09999999962747,
+   "jsHeapMB": 51,
+   "boot": 3147.2000000001863
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3147 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 11776
+ },
+ {
+  "id": "1001-dock",
+  "seed": 1001,
+  "cam": "dock",
+  "time": 17.75,
+  "hud": false,
+  "error": null,
+  "worldHash": "fb5f7b95609a7f3d",
+  "info": {
+   "calls": 90,
+   "triangles": 124176,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 91,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 785,
+   "groundCover": 0,
+   "agents": 17,
+   "particles": 0,
+   "gpuMemoryMB": 56
+  },
+  "timings": {
+   "gen": 610.1000000000931,
+   "scatter": 0,
+   "build": 902.5999999996275,
+   "total": 1522.2000000001863,
+   "compile": 45.3000000002794,
+   "jsHeapMB": 51,
+   "boot": 2482.2999999998137
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 2482 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 12730
+ },
+ {
+  "id": "1001-isl1-Palmlagoon",
+  "seed": 1001,
+  "cam": "island:Palmlagoon",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "fb5f7b95609a7f3d",
+  "info": {
+   "calls": 83,
+   "triangles": 116411,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 84,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 429,
+   "groundCover": 0,
+   "agents": 10,
+   "particles": 0,
+   "gpuMemoryMB": 53
+  },
+  "timings": {
+   "gen": 573.2000000001863,
+   "scatter": 0,
+   "build": 939,
+   "total": 1523.2999999998137,
+   "compile": 60.39999999990687,
+   "jsHeapMB": 48,
+   "boot": 2736.5
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 2737 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 12747
+ },
+ {
+  "id": "1001-isl2-Millbrook",
+  "seed": 1001,
+  "cam": "island:Millbrook",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "fb5f7b95609a7f3d",
+  "info": {
+   "calls": 79,
+   "triangles": 96698,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 80,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 429,
+   "groundCover": 0,
+   "agents": 10,
+   "particles": 0,
+   "gpuMemoryMB": 51
+  },
+  "timings": {
+   "gen": 816,
+   "scatter": 0,
+   "build": 1441.7999999998137,
+   "total": 2270.7000000001863,
+   "compile": 61.10000000009313,
+   "jsHeapMB": 51,
+   "boot": 3206.600000000093
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3207 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 8772
+ },
+ {
+  "id": "1001-night",
+  "seed": 1001,
+  "cam": "village",
+  "time": 22,
+  "hud": false,
+  "error": null,
+  "worldHash": "fb5f7b95609a7f3d",
+  "info": {
+   "calls": 92,
+   "triangles": 128784,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 93,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 785,
+   "groundCover": 0,
+   "agents": 17,
+   "particles": 0,
+   "gpuMemoryMB": 57
+  },
+  "timings": {
+   "gen": 490.09999999962747,
+   "scatter": 0,
+   "build": 969.8000000002794,
+   "total": 1470.8000000002794,
+   "compile": 43,
+   "jsHeapMB": 51,
+   "boot": 2348
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 2348 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 6841
+ },
+ {
+  "id": "1001-overview",
+  "seed": 1001,
+  "cam": "overview",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "fb5f7b95609a7f3d",
+  "info": {
+   "calls": 99,
+   "triangles": 70665,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 100,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 187,
+   "groundCover": 0,
+   "agents": 10,
+   "particles": 0,
+   "gpuMemoryMB": 59
+  },
+  "timings": {
+   "gen": 563,
+   "scatter": 0,
+   "build": 898.1000000000931,
+   "total": 1470.1000000000931,
+   "compile": 63.299999999813735,
+   "jsHeapMB": 51,
+   "boot": 2426.5
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 2427 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 8923
+ },
+ {
+  "id": "1001-overviewhud",
+  "seed": 1001,
+  "cam": "overview",
+  "time": 15,
+  "hud": true,
+  "error": null,
+  "worldHash": "fb5f7b95609a7f3d",
+  "info": {
+   "calls": 99,
+   "triangles": 70665,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 100,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 187,
+   "groundCover": 0,
+   "agents": 10,
+   "particles": 0,
+   "gpuMemoryMB": 59
+  },
+  "timings": {
+   "gen": 573.1999999997206,
+   "scatter": 0,
+   "build": 993.1000000000931,
+   "total": 1573.7000000001863,
+   "compile": 51.59999999962747,
+   "jsHeapMB": 54,
+   "boot": 2815
+  },
+  "labels": "Hearthholm\nQuilmere\nTamnis\nPimnanis\nTamholm\nSeldodun",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 2815 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 10869
+ },
+ {
+  "id": "1001-village",
+  "seed": 1001,
+  "cam": "village",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "fb5f7b95609a7f3d",
+  "info": {
+   "calls": 92,
+   "triangles": 128784,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 93,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 785,
+   "groundCover": 0,
+   "agents": 17,
+   "particles": 0,
+   "gpuMemoryMB": 57
+  },
+  "timings": {
+   "gen": 619.1999999997206,
+   "scatter": 0,
+   "build": 833.6000000000931,
+   "total": 1470.2000000001863,
+   "compile": 55.39999999990687,
+   "jsHeapMB": 54,
+   "boot": 2414.5
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 2415 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 8900
+ },
+ {
+  "id": "1002-dock",
+  "seed": 1002,
+  "cam": "dock",
+  "time": 17.75,
+  "hud": false,
+  "error": null,
+  "worldHash": "240954f462579c00",
+  "info": {
+   "calls": 84,
+   "triangles": 155175,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 85,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 751,
+   "groundCover": 0,
+   "agents": 17,
+   "particles": 0,
+   "gpuMemoryMB": 53
+  },
+  "timings": {
+   "gen": 1052.4000000003725,
+   "scatter": 0,
+   "build": 1589,
+   "total": 2655.8000000002794,
+   "compile": 66.1999999997206,
+   "jsHeapMB": 58,
+   "boot": 3887.6999999997206
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3888 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 16814
+ },
+ {
+  "id": "1002-isl1-Emberpeak",
+  "seed": 1002,
+  "cam": "island:Emberpeak",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "240954f462579c00",
+  "info": {
+   "calls": 104,
+   "triangles": 137404,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 105,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 547,
+   "groundCover": 0,
+   "agents": 10,
+   "particles": 0,
+   "gpuMemoryMB": 61
+  },
+  "timings": {
+   "gen": 1292,
+   "scatter": 0,
+   "build": 1527.3000000002794,
+   "total": 2837.2999999998137,
+   "compile": 65,
+   "jsHeapMB": 58,
+   "boot": 3602.9000000003725
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3603 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 17562
+ },
+ {
+  "id": "1002-isl2-Mossgrove",
+  "seed": 1002,
+  "cam": "island:Mossgrove",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "240954f462579c00",
+  "info": {
+   "calls": 58,
+   "triangles": 82884,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 59,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 547,
+   "groundCover": 0,
+   "agents": 10,
+   "particles": 0,
+   "gpuMemoryMB": 43
+  },
+  "timings": {
+   "gen": 742.5,
+   "scatter": 0,
+   "build": 1504.5999999996275,
+   "total": 2261.8000000002794,
+   "compile": 129.6999999997206,
+   "jsHeapMB": 58,
+   "boot": 2925.600000000093
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 2926 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 8315
+ },
+ {
+  "id": "1002-night",
+  "seed": 1002,
+  "cam": "village",
+  "time": 22,
+  "hud": false,
+  "error": null,
+  "worldHash": "240954f462579c00",
+  "info": {
+   "calls": 78,
+   "triangles": 156302,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 79,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 751,
+   "groundCover": 0,
+   "agents": 17,
+   "particles": 0,
+   "gpuMemoryMB": 51
+  },
+  "timings": {
+   "gen": 902.2999999998137,
+   "scatter": 0,
+   "build": 1667.8000000002794,
+   "total": 2586,
+   "compile": 80,
+   "jsHeapMB": 61,
+   "boot": 3982.2999999998137
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3982 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 16794
+ },
+ {
+  "id": "1002-overview",
+  "seed": 1002,
+  "cam": "overview",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "240954f462579c00",
+  "info": {
+   "calls": 111,
+   "triangles": 83073,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 112,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 260,
+   "groundCover": 0,
+   "agents": 10,
+   "particles": 0,
+   "gpuMemoryMB": 64
+  },
+  "timings": {
+   "gen": 909.2999999998137,
+   "scatter": 0,
+   "build": 1725.3999999999069,
+   "total": 2648.7000000001863,
+   "compile": 70.3000000002794,
+   "jsHeapMB": 51,
+   "boot": 3900.1999999997206
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3900 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 17695
+ },
+ {
+  "id": "1002-overviewhud",
+  "seed": 1002,
+  "cam": "overview",
+  "time": 15,
+  "hud": true,
+  "error": null,
+  "worldHash": "240954f462579c00",
+  "info": {
+   "calls": 111,
+   "triangles": 83073,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 112,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 260,
+   "groundCover": 0,
+   "agents": 10,
+   "particles": 0,
+   "gpuMemoryMB": 64
+  },
+  "timings": {
+   "gen": 815.0999999996275,
+   "scatter": 0,
+   "build": 2103.5,
+   "total": 2930.5999999996275,
+   "compile": 91.90000000037253,
+   "jsHeapMB": 58,
+   "boot": 4757.100000000093
+  },
+  "labels": "Hearthholm\nFenra\nDalvewick\nTulsa\nWynmorton\nFensa\nBritawick",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 4757 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 17683
+ },
+ {
+  "id": "1002-village",
+  "seed": 1002,
+  "cam": "village",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "240954f462579c00",
+  "info": {
+   "calls": 78,
+   "triangles": 156302,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 79,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 751,
+   "groundCover": 0,
+   "agents": 17,
+   "particles": 0,
+   "gpuMemoryMB": 51
+  },
+  "timings": {
+   "gen": 1097.3999999999069,
+   "scatter": 0,
+   "build": 1373.4000000003725,
+   "total": 2480.399999999907,
+   "compile": 54.89999999990687,
+   "jsHeapMB": 58,
+   "boot": 3484.600000000093
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3485 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 10837
+ },
+ {
+  "id": "2024-dock",
+  "seed": 2024,
+  "cam": "dock",
+  "time": 17.75,
+  "hud": false,
+  "error": null,
+  "worldHash": "9f86c9e84c6d7395",
+  "info": {
+   "calls": 85,
+   "triangles": 161218,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 86,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 675,
+   "groundCover": 0,
+   "agents": 17,
+   "particles": 0,
+   "gpuMemoryMB": 54
+  },
+  "timings": {
+   "gen": 705.8000000002794,
+   "scatter": 0,
+   "build": 1694.7999999998137,
+   "total": 2418.6999999997206,
+   "compile": 95.89999999990687,
+   "jsHeapMB": 51,
+   "boot": 3667
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3667 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 10870
+ },
+ {
+  "id": "2024-isl1-Emberpeak",
+  "seed": 2024,
+  "cam": "island:Emberpeak",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "9f86c9e84c6d7395",
+  "info": {
+   "calls": 54,
+   "triangles": 77701,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 55,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 465,
+   "groundCover": 0,
+   "agents": 10,
+   "particles": 0,
+   "gpuMemoryMB": 41
+  },
+  "timings": {
+   "gen": 814.8000000002794,
+   "scatter": 0,
+   "build": 1281,
+   "total": 2108,
+   "compile": 57.89999999990687,
+   "jsHeapMB": 51,
+   "boot": 2710.899999999907
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 2711 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 7566
+ },
+ {
+  "id": "2024-isl2-Millbrook",
+  "seed": 2024,
+  "cam": "island:Millbrook",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "9f86c9e84c6d7395",
+  "info": {
+   "calls": 88,
+   "triangles": 114167,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 89,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 465,
+   "groundCover": 0,
+   "agents": 10,
+   "particles": 0,
+   "gpuMemoryMB": 55
+  },
+  "timings": {
+   "gen": 888.1000000000931,
+   "scatter": 0,
+   "build": 1639.8999999999069,
+   "total": 2545.899999999907,
+   "compile": 55.60000000009313,
+   "jsHeapMB": 48,
+   "boot": 3506
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3506 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 16133
+ },
+ {
+  "id": "2024-night",
+  "seed": 2024,
+  "cam": "village",
+  "time": 22,
+  "hud": false,
+  "error": null,
+  "worldHash": "9f86c9e84c6d7395",
+  "info": {
+   "calls": 100,
+   "triangles": 162421,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 101,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 675,
+   "groundCover": 0,
+   "agents": 17,
+   "particles": 0,
+   "gpuMemoryMB": 60
+  },
+  "timings": {
+   "gen": 1306.8999999999069,
+   "scatter": 0,
+   "build": 1886.5,
+   "total": 3203.5999999996275,
+   "compile": 61.60000000009313,
+   "jsHeapMB": 51,
+   "boot": 3971
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3971 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 16170
+ },
+ {
+  "id": "2024-overview",
+  "seed": 2024,
+  "cam": "overview",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "9f86c9e84c6d7395",
+  "info": {
+   "calls": 98,
+   "triangles": 72169,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 99,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 202,
+   "groundCover": 0,
+   "agents": 10,
+   "particles": 0,
+   "gpuMemoryMB": 59
+  },
+  "timings": {
+   "gen": 937,
+   "scatter": 0.10000000009313226,
+   "build": 2040.1000000000931,
+   "total": 2988.5999999996275,
+   "compile": 53.39999999990687,
+   "jsHeapMB": 45,
+   "boot": 3933.4000000003725
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3933 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 17455
+ },
+ {
+  "id": "2024-overviewhud",
+  "seed": 2024,
+  "cam": "overview",
+  "time": 15,
+  "hud": true,
+  "error": null,
+  "worldHash": "9f86c9e84c6d7395",
+  "info": {
+   "calls": 98,
+   "triangles": 72169,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 99,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 202,
+   "groundCover": 0,
+   "agents": 10,
+   "particles": 0,
+   "gpuMemoryMB": 59
+  },
+  "timings": {
+   "gen": 965.8999999999069,
+   "scatter": 0,
+   "build": 1709.7999999998137,
+   "total": 2686.8000000002794,
+   "compile": 111.5,
+   "jsHeapMB": 48,
+   "boot": 4100.600000000093
+  },
+  "labels": "Hearthholm\nBelvewyn\nSeldun\nTamwenne\nStonanis\nRiwyn",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 4101 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 18235
+ },
+ {
+  "id": "2024-village",
+  "seed": 2024,
+  "cam": "village",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "9f86c9e84c6d7395",
+  "info": {
+   "calls": 100,
+   "triangles": 162421,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 101,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 675,
+   "groundCover": 0,
+   "agents": 17,
+   "particles": 0,
+   "gpuMemoryMB": 60
+  },
+  "timings": {
+   "gen": 1015.8999999999069,
+   "scatter": 0,
+   "build": 1826.1000000000931,
+   "total": 2855,
+   "compile": 46.40000000037253,
+   "jsHeapMB": 54,
+   "boot": 5412.899999999907
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 5413 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 18136
+ },
+ {
+  "id": "3003-dock",
+  "seed": 3003,
+  "cam": "dock",
+  "time": 17.75,
+  "hud": false,
+  "error": null,
+  "worldHash": "9d27cb7fae51ee20",
+  "info": {
+   "calls": 79,
+   "triangles": 152781,
+   "points": 0,
+   "lines": 0,
+   "programs": 11,
+   "geometries": 80,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 617,
+   "groundCover": 0,
+   "agents": 16,
+   "particles": 0,
+   "gpuMemoryMB": 51
+  },
+  "timings": {
+   "gen": 1307.5,
+   "scatter": 0,
+   "build": 2078.100000000093,
+   "total": 3399,
+   "compile": 45.59999999962747,
+   "jsHeapMB": 51,
+   "boot": 4639.100000000093
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 4639 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 17432
+ },
+ {
+  "id": "3003-isl1-Emberpeak",
+  "seed": 3003,
+  "cam": "island:Emberpeak",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "9d27cb7fae51ee20",
+  "info": {
+   "calls": 74,
+   "triangles": 107728,
+   "points": 0,
+   "lines": 0,
+   "programs": 11,
+   "geometries": 75,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 493,
+   "groundCover": 0,
+   "agents": 9,
+   "particles": 0,
+   "gpuMemoryMB": 49
+  },
+  "timings": {
+   "gen": 1155.5,
+   "scatter": 0,
+   "build": 1891.8999999999069,
+   "total": 3057.7999999998137,
+   "compile": 47.3000000002794,
+   "jsHeapMB": 51,
+   "boot": 4232.299999999814
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 4232 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 17431
+ },
+ {
+  "id": "3003-isl2-Palmlagoon",
+  "seed": 3003,
+  "cam": "island:Palmlagoon",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "9d27cb7fae51ee20",
+  "info": {
+   "calls": 37,
+   "triangles": 73631,
+   "points": 0,
+   "lines": 0,
+   "programs": 11,
+   "geometries": 38,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 493,
+   "groundCover": 0,
+   "agents": 9,
+   "particles": 0,
+   "gpuMemoryMB": 35
+  },
+  "timings": {
+   "gen": 1113.6000000000931,
+   "scatter": 0,
+   "build": 1404.1000000000931,
+   "total": 2545.600000000093,
+   "compile": 93.60000000009313,
+   "jsHeapMB": 51,
+   "boot": 3682.600000000093
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3683 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 16180
+ },
+ {
+  "id": "3003-night",
+  "seed": 3003,
+  "cam": "village",
+  "time": 22,
+  "hud": false,
+  "error": null,
+  "worldHash": "9d27cb7fae51ee20",
+  "info": {
+   "calls": 84,
+   "triangles": 153579,
+   "points": 0,
+   "lines": 0,
+   "programs": 11,
+   "geometries": 85,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 617,
+   "groundCover": 0,
+   "agents": 16,
+   "particles": 0,
+   "gpuMemoryMB": 53
+  },
+  "timings": {
+   "gen": 980.0999999996275,
+   "scatter": 0,
+   "build": 1700.3000000002794,
+   "total": 2696.100000000093,
+   "compile": 57.89999999990687,
+   "jsHeapMB": 54,
+   "boot": 3624.5
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3625 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 8970
+ },
+ {
+  "id": "3003-overview",
+  "seed": 3003,
+  "cam": "overview",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "9d27cb7fae51ee20",
+  "info": {
+   "calls": 97,
+   "triangles": 74772,
+   "points": 0,
+   "lines": 0,
+   "programs": 11,
+   "geometries": 98,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 226,
+   "groundCover": 0,
+   "agents": 9,
+   "particles": 0,
+   "gpuMemoryMB": 59
+  },
+  "timings": {
+   "gen": 734.8000000002794,
+   "scatter": 0,
+   "build": 1613.1999999997206,
+   "total": 2365.7999999998137,
+   "compile": 46.39999999990687,
+   "jsHeapMB": 58,
+   "boot": 3021
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3021 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 7685
+ },
+ {
+  "id": "3003-overviewhud",
+  "seed": 3003,
+  "cam": "overview",
+  "time": 15,
+  "hud": true,
+  "error": null,
+  "worldHash": "9d27cb7fae51ee20",
+  "info": {
+   "calls": 97,
+   "triangles": 74772,
+   "points": 0,
+   "lines": 0,
+   "programs": 11,
+   "geometries": 98,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 226,
+   "groundCover": 0,
+   "agents": 9,
+   "particles": 0,
+   "gpuMemoryMB": 59
+  },
+  "timings": {
+   "gen": 603.7999999998137,
+   "scatter": 0,
+   "build": 1489.2000000001863,
+   "total": 2132.1999999997206,
+   "compile": 306.8000000002794,
+   "jsHeapMB": 51,
+   "boot": 3178
+  },
+  "labels": "Hearthholm\nToskma\nRiton\nKelsey\nVelka\nOrolo",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3178 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 17025
+ },
+ {
+  "id": "3003-village",
+  "seed": 3003,
+  "cam": "village",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "9d27cb7fae51ee20",
+  "info": {
+   "calls": 84,
+   "triangles": 153579,
+   "points": 0,
+   "lines": 0,
+   "programs": 11,
+   "geometries": 85,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 617,
+   "groundCover": 0,
+   "agents": 16,
+   "particles": 0,
+   "gpuMemoryMB": 53
+  },
+  "timings": {
+   "gen": 754.6999999997206,
+   "scatter": 0,
+   "build": 2130,
+   "total": 2896.399999999907,
+   "compile": 61.700000000186265,
+   "jsHeapMB": 58,
+   "boot": 6460.4000000003725
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 6460 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 17037
+ },
+ {
+  "id": "4004-dock",
+  "seed": 4004,
+  "cam": "dock",
+  "time": 17.75,
+  "hud": false,
+  "error": null,
+  "worldHash": "035049559967af3f",
+  "info": {
+   "calls": 93,
+   "triangles": 156541,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 94,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 799,
+   "groundCover": 0,
+   "agents": 18,
+   "particles": 0,
+   "gpuMemoryMB": 57
+  },
+  "timings": {
+   "gen": 1298.6999999997206,
+   "scatter": 0,
+   "build": 1849.8000000002794,
+   "total": 3167.7000000001863,
+   "compile": 88.5,
+   "jsHeapMB": 54,
+   "boot": 3852.5
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3853 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 17455
+ },
+ {
+  "id": "4004-isl1-Emberpeak",
+  "seed": 4004,
+  "cam": "island:Emberpeak",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "035049559967af3f",
+  "info": {
+   "calls": 107,
+   "triangles": 132292,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 108,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 520,
+   "groundCover": 0,
+   "agents": 11,
+   "particles": 0,
+   "gpuMemoryMB": 63
+  },
+  "timings": {
+   "gen": 1032.7000000001863,
+   "scatter": 0,
+   "build": 1870.5,
+   "total": 2916.600000000093,
+   "compile": 76.10000000009313,
+   "jsHeapMB": 48,
+   "boot": 3943.2999999998137
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3943 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 16619
+ },
+ {
+  "id": "4004-isl2-Millbrook",
+  "seed": 4004,
+  "cam": "island:Millbrook",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "035049559967af3f",
+  "info": {
+   "calls": 79,
+   "triangles": 102810,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 80,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 520,
+   "groundCover": 0,
+   "agents": 11,
+   "particles": 0,
+   "gpuMemoryMB": 51
+  },
+  "timings": {
+   "gen": 985.2000000001863,
+   "scatter": 0,
+   "build": 1809.7999999998137,
+   "total": 2814.600000000093,
+   "compile": 66,
+   "jsHeapMB": 48,
+   "boot": 3760.899999999907
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3761 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 16614
+ },
+ {
+  "id": "4004-night",
+  "seed": 4004,
+  "cam": "village",
+  "time": 22,
+  "hud": false,
+  "error": null,
+  "worldHash": "035049559967af3f",
+  "info": {
+   "calls": 94,
+   "triangles": 158781,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 95,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 799,
+   "groundCover": 0,
+   "agents": 18,
+   "particles": 0,
+   "gpuMemoryMB": 57
+  },
+  "timings": {
+   "gen": 854,
+   "scatter": 0,
+   "build": 1794.4000000003725,
+   "total": 2662.7999999998137,
+   "compile": 73.20000000018626,
+   "jsHeapMB": 48,
+   "boot": 3444.5
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3445 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 17463
+ },
+ {
+  "id": "4004-overview",
+  "seed": 4004,
+  "cam": "overview",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "035049559967af3f",
+  "info": {
+   "calls": 98,
+   "triangles": 74200,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 99,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 229,
+   "groundCover": 0,
+   "agents": 11,
+   "particles": 0,
+   "gpuMemoryMB": 59
+  },
+  "timings": {
+   "gen": 730.4000000003725,
+   "scatter": 0,
+   "build": 1483.5,
+   "total": 2228.7000000001863,
+   "compile": 55.60000000009313,
+   "jsHeapMB": 51,
+   "boot": 3206.1999999997206
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3206 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 9488
+ },
+ {
+  "id": "4004-overviewhud",
+  "seed": 4004,
+  "cam": "overview",
+  "time": 15,
+  "hud": true,
+  "error": null,
+  "worldHash": "035049559967af3f",
+  "info": {
+   "calls": 98,
+   "triangles": 74200,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 99,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 229,
+   "groundCover": 0,
+   "agents": 11,
+   "particles": 0,
+   "gpuMemoryMB": 59
+  },
+  "timings": {
+   "gen": 583.4000000003725,
+   "scatter": 0,
+   "build": 1933.2999999998137,
+   "total": 2527.399999999907,
+   "compile": 130.40000000037253,
+   "jsHeapMB": 58,
+   "boot": 3913.2000000001863
+  },
+  "labels": "Hearthholm\nTamtasa\nAshma\nFenholm\nMamere\nVelton",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3913 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 16147
+ },
+ {
+  "id": "4004-village",
+  "seed": 4004,
+  "cam": "village",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "035049559967af3f",
+  "info": {
+   "calls": 94,
+   "triangles": 158781,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 95,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 799,
+   "groundCover": 0,
+   "agents": 18,
+   "particles": 0,
+   "gpuMemoryMB": 57
+  },
+  "timings": {
+   "gen": 704.1000000000931,
+   "scatter": 0,
+   "build": 1132,
+   "total": 1857.6000000000931,
+   "compile": 91.79999999981374,
+   "jsHeapMB": 51,
+   "boot": 2637.399999999907
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 2637 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 8831
+ },
+ {
+  "id": "42-dock",
+  "seed": 42,
+  "cam": "dock",
+  "time": 17.75,
+  "hud": false,
+  "error": null,
+  "worldHash": "066bc597b991f410",
+  "info": {
+   "calls": 95,
+   "triangles": 161289,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 96,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 742,
+   "groundCover": 0,
+   "agents": 17,
+   "particles": 0,
+   "gpuMemoryMB": 58
+  },
+  "timings": {
+   "gen": 554.7999999998137,
+   "scatter": 0,
+   "build": 936.7999999998137,
+   "total": 1498.3999999999069,
+   "compile": 51.8000000002794,
+   "jsHeapMB": 48,
+   "boot": 2653.2999999998137
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 2653 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 11055
+ },
+ {
+  "id": "42-isl1-Millbrook",
+  "seed": 42,
+  "cam": "island:Millbrook",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "066bc597b991f410",
+  "info": {
+   "calls": 75,
+   "triangles": 88691,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 76,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 418,
+   "groundCover": 0,
+   "agents": 10,
+   "particles": 0,
+   "gpuMemoryMB": 50
+  },
+  "timings": {
+   "gen": 629.1000000000931,
+   "scatter": 0,
+   "build": 1226.6999999997206,
+   "total": 1865.7000000001863,
+   "compile": 57.799999999813735,
+   "jsHeapMB": 45,
+   "boot": 2952.7999999998137
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 2953 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 11444
+ },
+ {
+  "id": "42-isl2-Emberpeak",
+  "seed": 42,
+  "cam": "island:Emberpeak",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "066bc597b991f410",
+  "info": {
+   "calls": 46,
+   "triangles": 82447,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 47,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 418,
+   "groundCover": 0,
+   "agents": 10,
+   "particles": 0,
+   "gpuMemoryMB": 38
+  },
+  "timings": {
+   "gen": 649.3999999999069,
+   "scatter": 0.10000000009313226,
+   "build": 1105.7000000001863,
+   "total": 1766.7000000001863,
+   "compile": 62.299999999813735,
+   "jsHeapMB": 54,
+   "boot": 2447.600000000093
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 2448 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 6243
+ },
+ {
+  "id": "42-night",
+  "seed": 42,
+  "cam": "village",
+  "time": 22,
+  "hud": false,
+  "error": null,
+  "worldHash": "066bc597b991f410",
+  "info": {
+   "calls": 103,
+   "triangles": 166217,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 104,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 742,
+   "groundCover": 0,
+   "agents": 17,
+   "particles": 0,
+   "gpuMemoryMB": 61
+  },
+  "timings": {
+   "gen": 551.3000000002794,
+   "scatter": 0,
+   "build": 895.3999999999069,
+   "total": 1454.6999999997206,
+   "compile": 44.299999999813735,
+   "jsHeapMB": 51,
+   "boot": 2515.3000000002794
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 2515 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 11045
+ },
+ {
+  "id": "42-overview",
+  "seed": 42,
+  "cam": "overview",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "066bc597b991f410",
+  "info": {
+   "calls": 95,
+   "triangles": 74613,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 96,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 177,
+   "groundCover": 0,
+   "agents": 10,
+   "particles": 0,
+   "gpuMemoryMB": 58
+  },
+  "timings": {
+   "gen": 915.8999999999069,
+   "scatter": 0,
+   "build": 1179.5,
+   "total": 2102.5,
+   "compile": 49,
+   "jsHeapMB": 48,
+   "boot": 3369.2000000001863
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3369 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 9909
+ },
+ {
+  "id": "42-overviewhud",
+  "seed": 42,
+  "cam": "overview",
+  "time": 15,
+  "hud": true,
+  "error": null,
+  "worldHash": "066bc597b991f410",
+  "info": {
+   "calls": 95,
+   "triangles": 74613,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 96,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 177,
+   "groundCover": 0,
+   "agents": 10,
+   "particles": 0,
+   "gpuMemoryMB": 58
+  },
+  "timings": {
+   "gen": 1157.1999999997206,
+   "scatter": 0,
+   "build": 1389.8000000002794,
+   "total": 2558.600000000093,
+   "compile": 79.79999999981374,
+   "jsHeapMB": 51,
+   "boot": 4153.399999999907
+  },
+  "labels": "Hearthholm\nLonis\nMernawyn\nOrtaton\nWyna",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 4153 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 15811
+ },
+ {
+  "id": "42-village",
+  "seed": 42,
+  "cam": "village",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "066bc597b991f410",
+  "info": {
+   "calls": 103,
+   "triangles": 166217,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 104,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 742,
+   "groundCover": 0,
+   "agents": 17,
+   "particles": 0,
+   "gpuMemoryMB": 61
+  },
+  "timings": {
+   "gen": 493.10000000009313,
+   "scatter": 0.10000000009313226,
+   "build": 867.3999999999069,
+   "total": 1369.6999999997206,
+   "compile": 49.5,
+   "jsHeapMB": 51,
+   "boot": 2109.3000000002794
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 2109 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 6536
+ },
+ {
+  "id": "5005-dock",
+  "seed": 5005,
+  "cam": "dock",
+  "time": 17.75,
+  "hud": false,
+  "error": null,
+  "worldHash": "4f59c1d47b022efc",
+  "info": {
+   "calls": 95,
+   "triangles": 155809,
+   "points": 0,
+   "lines": 0,
+   "programs": 11,
+   "geometries": 96,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 458,
+   "groundCover": 0,
+   "agents": 17,
+   "particles": 0,
+   "gpuMemoryMB": 58
+  },
+  "timings": {
+   "gen": 648.6999999997206,
+   "scatter": 0.10000000009313226,
+   "build": 1140.1000000000931,
+   "total": 1799.3000000002794,
+   "compile": 68.20000000018626,
+   "jsHeapMB": 48,
+   "boot": 2808.899999999907
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 2809 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 9830
+ },
+ {
+  "id": "5005-isl1-Palmlagoon",
+  "seed": 5005,
+  "cam": "island:Palmlagoon",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "4f59c1d47b022efc",
+  "info": {
+   "calls": 44,
+   "triangles": 71257,
+   "points": 0,
+   "lines": 0,
+   "programs": 11,
+   "geometries": 45,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 359,
+   "groundCover": 0,
+   "agents": 10,
+   "particles": 0,
+   "gpuMemoryMB": 37
+  },
+  "timings": {
+   "gen": 621.7999999998137,
+   "scatter": 0,
+   "build": 1389.5,
+   "total": 2028.2000000001863,
+   "compile": 86.89999999990687,
+   "jsHeapMB": 45,
+   "boot": 2893
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 2893 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 8458
+ },
+ {
+  "id": "5005-isl2-Mossgrove",
+  "seed": 5005,
+  "cam": "island:Mossgrove",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "4f59c1d47b022efc",
+  "info": {
+   "calls": 62,
+   "triangles": 72859,
+   "points": 0,
+   "lines": 0,
+   "programs": 11,
+   "geometries": 63,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 359,
+   "groundCover": 0,
+   "agents": 10,
+   "particles": 0,
+   "gpuMemoryMB": 45
+  },
+  "timings": {
+   "gen": 909.7000000001863,
+   "scatter": 0,
+   "build": 1545.8999999999069,
+   "total": 2467.5,
+   "compile": 63.39999999990687,
+   "jsHeapMB": 51,
+   "boot": 3372
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3372 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 16380
+ },
+ {
+  "id": "5005-night",
+  "seed": 5005,
+  "cam": "village",
+  "time": 22,
+  "hud": false,
+  "error": null,
+  "worldHash": "4f59c1d47b022efc",
+  "info": {
+   "calls": 101,
+   "triangles": 158279,
+   "points": 0,
+   "lines": 0,
+   "programs": 11,
+   "geometries": 102,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 458,
+   "groundCover": 0,
+   "agents": 17,
+   "particles": 0,
+   "gpuMemoryMB": 60
+  },
+  "timings": {
+   "gen": 817.1000000000931,
+   "scatter": 0,
+   "build": 1739,
+   "total": 2564.100000000093,
+   "compile": 40,
+   "jsHeapMB": 45,
+   "boot": 4032
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 4032 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 16424
+ },
+ {
+  "id": "5005-overview",
+  "seed": 5005,
+  "cam": "overview",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "4f59c1d47b022efc",
+  "info": {
+   "calls": 84,
+   "triangles": 63215,
+   "points": 0,
+   "lines": 0,
+   "programs": 11,
+   "geometries": 85,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 164,
+   "groundCover": 0,
+   "agents": 10,
+   "particles": 0,
+   "gpuMemoryMB": 53
+  },
+  "timings": {
+   "gen": 676.7999999998137,
+   "scatter": 0,
+   "build": 1405.2000000001863,
+   "total": 2097.600000000093,
+   "compile": 89.8000000002794,
+   "jsHeapMB": 45,
+   "boot": 2793.399999999907
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 2793 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 7155
+ },
+ {
+  "id": "5005-overviewhud",
+  "seed": 5005,
+  "cam": "overview",
+  "time": 15,
+  "hud": true,
+  "error": null,
+  "worldHash": "4f59c1d47b022efc",
+  "info": {
+   "calls": 84,
+   "triangles": 63215,
+   "points": 0,
+   "lines": 0,
+   "programs": 11,
+   "geometries": 85,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 164,
+   "groundCover": 0,
+   "agents": 10,
+   "particles": 0,
+   "gpuMemoryMB": 53
+  },
+  "timings": {
+   "gen": 616.9000000003725,
+   "scatter": 0,
+   "build": 1460.0999999996275,
+   "total": 2109.2999999998137,
+   "compile": 110.5,
+   "jsHeapMB": 48,
+   "boot": 3212.899999999907
+  },
+  "labels": "Hearthholm\nHomere\nMasey\nPiprika\nBelnis",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3213 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 17385
+ },
+ {
+  "id": "5005-village",
+  "seed": 5005,
+  "cam": "village",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "4f59c1d47b022efc",
+  "info": {
+   "calls": 101,
+   "triangles": 158279,
+   "points": 0,
+   "lines": 0,
+   "programs": 11,
+   "geometries": 102,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 458,
+   "groundCover": 0,
+   "agents": 17,
+   "particles": 0,
+   "gpuMemoryMB": 60
+  },
+  "timings": {
+   "gen": 619.7000000001863,
+   "scatter": 0,
+   "build": 1590.7000000001863,
+   "total": 2227.1999999997206,
+   "compile": 78,
+   "jsHeapMB": 43,
+   "boot": 4030.2000000001863
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 4030 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 17359
+ },
+ {
+  "id": "6006-dock",
+  "seed": 6006,
+  "cam": "dock",
+  "time": 17.75,
+  "hud": false,
+  "error": null,
+  "worldHash": "2016839e41dc12f0",
+  "info": {
+   "calls": 92,
+   "triangles": 150098,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 93,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 689,
+   "groundCover": 0,
+   "agents": 17,
+   "particles": 0,
+   "gpuMemoryMB": 57
+  },
+  "timings": {
+   "gen": 775.9000000003725,
+   "scatter": 0,
+   "build": 1740,
+   "total": 2529.3000000002794,
+   "compile": 54.39999999990687,
+   "jsHeapMB": 45,
+   "boot": 3112.2999999998137
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3112 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 8248
+ },
+ {
+  "id": "6006-isl1-Mossgrove",
+  "seed": 6006,
+  "cam": "island:Mossgrove",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "2016839e41dc12f0",
+  "info": {
+   "calls": 79,
+   "triangles": 110421,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 80,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 455,
+   "groundCover": 0,
+   "agents": 10,
+   "particles": 0,
+   "gpuMemoryMB": 51
+  },
+  "timings": {
+   "gen": 915,
+   "scatter": 0,
+   "build": 1623,
+   "total": 2563.7999999998137,
+   "compile": 70.59999999962747,
+   "jsHeapMB": 48,
+   "boot": 3661
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3661 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 17371
+ },
+ {
+  "id": "6006-isl2-Millbrook",
+  "seed": 6006,
+  "cam": "island:Millbrook",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "2016839e41dc12f0",
+  "info": {
+   "calls": 74,
+   "triangles": 102123,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 75,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 455,
+   "groundCover": 0,
+   "agents": 10,
+   "particles": 0,
+   "gpuMemoryMB": 49
+  },
+  "timings": {
+   "gen": 379.70000000018626,
+   "scatter": 0,
+   "build": 751.2999999998137,
+   "total": 1138,
+   "compile": 54.6999999997206,
+   "jsHeapMB": 43,
+   "boot": 1686.9000000003725
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 1687 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 6237
+ },
+ {
+  "id": "6006-night",
+  "seed": 6006,
+  "cam": "village",
+  "time": 22,
+  "hud": false,
+  "error": null,
+  "worldHash": "2016839e41dc12f0",
+  "info": {
+   "calls": 97,
+   "triangles": 153264,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 98,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 689,
+   "groundCover": 0,
+   "agents": 17,
+   "particles": 0,
+   "gpuMemoryMB": 59
+  },
+  "timings": {
+   "gen": 752.3999999999069,
+   "scatter": 0,
+   "build": 1861.7000000001863,
+   "total": 2627,
+   "compile": 59.60000000009313,
+   "jsHeapMB": 45,
+   "boot": 3472.5
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3473 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 17372
+ },
+ {
+  "id": "6006-overview",
+  "seed": 6006,
+  "cam": "overview",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "2016839e41dc12f0",
+  "info": {
+   "calls": 84,
+   "triangles": 66413,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 85,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 207,
+   "groundCover": 0,
+   "agents": 10,
+   "particles": 0,
+   "gpuMemoryMB": 53
+  },
+  "timings": {
+   "gen": 640.3999999999069,
+   "scatter": 0,
+   "build": 1696.3000000002794,
+   "total": 2353.2999999998137,
+   "compile": 94.5,
+   "jsHeapMB": 43,
+   "boot": 5143.5
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 5144 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 18131
+ },
+ {
+  "id": "6006-overviewhud",
+  "seed": 6006,
+  "cam": "overview",
+  "time": 15,
+  "hud": true,
+  "error": null,
+  "worldHash": "2016839e41dc12f0",
+  "info": {
+   "calls": 84,
+   "triangles": 66413,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 85,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 207,
+   "groundCover": 0,
+   "agents": 10,
+   "particles": 0,
+   "gpuMemoryMB": 53
+  },
+  "timings": {
+   "gen": 672.0999999996275,
+   "scatter": 0,
+   "build": 1464.8000000002794,
+   "total": 2149.899999999907,
+   "compile": 118.79999999981374,
+   "jsHeapMB": 43,
+   "boot": 3402.7999999998137
+  },
+  "labels": "Hearthholm\nLunnis\nNorberma\nRenwick\nTamvera",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3403 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 10652
+ },
+ {
+  "id": "6006-village",
+  "seed": 6006,
+  "cam": "village",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "2016839e41dc12f0",
+  "info": {
+   "calls": 97,
+   "triangles": 153264,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 98,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 689,
+   "groundCover": 0,
+   "agents": 17,
+   "particles": 0,
+   "gpuMemoryMB": 59
+  },
+  "timings": {
+   "gen": 960,
+   "scatter": 0,
+   "build": 1358.1999999997206,
+   "total": 2337.600000000093,
+   "compile": 60.39999999990687,
+   "jsHeapMB": 51,
+   "boot": 3655.5
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3656 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 18070
+ },
+ {
+  "id": "7-dock",
+  "seed": 7,
+  "cam": "dock",
+  "time": 17.75,
+  "hud": false,
+  "error": null,
+  "worldHash": "69f9726811ee8719",
+  "info": {
+   "calls": 102,
+   "triangles": 166474,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 103,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 816,
+   "groundCover": 0,
+   "agents": 16,
+   "particles": 0,
+   "gpuMemoryMB": 61
+  },
+  "timings": {
+   "gen": 1272.5,
+   "scatter": 0,
+   "build": 2041.1999999997206,
+   "total": 3335.7000000001863,
+   "compile": 104.29999999981374,
+   "jsHeapMB": 51,
+   "boot": 4281
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 4281 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 17866
+ },
+ {
+  "id": "7-isl1-Emberpeak",
+  "seed": 7,
+  "cam": "island:Emberpeak",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "69f9726811ee8719",
+  "info": {
+   "calls": 87,
+   "triangles": 107426,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 88,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 578,
+   "groundCover": 0,
+   "agents": 9,
+   "particles": 0,
+   "gpuMemoryMB": 55
+  },
+  "timings": {
+   "gen": 978.8999999999069,
+   "scatter": 0,
+   "build": 1428.3999999999069,
+   "total": 2424.100000000093,
+   "compile": 83.8000000002794,
+   "jsHeapMB": 54,
+   "boot": 3182.1999999997206
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 3182 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 9225
+ },
+ {
+  "id": "7-isl2-Millbrook",
+  "seed": 7,
+  "cam": "island:Millbrook",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "69f9726811ee8719",
+  "info": {
+   "calls": 88,
+   "triangles": 116178,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 89,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 578,
+   "groundCover": 0,
+   "agents": 9,
+   "particles": 0,
+   "gpuMemoryMB": 55
+  },
+  "timings": {
+   "gen": 770.5,
+   "scatter": 0,
+   "build": 1705.3000000002794,
+   "total": 2485.5999999996275,
+   "compile": 93.59999999962747,
+   "jsHeapMB": 54,
+   "boot": 4255
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 4255 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 15917
+ },
+ {
+  "id": "7-night",
+  "seed": 7,
+  "cam": "village",
+  "time": 22,
+  "hud": false,
+  "error": null,
+  "worldHash": "69f9726811ee8719",
+  "info": {
+   "calls": 107,
+   "triangles": 167443,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 108,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 816,
+   "groundCover": 0,
+   "agents": 16,
+   "particles": 0,
+   "gpuMemoryMB": 63
+  },
+  "timings": {
+   "gen": 1207.7000000001863,
+   "scatter": 0.10000000009313226,
+   "build": 2187.2999999998137,
+   "total": 3422.7000000001863,
+   "compile": 123.39999999990687,
+   "jsHeapMB": 58,
+   "boot": 4497.799999999814
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 4498 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 17881
+ },
+ {
+  "id": "7-overview",
+  "seed": 7,
+  "cam": "overview",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "69f9726811ee8719",
+  "info": {
+   "calls": 112,
+   "triangles": 83290,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 113,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 253,
+   "groundCover": 0,
+   "agents": 9,
+   "particles": 0,
+   "gpuMemoryMB": 65
+  },
+  "timings": {
+   "gen": 916.3999999999069,
+   "scatter": 0,
+   "build": 1595.1999999997206,
+   "total": 2538.3000000002794,
+   "compile": 77,
+   "jsHeapMB": 54,
+   "boot": 6718.100000000093
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 6718 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 20296
+ },
+ {
+  "id": "7-overviewhud",
+  "seed": 7,
+  "cam": "overview",
+  "time": 15,
+  "hud": true,
+  "error": null,
+  "worldHash": "69f9726811ee8719",
+  "info": {
+   "calls": 112,
+   "triangles": 83290,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 113,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 253,
+   "groundCover": 0,
+   "agents": 9,
+   "particles": 0,
+   "gpuMemoryMB": 65
+  },
+  "timings": {
+   "gen": 765.8999999999069,
+   "scatter": 0,
+   "build": 2029.7000000001863,
+   "total": 2806.0999999996275,
+   "compile": 254.5,
+   "jsHeapMB": 51,
+   "boot": 4647.700000000186
+  },
+  "labels": "Hearthholm\nHora\nFenmere\nAshvesa\nTulka\nStonaka\nOrholm",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 4648 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 20304
+ },
+ {
+  "id": "7-village",
+  "seed": 7,
+  "cam": "village",
+  "time": 15,
+  "hud": false,
+  "error": null,
+  "worldHash": "69f9726811ee8719",
+  "info": {
+   "calls": 107,
+   "triangles": 167443,
+   "points": 0,
+   "lines": 0,
+   "programs": 12,
+   "geometries": 108,
+   "textures": 5
+  },
+  "counters": {
+   "hardPops": 0,
+   "instances": 816,
+   "groundCover": 0,
+   "agents": 16,
+   "particles": 0,
+   "gpuMemoryMB": 63
+  },
+  "timings": {
+   "gen": 1502.6999999997206,
+   "scatter": 0,
+   "build": 1717,
+   "total": 3234.3000000002794,
+   "compile": 83,
+   "jsHeapMB": 61,
+   "boot": 4548.5999999996275
+  },
+  "labels": "",
+  "logs": [
+   "warning: camera-controls: `verticalDragToForward` was removed. Use `mouseButtons.left = CameraControls.ACTION.SCREEN_PAN` instead.",
+   "warning: THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+   "info: [marisland] ready in 4549 ms · ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) · quality low"
+  ],
+  "ms": 13144
+ }
+]

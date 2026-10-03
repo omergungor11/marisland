@@ -1,0 +1,428 @@
+{
+ "7": [
+  {
+   "name": "Hearthholm",
+   "arch": "Hearthholm",
+   "r": 61,
+   "h": "mid",
+   "c": "green"
+  },
+  {
+   "name": "Hora",
+   "arch": "Beacon Rock",
+   "r": 29,
+   "h": "tall",
+   "c": "dark"
+  },
+  {
+   "name": "Fenmere",
+   "arch": "Millbrook",
+   "r": 47,
+   "h": "flat",
+   "c": "green"
+  },
+  {
+   "name": "Ashvesa",
+   "arch": "Emberpeak",
+   "r": 51,
+   "h": "tall",
+   "c": "dark"
+  },
+  {
+   "name": "Tulka",
+   "arch": "Palmlagoon",
+   "r": 36,
+   "h": "flat",
+   "c": "sand"
+  },
+  {
+   "name": "Stonaka",
+   "arch": "Mossgrove",
+   "r": 46,
+   "h": "tall",
+   "c": "green"
+  },
+  {
+   "name": "Orholm",
+   "arch": "Lonely Palm",
+   "r": 6,
+   "h": "flat",
+   "c": "sand"
+  }
+ ],
+ "42": [
+  {
+   "name": "Hearthholm",
+   "arch": "Hearthholm",
+   "r": 62,
+   "h": "mid",
+   "c": "green"
+  },
+  {
+   "name": "Lonis",
+   "arch": "Beacon Rock",
+   "r": 24,
+   "h": "tall",
+   "c": "dark"
+  },
+  {
+   "name": "Mernawyn",
+   "arch": "Millbrook",
+   "r": 49,
+   "h": "flat",
+   "c": "green"
+  },
+  {
+   "name": "Ortaton",
+   "arch": "Emberpeak",
+   "r": 47,
+   "h": "tall",
+   "c": "dark"
+  },
+  {
+   "name": "Wyna",
+   "arch": "Palmlagoon",
+   "r": 40,
+   "h": "flat",
+   "c": "sand"
+  }
+ ],
+ "1000": [
+  {
+   "name": "Hearthholm",
+   "arch": "Hearthholm",
+   "r": 67,
+   "h": "mid",
+   "c": "green"
+  },
+  {
+   "name": "Merwensey",
+   "arch": "Beacon Rock",
+   "r": 21,
+   "h": "tall",
+   "c": "dark"
+  },
+  {
+   "name": "Belisa",
+   "arch": "Millbrook",
+   "r": 42,
+   "h": "flat",
+   "c": "green"
+  },
+  {
+   "name": "Tamma",
+   "arch": "Emberpeak",
+   "r": 46,
+   "h": "tall",
+   "c": "dark"
+  },
+  {
+   "name": "Toskberka",
+   "arch": "Palmlagoon",
+   "r": 49,
+   "h": "flat",
+   "c": "sand"
+  }
+ ],
+ "1001": [
+  {
+   "name": "Hearthholm",
+   "arch": "Hearthholm",
+   "r": 57,
+   "h": "mid",
+   "c": "green"
+  },
+  {
+   "name": "Quilmere",
+   "arch": "Beacon Rock",
+   "r": 26,
+   "h": "tall",
+   "c": "dark"
+  },
+  {
+   "name": "Tamnis",
+   "arch": "Millbrook",
+   "r": 47,
+   "h": "flat",
+   "c": "green"
+  },
+  {
+   "name": "Pimnanis",
+   "arch": "Palmlagoon",
+   "r": 47,
+   "h": "flat",
+   "c": "sand"
+  },
+  {
+   "name": "Tamholm",
+   "arch": "Mossgrove",
+   "r": 45,
+   "h": "tall",
+   "c": "green"
+  },
+  {
+   "name": "Seldodun",
+   "arch": "Lonely Palm",
+   "r": 6,
+   "h": "flat",
+   "c": "sand"
+  }
+ ],
+ "1002": [
+  {
+   "name": "Hearthholm",
+   "arch": "Hearthholm",
+   "r": 65,
+   "h": "mid",
+   "c": "green"
+  },
+  {
+   "name": "Fenra",
+   "arch": "Beacon Rock",
+   "r": 23,
+   "h": "tall",
+   "c": "dark"
+  },
+  {
+   "name": "Dalvewick",
+   "arch": "Millbrook",
+   "r": 43,
+   "h": "flat",
+   "c": "green"
+  },
+  {
+   "name": "Tulsa",
+   "arch": "Emberpeak",
+   "r": 49,
+   "h": "tall",
+   "c": "dark"
+  },
+  {
+   "name": "Wynmorton",
+   "arch": "Palmlagoon",
+   "r": 37,
+   "h": "flat",
+   "c": "sand"
+  },
+  {
+   "name": "Fensa",
+   "arch": "Mossgrove",
+   "r": 45,
+   "h": "tall",
+   "c": "green"
+  },
+  {
+   "name": "Britawick",
+   "arch": "Lonely Palm",
+   "r": 7,
+   "h": "flat",
+   "c": "sand"
+  }
+ ],
+ "2024": [
+  {
+   "name": "Hearthholm",
+   "arch": "Hearthholm",
+   "r": 60,
+   "h": "mid",
+   "c": "green"
+  },
+  {
+   "name": "Belvewyn",
+   "arch": "Beacon Rock",
+   "r": 23,
+   "h": "tall",
+   "c": "dark"
+  },
+  {
+   "name": "Seldun",
+   "arch": "Millbrook",
+   "r": 47,
+   "h": "flat",
+   "c": "green"
+  },
+  {
+   "name": "Tamwenne",
+   "arch": "Emberpeak",
+   "r": 48,
+   "h": "tall",
+   "c": "dark"
+  },
+  {
+   "name": "Stonanis",
+   "arch": "Mossgrove",
+   "r": 44,
+   "h": "tall",
+   "c": "green"
+  },
+  {
+   "name": "Riwyn",
+   "arch": "Lonely Palm",
+   "r": 6,
+   "h": "flat",
+   "c": "sand"
+  }
+ ],
+ "3003": [
+  {
+   "name": "Hearthholm",
+   "arch": "Hearthholm",
+   "r": 68,
+   "h": "mid",
+   "c": "green"
+  },
+  {
+   "name": "Toskma",
+   "arch": "Beacon Rock",
+   "r": 22,
+   "h": "tall",
+   "c": "dark"
+  },
+  {
+   "name": "Riton",
+   "arch": "Emberpeak",
+   "r": 53,
+   "h": "tall",
+   "c": "dark"
+  },
+  {
+   "name": "Kelsey",
+   "arch": "Palmlagoon",
+   "r": 48,
+   "h": "flat",
+   "c": "sand"
+  },
+  {
+   "name": "Velka",
+   "arch": "Mossgrove",
+   "r": 42,
+   "h": "tall",
+   "c": "green"
+  },
+  {
+   "name": "Orolo",
+   "arch": "Lonely Palm",
+   "r": 7,
+   "h": "flat",
+   "c": "sand"
+  }
+ ],
+ "4004": [
+  {
+   "name": "Hearthholm",
+   "arch": "Hearthholm",
+   "r": 62,
+   "h": "mid",
+   "c": "green"
+  },
+  {
+   "name": "Tamtasa",
+   "arch": "Millbrook",
+   "r": 48,
+   "h": "flat",
+   "c": "green"
+  },
+  {
+   "name": "Ashma",
+   "arch": "Emberpeak",
+   "r": 50,
+   "h": "tall",
+   "c": "dark"
+  },
+  {
+   "name": "Fenholm",
+   "arch": "Palmlagoon",
+   "r": 35,
+   "h": "flat",
+   "c": "sand"
+  },
+  {
+   "name": "Mamere",
+   "arch": "Mossgrove",
+   "r": 46,
+   "h": "tall",
+   "c": "green"
+  },
+  {
+   "name": "Velton",
+   "arch": "Lonely Palm",
+   "r": 7,
+   "h": "flat",
+   "c": "sand"
+  }
+ ],
+ "5005": [
+  {
+   "name": "Hearthholm",
+   "arch": "Hearthholm",
+   "r": 58,
+   "h": "mid",
+   "c": "green"
+  },
+  {
+   "name": "Homere",
+   "arch": "Beacon Rock",
+   "r": 28,
+   "h": "tall",
+   "c": "dark"
+  },
+  {
+   "name": "Masey",
+   "arch": "Palmlagoon",
+   "r": 46,
+   "h": "flat",
+   "c": "sand"
+  },
+  {
+   "name": "Piprika",
+   "arch": "Mossgrove",
+   "r": 42,
+   "h": "tall",
+   "c": "green"
+  },
+  {
+   "name": "Belnis",
+   "arch": "Lonely Palm",
+   "r": 7,
+   "h": "flat",
+   "c": "sand"
+  }
+ ],
+ "6006": [
+  {
+   "name": "Hearthholm",
+   "arch": "Hearthholm",
+   "r": 67,
+   "h": "mid",
+   "c": "green"
+  },
+  {
+   "name": "Lunnis",
+   "arch": "Beacon Rock",
+   "r": 22,
+   "h": "tall",
+   "c": "dark"
+  },
+  {
+   "name": "Norberma",
+   "arch": "Millbrook",
+   "r": 42,
+   "h": "flat",
+   "c": "green"
+  },
+  {
+   "name": "Renwick",
+   "arch": "Mossgrove",
+   "r": 48,
+   "h": "tall",
+   "c": "green"
+  },
+  {
+   "name": "Tamvera",
+   "arch": "Lonely Palm",
+   "r": 6,
+   "h": "flat",
+   "c": "sand"
+  }
+ ]
+}
