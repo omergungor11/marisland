@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
-import { Acc, col, mat, qEuler, type PartOpts } from './kit.ts';
+import { type Acc, col, mat, qEuler, type PartOpts } from './kit.ts';
 
 export const TAU = Math.PI * 2;
 export const V = (x: number, y: number, z: number): THREE.Vector3 => new THREE.Vector3(x, y, z);
