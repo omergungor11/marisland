@@ -22,7 +22,7 @@ export const CLOUDS = {
   altitude: [60, 90],
   width: [22, 44],
   drift: 1.5,
-  shadowMul: 0.82,
+  shadowMul: 0.72,
   shadowBlur: 6,
   /** Periodic cloud field (TASK-153): `cells`² jittered candidate cells per `tile` u square,
    *  centred on the archipelago → every tile-sized window holds exactly `count` clouds. */
@@ -51,7 +51,7 @@ export const CLOUDS = {
 /** Smoke and steam puffs (ART_BIBLE §7 #20/#21; stateless GPU, ARCHITECTURE §5). Sizes are diameters, u. */
 export const PUFFS = {
   chimney: { spawn: 1.2, slots: 3, size: [0.2, 0.9], rise: 4, drift: 2, jitter: 0.15 },
-  steam: { spawn: 0.6, slots: 12, size: [2, 8], rise: 25, drift: 14, jitter: 1.2 },
+  steam: { spawn: 0.6, slots: 20, size: [2.5, 9], rise: 30, drift: 14, jitter: 1.2 },
   spring: { spawn: 0.8, slots: 5, size: [0.6, 2.4], rise: 5, drift: 1.5, jitter: 0.4 },
   /** Ring-puff burp on steam emitters every `period` s. */
   burp: { period: 40, ring: 7, life: 3.5, radius: 7, rise: 6, size: [3, 6.5], pulse: 1.5 },

@@ -22,9 +22,10 @@ export function createWorldTextures(world: WorldData, scope: Scope): WorldTextur
   const n = world.height.n;
   const heightHalf = new Uint16Array(n * n);
   const sdfHalf = new Uint16Array(n * n);
+  const sdfSmooth = smoothSdf(world.shoreSdf, n);
   for (let i = 0; i < n * n; i++) {
     heightHalf[i] = THREE.DataUtils.toHalfFloat(world.height.data[i]);
-    sdfHalf[i] = THREE.DataUtils.toHalfFloat(Math.max(-200, Math.min(200, world.shoreSdf[i])));
+    sdfHalf[i] = THREE.DataUtils.toHalfFloat(Math.max(-200, Math.min(200, sdfSmooth[i])));
   }
   const mk = (
     data: Uint16Array | Uint8Array,
@@ -62,6 +63,31 @@ export function createWorldTextures(world: WorldData, scope: Scope): WorldTextur
       zone.needsUpdate = true;
     },
   };
+}
+
+/**
+ * The EDT is exact to the 2 u land mask, so water bands inherit its staircase. A 3×3 tent blur
+ * (water cells only, sign preserved) gives the ring edges a smooth gradient on the GPU copy.
+ */
+function smoothSdf(sdf: Float32Array, n: number): Float32Array {
+  const out = new Float32Array(sdf);
+  for (let z = 1; z < n - 1; z++) {
+    for (let x = 1; x < n - 1; x++) {
+      const i = z * n + x;
+      if (sdf[i] > 0) continue;
+      let acc = 0;
+      let w = 0;
+      for (let dz = -1; dz <= 1; dz++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const k = (dx === 0 ? 2 : 1) * (dz === 0 ? 2 : 1);
+          acc += sdf[i + dz * n + dx] * k;
+          w += k;
+        }
+      }
+      out[i] = Math.min(acc / w, -0.01);
+    }
+  }
+  return out;
 }
 
 /** GLSL helper: sample a world grid texture at world xz. Expects `uniform vec3 uGridMap;`. */

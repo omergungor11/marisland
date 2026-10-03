@@ -22,6 +22,9 @@ import { SHARED } from './render/uniforms.ts';
 import { createHud, type Hud } from './ui/hud.ts';
 import { createCurtain } from './ui/curtain.ts';
 import { createIntro } from './camera/intro.ts';
+import { createTimeDial } from './ui/time-dial.ts';
+import { createPhotoMode } from './ui/photo.ts';
+import { createEnvState, sampleEnv } from './env/env-state.ts';
 import { ISLAND_ACCENTS } from './content/islands-ui.ts';
 import type { TestScene } from './render/test-scene.ts';
 
@@ -254,18 +257,54 @@ export async function boot(): Promise<void> {
 
     let hud: Hud | null = null;
     if (params.hud && !params.gallery) {
-      const TIME_STOPS = [7, 12, 15, 17.75, 19.25, 22, 2];
-      let timeStop = -1;
+      const dial = createTimeDial(root, (hour) => {
+        if (hour === null) loop.clock.daySpeed = 1;
+        else {
+          loop.clock.daySpeed = 0;
+          loop.clock.dayTime = hour;
+        }
+      });
+      appScope.defer(() => dial.dispose());
+      const envForUi = createEnvState();
+      loop.add({
+        name: 'dial',
+        update: () => dial.update(loop.clock.dayTime, sampleEnv(loop.clock.dayTime, envForUi)),
+      });
+      const photo = createPhotoMode(root, {
+        getHour: () => loop.clock.dayTime,
+        setHour: (h) => {
+          loop.clock.daySpeed = 0;
+          loop.clock.dayTime = h;
+        },
+        getFov: () => camera.fov,
+        setFov: (f) => {
+          camera.fov = f;
+          camera.updateProjectionMatrix();
+        },
+        snapshot: () => {
+          render();
+          return canvas;
+        },
+        seed: params.seed,
+        onExit: () => {
+          camera.fov = 35;
+          camera.updateProjectionMatrix();
+          hud?.show();
+          cam.setIdleOrbit(true);
+        },
+      });
+      appScope.defer(() => photo.dispose());
       hud = createHud(
         root,
         {
           onNewSeed: () => void newSeed((Math.random() * 1e9) >>> 0),
-          onTime: () => {
-            timeStop = (timeStop + 1) % TIME_STOPS.length;
-            loop.clock.dayTime = TIME_STOPS[timeStop];
-          },
+          onTime: () => dial.toggle(),
           onWeather: () => {},
-          onPhoto: () => {},
+          onPhoto: () => {
+            hud?.hide();
+            cam.setIdleOrbit(false);
+            photo.enter();
+          },
           onSound: () => {},
           onCompass: () => void cam.controls.rotateAzimuthTo(0, true),
           onLabel: (name) => cam.applyPreset(`island:${name}`, true),

@@ -1,6 +1,8 @@
 import { LOADER_CSS } from './loader.ts';
 import { HUD_CSS } from './hud.ts';
 import { CURTAIN_CSS } from './curtain.ts';
+import { DIAL_CSS } from './time-dial.ts';
+import { PHOTO_CSS } from './photo.ts';
 import { UI } from '../content/palette.ts';
 
 export function injectStyles(): void {
@@ -14,6 +16,8 @@ canvas.mar-canvas{display:block;width:100%;height:100%;touch-action:none;outline
 ${LOADER_CSS}
 ${HUD_CSS}
 ${CURTAIN_CSS}
+${DIAL_CSS}
+${PHOTO_CSS}
 `;
   document.head.appendChild(style);
 }

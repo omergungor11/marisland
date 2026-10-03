@@ -1,6 +1,9 @@
 /** Life catalog numbers (ART_BIBLE §7 rows 3, 4, 11–14, 28). Data only. */
 
-/** Per-quality agent plan; totals stay ≤ QUALITY_PRESETS[q].agentCap (fish/dolphins only live at T3/T1+). */
+/**
+ * Per-quality agent plan; the worst case (everything live at T3) stays <= QUALITY_PRESETS[q].agentCap
+ * (low 25, medium 50, high 90; checked by tests).
+ */
 export interface LifePlan {
   sailboats: number;
   rowboats: number;
@@ -12,40 +15,67 @@ export interface LifePlan {
   fishPerSchool: [number, number];
   jumpers: number;
   dolphins: number;
+  /** Villagers: Hearthholm and each other settlement island (T2+). */
+  villagers: { hearth: number; other: number };
+  cats: number;
+  /** Sheep on Millbrook field/meadow (T2+). */
+  sheep: number;
+  /** Crabs near the camera focus (T3). */
+  crabs: number;
+  ducks: number;
+  capybaras: number;
 }
 export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
   low: {
     sailboats: 2,
-    rowboats: 2,
+    rowboats: 1,
     parked: 0,
     flocks: 2,
-    gullsPerFlock: [4, 5],
+    gullsPerFlock: [3, 3],
     schools: 2,
-    fishPerSchool: [4, 5],
+    fishPerSchool: [3, 3],
     jumpers: 1,
     dolphins: 0,
+    villagers: { hearth: 3, other: 0 },
+    cats: 1,
+    sheep: 3,
+    crabs: 2,
+    ducks: 0,
+    capybaras: 0,
   },
   medium: {
     sailboats: 3,
-    rowboats: 2,
-    parked: 1,
+    rowboats: 4,
+    parked: 2,
     flocks: 3,
-    gullsPerFlock: [5, 6],
+    gullsPerFlock: [3, 3],
     schools: 2,
-    fishPerSchool: [6, 8],
+    fishPerSchool: [4, 4],
     jumpers: 2,
     dolphins: 2,
+    villagers: { hearth: 6, other: 2 },
+    cats: 2,
+    sheep: 5,
+    crabs: 3,
+    ducks: 0,
+    capybaras: 0,
   },
   high: {
     sailboats: 4,
     rowboats: 3,
     parked: 2,
     flocks: 3,
-    gullsPerFlock: [5, 8],
+    gullsPerFlock: [5, 6],
     schools: 2,
-    fishPerSchool: [6, 10],
+    fishPerSchool: [6, 8],
     jumpers: 3,
     dolphins: 2,
+    villagers: { hearth: 10, other: 2 },
+    cats: 2,
+    sheep: 8,
+    crabs: 4,
+    ducks: 5,
+    capybaras: 3,
   },
 };
 
@@ -169,3 +199,125 @@ export const LIFE_COLORS = {
   dolphinTop: '#7C8FA8',
   dolphinBelly: '#E4EAF2',
 } as const;
+
+export const CRITTER_COLORS = {
+  skin: '#F2C9A6',
+  hat: '#8A5A3B',
+  catBody: '#E8A86B',
+  catBelly: '#FFF4E0',
+  wool: '#FAFAF5',
+  sheepHead: '#4A4458',
+  crab: '#FF7A5C',
+  crabClaw: '#FF9A7C',
+  duck: '#FFE27A',
+  duckBeak: '#FF9B3D',
+  capybara: '#A8794E',
+  yuzu: '#FFA13D',
+} as const;
+
+/** Villager shirt/hat tints (instanceColor). */
+export const VILLAGER_TINTS = ['#E8735A', '#3FB8AF', '#F5C84C', '#9C8CE0'] as const;
+
+/** ART_BIBLE §7 rows 8, 9. */
+export const VILLAGERS = {
+  speed: 1.3,
+  /** Hop step: duration (s), height (u), squash at landing (sy), stretch in the air (sy). */
+  step: 0.45,
+  hop: 0.12,
+  landSquash: 0.9,
+  airStretch: 1.1,
+  /** Stand-still looking around at plazas/stalls (s) and the yaw wobble (rad). */
+  lookAround: 1.5,
+  lookYaw: 0.7,
+  /** Standing at a door/dock: seconds, then an idle action (wave / stretch) of `actionTime`. */
+  idleEvery: [6, 12],
+  actionTime: 1.4,
+  /** Wave at the camera within this distance (u), at most every `waveCooldown` s. */
+  waveRange: 25,
+  waveCooldown: 9,
+  /** Idle-action spring (row 9). */
+  spring: { k: 200, c: 16 },
+  /** Target mix: lots (doors), plaza hub, docks, landmarks. */
+  targetWeights: { door: 5, plaza: 3, dock: 1.5, landmark: 1 },
+} as const;
+
+/** ART_BIBLE §7 row 10. */
+export const CATS = {
+  tailPeriod: 20,
+  tailDeg: 30,
+  /** Sleeping hours (game time): from dusk to dawn. */
+  sleep: [19.5, 6.5],
+  sleepScaleY: 0.7,
+  sleepLambda: 1.2,
+  /** Roof corner height as a fraction of the cottage's nominal height. */
+  roofFrac: 0.55,
+  /** Head-turn yaw wobble amplitude (rad) and period (s). */
+  lookYaw: 0.35,
+  lookPeriod: 9,
+} as const;
+
+/** ART_BIBLE §7 row 26. */
+export const SHEEP = {
+  graze: 8,
+  hop: 0.35,
+  hopHeight: 0.2,
+  hopDist: [1.0, 1.8],
+  squash: 0.85,
+  stretch: 1.15,
+  /** Wool jiggle spring. */
+  jiggle: { k: 120, c: 6, kick: 3 },
+  /** Max wander radius from the spawn cell (u) and min spacing between sheep (u). */
+  leash: 10,
+  spacing: 0.9,
+  /** Head-dip amplitude while grazing (fraction of body height). */
+  dip: 0.06,
+} as const;
+
+/** ART_BIBLE §7 row 15. */
+export const CRABS = {
+  scuttle: 3,
+  distance: 1.5,
+  pause: [2, 5],
+  legHz: 8,
+  legJitter: 0.07,
+  clackHz: 6,
+  clackDeg: 18,
+  /** Spawn within this radius of the camera focus; relocate beyond `relocate`. */
+  radius: 60,
+  relocate: 80,
+  /** Retry spacing (s) while no sand is near. */
+  retry: 2,
+  clusterRadius: 5,
+} as const;
+
+/** ART_BIBLE §7 rows 27, 29 (optional). */
+export const DUCKS = {
+  speed: 0.9,
+  paddle: 1,
+  bob: 0.25,
+  pondRadius: 3,
+  follow: 0.55,
+  surface: 0.04,
+} as const;
+export const CAPYBARAS = {
+  blink: 4,
+  bob: 0.03,
+  bobPeriod: 3.2,
+  radius: 1.5,
+  surface: 0.12,
+} as const;
+
+/** Pick spheres (u): centre height above the agent origin and radius, by kind name. */
+export const PICK_SPHERES: Record<string, { y: number; r: number }> = {
+  villager: { y: 0.5, r: 0.7 },
+  cat: { y: 0.2, r: 0.5 },
+  sheep: { y: 0.4, r: 0.7 },
+  crab: { y: 0.1, r: 0.5 },
+  duck: { y: 0.2, r: 0.5 },
+  capybara: { y: 0.2, r: 0.6 },
+  sailboat: { y: 1.5, r: 2 },
+  rowboat: { y: 0.4, r: 1.3 },
+  parked: { y: 1.5, r: 2 },
+  gull: { y: 0, r: 1 },
+};
+export const PICK_DEFAULT = { y: 0, r: 0.8 } as const;

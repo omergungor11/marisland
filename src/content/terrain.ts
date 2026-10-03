@@ -18,6 +18,9 @@ export const TERRAIN_COLORS = {
   forest: GRASS[3],
   forestDarken: 0.9,
   field: HAY,
+  /** Patchwork: per 14 u cell pick (ART_BIBLE W7 ≥ 4 field colours). */
+  fieldPatch: ['#F2C46B', '#D9C76A', '#B5D16B', '#E0B56C', '#C9E86F'],
+  fieldPatchSize: 14,
   fieldMix: 0.45,
   /** Rock by slope: gentle → steep. */
   rock: [ROCK[0], ROCK[1], ROCK[2]] as const,

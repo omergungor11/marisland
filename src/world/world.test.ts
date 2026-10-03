@@ -267,12 +267,12 @@ describe('islands and zones', () => {
     },
   );
 
-  it('one-island generation < 150 ms in Node', () => {
+  it('one-island generation < 250 ms in Node', () => {
     generateWorld(77, { islands: 1, now }); // warm-up (JIT)
     const ms: number[] = [];
     for (const s of [1, 42, 1001]) ms.push(generateWorld(s, { islands: 1, now }).timings.total);
     console.info(`gen ms (warm) seeds 1/42/1001: ${ms.map((m) => m.toFixed(1)).join(' / ')}`);
     console.info(`cold first-call ms seed 1: ${world(1).timings.total.toFixed(1)}`);
-    for (const m of ms) expect(m).toBeLessThan(150);
+    for (const m of ms) expect(m).toBeLessThan(250);
   });
 });

@@ -152,7 +152,12 @@ export function createCameraSystem(
           const isl = findIsland(world, arg);
           if (isl) {
             // T1 framing: fit the island sphere, then settle on the pitch curve.
-            _sphere.center.set(isl.cx, Math.max(0, isl.peakY * 0.3), isl.cz);
+            // tiny sandbars: aim at the palm crown; tall islands: flatter pitch so columns read
+            _sphere.center.set(
+              isl.cx,
+              isl.radius < 12 ? 2.5 : Math.max(0, isl.peakY * 0.3),
+              isl.cz,
+            );
             _sphere.radius = isl.radius * 1.35;
             // Small islands (Lonely Palm) get a T3 framing: the fit is clamped only by the global bounds.
             const dist = clamp(
@@ -166,7 +171,7 @@ export function createCameraSystem(
               _sphere.center.y,
               _sphere.center.z,
               dist,
-              pitchForDistance(dist),
+              Math.min(pitchForDistance(dist), isl.peakY > 20 ? 38 : 90),
               30,
               t,
             );

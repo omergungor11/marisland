@@ -109,7 +109,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   {
     id: 'W7',
     title: 'Mill Morning',
-    seed: 5005,
+    seed: 1000,
     cam: 'island:Millbrook',
     time: 6.75,
     simt: 5,
