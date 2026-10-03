@@ -30,6 +30,7 @@ import { createIntro, type Intro } from './camera/intro.ts';
 import { ISLAND_ACCENTS } from './content/islands-ui.ts';
 import { HUD, INTRO } from './content/ui.ts';
 import { CAMERA } from './content/tiers.ts';
+import { FRAMING } from './content/camera.ts';
 import { loadPrefs, storePrefs, type UiPrefs } from './ui/settings.ts';
 import { photoFilename } from './ui/hud-math.ts';
 import type { WeatherName } from './core/params.ts';
@@ -351,6 +352,8 @@ export async function boot(): Promise<void> {
     ctx.worldHash = testScene.hash;
     ctx.timings.total = now() - tGen;
     cam.setWorld(testScene.cameraWorld);
+    // Fitted presets keep clear of the HUD dock + label row when the HUD is on (D2).
+    cam.setSafeInsets(params.hud && !params.gallery ? FRAMING.hudInsets : FRAMING.bareInsets);
     cam.applyPreset(params.cam || 'overview', false);
     cam.setIdleOrbit(!params.freeze);
 

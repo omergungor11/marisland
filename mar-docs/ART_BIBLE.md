@@ -297,7 +297,7 @@ Any click or key jumps to the final pose with a 400 ms ease.
   - Hover: −2 px lift, scale 1.06, 120 ms.
   - Press: scale 0.9 on `k=400, c=18`.
   - Tooltip pill after 400 ms.
-- **Island labels (T0 only):** Fredoka 600 16 px pill on `#FFF8ECDD`, with an 8 px dot in the island's accent colour. Anchored 8 u above the island's peak. 250 ms pop-in; screen-space collision nudge.
+- **Island labels (T0 only):** Fredoka 600 16 px pill on `#FFF8ECDD`, with an 8 px dot in the island's accent colour. Sits just above the island's projected shelf ring (and never below 8 u above the peak), off the land. 250 ms pop-in; screen-space collision nudge (upward first).
 - **Compass:** 64 px disc, coral N, rotates with camera yaw. Click springs the view back to north.
 - **Time dial:** 120 px arc filled with the live sky gradient; a sun/moon icon rides the arc. Drag to scrub; double-click returns to live time.
 - **New Seed:** dice wobbles for 0.4 s → clouds close (0.8 s) → world regenerates → clouds part (1.2 s).
@@ -328,7 +328,7 @@ Any click or key jumps to the final pose with a 400 ms ease.
 
 | ID | Shot | Seed · camera · time | Pass criteria |
 |---|---|---|---|
-| W1 | **Postcard** | 1001 · T0 450 u, pitch 58° · 15:00 | ≥ 5 islands fully in frame; every island has a continuous ring within `#4FD1D9` ±10 %; ≥ 3 height classes; ≥ 2 cloud shadows; no overlapping labels |
+| W1 | **Postcard** | 1001 · T0 ≥ 450 u (fitted to the rings), pitch 58° · 15:00 | ≥ 5 islands fully in frame; every island has a continuous ring within `#4FD1D9` ±10 %; ≥ 3 height classes; ≥ 2 cloud shadows; no overlapping labels |
 | W2 | **Golden Harbor** | 1001 · T2 70 u Hearthholm harbour, pitch 38° · 17:45 | ≥ 3 boats with ripple rings; sunlit roof hue 10–40°; shadow hue 220–280° with L ≥ 25 %; tilt-shift blur in top/bottom bands |
 | W3 | **Lantern Night** | 1001 · T2 80 u Hearthholm · 22:00 | ≥ 8 bloomed warm emissives; ≥ 10 fireflies; mean land luminance ≥ 0.12; moon glitter streak on water |
 | W4 | **Beacon** | 2024 · T1 160 u, Beacon Rock in the left third · 21:30 | Beam cone visible in fog; cliff vs sky ΔL ≥ 0.1; ≥ 2 sea stacks; foam at the cliff base |
@@ -336,7 +336,7 @@ Any click or key jumps to the final pose with a 400 ms ease.
 | W6 | **Lagoon** | 4004 · T1 110 u, pitch 70° over Palmlagoon · 12:00 | Sunken hull readable through water; lagoon lighter than the outer ring; ≥ 1 turtle; land ring has ≤ 2 channel breaks |
 | W7 | **Mill Morning** | 5005 · T2 90 u Millbrook · 06:45 | Blade angle differs between frames 0.5 s apart; ≥ 4 field colours; mist band below 6 u; ≥ 5 sheep |
 | W8 | **Macro Shore** | 1001 · T3 18 u, Hearthholm beach · 14:00 | Foam line moves between frames 2 s apart; crab + ≥ 3 shells + grass tufts visible; during a 3 s dolly-in from 60 u, nothing appears without a bloom-in |
-| W9 | **Lonely Palm** | any seed with it · T3 30 u, pitch 22° · 18:45 | Whole sandbar + ring in frame; palm silhouetted against the sky gradient; sun glint bloom on water; horizon blends into fog (no hard line) |
+| W9 | **Lonely Palm** | any seed with it · T3 ≈ 40 u, look-down ≈ 9° toward the evening sun (D-017: 22° hides the horizon at FOV 35°) · 18:45 | Whole sandbar + ring in frame; palm silhouetted against the sky gradient; sun glint bloom on water; horizon blends into fog (no hard line) |
 | W10 | **Rainy Grove** | 6006 · T1 120 u Mossgrove, rain · 13:00 | Ripples on water; treehouse windows lit; foliage saturation ≥ 40 %; sky not neutral grey |
 
 **Global fail (any shot):**

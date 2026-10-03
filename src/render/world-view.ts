@@ -24,6 +24,7 @@ import {
 import { createRain, type RainView } from './weather/rain.ts';
 import { remap } from '../core/math/index.ts';
 import type { CameraWorld } from '../camera/controls.ts';
+import { islandFrames } from '../camera/frames.ts';
 import type { Counters } from '../capture/api.ts';
 import { createPropBatcher, type PropBatcher } from './props/batcher.ts';
 import { createPropMaterials } from './materials/prop-materials.ts';
@@ -234,15 +235,29 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   // No eager update here: the first update runs after the camera preset is applied so the
   // initial tier is set instantly (no bloom-in queue, no hard pops before the first frame).
 
-  const islands = world.islands.map((i) => ({
-    name: i.name,
-    archetypeName: i.archetypeName,
-    cx: i.cx,
-    cz: i.cz,
-    radius: i.radius,
-    peakY: i.peakY,
-    anchors: withDefaults(i.anchors, i, world),
-  }));
+  const islands = world.islands.map((i) => {
+    // village / dock framing from the settlement pipeline (lots, plaza, piers, moorings): the
+    // anchors are the settlement centroid / pier middle, facing the water (D1)
+    const frames = islandFrames(world, i.id);
+    const anchors = withDefaults(i.anchors, i, world);
+    for (const k of ['village', 'dock'] as const) {
+      const f = frames[k];
+      if (f) anchors[k] = { x: f.x, z: f.z, rotY: f.facing };
+    }
+    return {
+      name: i.name,
+      archetypeName: i.archetypeName,
+      cx: i.cx,
+      cz: i.cz,
+      radius: i.radius,
+      reach: i.reach,
+      peakX: i.peakX,
+      peakY: i.peakY,
+      peakZ: i.peakZ,
+      anchors,
+      frames,
+    };
+  });
   let minX = Infinity;
   let maxX = -Infinity;
   let minZ = Infinity;

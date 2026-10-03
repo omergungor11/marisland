@@ -1,31 +1,26 @@
 import * as THREE from 'three';
 import CameraControls from 'camera-controls';
 import type { System } from '../core/loop.ts';
-import { CAMERA, CAMERA_MOVE, TIERS } from '../content/tiers.ts';
+import { CAMERA, CAMERA_MOVE } from '../content/tiers.ts';
+import { FRAMING, type SafeInsets } from '../content/camera.ts';
 import { pitchForDistance, tierForDistance } from '../detail/tier.ts';
 import { DEG, clamp } from '../core/math/index.ts';
 import type { Emitter, AppEvents } from '../core/events.ts';
 import { angleDelta, nearestNorth } from '../ui/hud-math.ts';
+import {
+  framePose,
+  islandPose,
+  overviewPose as fitOverview,
+  pitchBand,
+  type CameraWorld,
+  type Viewport,
+} from './poses.ts';
+import { azimuthToward, type Pose } from './framing.ts';
 
 CameraControls.install({ THREE });
 
-/** What the camera needs from the world: bounds, island anchors and the ground height. */
-export interface CameraWorld {
-  centerX: number;
-  centerZ: number;
-  /** Radius of the archipelago for the overview pose and the target clamp. */
-  radius: number;
-  islands: Array<{
-    name: string;
-    archetypeName?: string;
-    cx: number;
-    cz: number;
-    radius: number;
-    peakY: number;
-    anchors: Record<string, { x: number; z: number; rotY: number }>;
-  }>;
-  heightAt(x: number, z: number): number;
-}
+export type { CameraWorld } from './poses.ts';
+export { pitchBand } from './poses.ts';
 
 /** An orbit pose: target, distance (u), pitch (deg from horizontal), azimuth (deg). */
 export interface OrbitPose {
@@ -68,12 +63,16 @@ export interface CameraSystem extends System {
   setFrozen(on: boolean): void;
   /** Vertical FOV in degrees, clamped to the photo range (photo mode). */
   setFov(deg: number): void;
+  /**
+   * Screen margins (CSS px) the fitted presets keep their content out of — the HUD dock and
+   * label row when the HUD is on (`FRAMING.hudInsets`), else `FRAMING.bareInsets`.
+   */
+  setSafeInsets(insets: SafeInsets): void;
 }
 
 const _target = new THREE.Vector3();
 const _pos = new THREE.Vector3();
 const _box = new THREE.Box3();
-const _sphere = new THREE.Sphere();
 const _ndc = new THREE.Vector2();
 const _ray = new THREE.Raycaster();
 
@@ -105,7 +104,6 @@ export function createCameraSystem(
   controls.touches.one = CameraControls.ACTION.TOUCH_TRUCK;
   controls.touches.two = CameraControls.ACTION.TOUCH_DOLLY_TRUCK;
   controls.touches.three = CameraControls.ACTION.TOUCH_ROTATE;
-  controls.verticalDragToForward = false;
 
   let world: CameraWorld = {
     centerX: 0,
@@ -124,6 +122,14 @@ export function createCameraSystem(
   let flying = false;
   /** Current orbit speed (deg/s), eased in. */
   let orbitSpeed = 0;
+  let insets: SafeInsets = FRAMING.bareInsets;
+  const viewport = (): Viewport => {
+    const height = dom.clientHeight || window.innerHeight || 1;
+    return { width: height * camera.aspect, height, insets };
+  };
+  const view = (): { fov: number; aspect: number } => ({ fov: camera.fov, aspect: camera.aspect });
+  const apply = (p: Pose, t: boolean): void =>
+    lookFromOrbit(controls, p.tx, p.ty, p.tz, p.dist, p.pitch, p.az, t);
 
   const applyPitchClamp = (): void => {
     const [lo, hi] = pitchBand(controls.distance);
@@ -170,24 +176,15 @@ export function createCameraSystem(
     cleanups.push(() => target.removeEventListener(type, h, opts));
   }
 
-  /** The archipelago-fitting T0 pose; pitch kept inside the pitch-curve slack. */
+  /**
+   * The archipelago-fitting T0 pose (D2): every island ring inside the safe area at the overview
+   * pitch. A portrait fit can exceed the 800 u zoom-out limit; the limit follows it so the first
+   * wheel notch never jumps.
+   */
   const overviewPose = (): OrbitPose => {
-    const o = CAMERA.overview;
-    // Fit the archipelago: distance so the cluster radius fills ~80 % of the vertical FOV
-    // at the overview pitch (foreshortened), clamped to the T0 range.
-    // Portrait: the horizontal FOV is the limiting one.
-    const vFov = camera.fov * DEG;
-    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
-    const fit =
-      (world.radius * 1.15) /
-      Math.sin(Math.min(vFov, hFov) / 2) /
-      Math.max(0.6, Math.sin(o.pitch * DEG));
-    const dist = clamp(Math.max(o.dist, fit), o.dist, CAMERA.maxDist);
-    // User rotation and the idle orbit clamp the polar angle to the pitch band; a pose outside
-    // it would snap on the first touch, so keep the default reachable.
-    const [lo, hi] = pitchBand(dist);
-    const pitch = clamp(o.pitch, lo, hi);
-    return { tx: world.centerX, ty: 0, tz: world.centerZ, dist, pitch, az: o.azimuthDeg };
+    const p = fitOverview(world, view(), viewport());
+    controls.maxDistance = Math.max(CAMERA.maxDist, p.dist * 1.02);
+    return { tx: p.tx, ty: p.ty, tz: p.tz, dist: p.dist, pitch: p.pitch, az: p.az };
   };
 
   const sys: CameraSystem = {
@@ -218,54 +215,39 @@ export function createCameraSystem(
         }
         case 'island': {
           const isl = findIsland(world, arg);
-          if (isl) {
-            // T1 framing: fit the island sphere, then settle on the pitch curve.
-            _sphere.center.set(isl.cx, Math.max(0, isl.peakY * 0.3), isl.cz);
-            _sphere.radius = isl.radius * CAMERA_MOVE.islandFitScale;
-            // Small islands (Lonely Palm) get a T3 framing: the fit is clamped only by the global bounds.
-            const dist = clamp(
-              _sphere.radius / Math.sin((camera.fov * DEG) / 2),
-              CAMERA.minDist * 2.2,
-              CAMERA_MOVE.islandMaxDist,
-            );
-            lookFromOrbit(
-              controls,
-              _sphere.center.x,
-              _sphere.center.y,
-              _sphere.center.z,
-              dist,
-              pitchForDistance(dist),
-              30,
-              t,
-            );
-          } else {
+          if (!isl) {
             sys.applyPreset('overview', transition);
             return;
           }
+          // T1: fit the island sphere; tiny islands (Lonely Palm): the low hero framing (D13).
+          apply(islandPose(isl, view(), viewport(), undefined, world.islands), t);
           break;
         }
         case 'village':
-        case 'dock':
+        case 'dock': {
+          // Fit the settlement (lots + plaza + piers) from over the water (D1).
+          const isl = findIsland(world, arg) ?? world.islands[0];
+          const frame = isl?.frames?.[kind];
+          if (frame) {
+            apply(framePose(frame, kind, view(), viewport(), world.heightAt(frame.x, frame.z)), t);
+            break;
+          }
+          const a = findAnchor(world, kind, arg);
+          const dist = kind === 'village' ? FRAMING.village.minDist : FRAMING.dock.minDist;
+          // no settlement: look at the anchor from its water side
+          const y = world.heightAt(a.x, a.z);
+          const az = azimuthToward(a.rotY);
+          lookFromOrbit(controls, a.x, Math.max(0, y), a.z, dist, pitchForDistance(dist), az, t);
+          break;
+        }
         case 'shore':
         case 'macro-beach': {
-          const dist = kind === 'village' ? 80 : kind === 'dock' ? 70 : kind === 'shore' ? 40 : 18;
-          const a = findAnchor(
-            world,
-            kind === 'macro-beach' ? 'beach' : kind === 'shore' ? 'beach' : kind,
-            arg,
-          );
+          const dist = kind === 'shore' ? 40 : 18;
+          const a = findAnchor(world, 'beach', arg);
           const y = world.heightAt(a.x, a.z);
-          const azimuth = (a.rotY / DEG + 180) % 360;
-          lookFromOrbit(
-            controls,
-            a.x,
-            Math.max(0, y),
-            a.z,
-            dist,
-            pitchForDistance(dist),
-            azimuth,
-            t,
-          );
+          // the beach anchor faces the water: the camera stands inland, looking out to sea
+          const az = azimuthToward(a.rotY + Math.PI);
+          lookFromOrbit(controls, a.x, Math.max(0, y), a.z, dist, pitchForDistance(dist), az, t);
           break;
         }
         default: {
@@ -303,24 +285,9 @@ export function createCameraSystem(
     flyToIsland(name) {
       const isl = findIsland(world, name);
       if (!isl) return false;
-      _sphere.center.set(isl.cx, Math.max(0, isl.peakY * 0.3), isl.cz);
-      _sphere.radius = isl.radius * CAMERA_MOVE.islandFitScale;
-      const dist = clamp(
-        _sphere.radius / Math.sin((camera.fov * DEG) / 2),
-        CAMERA.minDist * 2.2,
-        CAMERA_MOVE.islandMaxDist,
-      );
       const t = !reduced;
-      lookFromOrbit(
-        controls,
-        _sphere.center.x,
-        _sphere.center.y,
-        _sphere.center.z,
-        dist,
-        pitchForDistance(dist),
-        controls.azimuthAngle / DEG,
-        t,
-      );
+      // keep the heading
+      apply(islandPose(isl, view(), viewport(), controls.azimuthAngle / DEG), t);
       controls.normalizeRotations();
       if (t) startFly();
       else controls.update(0);
@@ -375,6 +342,9 @@ export function createCameraSystem(
     setFrozen(on) {
       frozen = on;
       orbitSpeed = 0;
+    },
+    setSafeInsets(i) {
+      insets = i;
     },
     setFov(deg) {
       camera.fov = clamp(deg, CAMERA.photoFov[0], CAMERA.photoFov[1]);
@@ -493,18 +463,6 @@ export function createCameraSystem(
   }
 
   return sys;
-}
-
-/**
- * Allowed pitch (deg from horizontal) at an orbit distance: the pitch curve ± slack, widened at
- * T0 down to the tier's `pitchMin` (ART_BIBLE §6: T0 58–70°) so the overview default (58° at a
- * fitted distance up to 800 u) is a reachable pose and the first rotate / idle orbit never snaps.
- */
-export function pitchBand(dist: number): [number, number] {
-  const curve = pitchForDistance(dist);
-  let lo = curve - CAMERA.pitchSlack;
-  if (dist >= TIERS[0].minDist) lo = Math.min(lo, TIERS[0].pitchMin);
-  return [lo, curve + CAMERA.pitchSlack];
 }
 
 function splitPreset(preset: string): [string, string] {
