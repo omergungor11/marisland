@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { splatPools } from './lantern-pools.ts';
+import { poolFalloff, splatPools } from './lantern-pools.ts';
 import { buildBeamGeometry } from './beam.ts';
-import { BEAM } from '../../content/lighting.ts';
+import { BEAM, POOLS } from '../../content/lighting.ts';
 import { POOL_HEIGHT_RANGE } from '../shaders/chunks/night.glsl.ts';
 
 describe('lantern pools (TASK-171)', () => {
@@ -20,11 +20,28 @@ describe('lantern pools (TASK-171)', () => {
       return [s.data[k], s.data[k + 1]];
     };
     const [core, h] = at(10, -4);
-    expect(core).toBeGreaterThan(200);
+    // D14: lower peak than a full-bright disc (the lamp stays brighter than its pool)
+    expect(core).toBeGreaterThan(90);
+    expect(core).toBeLessThan(235);
     expect((h / 255) * POOL_HEIGHT_RANGE).toBeCloseTo(6.4, 0);
-    // monotone-ish falloff and nothing beyond the wobbly rim (r × 1.09)
-    expect(at(12, -4)[0]).toBeLessThan(core);
-    expect(at(10 + 4 * 1.12, -4)[0]).toBe(0);
+    // small core, long soft tail, nothing beyond the wobbly rim (r × (1 + wobble))
+    expect(at(12, -4)[0]).toBeLessThan(core * 0.5);
+    expect(at(13, -4)[0]).toBeGreaterThan(0);
+    expect(at(10 + 4 * (1 + POOLS.wobble + 0.03), -4)[0]).toBe(0);
+  });
+
+  it('falloff: peak < 1, quadratic tail, 0 at the rim (D14)', () => {
+    expect(poolFalloff(0)).toBeCloseTo(POOLS.falloff.peak);
+    expect(poolFalloff(0)).toBeLessThan(1);
+    expect(poolFalloff(1)).toBe(0);
+    let prev = poolFalloff(0);
+    for (let t = 0.05; t < 1; t += 0.05) {
+      const v = poolFalloff(t);
+      expect(v).toBeLessThan(prev);
+      prev = v;
+    }
+    // inverse-square-like: at 2× the core radius ≈ 1/5 of the peak
+    expect(poolFalloff(2 * POOLS.falloff.core) / poolFalloff(0)).toBeLessThan(0.25);
   });
 
   it('is deterministic', () => {

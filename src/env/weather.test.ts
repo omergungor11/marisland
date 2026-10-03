@@ -6,12 +6,13 @@ import {
   createWeatherFx,
   dwellFor,
   mistAmount,
+  morningMist,
   nextState,
   oneHot,
   type WeatherName,
 } from './weather.ts';
 import { createEnvState, luminance, sampleEnv } from './env-state.ts';
-import { WEATHER_FSM, WEATHER_LOOKS, WEATHER_NAMES } from '../content/weather.ts';
+import { MORNING_MIST, WEATHER_FSM, WEATHER_LOOKS, WEATHER_NAMES } from '../content/weather.ts';
 import { MIST_GLSL } from '../render/shaders/chunks/mist.glsl.ts';
 
 /** Run the FSM from 0 to `until` with step `dt`; record (time, state) at every state change. */
@@ -185,5 +186,23 @@ describe('mist band (CPU twin of chunks/mist.glsl.ts)', () => {
     expect(MIST_GLSL).toContain('(e0 - e1) / dy');
     expect(MIST_GLSL).toContain('max(cam.y, 0.0) * uMist.y');
     expect(MIST_GLSL).toContain('min(1.0 - exp(-tau), uMistMax)');
+  });
+});
+
+describe('morning ground mist (W7)', () => {
+  const clear = oneHot('clear');
+  it('is full in the morning window, 0 outside (clear frames untouched)', () => {
+    const [a, b, c, d] = MORNING_MIST.hours;
+    expect(morningMist(6.75, clear)).toBe(1);
+    expect(morningMist((b + c) / 2, oneHot('cloudy'))).toBe(1);
+    expect(morningMist(a, clear)).toBe(0);
+    expect(morningMist(d, clear)).toBe(0);
+    for (const h of [0, 4, 9.5, 12, 15, 17.75, 22]) expect(morningMist(h, clear)).toBe(0);
+    expect(morningMist((c + d) / 2, clear)).toBeCloseTo(0.5, 5);
+  });
+  it('only in clear / cloudy weather', () => {
+    expect(morningMist(7, oneHot('rain'))).toBe(0);
+    expect(morningMist(7, oneHot('fog'))).toBe(0);
+    expect(morningMist(7, { clear: 0.5, cloudy: 0, rain: 0.5, fog: 0 })).toBeCloseTo(0.5);
   });
 });

@@ -43,6 +43,23 @@ vec2 marPool(vec2 xz) {
   return vec2(s.r * uLamps.x, s.g * ${f(POOL_HEIGHT_RANGE)});
 }
 
+/**
+ * Facet shading for a pool on the ground (D14): direction toward the lamp from the pool
+ * texture's gradient (brighter = closer to the lamp), the lamp ${POOLS.facet.lampHeight} u above the
+ * ground; returns base + (1 − base) · max(N · toLamp, 0) for world normal wn. pl = marPool(xz).x.
+ */
+float marPoolFacet(vec2 xz, float pl, vec3 wn) {
+  vec2 uv = (xz - uPoolMap.xy) * uPoolMap.z;
+  float e = uPoolMap.z * 0.75;
+  float r0 = texture2D(uPoolTex, uv).r;
+  vec2 g = vec2(texture2D(uPoolTex, uv + vec2(e, 0.0)).r - r0, texture2D(uPoolTex, uv + vec2(0.0, e)).r - r0);
+  float gl = length(g);
+  // horizontal distance to the lamp grows as the light drops off (≈ radius at the rim)
+  float hd = (1.0 - clamp(pl, 0.0, 1.0)) * ${f(POOLS.sources.lanternPost.radius)};
+  vec3 toLamp = normalize(vec3(gl > 1e-5 ? g / gl * hd : vec2(0.0), ${f(POOLS.facet.lampHeight)}).xzy);
+  return ${f(POOLS.facet.base)} + ${f(1 - POOLS.facet.base)} * max(dot(wn, toLamp), 0.0);
+}
+
 /** Spatially smooth pool flicker (neighbouring lanterns drift out of phase). */
 float marPoolFlicker(vec2 xz, float t) {
   // continuous in space (no cell seams inside a pool)

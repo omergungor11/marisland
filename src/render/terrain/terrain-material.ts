@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import type { Quality } from '../../core/params.ts';
 import type { WorldData } from '../../world/types.ts';
-import { Zone } from '../../world/types.ts';
-import { TERRAIN_COLORS, TERRAIN_FX, TERRAIN_MASK } from '../../content/terrain.ts';
+import { heightAt, Zone } from '../../world/types.ts';
+import { CRATER_GLOW, TERRAIN_COLORS, TERRAIN_FX, TERRAIN_MASK } from '../../content/terrain.ts';
 import { SHARED } from '../uniforms.ts';
 import type { WorldTextures } from '../world-textures.ts';
 import { CLOUD_SHADOW_GLSL } from '../shaders/chunks/cloud-shadow.glsl.ts';
@@ -17,7 +17,8 @@ import { MIST_GLSL } from '../shaders/chunks/mist.glsl.ts';
  *  (c) scrolling caustics below y = 0 (define MAR_CAUSTICS; off on low quality),
  *  (d) the wet-sand shore lap (SDF band, 4.5 s period) that the water foam matches,
  *  (f) lantern pools at night (TASK-171, chunks/night.glsl.ts): additive warm light × albedo,
- *  (g) the low weather mist band after three's fog (TASK-172, chunks/mist.glsl.ts).
+ *  (g) the low weather mist band after three's fog (TASK-172, chunks/mist.glsl.ts),
+ *  (h) the Emberpeak crater glow (D5, content CRATER_GLOW): emissive, brightest on the floor.
  * One program per quality level; all chunks share one material instance.
  */
 export interface TerrainMaterial {
@@ -32,6 +33,14 @@ export function createTerrainMaterial(
 ): TerrainMaterial {
   const material = new THREE.MeshLambertMaterial({ vertexColors: true });
   const h = world.height;
+  // crater glow (D5): xy = crater centre, z = floor y, w = rim y (w <= z → off)
+  const crater = new THREE.Vector4(0, 0, 0, 0);
+  for (const isl of world.islands) {
+    const cr = isl.anchors.crater;
+    if (isl.archetype !== 'emberpeak' || !cr) continue;
+    const floor = heightAt(h, cr.x, cr.z);
+    crater.set(cr.x, cr.z, floor, Math.max(floor + 1, isl.peakY));
+  }
   const uniforms: Record<string, THREE.IUniform> = {
     uTime: SHARED.uTime,
     uHorizon: SHARED.uHorizon,
@@ -51,6 +60,9 @@ export function createTerrainMaterial(
     uTerrainZone: { value: textures.zone },
     // xy = origin, z = 1 / cellSize, w = samples per side (texel-centre mapping)
     uTerrainGrid: { value: new THREE.Vector4(h.originX, h.originZ, 1 / h.cellSize, h.n) },
+    uNight: SHARED.uNight,
+    uCrater: { value: crater },
+    uCraterColor: { value: new THREE.Color(CRATER_GLOW.color) },
     uSandWet: { value: new THREE.Color(TERRAIN_COLORS.sandWet) },
     uMaskLand: { value: new THREE.Color(TERRAIN_MASK.land) },
     uMaskWet: { value: new THREE.Color(TERRAIN_MASK.wetSand) },
@@ -82,6 +94,9 @@ uniform float uTime;
 uniform float uDebugMask;
 uniform vec3 uHorizon;
 uniform vec3 uSandWet;
+uniform float uNight;
+uniform vec4 uCrater;
+uniform vec3 uCraterColor;
 uniform vec3 uMaskLand, uMaskWet, uMaskRock, uMaskSeabed;
 uniform sampler2D uTerrainSdf;
 uniform sampler2D uTerrainZone;
@@ -132,6 +147,16 @@ float marCaustic(vec2 p, float t) {
     float ndv = clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0);
     float rim = pow(1.0 - ndv, ${f(F.rimPower)}) * step(0.0, vMarWorld.y);
     totalEmissiveRadiance += uHorizon * ${f(F.rim)} * rim;
+  }
+  if (uCrater.w > uCrater.z) {
+    // (h) crater glow (D5): warm emissive walls, brightest on the floor, pulsing 0.7–1.0
+    float cd = length(vMarWorld.xz - uCrater.xy);
+    float cm = (1.0 - smoothstep(${f(CRATER_GLOW.radius * 0.55)}, ${f(CRATER_GLOW.radius)}, cd))
+             * (1.0 - smoothstep(uCrater.z, uCrater.w, vMarWorld.y));
+    if (cm > 0.0) {
+      float pulse = ${f((CRATER_GLOW.pulse[0] + CRATER_GLOW.pulse[1]) / 2)} + ${f((CRATER_GLOW.pulse[1] - CRATER_GLOW.pulse[0]) / 2)} * sin(uTime * ${f((2 * Math.PI) / CRATER_GLOW.period)});
+      totalEmissiveRadiance += uCraterColor * (cm * cm * pulse * (${f(CRATER_GLOW.day)} + ${f(CRATER_GLOW.night)} * uNight) * (1.0 - uDebugMask));
+    }
   }`,
       )
       .replace(
@@ -143,8 +168,10 @@ float marCaustic(vec2 p, float t) {
     vec2 marPl = marPool(vMarWorld.xz);
     if (marPl.x > 0.0) {
       float marNear = 1.0 - smoothstep(${POOL_GAIN.fade0}, ${POOL_GAIN.fade1}, abs(vMarWorld.y - marPl.y));
+      // D14: the pool follows the ground facets (world normal from three's view-space normal)
+      float marFacet = marPoolFacet(vMarWorld.xz, marPl.x, normalize((vec4(normal, 0.0) * viewMatrix).xyz));
       outgoingLight += diffuseColor.rgb * uPoolColor
-        * (marPl.x * marNear * ${POOL_GAIN.ground} * marPoolFlicker(vMarWorld.xz, uTime));
+        * (marPl.x * marNear * marFacet * ${POOL_GAIN.ground} * marPoolFlicker(vMarWorld.xz, uTime));
     }
   }
 #include <opaque_fragment>`,

@@ -93,6 +93,8 @@ uniform vec4 uWind;
 uniform float uMotionScale;
 uniform vec4 uBurp;      // x period, y ring life, z ring radius, w ring rise
 uniform vec4 uBurpSize;  // xy ring size, z pulse, w fadeLast
+uniform vec4 uSoft;      // x edge, y opacity young, z opacity old, w turbulence (u)
+uniform float uSoftFreq; // turbulence angular frequency (rad/s)
 attribute float aSeed;
 attribute vec3 aOrigin;
 attribute float aKind;
@@ -102,6 +104,8 @@ varying vec3 vN;
 varying vec3 vW;
 varying float vFade;
 varying float vKind;
+varying float vOpacity;
+varying float vDither;
 ${RAIN_VERT_PARS}
 float marPuffHash(vec2 p) {
   vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -117,6 +121,8 @@ void main() {
     return;
   }
   vAlong = 0.0;
+  vOpacity = 1.0;
+  vDither = 0.0;
   vec3 c = aOrigin;
   float size = 0.0;
   float fadeLast = uBurpSize.w;
@@ -127,7 +133,7 @@ void main() {
     vec2 jit = vec2(marPuffHash(vec2(id, aSeed * 97.0)), marPuffHash(vec2(aSeed * 53.0, id + 7.0))) - 0.5;
     float e = 1.0 - (1.0 - age) * (1.0 - age);
     float rise = aShape.z * age * (1.55 - 0.55 * age);
-    vec2 drift = uWind.xy * aMove.x * age * age * uMotionScale;
+    vec2 drift = uWind.xy * aMove.x * age * (aKind > 0.5 ? sqrt(age) : age) * uMotionScale;
     c += vec3(jit.x * aMove.y * (0.4 + age) + drift.x, rise, jit.y * aMove.y * (0.4 + age) + drift.y);
     float fadeP = smoothstep(1.0 - fadeLast, 1.0, age);
     size = mix(aShape.x, aShape.y, e) * smoothstep(0.0, 0.07, age)
@@ -137,6 +143,16 @@ void main() {
       float spawn = uTime - age * aShape.w;
       float p = mod(spawn, uBurp.x);
       size *= 1.0 + (uBurpSize.z - 1.0) * (1.0 - smoothstep(0.0, 1.3, p)) * step(0.5 * uBurp.x, spawn - p);
+    }
+    if (aKind > 0.5) {
+      // soft steam (D5): curling turbulence that grows with age; lighter toward the top
+      float ph = aSeed * 41.0 + id * 2.3;
+      float tt = uTime * uSoftFreq * uMotionScale;
+      c.xz += vec2(sin(tt + ph), cos(tt * 0.83 + ph * 1.7)) * uSoft.w * age;
+      c.y += sin(tt * 1.3 + ph * 0.7) * uSoft.w * 0.3 * age;
+      vOpacity = mix(uSoft.y, uSoft.z, age);
+      // per-puff dither phase: overlapping see-through puffs cover different pixels and add up
+      vDither = marPuffHash(vec2(id * 3.7, aSeed * 19.0));
     }
     vFade = 1.0 - smoothstep(1.0 - fadeLast, 1.0, age);
   } else {
@@ -149,6 +165,8 @@ void main() {
     c += vec3(cos(a) * uBurp.z * e, uBurp.w * age, sin(a) * uBurp.z * e);
     size = mix(uBurpSize.x, uBurpSize.y, e) * smoothstep(0.0, 0.08, age) * on;
     vFade = 1.0 - smoothstep(1.0 - fadeLast, 1.0, age);
+    vOpacity = mix(uSoft.y, uSoft.z, min(age, 1.0));
+    vDither = fract(aSeed * 7.31);
   }
   vec4 wp = modelMatrix * vec4(c + position * (0.5 * size), 1.0);
   vN = normalize(normal);
@@ -164,6 +182,10 @@ varying vec3 vN;
 varying vec3 vW;
 varying float vFade;
 varying float vKind;
+varying float vOpacity;
+varying float vDither;
+uniform vec4 uSoft;
+uniform vec3 uSteamGlow;
 ${RAIN_FRAG_PARS}
 void main() {
   if (vKind > ${RAIN_KIND - 0.5}) {
@@ -171,11 +193,24 @@ void main() {
     if (uDebugMask > 0.5 || marRainCoverage(vFade) < marBayer4(gl_FragCoord.xy)) discard;
     gl_FragColor = vec4(uRainColor, 1.0);
   } else {
-    if (vFade < marBayer4(gl_FragCoord.xy)) discard;
     vec3 n = normalize(vN);
+    float cover = vFade;
+    float th = marBayer4(gl_FragCoord.xy);
+    if (vKind > 0.5) {
+      // soft steam (D5): radial alpha (view-facing) × life opacity, as ordered dither — no sorting
+      float facing = clamp(dot(n, normalize(uCameraPos - vW)), 0.0, 1.0);
+      cover *= vOpacity * smoothstep(0.0, uSoft.x, facing);
+      th = fract(th + vDither);
+    }
+    if (cover < th) discard;
     // chimney smoke a touch greyer than steam
     float g = (0.3 + 0.7 * (0.5 + 0.5 * n.y)) * (vKind < 0.5 ? 0.55 : 1.0);
     gl_FragColor = marSoftShade(clamp(g, 0.0, 1.0), n, vW);
+    if (vKind > 0.5 && vKind < 1.5 && uNight > 0.0) {
+      // volcano steam at night: the low, young puffs catch the crater glow from below
+      float young = clamp((vOpacity - uSoft.z) / max(uSoft.y - uSoft.z, 1e-3), 0.0, 1.0);
+      gl_FragColor.rgb += uSteamGlow * (uNight * young * young * (0.6 + 0.4 * max(-n.y, 0.0)));
+    }
   }
 ${FRAG_OUT}
 }

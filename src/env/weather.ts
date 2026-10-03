@@ -1,5 +1,6 @@
 import {
   MIST,
+  MORNING_MIST,
   WEATHER_FSM,
   WEATHER_LOOKS,
   WEATHER_NAMES,
@@ -335,4 +336,18 @@ export function mistAmount(
   const mean = Math.abs(dy) > 1e-3 ? (e0 - e1) / dy : e0;
   const tau = d * Math.hypot(p.x - cam.x, p.y - cam.y, p.z - cam.z) * mean;
   return Math.min(1 - Math.exp(-tau), max);
+}
+
+/**
+ * Morning ground mist weight 0..1 (W7): the MORNING_MIST hour envelope × the summed weights of the
+ * weathers that keep it. Exactly 0 outside the envelope (clear frames stay bit-identical).
+ */
+export function morningMist(hour: number, w: Weights): number {
+  const [a, b, c, d] = MORNING_MIST.hours;
+  const h = ((hour % 24) + 24) % 24;
+  if (h <= a || h >= d) return 0;
+  const env = h < b ? smooth((h - a) / (b - a)) : h > c ? 1 - smooth((h - c) / (d - c)) : 1;
+  let k = 0;
+  for (const n of MORNING_MIST.weathers) k += w[n];
+  return env * clamp01(k);
 }

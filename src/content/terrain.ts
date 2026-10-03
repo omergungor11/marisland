@@ -2,7 +2,7 @@
  * Terrain look tunables (ART_BIBLE §1 faceting, §2 palette). Pure data — the
  * mesher (render/terrain) reads these; hex values come from the palette.
  */
-import { CLIFF_STRATA, GRASS, HAY, ROCK, SAND, WATER } from './palette.ts';
+import { CLIFF_STRATA, EMISSIVE, GRASS, HAY, ROCK, SAND, WATER } from './palette.ts';
 
 export const TERRAIN_COLORS = {
   sandDry: SAND.dry,
@@ -107,4 +107,18 @@ export const TERRAIN_FX = {
   lapWetMix: 0.75,
   /** Land never darker than this HSL lightness (ART_BIBLE §2, plus margin). */
   minLandL: 0.14,
+} as const;
+
+/**
+ * Emberpeak crater glow (D5, ART_BIBLE §7 #22 "lava glow 3 s, emissive 0.7–1.0, lights the crater
+ * rim at night"): an emissive term on the crater walls in the terrain shader (no light). Strongest
+ * on the crater floor, 0 at the rim (`radius` u around the crater anchor); `day` + `night` × night.
+ */
+export const CRATER_GLOW = {
+  color: EMISSIVE.lava,
+  radius: 9,
+  day: 0.05,
+  night: 0.5,
+  pulse: [0.7, 1.0] as const,
+  period: 3,
 } as const;
