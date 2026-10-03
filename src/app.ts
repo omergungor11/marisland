@@ -25,6 +25,7 @@ import { createIntro } from './camera/intro.ts';
 import { createTimeDial } from './ui/time-dial.ts';
 import { createPhotoMode } from './ui/photo.ts';
 import { createEnvState, sampleEnv } from './env/env-state.ts';
+import { createGovernor } from './debug/governor.ts';
 import { ISLAND_ACCENTS } from './content/islands-ui.ts';
 import type { TestScene } from './render/test-scene.ts';
 
@@ -197,6 +198,37 @@ export async function boot(): Promise<void> {
     });
     if (!Number.isNaN(params.time)) loop.clock.dayTime = params.time;
     if (params.freeze) loop.clock.daySpeed = 0;
+
+    // ---- governor (live mode only) + context loss recovery (ARCHITECTURE §8, R4)
+    if (!params.freeze && !params.perf) {
+      const governor = createGovernor({
+        getDpr: () => backend.renderer.getPixelRatio(),
+        setDpr: (d) => {
+          backend.renderer.setPixelRatio(d);
+          resize();
+        },
+        dropTier: () => {
+          if (!ctx.post) return false;
+          ctx.post.dispose();
+          ctx.post = null;
+          backend.renderer.toneMapping = THREE.NeutralToneMapping;
+          return true;
+        },
+        now,
+      });
+      loop.add(governor);
+      Object.defineProperty(api, 'governor', { get: () => governor.actions });
+    }
+    canvas.addEventListener('webglcontextlost', (ev) => {
+      ev.preventDefault();
+      console.warn('[marisland] WebGL context lost — rebuilding on restore');
+      loop.stop();
+    });
+    canvas.addEventListener('webglcontextrestored', () => {
+      void api.regen(api.seed).then(() => {
+        if (!params.freeze) loop.start();
+      });
+    });
 
     const cam = createCameraSystem(camera, canvas, events, !params.freeze);
     ctx.cam = cam;
@@ -372,7 +404,40 @@ export async function boot(): Promise<void> {
       }
     };
     api.pick = () => null;
-    api.perf = async () => ({ p50: 0, p95: 0, frames: 0 });
+    api.perf = async () => {
+      // 10 s fly path overview → hero island → village, sampling frame times (real GPU only).
+      const times: number[] = [];
+      const cw = testScene.cameraWorld;
+      const hero = cw.islands[0];
+      const legs: [string, number][] = [
+        ['overview', 3],
+        [hero ? `island:${hero.name}` : 'overview', 3.5],
+        ['village', 3.5],
+      ];
+      for (const [preset, secs] of legs) {
+        cam.applyPreset(preset, true);
+        const end = now() + secs * 1000;
+        let prev = now();
+        while (now() < end) {
+          await new Promise((r) => requestAnimationFrame(r));
+          const t = now();
+          times.push(t - prev);
+          prev = t;
+        }
+      }
+      times.sort((a, b) => a - b);
+      const res = {
+        p50: times[Math.floor(times.length * 0.5)] ?? 0,
+        p95: times[Math.floor(times.length * 0.95)] ?? 0,
+        frames: times.length,
+      };
+      ctx.timings.perfP50 = res.p50;
+      ctx.timings.perfP95 = res.p95;
+      console.info(
+        `[marisland] perf p50 ${res.p50.toFixed(1)} ms · p95 ${res.p95.toFixed(1)} ms · ${res.frames} frames`,
+      );
+      return res;
+    };
     api.regen = async (seed: number) => {
       worldScope.dispose();
       loop.remove(testScene.system);
@@ -434,6 +499,7 @@ export async function boot(): Promise<void> {
     if (!runIntro) hud?.show();
     else hud?.showWordmark();
     api.ready = true;
+    if (params.perf && !params.freeze) void api.perf();
     console.info(
       `[marisland] ready in ${ctx.timings.boot.toFixed(0)} ms · ${backend.rendererString} · quality ${quality}`,
     );

@@ -72,7 +72,6 @@ export function createCameraSystem(
   controls.touches.one = CameraControls.ACTION.TOUCH_TRUCK;
   controls.touches.two = CameraControls.ACTION.TOUCH_DOLLY_ROTATE;
   controls.touches.three = CameraControls.ACTION.TOUCH_TRUCK;
-  controls.verticalDragToForward = false;
 
   let world: CameraWorld = {
     centerX: 0,
