@@ -21,10 +21,10 @@ Status flow: PENDING → IN_PROGRESS → REVIEW → COMPLETED (BLOCKED if deps u
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-101 | Single-island heightfield, shelf, zones, SDF, hashes | worldgen | M | PENDING | TASK-002 |
-| TASK-102 | Terrain mesher: facets, jitter, AO, LOD, skirts | shader | M | PENDING | TASK-101, TASK-003 |
-| TASK-103 | Water: swell, depth ramp/alpha, SDF foam, glints | shader | L | PENDING | TASK-101 |
-| TASK-104 | Material factory, sky, fog, lights, fitted shadows, post | shader | M | PENDING | TASK-102 |
+| TASK-101 | Single-island heightfield, shelf, zones, SDF, hashes | worldgen | M | COMPLETED | TASK-002 |
+| TASK-102 | Terrain mesher: facets, jitter, AO, LOD, skirts | shader | M | IN_PROGRESS | TASK-101, TASK-003 |
+| TASK-103 | Water: swell, depth ramp/alpha, SDF foam, glints | shader | L | IN_PROGRESS | TASK-101 |
+| TASK-104 | Material factory, sky, fog, lights, fitted shadows, post | shader | M | IN_PROGRESS | TASK-102 |
 | TASK-105 | Camera wrapper, presets, pitch curve, bounds | engine | S | COMPLETED | TASK-003 |
 
 ### M2 — Archipelago
@@ -32,8 +32,8 @@ Status flow: PENDING → IN_PROGRESS → REVIEW → COMPLETED (BLOCKED if deps u
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-111 | Layout, roster rules, names, channels | worldgen | M | PENDING | TASK-101 |
-| TASK-112 | Archetype profiles, cliffs, black sand | worldgen | L | PENDING | TASK-111 |
+| TASK-111 | Layout, roster rules, names, channels | worldgen | M | IN_PROGRESS | TASK-101 |
+| TASK-112 | Archetype profiles, cliffs, black sand | worldgen | L | IN_PROGRESS | TASK-111 |
 | TASK-113 | New-seed regen, cloud-curtain, labels, pinned W-seeds | engine | M | PENDING | TASK-111, TASK-102 |
 
 ### M3 — Vegetation
@@ -41,7 +41,7 @@ Status flow: PENDING → IN_PROGRESS → REVIEW → COMPLETED (BLOCKED if deps u
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-121 | `geo/` builders for the bible vegetation | props | M | PENDING | TASK-003 |
+| TASK-121 | `geo/` builders for the bible vegetation | props | M | COMPLETED | TASK-003 |
 | TASK-122 | PropDefs, rules, Poisson, OccupancyGrid | worldgen | M | PENDING | TASK-112 |
 | TASK-123 | PropBatcher, ground cover, blobs, cluster proxies | engine | M | PENDING | TASK-121, TASK-122 |
 | TASK-124 | Wind, bloom-in, dither, depth parity | shader | M | PENDING | TASK-123 |
