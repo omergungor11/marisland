@@ -7,3 +7,4 @@ mar-docs/shots
 .claude
 public
 dist-*
+.claude/worktrees

@@ -23,7 +23,17 @@ const nonDeterministic = [
 ];
 
 export default tseslint.config(
-  { ignores: ['dist/**', 'dist-*/**', 'node_modules/**', 'shots/**', 'coverage/**', 'public/**'] },
+  {
+    ignores: [
+      'dist/**',
+      'dist-*/**',
+      '.claude/worktrees/**',
+      'node_modules/**',
+      'shots/**',
+      'coverage/**',
+      'public/**',
+    ],
+  },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   prettier,
