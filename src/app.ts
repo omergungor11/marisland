@@ -286,6 +286,13 @@ export async function boot(): Promise<void> {
     }
     loader.setProgress(0.6);
 
+    if (params.debug === 'wire') {
+      scene.traverse((o) => {
+        const m = (o as THREE.Mesh).material as THREE.Material | undefined;
+        if (m && 'wireframe' in m) (m as THREE.MeshLambertMaterial).wireframe = true;
+      });
+    }
+
     // ---- prewarm + warm-up
     const tCompile = now();
     await backend.renderer.compileAsync(scene, camera);
