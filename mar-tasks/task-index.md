@@ -77,33 +77,33 @@ Status flow: PENDING → IN_PROGRESS → REVIEW → COMPLETED (BLOCKED if deps u
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-161 | Villagers, cats, sheep, crabs | life | M | IN_PROGRESS | TASK-151, TASK-131 |
-| TASK-162 | Picking, hover, reactions, reduced motion | life | M | IN_PROGRESS | TASK-161 |
+| TASK-161 | Villagers, cats, sheep, crabs | life | M | COMPLETED | TASK-151, TASK-131 |
+| TASK-162 | Picking, hover, reactions, reduced motion | life | M | COMPLETED | TASK-161 |
 
 ### M8 — Day/night & weather
 *Time ladder × weather*
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-171 | EnvState, sky bodies, night emissives, beam | shader | M | IN_PROGRESS | TASK-104, TASK-132 |
-| TASK-172 | Weather FSM, rain, ripples, mist | shader | M | PENDING | TASK-171 |
+| TASK-171 | EnvState, sky bodies, night emissives, beam | shader | M | COMPLETED | TASK-104, TASK-132 |
+| TASK-172 | Weather FSM, rain, ripples, mist | shader | M | IN_PROGRESS | TASK-171 |
 
 ### M9 — Camera/HUD/photo
 *HUD, mobile, photo*
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-181 | Intro, fly-to, orbit, touch, compass | engine | M | IN_PROGRESS | TASK-105, TASK-113 |
-| TASK-182 | HUD dock, time dial, photo mode + PNG export | engine | M | IN_PROGRESS | TASK-181 |
+| TASK-181 | Intro, fly-to, orbit, touch, compass | engine | M | COMPLETED | TASK-105, TASK-113 |
+| TASK-182 | HUD dock, time dial, photo mode + PNG export | engine | M | COMPLETED | TASK-181 |
 
 ### M10 — Hardening
 *W1–W10*
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-191 | Governor, prewarm, context-loss regen, `perf=1` | engine | M | PENDING | all Phase 1 |
-| TASK-192 | 10-seed sweep; user checks M1 60 fps / phone 30 fps | qa | M | PENDING | TASK-191 |
-| TASK-193 | README, MEMORY gotchas | docs | S | PENDING | TASK-192 |
+| TASK-191 | Governor, prewarm, context-loss regen, `perf=1` | engine | M | COMPLETED | all Phase 1 |
+| TASK-192 | 10-seed sweep; user checks M1 60 fps / phone 30 fps | qa | M | IN_PROGRESS | TASK-191 |
+| TASK-193 | README, MEMORY gotchas | docs | S | IN_PROGRESS | TASK-192 |
 
 ## Phase 2: Sandbox (sketch)
 
