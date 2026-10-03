@@ -22,8 +22,8 @@ Status flow: PENDING → IN_PROGRESS → REVIEW → COMPLETED (BLOCKED if deps u
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
 | TASK-101 | Single-island heightfield, shelf, zones, SDF, hashes | worldgen | M | COMPLETED | TASK-002 |
-| TASK-102 | Terrain mesher: facets, jitter, AO, LOD, skirts | shader | M | IN_PROGRESS | TASK-101, TASK-003 |
-| TASK-103 | Water: swell, depth ramp/alpha, SDF foam, glints | shader | L | IN_PROGRESS | TASK-101 |
+| TASK-102 | Terrain mesher: facets, jitter, AO, LOD, skirts | shader | M | COMPLETED | TASK-101, TASK-003 |
+| TASK-103 | Water: swell, depth ramp/alpha, SDF foam, glints | shader | L | COMPLETED | TASK-101 |
 | TASK-104 | Material factory, sky, fog, lights, fitted shadows, post | shader | M | IN_PROGRESS | TASK-102 |
 | TASK-105 | Camera wrapper, presets, pitch curve, bounds | engine | S | COMPLETED | TASK-003 |
 
@@ -34,7 +34,7 @@ Status flow: PENDING → IN_PROGRESS → REVIEW → COMPLETED (BLOCKED if deps u
 |----|------|-------|-----------|--------|-------------|
 | TASK-111 | Layout, roster rules, names, channels | worldgen | M | IN_PROGRESS | TASK-101 |
 | TASK-112 | Archetype profiles, cliffs, black sand | worldgen | L | IN_PROGRESS | TASK-111 |
-| TASK-113 | New-seed regen, cloud-curtain, labels, pinned W-seeds | engine | M | PENDING | TASK-111, TASK-102 |
+| TASK-113 | New-seed regen, cloud-curtain, labels, pinned W-seeds | engine | M | IN_PROGRESS | TASK-111, TASK-102 |
 
 ### M3 — Vegetation
 *Forests, palms, sway*
@@ -42,8 +42,8 @@ Status flow: PENDING → IN_PROGRESS → REVIEW → COMPLETED (BLOCKED if deps u
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
 | TASK-121 | `geo/` builders for the bible vegetation | props | M | COMPLETED | TASK-003 |
-| TASK-122 | PropDefs, rules, Poisson, OccupancyGrid | worldgen | M | PENDING | TASK-112 |
-| TASK-123 | PropBatcher, ground cover, blobs, cluster proxies | engine | M | PENDING | TASK-121, TASK-122 |
+| TASK-122 | PropDefs, rules, Poisson, OccupancyGrid | worldgen | M | COMPLETED | TASK-112 |
+| TASK-123 | PropBatcher, ground cover, blobs, cluster proxies | engine | M | IN_PROGRESS | TASK-121, TASK-122 |
 | TASK-124 | Wind, bloom-in, dither, depth parity | shader | M | PENDING | TASK-123 |
 
 ### M4 — Settlements
@@ -93,7 +93,7 @@ Status flow: PENDING → IN_PROGRESS → REVIEW → COMPLETED (BLOCKED if deps u
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-181 | Intro, fly-to, orbit, touch, compass | engine | M | PENDING | TASK-105, TASK-113 |
+| TASK-181 | Intro, fly-to, orbit, touch, compass | engine | M | IN_PROGRESS | TASK-105, TASK-113 |
 | TASK-182 | HUD dock, time dial, photo mode + PNG export | engine | M | PENDING | TASK-181 |
 
 ### M10 — Hardening

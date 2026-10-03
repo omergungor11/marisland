@@ -6,7 +6,8 @@
 
 ## Project Status
 - **Planning**: COMPLETED 2026-10-03 — ARCHITECTURE.md, ART_BIBLE.md, skills, agents, PROMPT.md
-- **Phase 0**: IN PROGRESS — TASK-001/002/003 done (scaffold, core loop, WebGL backend + test scene); TASK-004/005/006/007 in progress
+- **Phase 0**: COMPLETED 2026-10-03 — CI + Pages deploy green on first push
+- **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
 - (Update at the end of every session: last finished task, what's half-done, next step.)
@@ -17,6 +18,15 @@
 - Shot presets are data in `src/content/shots.ts`; both the harness (`scripts/shots.ts`) and the app read them — keep them in sync
 
 ## Known Issues / Gotchas
+- Parallel agents share ONE working tree: `pnpm shots --tag=<name> --port=<n>` gives each its own `dist-<tag>/` and
+  `shots/<set>-<tag>/`; `git add src/render` can sweep up another agent's half-done files — add paths explicitly
+- `.claude/worktrees/` (Agent isolation=worktree) sits inside the repo: ignored in eslint/prettier/git
+- CSS: a second `animation` on an element replaces a `forwards`-filled pop animation → element vanishes / inline
+  transform ignored. Animate an inner span, or add a `.shown` class that sets final styles after the pop
+- PropBatcher: the first `setTier`/ground-cover reveal must be instant (before the first frame) or `hardPops` > 0
+- SwiftShader leaves sub-pixel cracks even on bit-identical shared chunk edges → terrain skirts 0.15 u below edge
+- Water fogs itself with the FogExp2 curve (`1-exp(-(d·dist)²)`); keep `SHARED.uFogDensity` = scene.fog.density
+- Spring k=180,c=12 overshoots 21 %; bible's "8 %/300 ms" needs c=17 (D-008)
 - three r186: `PCFSoftShadowMap` removed; `THREE.Clock` deprecated
 - pmndrs `postprocessing@6.39.5` needs three `<0.187` — don't bump three
 - SwiftShader fps is meaningless; assert counts from `renderer.info`
