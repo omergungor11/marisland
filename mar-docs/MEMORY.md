@@ -10,12 +10,14 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
-- 2026-10-03 (session 2): Phase 0 + M1–M6 done and pushed (contact sheets `mar-docs/shots/M1–M4.jpg`); M5
-  lives inside the PropBatcher. The previous session's in-progress M7/M8/M9 agent work was never committed
-  and is gone — restarted from main. In flight via worktree agents: TASK-161 (`life`), TASK-171 (`shader`),
-  TASK-181/182 (`engine`); next: TASK-162 (picking/reactions) and TASK-172 (weather).
-- Known debts: W9 dusk water tint (water agent cut off mid-polish, partial diff committed and green),
-  stair-stepped ring edges in the mask frame, D-golden foliage slightly grey-blue, no rain/mist yet.
+- 2026-10-03 (session 2): M7 (TASK-161/162), M8 (TASK-171/172), M9 (TASK-181/182) merged and pushed on
+  `claude/inspiring-pascal-19nwjr`; contact sheets `mar-docs/shots/M9.jpg` (wow) + `M9-dev.jpg`. In flight:
+  TASK-191 (`engine`: regen geometry leak 99→130, governor, context loss, `?perf=1`) and a shader program
+  audit (medium 21–22 vs budget 20). Then TASK-192 10-seed sweep, TASK-193 README.
+- Visual debts to schedule: Millbrook meadow fence segments read as scattered "sticks" (D-sheep/W7); W7
+  sheep too small at T2 (consider a closer W7 cam); W3 moon glitter path wide/busy; stair-stepped ring edges
+  in the mask frame; D-golden foliage slightly grey-blue; W10 treehouse windows hidden by canopy; boats
+  sample content SWELL on CPU so in rain (swell ×1.4) they can float ~0.06 u off the surface.
 
 ## Important Patterns
 - Pixel determinism: same URL → byte-identical PNG under SwiftShader
