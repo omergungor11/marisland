@@ -42,7 +42,16 @@ export const SHARED = {
   uCloudSun: { value: new THREE.Vector4(0, 0, 0, 0) },
   /** x = salt, y = active-cell threshold, z = cell size, w = cells. */
   uCloudSeed: { value: new THREE.Vector4(0, 0, 180, 4) },
+  /** Weather (TASK-172): rain amount 0..1 (streaks + water ripple rings). */
+  uRain: { value: 0 },
+  /** Weather: low mist band strength 0..1. */
+  uMist: { value: 0 },
+  /** Weather: global saturation delta read by the grade (−0.2 rain). Uniform instance so pmndrs can share it. */
+  uWeatherSat: new THREE.Uniform(0),
 };
+
+/** Base wind strength / swell amplitude (before weather scaling). */
+const base: { wind: number; swell: number } = { wind: GUST.strength, swell: SWELL.amplitude };
 
 export type SharedUniforms = typeof SHARED;
 
@@ -66,8 +75,14 @@ export function writeEnvUniforms(
   SHARED.uGolden.value = env.golden;
   SHARED.uCameraPos.value.copy(cameraPos);
   SHARED.uTier.value = tier;
+  SHARED.uRain.value = env.rain;
+  SHARED.uMist.value = env.mist;
+  SHARED.uWeatherSat.value = env.saturation;
+  SHARED.uWind.value.z = base.wind * env.gustScale;
+  SHARED.uSwell.value.x = base.swell * env.swellScale;
 }
 
 export function setWind(dir: number, strength: number): void {
+  base.wind = strength;
   SHARED.uWind.value.set(Math.cos(dir), Math.sin(dir), strength, GUST.wavelength);
 }

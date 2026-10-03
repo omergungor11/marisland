@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { Effect } from 'postprocessing';
 import { LIGHTING } from '../../content/palette.ts';
 import { POST } from '../../content/lighting.ts';
+import { SHARED } from '../uniforms.ts';
+import { WEATHER_GRADE } from '../../content/weather.ts';
 
 /**
  * One merged grade effect (ART_BIBLE §3 "Grade", "Vignette"), applied in linear
@@ -12,6 +14,7 @@ import { POST } from '../../content/lighting.ts';
  *  - night: luminance-kept shift toward a moonlit blue (spares emissives),
  *  - coloured vignette (intensity 0.22, softness 0.6, colour #2A2350) — pmndrs'
  *    VignetteEffect can only darken to black, hence the custom effect.
+ *  - weather saturation delta (SHARED.uWeatherSat, written from EnvState.saturation).
  * Bypassed in debug-mask mode so mask colours stay exact.
  */
 const FRAG = /* glsl */ `
@@ -26,6 +29,8 @@ uniform vec3 uNightTint;
 uniform float uNight;
 uniform float uGoldenLift;
 uniform float uNightLift;
+uniform float uWeatherSat;
+uniform float uWeatherKeep;
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
   vec3 c = max(inputColor.rgb, 0.0);
@@ -33,6 +38,10 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
   float mid = smoothstep(0.0, 0.18, l) * (1.0 - smoothstep(0.5, 1.4, l));
   c = max(mix(vec3(l), c, 1.0 + uSat * mid), 0.0);
+  // weather (TASK-172): saturation delta (−15 % overcast, −20 % rain), luminance kept.
+  // Wet foliage stays lush (W10: foliage sat ≥ 40 %): green-dominant pixels keep most of theirs.
+  float green = smoothstep(0.08, 0.3, (c.g - max(c.r, c.b)) / max(c.g, 1e-4));
+  c = max(mix(vec3(l), c, 1.0 + uWeatherSat * (1.0 - uWeatherKeep * green)), 0.0);
   c += uLift * (1.0 - smoothstep(0.0, 0.15, c));
   c = mix(c, uWarm * l, uGolden);
   c *= 1.0 + uGoldenLift * mid;
@@ -73,6 +82,9 @@ export class MarGradeEffect extends Effect {
         ['uNight', new THREE.Uniform(0)],
         ['uGoldenLift', new THREE.Uniform(0)],
         ['uNightLift', new THREE.Uniform(0)],
+        // same Uniform instance as SHARED → follows EnvState with no extra wiring
+        ['uWeatherSat', SHARED.uWeatherSat],
+        ['uWeatherKeep', new THREE.Uniform(WEATHER_GRADE.foliageKeep)],
       ]),
     });
   }

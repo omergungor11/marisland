@@ -1,16 +1,16 @@
 import { ENV_KEYS, type EnvKey } from '../content/palette.ts';
+import { hexToLinear, lerpRgb, type Rgb } from './color.ts';
+import { createWeather } from './weather.ts';
+import { WEATHER_BOOT, WEATHER_HOOK } from './weather-hook.ts';
+
+export { hexToLinear, hexToSrgb, luminance, type Rgb } from './color.ts';
+export { WEATHER_BOOT, WEATHER_HOOK } from './weather-hook.ts';
 
 /**
  * EnvState (ARCHITECTURE §7): one sampled object per frame from the bible's
  * time-of-day keys. Colours are linear RGB triplets (no three import so it is
  * testable in Node); render/uniforms.ts copies them into shared uniforms.
  */
-export interface Rgb {
-  r: number;
-  g: number;
-  b: number;
-}
-
 export interface EnvState {
   hour: number;
   zenith: Rgb;
@@ -31,36 +31,22 @@ export interface EnvState {
   exposure: number;
   /** Golden-hour warm overlay 0..1. */
   golden: number;
+  // --- weather deltas (TASK-172; neutral values when clear) ---
+  /** Grade saturation delta (−0.2 rain … 0 clear) → SHARED.uWeatherSat. */
+  saturation: number;
+  /** Fog density multiplier (×1.8 rain). Applied by sky.update to SHARED.uFogDensity + scene fog. */
+  fogScale: number;
+  /** Low mist band strength 0..1 → SHARED.uMist. */
+  mist: number;
+  /** Rain amount 0..1 → SHARED.uRain (streaks + water ripples). */
+  rain: number;
+  /** Cloud cover 0..1 (clear 0.35, cloudy 0.75, rain 0.9) — for the clouds system + sun-disc dimming. */
+  cloudCover: number;
+  /** Wind gust strength multiplier → SHARED.uWind.z. */
+  gustScale: number;
+  /** Swell amplitude multiplier → SHARED.uSwell.x. */
+  swellScale: number;
 }
-
-const srgbToLinear = (c: number): number =>
-  c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-
-export function hexToLinear(hex: string, out: Rgb = { r: 0, g: 0, b: 0 }): Rgb {
-  const n = parseInt(hex.replace('#', ''), 16);
-  out.r = srgbToLinear(((n >> 16) & 255) / 255);
-  out.g = srgbToLinear(((n >> 8) & 255) / 255);
-  out.b = srgbToLinear((n & 255) / 255);
-  return out;
-}
-
-export function hexToSrgb(hex: string, out: Rgb = { r: 0, g: 0, b: 0 }): Rgb {
-  const n = parseInt(hex.replace('#', ''), 16);
-  out.r = ((n >> 16) & 255) / 255;
-  out.g = ((n >> 8) & 255) / 255;
-  out.b = (n & 255) / 255;
-  return out;
-}
-
-/** Relative luminance of a linear rgb. */
-export const luminance = (c: Rgb): number => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
-
-const lerpRgb = (a: Rgb, b: Rgb, t: number, out: Rgb): Rgb => {
-  out.r = a.r + (b.r - a.r) * t;
-  out.g = a.g + (b.g - a.g) * t;
-  out.b = a.b + (b.b - a.b) * t;
-  return out;
-};
 
 interface LinearKey {
   hour: number;
@@ -114,6 +100,13 @@ export function createEnvState(): EnvState {
     sunElevation: 1,
     exposure: 1,
     golden: 0,
+    saturation: 0,
+    fogScale: 1,
+    mist: 0,
+    rain: 0,
+    cloudCover: 0.35,
+    gustScale: 1,
+    swellScale: 1,
   };
 }
 
@@ -174,5 +167,14 @@ export function sampleEnv(hour: number, out: EnvState): EnvState {
         ? 1 - (h - 5.5) / 1.5
         : 0;
   out.exposure = 1;
+  out.saturation = 0;
+  out.fogScale = 1;
+  out.mist = 0;
+  out.rain = 0;
+  out.cloudCover = 0.35;
+  out.gustScale = 1;
+  out.swellScale = 1;
+  if (!WEATHER_HOOK.apply) createWeather(WEATHER_BOOT.seed, WEATHER_BOOT.forced);
+  WEATHER_HOOK.apply?.(out);
   return out;
 }

@@ -13,7 +13,7 @@ chunky-cute cumulus look at T0 and makes the shadows legible (checked in W1/D-ov
 
 ## D-010: High-quality program budget 20 → 24 — 2026-10-03
 
-**Decision**: `BUDGETS.programs` = 18 / 26 / 30 (low / medium / high; ARCHITECTURE said 12 / 16 / 20). Measured at
+**Decision**: `BUDGETS.programs` = 22 / 32 / 36 (low / medium / high; ARCHITECTURE said 12 / 16 / 20; +2 for rain/mist). Measured at
 M7: 5 lit variants (+5 depth), terrain, water, sky, clouds, puffs, blobs, beam, fireflies, gull patch = 17 on low;
 + post chain (7, DOF 8 more on high) on medium/high. DOF stays at T3 on high (ART_BIBLE §3).
 **Rationale**: pmndrs `DepthOfFieldEffect` alone compiles 8 programs (CoC, blur, bokeh, mask passes).

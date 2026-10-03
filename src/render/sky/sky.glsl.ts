@@ -21,6 +21,7 @@ uniform float uTime;
 uniform float uDebugMask;
 uniform float uSunRadius;
 uniform float uSunDisc;
+uniform float uSunDim;
 uniform vec2 uSunGlow;
 uniform float uMoonRadius;
 uniform vec3 uMoonColor;
@@ -56,7 +57,7 @@ void main() {
   // sun: soft disc + glow
   float sunDisc = 1.0 - smoothstep(uSunRadius * 0.8, uSunRadius * 1.25, ang);
   float glow = pow(max(cosA, 0.0), uSunGlow.y) * uSunGlow.x;
-  col += uSunColor * (sunDisc * uSunDisc + glow) * day * above;
+  col += uSunColor * (sunDisc * uSunDisc + glow) * day * above * uSunDim;
 
   // moon: disc with a soft limb and a few darker "seas"
   float moonDisc = 1.0 - smoothstep(uMoonRadius * 0.85, uMoonRadius * 1.1, ang);

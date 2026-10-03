@@ -4,6 +4,7 @@ import type { EnvState } from '../../env/env-state.ts';
 import { FOG, SKY } from '../../content/lighting.ts';
 import { SHARED } from '../uniforms.ts';
 import { SKY_FRAG, SKY_VERT } from './sky.glsl.ts';
+import { WEATHER_SKY } from '../../content/weather.ts';
 
 /**
  * Sky dome + fog (ARCHITECTURE §3 "Sky & lights", ART_BIBLE §3). A camera-
@@ -31,6 +32,7 @@ export function createSky(scene: THREE.Scene, scope: Scope): SkyView {
   scene.background = new THREE.Color(0xd6eef7);
 
   const geo = scope.add(new THREE.SphereGeometry(SKY.radius, 48, 24));
+  const sunDim = { value: 1 };
   const rad = THREE.MathUtils.DEG2RAD;
   const mat = scope.add(
     new THREE.ShaderMaterial({
@@ -52,6 +54,7 @@ export function createSky(scene: THREE.Scene, scope: Scope): SkyView {
         uDebugMask: SHARED.uDebugMask,
         uSunRadius: { value: SKY.sunDiscDeg * 0.5 * rad },
         uSunDisc: { value: SKY.sunDiscIntensity },
+        uSunDim: sunDim,
         uSunGlow: { value: new THREE.Vector2(SKY.sunGlow, SKY.sunGlowPower) },
         uMoonRadius: { value: SKY.moonDiscDeg * 0.5 * rad },
         uMoonColor: { value: new THREE.Color(SKY.moonColor).multiplyScalar(SKY.moonIntensity) },
@@ -75,6 +78,17 @@ export function createSky(scene: THREE.Scene, scope: Scope): SkyView {
     mesh,
     fog,
     update(env, cameraPos) {
+      // weather (TASK-172): fog density × fogScale (world-view writes the base density each
+      // frame before this), sun disc/glow dimmed under cloud cover. Overcast sky colours are
+      // already mixed into env.zenith/horizon by the weather FSM.
+      SHARED.uFogDensity.value *= env.fogScale;
+      sunDim.value =
+        1 -
+        WEATHER_SKY.sunDim *
+          Math.min(
+            1,
+            Math.max(0, (env.cloudCover - WEATHER_SKY.coverFrom) / (1 - WEATHER_SKY.coverFrom)),
+          );
       fog.color.setRGB(env.fog.r, env.fog.g, env.fog.b);
       fog.density = SHARED.uFogDensity.value;
       (scene.background as THREE.Color).setRGB(env.fog.r, env.fog.g, env.fog.b);

@@ -24,7 +24,7 @@ import { createCurtain } from './ui/curtain.ts';
 import { createIntro } from './camera/intro.ts';
 import { createTimeDial } from './ui/time-dial.ts';
 import { createPhotoMode } from './ui/photo.ts';
-import { createEnvState, sampleEnv } from './env/env-state.ts';
+import { createEnvState, sampleEnv, WEATHER_BOOT } from './env/env-state.ts';
 import { createGovernor } from './debug/governor.ts';
 import { createPicker, createReactions, isClick } from './interact/index.ts';
 import { heightAt } from './world/types.ts';
@@ -66,6 +66,8 @@ export async function boot(): Promise<void> {
   injectStyles();
   const t0 = now();
   const params = applyShotPreset(parseParams(location.search));
+  WEATHER_BOOT.seed = params.seed;
+  WEATHER_BOOT.forced = params.weather;
   const loader = createLoader(root, !params.freeze);
   const api = installApi();
 

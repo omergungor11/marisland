@@ -12,6 +12,9 @@ import { createClouds, type CloudsView } from './clouds/clouds.ts';
 import { createLife, type LifeSystem } from '../life/index.ts';
 import { createBeacons } from './beacon.ts';
 import { createFireflies } from './particles/fireflies.ts';
+import { createWeatherView } from './weather/index.ts';
+import { createWeather } from '../env/weather.ts';
+import { WEATHER_BOOT } from '../env/env-state.ts';
 import { createEnvState, sampleEnv, type EnvState } from '../env/env-state.ts';
 import { SHARED, setWind, writeEnvUniforms } from './uniforms.ts';
 import { FOG, FOG_T0_SCALE } from '../content/lighting.ts';
@@ -97,6 +100,9 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   group.add(fireflies.mesh);
   const clouds = createClouds(world, d.quality, d.scope);
   group.add(clouds.group);
+  const weatherView = createWeatherView(textures, d.quality, d.scope);
+  group.add(weatherView.group);
+  const weather = createWeather(seed, WEATHER_BOOT.forced);
   for (const c of settlement.emitters.chimneys)
     clouds.puffs.addEmitter(c.x, c.y, c.z, PUFF_CHIMNEY);
   clouds.puffs.finalize();
@@ -143,6 +149,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     _focus.multiplyScalar(Math.min(t, 1500)).add(_camPos);
     const tier = d.getTier();
     writeEnvUniforms(env, d.getTime(), _camPos, tier);
+    weatherView.update();
     // T0 postcard: the fog curve is fitted for island/village views; at map distance it would
     // wash the whole archipelago out, so scale density down with camera distance (D-009).
     const camDist = _camPos.distanceTo(_focus);
@@ -210,7 +217,14 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     props,
     scatter,
     env,
-    system: { name: 'world-view', update, fixedUpdate: (dt) => life.fixedUpdate(dt) },
+    system: {
+      name: 'world-view',
+      update,
+      fixedUpdate: (dt) => {
+        weather.fixedUpdate(dt);
+        life.fixedUpdate(dt);
+      },
+    },
     cameraWorld,
     hash: world.hashes.world ?? '',
     timings,

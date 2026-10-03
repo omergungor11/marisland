@@ -2,6 +2,7 @@ import { FIELDS_GLSL } from '../shaders/chunks/fields.glsl.ts';
 import { CLOUD_SHADOW_GLSL } from '../shaders/chunks/cloud-shadow.glsl.ts';
 import { GRID_SAMPLE_GLSL } from '../world-textures.ts';
 import { WATER_SHADER as W } from '../../content/water.ts';
+import { RIPPLES as RR } from '../../content/weather.ts';
 import { bandDefines, glslFloat as f } from './water-bands.ts';
 
 /**
@@ -70,6 +71,21 @@ export function waterDefines(): string {
     `#define MAR_MOON_LAT ${f(W.moon.lateral)}`,
     `#define MAR_MOON_VERT ${f(W.moon.vertical)}`,
     `#define MAR_OUTER_RADIUS ${f(W.grid.outerRadius)}`,
+    `#define MAR_LEE_STEP ${f(W.leeStep)}`,
+    `#define MAR_SWELL_FAR0 ${f(W.swellFar.from)}`,
+    `#define MAR_SWELL_FAR1 ${f(W.swellFar.to)}`,
+    `#define MAR_SWELL_FAR_CUT ${f(W.swellFar.cut)}`,
+    `#define MAR_FRES_DUSK_MAX ${f(W.fresnel.duskMax)}`,
+    `#define MAR_FRES_DUSK_DESAT ${f(W.fresnel.duskDesat)}`,
+    `#define MAR_SUNFACET ${f(W.lowSun.facet)}`,
+    `#define MAR_SUNFACET_N0 ${f(W.lowSun.facetTilt[0])}`,
+    `#define MAR_SUNFACET_N1 ${f(W.lowSun.facetTilt[1])}`,
+    `#define MAR_RAIN_CELL ${f(RR.cell)}`,
+    `#define MAR_RAIN_PERIOD ${f(RR.period)}`,
+    `#define MAR_RAIN_RADIUS ${f(RR.radius)}`,
+    `#define MAR_RAIN_DENSITY ${f(RR.density)}`,
+    `#define MAR_RAIN_STRENGTH ${f(RR.strength)}`,
+    `#define MAR_RAIN_WIDTH ${f(RR.width)}`,
   ].join('\n');
 }
 
@@ -121,6 +137,7 @@ uniform vec3 uMid;
 uniform vec3 uShallow;
 uniform vec3 uLagoon;
 uniform vec3 uFoam;
+uniform float uRain;
 varying vec3 vWorld;
 ${CLOUD_SHADOW_GLSL}
 
@@ -152,6 +169,31 @@ float marFogFactor(float dist) {
   return 1.0 - exp(-x * x);
 }
 
+/* rain ripple rings (ART_BIBLE §7 #30): one ring per active cell per 0.8 s cycle, radius
+   0 → 0.6 u ease-out, fading as it grows; centre + activity re-hashed every cycle.
+   3×3 cells (a ring reaches at most 0.6 u < one 1.5 u cell). */
+float marRainRings(vec2 xz, float t, float fp) {
+  vec2 ci = floor(xz / MAR_RAIN_CELL);
+  float w = max(MAR_RAIN_WIDTH, fp * 0.9);
+  float ring = 0.0;
+  for (int j = -1; j <= 1; j++) {
+    for (int i = -1; i <= 1; i++) {
+      vec2 c = ci + vec2(float(i), float(j));
+      float ph = marHash12(c * 1.37 + 5.1);
+      float cyc = t / MAR_RAIN_PERIOD + ph;
+      float k = floor(cyc);
+      float p = cyc - k;
+      vec2 hk = c + vec2(k * 0.618, k * 1.732);
+      if (marHash12(hk + 31.7) > uRain * MAR_RAIN_DENSITY) continue;
+      vec2 ctr = (c + 0.2 + 0.6 * vec2(marHash12(hk + 3.3), marHash12(hk + 9.1))) * MAR_RAIN_CELL;
+      float r = (1.0 - (1.0 - p) * (1.0 - p)) * MAR_RAIN_RADIUS;
+      float dd = abs(length(xz - ctr) - r);
+      ring = max(ring, (1.0 - smoothstep(0.5 * w, w, dd)) * (1.0 - p) * (1.0 - p) * smoothstep(0.0, 0.08, p));
+    }
+  }
+  return ring;
+}
+
 /* shore lap 0..1: ease-out advance, ease-in retreat (ART_BIBLE §7 #2) */
 float marLap(float t) {
   float p = fract(t / MAR_LAP_PERIOD);
@@ -171,10 +213,16 @@ void main() {
   vec3 V = toCam / dist;
 
   // --- shore normal (toward land) → leeward ring scale
-  vec2 g = vec2(marSampleGrid(uSdfTex, xz + vec2(1.0, 0.0)) - sdf,
-                marSampleGrid(uSdfTex, xz + vec2(0.0, 1.0)) - sdf);
+  // Wide central differences, NOT normalised: |∇sdf| ≈ 1 in open water but collapses toward 0
+  // on the ridge midway between two islands, where the gradient flips. Normalising (or a 1 u
+  // one-sided difference) made 'lee' jump windward ↔ leeward across that ridge, so the ring
+  // scale (1 ↔ 1.5) and the band edges stepped → straight dark dashed lines across the sea.
+  vec2 g = vec2(marSampleGrid(uSdfTex, xz + vec2(MAR_LEE_STEP, 0.0)) - marSampleGrid(uSdfTex, xz - vec2(MAR_LEE_STEP, 0.0)),
+                marSampleGrid(uSdfTex, xz + vec2(0.0, MAR_LEE_STEP)) - marSampleGrid(uSdfTex, xz - vec2(0.0, MAR_LEE_STEP)))
+         / (2.0 * MAR_LEE_STEP);
   float gl = length(g);
-  float lee = gl > 1e-4 ? 0.5 - 0.5 * dot(g / gl, uWind.xy) : 0.5;
+  g /= max(gl, 1.0);
+  float lee = 0.5 - 0.5 * dot(g, uWind.xy);
   // smooth ±MAR_BAND_JITTER u wobble hides the 2 u SDF cell steps on the outer contours
   float bandJit = (marNoise(xz * 0.35 + 7.3) - 0.5) * 2.0 * MAR_BAND_JITTER * smoothstep(4.0, 12.0, d);
   float db = (d + bandJit) / mix(1.0, MAR_LEEWARD_SCALE, lee);
@@ -201,6 +249,8 @@ void main() {
   float fp = length(fwidth(xz));
   // grazing views: strong fresnel turns exaggerated swell normals into stripes
   float swellF = (1.0 - smoothstep(1.5, 4.0, fp)) * smoothstep(0.04, 0.35, V.y);
+  // far away the two directional swell trains read as ruled parallel lines → mostly flatten them
+  swellF *= 1.0 - MAR_SWELL_FAR_CUT * smoothstep(MAR_SWELL_FAR0, MAR_SWELL_FAR1, dist);
   float rippleF = 1.0 - smoothstep(0.4, 1.5, fp);
   float glintF = 1.0 - smoothstep(0.25, 1.0, fp);
 
@@ -240,7 +290,12 @@ void main() {
   // reflection leans on the horizon colour; band colours stay dominant (≤ MAR_FRES_MAX off-grazing)
   vec3 sky = mix(uHorizon, uZenith, MAR_FRES_ZENITH * smoothstep(0.2, 0.9, R.y));
   float graze = 1.0 - smoothstep(0.05, 0.3, V.y);
-  float reflW = min(MAR_FRES_BASE + MAR_FRES_GRAZE * fres, mix(MAR_FRES_MAX, MAR_FRES_BASE + MAR_FRES_GRAZE, graze));
+  // golden/dusk: the horizon is orange-red over a blue sea → a plain mix reads purple-pink, so
+  // the off-grazing cap drops and the reflected sky is pulled toward its own luminance
+  float capW = mix(MAR_FRES_MAX, MAR_FRES_DUSK_MAX, uGolden * (1.0 - uNight));
+  float reflW = min(MAR_FRES_BASE + MAR_FRES_GRAZE * fres, mix(capW, MAR_FRES_BASE + MAR_FRES_GRAZE, graze));
+  float skyL = dot(sky, vec3(0.2126, 0.7152, 0.0722));
+  sky = mix(sky, vec3(skyL), MAR_FRES_DUSK_DESAT * uGolden * (1.0 - 0.5 * graze));
   col = mix(col, sky, reflW);
 
   // --- foam
@@ -283,6 +338,12 @@ void main() {
   col = mix(col, uFoam * light, foam);
   alpha = mix(alpha, 1.0, foam);
 
+  // rain ripple rings (TASK-172) — only when raining and close enough to resolve them
+  if (uRain > 0.01 && fp < 0.35) {
+    float rings = marRainRings(xz, t, fp) * (1.0 - smoothstep(0.15, 0.35, fp)) * (1.0 - foam);
+    col = mix(col, uFoam * light, rings * MAR_RAIN_STRENGTH * min(1.0, uRain * 2.0));
+  }
+
   // --- glints: thresholded sparkle mask × sharp sun highlight (> 1.0 → bloom)
   vec3 jit = marNoised(xz * MAR_GLINT_JSCALE + vec2(t * 0.6, -t * 0.4) * uMotionScale);
   vec3 ng = normalize(n + vec3(-jit.y, 0.0, -jit.z) * MAR_GLINT_JITTER * glintF);
@@ -310,7 +371,11 @@ void main() {
   float sunLat = 1.0 - dot(rh, mh);
   float sunStreak = exp(-sunLat * MAR_SUNSTREAK_LAT) * exp(-vert * vert * MAR_MOON_VERT);
   float broad = pow(max(dot(ng, H), 0.0), MAR_SUNSPARK_EXP) * MAR_SUNSPARK;
-  float warm = lowSun * mask * (sunStreak * MAR_SUNSTREAK + broad) * (1.0 - foam);
+  // ripple facets turned toward the low sun catch warm sparkles even when the camera looks
+  // away from it (W9 faces away from the setting sun → no mirror streak in frame)
+  float facet = smoothstep(MAR_SUNFACET_N0, MAR_SUNFACET_N1, dot(ng, L) - L.y) * MAR_SUNFACET * glintF
+              * smoothstep(0.55, 0.75, jit.x);
+  float warm = lowSun * mask * (sunStreak * MAR_SUNSTREAK + broad + facet) * (1.0 - foam);
   vec3 warmCol = mix(uSunColor, uSunColor * vec3(1.0, 0.82, 0.6), 0.5);
 
   col += uSunColor * (glint + streak) + warmCol * warm;
