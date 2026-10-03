@@ -18,6 +18,7 @@ import { findShot } from './content/shots.ts';
 import type { Counters, MarislandApi, RenderInfo } from './capture/api.ts';
 import { buildTestScene } from './render/test-scene.ts';
 import { createCameraSystem, type CameraSystem } from './camera/controls.ts';
+import { buildGallery } from './render/gallery-scene.ts';
 
 /**
  * Composition root (ARCHITECTURE §1). Owns scopes, the loop and the systems.
@@ -200,7 +201,7 @@ export async function boot(): Promise<void> {
     // ---- world (TASK-003: test scene; replaced by terrain/water in M1)
     const tGen = now();
     const rng = createRng(params.seed);
-    const testScene = buildTestScene(rng, worldScope);
+    const testScene = params.gallery ? buildGallery(worldScope) : buildTestScene(rng, worldScope);
     scene.add(testScene.group);
     worldScope.defer(() => scene.remove(testScene.group));
     loop.add(testScene.system);
