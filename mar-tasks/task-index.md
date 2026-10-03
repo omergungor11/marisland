@@ -6,9 +6,9 @@ Status flow: PENDING → IN_PROGRESS → REVIEW → COMPLETED (BLOCKED if deps u
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-001 | Scaffold: Vite, TS, pnpm, ESLint (random ban), Prettier, Vitest, `VITE_BASE` | devops | S | PENDING | – |
-| TASK-002 | `core/`: clock, loop, scope, params, rng, noise, events, quality | engine | M | PENDING | TASK-001 |
-| TASK-003 | WebGLBackend, loader, test scene, `__marisland` ready/error | engine | M | PENDING | TASK-002 |
+| TASK-001 | Scaffold: Vite, TS, pnpm, ESLint (random ban), Prettier, Vitest, `VITE_BASE` | devops | S | COMPLETED | – |
+| TASK-002 | `core/`: clock, loop, scope, params, rng, noise, events, quality | engine | M | COMPLETED | TASK-001 |
+| TASK-003 | WebGLBackend, loader, test scene, `__marisland` ready/error | engine | M | IN_PROGRESS | TASK-002 |
 | TASK-004 | `shots` harness: sets, manifest, contact sheet, fail checks | qa | M | PENDING | TASK-003 |
 | TASK-005 | `ci.yml` + `deploy.yml` | devops | S | PENDING | TASK-001, TASK-004 |
 | TASK-006 | Stats overlay, `debug=` views | engine | S | PENDING | TASK-003 |
