@@ -23,6 +23,8 @@ import type { PropStore } from '../world/prop-store.ts';
 import { appendSettlementProps } from './props/settlement-props.ts';
 import { PUFF_CHIMNEY } from './particles/puffs.ts';
 import type { Lod } from '../geo/index.ts';
+import { createLanternPools } from './night/lantern-pools.ts';
+import { createBeam } from './night/beam.ts';
 
 /**
  * Everything seed-derived on the render side (ARCHITECTURE §1 "world scope").
@@ -85,6 +87,10 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   const lights = createLightRig(d.quality, d.scope);
   group.add(lights.group);
   const settlement = appendSettlementProps(world);
+  // night lights (TASK-171): lantern-pool texture → SHARED, lighthouse beam mesh
+  createLanternPools(settlement.props, d.scope);
+  const beam = createBeam(settlement.props, d.scope);
+  if (beam.mesh) group.add(beam.mesh);
   const clouds = createClouds(world, d.quality, d.scope);
   group.add(clouds.group);
   for (const c of settlement.emitters.chimneys)
@@ -140,6 +146,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     SHARED.uFogDensity.value = density;
     lights.update(env, d.camera, _focus);
     sky.update(env, _camPos);
+    beam.update();
     water.update(_camPos, d.getTime());
     terrain.update(d.getTime());
     clouds.update(d.getTime(), env, _camPos, tier);

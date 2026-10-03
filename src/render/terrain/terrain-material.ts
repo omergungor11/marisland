@@ -6,6 +6,7 @@ import { TERRAIN_COLORS, TERRAIN_FX, TERRAIN_MASK } from '../../content/terrain.
 import { SHARED } from '../uniforms.ts';
 import type { WorldTextures } from '../world-textures.ts';
 import { CLOUD_SHADOW_GLSL } from '../shaders/chunks/cloud-shadow.glsl.ts';
+import { NIGHT_GLSL, POOL_GAIN } from '../shaders/chunks/night.glsl.ts';
 
 /**
  * Terrain material (D-003): MeshLambertMaterial + vertex colours, patched with
@@ -13,7 +14,8 @@ import { CLOUD_SHADOW_GLSL } from '../shaders/chunks/cloud-shadow.glsl.ts';
  *  (a) the semantic debug mask (SHARED.uDebugMask) — flat unlit zone colours,
  *  (b) a subtle fresnel rim × horizon colour on grazing land faces (ART_BIBLE §3),
  *  (c) scrolling caustics below y = 0 (define MAR_CAUSTICS; off on low quality),
- *  (d) the wet-sand shore lap (SDF band, 4.5 s period) that the water foam matches.
+ *  (d) the wet-sand shore lap (SDF band, 4.5 s period) that the water foam matches,
+ *  (f) lantern pools at night (TASK-171, chunks/night.glsl.ts): additive warm light × albedo.
  * One program per quality level; all chunks share one material instance.
  */
 export interface TerrainMaterial {
@@ -35,6 +37,10 @@ export function createTerrainMaterial(
     uCloudShadow: SHARED.uCloudShadow,
     uCloudSun: SHARED.uCloudSun,
     uCloudSeed: SHARED.uCloudSeed,
+    uLamps: SHARED.uLamps,
+    uPoolTex: SHARED.uPoolTex,
+    uPoolMap: SHARED.uPoolMap,
+    uPoolColor: SHARED.uPoolColor,
     uTerrainSdf: { value: textures.sdf },
     uTerrainZone: { value: textures.zone },
     // xy = origin, z = 1 / cellSize, w = samples per side (texel-centre mapping)
@@ -75,6 +81,7 @@ uniform sampler2D uTerrainSdf;
 uniform sampler2D uTerrainZone;
 uniform vec4 uTerrainGrid;
 ${CLOUD_SHADOW_GLSL}
+${NIGHT_GLSL}
 vec2 marTerrainUv(vec2 xz) {
   return ((xz - uTerrainGrid.xy) * uTerrainGrid.z + 0.5) / uTerrainGrid.w;
 }
@@ -123,7 +130,17 @@ float marCaustic(vec2 p, float t) {
       .replace(
         '#include <opaque_fragment>',
         // (e) cloud shadows (TASK-153): same field as the clouds, ×0.82 with a 6 u soft edge
-        '\toutgoingLight *= marCloudShadowMul(vMarWorld.xz, uDebugMask);\n#include <opaque_fragment>',
+        /* glsl */ `	outgoingLight *= marCloudShadowMul(vMarWorld.xz, uDebugMask);
+  {
+    // (f) lantern pools: warm additive light on the ground around lanterns / doors / stalls
+    vec2 marPl = marPool(vMarWorld.xz);
+    if (marPl.x > 0.0) {
+      float marNear = 1.0 - smoothstep(${POOL_GAIN.fade0}, ${POOL_GAIN.fade1}, abs(vMarWorld.y - marPl.y));
+      outgoingLight += diffuseColor.rgb * uPoolColor
+        * (marPl.x * marNear * ${POOL_GAIN.ground} * marPoolFlicker(vMarWorld.xz, uTime));
+    }
+  }
+#include <opaque_fragment>`,
       )
       .replace(
         '#include <dithering_fragment>',

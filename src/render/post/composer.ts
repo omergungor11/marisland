@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {
+  BlendFunction,
   BloomEffect,
   DepthOfFieldEffect,
   EffectComposer,
@@ -14,7 +15,7 @@ import {
 import type { Scope } from '../../core/scope.ts';
 import type { EnvState } from '../../env/env-state.ts';
 import { LIGHTING } from '../../content/palette.ts';
-import { POST } from '../../content/lighting.ts';
+import { NIGHT, POST } from '../../content/lighting.ts';
 import { SHARED } from '../uniforms.ts';
 import { MarGradeEffect } from './grade-effect.ts';
 
@@ -22,7 +23,9 @@ import { MarGradeEffect } from './grade-effect.ts';
  * pmndrs post chain (ARCHITECTURE §3 "Post", ART_BIBLE §3). Passes:
  *   medium: Render → [TiltShift + Bloom + Grade + ToneMapping NEUTRAL] → [FXAA]
  *   high:   Render(MSAA×4) → [TiltShift] → [DOF, enabled at T3 only] → [Bloom + Grade + ToneMapping]
- * Bloom: mipmap blur, gated so only emissives / sun disc / glints bloom.
+ * Bloom: mipmap blur, gated so only emissives / sun disc / glints bloom. At night
+ * (SHARED.uSkyNight.z) intensity rises × NIGHT.bloomBoost and the threshold drops to
+ * NIGHT.bloomThreshold so windows, lanterns, moon and the beam flare glow (TASK-171).
  * Grade = saturation, lifted blacks, golden overlay, night shift, coloured vignette.
  * FXAA samples neighbours of its input, so it gets its own pass after tone
  * mapping. Tier/env changes only touch uniforms and pass.enabled — no recompiles.
@@ -55,6 +58,9 @@ export function createPostChain(
   composer.addPass(new RenderPass(scene, camera));
 
   const bloom = new BloomEffect({
+    // ADD, not pmndrs' default SCREEN: screen (a + b − ab) darkens HDR pixels > 1, which put a
+    // saturated / rainbow ring around the sun disc and bright emissives (TASK-171)
+    blendFunction: BlendFunction.ADD,
     luminanceThreshold: POST.bloomThreshold,
     luminanceSmoothing: POST.bloomSmoothing,
     intensity: LIGHTING.bloom.strength,
@@ -118,6 +124,7 @@ export function createPostChain(
   };
 
   let tier = -1;
+  let bloomNight = 0;
   const chain: PostChain = {
     composer,
     render(dt) {
@@ -126,6 +133,13 @@ export function createPostChain(
       grade.setGolden(SHARED.uGolden.value);
       grade.setNight(SHARED.uNight.value);
       grade.setMask(SHARED.uDebugMask.value > 0.5);
+      const nb = SHARED.uSkyNight.value.z;
+      if (nb !== bloomNight) {
+        bloomNight = nb;
+        bloom.intensity = LIGHTING.bloom.strength * (1 + (NIGHT.bloomBoost - 1) * nb);
+        bloom.luminanceMaterial.threshold =
+          POST.bloomThreshold + (NIGHT.bloomThreshold - POST.bloomThreshold) * nb;
+      }
       if (dofPass?.enabled && !focusPinned) centreFocus();
       composer.render(dt);
     },

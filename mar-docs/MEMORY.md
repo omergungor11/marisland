@@ -40,6 +40,11 @@
 - Spring k=180,c=12 overshoots 21 %; bible's "8 %/300 ms" needs c=17 (D-008)
 - three r186: `PCFSoftShadowMap` removed; `THREE.Clock` deprecated
 - pmndrs `postprocessing@6.39.5` needs three `<0.187` — don't bump three
+- pmndrs `BloomEffect` defaults to `BlendFunction.SCREEN` → rings around HDR sources; use ADD (D-012)
+- Sky stars on an (az·cos el, el) grid shear into streaks; use per-row cells with an integer count
+  around the sky; stars < ~1.5 px alias into diagonal dashes under FXAA
+- Night grade + flat-shaded facets: a luminance-only "spare highlights" test flips facets of lamp-lit
+  ground between warm and blue → spare by hue (r − b) too
 - SwiftShader fps is meaningless; assert counts from `renderer.info`
 - Art bible W-shot seeds (1001, 2024, …) are placeholders until TASK-113 pins real ones
 - **SMOKE-001 (2026-10-03):** Chromium 141 + Playwright 1.56 + SwiftShader: HalfFloat + MSAA render through pmndrs EffectComposer identical to low-quality path; 30 frames ≈9 ms CPU; determinism OK (same frame byte-identical); ready time ≈200 ms; KHR_parallel_shader_compile not supported (warning only)

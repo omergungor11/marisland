@@ -3,8 +3,9 @@ import { BLOOM_IN, TREE_SWAY, WINDMILL } from '../../content/anim.ts';
 import { SHARED } from '../uniforms.ts';
 import { FIELDS_GLSL } from '../shaders/chunks/fields.glsl.ts';
 import { SHARED_LIT_GLSL } from '../shaders/chunks/lit.glsl.ts';
-import { SHADE } from '../../content/lighting.ts';
+import { NIGHT, SHADE } from '../../content/lighting.ts';
 import { CLOUD_SHADOW_GLSL } from '../shaders/chunks/cloud-shadow.glsl.ts';
+import { NIGHT_GLSL, POOL_GAIN } from '../shaders/chunks/night.glsl.ts';
 
 /**
  * Lit material factory (D-003, ARCHITECTURE §3 "Materials"): MeshLambertMaterial
@@ -38,6 +39,12 @@ export interface LitOptions {
   fadeFar?: number;
   side?: THREE.Side;
   name?: string;
+  /**
+   * Night lamps (TASK-171): `stagger` = static instances switch on one by one inside the
+   * lamps ramp (hash of the instance origin); `lateOff` = NIGHT.lateOffFraction of them go dark
+   * late. Off for moving meshes (their origin hash would change as they move).
+   */
+  lamps?: { stagger?: boolean; lateOff?: boolean };
 }
 
 type FeatureFlag = 'wind' | 'bloomIn' | 'dither' | 'emissive' | 'rim';
@@ -204,11 +211,39 @@ attribute float emissive;
 #endif
 varying float vMarEmissive;
 varying vec2 vMarCloudXZ;
+varying float vMarWorldY;
+uniform vec3 uLamps;
+uniform vec2 uLampMode;
 `;
 
-/** World xz for the cloud-shadow lookup (colour program only; after VERTEX_DISPLACE). */
+/**
+ * World position for the cloud-shadow / pool lookups and the night lamp switch (colour program
+ * only; after VERTEX_DISPLACE so marM / marOrigin exist).
+ */
 const VERTEX_CLOUD = /* glsl */ `
-  vMarCloudXZ = (marM * vec4(transformed, 1.0)).xz;
+  {
+    vec4 marWp = marM * vec4(transformed, 1.0);
+    vMarCloudXZ = marWp.xz;
+    vMarWorldY = marWp.y;
+  }
+  #ifdef MAR_EMISSIVE
+  if (vMarEmissive > 0.0) {
+    float marLh = marHash12(marOrigin.xz * 0.731 + 3.7);
+    // switch-on: one by one inside the lamps ramp (staggered) or all together
+    float marOn = uLampMode.x > 0.5
+      ? smoothstep(marLh * 0.85, marLh * 0.85 + 0.15, uLamps.x)
+      : uLamps.x;
+    // late night: a fraction of the windows goes dark, staggered over the switch-off ramp
+    float marLo = marHash12(marOrigin.xz * 1.37 + 11.1);
+    if (uLampMode.y > 0.5 && marLo < ${f(NIGHT.lateOffFraction)}) {
+      float marT = marLo / ${f(NIGHT.lateOffFraction)} * 0.8;
+      marOn *= 1.0 - smoothstep(marT, marT + 0.2, uLamps.y);
+    }
+    float marFw1 = ${f((2 * Math.PI) / NIGHT.flickerPeriod[1])} + ${f((2 * Math.PI) / NIGHT.flickerPeriod[0] - (2 * Math.PI) / NIGHT.flickerPeriod[1])} * marLh;
+    float marFl = 1.0 + ${f(NIGHT.flickerAmp)} * (0.6 * sin(uTime * marFw1 + marLh * 37.0) + 0.4 * sin(uTime * marFw1 * 1.618 + marLh * 71.0));
+    vMarEmissive *= marOn * marFl;
+  }
+  #endif
 `;
 
 const VERTEX_COLOR_MAIN = /* glsl */ `
@@ -226,9 +261,12 @@ const FRAG_PARS = /* glsl */ `
 varying float vFade;
 varying float vMarEmissive;
 varying vec2 vMarCloudXZ;
+varying float vMarWorldY;
+uniform float uTime;
 ${FIELDS_GLSL}
 ${SHARED_LIT_GLSL.fragmentPars}
 ${CLOUD_SHADOW_GLSL}
+${NIGHT_GLSL}
 `;
 
 /** Cloud shadows (TASK-153): multiply the lit colour before tint/rim/emissive are added. */
@@ -242,9 +280,6 @@ const FRAG_DITHER = /* glsl */ `
   #endif
 `;
 
-/** Night emissive gain (windows ×2.5 so they cross the bloom threshold). */
-const EMISSIVE_GAIN = 2.5;
-
 const FRAG_OUTGOING = /* glsl */ `
   #ifdef MAR_SHADOW_TINT
   ${SHARED_LIT_GLSL.sunVisibility}
@@ -254,8 +289,18 @@ const FRAG_OUTGOING = /* glsl */ `
   ${SHARED_LIT_GLSL.rim}
   #endif
   #ifdef MAR_EMISSIVE
-    outgoingLight += diffuseColor.rgb * (vMarEmissive * uNight * ${f(EMISSIVE_GAIN)});
+    // night glow: mask × lamps (staggered, flickering; vertex) × gain → crosses the bloom threshold
+    outgoingLight += diffuseColor.rgb * (vMarEmissive * ${f(NIGHT.emissiveGain)});
   #endif
+  {
+    // lantern pools (TASK-171): warm light on walls/trunks near lanterns, fading with height
+    vec2 marPl = marPool(vMarCloudXZ);
+    if (marPl.x > 0.0) {
+      float marUp = 1.0 - smoothstep(${POOL_GAIN.fade0}, ${POOL_GAIN.fade1}, vMarWorldY - marPl.y);
+      outgoingLight += diffuseColor.rgb * uPoolColor
+        * (marPl.x * marUp * ${POOL_GAIN.prop} * marPoolFlicker(vMarCloudXZ, uTime) * (1.0 - uDebugMask));
+    }
+  }
 `;
 
 /** Neutral values for optional attributes (three applies them via vertexAttrib1fv). */
@@ -320,6 +365,7 @@ export class LitMaterial extends THREE.MeshLambertMaterial {
       uFadeNear: { value: opts.fadeNear ?? 1e6 },
       uFadeFar: { value: opts.fadeFar ?? 2e6 },
     };
+    const lampMode = new THREE.Vector2(opts.lamps?.stagger ? 1 : 0, opts.lamps?.lateOff ? 1 : 0);
     const defines = defineMap(variant);
     const uniforms: Record<string, THREE.IUniform> = {
       ...sharedVertexUniforms(this.fade),
@@ -327,6 +373,11 @@ export class LitMaterial extends THREE.MeshLambertMaterial {
       uShadowTint: SHARED.uShadowTint,
       uNight: SHARED.uNight,
       uDebugMask: SHARED.uDebugMask,
+      uLamps: SHARED.uLamps,
+      uLampMode: { value: lampMode },
+      uPoolTex: SHARED.uPoolTex,
+      uPoolMap: SHARED.uPoolMap,
+      uPoolColor: SHARED.uPoolColor,
       uCloudShadow: SHARED.uCloudShadow,
       uCloudSun: SHARED.uCloudSun,
       uCloudSeed: SHARED.uCloudSeed,

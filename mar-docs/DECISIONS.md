@@ -2,6 +2,27 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-012: Night lights without point lights; bloom blends ADD — 2026-10-03
+
+**Decision** (TASK-171):
+- Lantern pools are a per-world RG8 texture (light, ground height) splatted on the CPU from prop
+  instances (`content/lighting.ts` POOLS) and added by the terrain, prop and water shaders
+  (`render/shaders/chunks/night.glsl.ts`) — no decal mesh, no extra program, no draw call.
+- The lighthouse beam is one additive mesh (double cone + lamp flare), one program, hidden by day.
+- pmndrs `BloomEffect` uses `BlendFunction.ADD` (default SCREEN computes a + b − ab, which darkens
+  HDR pixels > 1 and drew a saturated/rainbow ring around the sun disc). Sun disc HDR 6 → 2.4.
+- Night bloom: intensity × 1.6, threshold 1.0 → 0.92, ramped by EnvState.bloom.
+- The night grade spares warm lamp-lit pixels by hue (r − b), not only bright ones, so pools fade
+  warm → dark instead of flipping per facet.
+- The sky moon has its own path (`MOON`, opposite-ish the sun); the sky disc and the water's
+  glitter streak follow it. The night key light is an art-directed `MOON.nightKey` (camera-side, so
+  village fronts / cliff faces stay ≥ L 12 %), slerped from the sun over 19:00–20:36 and back over
+  04:24–05:36 with a 60 % intensity dip. `MOON.yawDeg` is tuned so the pinned W3/W4 cameras see
+  the glitter streak. Moon-as-key-light was tried: it back-lit the W4 cliff (L* 0.145 → 0.095).
+**Rationale**: ARCHITECTURE §7 ("lantern pools are additive decals, not point lights"); the program
+budget is already at its limit on medium (21–22 / 20), so pools must not cost a program.
+**Impact**: +1 program (beam) on every quality; ≈ 0.5–1 MB pool texture per world.
+
 ## D-011: Cloud width 22–44 u (bible said 12–30 u) — 2026-10-03
 
 **Decision**: `CLOUDS.width = [22, 44]` (TASK-153). Count 6–10, altitude 60–90 u, shadow ×0.82 with a
