@@ -18,8 +18,10 @@ import type { Counters, MarislandApi, RenderInfo } from './capture/api.ts';
 import { createCameraSystem, type CameraSystem } from './camera/controls.ts';
 import { buildGallery } from './render/gallery-scene.ts';
 import { buildWorldView } from './render/world-view.ts';
+import { SHARED } from './render/uniforms.ts';
 import { createHud, type Hud } from './ui/hud.ts';
 import { createCurtain } from './ui/curtain.ts';
+import { createIntro } from './camera/intro.ts';
 import { ISLAND_ACCENTS } from './content/islands-ui.ts';
 import type { TestScene } from './render/test-scene.ts';
 
@@ -162,6 +164,7 @@ export async function boot(): Promise<void> {
     window.addEventListener('resize', resize);
     appScope.defer(() => window.removeEventListener('resize', resize));
 
+    SHARED.uDebugMask.value = params.debug === 'mask' ? 1 : 0;
     let stats: StatsOverlay | null = null;
     if (params.debug === 'stats') stats = createStatsOverlay(root);
 
@@ -334,9 +337,37 @@ export async function boot(): Promise<void> {
 
     if (params.selftest === 'regen') await selftestRegen(api, params.seed, ctx);
 
+    const runIntro = !params.freeze && params.intro && !reduced && !params.gallery && curtain;
+    if (runIntro) {
+      curtain.setClosed();
+      hud?.setLabelsHidden(true);
+      const cw = testScene.cameraWorld;
+      const hero = cw.islands.find((i) => i.name === 'Hearthholm') ?? cw.islands[0];
+      const intro = createIntro({
+        cam,
+        centerX: cw.centerX,
+        centerZ: cw.centerZ,
+        heroX: hero?.cx ?? cw.centerX,
+        heroZ: hero?.cz ?? cw.centerZ,
+        onCurtainOpen: () => void curtain.open(),
+        onLabels: () => hud?.setLabelsHidden(false),
+        onDone: () => {
+          loop.remove(intro);
+          hud?.show();
+          cam.setIdleOrbit(true);
+        },
+      });
+      cam.setIdleOrbit(false);
+      loop.add(intro);
+      const skip = (): void => intro.skip();
+      window.addEventListener('pointerdown', skip, { once: true });
+      window.addEventListener('keydown', skip, { once: true });
+      window.addEventListener('wheel', skip, { once: true, passive: true });
+    }
     await loader.finish();
     if (!params.freeze) loop.start();
-    hud?.show();
+    if (!runIntro) hud?.show();
+    else hud?.showWordmark();
     api.ready = true;
     console.info(
       `[marisland] ready in ${ctx.timings.boot.toFixed(0)} ms · ${backend.rendererString} · quality ${quality}`,

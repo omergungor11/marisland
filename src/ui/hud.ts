@@ -29,6 +29,9 @@ export interface Hud {
   setWorld(world: CameraWorld, accents: Record<string, string>): void;
   /** Pop the HUD in (staggered 60 ms). */
   show(): void;
+  /** Intro: only the wordmark pops (0–1.5 s). */
+  showWordmark(): void;
+  setLabelsHidden(hidden: boolean): void;
   hide(): void;
   dispose(): void;
 }
@@ -92,6 +95,7 @@ export function createHud(root: HTMLElement, actions: HudActions, instant = fals
   );
 
   let labels: { name: string; el: HTMLElement; x: number; y: number; z: number }[] = [];
+  let labelsHidden = false;
   const hud: Hud = {
     el,
     setWorld(world, accents) {
@@ -108,7 +112,7 @@ export function createHud(root: HTMLElement, actions: HudActions, instant = fals
     update(camera, azimuth, tier, _world, width, height) {
       needle.setAttribute('transform', `rotate(${(-azimuth * 180) / Math.PI} 32 32)`);
       nText.setAttribute('transform', `rotate(${(-azimuth * 180) / Math.PI} 32 32)`);
-      const showLabels = tier === 0;
+      const showLabels = tier === 0 && !labelsHidden;
       labelsEl.style.display = showLabels ? '' : 'none';
       if (!showLabels) return;
       const placed: { x: number; y: number; w: number; h: number }[] = [];
@@ -140,6 +144,12 @@ export function createHud(root: HTMLElement, actions: HudActions, instant = fals
       el.classList.add('mar-hud-on');
       setTimeout(() => el.classList.add('mar-hud-shown'), 900);
     },
+    showWordmark() {
+      el.classList.add('mar-hud-wordmark');
+    },
+    setLabelsHidden(hidden) {
+      labelsHidden = hidden;
+    },
     hide() {
       el.classList.remove('mar-hud-on');
     },
@@ -166,7 +176,10 @@ export const HUD_CSS = `
 .mar-hud{position:fixed;inset:0;pointer-events:none;font-family:'Fredoka','Nunito',system-ui,sans-serif;color:${UI.ink};z-index:30;}
 .mar-hud *{box-sizing:border-box;}
 .mar-pop{opacity:0;transform:scale(0.6);}
-.mar-hud-on .mar-pop{animation:mar-pop .42s cubic-bezier(.34,1.56,.64,1) forwards;}
+.mar-hud-on .mar-pop,.mar-hud-wordmark .mar-wordmark{animation:mar-pop .42s cubic-bezier(.34,1.56,.64,1) forwards;}
+.mar-hud-wordmark .mar-wordmark{font-size:64px;left:50%;top:38%;transform:translate(-50%,-50%) scale(0.6);animation:mar-pop-centre .6s cubic-bezier(.34,1.56,.64,1) forwards;transition:all .8s cubic-bezier(.4,0,.2,1);}
+.mar-hud-on .mar-wordmark{font-size:32px;left:16px;top:12px;transform:none;animation:none;opacity:1;}
+@keyframes mar-pop-centre{to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
 .mar-hud-on .mar-dock .mar-btn:nth-child(1){animation-delay:.06s}.mar-hud-on .mar-dock .mar-btn:nth-child(2){animation-delay:.12s}
 .mar-hud-on .mar-dock .mar-btn:nth-child(3){animation-delay:.18s}.mar-hud-on .mar-dock .mar-btn:nth-child(4){animation-delay:.24s}.mar-hud-on .mar-dock .mar-btn:nth-child(5){animation-delay:.3s}
 @keyframes mar-pop{to{opacity:1;transform:scale(1)}}
