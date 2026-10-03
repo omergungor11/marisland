@@ -6,3 +6,4 @@ mar-docs/shots
 *.md
 .claude
 public
+dist-*
