@@ -18,6 +18,8 @@ import type { Counters, MarislandApi, RenderInfo } from './capture/api.ts';
 import { createCameraSystem, type CameraSystem } from './camera/controls.ts';
 import { buildGallery } from './render/gallery-scene.ts';
 import { buildWorldView } from './render/world-view.ts';
+import { createHud, type Hud } from './ui/hud.ts';
+import { ISLAND_ACCENTS } from './content/islands-ui.ts';
 import type { TestScene } from './render/test-scene.ts';
 
 /**
@@ -225,6 +227,42 @@ export async function boot(): Promise<void> {
     cam.setWorld(testScene.cameraWorld);
     cam.applyPreset(params.cam || 'overview', false);
     cam.setIdleOrbit(!params.freeze);
+
+    let hud: Hud | null = null;
+    if (params.hud && !params.gallery) {
+      const TIME_STOPS = [7, 12, 15, 17.75, 19.25, 22, 2];
+      let timeStop = -1;
+      hud = createHud(
+        root,
+        {
+          onNewSeed: () => void api.regen((Math.random() * 1e9) >>> 0),
+          onTime: () => {
+            timeStop = (timeStop + 1) % TIME_STOPS.length;
+            loop.clock.dayTime = TIME_STOPS[timeStop];
+          },
+          onWeather: () => {},
+          onPhoto: () => {},
+          onSound: () => {},
+          onCompass: () => void cam.controls.rotateAzimuthTo(0, true),
+          onLabel: (name) => cam.applyPreset(`island:${name}`, true),
+        },
+        params.freeze,
+      );
+      hud.setWorld(testScene.cameraWorld, ISLAND_ACCENTS);
+      appScope.defer(() => hud?.dispose());
+      loop.add({
+        name: 'hud',
+        update: () =>
+          hud?.update(
+            camera,
+            cam.controls.azimuthAngle,
+            cam.tier,
+            testScene.cameraWorld,
+            ctx.width,
+            ctx.height,
+          ),
+      });
+    }
     loader.setProgress(0.6);
 
     // ---- prewarm + warm-up
@@ -261,6 +299,7 @@ export async function boot(): Promise<void> {
       api.worldHash = testScene.hash;
       api.seed = seed;
       cam.setWorld(testScene.cameraWorld);
+      hud?.setWorld(testScene.cameraWorld, ISLAND_ACCENTS);
       loop.step(1 / 30, 1);
     };
     api.memory = () => ({
@@ -279,6 +318,7 @@ export async function boot(): Promise<void> {
 
     await loader.finish();
     if (!params.freeze) loop.start();
+    hud?.show();
     api.ready = true;
     console.info(
       `[marisland] ready in ${ctx.timings.boot.toFixed(0)} ms · ${backend.rendererString} · quality ${quality}`,
