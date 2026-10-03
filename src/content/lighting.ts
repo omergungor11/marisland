@@ -25,6 +25,9 @@ export function fitFogExp2(points: readonly (readonly [number, number])[]): numb
   return num / den;
 }
 
+/** Fog density multiplier at T0 map distance (≥ 650 u), lerped from 1 at 300 u (D-009). */
+export const FOG_T0_SCALE = 0.45;
+
 export const FOG = {
   /** FogExp2 density; also written to SHARED.uFogDensity for manually fogged shaders. */
   density: fitFogExp2(LIGHTING.fogAt) * 0.78,

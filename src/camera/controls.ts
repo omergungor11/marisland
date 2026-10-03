@@ -137,9 +137,12 @@ export function createCameraSystem(
           const o = CAMERA.overview;
           // Fit the archipelago: distance so the cluster radius fills ~80 % of the vertical FOV
           // at the overview pitch (foreshortened), clamped to the T0 range.
+          // Portrait: the horizontal FOV is the limiting one.
+          const vFov = camera.fov * DEG;
+          const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
           const fit =
             (world.radius * 1.15) /
-            Math.sin((camera.fov * DEG) / 2) /
+            Math.sin(Math.min(vFov, hFov) / 2) /
             Math.max(0.6, Math.sin(o.pitch * DEG));
           const dist = clamp(Math.max(o.dist, fit), o.dist, CAMERA.maxDist);
           lookFromOrbit(controls, world.centerX, 0, world.centerZ, dist, o.pitch, o.azimuthDeg, t);
@@ -151,7 +154,12 @@ export function createCameraSystem(
             // T1 framing: fit the island sphere, then settle on the pitch curve.
             _sphere.center.set(isl.cx, Math.max(0, isl.peakY * 0.3), isl.cz);
             _sphere.radius = isl.radius * 1.35;
-            const dist = clamp(_sphere.radius / Math.sin((camera.fov * DEG) / 2), 140, 380);
+            // Small islands (Lonely Palm) get a T3 framing: the fit is clamped only by the global bounds.
+            const dist = clamp(
+              _sphere.radius / Math.sin((camera.fov * DEG) / 2),
+              CAMERA.minDist * 2.2,
+              380,
+            );
             lookFromOrbit(
               controls,
               _sphere.center.x,

@@ -24,6 +24,38 @@ export const CLOUDS = {
   drift: 1.5,
   shadowMul: 0.82,
   shadowBlur: 6,
+  /** Periodic cloud field (TASK-153): `cells`² jittered candidate cells per `tile` u square,
+   *  centred on the archipelago → every tile-sized window holds exactly `count` clouds. */
+  tile: 720,
+  cells: 4,
+  /** Cell jitter range (fraction of a cell) — keeps neighbours ≥ 0.4 cell apart. */
+  jitter: [0.2, 0.8],
+  /** Footprint ellipse depth / length (geometry is normalised to this). */
+  aspect: 0.55,
+  /** Shadow ellipse half-length as a fraction of half the cloud width. */
+  shadowFit: 0.92,
+  /** Edge-wobble amplitude of the shadow outline, u (2 octaves of value noise). */
+  wobble: 3,
+  /** Clouds scale to 0 within this distance of the tile edge (wrap point). */
+  edgeFade: 70,
+  /** Sun elevation clamp for the projected shadow offset (sin of elevation). */
+  minSunY: 0.3,
+  /** Breathing: scale ±amp over period s. */
+  breathe: { amp: 0.025, period: 9 },
+  /** Fade to 0 when the zoom tier reaches `hideTier`, over `fade` s. */
+  hideTier: 2,
+  fade: 0.5,
+} as const;
+/** Smoke and steam puffs (ART_BIBLE §7 #20/#21; stateless GPU, ARCHITECTURE §5). Sizes are diameters, u. */
+export const PUFFS = {
+  chimney: { spawn: 1.2, slots: 3, size: [0.2, 0.9], rise: 4, drift: 1.6, jitter: 0.15 },
+  steam: { spawn: 0.6, slots: 11, size: [2, 8], rise: 25, drift: 6, jitter: 0.6 },
+  spring: { spawn: 0.8, slots: 5, size: [0.6, 2.4], rise: 5, drift: 1.5, jitter: 0.4 },
+  /** Ring-puff burp on steam emitters every `period` s. */
+  burp: { period: 40, ring: 7, life: 3.5, radius: 7, rise: 6, size: [3, 6.5], pulse: 1.5 },
+  /** Fraction of a puff's life spent fading (dither) at the end. */
+  fadeLast: 0.4,
+  capacity: { low: 240, medium: 600, high: 900 },
 } as const;
 export const WINDMILL = { secondsPerRev: 6 } as const;
 export const BEACON = {

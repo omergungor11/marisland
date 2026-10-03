@@ -1,0 +1,278 @@
+import { CLOUDS } from '../../content/anim.ts';
+
+/**
+ * TASK-153 cloud field (ARCHITECTURE §7 "Clouds"). Pure TS (no three) — the GLSL
+ * twin lives in `shaders/chunks/cloud-shadow.glsl.ts`; `cloud-field.test.ts`
+ * checks parity.
+ *
+ * The field is periodic: a `tile` × `tile` square of `cells`² jittered candidate
+ * cells, centred on the archipelago and advected by the wind. A cell holds a cloud
+ * when its integer hash is below `threshold` (chosen on the CPU so exactly
+ * `count` cells are active) → every tile-sized window contains exactly `count`
+ * peaks. Each peak is an ellipse blob (value 1 at the centre, 0 at the edge);
+ * clouds sit at the peaks, and the shadow mask thresholds the same blobs
+ * (projected along the sun, 6 u soft edge, 2-octave value-noise wobble).
+ * All hashing is uint32 so CPU and GPU agree bit-for-bit.
+ */
+export interface CloudFieldParams {
+  /** 16-bit salt (exact as a float uniform). */
+  salt: number;
+  /** Active-cell hash threshold in [0, 1). */
+  threshold: number;
+  cellSize: number;
+  cells: number;
+  /** Window centre (archipelago centre). */
+  centreX: number;
+  centreZ: number;
+}
+
+export interface CloudBlob {
+  /** Cell index (wrapped). */
+  ix: number;
+  iz: number;
+  /** World centre of the cloud (wrapped into the window). */
+  x: number;
+  z: number;
+  /** Altitude of the cloud base centre. */
+  alt: number;
+  width: number;
+  yaw: number;
+  variant: number;
+  /** Window-edge fade 0..1 (0 at the wrap seam). */
+  edge: number;
+}
+
+const [JIT0, JIT1] = CLOUDS.jitter;
+const [W0, W1] = CLOUDS.width;
+const [A0, A1] = CLOUDS.altitude;
+export const MEAN_ALT = (A0 + A1) / 2;
+
+/** lowbias32 integer hash (uint32 in, uint32 out). */
+export function hash32(x: number): number {
+  x >>>= 0;
+  x ^= x >>> 16;
+  x = Math.imul(x, 0x7feb352d);
+  x ^= x >>> 15;
+  x = Math.imul(x, 0x846ca68b);
+  x ^= x >>> 16;
+  return x >>> 0;
+}
+
+/** Hash of (ix, iz, salt, k) → [0, 1) with 24-bit resolution (exact in float32). */
+export function cellU(ix: number, iz: number, salt: number, k: number): number {
+  const h = hash32((ix + iz * 16 + salt * 256) >>> 0);
+  return (hash32((h + k) >>> 0) >>> 8) / 16777216;
+}
+
+/** Threshold so exactly `count` of the `cells`² candidates are active. */
+export function activeThreshold(salt: number, cells: number, count: number): number {
+  const us: number[] = [];
+  for (let iz = 0; iz < cells; iz++) for (let ix = 0; ix < cells; ix++) us.push(cellU(ix, iz, salt, 0));
+  us.sort((a, b) => a - b);
+  const n = Math.max(0, Math.min(us.length, count));
+  if (n === 0) return 0;
+  if (n === us.length) return 1;
+  return (us[n - 1] + us[n]) / 2;
+}
+
+export function makeFieldParams(
+  salt: number,
+  count: number,
+  centreX: number,
+  centreZ: number,
+): CloudFieldParams {
+  const cells = CLOUDS.cells;
+  return {
+    salt,
+    threshold: activeThreshold(salt, cells, count),
+    cellSize: CLOUDS.tile / cells,
+    cells,
+    centreX,
+    centreZ,
+  };
+}
+
+/** Window-edge fade on a position relative to the window centre (0 outside the window). */
+export function edgeFade(rx: number, rz: number, tile: number): number {
+  const h = tile / 2;
+  const m = Math.max(Math.abs(rx), Math.abs(rz));
+  return 1 - smoothstep(h - CLOUDS.edgeFade, h, m);
+}
+
+export function smoothstep(a: number, b: number, x: number): number {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+}
+
+function mod(a: number, n: number): number {
+  return a - n * Math.floor(a / n);
+}
+
+/** Per-cell blob description (independent of time). */
+interface CellBlob {
+  active: boolean;
+  jx: number;
+  jz: number;
+  width: number;
+  yaw: number;
+  alt: number;
+  variant: number;
+}
+
+export function cellBlob(p: CloudFieldParams, ix: number, iz: number): CellBlob {
+  const s = p.salt;
+  return {
+    active: cellU(ix, iz, s, 0) < p.threshold,
+    jx: JIT0 + (JIT1 - JIT0) * cellU(ix, iz, s, 1),
+    jz: JIT0 + (JIT1 - JIT0) * cellU(ix, iz, s, 2),
+    width: W0 + (W1 - W0) * cellU(ix, iz, s, 3),
+    yaw: cellU(ix, iz, s, 4) * Math.PI * 2,
+    alt: A0 + (A1 - A0) * cellU(ix, iz, s, 5),
+    variant: Math.floor(cellU(ix, iz, s, 6) * 3),
+  };
+}
+
+/**
+ * Wind offset at time t, wrapped modulo the tile (the field is tile-periodic, so
+ * this keeps the GPU uniform small and float32-exact for long sessions).
+ */
+export function windOffset(
+  p: CloudFieldParams,
+  windX: number,
+  windZ: number,
+  t: number,
+  out: { x: number; z: number },
+): { x: number; z: number } {
+  const tile = p.cellSize * p.cells;
+  out.x = mod(windX * CLOUDS.drift * t, tile);
+  out.z = mod(windZ * CLOUDS.drift * t, tile);
+  return out;
+}
+
+/** All active clouds at wind offset (ox, oz), wrapped into the window. */
+export function cloudsAt(p: CloudFieldParams, ox: number, oz: number): CloudBlob[] {
+  const out: CloudBlob[] = [];
+  const tile = p.cellSize * p.cells;
+  for (let iz = 0; iz < p.cells; iz++)
+    for (let ix = 0; ix < p.cells; ix++) {
+      const b = cellBlob(p, ix, iz);
+      if (!b.active) continue;
+      const rx = mod((ix + b.jx - p.cells / 2) * p.cellSize + ox + tile / 2, tile) - tile / 2;
+      const rz = mod((iz + b.jz - p.cells / 2) * p.cellSize + oz + tile / 2, tile) - tile / 2;
+      out.push({
+        ix,
+        iz,
+        x: p.centreX + rx,
+        z: p.centreZ + rz,
+        alt: b.alt,
+        width: b.width,
+        yaw: b.yaw,
+        variant: b.variant,
+        edge: edgeFade(rx, rz, tile),
+      });
+    }
+  return out;
+}
+
+/** 2D value noise on an integer-hashed lattice (coordinates must stay > −1024). */
+export function valueNoise(x: number, z: number, salt: number): number {
+  const xi = Math.floor(x);
+  const zi = Math.floor(z);
+  const fx = x - xi;
+  const fz = z - zi;
+  const ux = fx * fx * (3 - 2 * fx);
+  const uz = fz * fz * (3 - 2 * fz);
+  const X = xi + 1024;
+  const Z = zi + 1024;
+  const a = cellU(X, Z, salt, 7);
+  const b = cellU(X + 1, Z, salt, 7);
+  const c = cellU(X, Z + 1, salt, 7);
+  const d = cellU(X + 1, Z + 1, salt, 7);
+  return a + (b - a) * ux + (c - a) * uz + (a - b - c + d) * ux * uz;
+}
+
+/** Shadow / field evaluation state written by the CPU each frame (mirrors the uniforms). */
+export interface CloudFrame {
+  /** Wind offset (wrapped). */
+  ox: number;
+  oz: number;
+  /** Ground offset per unit altitude along the sun: −sunDir.xz / sunDir.y. */
+  sunX: number;
+  sunZ: number;
+  /** Footprint scale (1 = matches the clouds); 0 disables the shadow. */
+  coverage: number;
+}
+
+/**
+ * Evaluate the blob nearest-cells loop shared by the field and the shadow.
+ * `mode` 0 = field (ellipse value 1 − dn at the cloud position, no sun offset),
+ * 1 = shadow mask (projected, soft 6 u edge, wobble). Mirrors `marCloudEval` in GLSL.
+ */
+function evalBlobs(p: CloudFieldParams, x: number, z: number, f: CloudFrame, mode: 0 | 1): number {
+  const cell = p.cellSize;
+  const cells = p.cells;
+  const tile = cell * cells;
+  const sx = mode === 1 ? f.sunX : 0;
+  const sz = mode === 1 ? f.sunZ : 0;
+  // field-space query, pre-shifted by the mean-altitude sun offset
+  const qx = (x - f.ox - p.centreX - sx * MEAN_ALT) / cell + 0.5 * cells;
+  const qz = (z - f.oz - p.centreZ - sz * MEAN_ALT) / cell + 0.5 * cells;
+  const bx = Math.floor(qx - 0.5);
+  const bz = Math.floor(qz - 0.5);
+  const half = 0.5 * W1 * CLOUDS.shadowFit; // unused bound, documents the 2×2 search validity
+  void half;
+  let m = 0;
+  for (let k = 0; k < 4; k++) {
+    const cx = bx + (k & 1);
+    const cz = bz + (k >> 1);
+    const ix = mod(cx, cells);
+    const iz = mod(cz, cells);
+    if (cellU(ix, iz, p.salt, 0) >= p.threshold) continue;
+    const jx = JIT0 + (JIT1 - JIT0) * cellU(ix, iz, p.salt, 1);
+    const jz = JIT0 + (JIT1 - JIT0) * cellU(ix, iz, p.salt, 2);
+    const width = W0 + (W1 - W0) * cellU(ix, iz, p.salt, 3);
+    const yaw = cellU(ix, iz, p.salt, 4) * 6.283185307;
+    const alt = A0 + (A1 - A0) * cellU(ix, iz, p.salt, 5);
+    // cloud position relative to the window centre (unwrapped near the query)
+    const rx = (cx + jx - 0.5 * cells) * cell + f.ox;
+    const rz = (cz + jz - 0.5 * cells) * cell + f.oz;
+    const edge = edgeFade(rx, rz, tile);
+    if (edge <= 0) continue;
+    const dx = x - (p.centreX + rx + sx * alt);
+    const dz = z - (p.centreZ + rz + sz * alt);
+    // into the cloud's frame (object yaw: x' = cos·x − sin·z rotated back)
+    const c = Math.cos(yaw);
+    const s = Math.sin(yaw);
+    const lx = c * dx - s * dz;
+    const lz = s * dx + c * dz;
+    if (mode === 0) {
+      const ax = 0.5 * width;
+      const az = ax * CLOUDS.aspect;
+      const dn = Math.hypot(lx / ax, lz / az);
+      m = Math.max(m, Math.max(0, 1 - dn) * edge);
+    } else {
+      const ax = 0.5 * width * CLOUDS.shadowFit * f.coverage;
+      const az = ax * CLOUDS.aspect;
+      const dn = Math.hypot(lx / ax, lz / az);
+      const sd = (dn - 1) * Math.sqrt(ax * az);
+      const wob =
+        0.65 * valueNoise(lx * 0.11 + ix * 17, lz * 0.11 + iz * 17, p.salt) +
+        0.35 * valueNoise(lx * 0.23 + 5, lz * 0.23 + 5, p.salt);
+      const sdw = sd + (wob - 0.5) * 2 * CLOUDS.wobble;
+      const hb = CLOUDS.shadowBlur / 2;
+      m = Math.max(m, (1 - smoothstep(-hb, hb, sdw)) * edge);
+    }
+  }
+  return m;
+}
+
+/** The cloud field: 1 at each cloud's centre, 0 at its footprint edge and beyond. */
+export function cloudField(p: CloudFieldParams, x: number, z: number, f: CloudFrame): number {
+  return evalBlobs(p, x, z, f, 0);
+}
+
+/** Cloud-shadow mask 0..1 at ground point (x, z) — CPU twin of `marCloudShadow`. */
+export function cloudShadowMask(p: CloudFieldParams, x: number, z: number, f: CloudFrame): number {
+  if (f.coverage <= 0) return 0;
+  return evalBlobs(p, x, z, f, 1);
+}

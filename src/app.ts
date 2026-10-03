@@ -174,6 +174,9 @@ export async function boot(): Promise<void> {
       if (ctx.post) ctx.post.render(1 / 60);
       else r.render(scene, camera);
       readInfo(r, ctx.info);
+      const mem = (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory;
+      if (mem) ctx.timings.jsHeapMB = Math.round(mem.usedJSHeapSize / 1048576);
+      ctx.counters.gpuMemoryMB = Math.round(estimateGpuMB(r));
       if (stats)
         stats.update(1000 / Math.max(frameMs, 1), loop.cpuMs, ctx.info, ctx.tier, ctx.counters, '');
     };
@@ -386,6 +389,14 @@ export async function boot(): Promise<void> {
     loader.fail(`Marisland failed to start:\n${msg}`);
     console.error(e);
   }
+}
+
+/** Rough GPU memory from renderer.info: textures + geometries + render targets (MB). */
+function estimateGpuMB(r: THREE.WebGLRenderer): number {
+  const m = r.info.memory;
+  // ~1.5 MB per texture (R16F 385² ≈ 0.3 MB, shadow 2048² ≈ 16 MB, HalfFloat RTs scale with the canvas)
+  const canvas = r.domElement.width * r.domElement.height * 8 * 3;
+  return (m.textures * 1.5 * 1048576 + m.geometries * 0.4 * 1048576 + canvas) / 1048576;
 }
 
 /** `?shot=W1` fills seed/cam/time/weather/simt unless given explicitly. */

@@ -19,6 +19,12 @@ export interface PartOpts {
   cullY?: number;
   /** Clamp every vertex to y >= 0 after culling (flat ground contact). */
   groundClamp?: boolean;
+  /** Night-glow mask in [0,1] (1 = glows with the vertex colour). */
+  emissive?: number;
+  /** Fixed wind weight (any value; bypasses the height ramp and `windy`). */
+  windAbs?: number | ((p: THREE.Vector3) => number);
+  /** Also emit back faces (thin cloth / sails / open shells). */
+  double?: boolean;
 }
 
 const MIN_L = 0.13;
@@ -69,6 +75,8 @@ export class Acc {
   private colr: number[] = [];
   private wmul: number[] = [];
   private ao: number[] = [];
+  private emi: number[] = [];
+  private wabs: number[] = [];
 
   add(geo: THREE.BufferGeometry, o: PartOpts & { m?: THREE.Matrix4 }): void {
     const g = geo.index ? geo.toNonIndexed() : geo;
@@ -103,11 +111,20 @@ export class Acc {
         .multiplyScalar(1 / 3);
       if (o.cullY !== undefined && cen.y < o.cullY) continue;
       const fc = typeof o.color === 'function' ? o.color(cen) : o.color;
-      for (const p of [a, b, c]) {
+      const order = o.double ? [a, b, c, a, c, b] : [a, b, c];
+      for (const p of order) {
         const q = o.groundClamp ? p.clone().setY(Math.max(0, p.y)) : p;
         this.pos.push(q.x, q.y, q.z);
         this.colr.push(fc.r, fc.g, fc.b);
         this.wmul.push(wm);
+        this.emi.push(o.emissive ?? 0);
+        this.wabs.push(
+          o.windAbs === undefined
+            ? NaN
+            : typeof o.windAbs === 'function'
+              ? o.windAbs(q)
+              : o.windAbs,
+        );
         const partAo = o.ao
           ? o.ao(q)
           : 1 - aoAmt * (1 - smooth(minY, minY + 0.5 * Math.max(1e-6, maxY - minY), q.y));
@@ -133,7 +150,7 @@ export class Acc {
     this.add(g, o);
   }
 
-  finish(rng: Rng, windy: boolean): THREE.BufferGeometry {
+  finish(rng: Rng, windy: boolean, emissive = false): THREE.BufferGeometry {
     const jr = rng.fork('faces');
     const n = this.pos.length / 3;
     const hsl = { h: 0, s: 0, l: 0 };
@@ -156,7 +173,8 @@ export class Acc {
         color[i * 3 + 2] = Math.min(1, Math.max(0, c.b));
         const y = this.pos[i * 3 + 1];
         const ty = Math.min(1, Math.max(0, y / maxY));
-        wind[i] = windy ? Math.min(1, this.wmul[i] * ty * ty) : 0;
+        const wa = this.wabs[i];
+        wind[i] = !Number.isNaN(wa) ? wa : windy ? Math.min(1, this.wmul[i] * ty * ty) : 0;
         const ground = 0.88 + 0.12 * smooth(0, 0.35, y);
         ao[i] = Math.min(1, Math.max(AO_MIN, this.ao[i] * ground));
       }
@@ -167,6 +185,8 @@ export class Acc {
     g.setAttribute('color', new THREE.BufferAttribute(color, 3));
     g.setAttribute('wind', new THREE.BufferAttribute(wind, 1));
     g.setAttribute('ao', new THREE.BufferAttribute(ao, 1));
+    if (emissive)
+      g.setAttribute('emissive', new THREE.BufferAttribute(new Float32Array(this.emi), 1));
     g.computeBoundingBox();
     g.computeBoundingSphere();
     g.userData = { tris: n / 3 };

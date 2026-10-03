@@ -41,6 +41,19 @@ export const PLACEMENT_RULES: readonly PlacementRule[] = [
   {
     def: 'palm',
     zones: [sandDry, grass],
+    minDist: 5,
+    density: 0.8,
+    slopeMax: 0.5,
+    heights: [0.3, 6],
+    shore: [1, 14],
+    cluster: { scale: 22, threshold: -0.02 },
+    scale: [0.85, 1.2],
+    archetypes: ['hearthholm'],
+    maxPerIsland: 22,
+  },
+  {
+    def: 'palm',
+    zones: [sandDry, grass],
     minDist: 4.5,
     density: 0.9,
     slopeMax: 0.5,
@@ -48,7 +61,7 @@ export const PLACEMENT_RULES: readonly PlacementRule[] = [
     shore: [1, 14],
     cluster: { scale: 22, threshold: -0.15 },
     scale: [0.85, 1.2],
-    archetypes: ['palmlagoon', 'hearthholm', 'lonelypalm'],
+    archetypes: ['palmlagoon'],
     maxPerIsland: 80,
   },
   {

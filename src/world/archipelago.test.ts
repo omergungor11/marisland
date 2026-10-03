@@ -86,9 +86,9 @@ describe('archipelago — 30-seed full generation', () => {
     const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
     expect(snap).toMatchInlineSnapshot(`
       {
-        "1": "c8563db729de3e64",
-        "1001": "df2bc58938997b5d",
-        "42": "9d17b59ff29a2a8f",
+        "1": "c86189607c307d7a",
+        "1001": "d636e8f74ca83f2c",
+        "42": "c776fd2ff966a468",
       }
     `);
   });

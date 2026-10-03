@@ -11,6 +11,8 @@ import { createLightRig, type LightRig } from './lighting.ts';
 import { createClouds, type CloudsView } from './clouds/clouds.ts';
 import { createEnvState, sampleEnv, type EnvState } from '../env/env-state.ts';
 import { SHARED, setWind, writeEnvUniforms } from './uniforms.ts';
+import { FOG, FOG_T0_SCALE } from '../content/lighting.ts';
+import { remap } from '../core/math/index.ts';
 import type { CameraWorld } from '../camera/controls.ts';
 import type { Counters } from '../capture/api.ts';
 import { scatterProps, type ScatterResult } from '../world/gen/scatter.ts';
@@ -110,6 +112,12 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     _focus.multiplyScalar(Math.min(t, 1500)).add(_camPos);
     const tier = d.getTier();
     writeEnvUniforms(env, d.getTime(), _camPos, tier);
+    // T0 postcard: the fog curve is fitted for island/village views; at map distance it would
+    // wash the whole archipelago out, so scale density down with camera distance (D-009).
+    const camDist = _camPos.distanceTo(_focus);
+    const density = FOG.density * remap(camDist, 300, 650, 1, FOG_T0_SCALE);
+    sky.fog.density = density;
+    SHARED.uFogDensity.value = density;
     lights.update(env, d.camera, _focus);
     sky.update(env, _camPos);
     water.update(_camPos, d.getTime());

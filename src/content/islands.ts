@@ -97,7 +97,7 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
     reachScale: 1.4,
     shelfWidth: 8,
     beachWidth: 7,
-    terrace: { step: 3, strength: 0.35 },
+    terrace: { step: 3, strength: 0.2 },
     zones: DEFAULT_ZONES,
   },
   beaconrock: {
@@ -132,7 +132,7 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
     reachScale: 1.35,
     shelfWidth: 9,
     beachWidth: 6,
-    terrace: { step: 2, strength: 0.5 },
+    terrace: { step: 2, strength: 0.3 },
     zones: { ...DEFAULT_ZONES, forestThreshold: 0.5, patchwork: true, rockMinFrac: 2 },
   },
   emberpeak: {
