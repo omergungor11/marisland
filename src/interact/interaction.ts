@@ -351,6 +351,9 @@ export function createInteraction(d: InteractionDeps): Interaction {
     if (!target) return hit;
     const key = `${hit.kind}:${hit.name}:${hit.id}`;
     reactions.trigger(key, specFor(hit), target, anchorOf(hit), reduced);
+    // the villager's `emote` reaction also drives its wave state (interaction → life API)
+    if (hit.kind === 'agent' && hit.name === 'villagers' && !reduced)
+      wv.life.kinds.villagers?.wave(hit.id);
     d.events.emit('picked', { kind: `${hit.kind}:${hit.name}`, id: hit.id });
     return hit;
   };

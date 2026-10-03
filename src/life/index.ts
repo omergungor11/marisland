@@ -16,6 +16,7 @@ import { makeCtx, setMotion, type LifeDeps } from './ctx.ts';
 import { FishSchools } from './fish.ts';
 import { flockCentres, Gulls, type Perch } from './gulls.ts';
 import type { Cats, Crabs, Sheep, Villagers } from './land.ts';
+import { Fireflies, planSwarms } from './fireflies.ts';
 import { createLandKinds, type LandKind } from './land.ts';
 import { buildSolids, buildWalkGraph, makeMask } from './land-world.ts';
 
@@ -49,6 +50,8 @@ export interface LifeSystem extends System {
     cats?: Cats;
     sheep?: Sheep;
     crabs?: Crabs;
+    /** Night fireflies: render-rate particles (not an agent: excluded from `stats.agents`). */
+    fireflies?: Fireflies;
   };
   /** Seaward dock-end / mooring perches used by landing gulls. */
   readonly counts: { coconutDrops: number };
@@ -131,6 +134,9 @@ export function createLife(deps: LifeDeps): LifeSystem {
   );
   all.push(...landKinds);
 
+  const swarms = planSwarms(ctx, plan.fireflies, ctx.rngFor('fireflies'));
+  if (swarms.length > 0) kinds.fireflies = new Fireflies(base, ctx, swarms, plan.fireflies);
+
   const ambient = new AmbientScheduler(deps.seed);
   const spotRng = ctx.rngFor('spots');
   const counts = { coconutDrops: 0 };
@@ -180,6 +186,7 @@ export function createLife(deps: LifeDeps): LifeSystem {
     },
     update(_dt, alpha) {
       for (const k of all) k.update(alpha);
+      kinds.fireflies?.update(alpha);
       recount();
     },
     onTier(tier) {
@@ -189,6 +196,7 @@ export function createLife(deps: LifeDeps): LifeSystem {
     setMotionScale(s) {
       setMotion(ctx, s);
       for (const k of all) k.motionScale = s;
+      if (kinds.fireflies) kinds.fireflies.motionScale = s;
     },
     setCursorWorld(x, z = null) {
       kinds.fish?.setRepel(x, z);

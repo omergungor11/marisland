@@ -422,3 +422,69 @@ describe('land: budgets, picking feed, geometry', () => {
     expect(VILLAGERS.wave.radius).toBeGreaterThan(0);
   });
 });
+
+describe('land: click emote + readable sheep (TASK-192)', () => {
+  it('Villagers.wave(i) enters the wave state for the emote length, then resumes', () => {
+    const r = rig(1001, 'high');
+    r.tier.v = 2; // no camera waves at tier 2: only the click can wave
+    run(r, 3);
+    const v = r.life.kinds.villagers!;
+    expect(v.wave(-1)).toBe(false);
+    expect(v.wave(v.capacity)).toBe(false);
+    expect(v.state[0]).not.toBe(2);
+    expect(v.wave(0)).toBe(true);
+    expect(v.state[0]).toBe(2);
+    let frames = 0;
+    while (v.state[0] === 2 && frames < 30 * 5) {
+      run(r, 1);
+      frames++;
+    }
+    const secs = frames * FIXED_STEP;
+    expect(secs).toBeGreaterThan(VILLAGERS.wave.emoteSeconds - 0.1);
+    expect(secs).toBeLessThan(VILLAGERS.wave.emoteSeconds + 0.1);
+    expect(v.state[0]).not.toBe(2);
+    // not alive below the reveal tier
+    const hidden = rig(1001, 'high');
+    run(hidden, 3);
+    expect(hidden.life.kinds.villagers!.wave(0)).toBe(false);
+  });
+
+  it('sizes: sheep read as blobs at the village zoom, villagers/cats larger than before', () => {
+    expect(LAND.size.sheep).toBeGreaterThanOrEqual(1.25 * 1.5);
+    expect(LAND.size.villagers).toBeGreaterThanOrEqual(1.3 * 1.3);
+    expect(LAND.size.cats).toBeGreaterThanOrEqual(1.25 * 1.3);
+  });
+
+  it('sheep flocks live in open meadow beside the barn / windmills / hub, enough to show in a frame', () => {
+    for (const seed of [1001, 7, 2024]) {
+      const w = world(seed);
+      const r = rig(seed, 'medium');
+      const s = r.life.kinds.sheep;
+      if (!s) continue;
+      const mill = new Set<number>([
+        ...w.lots.filter((l) => l.kind === 'barn').map((l) => l.islandId),
+        ...w.landmarks.filter((m) => m.kind === 'windmill').map((m) => m.islandId),
+      ]);
+      const h = w.height;
+      let near = 0;
+      let onMill = 0;
+      for (let i = 0; i < s.capacity; i++) {
+        expect(zoneOf(w, s.x[i], s.z[i])).toBe(Zone.meadow);
+        const k =
+          Math.round((s.z[i] - h.originZ) / h.cellSize) * h.n +
+          Math.round((s.x[i] - h.originX) / h.cellSize);
+        const isl = w.islandMap[k] - 1;
+        if (!mill.has(isl)) continue;
+        onMill++;
+        const anchors = [
+          ...w.lots.filter((l) => l.kind === 'barn' && l.islandId === isl),
+          ...w.landmarks.filter((m) => m.kind === 'windmill' && m.islandId === isl),
+          ...w.settlements.filter((t) => t.islandId === isl).map((t) => t.hub),
+        ];
+        if (anchors.some((a) => Math.hypot(a.x - s.x[i], a.z - s.z[i]) < 40)) near++;
+      }
+      if (seed === 1001) expect(onMill).toBeGreaterThanOrEqual(5);
+      expect(near).toBe(onMill);
+    }
+  });
+});
