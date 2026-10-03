@@ -140,9 +140,14 @@ export function scatterProps(
       const maxX = island.maxX + margin;
       const minZ = island.minZ - margin;
       const maxZ = island.maxZ + margin;
+      const fieldAngle = world.fields.find((f) => f.islandId === island.id)?.rotY;
       const accept = (x: number, z: number): boolean => {
         const zone = zoneAt(h, world.zone, x, z);
         if (!rule.zones.includes(zone) || BLOCKED_ZONES.includes(zone)) return false;
+        if (rule.fieldColors) {
+          const c = fieldColorAt(world, x, z) - 1;
+          if (!rule.fieldColors.includes(c)) return false;
+        }
         const y = heightAt(h, x, z);
         if (y < rule.heights[0] || y > rule.heights[1]) return false;
         const s = sampleGrid(h, world.shoreSdf, x, z, -999);
@@ -180,9 +185,20 @@ export function scatterProps(
       const max = rule.maxPerIsland ?? Infinity;
       for (let i = 0; i < pts.length && placed < max; i += 2) {
         if (rule.density < 1 && rng.next() > rule.density) continue;
-        const x = pts[i];
-        const z = pts[i + 1];
+        let x = pts[i];
+        let z = pts[i + 1];
         const scale = rng.range(rule.scale[0], rule.scale[1]);
+        if (rule.fieldRows && fieldAngle !== undefined) {
+          // snap onto the field-aligned lattice (u along the patch axis, v across it)
+          const c = Math.cos(fieldAngle);
+          const sn = Math.sin(fieldAngle);
+          const g = rule.fieldRows;
+          const u = Math.round((x * c + z * sn) / g) * g;
+          const v = Math.round((-x * sn + z * c) / g) * g;
+          x = u * c - v * sn;
+          z = u * sn + v * c;
+          if (!accept(x, z)) continue;
+        }
         const radius = def.footprint * scale;
         if (!isGround && !occupancy.isFree(x, z, radius)) continue;
         if (isGround && occupancy.valueAt(x, z) === OCC_STRUCTURE) continue;
@@ -191,7 +207,9 @@ export function scatterProps(
         const floats = zone === Zone.lagoon && !(def.flags & PropFlag.underwater);
         const y = floats ? 0 : heightAt(h, x, z);
         const variant = rng.int(0, def.variants - 1);
-        const rotY = rng.range(0, Math.PI * 2);
+        let rotY = rng.range(0, Math.PI * 2);
+        // prop yaw −a turns local +x onto the patch axis (cos a, sin a)
+        if (rule.fieldRows && fieldAngle !== undefined) rotY = -fieldAngle;
         store.push(defIndex, variant, x, y, z, rotY, scale, island.id, chunkIdAt(x, z), def.flags);
         if (!isGround) occupancy.mark(x, z, radius);
         else groundCoverTotal++;
@@ -215,3 +233,12 @@ function slopeAt(
 }
 
 export type { PlacementRule };
+
+/** Field hue at a world position (nearest sample): 1 + palette FIELDS index, 0 = none. */
+function fieldColorAt(world: WorldData, x: number, z: number): number {
+  const h = world.height;
+  const ix = Math.round((x - h.originX) / h.cellSize);
+  const iz = Math.round((z - h.originZ) / h.cellSize);
+  if (ix < 0 || iz < 0 || ix >= h.n || iz >= h.n) return 0;
+  return world.fieldColor[iz * h.n + ix];
+}

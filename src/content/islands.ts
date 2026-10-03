@@ -345,10 +345,19 @@ export const LAGOON = { min: 2, max: 4, rampLen: 14 } as const;
 
 /**
  * Coast cleanup so every coast has room for its shelf: inlets narrower than
- * ≈ 2 × closeRadius u are filled, spits thinner than ≈ 2 × openRadius removed.
- * Profile-protected cells (lagoons, atoll channels, Beacon Rock) are never filled.
+ * ≈ 2 × closeRadius u are filled, spits thinner than ≈ 2 × openRadius removed,
+ * stray islets dropped. Profile-protected cells (lagoons, atoll channels, Beacon Rock) are never filled.
  */
-export const COAST = { closeRadius: 7, openRadius: 3 } as const;
+export const COAST = {
+  closeRadius: 7,
+  openRadius: 3,
+  /**
+   * Detached land specks below this many samples (4 u² each) are dropped unless they are
+   * the island's main body or profile-protected (Beacon Rock stacks): no stray islet in
+   * Hearthholm's bay (sweep D9). Atoll ring segments are ≥ 145 samples (60-seed survey).
+   */
+  minIsletCells: 100,
+} as const;
 
 /** Beach band (ART_BIBLE §1/§2: 0–1.2 u above sea level, gentle). */
 export const BEACH = { min: 0.1, max: 1.2 } as const;
@@ -371,12 +380,25 @@ export const ZONE_RULES = {
   forestMinShore: 6,
   /** Hilltops above this fraction of the peak stay open grass. */
   forestMaxFrac: 0.85,
+  /** Patchwork fields only up to this slope (plateau-edge banks stay grass, sweep D11). */
+  fieldMaxSlope: 0.4,
   moistureScale: 90,
   forestScale: 45,
 } as const;
 
-/** Millbrook patchwork: rotated rectangular field cells (u) and their share by zone. */
-export const PATCHWORK = { cell: [16, 11] as const, field: 0.55, meadow: 0.2 } as const;
+/**
+ * Millbrook patchwork: rotated rectangular field cells (u) and their share by zone. Cells
+ * are big enough to read at T1 (sweep D11: 16 × 11 u blurred into one lime plateau).
+ * Field cells get one of `colors` hues (palette FIELDS), never the same as a neighbour.
+ */
+export const PATCHWORK = {
+  cell: [22, 15] as const,
+  field: 0.6,
+  meadow: 0.15,
+  colors: 5,
+  /** Only cells whose centre has at least this plateau mask count toward colour balance. */
+  plateauMask: 0.45,
+} as const;
 
 /** Chunk flag: shallow means water depth below this (u). */
 export const CHUNK_SHALLOW_DEPTH = 35;

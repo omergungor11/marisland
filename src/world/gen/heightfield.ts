@@ -2,7 +2,7 @@ import { createNoise } from '../../core/noise.ts';
 import type { Rng } from '../../core/rng.ts';
 import { clamp01, lerp, smax, smoothstep } from '../../core/math/index.ts';
 import { WATER_BANDS } from '../../content/palette.ts';
-import type { Heightfield, IslandData, StreamData } from '../types.ts';
+import type { FieldPatchData, Heightfield, IslandData, StreamData } from '../types.ts';
 import { CELL_SIZE, GRID_N, SEABED_Y } from '../types.ts';
 import { cellX, cellZ, GRID_ORIGIN, gridRange } from './grid.ts';
 import {
@@ -34,6 +34,10 @@ export interface RawLand {
   tags: Uint8Array;
   /** Profile polylines (Mossgrove stream). */
   streams: StreamData[];
+  /** Crop-field rectangles (Millbrook). */
+  fields: FieldPatchData[];
+  /** Field colour per sample (1 + FIELDS index, 0 = none); masked to Zone.field later. */
+  fieldColor: Uint8Array;
 }
 
 /** Soft terrace: floor(h/step)·step blended with a smoothstep riser. */
@@ -56,6 +60,8 @@ export function buildRawLand(islands: IslandData[], windDir: number, rng: Rng): 
   const islandMap = new Uint8Array(n * n);
   const tags = new Uint8Array(n * n);
   const streams: StreamData[] = [];
+  const fields: FieldPatchData[] = [];
+  const fieldColor = new Uint8Array(n * n);
   for (const isl of islands) {
     const p = ARCHETYPES[isl.archetype];
     const shapeRng = rng.fork('island:shape', isl.id);
@@ -67,6 +73,7 @@ export function buildRawLand(islands: IslandData[], windDir: number, rng: Rng): 
     });
     isl.anchors = { ...isl.anchors, ...profile.anchors };
     for (const pts of profile.streams ?? []) streams.push({ islandId: isl.id, points: pts });
+    for (const f of profile.fields ?? []) fields.push({ islandId: isl.id, ...f });
     const [x0, x1] = gridRange(isl.minX, isl.maxX);
     const [z0, z1] = gridRange(isl.minZ, isl.maxZ);
     const w = x1 - x0 + 1;
@@ -79,6 +86,10 @@ export function buildRawLand(islands: IslandData[], windDir: number, rng: Rng): 
         local[(iz - z0) * w + ix - x0] = v;
         if (v > max) max = v;
         if (profile.tag) tags[iz * n + ix] |= profile.tag(cellX(ix), z);
+        if (profile.fieldColor) {
+          const c = profile.fieldColor(cellX(ix), z);
+          if (c > 0) fieldColor[iz * n + ix] = c;
+        }
       }
     }
     const target = rng.fork('island:peak', isl.id).range(p.peak[0], p.peak[1]);
@@ -94,7 +105,7 @@ export function buildRawLand(islands: IslandData[], windDir: number, rng: Rng): 
       }
     }
   }
-  return { raw, islandMap, tags, streams };
+  return { raw, islandMap, tags, streams, fields, fieldColor };
 }
 
 /** Nearest island by radius-normalised centre distance. */

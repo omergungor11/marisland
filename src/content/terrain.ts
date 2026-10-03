@@ -2,7 +2,7 @@
  * Terrain look tunables (ART_BIBLE §1 faceting, §2 palette). Pure data — the
  * mesher (render/terrain) reads these; hex values come from the palette.
  */
-import { CLIFF_STRATA, GRASS, HAY, ROCK, SAND, WATER } from './palette.ts';
+import { CLIFF_STRATA, FIELDS, GRASS, HAY, ROCK, SAND, WATER } from './palette.ts';
 
 export const TERRAIN_COLORS = {
   sandDry: SAND.dry,
@@ -18,7 +18,10 @@ export const TERRAIN_COLORS = {
   forest: GRASS[3],
   forestDarken: 0.9,
   field: HAY,
-  fieldMix: 0.45,
+  /** Patchwork hues by world.fieldColor (1 + index); `field` when a cell has none. */
+  fields: FIELDS,
+  /** Field = grass lerped toward its patch hue by this (strong enough to read at T1). */
+  fieldMix: 0.8,
   /** Rock by slope: gentle → steep. */
   rock: [ROCK[0], ROCK[1], ROCK[2]] as const,
   cliffStrata: [CLIFF_STRATA[0], CLIFF_STRATA[1]] as const,

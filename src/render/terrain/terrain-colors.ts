@@ -71,6 +71,7 @@ interface Pal {
   meadowTint: THREE.Color;
   forest: THREE.Color;
   field: THREE.Color;
+  fields: THREE.Color[];
   rock: THREE.Color[];
   strata: THREE.Color[];
   path: THREE.Color;
@@ -93,6 +94,7 @@ function pal(): Pal {
     meadowTint: lin(C.meadowTint),
     forest: lin(C.forest).multiplyScalar(C.forestDarken),
     field: lin(C.field),
+    fields: C.fields.map(lin),
     rock: C.rock.map(lin),
     strata: C.cliffStrata.map(lin),
     path: lin(C.path),
@@ -229,7 +231,10 @@ export function buildColorGrid(world: WorldData): TerrainColorGrid {
             if (crest > 0) col.lerp(P.tip, S.crestTip * crest);
             if (z === Zone.meadow) col.lerp(P.meadowTint, TERRAIN_COLORS.meadowMix);
             else if (z === Zone.forest) col.copy(P.forest).lerp(_d.copy(P.grass[1]), 0.15 * t);
-            else if (z === Zone.field) col.lerp(P.field, TERRAIN_COLORS.fieldMix);
+            else if (z === Zone.field) {
+              const fc = world.fieldColor?.[i] ?? 0;
+              col.lerp(fc > 0 ? P.fields[fc - 1] : P.field, TERRAIN_COLORS.fieldMix);
+            }
           }
         }
       }

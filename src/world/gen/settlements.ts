@@ -1,4 +1,5 @@
 import type { Rng } from '../../core/rng.ts';
+import { hashInts } from '../../core/hash.ts';
 import { smoothstep } from '../../core/math/index.ts';
 import {
   DOCK,
@@ -7,13 +8,16 @@ import {
   LANDMARKS,
   LOT_FOOTPRINT,
   LOT_KIND,
+  LOT_ROOFS,
   OUTPOSTS,
   PATHS,
+  ROOFED_KINDS,
   VILLAGE,
 } from '../../content/settlements.ts';
 import type {
   WorldData,
   DockData,
+  FieldPatchData,
   FixtureData,
   Heightfield,
   IslandData,
@@ -326,6 +330,7 @@ function tryLot(
     w,
     d,
     node: -1,
+    variant: 0,
     key: -1,
     settlement,
   });
@@ -355,6 +360,10 @@ function findDock(
     lee?: number;
     carve: boolean;
     maxSegments?: number;
+    /** End depth target (default DOCK.endDepth). */
+    endDepth?: number;
+    /** Also require the end past the shallow colour band (zone mid/deep). */
+    edge?: boolean;
   },
 ): DockSite | null {
   const n = ctx.n;
@@ -365,7 +374,8 @@ function findDock(
   let bestScore = Infinity;
   let fallback: DockSite | null = null;
   let fallbackScore = Infinity;
-  const need = DOCK.endDepth + 0.25;
+  const need = opts.endDepth ?? DOCK.endDepth;
+  const g = DOCK.normalSpan;
   for (let iz = Math.max(1, z0); iz <= Math.min(n - 2, z1); iz++)
     for (let ix = Math.max(1, x0); ix <= Math.min(n - 2, x1); ix++) {
       const i = iz * n + ix;
@@ -374,35 +384,47 @@ function findDock(
       if (s <= 0 || s > 2.5) continue;
       const p = { x: cellX(ix), z: cellZ(iz) };
       if (dist(p, opts.near) > opts.maxDist) continue;
-      const gx = ctx.sdf[i + 1] - ctx.sdf[i - 1];
-      const gz = ctx.sdf[i + n] - ctx.sdf[i - n];
+      // shore normal from the SDF gradient over ±normalSpan u (the 1-cell difference
+      // follows coast facets, which let a pier run along the shore — sweep D8, 4004)
+      const gx = sdfAt(ctx, p.x + g, p.z) - sdfAt(ctx, p.x - g, p.z);
+      const gz = sdfAt(ctx, p.x, p.z + g) - sdfAt(ctx, p.x, p.z - g);
       const gl = Math.hypot(gx, gz);
       if (gl < 1e-3) continue;
       const dir = { x: -gx / gl, z: -gz / gl };
       const root = add(p, dir, s);
       const perp = { x: -dir.z, z: dir.x };
+      let score0 = 0;
       let segs = -1;
-      let ok = true;
+      let depthOnly = -1;
+      let reach = 0;
       for (let k = 1; k <= maxSeg; k++) {
-        const q = add(root, dir, DOCK.segment * k);
+        const t = DOCK.segment * k;
+        const q = add(root, dir, t);
         const y = heightAt(ctx.h, q.x, q.z);
-        if (y > -0.05 || sdfAt(ctx, q.x, q.z) > -0.5) {
-          ok = false;
-          break;
-        }
-        if (heightAt(ctx.h, q.x + perp.x * 1.6, q.z + perp.z * 1.6) > -0.05) ok = false;
-        if (heightAt(ctx.h, q.x - perp.x * 1.6, q.z - perp.z * 1.6) > -0.05) ok = false;
-        if (!ok) break;
+        const sq = sdfAt(ctx, q.x, q.z);
+        // over water, both sides clear, and moving away from the shore (never along it)
+        if (y > -0.05 || sq > -0.5 || -sq < DOCK.awayRate * t - DOCK.awaySlack) break;
+        if (heightAt(ctx.h, q.x + perp.x * 1.6, q.z + perp.z * 1.6) > -0.05) break;
+        if (heightAt(ctx.h, q.x - perp.x * 1.6, q.z - perp.z * 1.6) > -0.05) break;
+        reach = k;
         if (y <= -need && k >= DOCK.minSegments) {
-          segs = k;
-          break;
+          // past the turquoise band too (zone mid/deep), so boats moor in blue water
+          const zq = ctx.zone[cellOf(ctx, q.x, q.z)];
+          if (!opts.edge || zq === Zone.mid || zq === Zone.deep) {
+            segs = k;
+            break;
+          }
+          if (depthOnly < 0) depthOnly = k;
         }
       }
-      if (!ok) continue;
-      let score = 0.2 * dist(root, opts.prefer);
+      if (segs < 0 && depthOnly > 0) {
+        segs = depthOnly;
+        score0 = DOCK.shallowEndPenalty;
+      }
+      let score = score0 + 0.2 * dist(root, opts.prefer);
       if (opts.toward) {
-        const t = unit(root, opts.toward);
-        score += 6 * (1 - (t.x * dir.x + t.z * dir.z));
+        const tw = unit(root, opts.toward);
+        score += 6 * (1 - (tw.x * dir.x + tw.z * dir.z));
       }
       if (opts.lee !== undefined)
         score += opts.lee * (1 - leewardness(isl, ctx.windDir, root.x, root.z));
@@ -412,12 +434,14 @@ function findDock(
           bestScore = score;
           best = { root, dir, segments: segs, carve: false };
         }
-      } else if (opts.carve) {
-        const q = add(root, dir, DOCK.segment * 6);
-        score += 3 * Math.max(0, need + heightAt(ctx.h, q.x, q.z));
+      } else if (opts.carve && reach >= DOCK.minSegments) {
+        // too shallow within reach: the longest clear run (capped), channel carved to depth
+        const segments = Math.min(reach, DOCK.carveSegments);
+        const q = add(root, dir, DOCK.segment * segments);
+        score += segments + 3 * Math.max(0, need + heightAt(ctx.h, q.x, q.z));
         if (score < fallbackScore) {
           fallbackScore = score;
-          fallback = { root, dir, segments: 6, carve: true };
+          fallback = { root, dir, segments, carve: true };
         }
       }
     }
@@ -632,6 +656,7 @@ function planHearthholm(ctx: Ctx, isl: IslandData, rng: Rng, sIdx: number): Plan
     prefer: plazaC,
     toward: harbour,
     carve: true,
+    edge: true,
   });
   const boatsRng = rng.fork('moorings');
   dockWithLink(ctx, isl, plan, dockSite, boatsRng, {
@@ -820,6 +845,15 @@ function placeStiltHut(ctx: Ctx, isl: IslandData, plan: Plan, p: XZ, sIdx: numbe
   }
   if (!shore) return -1;
   for (const o of ctx.shapes[isl.id]) if (shapesOverlap(o, sh, 2.5)) return -1;
+  // keep huts apart and off the pier + its turning basin (sweep D8: overlapping / hugging huts)
+  for (const l of ctx.lots)
+    if (l.kind === 'hut' && l.islandId === isl.id && dist(l, p) < VILLAGE.stiltSpacing) return -1;
+  for (const d of ctx.docks) {
+    if (d.islandId !== isl.id) continue;
+    const dd = dirOf(d.rotY);
+    const tip = add(d, dd, d.segments * DOCK.segment + DOCK.basinOffset);
+    if (segDist(p, d, tip) < VILLAGE.stiltDockClear) return -1;
+  }
   const li = tryLot(ctx, isl, 'stiltHut', p, rotY, sIdx, {
     minShore: 0,
     maxRelief: 99,
@@ -1070,6 +1104,7 @@ function planPalmlagoon(ctx: Ctx, isl: IslandData, rng: Rng, sIdx: number): Plan
       prefer: plan.hub,
       carve: false,
       maxSegments: 5,
+      endDepth: DOCK.lagoonEndDepth,
     });
     dockWithLink(ctx, isl, plan, site, rng.fork('moorings'), { rowboats: 1, sailboats: 0 });
   }
@@ -1347,58 +1382,36 @@ function applyPads(ctx: Ctx): Uint8Array {
 }
 
 // ---------------------------------------------------------------------------
-// Fences (Millbrook): field-patch outlines with gates at paths.
+// Fences (Millbrook): straight runs along field-patch edges, gaps at paths.
 
-function fieldFences(ctx: Ctx, isl: IslandData, hub: XZ, rng: Rng, paths: Polyline[]): Polyline[] {
-  const n = ctx.n;
-  const [x0, x1] = gridRange(isl.minX, isl.maxX);
-  const [z0, z1] = gridRange(isl.minZ, isl.maxZ);
-  const comp = new Int32Array(n * n).fill(-1);
-  const comps: { cells: number[]; cx: number; cz: number }[] = [];
-  const isField = (i: number): boolean =>
-    ctx.islandMap[i] === isl.id + 1 && ctx.zone[i] === Zone.field;
-  for (let iz = z0; iz <= z1; iz++)
-    for (let ix = x0; ix <= x1; ix++) {
-      const i0 = iz * n + ix;
-      if (comp[i0] >= 0 || !isField(i0)) continue;
-      const id = comps.length;
-      const cells: number[] = [];
-      const stack = [i0];
-      comp[i0] = id;
-      while (stack.length > 0) {
-        const c = stack.pop() as number;
-        cells.push(c);
-        const cx = c % n;
-        const cz = (c - cx) / n;
-        for (const [dx, dz] of [
-          [1, 0],
-          [-1, 0],
-          [0, 1],
-          [0, -1],
-        ]) {
-          const x = cx + dx;
-          const z = cz + dz;
-          if (x < x0 || x > x1 || z < z0 || z > z1) continue;
-          const j = z * n + x;
-          if (comp[j] >= 0 || !isField(j)) continue;
-          comp[j] = id;
-          stack.push(j);
-        }
-      }
-      let sx = 0;
-      let sz = 0;
-      for (const c of cells) {
-        sx += cellX(c % n);
-        sz += cellZ(Math.floor(c / n));
-      }
-      comps.push({ cells, cx: sx / cells.length, cz: sz / cells.length });
-    }
-  const big = comps
-    .map((c, id) => ({ ...c, id }))
-    .filter((c) => c.cells.length >= OUTPOSTS.fenceMinCells)
-    .sort((a, b) => dist({ x: a.cx, z: a.cz }, hub) - dist({ x: b.cx, z: b.cz }, hub));
-  const k = Math.min(big.length, rng.int(OUTPOSTS.fenceFields[0], OUTPOSTS.fenceFields[1]));
-  const out: Polyline[] = [];
+/**
+ * Fence the field patches nearest the farm hub along their rectangle edges
+ * (sweep D11: traced component outlines broke into short "sticks" inside the
+ * fields). Edges shared with an already fenced patch are skipped; samples off
+ * the plateau, near paths/obstacles or on non-field ground open gaps; runs
+ * shorter than OUTPOSTS.fenceMinRun posts are dropped.
+ */
+function fieldFences(
+  ctx: Ctx,
+  isl: IslandData,
+  hub: XZ,
+  rng: Rng,
+  paths: Polyline[],
+  fields: readonly FieldPatchData[],
+): Polyline[] {
+  const fieldCells = (f: FieldPatchData): number => {
+    const sh = rectShape(f.x, f.z, f.rotY, f.w, f.d);
+    let c = 0;
+    forSamplesNearSegment(ctx.h, f, f, Math.hypot(f.w, f.d) / 2, (i) => {
+      if (ctx.zone[i] !== Zone.field || ctx.islandMap[i] !== isl.id + 1) return;
+      if (shapeDist(sh, cellX(i % ctx.n), cellZ(Math.floor(i / ctx.n))) <= 0) c++;
+    });
+    return c;
+  };
+  const cand = fields
+    .filter((f) => f.islandId === isl.id && fieldCells(f) >= OUTPOSTS.fenceMinCells)
+    .sort((a, b) => dist(a, hub) - dist(b, hub));
+  const k = Math.min(cand.length, rng.int(OUTPOSTS.fenceFields[0], OUTPOSTS.fenceFields[1]));
   const nearPath = (p: XZ): boolean => {
     for (const pl of paths) {
       if (pl.islandId !== isl.id) continue;
@@ -1406,20 +1419,31 @@ function fieldFences(ctx: Ctx, isl: IslandData, hub: XZ, rng: Rng, paths: Polyli
     }
     return false;
   };
+  const fenceable = (p: XZ): boolean => {
+    if (!onIsland(ctx, isl, p.x, p.z) || sdfAt(ctx, p.x, p.z) < 1.5 || nearPath(p)) return false;
+    const i = cellOf(ctx, p.x, p.z);
+    const z = ctx.zone[i];
+    if (z !== Zone.field && z !== Zone.grass && z !== Zone.meadow) return false;
+    return !ctx.shapes[isl.id].some((o) => shapeDist(o, p.x, p.z) < 1);
+  };
+  const out: Polyline[] = [];
+  const posts: XZ[] = [];
+  const step = OUTPOSTS.fenceStep;
   for (let f = 0; f < k; f++) {
-    const c = big[f];
-    const loop = traceOutline(c.cells, comp, c.id, n);
-    if (loop.length < 4) continue;
-    const simp = simplifyClosed(loop, 1.2);
-    const pts = resample(simp, OUTPOSTS.fenceStep, true);
-    const ok = pts.map(
-      (p) =>
-        sdfAt(ctx, p.x, p.z) >= 1.5 &&
-        !nearPath(p) &&
-        !ctx.shapes[isl.id].some((o) => shapeDist(o, p.x, p.z) < 1),
-    );
+    const c = cand[f];
+    const loop = shapeCorners(rectShape(c.x, c.z, c.rotY, c.w, c.d));
+    const pts: XZ[] = [];
+    for (let e = 0; e < 4; e++) {
+      const a = loop[e];
+      const b = loop[(e + 1) % 4];
+      const m = Math.max(1, Math.round(dist(a, b) / step));
+      for (let j = 0; j < m; j++) pts.push(add(a, unit(a, b), (dist(a, b) * j) / m));
+    }
+    const ok = pts.map((p) => fenceable(p) && !posts.some((q) => dist(p, q) < step * 0.75));
+    const runs: XZ[][] = [];
     if (ok.every(Boolean)) {
       out.push({ islandId: isl.id, kind: 'fence', closed: true, points: pts });
+      posts.push(...pts);
       continue;
     }
     // rotate so the loop starts at a gap, then split into runs
@@ -1429,95 +1453,98 @@ function fieldFences(ctx: Ctx, isl: IslandData, hub: XZ, rng: Rng, paths: Polyli
       const idx = (startAt + j) % pts.length;
       if (ok[idx]) run.push(pts[idx]);
       else {
-        if (run.length >= 3)
-          out.push({ islandId: isl.id, kind: 'fence', closed: false, points: run });
+        runs.push(run);
         run = [];
       }
     }
-    if (run.length >= 3) out.push({ islandId: isl.id, kind: 'fence', closed: false, points: run });
+    runs.push(run);
+    for (const r of runs) {
+      if (r.length < OUTPOSTS.fenceMinRun) continue;
+      out.push({ islandId: isl.id, kind: 'fence', closed: false, points: r });
+      posts.push(...r);
+    }
   }
   return out;
 }
 
-/** Longest boundary loop of a sample set (pixel-edge tracing; corners at ±1 u). */
-function traceOutline(cells: number[], comp: Int32Array, id: number, n: number): XZ[] {
-  const N1 = n + 1;
-  const next = new Map<number, number[]>();
-  const order: number[] = [];
-  const edge = (ax: number, az: number, bx: number, bz: number): void => {
-    const a = az * N1 + ax;
-    let l = next.get(a);
-    if (!l) {
-      l = [];
-      next.set(a, l);
-      order.push(a);
+// ---------------------------------------------------------------------------
+// Roof colours (sweep D12): neighbouring lots never share a roof colour.
+
+/** Roof colour (palette ROOFS index) of a lot's def + variant; −1 = not part of the rule. */
+export function lotRoof(l: { defId: string; kind: string; variant: number }): number {
+  if (!ROOFED_KINDS.includes(l.kind as LotData['kind'])) return -1;
+  const roofs = LOT_ROOFS[l.defId];
+  return roofs ? roofs[l.variant % roofs.length] : -1;
+}
+
+/** Neighbour lists for the roof rule: roofed lots on one island closer than VILLAGE.roofNeighbour. */
+export function roofNeighbours(lots: readonly LotData[]): number[][] {
+  const nb: number[][] = lots.map(() => []);
+  for (let a = 0; a < lots.length; a++)
+    for (let b = a + 1; b < lots.length; b++) {
+      const A = lots[a];
+      const B = lots[b];
+      if (A.islandId !== B.islandId || !LOT_ROOFS[A.defId] || !LOT_ROOFS[B.defId]) continue;
+      if (!ROOFED_KINDS.includes(A.kind) || !ROOFED_KINDS.includes(B.kind)) continue;
+      if (dist(A, B) >= VILLAGE.roofNeighbour) continue;
+      nb[a].push(b);
+      nb[b].push(a);
     }
-    l.push(bz * N1 + bx);
+  return nb;
+}
+
+/**
+ * Pick every lot's variant (in place). Lots are coloured in index order; each
+ * tries its variants in an order fixed by its seeded hash and takes the first
+ * whose roof differs from every already-coloured neighbour, backtracking when
+ * stuck (bounded); on exhaustion the least-conflicting variant wins.
+ */
+function assignLotVariants(lots: LotData[], seed: number): void {
+  const nb = roofNeighbours(lots);
+  const order = lots.map((l, i) => {
+    const k = LOT_ROOFS[l.defId]?.length ?? 1;
+    const vs = Array.from({ length: k }, (_, v) => v);
+    const h = vs.map((v) => hashInts(seed, i, v));
+    return vs.sort((x, y) => h[x] - h[y]);
+  });
+  const set = new Uint8Array(lots.length);
+  const ok = (i: number, v: number): boolean => {
+    const r = lotRoof({ ...lots[i], variant: v });
+    if (r < 0) return true;
+    for (const j of nb[i]) if (set[j] && lotRoof(lots[j]) === r) return false;
+    return true;
   };
-  const inside = (x: number, z: number): boolean =>
-    x >= 0 && z >= 0 && x < n && z < n && comp[z * n + x] === id;
-  for (const c of cells) {
-    const x = c % n;
-    const z = (c - x) / n;
-    if (!inside(x, z - 1)) edge(x, z, x + 1, z);
-    if (!inside(x + 1, z)) edge(x + 1, z, x + 1, z + 1);
-    if (!inside(x, z + 1)) edge(x + 1, z + 1, x, z + 1);
-    if (!inside(x - 1, z)) edge(x, z + 1, x, z);
-  }
-  let best: number[] = [];
-  for (const s of order) {
-    const l0 = next.get(s);
-    if (!l0 || l0.length === 0) continue;
-    const loop: number[] = [s];
-    let cur = s;
-    for (let guard = 0; guard < 100000; guard++) {
-      const l = next.get(cur);
-      if (!l || l.length === 0) break;
-      const nx = l.shift() as number;
-      if (nx === s) break;
-      loop.push(nx);
-      cur = nx;
+  let budget = 20000;
+  const solve = (i: number): boolean => {
+    if (i >= lots.length) return true;
+    for (const v of order[i]) {
+      if (budget-- <= 0) return false;
+      if (!ok(i, v)) continue;
+      lots[i].variant = v;
+      set[i] = 1;
+      if (solve(i + 1)) return true;
+      set[i] = 0;
     }
-    if (loop.length > best.length) best = loop;
-  }
-  return best.map((v) => ({ x: cellX(v % N1) - 1, z: cellZ(Math.floor(v / N1)) - 1 }));
-}
-
-function simplifyClosed(pts: XZ[], tol: number): XZ[] {
-  if (pts.length < 4) return pts;
-  // split at the point farthest from pts[0]
-  let far = 0;
-  let fd = -1;
-  for (let i = 1; i < pts.length; i++) {
-    const d = dist(pts[i], pts[0]);
-    if (d > fd) {
-      fd = d;
-      far = i;
+    return false;
+  };
+  if (solve(0)) return;
+  // fallback (not 3-colourable or over budget): greedy, fewest clashes
+  set.fill(0);
+  for (let i = 0; i < lots.length; i++) {
+    let best = order[i][0];
+    let bc = Infinity;
+    for (const v of order[i]) {
+      const r = lotRoof({ ...lots[i], variant: v });
+      let c = 0;
+      for (const j of nb[i]) if (set[j] && r >= 0 && lotRoof(lots[j]) === r) c++;
+      if (c < bc) {
+        bc = c;
+        best = v;
+      }
     }
+    lots[i].variant = best;
+    set[i] = 1;
   }
-  const a = dp(pts.slice(0, far + 1), tol);
-  const b = dp([...pts.slice(far), pts[0]], tol);
-  return [...a.slice(0, -1), ...b.slice(0, -1)];
-}
-
-function dp(pts: XZ[], tol: number): XZ[] {
-  if (pts.length <= 2) return pts;
-  const a = pts[0];
-  const b = pts[pts.length - 1];
-  const vx = b.x - a.x;
-  const vz = b.z - a.z;
-  const len = Math.hypot(vx, vz) || 1;
-  let idx = -1;
-  let md = tol;
-  for (let i = 1; i < pts.length - 1; i++) {
-    const d = Math.abs((pts[i].x - a.x) * vz - (pts[i].z - a.z) * vx) / len;
-    if (d > md) {
-      md = d;
-      idx = i;
-    }
-  }
-  if (idx < 0) return [a, b];
-  return [...dp(pts.slice(0, idx + 1), tol).slice(0, -1), ...dp(pts.slice(idx), tol)];
 }
 
 // ---------------------------------------------------------------------------
@@ -1530,6 +1557,8 @@ export interface SettlementInput {
   islands: IslandData[];
   windDir: number;
   streams: StreamData[];
+  /** Millbrook crop-field rectangles (fences follow their edges). */
+  fields: FieldPatchData[];
 }
 
 export interface SettlementResult {
@@ -1646,8 +1675,10 @@ export function buildSettlements(input: SettlementInput, rng: Rng): SettlementRe
       w: l.w,
       d: l.d,
       node,
+      variant: 0,
     });
   });
+  assignLotVariants(lots, rng.fork('roofs').nextU32());
   const docks: DockData[] = ctx.docks.map((d) => ({
     x: d.x,
     z: d.z,
@@ -1682,7 +1713,14 @@ export function buildSettlements(input: SettlementInput, rng: Rng): SettlementRe
     const isl = input.islands[plan.islandId];
     if (isl.archetype !== 'millbrook') continue;
     fences.push(
-      ...fieldFences(ctx, isl, plan.hub, rng.fork('sites', isl.id).fork('fences'), built.paths),
+      ...fieldFences(
+        ctx,
+        isl,
+        plan.hub,
+        rng.fork('sites', isl.id).fork('fences'),
+        built.paths,
+        input.fields,
+      ),
     );
   }
 

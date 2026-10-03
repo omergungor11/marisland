@@ -5,9 +5,9 @@
  */
 import { createRng } from '../core/rng.ts';
 import type { WorldData } from './types.ts';
-import { GRID_N } from './types.ts';
+import { GRID_N, Zone } from './types.ts';
 import { buildChunkFlags } from './gen/chunks.ts';
-import { cleanCoast, shoreSdfOwners } from './gen/coast.ts';
+import { cleanCoast, dropIslets, shoreSdfOwners } from './gen/coast.ts';
 import { cellX, cellZ } from './gen/grid.ts';
 import { COAST } from '../content/islands.ts';
 import { combineHashes, hashBytes, hashFloats, hashLayout } from './gen/hash.ts';
@@ -48,6 +48,7 @@ export const STAGE_HASH_KEYS = [
   'sdf',
   'islandMap',
   'zone',
+  'fields',
   'chunks',
   'sites',
   'routes',
@@ -83,6 +84,8 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
     rawLand.islandMap[i] = isl ? isl.id + 1 : 0;
   }
   for (const i of cleanup.removed) rawLand.islandMap[i] = 0;
+  for (const i of dropIslets(land, GRID_N, rawLand.islandMap, COAST.minIsletCells, protect))
+    rawLand.islandMap[i] = 0;
   lap('land');
 
   const { sdf, owner } = shoreSdfOwners(land, GRID_N, rawLand.islandMap);
@@ -108,9 +111,13 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
       islands,
       windDir,
       streams: rawLand.streams ?? [],
+      fields: rawLand.fields,
     },
     root.fork('sites'),
   );
+  // field hues only where the zone is still `field` (lots, paths and plaza took the rest)
+  const fieldColor = rawLand.fieldColor;
+  for (let i = 0; i < fieldColor.length; i++) if (zone[i] !== Zone.field) fieldColor[i] = 0;
   lap('sites');
 
   const boatRoutes = buildRoutes(
@@ -141,6 +148,8 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
     moorings: sites.moorings,
     fixtures: sites.fixtures,
     fences: sites.fences,
+    fields: rawLand.fields,
+    fieldColor,
     props: createPropStore(0),
     chunkFlags,
     hashes,
@@ -156,6 +165,7 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
   hashes.sdf = hashFloats(sdf);
   hashes.islandMap = hashBytes(rawLand.islandMap);
   hashes.zone = hashBytes(zone);
+  hashes.fields = hashBytes(fieldColor);
   hashes.chunks = hashBytes(chunkFlags);
   hashes.sites = hashSites(world);
   hashes.routes = hashPolylines(boatRoutes);

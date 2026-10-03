@@ -27,6 +27,24 @@ export const LOT_KIND: Readonly<Record<string, LotKind>> = {
   marketStall: 'stall',
 };
 
+/**
+ * Roof colour (index into palette ROOFS) per building variant, mirroring the variant →
+ * palette mapping in geo/buildings.ts (cottage cycles WALLS/ROOFS sets 0/2/4, the stilt hut
+ * starts one set later, …). Worldgen picks each lot's variant so that no two neighbouring
+ * lots share a roof colour; the variant count per def must equal props-buildings `variants`.
+ */
+export const LOT_ROOFS: Readonly<Record<string, readonly number[]>> = {
+  cottage: [0, 2, 4],
+  stiltHut: [2, 4],
+  towerHouse: [5, 1, 2],
+  barn: [5, 0],
+  logCabin: [3, 6],
+  marketStall: [0, 2, 3],
+};
+
+/** Lot kinds that take part in the roof-colour rule (stall awnings are striped, not roofs). */
+export const ROOFED_KINDS: readonly LotKind[] = ['house', 'tower', 'hut', 'barn', 'cabin'];
+
 export interface LandmarkSpec {
   /** Occupancy / overlap radius in u (null = no occupancy, e.g. the crater). */
   radius: number | null;
@@ -94,6 +112,9 @@ export const VILLAGE = {
   /** (Task asked 0.8–2 u at 2–5 u; the 8–12 u shelf is only ≈ 0.6 u deep at 5 u, so 0.5–2 at 2–7.) */
   stiltDepth: [0.5, 2] as const,
   stiltShore: [2, 7] as const,
+  /** Stilt huts: min centre spacing to another hut, and min clearance to a pier (+ its basin), u. */
+  stiltSpacing: 12,
+  stiltDockClear: 9,
   stiltSearch: 40,
   /** Bay test: of 12 rays (length bayRay u) at least this many hit land; relaxed in order. */
   bayRay: 45,
@@ -101,6 +122,11 @@ export const VILLAGE = {
   /** Lane directions (degrees from the harbour lane), tried in order until the cottage target is met. */
   lanes: [0, 75, -75, 140, -140, 35, -35, 108, -108, 160, -160, 55, -55] as const,
   stalls: [2, 3] as const,
+  /**
+   * Lots whose centres are closer than this (u) are neighbours for the roof-colour rule:
+   * along-lane neighbours (≈ 4.5–5.7 u) and the lot across the lane (7.2 u), not diagonals.
+   */
+  roofNeighbour: 8,
   rowboats: [3, 5] as const,
   sailboats: [1, 2] as const,
 } as const;
@@ -117,9 +143,11 @@ export const OUTPOSTS = {
   farmCottages: [2, 4] as const,
   farmRing: [7, 12] as const,
   fenceFields: [2, 4] as const,
-  /** Min field component size (grid samples) to get a fence. */
-  fenceMinCells: 18,
+  /** Min field samples inside a patch rectangle for it to get a fence. */
+  fenceMinCells: 30,
   fenceStep: 1.5,
+  /** Fence runs shorter than this many posts are dropped (no stray sticks). */
+  fenceMinRun: 5,
   /** Mossgrove cabin distance from the stream mouth. */
   cabinRing: [6, 24] as const,
   cabinMaxRelief: 3.5,
@@ -132,13 +160,27 @@ export const OUTPOSTS = {
 /** Docks (ARCHITECTURE §2 step 5: water > 2 u deep within reach of the shore). */
 export const DOCK = {
   segment: 2,
-  /** Dock end must reach at least this depth (u). */
-  endDepth: 2,
-  maxSegments: 10,
+  /**
+   * The pier runs out until its end stands in at least this depth (u): past the turquoise
+   * shelf, where a sailboat can moor (sweep D8 — 2 u ended mid-shallows).
+   */
+  endDepth: 3.5,
+  /** Palmlagoon's atoll channel docks (no carving; the lagoon floor is 2–4 u). */
+  lagoonEndDepth: 2.25,
+  maxSegments: 12,
   minSegments: 2,
-  /** Channel carve when the shelf is too shallow (u). */
+  /** Shore normal = SDF gradient over ± this span (u) at the pier root. */
+  normalSpan: 4,
+  /** Every pier sample must be ≥ awayRate × t − awaySlack u from shore (never along it). */
+  awayRate: 0.85,
+  awaySlack: 1,
+  /** Hearthholm: score penalty when the end reaches depth but not the blue band (zone mid). */
+  shallowEndPenalty: 8,
+  /** Carved fallback (shelf too shallow within reach): at most this many segments. */
+  carveSegments: 8,
+  /** Channel carve along a fallback pier and the turning basin depth (u, ≥ endDepth). */
   channelWidth: 3,
-  channelDepth: 2.5,
+  channelDepth: 3.8,
   /** Moorings: rowboats need this depth, spaced along the dock sides. */
   rowboatDepth: 0.8,
   mooringSide: 1.8,

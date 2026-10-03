@@ -31,6 +31,13 @@ export interface PlacementRule {
   /** Zone ids to keep clear of (within `avoidDist` u). */
   avoid?: number[];
   avoidDist?: number;
+  /** Only on Millbrook fields of these hues (indices into palette FIELDS). */
+  fieldColors?: number[];
+  /**
+   * Crop rows: snap to a lattice of this spacing (u) aligned with the island's field
+   * patches and face along them, so rows read as tilled rows, not scattered sticks.
+   */
+  fieldRows?: number;
 }
 
 const {
@@ -162,6 +169,9 @@ export const PLACEMENT_RULES: readonly PlacementRule[] = [
     zones: [field],
     minDist: 2.4,
     density: 1,
+    // wheat, dark crop and ploughed soil get rows; lavender and tulip fields stay open (D11)
+    fieldColors: [0, 1, 2],
+    fieldRows: 2.6,
     slopeMax: 0.4,
     heights: [1, 20],
     scale: [0.9, 1.1],

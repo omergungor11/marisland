@@ -225,3 +225,61 @@ function morph(
   }
   return changed;
 }
+
+/**
+ * Drop stray islets (in place): 4-connected land components smaller than
+ * `minCells` samples that are not their island's largest component and hold
+ * no protected sample (Beacon Rock sea stacks are profile-protected). Catches
+ * warp leftovers such as a speck inside Hearthholm's harbour bay. Returns the
+ * removed indices (callers clear `islandMap` there).
+ */
+export function dropIslets(
+  land: Uint8Array,
+  n: number,
+  islandMap: Uint8Array,
+  minCells: number,
+  protect: Uint8Array | null = null,
+): number[] {
+  const comp = new Int32Array(n * n).fill(-1);
+  const comps: { cells: number[]; island: number; protected: boolean }[] = [];
+  const largest = new Map<number, number>();
+  for (let i0 = 0; i0 < land.length; i0++) {
+    if (land[i0] !== 1 || comp[i0] >= 0) continue;
+    const id = comps.length;
+    const cells: number[] = [];
+    let prot = false;
+    const stack = [i0];
+    comp[i0] = id;
+    while (stack.length > 0) {
+      const c = stack.pop() as number;
+      cells.push(c);
+      if (protect && protect[c] !== 0) prot = true;
+      const x = c % n;
+      const z = (c - x) / n;
+      const nb = [
+        x > 0 ? c - 1 : -1,
+        x < n - 1 ? c + 1 : -1,
+        z > 0 ? c - n : -1,
+        z < n - 1 ? c + n : -1,
+      ];
+      for (const j of nb) {
+        if (j < 0 || land[j] !== 1 || comp[j] >= 0) continue;
+        comp[j] = id;
+        stack.push(j);
+      }
+    }
+    const island = islandMap[i0];
+    comps.push({ cells, island, protected: prot });
+    const best = largest.get(island);
+    if (best === undefined || comps[best].cells.length < cells.length) largest.set(island, id);
+  }
+  const removed: number[] = [];
+  comps.forEach((c, id) => {
+    if (c.protected || c.cells.length >= minCells || largest.get(c.island) === id) return;
+    for (const i of c.cells) {
+      land[i] = 0;
+      removed.push(i);
+    }
+  });
+  return removed;
+}
