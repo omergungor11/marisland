@@ -8,7 +8,6 @@ import { loadStoredQuality, pickQuality, QUALITY_PRESETS } from './core/quality.
 import { Loop } from './core/loop.ts';
 import { Scope } from './core/scope.ts';
 import { Emitter, type AppEvents } from './core/events.ts';
-import { createRng } from './core/rng.ts';
 import { createBackend, type RendererBackend } from './render/backend.ts';
 import { createPostChain, type PostChain } from './render/post/composer.ts';
 import { createLoader } from './ui/loader.ts';
@@ -16,9 +15,10 @@ import { injectStyles } from './ui/styles.ts';
 import { createStatsOverlay, readInfo, type StatsOverlay } from './debug/stats.ts';
 import { findShot } from './content/shots.ts';
 import type { Counters, MarislandApi, RenderInfo } from './capture/api.ts';
-import { buildTestScene } from './render/test-scene.ts';
 import { createCameraSystem, type CameraSystem } from './camera/controls.ts';
 import { buildGallery } from './render/gallery-scene.ts';
+import { buildWorldView } from './render/world-view.ts';
+import type { TestScene } from './render/test-scene.ts';
 
 /**
  * Composition root (ARCHITECTURE §1). Owns scopes, the loop and the systems.
@@ -198,15 +198,30 @@ export async function boot(): Promise<void> {
       },
     });
 
-    // ---- world (TASK-003: test scene; replaced by terrain/water in M1)
+    // ---- world
+    const buildWorld = (seed: number): TestScene => {
+      if (params.gallery) return buildGallery(worldScope);
+      const wv = buildWorldView(seed, {
+        scene,
+        camera,
+        quality,
+        scope: worldScope,
+        getHour: () => loop.clock.dayTime,
+        getTime: () => loop.clock.time,
+        getTier: () => cam.tier,
+        counters: ctx.counters,
+        now,
+      });
+      Object.assign(ctx.timings, wv.timings);
+      return { group: wv.group, system: wv.system, hash: wv.hash, cameraWorld: wv.cameraWorld };
+    };
     const tGen = now();
-    const rng = createRng(params.seed);
-    const testScene = params.gallery ? buildGallery(worldScope) : buildTestScene(rng, worldScope);
+    let testScene = buildWorld(params.seed);
     scene.add(testScene.group);
     worldScope.defer(() => scene.remove(testScene.group));
     loop.add(testScene.system);
     ctx.worldHash = testScene.hash;
-    ctx.timings.gen = now() - tGen;
+    ctx.timings.total = now() - tGen;
     cam.setWorld(testScene.cameraWorld);
     cam.applyPreset(params.cam || 'overview', false);
     cam.setIdleOrbit(!params.freeze);
@@ -238,15 +253,14 @@ export async function boot(): Promise<void> {
     api.regen = async (seed: number) => {
       worldScope.dispose();
       loop.remove(testScene.system);
-      const r2 = createRng(seed);
-      const ts2 = buildTestScene(r2, worldScope);
-      scene.add(ts2.group);
-      worldScope.defer(() => scene.remove(ts2.group));
-      loop.add(ts2.system);
-      ctx.worldHash = ts2.hash;
-      api.worldHash = ts2.hash;
-      cam.setWorld(ts2.cameraWorld);
+      testScene = buildWorld(seed);
+      scene.add(testScene.group);
+      worldScope.defer(() => scene.remove(testScene.group));
+      loop.add(testScene.system);
+      ctx.worldHash = testScene.hash;
+      api.worldHash = testScene.hash;
       api.seed = seed;
+      cam.setWorld(testScene.cameraWorld);
       loop.step(1 / 30, 1);
     };
     api.memory = () => ({
