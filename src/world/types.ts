@@ -124,8 +124,15 @@ export interface WorldData {
   moorings: MooringData[];
   /** Single fixed props placed by settlements (well, buoys, tide pools, message bottle). */
   fixtures: FixtureData[];
-  /** Fence lines (open polylines, 1.5 u spacing) around Millbrook field patches. */
+  /** Fence lines (open polylines, 1.5 u spacing) along Millbrook field-patch edges. */
   fences: Polyline[];
+  /** Millbrook patchwork: one rectangle per crop field (colour index into palette FIELDS). */
+  fields: FieldPatchData[];
+  /**
+   * Field colour per sample (same grid): 1 + index into palette FIELDS where the zone is
+   * `field`, else 0. Terrain colours read it so the patchwork shows ≥ 4 hues (sweep D11).
+   */
+  fieldColor: Uint8Array;
   /** Scattered props (scatter runs inside generateWorld, after settlements). */
   props: PropStore;
   /** Per-chunk flags: bit0 = has land, bit1 = has shallow water (needs a mesh). */
@@ -179,6 +186,25 @@ export interface LotData {
   d: number;
   /** pathGraph node at the door. */
   node: number;
+  /**
+   * Building variant (wall/roof colour set, content/settlements LOT_ROOFS). Chosen in
+   * worldgen so path-adjacent lots never share a roof colour (sweep D12).
+   */
+  variant: number;
+}
+
+/**
+ * A rectangular crop field (Millbrook patchwork). Same rect convention as lots:
+ * `d` along (cos rotY, sin rotY), `w` across it. `color` = index into palette FIELDS.
+ */
+export interface FieldPatchData {
+  islandId: number;
+  x: number;
+  z: number;
+  rotY: number;
+  w: number;
+  d: number;
+  color: number;
 }
 
 /** Landmark kinds: lighthouse, clocktower, windmill, hotSpring, volcanoCrater, sunkenShip, giantTree, lonelyPalm. */

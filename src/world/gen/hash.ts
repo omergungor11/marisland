@@ -94,7 +94,8 @@ export function hashSites(w: WorldData): string {
       .u32(s.hub.node + 1);
     h.u32(s.lots.length).u32(s.landmarks.length).u32(s.docks.length);
   }
-  for (const l of w.lots) h.str(l.defId).float(l.x).float(l.z).float(l.rotY).u32(l.node);
+  for (const l of w.lots)
+    h.str(l.defId).float(l.x).float(l.z).float(l.rotY).u32(l.node).u32(l.variant);
   for (const l of w.landmarks) h.str(l.kind).float(l.x).float(l.z).float(l.rotY);
   for (const d of w.docks)
     h.float(d.x)
@@ -106,6 +107,7 @@ export function hashSites(w: WorldData): string {
   for (const f of w.fixtures) h.str(f.defId).float(f.x).float(f.z).float(f.rotY);
   h.floats(w.pathGraph.nodes);
   for (let i = 0; i < w.pathGraph.edges.length; i++) h.u32(w.pathGraph.edges[i]);
+  for (const f of w.fields) h.u32(f.islandId).float(f.x).float(f.z).u32(f.color);
   hashPolylines(w.fences, h);
   return hashPolylines(w.paths, h);
 }

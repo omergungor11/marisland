@@ -83,7 +83,17 @@ export function appendSettlementProps(world: WorldData): {
   for (const lot of world.lots) {
     // our prop pivots face +z by convention? geometry faces −z (door on −z) → rotate so the door faces rotY.
     const yaw = Math.atan2(Math.cos(lot.rotY), Math.sin(lot.rotY));
-    push(lot.defId, lot.x, lot.z, yaw, 1, lot.islandId, lot.kind === 'hut' ? 0 : undefined);
+    // variant = worldgen's roof-colour pick (neighbours never share a roof colour)
+    push(
+      lot.defId,
+      lot.x,
+      lot.z,
+      yaw,
+      1,
+      lot.islandId,
+      lot.kind === 'hut' ? 0 : undefined,
+      lot.variant,
+    );
     if (lot.defId === 'cottage' || lot.defId === 'logCabin' || lot.defId === 'towerHouse') {
       const [fx, fz] = facing(lot.rotY);
       const y = heightAt(h, lot.x, lot.z);

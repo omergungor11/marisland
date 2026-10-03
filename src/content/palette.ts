@@ -53,6 +53,13 @@ export const EMISSIVE = {
   firefly: '#E8FF8A',
 } as const;
 export const HAY = '#F2C46B';
+/**
+ * Millbrook patchwork field hues (ART_BIBLE §4 "patchwork fields", W7 ≥ 4 colours), all
+ * taken from the bible palette: wheat (hay), dark crop (deciduous shade), ploughed soil
+ * (planks), lavender and tulip (flowers). No light-lime hue: it vanished into the grass.
+ * Neighbouring fields never share one.
+ */
+export const FIELDS = ['#F2C46B', '#3E9A52', '#D2A679', '#B39DFF', '#FF8FB1'] as const;
 export const MUSHROOM_CAP = '#E35D6A';
 export const HOT_SPRING = '#9FE6E0';
 export const CLOUD = {

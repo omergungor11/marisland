@@ -2,7 +2,7 @@ import type { Noise } from '../../core/noise.ts';
 import type { Rng } from '../../core/rng.ts';
 import { hashInts } from '../../core/hash.ts';
 import { clamp01, lerp, smax, smoothstep } from '../../core/math/index.ts';
-import type { ArchetypeId, IslandData } from '../types.ts';
+import type { ArchetypeId, FieldPatchData, IslandData } from '../types.ts';
 import { PATCHWORK, RAW_FLOOR, WINDWARD_CLIFF } from '../../content/islands.ts';
 
 /**
@@ -50,6 +50,10 @@ export interface IslandProfile {
   tag?(x: number, z: number): number;
   /** Optional polylines in world u (Mossgrove stream). */
   streams?: { x: number; z: number }[][];
+  /** Optional crop-field rectangles (Millbrook patchwork; islandId filled by the caller). */
+  fields?: Omit<FieldPatchData, 'islandId'>[];
+  /** Optional field colour per point: 1 + index into palette FIELDS, 0 = none. */
+  fieldColor?(x: number, z: number): number;
   /** Anchors in world u; rotY = facing angle in the xz plane (same convention as windDir). */
   anchors: IslandData['anchors'];
 }
@@ -282,20 +286,85 @@ const millbrook: ProfileFactory = ({ island, rng, noise, windDir }) => {
     h = lerp(h, 0.9, smoothstep(1.6, 0.9, dp));
     return Math.max(RAW_FLOOR, h - COAST_LEVEL);
   };
-  const tag = (x: number, z: number): number => {
-    fr.toLocal(x, z, q);
-    const lx = q[0];
-    const lz = q[1];
-    if (Math.hypot(lx - pond.x, lz - pond.z) / pondR < 1.3) return Tag.pond;
-    if (plateauMask(lx, lz) < 0.45) return 0;
-    const u = (x * fc + z * fs) / PATCHWORK.cell[0];
-    const v = (-x * fs + z * fc) / PATCHWORK.cell[1];
-    const t = hashInts(fieldSeed, Math.floor(u), Math.floor(v)) / 4294967296;
+  const [cu, cv] = PATCHWORK.cell;
+  const cellKind = (U: number, V: number): number => {
+    const t = hashInts(fieldSeed, U, V) / 4294967296;
     return t < PATCHWORK.field
       ? Tag.field
       : t < PATCHWORK.field + PATCHWORK.meadow
         ? Tag.meadow
         : 0;
+  };
+  // Patch colours: row-major greedy over the cells covering the island bounds; a field
+  // never shares a hue with its 8 neighbours already coloured (left, up row), the least
+  // used hue on the plateau wins, the cell hash breaks ties.
+  let U0 = Infinity;
+  let U1 = -Infinity;
+  let V0 = Infinity;
+  let V1 = -Infinity;
+  for (const [x, z] of [
+    [island.minX, island.minZ],
+    [island.maxX, island.minZ],
+    [island.minX, island.maxZ],
+    [island.maxX, island.maxZ],
+  ]) {
+    const u = (x * fc + z * fs) / cu;
+    const v = (-x * fs + z * fc) / cv;
+    U0 = Math.min(U0, Math.floor(u));
+    U1 = Math.max(U1, Math.floor(u));
+    V0 = Math.min(V0, Math.floor(v));
+    V1 = Math.max(V1, Math.floor(v));
+  }
+  const nu = U1 - U0 + 1;
+  const colorGrid = new Uint8Array(nu * (V1 - V0 + 1));
+  const used = new Array<number>(PATCHWORK.colors).fill(0);
+  const fields: Omit<FieldPatchData, 'islandId'>[] = [];
+  for (let V = V0; V <= V1; V++)
+    for (let U = U0; U <= U1; U++) {
+      if (cellKind(U, V) !== Tag.field) continue;
+      const taken = new Set<number>();
+      for (const [du, dv] of [
+        [-1, 0],
+        [-1, -1],
+        [0, -1],
+        [1, -1],
+      ]) {
+        const a = U + du - U0;
+        const b = V + dv - V0;
+        if (a >= 0 && a < nu && b >= 0) taken.add(colorGrid[b * nu + a]);
+      }
+      let best = -1;
+      for (let c = 0; c < PATCHWORK.colors; c++) {
+        if (taken.has(c + 1)) continue;
+        if (
+          best < 0 ||
+          used[c] < used[best] ||
+          (used[c] === used[best] && hashInts(fieldSeed, U, V, c) < hashInts(fieldSeed, U, V, best))
+        )
+          best = c;
+      }
+      colorGrid[(V - V0) * nu + U - U0] = best + 1;
+      const uc = (U + 0.5) * cu;
+      const vc = (V + 0.5) * cv;
+      const x = uc * fc - vc * fs;
+      const z = uc * fs + vc * fc;
+      fr.toLocal(x, z, q);
+      if (plateauMask(q[0], q[1]) < PATCHWORK.plateauMask) continue;
+      used[best]++;
+      fields.push({ x, z, rotY: fieldAngle, w: cv, d: cu, color: best });
+    }
+  const tag = (x: number, z: number): number => {
+    fr.toLocal(x, z, q);
+    const lx = q[0];
+    const lz = q[1];
+    if (Math.hypot(lx - pond.x, lz - pond.z) / pondR < 1.3) return Tag.pond;
+    if (plateauMask(lx, lz) < PATCHWORK.plateauMask) return 0;
+    return cellKind(Math.floor((x * fc + z * fs) / cu), Math.floor((-x * fs + z * fc) / cv));
+  };
+  const fieldColor = (x: number, z: number): number => {
+    const a = Math.floor((x * fc + z * fs) / cu) - U0;
+    const b = Math.floor((-x * fs + z * fc) / cv) - V0;
+    return a >= 0 && a < nu && b >= 0 && b <= V1 - V0 ? colorGrid[b * nu + a] : 0;
   };
   const anchors: IslandData['anchors'] = {};
   knolls.forEach((k, i) => {
@@ -304,7 +373,7 @@ const millbrook: ProfileFactory = ({ island, rng, noise, windDir }) => {
   });
   const pw = fr.toWorld(pond.x, pond.z);
   anchors.pond = { x: pw.x, z: pw.z, rotY: 0 };
-  return { sample, tag, anchors };
+  return { sample, tag, anchors, fields, fieldColor };
 };
 
 /**

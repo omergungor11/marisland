@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { LANDMARKS } from '../content/settlements.ts';
-import { PROP_DEFS } from '../content/props.ts';
+import { DOCK, LANDMARKS, LOT_ROOFS, OUTPOSTS, VILLAGE } from '../content/settlements.ts';
+import { PROP_DEFS, PROP_DEF_INDEX } from '../content/props.ts';
+import { FIELDS } from '../content/palette.ts';
 import {
   generateWorld,
   heightAt,
@@ -11,7 +12,16 @@ import {
   type XZ,
 } from './index.ts';
 import { PropFlag } from './prop-store.ts';
-import { discShape, lotShape, shapeCorners, shapeDist, shapesOverlap } from './gen/settlements.ts';
+import {
+  discShape,
+  lotRoof,
+  lotShape,
+  rectShape,
+  roofNeighbours,
+  shapeCorners,
+  shapeDist,
+  shapesOverlap,
+} from './gen/settlements.ts';
 
 // Tests measure wall time; generation itself never reads a clock.
 // eslint-disable-next-line no-restricted-properties
@@ -183,6 +193,153 @@ describe('settlements — 20-seed sweep', () => {
       }
     }
     expect(n).toBeGreaterThanOrEqual(40);
+  });
+
+  it('D8: piers reach DOCK.endDepth; Hearthholm piers end past the turquoise band, away from the shore', () => {
+    let n = 0;
+    for (const seed of SEEDS) {
+      const w = world(seed);
+      for (const d of w.docks) {
+        const isl = w.islands[d.islandId];
+        const want = isl.archetype === 'palmlagoon' ? DOCK.lagoonEndDepth : DOCK.endDepth;
+        const e = dockEnd(d);
+        const ctx = `seed ${seed} ${isl.archetype} dock`;
+        expect(heightAt(w.height, e.x, e.z), ctx).toBeLessThanOrEqual(-want + 1e-3);
+        if (isl.archetype === 'hearthholm') {
+          n++;
+          expect([Zone.mid, Zone.deep], ctx).toContain(zoneAt(w.height, w.zone, e.x, e.z));
+        }
+        // never runs along the shore: shore distance grows with the pier
+        for (let k = 1; k <= d.segments; k++) {
+          const t = DOCK.segment * k;
+          const s = sampleGrid(
+            w.height,
+            w.shoreSdf,
+            d.x + Math.cos(d.rotY) * t,
+            d.z + Math.sin(d.rotY) * t,
+            -99,
+          );
+          expect(-s, `${ctx} segment ${k}`).toBeGreaterThanOrEqual(
+            DOCK.awayRate * t - DOCK.awaySlack - 1e-3,
+          );
+        }
+      }
+    }
+    expect(n).toBe(SEEDS.length);
+  });
+
+  it('D8: stilt huts never overlap, keep VILLAGE.stiltSpacing apart and clear of piers', () => {
+    let huts = 0;
+    for (const seed of SEEDS) {
+      const w = world(seed);
+      const hs = w.lots.filter((l) => l.kind === 'hut');
+      huts += hs.length;
+      for (let a = 0; a < hs.length; a++) {
+        const ctx = `seed ${seed} hut @${hs[a].x.toFixed(1)},${hs[a].z.toFixed(1)}`;
+        for (let b = a + 1; b < hs.length; b++) {
+          expect(shapesOverlap(lotShape(hs[a]), lotShape(hs[b]), 2), ctx).toBe(false);
+          expect(Math.hypot(hs[a].x - hs[b].x, hs[a].z - hs[b].z), ctx).toBeGreaterThanOrEqual(
+            VILLAGE.stiltSpacing,
+          );
+        }
+        for (const d of w.docks) {
+          if (d.islandId !== hs[a].islandId) continue;
+          const L = d.segments * DOCK.segment;
+          const pier = rectShape(
+            d.x + (Math.cos(d.rotY) * L) / 2,
+            d.z + (Math.sin(d.rotY) * L) / 2,
+            d.rotY,
+            0,
+            L,
+          );
+          expect(shapeDist(pier, hs[a].x, hs[a].z), ctx).toBeGreaterThanOrEqual(
+            VILLAGE.stiltDockClear - 1e-3,
+          );
+        }
+      }
+    }
+    expect(huts).toBeGreaterThanOrEqual(SEEDS.length);
+  });
+
+  it('D9: Hearthholm is one landmass (no stray islet in the bay)', () => {
+    for (const seed of SEEDS) {
+      const w = world(seed);
+      const hh = w.islands.find((i) => i.archetype === 'hearthholm');
+      if (!hh) continue;
+      const n = w.height.n;
+      const seen = new Uint8Array(n * n);
+      let parts = 0;
+      for (let i0 = 0; i0 < n * n; i0++) {
+        if (seen[i0] || w.islandMap[i0] !== hh.id + 1 || w.height.data[i0] <= 0) continue;
+        parts++;
+        const st = [i0];
+        seen[i0] = 1;
+        while (st.length > 0) {
+          const c = st.pop() as number;
+          const x = c % n;
+          for (const j of [x > 0 ? c - 1 : -1, x < n - 1 ? c + 1 : -1, c - n, c + n]) {
+            if (j < 0 || j >= n * n || seen[j] || w.height.data[j] <= 0) continue;
+            seen[j] = 1;
+            st.push(j);
+          }
+        }
+      }
+      expect(parts, `seed ${seed}`).toBe(1);
+    }
+  });
+
+  it('D12: neighbouring lots never share a roof colour; variants match the prop defs', () => {
+    for (const [def, roofs] of Object.entries(LOT_ROOFS))
+      expect(roofs.length, def).toBe(PROP_DEFS[PROP_DEF_INDEX[def]].variants);
+    let pairs = 0;
+    for (const seed of SEEDS) {
+      const w = world(seed);
+      const nb = roofNeighbours(w.lots);
+      w.lots.forEach((l, a) => {
+        expect(l.variant).toBeLessThan(PROP_DEFS[PROP_DEF_INDEX[l.defId]].variants);
+        for (const b of nb[a]) {
+          if (b < a) continue;
+          pairs++;
+          expect(lotRoof(w.lots[b]), `seed ${seed} lots ${a}/${b}`).not.toBe(lotRoof(l));
+        }
+      });
+    }
+    expect(pairs).toBeGreaterThan(SEEDS.length * 5);
+  });
+
+  it('D11: Millbrook fields show ≥ 4 colours; fences run along field-patch edges', () => {
+    let islands = 0;
+    for (const seed of SEEDS) {
+      const w = world(seed);
+      const mb = w.islands.find((i) => i.archetype === 'millbrook');
+      if (!mb) continue;
+      islands++;
+      const hues = new Set<number>();
+      for (let i = 0; i < w.zone.length; i++) {
+        if (w.islandMap[i] !== mb.id + 1) continue;
+        if (w.zone[i] === Zone.field) {
+          expect(w.fieldColor[i], `seed ${seed}`).toBeGreaterThan(0);
+          expect(w.fieldColor[i]).toBeLessThanOrEqual(FIELDS.length);
+          hues.add(w.fieldColor[i]);
+        } else expect(w.fieldColor[i]).toBe(0);
+      }
+      expect(hues.size, `seed ${seed} field hues`).toBeGreaterThanOrEqual(4);
+      const rects = w.fields
+        .filter((f) => f.islandId === mb.id)
+        .map((f) => rectShape(f.x, f.z, f.rotY, f.w, f.d));
+      const fences = w.fences.filter((f) => f.islandId === mb.id);
+      expect(fences.length, `seed ${seed}`).toBeGreaterThan(0);
+      for (const f of fences) {
+        expect(f.points.length, `seed ${seed} fence run`).toBeGreaterThanOrEqual(
+          OUTPOSTS.fenceMinRun,
+        );
+        for (const p of f.points) {
+          const edge = Math.min(...rects.map((r) => Math.abs(shapeDist(r, p.x, p.z))));
+          expect(edge, `seed ${seed} fence post off a patch edge`).toBeLessThan(0.05);
+        }
+      }
+    }
+    expect(islands).toBeGreaterThan(5);
   });
 
   it('boat routes: 2–4 closed loops, every sample ≥ 1.5 u deep and ≥ 2 u from land, docks visited', () => {

@@ -111,7 +111,7 @@ export function buildZones(inp: ZoneInputs, rng: Rng): Uint8Array {
           (y - rules.rockBands.from) % rules.rockBands.step < rules.rockBands.width)
       ) {
         zone[i] = Zone.rock;
-      } else if (rules.patchwork && tag & Tag.field) {
+      } else if (rules.patchwork && tag & Tag.field && slope <= ZONE_RULES.fieldMaxSlope) {
         zone[i] = Zone.field;
       } else if (rules.patchwork && tag & Tag.meadow) {
         zone[i] = Zone.meadow;
