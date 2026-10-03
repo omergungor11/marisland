@@ -10,14 +10,20 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
-- 2026-10-03 (session 2): M7 (TASK-161/162), M8 (TASK-171/172), M9 (TASK-181/182) merged and pushed on
-  `claude/inspiring-pascal-19nwjr`; contact sheets `mar-docs/shots/M9.jpg` (wow) + `M9-dev.jpg`. In flight:
-  TASK-191 (`engine`: regen geometry leak 99→130, governor, context loss, `?perf=1`) and a shader program
-  audit (medium 21–22 vs budget 20). Then TASK-192 10-seed sweep, TASK-193 README.
-- Visual debts to schedule: Millbrook meadow fence segments read as scattered "sticks" (D-sheep/W7); W7
-  sheep too small at T2 (consider a closer W7 cam); W3 moon glitter path wide/busy; stair-stepped ring edges
-  in the mask frame; D-golden foliage slightly grey-blue; W10 treehouse windows hidden by canopy; boats
-  sample content SWELL on CPU so in rain (swell ×1.4) they can float ~0.06 u off the surface.
+- 2026-10-03 (session 2, end): Phase 1 M1–M10 implemented on `claude/inspiring-pascal-19nwjr`. After the
+  10-seed sweep (`mar-docs/qa/sweep-2026-10-03.md`) a polish round fixed D1–D9, D11–D14 (camera framing,
+  piers/huts/islets/fields/roof colours, wake/sheep size/fireflies, shelf seams/glitter/steam/pools/mist).
+  Wow + dev + ci sets all green with `--assert` (medium programs 15–17/20, low 9/12), self-tests ok.
+  Exit sheets: `mar-docs/shots/M10.jpg` (wow), `M10-dev.jpg`, `M10-cam.jpg`, `M10-sweep.jpg` (pre-polish).
+- TASK-192 is REVIEW: needs the user's real-GPU sign-off (M1 60 fps high, phone 30 fps medium) and a
+  `?perf=1` run on hardware. Then merge the branch to `main` (Pages deploy).
+- Open visual debts: D10 stepped beach/cliff bands (needs shore paths ≥ 2.5 u + sand↔grass blend by shore
+  distance); W5 camera looks along the steam plume (needs a wind-aware yaw); portrait overview sits at
+  ~1700 u and fogs pale (tune the fog curve beyond 800 u); W9 has no sun glint (camera faces away from the
+  sun); `marGridUv` samples at i/(n−1) not texel centres (±1 u at the world edge); `estimateGpuMB` is crude
+  (counts render targets twice, ignores MSAA) — not asserted; boats sample content SWELL on CPU so in rain
+  they can float ~0.06 u off; high quality has no program headroom (24/24 at T3 with DOF).
+- Phase 2 (sandbox editing) not started — see `mar-tasks/phases/phase-2.md`.
 
 ## Important Patterns
 - Pixel determinism: same URL → byte-identical PNG under SwiftShader

@@ -102,8 +102,8 @@ Status flow: PENDING → IN_PROGRESS → REVIEW → COMPLETED (BLOCKED if deps u
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
 | TASK-191 | Governor, prewarm, context-loss regen, `perf=1` | engine | M | COMPLETED | all Phase 1 |
-| TASK-192 | 10-seed sweep; user checks M1 60 fps / phone 30 fps | qa | M | PENDING | TASK-191 |
-| TASK-193 | README, MEMORY gotchas | docs | S | PENDING | TASK-192 |
+| TASK-192 | 10-seed sweep; user checks M1 60 fps / phone 30 fps | qa | M | REVIEW | TASK-191 |
+| TASK-193 | README, MEMORY gotchas | docs | S | COMPLETED | TASK-192 |
 
 ## Phase 2: Sandbox (sketch)
 
