@@ -1,0 +1,25 @@
+# Project Memory
+
+## Project Info
+- Marisland: procedurally generated cute/cozy stylized archipelago in three.js (WebGL2), 5–7
+  islands, zoom-revealed detail, living ambient life. Phase 1 diorama, Phase 2 sandbox building.
+
+## Project Status
+- **Planning**: COMPLETED 2026-10-03 — ARCHITECTURE.md, ART_BIBLE.md, skills, agents, PROMPT.md
+- **Phase 0**: PENDING — start with `mar-plans/PROMPT.md`
+
+## Where I left off
+- (Update at the end of every session: last finished task, what's half-done, next step.)
+
+## Important Patterns
+- Pixel determinism: same URL → byte-identical PNG under SwiftShader
+- Shader formulas shared with CPU have TS twins + parity tests
+
+## Known Issues / Gotchas
+- three r186: `PCFSoftShadowMap` removed; `THREE.Clock` deprecated
+- pmndrs `postprocessing@6.39.5` needs three `<0.187` — don't bump three
+- SwiftShader fps is meaningless; assert counts from `renderer.info`
+- Art bible W-shot seeds (1001, 2024, …) are placeholders until TASK-113 pins real ones
+
+> Rules: read at session start; update gotchas/patterns as discovered; delete stale info; keep it
+> short. Architecture decisions go to DECISIONS.md, not here.

@@ -1,0 +1,15 @@
+node_modules/
+dist/
+coverage/
+.vite/
+.DS_Store
+.env
+.env.*
+!.env.example
+*.log
+test-results/
+playwright-report/
+# screenshots: latest set is kept for review; diffs/tmp are not
+shots/tmp/
+shots/diff/
+.claude/settings.local.json
