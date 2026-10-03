@@ -2,6 +2,17 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-018: Worldgen owns building variants, field patches and pier reach — 2026-10-03
+
+**Decision** (sweep polish): `LotData.variant` (→ roof/wall colour) is chosen in `world/gen/settlements.ts`
+so no two lots within `VILLAGE.roofNeighbour` share a roof colour; `WorldData.fields` (patch rectangles)
++ `fieldColor` (per sample, 5 bible hues, no two neighbouring patches alike) drive the terrain colour
+step and fence/crop-row placement; piers extend until `DOCK.endDepth` (3.5 u) / the mid colour band
+along the ±4 u shore normal; land pieces < `COAST.minIsletCells` are dropped after coast cleanup.
+**Rationale**: the render step picking variants at random produced rows of identical houses; one hay
+tint made Millbrook flat; piers ended in the turquoise band; a 9-cell islet sat in seed 1000's bay.
+**Impact**: world hashes changed (tests re-pinned); `settlement-props.ts` reads `lot.variant`.
+
 ## D-017: One lit program, one depth program; optional attributes on fixed locations — 2026-10-03
 
 **Decision** (TASK-191 program audit):

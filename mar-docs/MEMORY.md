@@ -65,6 +65,10 @@
   `setTimeout(0)`); `gl.finish` does not sync under SwiftShader (use a 1-px `readPixels`)
 - `scripts/shots.ts` runs `selftest=regen` + `selftest=ctxloss` on the first preset of ci/dev (~15 s);
   `--no-selftest` skips
+- Water foam-trail texture is 256 texels over 384 u (3 u/texel): never splat anything < 2 u wide into it
+  (the sailboat wake became a 10 u smear) — fine foam goes through instanced discs on the creature program
+- `geo/buildings.ts` keeps its own per-variant palette; `content/settlements.ts` `LOT_ROOFS` mirrors it (a
+  test checks counts, not colours) — change both together
 - three r186: `PCFSoftShadowMap` removed; `THREE.Clock` deprecated
 - pmndrs `postprocessing@6.39.5` needs three `<0.187` — don't bump three
 - pmndrs `BloomEffect` defaults to `BlendFunction.SCREEN` → rings around HDR sources; use ADD (D-012)
