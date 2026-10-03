@@ -140,7 +140,7 @@ describe('prop geometry', () => {
             expect(em.count).toBe(n);
             const ea = em.array as Float32Array;
             expect(ea.every((x) => Number.isFinite(x) && x >= 0 && x <= 1)).toBe(true);
-            if (lod === 0 && GLOWS.has(def.id)) expect(ea.some((x) => x === 1)).toBe(true);
+            if (lod === 0 && GLOWS.has(def.id)) expect(ea.some((x) => x >= 0.6)).toBe(true);
             // emissive faces are whole triangles
             for (let f = 0; f < n; f += 3)
               expect(ea[f] === ea[f + 1] && ea[f] === ea[f + 2]).toBe(true);

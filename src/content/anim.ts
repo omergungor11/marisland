@@ -51,10 +51,12 @@ export const CLOUDS = {
 /** Smoke and steam puffs (ART_BIBLE §7 #20/#21; stateless GPU, ARCHITECTURE §5). Sizes are diameters, u. */
 export const PUFFS = {
   chimney: { spawn: 1.2, slots: 3, size: [0.2, 0.9], rise: 4, drift: 2, jitter: 0.15 },
-  steam: { spawn: 0.6, slots: 20, size: [2.5, 9], rise: 30, drift: 14, jitter: 1.2 },
+  steam: { spawn: 0.6, slots: 20, size: [2.5, 9], rise: 30, drift: 10, jitter: 1.8 },
   spring: { spawn: 0.8, slots: 5, size: [0.6, 2.4], rise: 5, drift: 1.5, jitter: 0.4 },
   /** Ring-puff burp on steam emitters every `period` s. */
   burp: { period: 40, ring: 7, life: 3.5, radius: 7, rise: 6, size: [3, 6.5], pulse: 1.5 },
+  /** Orange under-glow on young steam over the crater: blend weight toward EMISSIVE.lava, day / full night. */
+  lavaGlow: { day: 0.45, night: 1.3 },
   /** Fraction of a puff's life spent fading (dither) at the end. */
   fadeLast: 0.4,
   capacity: { low: 240, medium: 600, high: 900 },

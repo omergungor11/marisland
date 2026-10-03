@@ -6,6 +6,9 @@
 export const WATER_SHADER = {
   /** Radial grid centred on the camera (ARCHITECTURE §3 "Water"). */
   grid: { rings: 48, segments: 64, innerRadius: 1, outerRadius: 3000, snap: 2 },
+  /** Half-width (u) of the central difference for the shore normal → leeward ring scale;
+   *  wide enough that the scale blends smoothly across the ridge between two islands. */
+  leeStep: 6,
   /** ± soft edge of the colour bands in u. */
   bandSoft: 1.5,
   /** Smooth noise added to the shore distance before banding (± u) — hides SDF cell steps. */
@@ -23,13 +26,26 @@ export const WATER_SHADER = {
   /** Scrolling ripple normals (shading + glints). */
   ripple: { scale: 0.35, strength: 0.18, speed: [0.21, 0.13] as const, fadeFrom: 60, fadeTo: 320 },
   /** Fresnel sky reflection: base + grazing weight. */
-  fresnel: { base: 0.03, grazing: 0.25, max: 0.2, zenith: 0.35 },
+  /** `duskMax` caps the off-grazing reflection at golden/dusk; `duskDesat` pulls the reflected
+   *  sky toward grey there (orange horizon over blue water mixes to purple-pink otherwise). */
+  fresnel: { base: 0.03, grazing: 0.25, max: 0.2, zenith: 0.35, duskMax: 0.1, duskDesat: 0.5 },
+  /** Swell-normal shading fades by `cut` between from..to u (ruled stripes far away). */
+  swellFar: { from: 140, to: 420, cut: 0.75 },
   /** Light on the water: sun colour tint by day; how much of the hemisphere hue survives at night. */
   light: { sunTint: 0.2, nightTint: 0.3 },
   /** View-angle haze exponent: pow(1 − |viewDir.y|, k) toward the fog colour. */
   viewHazePow: 16,
   /** Low-sun (golden/dusk) warm glitter: active below y[1], full below y[0]. */
-  lowSun: { y: [0.15, 0.35] as const, streak: 2.2, lateral: 220, sparkle: 0.9, sparkleExp: 40 },
+  /** `facet`: warm sparkle on ripple facets tilted toward the sun by facetTilt (n·L − L.y). */
+  lowSun: {
+    y: [0.15, 0.35] as const,
+    streak: 2.2,
+    lateral: 220,
+    sparkle: 0.9,
+    sparkleExp: 40,
+    facet: 1.3,
+    facetTilt: [0.17, 0.25] as const,
+  },
   foam: {
     /** Shore lap (ART_BIBLE §7 #2): foam advances 0.8 u, 4.5 s, ease-out in / ease-in out. */
     lapPeriod: 4.5,

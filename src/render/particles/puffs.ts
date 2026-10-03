@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { Scope } from '../../core/scope.ts';
 import type { Quality } from '../../core/params.ts';
 import { PUFFS } from '../../content/anim.ts';
-import { CLOUD } from '../../content/palette.ts';
+import { CLOUD, EMISSIVE } from '../../content/palette.ts';
 import { SHARED } from '../uniforms.ts';
 import { PUFF_FRAG, PUFF_VERT } from '../clouds/cloud.glsl.ts';
 import { hash32 } from '../clouds/cloud-field.ts';
@@ -89,6 +89,11 @@ export function createPuffs(scope: Scope, quality: Quality): Puffs {
         uTop: { value: new THREE.Color(CLOUD.top) },
         uBelly: { value: new THREE.Color(CLOUD.belly) },
         uBellyNight: { value: new THREE.Color(CLOUD.bellyNight) },
+        // lava lerped toward lantern amber: pure lava red over blue-white steam reads pink
+        uLava: {
+          value: new THREE.Color(EMISSIVE.lava).lerp(new THREE.Color(EMISSIVE.lantern), 0.5),
+        },
+        uLavaGlow: { value: new THREE.Vector2(PUFFS.lavaGlow.day, PUFFS.lavaGlow.night) },
         uBurp: { value: new THREE.Vector4(B.period, B.life, B.radius, B.rise) },
         uBurpSize: { value: new THREE.Vector4(B.size[0], B.size[1], B.pulse, PUFFS.fadeLast) },
       },

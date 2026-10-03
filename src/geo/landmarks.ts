@@ -575,7 +575,8 @@ export function volcanoCrater({ rng, lod }: BuildOpts): THREE.BufferGeometry {
         .lerp(col('#FFB070'), clamp01(1 - rr * 1.2) * 0.45)
         .multiplyScalar(0.9 + 0.2 * Math.abs(Math.sin(a * 3)));
     },
-    { emissive: 1, ao: () => 1, aoAmt: 0 },
+    // 0.8 → always-on lava glow with the 3 s pulse (factory emissive convention), not night-only
+    { emissive: 0.8, ao: () => 1, aoAmt: 0 },
   );
   const prof: Array<[number, number]> =
     lod === 0

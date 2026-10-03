@@ -115,6 +115,19 @@ const f = (v: number): string => v.toFixed(6);
 /** Gust adds up to this many radians of blade angle as a gust front passes. */
 const WINDMILL_GUST_BOOST = 1.5;
 const DEG = Math.PI / 180;
+/** Emissive convention (ART_BIBLE §4/§7 #22), per-vertex `emissive` value e:
+ *  - e ≥ NIGHT_FROM: night-only (windows, lanterns) — × uNight;
+ *  - GLOW_FROM ≤ e < NIGHT_FROM: always-on glow (lava), strength (e − 0.5)·2 with a PULSE_PERIOD s
+ *    ±PULSE_AMP sine pulse, ×(1 + GLOW_NIGHT) at full night;
+ *  - e < GLOW_FROM: night-only scaled by e (lighthouse glass 0.5, clock faces 0.35). */
+const EMISSIVE_NIGHT_FROM = 0.9;
+const EMISSIVE_GLOW_FROM = 0.6;
+const EMISSIVE_PULSE_PERIOD = 3;
+const EMISSIVE_PULSE_AMP = 0.25;
+/** Always-on glow is this much stronger at full night (the crater blooms after dark). */
+const EMISSIVE_GLOW_NIGHT = 0.8;
+/** Always-on glow gain (lower than the night gain: lit lava + glow would wash to pink-white by day). */
+const EMISSIVE_GLOW_GAIN = 1.4;
 
 /** Vertex pars shared by the colour and depth programs. Insert after `#include <common>`. */
 const VERTEX_PARS = /* glsl */ `
@@ -203,6 +216,7 @@ attribute float ao;
 attribute float emissive;
 #endif
 varying float vMarEmissive;
+varying float vMarGlow;
 varying vec2 vMarCloudXZ;
 `;
 
@@ -215,16 +229,22 @@ const VERTEX_COLOR_MAIN = /* glsl */ `
   #if defined( USE_COLOR ) || defined( USE_COLOR_ALPHA ) || defined( USE_INSTANCING_COLOR )
     vColor.rgb *= ao;
   #endif
+  // emissive convention: see EMISSIVE_NIGHT_FROM (night-only / always-on glow / night-only scaled)
   #ifdef MAR_EMISSIVE
-    vMarEmissive = emissive;
+    float marAlways = step(${f(EMISSIVE_GLOW_FROM)}, emissive) * (1.0 - step(${f(EMISSIVE_NIGHT_FROM)}, emissive));
+    vMarEmissive = emissive * (1.0 - marAlways);
+    vMarGlow = marAlways * (emissive - 0.5) * 2.0
+      * (1.0 + ${f(EMISSIVE_PULSE_AMP)} * uMotionScale * sin(uTime * ${f((2 * Math.PI) / EMISSIVE_PULSE_PERIOD)}));
   #else
     vMarEmissive = 0.0;
+    vMarGlow = 0.0;
   #endif
 `;
 
 const FRAG_PARS = /* glsl */ `
 varying float vFade;
 varying float vMarEmissive;
+varying float vMarGlow;
 varying vec2 vMarCloudXZ;
 ${FIELDS_GLSL}
 ${SHARED_LIT_GLSL.fragmentPars}
@@ -254,7 +274,7 @@ const FRAG_OUTGOING = /* glsl */ `
   ${SHARED_LIT_GLSL.rim}
   #endif
   #ifdef MAR_EMISSIVE
-    outgoingLight += diffuseColor.rgb * (vMarEmissive * uNight * ${f(EMISSIVE_GAIN)});
+    outgoingLight += diffuseColor.rgb * (vMarGlow * ${f(EMISSIVE_GLOW_GAIN)} * (1.0 + ${f(EMISSIVE_GLOW_NIGHT)} * uNight) + vMarEmissive * uNight * ${f(EMISSIVE_GAIN)});
   #endif
 `;
 
