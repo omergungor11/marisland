@@ -86,7 +86,8 @@ describe('terrain mesher (TASK-102)', () => {
         const pos = c.lods[lod].geometry.getAttribute('position').array as Float32Array;
         const surfaceTris = cells * cells * 2;
         const skirtTris = pos.length / 9 - surfaceTris;
-        expect(skirtTris).toBe(cells * 4 * 2);
+        const edges = [1, 2, 4, 8].filter((b) => c.skirtEdges & b).length;
+        expect(skirtTris).toBe(cells * edges * 2);
         for (let f = surfaceTris; f < pos.length / 9; f++) {
           const o = f * 9;
           const ys = [pos[o + 1], pos[o + 4], pos[o + 7]];
@@ -97,6 +98,10 @@ describe('terrain mesher (TASK-102)', () => {
         );
       }
     }
+  });
+
+  it('interior chunks are skirted on all four sides', () => {
+    expect(terrain.chunks.filter((c) => c.skirtEdges === 15).length).toBeGreaterThan(0);
   });
 
   it('LOD1 is at most 30 % of LOD0; LOD0 within budget', () => {

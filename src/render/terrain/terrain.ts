@@ -20,6 +20,8 @@ export interface TerrainChunk {
   lods: [THREE.Mesh, THREE.Mesh];
   /** Lowest vertex y including skirts. */
   minY: number;
+  /** Skirted edges (bits: 1 −z, 2 +z, 4 −x, 8 +x). */
+  skirtEdges: number;
 }
 
 export interface TerrainView {
@@ -63,12 +65,25 @@ export function buildTerrain(
   const chunks: TerrainChunk[] = [];
   let tri0 = 0;
   let tri1 = 0;
-  for (let cz = 0; cz < CHUNKS_PER_SIDE; cz++) {
-    for (let cx = 0; cx < CHUNKS_PER_SIDE; cx++) {
-      if (!chunkNeedsMesh(world, cx, cz)) continue;
+  const N = CHUNKS_PER_SIDE;
+  const meshed = new Uint8Array(N * N);
+  for (let cz = 0; cz < N; cz++)
+    for (let cx = 0; cx < N; cx++) meshed[cz * N + cx] = chunkNeedsMesh(world, cx, cz) ? 1 : 0;
+  // Skirts only where a meshed neighbour could disagree (LOD seams); edges facing
+  // skipped deep chunks get none — an edge-on wall there reads as a dotted line.
+  const has = (cx: number, cz: number): boolean =>
+    cx >= 0 && cz >= 0 && cx < N && cz < N && meshed[cz * N + cx] === 1;
+  for (let cz = 0; cz < N; cz++) {
+    for (let cx = 0; cx < N; cx++) {
+      if (!meshed[cz * N + cx]) continue;
+      const edges =
+        (has(cx, cz - 1) ? 1 : 0) |
+        (has(cx, cz + 1) ? 2 : 0) |
+        (has(cx - 1, cz) ? 4 : 0) |
+        (has(cx + 1, cz) ? 8 : 0);
       let minY = Infinity;
       const mk = (lod: number): THREE.Mesh => {
-        const { geometry, stats } = buildChunkGeometry(world, grid, cx, cz, lod);
+        const { geometry, stats } = buildChunkGeometry(world, grid, cx, cz, lod, edges);
         scope.add(geometry);
         if (lod === 0) tri0 += stats.triangles;
         else tri1 += stats.triangles;
@@ -83,7 +98,7 @@ export function buildTerrain(
         return mesh;
       };
       const lods: [THREE.Mesh, THREE.Mesh] = [mk(0), mk(1)];
-      chunks.push({ cx, cz, lods, minY });
+      chunks.push({ cx, cz, lods, minY, skirtEdges: edges });
     }
   }
 

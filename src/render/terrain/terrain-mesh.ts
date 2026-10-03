@@ -23,6 +23,8 @@ export function buildChunkGeometry(
   cx: number,
   cz: number,
   lod: number,
+  /** Skirt edges as bits: 1 = north (−z), 2 = south (+z), 4 = west (−x), 8 = east (+x). */
+  skirtEdges = 15,
 ): { geometry: THREE.BufferGeometry; stats: ChunkGeometryStats } {
   const h = world.height;
   const n = h.n;
@@ -32,7 +34,9 @@ export function buildChunkGeometry(
   const cells = CHUNK_CELLS / stride;
   const ix0 = cx * CHUNK_CELLS;
   const iz0 = cz * CHUNK_CELLS;
-  const triCount = cells * cells * 2 + 4 * cells * 2;
+  const edgeCount =
+    (skirtEdges & 1) + ((skirtEdges >> 1) & 1) + ((skirtEdges >> 2) & 1) + ((skirtEdges >> 3) & 1);
+  const triCount = cells * cells * 2 + edgeCount * cells * 2;
   const pos = new Float32Array(triCount * 9);
   const nor = new Float32Array(triCount * 9);
   const col = new Float32Array(triCount * 9);
@@ -53,6 +57,7 @@ export function buildChunkGeometry(
     qy: number,
     qz: number,
     c: THREE.Color,
+    normalOverride?: readonly number[],
   ): void => {
     // flat normal = (b − a) × (c − a)
     const ux = bx - ax,
@@ -68,6 +73,11 @@ export function buildChunkGeometry(
     nx /= l;
     ny /= l;
     nz /= l;
+    if (normalOverride) {
+      nx = normalOverride[0];
+      ny = normalOverride[1];
+      nz = normalOverride[2];
+    }
     const o = t * 9;
     pos[o] = ax;
     pos[o + 1] = ay;
@@ -179,6 +189,25 @@ export function buildChunkGeometry(
 
   // Skirts: per edge segment a vertical quad facing outward, coloured like the edge.
   // `outward` = winding for an edge running along +x (→ +z normal) or +z (→ −x normal).
+  const _sn = [0, 1, 0];
+  const hAt = (ix: number, iz: number): number =>
+    d[Math.min(n - 1, Math.max(0, iz)) * n + Math.min(n - 1, Math.max(0, ix))];
+  const edgeNormal = (i0: number, i1: number, out: number[]): void => {
+    let gx = 0;
+    let gz = 0;
+    for (const i of [i0, i1]) {
+      const ix = i % n;
+      const iz = Math.floor(i / n);
+      gx += (hAt(ix + 1, iz) - hAt(ix - 1, iz)) / (2 * cs);
+      gz += (hAt(ix, iz + 1) - hAt(ix, iz - 1)) / (2 * cs);
+    }
+    gx /= 2;
+    gz /= 2;
+    const l = Math.hypot(gx, 1, gz);
+    out[0] = -gx / l;
+    out[1] = 1 / l;
+    out[2] = -gz / l;
+  };
   const skirt = (i0: number, i1: number, outward: boolean): void => {
     const x0 = X(i0 % n),
       z0 = Z(Math.floor(i0 / n)),
@@ -188,12 +217,15 @@ export function buildChunkGeometry(
       y1 = d[i1] - TERRAIN_LOD.skirtInset;
     const bottom = Math.min(y0, y1) - TERRAIN_LOD.skirt - 0.5 * Math.abs(y0 - y1);
     faceColor(grid, i0, i1, i1, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2, 0, _col);
+    // Skirts only ever show through sub-pixel seams, so shade them like the surface
+    // (heightfield normal at the edge) instead of as a dark vertical wall.
+    edgeNormal(i0, i1, _sn);
     if (outward) {
-      pushTri(x0, y0, z0, x0, bottom, z0, x1, y1, z1, _col);
-      pushTri(x1, y1, z1, x0, bottom, z0, x1, bottom, z1, _col);
+      pushTri(x0, y0, z0, x0, bottom, z0, x1, y1, z1, _col, _sn);
+      pushTri(x1, y1, z1, x0, bottom, z0, x1, bottom, z1, _col, _sn);
     } else {
-      pushTri(x0, y0, z0, x1, y1, z1, x0, bottom, z0, _col);
-      pushTri(x1, y1, z1, x1, bottom, z1, x0, bottom, z0, _col);
+      pushTri(x0, y0, z0, x1, y1, z1, x0, bottom, z0, _col, _sn);
+      pushTri(x1, y1, z1, x1, bottom, z1, x0, bottom, z0, _col, _sn);
     }
     if (bottom < minY) minY = bottom;
   };
@@ -204,10 +236,10 @@ export function buildChunkGeometry(
     const xA = ix0 + k * S;
     const zA = iz0 + k * S;
     // north edge (z = iz0) faces −z; south (z = ize) faces +z; west (x = ix0) −x; east +x
-    skirt(iz0 * n + xA, iz0 * n + xA + S, false);
-    skirt(ize * n + xA, ize * n + xA + S, true);
-    skirt(zA * n + ix0, (zA + S) * n + ix0, true);
-    skirt(zA * n + ixe, (zA + S) * n + ixe, false);
+    if (skirtEdges & 1) skirt(iz0 * n + xA, iz0 * n + xA + S, false);
+    if (skirtEdges & 2) skirt(ize * n + xA, ize * n + xA + S, true);
+    if (skirtEdges & 4) skirt(zA * n + ix0, (zA + S) * n + ix0, true);
+    if (skirtEdges & 8) skirt(zA * n + ixe, (zA + S) * n + ixe, false);
   }
 
   const geometry = new THREE.BufferGeometry();
