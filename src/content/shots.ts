@@ -115,8 +115,9 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   {
     id: 'W7',
     title: 'Mill Morning',
-    seed: 5005,
-    cam: 'island:Millbrook',
+    // seed 5005 rolls no Millbrook and 'island:' frames at T1 (no sheep before T2) → seed 1001, village framing (T2, 80 u)
+    seed: 1001,
+    cam: 'village:Millbrook',
     time: 6.75,
     simt: 5,
     quality: 'medium',
@@ -257,6 +258,16 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     time: 6.75,
     weather: 'fog',
     simt: 2,
+    sets: ['dev'],
+  },
+  {
+    id: 'D-sheep',
+    title: 'Sheep at T2',
+    seed: 1001,
+    cam: 'village:Millbrook',
+    time: 10,
+    simt: 6,
+    deltaT: 3,
     sets: ['dev'],
   },
   {

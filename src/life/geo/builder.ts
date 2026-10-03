@@ -4,6 +4,22 @@ import * as THREE from 'three';
 export class TriBuilder {
   private pos: number[] = [];
   private col: number[] = [];
+  private limb: number[] = [];
+  private cur: [number, number, number, number] = [0, 0, 0, 0];
+  private limbUsed = false;
+
+  /**
+   * Per-vertex animation tag for every following triangle (read by the life vertex shader):
+   * `limb = (x, y, z, mode)`; see `life-material.ts` for the modes. `clearLimb` = static.
+   */
+  setLimb(x: number, y: number, z: number, mode: number): void {
+    this.cur = [x, y, z, mode];
+    this.limbUsed = true;
+  }
+
+  clearLimb(): void {
+    this.cur = [0, 0, 0, 0];
+  }
 
   tri(
     a: THREE.Vector3,
@@ -20,6 +36,82 @@ export class TriBuilder {
     ] as const) {
       this.pos.push(p.x, p.y, p.z);
       this.col.push(k.r, k.g, k.b);
+      this.limb.push(this.cur[0], this.cur[1], this.cur[2], this.cur[3]);
+    }
+  }
+
+  /** Triangle wound so its normal points away from `inside` (convex parts). */
+  triOut(
+    a: THREE.Vector3,
+    b: THREE.Vector3,
+    c: THREE.Vector3,
+    inside: THREE.Vector3,
+    ca: THREE.Color,
+    cb = ca,
+    cc = ca,
+  ): void {
+    const n = b.clone().sub(a).cross(c.clone().sub(a));
+    const g = a
+      .clone()
+      .add(b)
+      .add(c)
+      .multiplyScalar(1 / 3)
+      .sub(inside);
+    if (n.dot(g) >= 0) this.tri(a, b, c, ca, cb, cc);
+    else this.tri(a, c, b, ca, cc, cb);
+  }
+
+  /** Axis-aligned box (12 tris). `top` colours the +y face. */
+  box(
+    c: THREE.Vector3,
+    hx: number,
+    hy: number,
+    hz: number,
+    color: THREE.Color,
+    top: THREE.Color = color,
+  ): void {
+    const p = (sx: number, sy: number, sz: number): THREE.Vector3 =>
+      v3(c.x + sx * hx, c.y + sy * hy, c.z + sz * hz);
+    const faces: [THREE.Vector3[], THREE.Color][] = [
+      [[p(1, -1, -1), p(1, 1, -1), p(1, 1, 1), p(1, -1, 1)], color],
+      [[p(-1, -1, -1), p(-1, 1, -1), p(-1, 1, 1), p(-1, -1, 1)], color],
+      [[p(-1, 1, -1), p(1, 1, -1), p(1, 1, 1), p(-1, 1, 1)], top],
+      [[p(-1, -1, -1), p(1, -1, -1), p(1, -1, 1), p(-1, -1, 1)], color],
+      [[p(-1, -1, 1), p(1, -1, 1), p(1, 1, 1), p(-1, 1, 1)], color],
+      [[p(-1, -1, -1), p(1, -1, -1), p(1, 1, -1), p(-1, 1, -1)], color],
+    ];
+    for (const [q, k] of faces) {
+      this.triOut(q[0], q[1], q[2], c, k);
+      this.triOut(q[0], q[2], q[3], c, k);
+    }
+  }
+
+  /** Truncated cone along +y from `base` (radii rb → rt, `h` tall); caps included. */
+  frustum(
+    base: THREE.Vector3,
+    rb: number,
+    rt: number,
+    h: number,
+    seg: number,
+    color: THREE.Color,
+    top: THREE.Color = color,
+  ): void {
+    const mid = v3(base.x, base.y + h / 2, base.z);
+    const ring = (y: number, r: number): THREE.Vector3[] =>
+      Array.from({ length: seg }, (_, i) => {
+        const th = (i / seg) * Math.PI * 2;
+        return v3(base.x + Math.cos(th) * r, y, base.z + Math.sin(th) * r);
+      });
+    const lo = ring(base.y, rb);
+    const hi = ring(base.y + h, rt);
+    const cLo = v3(base.x, base.y, base.z);
+    const cHi = v3(base.x, base.y + h, base.z);
+    for (let i = 0; i < seg; i++) {
+      const j = (i + 1) % seg;
+      this.triOut(lo[i], lo[j], hi[j], mid, color);
+      if (rt > 1e-4) this.triOut(lo[i], hi[j], hi[i], mid, color);
+      this.triOut(cLo, lo[i], lo[j], mid, color);
+      if (rt > 1e-4) this.triOut(cHi, hi[i], hi[j], mid, top);
     }
   }
 
@@ -94,6 +186,7 @@ export class TriBuilder {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3));
     g.setAttribute('color', new THREE.Float32BufferAttribute(this.col, 3));
+    if (this.limbUsed) g.setAttribute('limb', new THREE.Float32BufferAttribute(this.limb, 4));
     g.computeVertexNormals();
     g.computeBoundingSphere();
     return g;

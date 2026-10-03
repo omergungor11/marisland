@@ -3,14 +3,13 @@ import { GULLS, LIFE_PLAN } from '../content/life.ts';
 import { unitHash } from '../core/hash.ts';
 import type { Quality } from '../core/params.ts';
 import type { Rng } from '../core/rng.ts';
-import { SHARED } from '../render/uniforms.ts';
-import { makeLitMaterial, type LitMaterial } from '../render/materials/factory.ts';
+import { makeLifeMaterial } from './life-material.ts';
 import { AgentKind, easeInOut, rotYFor, type AgentKindOpts } from './agents.ts';
 import type { LifeCtx } from './ctx.ts';
 import { buildGull } from './geo/creatures.ts';
 
 const DEG = Math.PI / 180;
-const FLAP_CYCLE = GULLS.flaps * GULLS.flapPeriod + GULLS.glide;
+const WHITE = new THREE.Color(1, 1, 1);
 
 export interface Perch {
   x: number;
@@ -27,18 +26,6 @@ interface Flock {
   dir: number;
   theta0: number;
 }
-
-const WING_GLSL = /* glsl */ `
-  {
-    float gCyc = ${FLAP_CYCLE.toFixed(4)};
-    float gTT = mod(uTime + aPhase * gCyc, gCyc);
-    float gFlapT = ${(GULLS.flaps * GULLS.flapPeriod).toFixed(4)};
-    float gFlap = gTT < gFlapT ? sin(6.2831853 * gTT / ${GULLS.flapPeriod.toFixed(4)}) * 0.75 : 0.0;
-    float gAng = (gFlap + 0.12) * aMode * uMotionScale;
-    transformed.y += gAng * abs(position.z);
-    transformed.z *= mix(0.25, 1.0, aMode);
-  }
-`;
 
 /** Flock of gulls on closed-form circles; a gull can break off to perch on a dock / mooring and return. */
 export class Gulls extends AgentKind {
@@ -73,32 +60,20 @@ export class Gulls extends AgentKind {
       sizes.reduce((a, b) => a + b, 0),
     );
     const geo = buildGull();
-    const aPhase = new Float32Array(total);
-    const aMode = new Float32Array(total).fill(1);
-    const mat = makeLitMaterial(
-      { instanced: true, rim: true },
-      { name: 'life:gull' },
-    ) as LitMaterial;
+    // aGait (shared limb shader): x = wing spread (1 flying, 0 folded), z = flap phase 0..1
+    const aGait = new Float32Array(total * 3);
+    const mat = makeLifeMaterial('life:gull', true);
     super({ ...o, name: 'gull', capacity: total, geometry: geo, material: mat });
-    for (let i = 0; i < total; i++) aPhase[i] = this.phase[i];
-    geo.setAttribute('aPhase', new THREE.InstancedBufferAttribute(aPhase, 1));
-    this.modeAttr = new THREE.InstancedBufferAttribute(aMode, 1);
+    for (let i = 0; i < total; i++) {
+      aGait[i * 3] = 1;
+      aGait[i * 3 + 2] = this.phase[i];
+    }
+    this.modeAttr = new THREE.InstancedBufferAttribute(aGait, 3);
     this.modeAttr.setUsage(THREE.DynamicDrawUsage);
-    geo.setAttribute('aMode', this.modeAttr);
-    this.mode = aMode;
-    const orig = mat.onBeforeCompile.bind(mat);
-    mat.onBeforeCompile = (shader, renderer) => {
-      orig(shader, renderer);
-      shader.uniforms.uTime = SHARED.uTime;
-      shader.uniforms.uMotionScale = SHARED.uMotionScale;
-      shader.vertexShader = shader.vertexShader
-        .replace(
-          '#include <common>',
-          '#include <common>\nattribute float aPhase;\nattribute float aMode;',
-        )
-        .replace('#include <begin_vertex>', '#include <begin_vertex>' + WING_GLSL);
-    };
-    mat.customProgramCacheKey = (): string => 'mar-lit:gull';
+    geo.setAttribute('aGait', this.modeAttr);
+    this.mode = aGait;
+    // instance colour (white) keeps the program identical to the land critters'
+    for (let i = 0; i < total; i++) this.mesh.setColorAt(i, WHITE);
 
     this.flockOf = new Uint8Array(total);
     this.off = new Float32Array(total);
@@ -255,8 +230,8 @@ export class Gulls extends AgentKind {
       this.scale[i] = 1;
       if (u >= 1) this.state[i] = 0;
     }
-    const m = this.mode[i];
-    this.mode[i] = m + (target - m) * (1 - Math.exp(-6 * dt));
+    const m = this.mode[i * 3];
+    this.mode[i * 3] = m + (target - m) * (1 - Math.exp(-6 * dt));
   }
 
   override update(alpha: number): void {

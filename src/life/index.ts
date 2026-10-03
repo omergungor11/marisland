@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GULLS, LIFE_PLAN } from '../content/life.ts';
+import { CATS, CRABS, GULLS, LIFE_PLAN, SHEEP } from '../content/life.ts';
 import type { System } from '../core/loop.ts';
 import { AmbientScheduler } from './ambient.ts';
 import {
@@ -15,6 +15,9 @@ import { mooringsOf, resolveRoutes, Rowboats, Sailboats } from './boats.ts';
 import { makeCtx, setMotion, type LifeDeps } from './ctx.ts';
 import { FishSchools } from './fish.ts';
 import { flockCentres, Gulls, type Perch } from './gulls.ts';
+import type { Cats, Crabs, Sheep, Villagers } from './land.ts';
+import { createLandKinds, type LandKind } from './land.ts';
+import { buildSolids, buildWalkGraph, makeMask } from './land-world.ts';
 
 export type { LifeDeps } from './ctx.ts';
 export { AmbientScheduler } from './ambient.ts';
@@ -41,6 +44,11 @@ export interface LifeSystem extends System {
     fish?: FishSchools;
     jumpers?: ArcKind;
     dolphins?: ArcKind;
+    /** Land agents (TASK-161): alive from tier 2 (crabs 3); `positions()` feeds picking. */
+    villagers?: Villagers;
+    cats?: Cats;
+    sheep?: Sheep;
+    crabs?: Crabs;
   };
   /** Seaward dock-end / mooring perches used by landing gulls. */
   readonly counts: { coconutDrops: number };
@@ -108,6 +116,21 @@ export function createLife(deps: LifeDeps): LifeSystem {
     all.push(kinds.dolphins);
   }
 
+  const solids = buildSolids(ctx);
+  const land = createLandKinds(base, ctx, plan, {
+    graph: buildWalkGraph(ctx),
+    masks: {
+      sheep: makeMask(ctx, solids, SHEEP.zones),
+      cats: makeMask(ctx, solids, CATS.zones),
+      crabs: makeMask(ctx, solids, CRABS.zones, CRABS.maxDepth),
+    },
+  });
+  Object.assign(kinds, land);
+  const landKinds: LandKind[] = [land.villagers, land.cats, land.sheep, land.crabs].filter(
+    (k): k is NonNullable<typeof k> => k !== undefined,
+  );
+  all.push(...landKinds);
+
   const ambient = new AmbientScheduler(deps.seed);
   const spotRng = ctx.rngFor('spots');
   const counts = { coconutDrops: 0 };
@@ -149,7 +172,9 @@ export function createLife(deps: LifeDeps): LifeSystem {
     counts,
     stats,
     fixedUpdate(dt) {
-      kinds.fish?.syncTier(deps.getTier());
+      const tier = deps.getTier();
+      kinds.fish?.syncTier(tier);
+      for (const k of landKinds) k.syncTier(tier);
       ambient.fixedUpdate();
       for (const k of all) k.fixedUpdate(dt);
     },
@@ -159,6 +184,7 @@ export function createLife(deps: LifeDeps): LifeSystem {
     },
     onTier(tier) {
       kinds.fish?.syncTier(tier);
+      for (const k of landKinds) k.syncTier(tier);
     },
     setMotionScale(s) {
       setMotion(ctx, s);
