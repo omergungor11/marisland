@@ -1,6 +1,8 @@
 /* eslint-disable no-console */
 /**
- * Screenshot harness: `pnpm shots [ci|dev|wow] [--assert] [--gpu] [--no-build] [--only=ID,ID] [--base=URL]`
+ * Screenshot harness: `pnpm shots [ci|dev|wow] [--assert] [--gpu] [--no-build] [--only=ID,ID] [--base=URL]
+ *   [--tag=name] [--port=4173]` — `--tag` builds into dist-<tag>/ and writes shots/<set>-<tag>/ so parallel
+ *   agents don't collide; pair it with a distinct `--port`.
  * Writes shots/<set>/{<id>.png, <id>+dt.png, <id>.mask.png, manifest.json, contact.jpg}.
  */
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
@@ -23,8 +25,10 @@ if (!(set in SET_DEFAULTS)) throw new Error(`unknown set "${set}" (ci|dev|wow)`)
 const ASSERT = flag('assert');
 const GPU = flag('gpu');
 const ROOT = resolve(import.meta.dirname, '..');
-const OUT = resolve(ROOT, 'shots', set);
-const PORT = 4173;
+const TAG = opt('tag');
+const OUT = resolve(ROOT, 'shots', TAG ? `${set}-${TAG}` : set);
+const PORT = Number(opt('port') ?? 4173);
+const DIST = TAG ? `dist-${TAG}` : 'dist';
 const only = opt('only')?.split(',');
 
 type Json = Record<string, number>;
@@ -82,7 +86,7 @@ process.on('uncaughtException', (e) => {
 async function startServer(): Promise<string> {
   const base = `http://localhost:${PORT}/`;
   if (!flag('no-build')) {
-    const r = spawnSync('pnpm', ['build'], { cwd: ROOT, stdio: 'inherit' });
+    const r = spawnSync('pnpm', ['build', '--outDir', DIST], { cwd: ROOT, stdio: 'inherit' });
     if (r.status !== 0) throw new Error('pnpm build failed');
   }
   const up = async (): Promise<boolean> => {
@@ -98,7 +102,7 @@ async function startServer(): Promise<string> {
   }
   server = spawn(
     resolve(ROOT, 'node_modules/.bin/vite'),
-    ['preview', '--port', String(PORT), '--strictPort'],
+    ['preview', '--port', String(PORT), '--strictPort', '--outDir', DIST],
     { cwd: ROOT, stdio: 'ignore', detached: true },
   );
   server.on('exit', (c) => server && c && console.error(`vite preview exited with ${c}`));
