@@ -2,6 +2,15 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-011: Cloud width 22–44 u (bible said 12–30 u) — 2026-10-03
+
+**Decision**: `CLOUDS.width = [22, 44]` (TASK-153). Count 6–10, altitude 60–90 u, shadow ×0.82 with a
+6 u soft edge unchanged.
+**Rationale**: At T0 (450–800 u) a 12–30 u cloud is 15–30 px in the 960 px dev frame and its 0.82
+shadow on deep water is barely readable; W1 needs ≥ 2 clearly visible cloud shadows. 22–44 u keeps the
+chunky-cute cumulus look at T0 and makes the shadows legible (checked in W1/D-overview shots).
+**Impact**: `src/content/anim.ts` (one number pair); ART_BIBLE §3 updated.
+
 ## D-010: High-quality program budget 20 → 24 — 2026-10-03
 
 **Decision**: `BUDGETS.high.programs = 24`, `BUDGETS.medium.programs = 20` (was 16; 4 lit prop variants +

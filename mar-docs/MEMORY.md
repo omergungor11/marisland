@@ -18,6 +18,10 @@
 - Shot presets are data in `src/content/shots.ts`; both the harness (`scripts/shots.ts`) and the app read them — keep them in sync
 
 ## Known Issues / Gotchas
+- Never `git stash` in the shared tree (even for a quick baseline): it removes other agents' WIP files until
+  `stash pop`. Baseline via a worktree instead
+- Every program is compiled twice on medium/high: `compileAsync(scene, camera)` targets the canvas (srgb) while
+  frames render into the composer target (srgb-linear) → `info.programs` ≈ 2× real variants (TASK-153 finding)
 - NEVER `git add -A src` (or `git add src/render`) while agents are active — it sweeps their half-done files
   into HEAD and turns CI red (happened twice). Stage explicit paths; agents never commit
 - Parallel agents share ONE working tree: `pnpm shots --tag=<name> --port=<n>` gives each its own `dist-<tag>/` and

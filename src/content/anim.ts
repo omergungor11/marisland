@@ -20,7 +20,7 @@ export const BOAT_BOB = { period: 3.2, y: 0.12, rollDeg: 6, pitchDeg: 3, rollLag
 export const CLOUDS = {
   count: [6, 10],
   altitude: [60, 90],
-  width: [12, 30],
+  width: [22, 44],
   drift: 1.5,
   shadowMul: 0.82,
   shadowBlur: 6,
@@ -40,6 +40,8 @@ export const CLOUDS = {
   edgeFade: 70,
   /** Sun elevation clamp for the projected shadow offset (sin of elevation). */
   minSunY: 0.3,
+  /** Cloud shadows per quality (≈ 4 hashes per active cell per terrain/water/prop fragment). */
+  shadowOn: { low: true, medium: true, high: true },
   /** Breathing: scale ±amp over period s. */
   breathe: { amp: 0.025, period: 9 },
   /** Fade to 0 when the zoom tier reaches `hideTier`, over `fade` s. */
@@ -48,8 +50,8 @@ export const CLOUDS = {
 } as const;
 /** Smoke and steam puffs (ART_BIBLE §7 #20/#21; stateless GPU, ARCHITECTURE §5). Sizes are diameters, u. */
 export const PUFFS = {
-  chimney: { spawn: 1.2, slots: 3, size: [0.2, 0.9], rise: 4, drift: 1.6, jitter: 0.15 },
-  steam: { spawn: 0.6, slots: 11, size: [2, 8], rise: 25, drift: 6, jitter: 0.6 },
+  chimney: { spawn: 1.2, slots: 3, size: [0.2, 0.9], rise: 4, drift: 2, jitter: 0.15 },
+  steam: { spawn: 0.6, slots: 12, size: [2, 8], rise: 25, drift: 14, jitter: 1.2 },
   spring: { spawn: 0.8, slots: 5, size: [0.6, 2.4], rise: 5, drift: 1.5, jitter: 0.4 },
   /** Ring-puff burp on steam emitters every `period` s. */
   burp: { period: 40, ring: 7, life: 3.5, radius: 7, rise: 6, size: [3, 6.5], pulse: 1.5 },

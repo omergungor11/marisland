@@ -1,4 +1,5 @@
 import { FIELDS_GLSL } from '../shaders/chunks/fields.glsl.ts';
+import { CLOUD_SHADOW_GLSL } from '../shaders/chunks/cloud-shadow.glsl.ts';
 import { GRID_SAMPLE_GLSL } from '../world-textures.ts';
 import { WATER_SHADER as W } from '../../content/water.ts';
 import { bandDefines, glslFloat as f } from './water-bands.ts';
@@ -109,6 +110,7 @@ uniform vec3 uShallow;
 uniform vec3 uLagoon;
 uniform vec3 uFoam;
 varying vec3 vWorld;
+${CLOUD_SHADOW_GLSL}
 
 float marHash12(vec2 p) {
   vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -283,6 +285,9 @@ void main() {
 
   col += uSunColor * (glint + streak);
   alpha = max(alpha, min(1.0, glint + streak));
+
+  // --- cloud shadows (TASK-153): same field as the clouds, ×0.82 with a 6 u soft edge
+  col *= marCloudShadowMul(xz, uDebugMask);
 
   // --- fog (exponential, like ART_BIBLE §3) and a soft rim at the grid edge
   // far sea eases into fog, the last stretch into the horizon colour → no hard line

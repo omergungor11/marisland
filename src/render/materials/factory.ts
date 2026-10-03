@@ -4,6 +4,7 @@ import { SHARED } from '../uniforms.ts';
 import { FIELDS_GLSL } from '../shaders/chunks/fields.glsl.ts';
 import { SHARED_LIT_GLSL } from '../shaders/chunks/lit.glsl.ts';
 import { SHADE } from '../../content/lighting.ts';
+import { CLOUD_SHADOW_GLSL } from '../shaders/chunks/cloud-shadow.glsl.ts';
 
 /**
  * Lit material factory (D-003, ARCHITECTURE §3 "Materials"): MeshLambertMaterial
@@ -177,6 +178,12 @@ attribute float ao;
 attribute float emissive;
 #endif
 varying float vMarEmissive;
+varying vec2 vMarCloudXZ;
+`;
+
+/** World xz for the cloud-shadow lookup (colour program only; after VERTEX_DISPLACE). */
+const VERTEX_CLOUD = /* glsl */ `
+  vMarCloudXZ = (marM * vec4(transformed, 1.0)).xz;
 `;
 
 const VERTEX_COLOR_MAIN = /* glsl */ `
@@ -193,8 +200,15 @@ const VERTEX_COLOR_MAIN = /* glsl */ `
 const FRAG_PARS = /* glsl */ `
 varying float vFade;
 varying float vMarEmissive;
+varying vec2 vMarCloudXZ;
 ${FIELDS_GLSL}
 ${SHARED_LIT_GLSL.fragmentPars}
+${CLOUD_SHADOW_GLSL}
+`;
+
+/** Cloud shadows (TASK-153): multiply the lit colour before tint/rim/emissive are added. */
+const FRAG_CLOUD = /* glsl */ `
+  outgoingLight *= marCloudShadowMul(vMarCloudXZ, uDebugMask);
 `;
 
 const FRAG_DITHER = /* glsl */ `
@@ -286,17 +300,26 @@ export class LitMaterial extends THREE.MeshLambertMaterial {
       uShadowTint: SHARED.uShadowTint,
       uNight: SHARED.uNight,
       uDebugMask: SHARED.uDebugMask,
+      uCloudShadow: SHARED.uCloudShadow,
+      uCloudSun: SHARED.uCloudSun,
+      uCloudSeed: SHARED.uCloudSeed,
     };
     this.onBeforeCompile = (shader) => {
       Object.assign(shader.uniforms, uniforms);
       shader.defines = { ...(shader.defines ?? {}), ...defines };
       let vs = shader.vertexShader;
       vs = replaceOnce(vs, '#include <common>', VERTEX_PARS + VERTEX_COLOR_PARS, 'after');
-      vs = replaceOnce(vs, '#include <begin_vertex>', VERTEX_COLOR_MAIN + VERTEX_DISPLACE, 'after');
+      vs = replaceOnce(
+        vs,
+        '#include <begin_vertex>',
+        VERTEX_COLOR_MAIN + VERTEX_DISPLACE + VERTEX_CLOUD,
+        'after',
+      );
       shader.vertexShader = vs;
       let fs = shader.fragmentShader;
       fs = replaceOnce(fs, '#include <common>', FRAG_PARS, 'after');
       fs = replaceOnce(fs, '#include <clipping_planes_fragment>', FRAG_DITHER, 'after');
+      fs = replaceOnce(fs, '#include <opaque_fragment>', FRAG_CLOUD, 'before');
       fs = replaceOnce(fs, '#include <opaque_fragment>', FRAG_OUTGOING, 'before');
       shader.fragmentShader = fs;
     };

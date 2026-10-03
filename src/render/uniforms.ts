@@ -36,6 +36,12 @@ export const SHARED = {
   uMotionScale: { value: 1 },
   /** Debug mask mode: 0 = off, 1 = semantic mask. */
   uDebugMask: { value: 0 },
+  /** Cloud shadows (TASK-153, chunks/cloud-shadow.glsl.ts): xy = wind offset, z = coverage (0 = off), w = strength. */
+  uCloudShadow: { value: new THREE.Vector4(0, 0, 0, 0) },
+  /** xy = −sunDir.xz / sunDir.y (ground offset per u of altitude), zw = cloud window centre. */
+  uCloudSun: { value: new THREE.Vector4(0, 0, 0, 0) },
+  /** x = salt, y = active-cell threshold, z = cell size, w = cells. */
+  uCloudSeed: { value: new THREE.Vector4(0, 0, 180, 4) },
 };
 
 export type SharedUniforms = typeof SHARED;

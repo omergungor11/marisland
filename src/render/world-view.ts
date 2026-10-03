@@ -9,6 +9,7 @@ import { createWater, type WaterView } from './water/water.ts';
 import { createSky, type SkyView } from './sky/sky.ts';
 import { createLightRig, type LightRig } from './lighting.ts';
 import { createClouds, type CloudsView } from './clouds/clouds.ts';
+import { createLife, type LifeSystem } from '../life/index.ts';
 import { createEnvState, sampleEnv, type EnvState } from '../env/env-state.ts';
 import { SHARED, setWind, writeEnvUniforms } from './uniforms.ts';
 import { FOG, FOG_T0_SCALE } from '../content/lighting.ts';
@@ -34,6 +35,7 @@ export interface WorldView {
   sky: SkyView;
   lights: LightRig;
   clouds: CloudsView;
+  life: LifeSystem;
   props: PropBatcher;
   scatter: ScatterResult;
   env: EnvState;
@@ -82,6 +84,18 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   group.add(lights.group);
   const clouds = createClouds(world, d.quality, d.scope);
   group.add(clouds.group);
+  const life = createLife({
+    world,
+    scope: d.scope,
+    seed,
+    quality: d.quality,
+    water,
+    counters: d.counters,
+    getTier: d.getTier,
+    cameraPos: _camPos,
+  });
+  group.add(life.group);
+  d.scope.add(life);
   setWind(world.windDir, 1);
 
   const tScatter = d.now();
@@ -103,7 +117,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   const env = createEnvState();
   let lastTier = -1;
 
-  const update = (): void => {
+  const update = (dt: number, alpha: number): void => {
     sampleEnv(d.getHour(), env);
     d.camera.getWorldPosition(_camPos);
     // focus = point on the sea plane the camera looks at (approximate: project forward)
@@ -127,8 +141,10 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
       lastTier = tier;
       terrain.onTier(tier);
       props.setTier(tier, d.getTime());
+      life.onTier(tier);
     }
     props.update(d.getTime(), _focus.x, _focus.z);
+    life.update(dt, alpha);
   };
   // No eager update here: the first update runs after the camera preset is applied so the
   // initial tier is set instantly (no bloom-in queue, no hard pops before the first frame).
@@ -172,10 +188,11 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     sky,
     lights,
     clouds,
+    life,
     props,
     scatter,
     env,
-    system: { name: 'world-view', update },
+    system: { name: 'world-view', update, fixedUpdate: (dt) => life.fixedUpdate(dt) },
     cameraWorld,
     hash: world.hashes.world ?? '',
     timings,

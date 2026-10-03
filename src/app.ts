@@ -298,7 +298,12 @@ export async function boot(): Promise<void> {
 
     // ---- prewarm + warm-up
     const tCompile = now();
+    // Prewarm against the composer's target when post is on: program keys include the
+    // output colour space / tone mapping of the current target, so compiling for the canvas
+    // would compile every program twice (once more on the first composer frame).
+    if (ctx.post) backend.renderer.setRenderTarget(ctx.post.composer.inputBuffer);
     await backend.renderer.compileAsync(scene, camera);
+    backend.renderer.setRenderTarget(null);
     ctx.timings.compile = now() - tCompile;
     loader.setProgress(0.8);
     if (params.simt > 0) loop.warmUp(params.simt);

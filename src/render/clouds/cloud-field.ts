@@ -1,4 +1,5 @@
 import { CLOUDS } from '../../content/anim.ts';
+import { createRng } from '../../core/rng.ts';
 
 /**
  * TASK-153 cloud field (ARCHITECTURE §7 "Clouds"). Pure TS (no three) — the GLSL
@@ -64,6 +65,28 @@ export function cellU(ix: number, iz: number, salt: number, k: number): number {
   return (hash32((h + k) >>> 0) >>> 8) / 16777216;
 }
 
+/**
+ * Packed per-cell shape: one hash → four bytes → [jitterX, jitterZ, width, yaw] in
+ * (0, 1) (8-bit steps: 0.4 u jitter, 0.07 u width, 1.4° yaw). Keeps the per-fragment
+ * shadow cost at 4 hashes per active cell.
+ */
+export function cellBytes(ix: number, iz: number, salt: number): [number, number, number, number] {
+  const h = hash32((ix + iz * 16 + salt * 256) >>> 0);
+  const pk = hash32((h + 1) >>> 0);
+  return [
+    ((pk & 255) + 0.5) / 256,
+    (((pk >>> 8) & 255) + 0.5) / 256,
+    (((pk >>> 16) & 255) + 0.5) / 256,
+    ((pk >>> 24) + 0.5) / 256,
+  ];
+}
+
+/** Lattice hash for the wobble value noise → [0, 1). X, Z must be ≥ 0. */
+export function latticeU(X: number, Z: number, salt: number): number {
+  const h = hash32((Z + salt * 4096) >>> 0);
+  return (hash32((h ^ X) >>> 0) >>> 8) / 16777216;
+}
+
 /** Threshold so exactly `count` of the `cells`² candidates are active. */
 export function activeThreshold(salt: number, cells: number, count: number): number {
   const us: number[] = [];
@@ -91,6 +114,14 @@ export function makeFieldParams(
     centreX,
     centreZ,
   };
+}
+
+/** Seeded field for a world: count ∈ CLOUDS.count and salt from `rng.fork('clouds:field')`. */
+export function fieldForSeed(seed: number, centreX: number, centreZ: number): CloudFieldParams {
+  const r = createRng(seed).fork('clouds:field');
+  const count = r.int(CLOUDS.count[0], CLOUDS.count[1]);
+  const salt = r.int(0, 65535);
+  return makeFieldParams(salt, count, centreX, centreZ);
 }
 
 /** Window-edge fade on a position relative to the window centre (0 outside the window). */
@@ -122,12 +153,13 @@ interface CellBlob {
 
 export function cellBlob(p: CloudFieldParams, ix: number, iz: number): CellBlob {
   const s = p.salt;
+  const cb = cellBytes(ix, iz, s);
   return {
     active: cellU(ix, iz, s, 0) < p.threshold,
-    jx: JIT0 + (JIT1 - JIT0) * cellU(ix, iz, s, 1),
-    jz: JIT0 + (JIT1 - JIT0) * cellU(ix, iz, s, 2),
-    width: W0 + (W1 - W0) * cellU(ix, iz, s, 3),
-    yaw: cellU(ix, iz, s, 4) * Math.PI * 2,
+    jx: JIT0 + (JIT1 - JIT0) * cb[0],
+    jz: JIT0 + (JIT1 - JIT0) * cb[1],
+    width: W0 + (W1 - W0) * cb[2],
+    yaw: cb[3] * 6.283185307,
     alt: A0 + (A1 - A0) * cellU(ix, iz, s, 5),
     variant: Math.floor(cellU(ix, iz, s, 6) * 3),
   };
@@ -185,10 +217,10 @@ export function valueNoise(x: number, z: number, salt: number): number {
   const uz = fz * fz * (3 - 2 * fz);
   const X = xi + 1024;
   const Z = zi + 1024;
-  const a = cellU(X, Z, salt, 7);
-  const b = cellU(X + 1, Z, salt, 7);
-  const c = cellU(X, Z + 1, salt, 7);
-  const d = cellU(X + 1, Z + 1, salt, 7);
+  const a = latticeU(X, Z, salt);
+  const b = latticeU(X + 1, Z, salt);
+  const c = latticeU(X, Z + 1, salt);
+  const d = latticeU(X + 1, Z + 1, salt);
   return a + (b - a) * ux + (c - a) * uz + (a - b - c + d) * ux * uz;
 }
 
@@ -220,8 +252,8 @@ function evalBlobs(p: CloudFieldParams, x: number, z: number, f: CloudFrame, mod
   const qz = (z - f.oz - p.centreZ - sz * MEAN_ALT) / cell + 0.5 * cells;
   const bx = Math.floor(qx - 0.5);
   const bz = Math.floor(qz - 0.5);
-  const half = 0.5 * W1 * CLOUDS.shadowFit; // unused bound, documents the 2×2 search validity
-  void half;
+  // 2×2 nearest cells suffice: a blob's reach (≤ W1/2 + blur + wobble + sun residual
+  // ≈ 60 u) stays below the ≥ 0.2-cell jitter margin + half a cell.
   let m = 0;
   for (let k = 0; k < 4; k++) {
     const cx = bx + (k & 1);
@@ -229,10 +261,11 @@ function evalBlobs(p: CloudFieldParams, x: number, z: number, f: CloudFrame, mod
     const ix = mod(cx, cells);
     const iz = mod(cz, cells);
     if (cellU(ix, iz, p.salt, 0) >= p.threshold) continue;
-    const jx = JIT0 + (JIT1 - JIT0) * cellU(ix, iz, p.salt, 1);
-    const jz = JIT0 + (JIT1 - JIT0) * cellU(ix, iz, p.salt, 2);
-    const width = W0 + (W1 - W0) * cellU(ix, iz, p.salt, 3);
-    const yaw = cellU(ix, iz, p.salt, 4) * 6.283185307;
+    const cb = cellBytes(ix, iz, p.salt);
+    const jx = JIT0 + (JIT1 - JIT0) * cb[0];
+    const jz = JIT0 + (JIT1 - JIT0) * cb[1];
+    const width = W0 + (W1 - W0) * cb[2];
+    const yaw = cb[3] * 6.283185307;
     const alt = A0 + (A1 - A0) * cellU(ix, iz, p.salt, 5);
     // cloud position relative to the window centre (unwrapped near the query)
     const rx = (cx + jx - 0.5 * cells) * cell + f.ox;
@@ -256,6 +289,7 @@ function evalBlobs(p: CloudFieldParams, x: number, z: number, f: CloudFrame, mod
       const az = ax * CLOUDS.aspect;
       const dn = Math.hypot(lx / ax, lz / az);
       const sd = (dn - 1) * Math.sqrt(ax * az);
+      if (sd > CLOUDS.shadowBlur / 2 + CLOUDS.wobble) continue;
       const wob =
         0.65 * valueNoise(lx * 0.11 + ix * 17, lz * 0.11 + iz * 17, p.salt) +
         0.35 * valueNoise(lx * 0.23 + 5, lz * 0.23 + 5, p.salt);

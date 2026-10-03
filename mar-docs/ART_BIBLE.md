@@ -85,7 +85,7 @@ Night stays cozy:
 - **Shadows:** one sun/moon directional light, soft PCF, ~0.3 u penumbra at T2. Shadowed colour = lit × 0.6, lerped 35 % toward the shadow tint. Never below L 25 % by day.
 - **Sky/rim:** hemisphere light, plus a fresnel rim of 0.15 × horizon colour on foliage and roofs so silhouettes separate from the water.
 - **Fog:** exponential, colour = horizon. ≈ 10 % at 200 u, 45 % at 700 u, 75 % at 1200 u. Far islands go pastel; they never vanish.
-- **Clouds:** 6–10 clouds, each 5–9 smooth icospheres with the bottom 30 % flattened. Top `#FFFFFF`, belly `#DDE6F5` (night `#3A4577`). Altitude 60–90 u, width 12–30 u, drift 1.5 u/s with the wind. They cast soft moving shadows (multiply 0.82, 6 u edge blur). Hidden below T1.
+- **Clouds:** 6–10 clouds, each 5–9 smooth icospheres with the bottom 30 % flattened. Top `#FFFFFF`, belly `#DDE6F5` (night `#3A4577`). Altitude 60–90 u, width 22–44 u (D-011), drift 1.5 u/s with the wind. They cast soft moving shadows (multiply 0.82, 6 u edge blur). Hidden below T1.
 - **Tilt-shift/DOF:**
 
 | Tier | Effect |

@@ -5,6 +5,7 @@ import { Zone } from '../../world/types.ts';
 import { TERRAIN_COLORS, TERRAIN_FX, TERRAIN_MASK } from '../../content/terrain.ts';
 import { SHARED } from '../uniforms.ts';
 import type { WorldTextures } from '../world-textures.ts';
+import { CLOUD_SHADOW_GLSL } from '../shaders/chunks/cloud-shadow.glsl.ts';
 
 /**
  * Terrain material (D-003): MeshLambertMaterial + vertex colours, patched with
@@ -31,6 +32,9 @@ export function createTerrainMaterial(
     uTime: SHARED.uTime,
     uHorizon: SHARED.uHorizon,
     uDebugMask: SHARED.uDebugMask,
+    uCloudShadow: SHARED.uCloudShadow,
+    uCloudSun: SHARED.uCloudSun,
+    uCloudSeed: SHARED.uCloudSeed,
     uTerrainSdf: { value: textures.sdf },
     uTerrainZone: { value: textures.zone },
     // xy = origin, z = 1 / cellSize, w = samples per side (texel-centre mapping)
@@ -70,6 +74,7 @@ uniform vec3 uMaskLand, uMaskWet, uMaskRock, uMaskSeabed;
 uniform sampler2D uTerrainSdf;
 uniform sampler2D uTerrainZone;
 uniform vec4 uTerrainGrid;
+${CLOUD_SHADOW_GLSL}
 vec2 marTerrainUv(vec2 xz) {
   return ((xz - uTerrainGrid.xy) * uTerrainGrid.z + 0.5) / uTerrainGrid.w;
 }
@@ -114,6 +119,11 @@ float marCaustic(vec2 p, float t) {
     float rim = pow(1.0 - ndv, ${f(F.rimPower)}) * step(0.0, vMarWorld.y);
     totalEmissiveRadiance += uHorizon * ${f(F.rim)} * rim;
   }`,
+      )
+      .replace(
+        '#include <opaque_fragment>',
+        // (e) cloud shadows (TASK-153): same field as the clouds, ×0.82 with a 6 u soft edge
+        '\toutgoingLight *= marCloudShadowMul(vMarWorld.xz, uDebugMask);\n#include <opaque_fragment>',
       )
       .replace(
         '#include <dithering_fragment>',
