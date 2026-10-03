@@ -85,7 +85,7 @@ Status flow: PENDING → IN_PROGRESS → REVIEW → COMPLETED (BLOCKED if deps u
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-171 | EnvState, sky bodies, night emissives, beam | shader | M | IN_PROGRESS | TASK-104, TASK-132 |
+| TASK-171 | EnvState, sky bodies, night emissives, beam | shader | M | COMPLETED | TASK-104, TASK-132 |
 | TASK-172 | Weather FSM, rain, ripples, mist | shader | M | PENDING | TASK-171 |
 
 ### M9 — Camera/HUD/photo
