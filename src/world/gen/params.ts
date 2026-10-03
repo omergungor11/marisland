@@ -149,6 +149,12 @@ export const SHELF = {
   seabedFall: 50,
 } as const;
 
+/**
+ * Coast cleanup so every coast has room for its shelf: inlets narrower than
+ * ≈ 2 × closeRadius u are filled, spits thinner than ≈ 2 × openRadius removed.
+ */
+export const COAST = { closeRadius: 7, openRadius: 3 } as const;
+
 /** Beach band (ART_BIBLE §1/§2: 0–1.2 u above sea level, gentle). */
 export const BEACH = { min: 0.1, max: 1.2 } as const;
 

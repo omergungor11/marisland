@@ -10,20 +10,20 @@ const pick3 = <T>(v: number, a: readonly T[]): T => a[v % a.length];
 interface LeafOpts {
   origin: THREE.Vector3;
   az: number;
-  pitch0: number;
   len: number;
   segs: number;
-  droop: number;
-  base: string;
-  tip: string;
+  width: number;
+  greens: [string, string];
+  ribHex: string;
 }
 
-/** One drooping palm leaf: folded (V) strip, top + bottom skin so it is lit from both sides. */
+/** Palm frond: chained segments (+20, 0, -30 deg), V-section halves (~25 deg), central rib, two-sided. */
 function leaf(acc: Acc, o: LeafOpts): void {
+  const pitches = o.segs === 1 ? [0.1] : [0.35, 0, -0.52];
   const stations: THREE.Vector3[] = [o.origin.clone()];
   const dirs: THREE.Vector3[] = [];
   for (let k = 0; k < o.segs; k++) {
-    const pitch = o.pitch0 - k * o.droop;
+    const pitch = pitches[k];
     const d = new THREE.Vector3(
       Math.cos(o.az) * Math.cos(pitch),
       Math.sin(pitch),
@@ -32,7 +32,7 @@ function leaf(acc: Acc, o: LeafOpts): void {
     dirs.push(d);
     stations.push(stations[k].clone().addScaledVector(d, o.len / o.segs));
   }
-  const widths = o.segs === 1 ? [0.2, 0] : [0.1, 0.34, 0.27, 0];
+  const widths = (o.segs === 1 ? [0.9, 0] : [0.8, 1, 0.7, 0]).map((w) => w * o.width);
   const L: THREE.Vector3[] = [];
   const R: THREE.Vector3[] = [];
   stations.forEach((m, j) => {
@@ -43,22 +43,22 @@ function leaf(acc: Acc, o: LeafOpts): void {
       m
         .clone()
         .addScaledVector(side, w)
-        .addScaledVector(UP, -0.35 * w),
+        .addScaledVector(UP, -0.47 * w),
     );
     R.push(
       m
         .clone()
         .addScaledVector(side, -w)
-        .addScaledVector(UP, -0.35 * w),
+        .addScaledVector(UP, -0.47 * w),
     );
   });
-  const cb = col(o.base);
-  const ct = col(o.tip);
-  const topFn = (p: THREE.Vector3): THREE.Color =>
-    cb.clone().lerp(ct, Math.min(1, p.distanceTo(o.origin) / o.len));
-  const botFn = (p: THREE.Vector3): THREE.Color => topFn(p).multiplyScalar(0.8);
+  const g0 = col(o.greens[0]);
+  const g1 = col(o.greens[1]);
+  let flip = 0;
+  const topFn = (): THREE.Color => (flip++ % 2 === 0 ? g0 : g1).clone();
+  const botFn = (): THREE.Color => (flip++ % 2 === 0 ? g0 : g1).clone().multiplyScalar(0.78);
   const aoFn = (p: THREE.Vector3): number =>
-    0.85 + 0.15 * Math.min(1, p.distanceTo(o.origin) / 0.9);
+    0.82 + 0.18 * Math.min(1, p.distanceTo(o.origin) / 1.0);
   const down = UP.clone().negate();
   for (let j = 0; j < o.segs; j++) {
     for (const [a, b] of [
@@ -69,6 +69,16 @@ function leaf(acc: Acc, o: LeafOpts): void {
       acc.addPoly(quad, UP, { color: topFn, windMul: 1, ao: aoFn });
       acc.addPoly(quad, down, { color: botFn, windMul: 1, ao: aoFn });
     }
+    if (o.segs > 1) {
+      const rib = frustum(
+        stations[j].clone().addScaledVector(UP, 0.01),
+        stations[j + 1].clone().addScaledVector(UP, 0.01),
+        0.04 - j * 0.008,
+        0.032 - j * 0.008,
+        3,
+      );
+      acc.add(rib.geo, { m: rib.m, color: col(o.ribHex), windMul: 1, ao: aoFn });
+    }
   }
 }
 
@@ -76,12 +86,15 @@ export function palm({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const r = rng.fork('palm');
   const acc = new Acc();
   const H = pick3(variant, [5.4, 6.1, 6.8]) * r.range(0.96, 1.04);
-  const lean = r.range(8, 25) * (Math.PI / 180);
+  const lean = r.range(10, 25) * (Math.PI / 180);
   const az = r.range(0, TAU);
   const dir = new THREE.Vector3(Math.cos(az), 0, Math.sin(az));
+  const perp = new THREE.Vector3(-dir.z, 0, dir.x);
   const k = Math.tan(lean) / 2;
+  const sAmp = r.range(0.12, 0.25) * (r.chance(0.5) ? 1 : -1);
   const N = lod === 0 ? 6 : 2;
   const radial = lod === 0 ? 8 : 5;
+  const r0 = r.range(0.32, 0.4);
   const pts: THREE.Vector3[] = [];
   const rad: number[] = [];
   for (let i = 0; i <= N; i++) {
@@ -90,45 +103,52 @@ export function palm({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
       dir
         .clone()
         .multiplyScalar(k * H * t * t)
+        .addScaledVector(perp, sAmp * Math.sin(t * TAU))
         .setY(H * 0.97 * t),
     );
-    rad.push(0.23 - 0.12 * t);
+    rad.push(r0 + (0.22 - r0) * t);
   }
   for (let i = 0; i < N; i++) {
-    const { geo, m } = frustum(pts[i], pts[i + 1], rad[i] * 1.06, rad[i + 1] * 0.94, radial);
+    const { geo, m } = frustum(pts[i], pts[i + 1], rad[i] * 1.1, rad[i + 1] * 0.9, radial);
     acc.add(geo, {
       m,
       color: col(i % 2 === 0 ? WOOD.logs : WOOD.dark),
-      windMul: 0.8,
+      windMul: 0.5,
       aoAmt: 0.22,
+      groundClamp: true,
     });
   }
   const top = pts[N];
-  const leaves = 7;
-  const segs = lod === 0 ? 3 : 1;
+  const noise = createNoise(r.fork('nut'));
   const phase = r.range(0, TAU);
+  // darker "boot" cluster at the trunk top
+  acc.add(blob(0.26, 0, noise, 0.1, 2, 9), {
+    m: mat(top.clone().add(new THREE.Vector3(0, 0.05, 0)), null, [1, 0.8, 1]),
+    color: col(WOOD.dark).multiplyScalar(0.8),
+    windMul: 0.5,
+    aoAmt: 0.2,
+  });
+  const leaves = lod === 0 ? 7 : 5;
   for (let i = 0; i < leaves; i++) {
     leaf(acc, {
-      origin: top.clone().add(new THREE.Vector3(0, 0.05, 0)),
-      az: phase + (i / leaves) * TAU + r.range(-0.2, 0.2),
-      pitch0: lod === 0 ? r.range(0.3, 0.6) : r.range(0.0, 0.2),
-      len: r.range(2.1, 2.6),
-      segs,
-      droop: lod === 0 ? r.range(0.5, 0.65) : 0,
-      base: FOLIAGE.palm[1],
-      tip: FOLIAGE.palm[0],
+      origin: top.clone().add(new THREE.Vector3(0, 0.12, 0)),
+      az: phase + (i / leaves) * TAU + r.range(-0.15, 0.15),
+      len: r.range(2.2, 3),
+      segs: lod === 0 ? 3 : 1,
+      width: r.range(0.38, 0.46),
+      greens: [FOLIAGE.palm[0], FOLIAGE.palm[1]],
+      ribHex: FOLIAGE.palm[1],
     });
   }
   if (lod === 0) {
     const nc = 2 + (variant % 2);
-    const noise = createNoise(r.fork('nut'));
     for (let i = 0; i < nc; i++) {
       const a = phase + (i / nc) * TAU + r.range(-0.4, 0.4);
-      const p = top.clone().add(new THREE.Vector3(Math.cos(a) * 0.17, -0.12, Math.sin(a) * 0.17));
-      acc.add(blob(0.13, 1, noise, 0.06, 2, i), {
+      const p = top.clone().add(new THREE.Vector3(Math.cos(a) * 0.22, -0.08, Math.sin(a) * 0.22));
+      acc.add(blob(0.125, 1, noise, 0.05, 2, i), {
         m: mat(p),
         color: col(WOOD.dark),
-        windMul: 0.9,
+        windMul: 0.6,
         aoAmt: 0.2,
       });
     }
