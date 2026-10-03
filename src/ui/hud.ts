@@ -99,7 +99,7 @@ export function createHud(root: HTMLElement, actions: HudActions, instant = fals
       labels = world.islands.map((i) => {
         const l = document.createElement('button');
         l.className = 'mar-label';
-        l.innerHTML = `<span class="mar-dot" style="background:${accents[i.name] ?? UI.secondary}"></span>${i.name}`;
+        l.innerHTML = `<span class="mar-label-in"><span class="mar-dot" style="background:${accents[i.name] ?? UI.secondary}"></span>${i.name}</span>`;
         l.addEventListener('click', () => actions.onLabel(i.name));
         labelsEl.appendChild(l);
         return { name: i.name, el: l, x: i.cx, y: i.peakY + 8, z: i.cz };
@@ -138,6 +138,7 @@ export function createHud(root: HTMLElement, actions: HudActions, instant = fals
     },
     show() {
       el.classList.add('mar-hud-on');
+      setTimeout(() => el.classList.add('mar-hud-shown'), 900);
     },
     hide() {
       el.classList.remove('mar-hud-on');
@@ -179,9 +180,10 @@ export const HUD_CSS = `
 .mar-btn.mar-press{animation:mar-press .35s cubic-bezier(.34,1.56,.64,1);}
 @keyframes mar-press{0%{transform:scale(.9)}100%{transform:scale(1)}}
 .mar-tip{position:absolute;bottom:62px;left:50%;transform:translateX(-50%);white-space:nowrap;background:${UI.ink};color:${UI.surface};font:700 13px/1 'Nunito',sans-serif;padding:8px 12px;border-radius:999px;opacity:0;pointer-events:none;transition:opacity .15s;}
-.mar-hud-instant .mar-pop,.mar-hud-instant .mar-label{animation:none!important;opacity:1;transform:none;}
+.mar-hud-instant .mar-pop,.mar-hud-instant .mar-label-in,.mar-hud-shown .mar-pop{animation:none!important;opacity:1;transform:none;}
 .mar-labels{position:absolute;inset:0;}
-.mar-label{position:absolute;left:0;top:0;pointer-events:auto;cursor:pointer;border:0;display:inline-flex;align-items:center;gap:8px;height:28px;padding:0 12px 0 10px;border-radius:999px;background:#FFF8ECDD;color:${UI.ink};font:600 16px/1 'Fredoka',sans-serif;box-shadow:0 2px 0 #3B3A5A22;white-space:nowrap;animation:mar-pop .25s cubic-bezier(.34,1.56,.64,1) both;}
+.mar-label{position:absolute;left:0;top:0;pointer-events:auto;cursor:pointer;border:0;background:none;padding:0;white-space:nowrap;}
+.mar-label-in{display:inline-flex;align-items:center;gap:8px;height:28px;padding:0 12px 0 10px;border-radius:999px;background:#FFF8ECDD;color:${UI.ink};font:600 16px/1 'Fredoka',sans-serif;box-shadow:0 2px 0 #3B3A5A22;animation:mar-pop .25s cubic-bezier(.34,1.56,.64,1) both;}
 .mar-dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
 @media (max-width:480px){.mar-wordmark{font-size:24px}.mar-btn{width:46px;height:46px}.mar-dock{gap:8px}}
 `;
