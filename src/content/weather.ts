@@ -266,3 +266,18 @@ export const MIST = {
   noiseAmount: 0.8,
   drift: 2.5,
 } as const;
+
+/**
+ * Morning ground mist (ART_BIBLE §11 W7 "Mill Morning": mist band below 6 u at 06:45). A thin
+ * version of the weather mist band in clear / cloudy weather: full over `hours[1]–hours[2]`,
+ * fading in from `hours[0]` and out by `hours[3]` (game hours). Same analytic height layer
+ * (density at sea level 1/u, e-folding height u, cap) — no mesh, no program.
+ */
+export const MORNING_MIST = {
+  hours: [5.0, 6.0, 8.5, 9.0] as const,
+  density: 0.09,
+  height: 3.2,
+  max: 0.5,
+  /** Weather states that keep it (weights summed). */
+  weathers: ['clear', 'cloudy'] as readonly WeatherName[],
+} as const;

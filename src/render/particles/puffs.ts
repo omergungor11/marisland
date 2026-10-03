@@ -3,6 +3,7 @@ import type { Scope } from '../../core/scope.ts';
 import type { Quality } from '../../core/params.ts';
 import { PUFFS } from '../../content/anim.ts';
 import { CLOUD } from '../../content/palette.ts';
+import { CRATER_GLOW } from '../../content/terrain.ts';
 import { SHARED } from '../uniforms.ts';
 import { PUFF_FRAG, PUFF_VERT } from '../clouds/cloud.glsl.ts';
 import { hash32 } from '../clouds/cloud-field.ts';
@@ -104,6 +105,18 @@ export function createPuffs(
         uRainColor: { value: new THREE.Color(1, 1, 1) },
         uBurp: { value: new THREE.Vector4(B.period, B.life, B.radius, B.rise) },
         uBurpSize: { value: new THREE.Vector4(B.size[0], B.size[1], B.pulse, PUFFS.fadeLast) },
+        uSoft: {
+          value: new THREE.Vector4(
+            PUFFS.soft.edge,
+            PUFFS.soft.opacity[0],
+            PUFFS.soft.opacity[1],
+            PUFFS.soft.turbulence,
+          ),
+        },
+        uSoftFreq: { value: PUFFS.soft.turbFreq * Math.PI * 2 },
+        uSteamGlow: {
+          value: new THREE.Color(CRATER_GLOW.color).multiplyScalar(PUFFS.soft.nightGlow),
+        },
       },
       fog: false,
       lights: false,

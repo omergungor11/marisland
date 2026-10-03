@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { EnvState } from '../env/env-state.ts';
-import { mistColor, type WeatherFx } from '../env/weather.ts';
-import { MIST } from '../content/weather.ts';
+import { mistColor, morningMist, type WeatherFx } from '../env/weather.ts';
+import { MIST, MORNING_MIST } from '../content/weather.ts';
 import { GUST, SWELL } from '../content/anim.ts';
 import { POOLS } from '../content/lighting.ts';
 
@@ -114,15 +114,20 @@ export function writeWeatherUniforms(
   time: number,
 ): void {
   SHARED.uWeather.value.set(fx.rain, fx.veil, fx.fogBand, fx.beam);
-  const mistOn = fx.mist > 0;
+  // morning ground mist (W7): a thin band in clear / cloudy mornings; the weather mist wins
+  const mm = morningMist(env.hour, fx.weights);
+  const morning = mm * MORNING_MIST.density > fx.mist;
+  const density = morning ? mm * MORNING_MIST.density : fx.mist;
+  const height = morning ? MORNING_MIST.height : fx.mistHeight;
+  const mistOn = density > 0;
   const drift = time * MIST.drift;
   SHARED.uMist.value.set(
-    fx.mist,
-    1 / Math.max(fx.mistHeight, 1e-3),
+    density,
+    1 / Math.max(height, 1e-3),
     mistOn ? -Math.cos(windDir) * drift : 0,
     mistOn ? -Math.sin(windDir) * drift : 0,
   );
-  SHARED.uMistMax.value = fx.mistMax;
+  SHARED.uMistMax.value = morning ? Math.max(fx.mistMax, mm * MORNING_MIST.max) : fx.mistMax;
   if (mistOn) {
     mistColor(env, _mist);
     SHARED.uMistColor.value.setRGB(_mist.r, _mist.g, _mist.b);

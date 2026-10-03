@@ -198,17 +198,26 @@ export const POOLS = {
   /** Props: light fades out between these heights above the pool's ground (u). */
   propFade: [1.2, 4.5] as const,
   /** Rim wobble: ± fraction of the radius, angular frequency. */
-  wobble: 0.09,
+  wobble: 0.06,
   wobbleFreq: 5,
+  /**
+   * Falloff (D14: pools read as flat discs before): `peak` / (1 + (t / core)²) × (1 − t²)^window,
+   * t = distance / radius — a small bright core, a long quadratic (inverse-square-like) tail that
+   * reaches 0 at the rim; peak < 1 so the lamp itself stays brighter than its pool.
+   */
+  falloff: { core: 0.24, peak: 0.7, window: 1.5 },
+  /** Ground facets: pool × (base + (1 − base) · max(N · toLamp, 0)), lamp `lampHeight` u above
+   * the pool's ground — the light sits on the faceted ground instead of a flat sticker. */
+  facet: { base: 0.3, lampHeight: 2.2 },
   sources: {
-    lanternPost: { radius: 4.2, intensity: 1, offset: 0 },
-    marketStall: { radius: 3.4, intensity: 0.6, offset: 0.6 },
-    cottage: { radius: 2.8, intensity: 0.45, offset: 1.9 },
-    logCabin: { radius: 2.8, intensity: 0.45, offset: 1.9 },
-    towerHouse: { radius: 3.0, intensity: 0.45, offset: 2.1 },
-    stiltHut: { radius: 2.6, intensity: 0.4, offset: 1.5 },
-    lighthouse: { radius: 4.5, intensity: 0.5, offset: 0 },
-    clocktower: { radius: 3.4, intensity: 0.45, offset: 0 },
+    lanternPost: { radius: 5.4, intensity: 1, offset: 0 },
+    marketStall: { radius: 4.2, intensity: 0.6, offset: 0.6 },
+    cottage: { radius: 3.4, intensity: 0.45, offset: 1.9 },
+    logCabin: { radius: 3.4, intensity: 0.45, offset: 1.9 },
+    towerHouse: { radius: 3.6, intensity: 0.45, offset: 2.1 },
+    stiltHut: { radius: 3.2, intensity: 0.4, offset: 1.5 },
+    lighthouse: { radius: 5.4, intensity: 0.5, offset: 0 },
+    clocktower: { radius: 4.2, intensity: 0.45, offset: 0 },
   } as Record<string, { radius: number; intensity: number; offset: number }>,
 } as const;
 

@@ -9,7 +9,7 @@ import { POOL_HEIGHT_RANGE } from '../shaders/chunks/night.glsl.ts';
 /**
  * Lantern pools (TASK-171, ARCHITECTURE §7 "Night": additive decals, not point lights).
  * Every pool source (lantern posts, stalls, house doors … content POOLS.sources) is splatted
- * on the CPU into one small RG8 world texture: R = light (soft gaussian-ish falloff with a
+ * on the CPU into one small RG8 world texture: R = light (small core, long quadratic tail and a
  * wobbly rim so pools never read as discs), G = the pool's ground height / POOL_HEIGHT_RANGE
  * (props fade the light out with height above it). Terrain, props and water add
  * `albedo × poolColor × R × lamps` — one texture fetch, no extra program, no draw call.
@@ -32,6 +32,14 @@ const hash01 = (x: number, z: number): number => {
   const s = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453;
   return s - Math.floor(s);
 };
+
+/** Pool light at t = distance / radius (0 → peak, 1 → 0); content POOLS.falloff. */
+export function poolFalloff(t: number): number {
+  if (t >= 1) return 0;
+  const F = POOLS.falloff;
+  const q = t / F.core;
+  return (F.peak / (1 + q * q)) * Math.pow(1 - t * t, F.window);
+}
 
 /** Collect pool sources from the prop store (pure; exported for tests). */
 export function collectPoolSources(props: PropStore): Source[] {
@@ -96,9 +104,8 @@ export function splatPools(
         const rr = s.r * (1 + POOLS.wobble * wob);
         const t = d / rr;
         if (t >= 1) continue;
-        // bright core, long soft tail, zero at the (wobbly) rim
-        const edge = 1 - t * t;
-        const v = s.k * Math.exp(-2.6 * t * t) * edge * edge;
+        // small bright core, long quadratic tail, zero at the (wobbly) rim (D14)
+        const v = s.k * poolFalloff(t);
         const k = j * size + i;
         light[k] += v;
         hSum[k] += v * s.y;

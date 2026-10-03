@@ -51,12 +51,26 @@ export const CLOUDS = {
 /** Smoke and steam puffs (ART_BIBLE §7 #20/#21; stateless GPU, ARCHITECTURE §5). Sizes are diameters, u. */
 export const PUFFS = {
   chimney: { spawn: 1.2, slots: 3, size: [0.2, 0.9], rise: 4, drift: 2, jitter: 0.15 },
-  steam: { spawn: 0.6, slots: 12, size: [2, 8], rise: 25, drift: 14, jitter: 1.2 },
+  steam: { spawn: 0.6, slots: 24, size: [1.6, 8], rise: 24, drift: 24, jitter: 1.0 },
   spring: { spawn: 0.8, slots: 5, size: [0.6, 2.4], rise: 5, drift: 1.5, jitter: 0.4 },
   /** Ring-puff burp on steam emitters every `period` s. */
   burp: { period: 40, ring: 7, life: 3.5, radius: 7, rise: 6, size: [3, 6.5], pulse: 1.5 },
   /** Fraction of a puff's life spent fading (dither) at the end. */
   fadeLast: 0.4,
+  /**
+   * Soft steam (D5; volcano steam, hot spring, burp ring — chimney smoke stays a small solid puff):
+   * radial alpha from the view-facing term (`edge` = facing at which a puff reaches full opacity),
+   * opacity over the puff's life `opacity[0] → opacity[1]` (lighter, see-through at the top),
+   * turbulence ± u (grows with age) at `turbFreq` Hz; at night the young (low) volcano steam is
+   * tinted by the crater glow (`nightGlow` × lava colour).
+   */
+  soft: {
+    edge: 1.0,
+    opacity: [0.62, 0.1] as const,
+    turbulence: 2.2,
+    turbFreq: 0.23,
+    nightGlow: 0.35,
+  },
   capacity: { low: 240, medium: 600, high: 900 },
 } as const;
 export const WINDMILL = { secondsPerRev: 6 } as const;

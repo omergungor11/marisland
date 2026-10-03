@@ -12,6 +12,16 @@ import { bandDefines, glslFloat as f } from './water-bands.ts';
  * moon streak, sky fresnel, fog) happens in one program; depth and shore distance
  * come from the world grid textures, never from the depth buffer.
  */
+/** Glitter sparkle cell params → `vec4(density, fraction, radius, rate)`. */
+function glitterVec(p: {
+  density: number;
+  fraction: number;
+  radius: number;
+  rate: number;
+}): string {
+  return `vec4(${f(p.density)}, ${f(p.fraction)}, ${f(p.radius)}, ${f(p.rate)})`;
+}
+
 export function waterDefines(): string {
   const fo = W.foam;
   const g = W.glint;
@@ -44,10 +54,12 @@ export function waterDefines(): string {
     `#define MAR_VIEW_HAZE_POW ${f(W.viewHazePow)}`,
     `#define MAR_LOWSUN_Y0 ${f(W.lowSun.y[0])}`,
     `#define MAR_LOWSUN_Y1 ${f(W.lowSun.y[1])}`,
-    `#define MAR_SUNSTREAK ${f(W.lowSun.streak)}`,
-    `#define MAR_SUNSTREAK_LAT ${f(W.lowSun.lateral)}`,
-    `#define MAR_SUNSPARK ${f(W.lowSun.sparkle)}`,
-    `#define MAR_SUNSPARK_EXP ${f(W.lowSun.sparkleExp)}`,
+    `#define MAR_SUN_LOBE vec2(${f(W.lowSun.lobe.across)}, ${f(W.lowSun.lobe.along)})`,
+    `#define MAR_SUN_SPARK ${glitterVec(W.lowSun.sparkle)}`,
+    `#define MAR_SUN_GAIN ${f(W.lowSun.sparkle.gain)}`,
+    `#define MAR_SUN_GLOW ${f(W.lowSun.glow)}`,
+    `#define MAR_SUN_FARGLOW ${f(W.lowSun.farGlow)}`,
+    `#define MAR_SUN_GLINTFADE ${f(W.lowSun.dayGlintFade)}`,
     `#define MAR_LAP_PERIOD ${f(fo.lapPeriod)}`,
     `#define MAR_LAP_ADVANCE ${f(fo.lapAdvance)}`,
     `#define MAR_LAP_IN ${f(fo.lapInFraction)}`,
@@ -69,9 +81,15 @@ export function waterDefines(): string {
     `#define MAR_GLINT_MSCALE ${f(g.maskScale)}`,
     `#define MAR_GLINT_TH0 ${f(g.maskThreshold[0])}`,
     `#define MAR_GLINT_TH1 ${f(g.maskThreshold[1])}`,
-    `#define MAR_MOON_STRENGTH ${f(W.moon.strength)}`,
-    `#define MAR_MOON_LAT ${f(W.moon.lateral)}`,
-    `#define MAR_MOON_VERT ${f(W.moon.vertical)}`,
+    `#define MAR_GLITTER_SWELL ${f(W.moon.normal[0])}`,
+    `#define MAR_GLITTER_RIPPLE ${f(W.moon.normal[1])}`,
+    `#define MAR_MOON_LOBE vec2(${f(W.moon.lobe.across)}, ${f(W.moon.lobe.along)})`,
+    `#define MAR_MOON_SPARK ${glitterVec(W.moon.sparkle)}`,
+    `#define MAR_MOON_GAIN ${f(W.moon.sparkle.gain)}`,
+    `#define MAR_MOON_GLOW ${f(W.moon.glow)}`,
+    `#define MAR_MOON_FARGLOW ${f(W.moon.farGlow)}`,
+    `#define MAR_MOON_FAR0 ${f(W.moon.far[0])}`,
+    `#define MAR_MOON_FAR1 ${f(W.moon.far[1])}`,
     `#define MAR_OUTER_RADIUS ${f(W.grid.outerRadius)}`,
     `#define MAR_RIP_DENSITY ${f(RIPPLES.density)}`,
     `#define MAR_RIP_RATE ${f(1 / RIPPLES.seconds)}`,
@@ -200,24 +218,46 @@ vec3 marRainRipples(vec2 xz, float t, float fp, float rain) {
   return acc;
 }
 
+/* Glitter path toward the light Ld (moon at night, low sun at golden hour; D6/D7). The facet that
+   mirrors Ld into the eye has normal H = normalize(Ld + V); its tilt from the smooth swell normal
+   nS, split across / along the light's azimuth, feeds an anisotropic gaussian lobe → a narrow
+   path that stretches toward the light. Inside the lobe sparse cells twinkle (lit with
+   p = lobe × fraction); cells under ~2 px fold into the lobe glow (cpx = cells per pixel, computed
+   outside any branch). x = sparkle 0..1, y = lobe 0..1. sp = density, fraction, radius, rate. */
+vec2 marGlitter(vec3 Ld, vec3 V, vec3 nS, vec2 xz, float t, float cpx, vec2 lobeK, vec4 sp, float salt) {
+  vec3 Hh = normalize(Ld + V);
+  vec3 tl = Hh - nS * dot(Hh, nS);
+  vec2 m = normalize(Ld.xz + 1e-5);
+  float ac = dot(tl.xz, vec2(-m.y, m.x));
+  float al = dot(tl.xz, m);
+  float lobe = exp(-ac * ac * lobeK.x - al * al * lobeK.y);
+  vec2 cp = xz * sp.x + salt;
+  vec2 ci = floor(cp);
+  float act = step(marHash12(ci + salt + 11.3), lobe * sp.y);
+  float ph = fract(t * sp.w + marHash12(ci + 4.1));
+  float tw = smoothstep(0.0, 0.18, ph) * (1.0 - smoothstep(0.32, 0.62, ph));
+  vec2 off = vec2(marHash12(ci + 3.1), marHash12(ci + 7.7)) * 0.6 + 0.2;
+  float r = length(fract(cp) - off) / max(sp.z, 0.7 * cpx);
+  float spark = act * tw * exp(-r * r * 2.2) * (1.0 - smoothstep(0.22, 0.5, cpx));
+  return vec2(spark, lobe);
+}
+
 void main() {
   vec2 xz = vWorld.xz;
   float t = uTime;
-  float sdf = marSampleGrid(uSdfTex, xz);
+  // R = shore distance, G = smooth leeward ring scale (world-textures.ts ringScaleField, D3)
+  vec2 sdfRing = texture2D(uSdfTex, marGridUv(xz)).rg;
+  float sdf = sdfRing.x;
   float d = -sdf;
   float depth = max(0.0, -marSampleGrid(uHeightTex, xz));
   vec3 toCam = uCameraPos - vWorld;
   float dist = length(toCam);
   vec3 V = toCam / dist;
 
-  // --- shore normal (toward land) → leeward ring scale
-  vec2 g = vec2(marSampleGrid(uSdfTex, xz + vec2(1.0, 0.0)) - sdf,
-                marSampleGrid(uSdfTex, xz + vec2(0.0, 1.0)) - sdf);
-  float gl = length(g);
-  float lee = gl > 1e-4 ? 0.5 - 0.5 * dot(g / gl, uWind.xy) : 0.5;
   // smooth ±MAR_BAND_JITTER u wobble hides the 2 u SDF cell steps on the outer contours
   float bandJit = (marNoise(xz * 0.35 + 7.3) - 0.5) * 2.0 * MAR_BAND_JITTER * smoothstep(4.0, 12.0, d);
-  float db = (d + bandJit) / mix(1.0, MAR_LEEWARD_SCALE, lee);
+  // leeward rings are wider: a precomputed, blurred scale (continuous across shelf seams, D3)
+  float db = (d + bandJit) / clamp(sdfRing.y, 1.0, MAR_LEEWARD_SCALE);
 
   // --- colour bands by shore distance
   float s1 = smoothstep(MAR_LAGOON_MAX - MAR_BAND_SOFT, MAR_LAGOON_MAX + MAR_BAND_SOFT, db);
@@ -251,6 +291,7 @@ void main() {
   float hz = marSwellY(xz + vec2(0.0, 0.5), t, uWind.xy, A, uSwell.y);
   float ns = 2.0 * MAR_NORMAL_SCALE * swellF;
   vec3 n = vec3(-(hx - h0) * ns, 1.0, -(hz - h0) * ns);
+  vec3 nSwell = n;
   float near = rippleF * (1.0 - smoothstep(MAR_RIPPLE_FADE0, MAR_RIPPLE_FADE1, dist));
   vec2 tm = t * MAR_RIPPLE_SPEED * uMotionScale;
   vec3 r1 = marNoised(xz * MAR_RIPPLE_SCALE + tm);
@@ -348,27 +389,31 @@ void main() {
   // overcast veil (TASK-172): no sun to glint
   glint *= 1.0 - uWeather.y;
 
-  // --- moon glitter streak: narrow across, long along the view
-  vec3 Rg = reflect(-V, normalize(mix(n, ng, 0.6)));
-  vec2 rh = normalize(Rg.xz + 1e-5);
-  vec2 mh = normalize(L.xz + 1e-5);
-  float vert = Rg.y - L.y;
-  // the streak follows the sky moon (SHARED.uMoonDir, TASK-171), not the night key light
-  vec3 Lm = normalize(uMoonDir);
-  vec2 mmh = normalize(Lm.xz + 1e-5);
-  float lat = 1.0 - dot(rh, mmh);
-  float mvert = Rg.y - Lm.y;
-  float streak = exp(-lat * MAR_MOON_LAT) * exp(-mvert * mvert * MAR_MOON_VERT);
-  streak *= smoothstep(0.45, 0.7, marNoise(xz * 2.3 + vec2(t * 0.5, -t * 0.3) * uMotionScale));
-  streak *= uNight * smoothstep(0.0, 0.12, Lm.y) * MAR_MOON_STRENGTH * (1.0 - foam);
-  streak *= 1.0 - uWeather.y;
+  // --- glitter paths (D6/D7): narrow twinkling streaks toward the moon / the low sun
+  // damped swell normal + a little ripple: a straight streak whose edge wobbles, no scribbles
+  vec3 nS = normalize(vec3(0.0, 1.0, 0.0) + (nSwell - vec3(0.0, 1.0, 0.0)) * MAR_GLITTER_SWELL + (n - nSwell) * MAR_GLITTER_RIPPLE);
+  float streak = 0.0;
+  float moonOn = uNight * smoothstep(0.0, 0.12, normalize(uMoonDir).y) * (1.0 - uWeather.y);
+  // fwidth outside the branches (derivatives are undefined in divergent control flow)
+  float moonCpx = fp * MAR_MOON_SPARK.x;
+  if (moonOn > 0.0) {
+    // the streak follows the sky moon (SHARED.uMoonDir, TASK-171), not the night key light
+    vec2 mg = marGlitter(normalize(uMoonDir), V, nS, xz, t * uMotionScale, moonCpx, MAR_MOON_LOBE, MAR_MOON_SPARK, 0.0);
+    float glowW = mix(MAR_MOON_GLOW, MAR_MOON_FARGLOW, smoothstep(0.22, 0.5, moonCpx));
+    streak = (mg.x * MAR_MOON_GAIN + mg.y * glowW) * moonOn * (1.0 - foam)
+           * (1.0 - smoothstep(MAR_MOON_FAR0, MAR_MOON_FAR1, dist));
+  }
 
-  // low sun (golden/dusk): warm glitter streak toward the sun + broad sparkle everywhere
-  float lowSun = (1.0 - smoothstep(MAR_LOWSUN_Y0, MAR_LOWSUN_Y1, L.y)) * (1.0 - smoothstep(0.55, 0.9, uNight));
-  float sunLat = 1.0 - dot(rh, mh);
-  float sunStreak = exp(-sunLat * MAR_SUNSTREAK_LAT) * exp(-vert * vert * MAR_MOON_VERT);
-  float broad = pow(max(dot(ng, H), 0.0), MAR_SUNSPARK_EXP) * MAR_SUNSPARK;
-  float warm = lowSun * mask * (sunStreak * MAR_SUNSTREAK + broad) * (1.0 - foam) * (1.0 - uWeather.y);
+  // low sun / golden hour: the scattered high-sun glints hand over to a warm glitter path
+  float lowSun = max(1.0 - smoothstep(MAR_LOWSUN_Y0, MAR_LOWSUN_Y1, L.y), uGolden) * (1.0 - smoothstep(0.55, 0.9, uNight));
+  float warm = 0.0;
+  float sunCpx = fp * MAR_SUN_SPARK.x;
+  if (lowSun > 0.0) {
+    glint *= 1.0 - MAR_SUN_GLINTFADE * lowSun;
+    vec2 sg = marGlitter(L, V, nS, xz, t * uMotionScale, sunCpx, MAR_SUN_LOBE, MAR_SUN_SPARK, 17.0);
+    float glowW = mix(MAR_SUN_GLOW, MAR_SUN_FARGLOW, smoothstep(0.22, 0.5, sunCpx));
+    warm = (sg.x * MAR_SUN_GAIN + sg.y * glowW) * lowSun * (1.0 - foam) * (1.0 - uWeather.y);
+  }
   vec3 warmCol = mix(uSunColor, uSunColor * vec3(1.0, 0.82, 0.6), 0.5);
 
   col += uSunColor * (glint + streak) + warmCol * warm;
