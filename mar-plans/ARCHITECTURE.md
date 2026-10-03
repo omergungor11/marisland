@@ -93,7 +93,7 @@ Rendering derives everything **per chunk** (32×32 cells = 64 u). Only chunks wi
 **Materials.**
 - One factory extends `MeshLambertMaterial` via `onBeforeCompile` (D-003), keeping three's lights, shadows, fog and instancing.
 - Bible §3 lighting comes from light colours first (warm sun, blue-violet hemisphere → cool shade), plus injected fresnel rim and emissive mask; an explicit shadow-tint patch only if the mask metric fails. Dedicated `ShaderMaterial`s only for water, sky, clouds, particles, blobs.
-- Features are fixed defines: `INSTANCED, WIND, BLOOM_IN, DITHER, EMISSIVE, SMOOTH`, prewarmed with `compileAsync`. Tier changes touch uniforms only.
+- One lit program (`mar-lit`, `:s` for smooth normals) + one instanced depth program shared by props and terrain (D-016): `WIND, DITHER, EMISSIVE`, windmill spin are always compiled (no-ops without their attribute); look switches `BLOOM_IN` / `RIM` are per-material uniforms. Optional attributes sit on fixed `layout(location)`s. Prewarmed with `compileAsync`; tier changes touch uniforms only.
 
 **Terrain.**
 - Non-indexed faceted triangles. Each face gets its palette colour plus seeded jitter and AO. No splat textures.

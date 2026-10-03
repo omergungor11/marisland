@@ -13,7 +13,8 @@ import {
 
 /**
  * PropBatcher material provider: one LitMaterial (+ matching depth material) per
- * (def, LOD), all sharing the factory's 4 programs. Grounded/standing props get
+ * (def, LOD), all sharing the factory's one lit program and one depth program (their
+ * fade distances / rim / bloom-in switches are per-material uniforms). Grounded/standing props get
  * the rim; ground cover does not. Every prop blooms in from `aAppear` and
  * dither-fades by its def's (or tier's) fade distances.
  */
@@ -30,7 +31,7 @@ export function propFeatures(def: PropDef, groundCover: boolean): LitFeatures {
     wind: (def.flags & PropFlag.windy) !== 0,
     emissive: true,
     rim: !groundCover && (def.flags & PropFlag.groundCover) === 0,
-    // windmill blades turn about the hub (aSpin); one extra program (+ its depth twin)
+    // windmill blades turn about the hub (aSpin); same program, the branch keys off aSpin.w
     spin: def.geo === 'windmill',
   };
 }

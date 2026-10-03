@@ -8,11 +8,13 @@ import { TERRAIN_LOD } from '../../content/terrain.ts';
 import { buildColorGrid } from './terrain-colors.ts';
 import { buildChunkGeometry } from './terrain-mesh.ts';
 import { createTerrainMaterial } from './terrain-material.ts';
+import { makeDepthMaterial } from '../materials/factory.ts';
 
 /**
  * TASK-102 — terrain mesher (ARCHITECTURE §3, ART_BIBLE §1/§2). Per-chunk
  * (32×32 cells) faceted meshes at LOD0 = 2 u and LOD1 = 4 u, both built up
- * front; `onTier` swaps visibility. One shared material / program.
+ * front; `onTier` swaps visibility. One shared material / program; shadow depth shares the
+ * props' instanced depth program (chunks are 1-instance InstancedMeshes).
  */
 export interface TerrainChunk {
   cx: number;
@@ -60,6 +62,11 @@ export function buildTerrain(
   const grid = buildColorGrid(world);
   const { material } = createTerrainMaterial(world, textures, quality);
   scope.add(material);
+  // Shadow casting through the props' depth program (D-016): chunks are 1-instance
+  // InstancedMeshes (identity instance matrix, exact) so the factory's instanced depth material
+  // (no wind / bloom / fade on terrain) replaces three's default non-instanced depth program.
+  const depth = scope.add(makeDepthMaterial({}));
+  depth.name = 'terrain:depth';
   const group = new THREE.Group();
   group.name = 'terrain';
   const chunks: TerrainChunk[] = [];
@@ -88,8 +95,10 @@ export function buildTerrain(
         if (lod === 0) tri0 += stats.triangles;
         else tri1 += stats.triangles;
         minY = Math.min(minY, stats.minY);
-        const mesh = new THREE.Mesh(geometry, material);
+        // disposed with the world scope: frees the instanceMatrix buffer on regen
+        const mesh = scope.add(new THREE.InstancedMesh(geometry, material, 1));
         mesh.name = `terrain-${cx}-${cz}-lod${lod}`;
+        mesh.customDepthMaterial = depth;
         mesh.castShadow = true;
         mesh.receiveShadow = true;
         mesh.matrixAutoUpdate = false;

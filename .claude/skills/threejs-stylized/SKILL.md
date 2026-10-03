@@ -57,9 +57,15 @@ with `onBeforeCompile` (switch to `three-custom-shader-material` if string patch
 fragile). This keeps three's lights, shadows, fog and instancing for free.
 
 - Facets: non-indexed geometry (`toNonIndexed()` + `computeVertexNormals()`) or `flatShading`.
-- Features are defines: `WIND`, `BLOOM_IN`, `DITHER`, `EMISSIVE`, `RIM`. Set
-  `material.customProgramCacheKey = () => key` per variant; prewarm all variants; stay within the
-  program budget (≤ 12 / 16 / 20 by quality tier).
+- Features that are no-ops without their attribute (`WIND`, `DITHER`, `EMISSIVE`, spin) are always
+  compiled; look switches (`BLOOM_IN`, `RIM`) are per-material uniforms, so every lit material
+  shares ONE program (`customProgramCacheKey`); prewarm it; stay within the program budget
+  (≤ 12 / 20 / 24 by quality tier, D-010/D-016). Anything that changes three's program
+  parameters (instancing, `instanceColor`, flatShading, `transparent`, a missing `normal`) is a
+  new program even with the same key.
+- Optional attributes that fall back to `defaultAttributeValues` need a fixed
+  `layout(location = N)`: three sets the fallback only when it builds a VAO, and generic attribute
+  values are context state — another program's default at the same location leaks in (D-016).
 - Shadow casters that move in the vertex shader need a matching `mesh.customDepthMaterial` with the
   same patch, or their shadows won't sway/pop.
 - **Warm light, cool shade via lights first:** warm sun (`#FFF6E5`, intensity per EnvState) +
