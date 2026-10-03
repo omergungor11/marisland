@@ -3,6 +3,7 @@ import { BLOOM_IN, TREE_SWAY } from '../../content/anim.ts';
 import { SHARED } from '../uniforms.ts';
 import { FIELDS_GLSL } from '../shaders/chunks/fields.glsl.ts';
 import { SHARED_LIT_GLSL } from '../shaders/chunks/lit.glsl.ts';
+import { SHADE } from '../../content/lighting.ts';
 
 /**
  * Lit material factory (D-003, ARCHITECTURE §3 "Materials"): MeshLambertMaterial
@@ -238,6 +239,7 @@ function replaceOnce(src: string, find: string, insert: string, where: 'after' |
 function defineMap(v: ResolvedVariant): Record<string, string> {
   const d: Record<string, string> = {};
   for (const fl of FLAGS) if (v.features[fl]) d[DEFINE[fl]] = '';
+  if (SHADE.enabled) d.MAR_SHADOW_TINT = '';
   return d;
 }
 

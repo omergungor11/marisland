@@ -20,10 +20,10 @@ import { MarGradeEffect } from './grade-effect.ts';
 
 /**
  * pmndrs post chain (ARCHITECTURE §3 "Post", ART_BIBLE §3). Passes:
- *   Render → A[Bloom (mipmap, emissive/sun/glints only) + TiltShift]
- *          → DOF (high only, enabled at T3)
- *          → C[Grade (sat/lift/golden/vignette) + ToneMapping NEUTRAL]
- *          → FXAA (medium; high relies on MSAA×4).
+ *   medium: Render → [TiltShift + Bloom + Grade + ToneMapping NEUTRAL] → [FXAA]
+ *   high:   Render(MSAA×4) → [TiltShift] → [DOF, enabled at T3 only] → [Bloom + Grade + ToneMapping]
+ * Bloom: mipmap blur, gated so only emissives / sun disc / glints bloom.
+ * Grade = saturation, lifted blacks, golden overlay, night shift, coloured vignette.
  * FXAA samples neighbours of its input, so it gets its own pass after tone
  * mapping. Tier/env changes only touch uniforms and pass.enabled — no recompiles.
  */
@@ -72,13 +72,11 @@ export function createPostChain(
   tilt.update = (r, input, dt) => {
     if (tiltActive) tiltUpdate(r, input, dt);
   };
-  composer.addPass(new EffectPass(camera, bloom, tilt));
 
-  let dof: DepthOfFieldEffect | null = null;
   let dofPass: EffectPass | null = null;
   const focus = new THREE.Vector3();
   if (useDof) {
-    dof = new DepthOfFieldEffect(camera, {
+    const dof = new DepthOfFieldEffect(camera, {
       focusDistance: 30,
       focusRange: POST.dofFocusRange,
       bokehScale: LIGHTING.tiltShift[3].blur / 2,
@@ -91,8 +89,14 @@ export function createPostChain(
 
   const grade = new MarGradeEffect();
   const tone = new ToneMappingEffect({ mode: ToneMappingMode.NEUTRAL });
-  const gradePass = new EffectPass(camera, grade, tone);
-  composer.addPass(gradePass);
+  if (dofPass) {
+    // high: tilt-shift must precede DOF, so it gets its own pass
+    composer.addPass(new EffectPass(camera, tilt), composer.passes.indexOf(dofPass));
+    composer.addPass(new EffectPass(camera, bloom, grade, tone));
+  } else {
+    // medium: one merged pass; tilt first so bloom is added on top of the band blur
+    composer.addPass(new EffectPass(camera, tilt, bloom, grade, tone));
+  }
   if (msaa === 0) composer.addPass(new EffectPass(camera, new FXAAEffect()));
 
   const setTilt = (band: number, blurPx: number): void => {
@@ -120,6 +124,7 @@ export function createPostChain(
       // self-driving from the shared uniforms (written by world-view each frame)
       chain.setTier(SHARED.uTier.value);
       grade.setGolden(SHARED.uGolden.value);
+      grade.setNight(SHARED.uNight.value);
       grade.setMask(SHARED.uDebugMask.value > 0.5);
       if (dofPass?.enabled && !focusPinned) centreFocus();
       composer.render(dt);
@@ -146,6 +151,7 @@ export function createPostChain(
     },
     setEnv(env) {
       grade.setGolden(env.golden);
+      grade.setNight(env.night);
       grade.setMask(SHARED.uDebugMask.value > 0.5);
     },
     setFocus(target) {

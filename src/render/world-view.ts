@@ -14,6 +14,7 @@ import type { CameraWorld } from '../camera/controls.ts';
 import type { Counters } from '../capture/api.ts';
 import { scatterProps, type ScatterResult } from '../world/gen/scatter.ts';
 import { createPropBatcher, type PropBatcher } from './props/batcher.ts';
+import { createPropMaterials } from './materials/prop-materials.ts';
 import type { PropDef } from '../content/props.ts';
 import type { Lod } from '../geo/index.ts';
 
@@ -80,14 +81,14 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   const tScatter = d.now();
   const scatter = scatterProps(world);
   timings.scatter = d.now() - tScatter;
-  const fallbackMat = d.scope.add(new THREE.MeshLambertMaterial({ vertexColors: true }));
+  const pm = createPropMaterials(d.scope);
   const props = createPropBatcher(scatter.props, {
     scope: d.scope,
     seed,
     counters: d.counters,
-    materialFor: d.propMaterial ?? (() => fallbackMat),
-    depthMaterialFor: d.propDepthMaterial,
-    softAppear: d.softAppear ?? false,
+    materialFor: d.propMaterial ?? pm.materialFor,
+    depthMaterialFor: d.propDepthMaterial ?? pm.depthMaterialFor,
+    softAppear: d.softAppear ?? true,
     castShadows: d.quality !== 'low',
   });
   group.add(props.group);

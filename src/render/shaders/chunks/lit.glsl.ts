@@ -5,6 +5,7 @@
  * `vViewPosition`, `outgoingLight`, `reflectedLight`, `diffuseColor`.
  */
 import { LIGHTING } from '../../../content/palette.ts';
+import { SHADE } from '../../../content/lighting.ts';
 
 const f = (v: number): string => v.toFixed(5);
 
@@ -34,7 +35,7 @@ float marLuma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
   /**
    * Explicit shadow tint (fallback when light colours alone fail the mask metric):
    * the shadowed part (indirect-only) is lerped toward uShadowTint by
-   * LIGHTING.shadowTintMix and held above LIGHTING.minShadowL luminance by day.
+   * SHADE.tintMix (≈ bible 0.35) and held above LIGHTING.minShadowL luminance by day.
    * Insert before `#include <opaque_fragment>`, BEFORE emissive/rim are added.
    * Needs `marSunVis` (0 shadowed … 1 lit) from `sunVisibility`.
    */
@@ -43,7 +44,7 @@ float marLuma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
     float marShade = 1.0 - marSunVis;
     vec3 marInd = reflectedLight.indirectDiffuse;
     float marL = marLuma(marInd);
-    vec3 marTinted = mix(marInd, uShadowTint * (marL / max(marLuma(uShadowTint), 1e-4)), ${f(LIGHTING.shadowTintMix)});
+    vec3 marTinted = mix(marInd, uShadowTint * (marL / max(marLuma(uShadowTint), 1e-4)), ${f(SHADE.tintMix)});
     float marMin = ${f(LIGHTING.minShadowL)} * (1.0 - uNight) * marLuma(diffuseColor.rgb);
     marTinted *= max(1.0, marMin / max(marLuma(marTinted), 1e-4));
     outgoingLight += (marTinted - marInd) * marShade;
@@ -62,6 +63,8 @@ float marLuma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
     vec3 marExp = max(marNdl, 0.0) * directionalLights[0].color * BRDF_Lambert(diffuseColor.rgb);
     float marE = marLuma(marExp);
     marSunVis = marE > 1e-4 ? clamp(marLuma(reflectedLight.directDiffuse) / marE, 0.0, 1.0) : 0.0;
+    // grazing faces read as form shade too (no hard switch at N·L = 0)
+    marSunVis *= smoothstep(0.0, ${f(SHADE.formNdl)}, marNdl);
   }
   #endif
 `,

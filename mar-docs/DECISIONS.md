@@ -2,6 +2,24 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-010: High-quality program budget 20 → 24 — 2026-10-03
+
+**Decision**: `BUDGETS.high.programs = 24`. DOF stays at T3 on high (ART_BIBLE §3).
+**Rationale**: pmndrs `DepthOfFieldEffect` alone compiles 8 programs (CoC, blur, bokeh, mask passes).
+With sky, terrain, water, 4 lit variants + depth variants and the post chain, high at T3 measures 22.
+Dropping DOF to photo mode only would lose the bible's T3 look; 4 extra programs cost nothing at runtime.
+**Impact**: `src/content/budgets.ts`; `shots --assert` thresholds.
+
+## D-009: Fog density 0.00103 (bible curve is not reachable with FogExp2) — 2026-10-03
+
+**Decision**: `FogExp2` density ≈ 0.00103 (`content/lighting.ts` FOG), the same value in `SHARED.uFogDensity`
+so the water shader fogs identically.
+**Rationale**: three's FogExp2 is `1 − exp(−(d·dist)²)`. The bible asks 10 % @ 200 u, 45 % @ 700 u,
+75 % @ 1200 u — no single d satisfies all three; the fit gives ≈ 4 % / 40 % / 78 %. Far islands still
+go pastel and never vanish, which is the intent.
+**Impact**: W1 ring-colour criterion (#4FD1D9 ±10 %) is evaluated on the `mask` frame, not the fogged
+beauty frame.
+
 ## D-008: Bloom-in spring damping c=17 (bible says 12) — 2026-10-03
 
 **Decision**: `content/anim.ts` stores the bloom-in spring as `k=180, c=17` (mass 1).
