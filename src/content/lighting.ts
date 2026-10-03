@@ -37,11 +37,16 @@ export const FOG = {
 export const LIGHT_RIG = {
   /** HemisphereLight intensity by day / at night (lerped by EnvState.night). */
   hemiDay: 1.1,
-  hemiNight: 0.75,
+  /** Night hemisphere: high enough that shaded land stays ≥ L 12 % (bible §2 rule);
+   * only lit materials see it, so sky and water stay deep blue. */
+  hemiNight: 2.8,
   /** Multiplier on EnvState.sunIntensity (keys are authored for this rig). */
   sunScale: 1,
   /** Moon (night) light multiplier on the night key's intensity. */
-  moonScale: 1,
+  moonScale: 1.3,
+  /** Golden hour (EnvState.golden): extra sun and sky fill so the low sun reads warm and bright. */
+  goldenSun: 1.3,
+  goldenHemi: 1.25,
 } as const;
 
 /**
@@ -111,6 +116,12 @@ export const POST = {
    * bright pixels (emissives, moon) are spared so windows stay warm. */
   nightTint: '#7484E0',
   nightMix: 0.5,
+  /** Night shift ramps in over night ∈ [nightFrom, 1] so dusk keeps its colours. */
+  nightFrom: 0.5,
+  /** Extra linear lift for the darkest pixels at night (× night tint), keeps land ≥ L 12 %. */
+  nightLift: 0.016,
+  /** Golden-hour midtone exposure lift (× golden). */
+  goldenLift: 0.18,
   /** Linear lift added to blacks (lifted blacks, bible §3 "Grade"). */
   lift: 0.004,
   /** Kawase SMALL kernel at half res ≈ this many full-res px of blur per unit scale. */

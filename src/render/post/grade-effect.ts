@@ -24,6 +24,8 @@ uniform vec2 uVig;
 uniform float uMask;
 uniform vec3 uNightTint;
 uniform float uNight;
+uniform float uGoldenLift;
+uniform float uNightLift;
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
   vec3 c = max(inputColor.rgb, 0.0);
@@ -33,9 +35,11 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   c = max(mix(vec3(l), c, 1.0 + uSat * mid), 0.0);
   c += uLift * (1.0 - smoothstep(0.0, 0.15, c));
   c = mix(c, uWarm * l, uGolden);
+  c *= 1.0 + uGoldenLift * mid;
   // day-for-night: luminance-preserving shift to blue, sparing highlights (emissives)
   float spare = 1.0 - smoothstep(0.25, 0.9, l);
   c = mix(c, uNightTint * l, uNight * spare);
+  c += uNightTint * (uNightLift * (1.0 - smoothstep(0.0, 0.05, l)));
   vec2 p = (uv - 0.5) * vec2(aspect, 1.0);
   float r = length(p) / length(vec2(aspect, 1.0) * 0.5);
   float m = smoothstep(1.0 - uVig.y, 1.0 + 0.1, r);
@@ -67,6 +71,8 @@ export class MarGradeEffect extends Effect {
         ['uMask', new THREE.Uniform(0)],
         ['uNightTint', new THREE.Uniform(new THREE.Vector3(nt.r, nt.g, nt.b).divideScalar(ntL))],
         ['uNight', new THREE.Uniform(0)],
+        ['uGoldenLift', new THREE.Uniform(0)],
+        ['uNightLift', new THREE.Uniform(0)],
       ]),
     });
   }
@@ -74,11 +80,16 @@ export class MarGradeEffect extends Effect {
   /** 0..1 golden-hour factor (EnvState.golden) → 6 % overlay at the peak. */
   setGolden(g: number): void {
     (this.uniforms.get('uGolden') as THREE.Uniform<number>).value = g * LIGHTING.grade.goldenWarm;
+    (this.uniforms.get('uGoldenLift') as THREE.Uniform<number>).value = g * POST.goldenLift;
   }
 
   /** EnvState.night 0..1 → night grade strength. */
   setNight(n: number): void {
-    (this.uniforms.get('uNight') as THREE.Uniform<number>).value = n * POST.nightMix;
+    const t = Math.min(1, Math.max(0, (n - POST.nightFrom) / (1 - POST.nightFrom)));
+    (this.uniforms.get('uNight') as THREE.Uniform<number>).value =
+      t * t * (3 - 2 * t) * POST.nightMix;
+    (this.uniforms.get('uNightLift') as THREE.Uniform<number>).value =
+      t * t * (3 - 2 * t) * POST.nightLift;
   }
 
   setMask(on: boolean): void {

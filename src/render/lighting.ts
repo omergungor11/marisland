@@ -53,11 +53,16 @@ export function createLightRig(quality: Quality, scope: Scope): LightRig {
     update(env, camera, focus) {
       const night = env.night;
       sun.color.setRGB(env.sunColor.r, env.sunColor.g, env.sunColor.b);
+      const golden = env.golden * (1 - night);
       sun.intensity =
-        env.sunIntensity * THREE.MathUtils.lerp(LIGHT_RIG.sunScale, LIGHT_RIG.moonScale, night);
+        env.sunIntensity *
+        THREE.MathUtils.lerp(LIGHT_RIG.sunScale, LIGHT_RIG.moonScale, night) *
+        THREE.MathUtils.lerp(1, LIGHT_RIG.goldenSun, golden);
       hemi.color.setRGB(env.hemiSky.r, env.hemiSky.g, env.hemiSky.b);
       hemi.groundColor.setRGB(env.hemiGround.r, env.hemiGround.g, env.hemiGround.b);
-      hemi.intensity = THREE.MathUtils.lerp(LIGHT_RIG.hemiDay, LIGHT_RIG.hemiNight, night);
+      hemi.intensity =
+        THREE.MathUtils.lerp(LIGHT_RIG.hemiDay, LIGHT_RIG.hemiNight, night) *
+        THREE.MathUtils.lerp(1, LIGHT_RIG.goldenHemi, golden);
       _dir.set(env.sunDir.x, env.sunDir.y, env.sunDir.z).normalize();
       if (preset.shadows) {
         fitShadow(sun, camera, _dir, focus, preset.shadowMapSize, maxSize, fit);
