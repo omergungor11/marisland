@@ -8,11 +8,11 @@ Status flow: PENDING → IN_PROGRESS → REVIEW → COMPLETED (BLOCKED if deps u
 |----|------|-------|-----------|--------|-------------|
 | TASK-001 | Scaffold: Vite, TS, pnpm, ESLint (random ban), Prettier, Vitest, `VITE_BASE` | devops | S | COMPLETED | – |
 | TASK-002 | `core/`: clock, loop, scope, params, rng, noise, events, quality | engine | M | COMPLETED | TASK-001 |
-| TASK-003 | WebGLBackend, loader, test scene, `__marisland` ready/error | engine | M | IN_PROGRESS | TASK-002 |
-| TASK-004 | `shots` harness: sets, manifest, contact sheet, fail checks | qa | M | PENDING | TASK-003 |
-| TASK-005 | `ci.yml` + `deploy.yml` | devops | S | PENDING | TASK-001, TASK-004 |
-| TASK-006 | Stats overlay, `debug=` views | engine | S | PENDING | TASK-003 |
-| TASK-007 | Verify D-001 in container (smoke test); write VISUAL_QA.md; refresh tech-stack/conventions | docs | S | PENDING | TASK-003 |
+| TASK-003 | WebGLBackend, loader, test scene, `__marisland` ready/error | engine | M | COMPLETED | TASK-002 |
+| TASK-004 | `shots` harness: sets, manifest, contact sheet, fail checks | qa | M | COMPLETED | TASK-003 |
+| TASK-005 | `ci.yml` + `deploy.yml` | devops | S | COMPLETED | TASK-001, TASK-004 |
+| TASK-006 | Stats overlay, `debug=` views | engine | S | IN_PROGRESS | TASK-003 |
+| TASK-007 | Verify D-001 in container (smoke test); write VISUAL_QA.md; refresh tech-stack/conventions | docs | S | COMPLETED | TASK-003 |
 
 ## Phase 1: Living diorama
 
@@ -25,7 +25,7 @@ Status flow: PENDING → IN_PROGRESS → REVIEW → COMPLETED (BLOCKED if deps u
 | TASK-102 | Terrain mesher: facets, jitter, AO, LOD, skirts | shader | M | PENDING | TASK-101, TASK-003 |
 | TASK-103 | Water: swell, depth ramp/alpha, SDF foam, glints | shader | L | PENDING | TASK-101 |
 | TASK-104 | Material factory, sky, fog, lights, fitted shadows, post | shader | M | PENDING | TASK-102 |
-| TASK-105 | Camera wrapper, presets, pitch curve, bounds | engine | S | PENDING | TASK-003 |
+| TASK-105 | Camera wrapper, presets, pitch curve, bounds | engine | S | IN_PROGRESS | TASK-003 |
 
 ### M2 — Archipelago
 *3 seeds × 5–7 distinct islands*

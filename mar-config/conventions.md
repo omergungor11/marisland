@@ -13,11 +13,14 @@
 - Systems implement `{ init, fixedUpdate?, update?, onTier?, dispose }` and register GPU resources
   in the app or world scope
 
-## Determinism
+## Determinism & build
 - Randomness only via `rng.fork(label)` / `hash(seed, …)`; never `Math.random`
 - Time only via the engine clock (`clock.t`, `uTime`); never `Date.now` / `performance.now` in
   sim, gen or animation code
 - No iteration over `Map`/`Set` where order affects output
+- ESLint enforces determinism ban on: `src/world/`, `src/life/`, `src/anim/`, `src/shared/`, `src/geo/`, `src/env/`, `src/core/rng*`, `src/core/noise*`
+- `src/content/` and `scripts/` share shot presets (`ShotPreset[]`); keep them in sync
+- `scripts/` is typechecked by `tsconfig.node.json`
 
 ## Performance
 - No allocations in per-frame code (module-level scratch objects)
@@ -33,6 +36,10 @@
 - Gen: snapshot hashes for seeds 1, 42, 1001 + property tests over many seeds
 - Visual: `pnpm shots` + review per `.claude/skills/visual-qa/SKILL.md`
 - A visual task is not done without a looked-at screenshot
+
+## Formatting
+- Prettier: printWidth 100, single quotes, trailing commas, semicolons
+- File naming: `kebab-case.ts`, `UPPERCASE_FOR_CONSTANTS.ts`
 
 ## Git
 - Conventional commits `feat|fix|refactor|perf|docs|chore|test(scope): …`, no attribution lines
