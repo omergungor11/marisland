@@ -2,6 +2,14 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-008: Bloom-in spring damping c=17 (bible says 12) — 2026-10-03
+
+**Decision**: `content/anim.ts` stores the bloom-in spring as `k=180, c=17` (mass 1).
+**Rationale**: ART_BIBLE §6 asks for "k=180, c=12 (≈8 % overshoot, ~300 ms)". With c=12 the
+closed-form overshoot is 21 % (ζ=0.45). c=17 gives ζ=0.63 → 7.6 % overshoot and first peak at
+0.30 s, i.e. exactly the described look. The *look* numbers win over the raw constant.
+**Impact**: `springIn` TS/GLSL twins use the content value; spring.test.ts locks the overshoot.
+
 ## D-007: Phase 1 = living diorama, building tools in Phase 2 — 2026-10-03
 
 **Decision**: Phase 1 delivers exploration, zoom detail, ambient life, day/night, weather, click
