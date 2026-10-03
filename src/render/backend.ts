@@ -19,7 +19,10 @@ export interface RendererBackend {
   readonly renderer: THREE.WebGLRenderer;
   readonly rendererString: string;
   readonly isSoftware: boolean;
+  /** Current device pixel ratio (the governor may lower it at runtime). */
   readonly dpr: number;
+  /** Change the pixel ratio; call `resize` (and the post chain's) afterwards. */
+  setPixelRatio(dpr: number): void;
   resize(width: number, height: number): void;
   dispose(): void;
 }
@@ -50,7 +53,7 @@ export function createBackend(o: BackendOptions): RendererBackend {
     : String(gl.getParameter(gl.RENDERER));
   const isSoftware = /swiftshader|llvmpipe|software/i.test(rendererString);
 
-  const dpr = Number.isFinite(o.dprOverride)
+  let dpr = Number.isFinite(o.dprOverride)
     ? o.dprOverride
     : Math.min(window.devicePixelRatio || 1, preset.dprCap);
   renderer.setPixelRatio(dpr);
@@ -59,7 +62,13 @@ export function createBackend(o: BackendOptions): RendererBackend {
     renderer,
     rendererString,
     isSoftware,
-    dpr,
+    get dpr() {
+      return dpr;
+    },
+    setPixelRatio(v) {
+      dpr = v;
+      renderer.setPixelRatio(v);
+    },
     resize(width, height) {
       renderer.setSize(width, height, false);
     },

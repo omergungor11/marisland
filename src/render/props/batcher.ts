@@ -174,7 +174,12 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
       blobs = makeBlobs(mesh, radii, aAppear);
       blobs.visible = false;
       root.add(blobs);
-      d.scope.defer(() => blobs?.dispose());
+      // InstancedMesh.dispose() frees the instance matrix only: the per-group
+      // InstancedBufferGeometry is ours too (it leaked one geometry per shown blob group).
+      d.scope.defer(() => {
+        blobs?.dispose();
+        blobs?.geometry.dispose();
+      });
     }
     const g: Group = {
       mesh,

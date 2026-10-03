@@ -37,10 +37,19 @@ export interface PickResult {
   z: number;
 }
 
+/** `api.perf()`: frame-time percentiles over the `?perf=1` path, ms. */
 export interface PerfResult {
+  /** Frame interval (RAF to RAF; capture mode: one stepped frame incl. `gl.finish`). */
   p50: number;
   p95: number;
   frames: number;
+  /** Main-thread time of the loop per frame. */
+  cpuP50?: number;
+  cpuP95?: number;
+  /** GPU time per frame (`EXT_disjoint_timer_query_webgl2`); absent when unsupported. */
+  gpuP50?: number;
+  gpuP95?: number;
+  gpuFrames?: number;
 }
 
 export interface MarislandApi {

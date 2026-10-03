@@ -44,4 +44,8 @@ export interface AppEvents extends Record<string, unknown> {
   reducedMotionChanged: { reduced: boolean; motionScale: number };
   /** Photo mode entered/left or frozen (the governor must not change quality while `frozen`). */
   photoMode: { active: boolean; frozen: boolean };
+  /** The quality governor stepped (TASK-191): new pixel ratio and detail-tier cap. */
+  governorChanged: { level: number; dpr: number; tierCap: number; p90: number };
+  /** The WebGL context was lost (`lost: true`) or restored and the world rebuilt (`false`). */
+  contextLost: { lost: boolean };
 }
