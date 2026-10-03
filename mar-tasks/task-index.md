@@ -86,7 +86,7 @@ Status flow: PENDING → IN_PROGRESS → REVIEW → COMPLETED (BLOCKED if deps u
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
 | TASK-171 | EnvState, sky bodies, night emissives, beam | shader | M | COMPLETED | TASK-104, TASK-132 |
-| TASK-172 | Weather FSM, rain, ripples, mist | shader | M | IN_PROGRESS | TASK-171 |
+| TASK-172 | Weather FSM, rain, ripples, mist | shader | M | COMPLETED | TASK-171 |
 
 ### M9 — Camera/HUD/photo
 *HUD, mobile, photo*
@@ -102,8 +102,8 @@ Status flow: PENDING → IN_PROGRESS → REVIEW → COMPLETED (BLOCKED if deps u
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
 | TASK-191 | Governor, prewarm, context-loss regen, `perf=1` | engine | M | COMPLETED | all Phase 1 |
-| TASK-192 | 10-seed sweep; user checks M1 60 fps / phone 30 fps | qa | M | IN_PROGRESS | TASK-191 |
-| TASK-193 | README, MEMORY gotchas | docs | S | IN_PROGRESS | TASK-192 |
+| TASK-192 | 10-seed sweep; user checks M1 60 fps / phone 30 fps | qa | M | COMPLETED | TASK-191 |
+| TASK-193 | README, MEMORY gotchas | docs | S | COMPLETED | TASK-192 |
 
 ## Phase 2: Sandbox (sketch)
 

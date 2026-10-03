@@ -10,14 +10,19 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
-- 2026-10-03: Phase 0 + M1–M4 done and pushed (contact sheets `mar-docs/shots/M1–M4.jpg`); M5 (tier FSM,
-  fades, pop queue, budgets assert) effectively done inside the PropBatcher; M6 (boats, gulls, fish, clouds,
-  steam) done. In progress: TASK-161/162 (villagers, sheep, crabs, picking, reactions — `life` agent),
-  HUD time dial/weather/photo (TASK-182), lighthouse beam + weather FSM (TASK-171/172).
-- Known debts: W9 dusk water tint (water agent cut off mid-polish, partial diff committed and green),
-  stair-stepped ring edges in the mask frame, D-golden foliage slightly grey-blue, no rain/mist yet.
-- Opus-model agents hit a session rate limit at ~13:40 UTC (reset 15:20 UTC) — use sonnet agents or do it
-  yourself until then.
+- 2026-10-03 session 1: Phase 0 + M1–M9 implemented and pushed; `pnpm shots dev --assert` (17) and
+  `pnpm shots wow --assert` (W1–W10) all pass, deterministic. Sheets: `mar-docs/shots/M1–M4, M7 (dev), M8 (wow)`.
+- Live: https://omergungor11.github.io/marisland/ — the user still needs to check on a real GPU (M2/M5/M8 gates).
+- Quality debts (next session start here): (1) W8 beach macro lacks shells/starfish on Hearthholm sand and the
+  crab is tiny — add T3 shell/starfish/driftwood scatter rules on `sandDry` for all islands; (2) sunken ship not
+  readable in W6 (lagoon too dark/deep: lighten lagoon alpha or raise the wreck); (3) W2 wants ≥ 3 boats with
+  ripple rings at the dock — moorings exist, rowboats are small, add ripple rings around moored boats in the
+  water shader (splat per bob); (4) villager skin tinted by shirt colour; cats/ducks/capybara placement unverified
+  up close; (5) rain keeps crisp sun shadows (soften sun:hemi in rain); (6) gpuMemoryMB is an estimate, not
+  asserted; (7) HUD weather button is a no-op (weather is seeded/`?weather=`), sound button is a no-op (no audio);
+  (8) intro cloud curtain is DOM-only (no 3D clouds inside); (9) `shots wow` is not run in CI (slow).
+- Workflow: parallel agents in ONE tree — stage explicit paths only; opus agents hit a session rate limit mid-day
+  (resets hourly-ish); worktree isolation worked well for worldgen.
 
 ## Important Patterns
 - Pixel determinism: same URL → byte-identical PNG under SwiftShader
