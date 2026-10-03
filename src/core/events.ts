@@ -35,4 +35,13 @@ export interface AppEvents extends Record<string, unknown> {
   picked: { kind: string; id: number };
   qualityChanged: { quality: 'low' | 'medium' | 'high' };
   resized: { width: number; height: number; dpr: number };
+  /** HUD weather button (TASK-182). Weather/env systems subscribe and render the state. */
+  weatherChanged: { weather: 'clear' | 'cloudy' | 'rain' | 'fog' };
+  /**
+   * Reduced motion toggled (HUD settings, persisted) or resolved at boot. Ambient systems scale
+   * amplitudes by `motionScale` (0.3 when reduced, 1 otherwise).
+   */
+  reducedMotionChanged: { reduced: boolean; motionScale: number };
+  /** Photo mode entered/left or frozen (the governor must not change quality while `frozen`). */
+  photoMode: { active: boolean; frozen: boolean };
 }

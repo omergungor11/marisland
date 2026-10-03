@@ -31,7 +31,13 @@ export interface Params {
   gallery: boolean;
   /** Reduced motion forced on. */
   rm: boolean;
+  /** HUD panel open at boot (capture review of the photo bar / settings): '' | photo | settings. */
+  panel: HudPanel;
+  /** Capture: freeze the opening sequence at this time (s); NaN = off. Needs `freeze=1`. */
+  introt: number;
 }
+
+export type HudPanel = '' | 'photo' | 'settings';
 
 export const DEFAULT_SEED = 1001;
 
@@ -60,6 +66,9 @@ export function parseParams(search: string): Params {
   const quality = (q.get('quality') ?? '') as Params['quality'];
   const debugRaw = q.get('debug') ?? 'none';
   const selftest = (q.get('selftest') ?? '') as Params['selftest'];
+  const panel = q.get('panel') ?? '';
+  const introtRaw = q.get('introt');
+  const introt = introtRaw === null || introtRaw === '' ? NaN : Number(introtRaw);
   return {
     seed: Number.isFinite(seedNum) ? seedNum >>> 0 : DEFAULT_SEED,
     shot: q.get('shot') ?? '',
@@ -89,5 +98,7 @@ export function parseParams(search: string): Params {
     intro: parseBool(q.get('intro'), true),
     gallery: parseBool(q.get('gallery'), false),
     rm: parseBool(q.get('rm'), false),
+    panel: panel === 'photo' || panel === 'settings' ? panel : '',
+    introt: Number.isFinite(introt) && introt >= 0 ? introt : NaN,
   };
 }

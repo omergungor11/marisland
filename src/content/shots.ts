@@ -4,7 +4,7 @@
  * 1001 = Hearthholm, Beacon Rock, Millbrook, Palmlagoon, Mossgrove, Lonely Palm; 2024 Beacon Rock;
  * 3003 Emberpeak; 4004 Palmlagoon; 1000 Millbrook; 6006 Mossgrove; 1002 has all seven.
  */
-export type ShotSet = 'ci' | 'dev' | 'wow';
+export type ShotSet = 'ci' | 'dev' | 'wow' | 'intro';
 
 export interface ShotPreset {
   id: string;
@@ -27,6 +27,12 @@ export interface ShotPreset {
   /** Before capture: dolly in from this distance over `dollySeconds` (hardPops must stay 0). */
   dollyFrom?: number;
   dollySeconds?: number;
+  /** Show the HUD (the harness defaults to `hud=0`). */
+  hud?: boolean;
+  /** HUD panel open (`panel=`): photo bar or settings sheet. */
+  panel?: 'photo' | 'settings';
+  /** Opening-sequence still at this time (s) (`introt=`). */
+  introt?: number;
   sets: ShotSet[];
 }
 
@@ -309,6 +315,77 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     height: 844,
     sets: ['dev'],
   },
+  // ---- HUD review (TASK-182): dock + dial, settings sheet, photo bar on desktop and phones
+  {
+    id: 'D-hud',
+    title: 'HUD',
+    seed: 1001,
+    cam: 'overview',
+    time: 15,
+    simt: 2,
+    hud: true,
+    sets: ['dev'],
+  },
+  {
+    id: 'D-photo',
+    title: 'Photo mode',
+    seed: 1001,
+    cam: 'island:Hearthholm',
+    time: 17.75,
+    simt: 2,
+    hud: true,
+    panel: 'photo',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-mobile-hud',
+    title: 'Mobile HUD 390×844',
+    seed: 1001,
+    cam: 'overview',
+    time: 21,
+    simt: 2,
+    width: 390,
+    height: 844,
+    hud: true,
+    panel: 'settings',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-land-hud',
+    title: 'Landscape phone 844×390',
+    seed: 1001,
+    cam: 'overview',
+    time: 15,
+    simt: 2,
+    width: 844,
+    height: 390,
+    hud: true,
+    sets: ['dev'],
+  },
+  {
+    id: 'D-land-photo',
+    title: 'Landscape photo 844×390',
+    seed: 1001,
+    cam: 'island:Hearthholm',
+    time: 15,
+    simt: 2,
+    width: 844,
+    height: 390,
+    hud: true,
+    panel: 'photo',
+    sets: ['dev'],
+  },
+  // ---- opening sequence every 0.5 s (ART_BIBLE §8 timing review): `pnpm shots intro`
+  ...Array.from({ length: 21 }, (_, i): ShotPreset => ({
+    id: `I-${(i * 0.5).toFixed(1)}`,
+    title: `Intro ${(i * 0.5).toFixed(1)} s`,
+    seed: 1001,
+    cam: 'overview',
+    time: 15,
+    hud: true,
+    introt: i * 0.5,
+    sets: ['intro'],
+  })),
 ];
 
 export const SET_DEFAULTS: Record<
@@ -318,6 +395,7 @@ export const SET_DEFAULTS: Record<
   ci: { width: 640, height: 360, quality: 'low' },
   dev: { width: 960, height: 540, quality: 'low' },
   wow: { width: 1920, height: 1080, quality: 'medium' },
+  intro: { width: 640, height: 360, quality: 'low' },
 };
 
 export function shotsForSet(set: ShotSet): ShotPreset[] {

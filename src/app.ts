@@ -4,14 +4,14 @@ import '@fontsource/fredoka/700.css';
 import '@fontsource/nunito/700.css';
 import '@fontsource/nunito/800.css';
 import { parseParams, type Params } from './core/params.ts';
-import { loadStoredQuality, pickQuality, QUALITY_PRESETS } from './core/quality.ts';
+import { loadStoredQuality, pickQuality, QUALITY_PRESETS, storeQuality } from './core/quality.ts';
 import { Loop } from './core/loop.ts';
 import { Scope } from './core/scope.ts';
 import { Emitter, type AppEvents } from './core/events.ts';
 import { createBackend, type RendererBackend } from './render/backend.ts';
 import { createPostChain, type PostChain } from './render/post/composer.ts';
 import { createLoader } from './ui/loader.ts';
-import { injectStyles } from './ui/styles.ts';
+import { injectStyles, preloadFonts } from './ui/styles.ts';
 import { createStatsOverlay, readInfo, type StatsOverlay } from './debug/stats.ts';
 import { findShot } from './content/shots.ts';
 import type { Counters, MarislandApi, RenderInfo } from './capture/api.ts';
@@ -21,8 +21,13 @@ import { buildWorldView } from './render/world-view.ts';
 import { SHARED } from './render/uniforms.ts';
 import { createHud, type Hud } from './ui/hud.ts';
 import { createCurtain } from './ui/curtain.ts';
-import { createIntro } from './camera/intro.ts';
+import { createIntro, type Intro } from './camera/intro.ts';
 import { ISLAND_ACCENTS } from './content/islands-ui.ts';
+import { HUD, INTRO } from './content/ui.ts';
+import { CAMERA } from './content/tiers.ts';
+import { loadPrefs, storePrefs, type UiPrefs } from './ui/settings.ts';
+import { photoFilename } from './ui/hud-math.ts';
+import type { WeatherName } from './core/params.ts';
 import type { TestScene } from './render/test-scene.ts';
 
 /**
@@ -63,6 +68,7 @@ export async function boot(): Promise<void> {
   const api = installApi();
 
   try {
+    await preloadFonts();
     await document.fonts.ready;
     loader.setProgress(0.1);
 
@@ -198,8 +204,16 @@ export async function boot(): Promise<void> {
     const cam = createCameraSystem(camera, canvas, events, !params.freeze);
     ctx.cam = cam;
     loop.add(cam);
-    cam.setReducedMotion(params.rm || matchMedia('(prefers-reduced-motion: reduce)').matches);
+    // Reduced motion: `rm=1` forces it; otherwise the persisted HUD choice, else the OS setting.
+    // Capture ignores stored prefs (same URL → same pixels on any machine).
+    const prefs: UiPrefs = params.freeze ? { reducedMotion: null, compass: true } : loadPrefs();
+    const reduced =
+      params.rm || (prefs.reducedMotion ?? matchMedia('(prefers-reduced-motion: reduce)').matches);
+    cam.setReducedMotion(reduced);
     appScope.defer(() => cam.dispose?.());
+    /** The live world's life system (motion scale follows reduced motion; null in the gallery). */
+    let worldLife: { setMotionScale(s: number): void } | null = null;
+    const motionScale = (): number => (cam.reducedMotion ? HUD.reducedMotionScale : 1);
     loop.add({
       name: 'tier-sync',
       update: () => {
@@ -222,6 +236,8 @@ export async function boot(): Promise<void> {
         now,
       });
       Object.assign(ctx.timings, wv.timings);
+      worldLife = wv.life;
+      if (cam.reducedMotion) wv.life.setMotionScale(motionScale());
       return { group: wv.group, system: wv.system, hash: wv.hash, cameraWorld: wv.cameraWorld };
     };
     const tGen = now();
@@ -235,8 +251,9 @@ export async function boot(): Promise<void> {
     cam.applyPreset(params.cam || 'overview', false);
     cam.setIdleOrbit(!params.freeze);
 
-    const reduced = params.rm || matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const curtain = params.freeze ? null : createCurtain(root, reduced);
+    // `introt` (capture) renders the intro at a fixed time, curtain included.
+    const introCapture = params.freeze && Number.isFinite(params.introt) && !params.gallery;
+    const curtain = params.freeze && !introCapture ? null : createCurtain(root, reduced);
     if (curtain) appScope.defer(() => curtain.dispose());
     let regenBusy = false;
     const newSeed = async (seed: number): Promise<void> => {
@@ -252,23 +269,90 @@ export async function boot(): Promise<void> {
       }
     };
 
+    // ---- HUD (TASK-182). Other systems hook in through `events`: weatherChanged,
+    // reducedMotionChanged, photoMode (+ the existing qualityChanged).
+    let intro: Intro | null = null;
+    let weather: WeatherName = params.weather || 'clear';
+    let photoFrozen = false;
+    let daySpeedBeforeFreeze = loop.clock.daySpeed;
+    const setReduced = (on: boolean): void => {
+      cam.setReducedMotion(on);
+      worldLife?.setMotionScale(motionScale());
+      if (on) intro?.skip();
+      events.emit('reducedMotionChanged', { reduced: on, motionScale: motionScale() });
+    };
+    const setFrozen = (on: boolean): void => {
+      if (on === photoFrozen) return;
+      photoFrozen = on;
+      cam.setFrozen(on);
+      if (on) {
+        intro?.skip();
+        daySpeedBeforeFreeze = loop.clock.daySpeed;
+        loop.clock.daySpeed = 0;
+      } else {
+        loop.clock.daySpeed = daySpeedBeforeFreeze;
+      }
+      events.emit('photoMode', { active: hud?.photoMode ?? false, frozen: on });
+    };
     let hud: Hud | null = null;
     if (params.hud && !params.gallery) {
-      const TIME_STOPS = [7, 12, 15, 17.75, 19.25, 22, 2];
-      let timeStop = -1;
       hud = createHud(
         root,
         {
           onNewSeed: () => void newSeed((Math.random() * 1e9) >>> 0),
-          onTime: () => {
-            timeStop = (timeStop + 1) % TIME_STOPS.length;
-            loop.clock.dayTime = TIME_STOPS[timeStop];
+          onHour: (h) => {
+            loop.clock.dayTime = h;
           },
-          onWeather: () => {},
-          onPhoto: () => {},
+          onWeather: (w) => {
+            weather = w;
+            events.emit('weatherChanged', { weather });
+          },
           onSound: () => {},
-          onCompass: () => void cam.controls.rotateAzimuthTo(0, true),
-          onLabel: (name) => cam.applyPreset(`island:${name}`, true),
+          onCompass: () => cam.resetNorth(),
+          onLabel: (name) => void cam.flyToIsland(name),
+          onQuality: (q) => {
+            // Quality picks the renderer path (composer, MSAA, shadows): apply on reload.
+            storeQuality(q);
+            events.emit('qualityChanged', { quality: q });
+            const u = new URL(location.href);
+            u.searchParams.delete('quality');
+            location.replace(u.toString());
+          },
+          onReducedMotion: (on) => {
+            prefs.reducedMotion = on;
+            storePrefs(prefs);
+            setReduced(on);
+          },
+          onCompassVisible: (on) => {
+            prefs.compass = on;
+            storePrefs(prefs);
+          },
+          onPhotoMode: (active) => {
+            if (!active) cam.setFov(CAMERA.fov);
+            events.emit('photoMode', { active, frozen: photoFrozen });
+          },
+          onFov: (deg) => cam.setFov(deg),
+          onFreeze: setFrozen,
+          onShutter: () =>
+            new Promise((resolve) => {
+              // preserveDrawingBuffer is off outside capture: render and grab in the same task.
+              render();
+              canvas.toBlob(
+                (blob) =>
+                  resolve(
+                    blob ? { blob, filename: photoFilename(api.seed, loop.clock.dayTime) } : null,
+                  ),
+                'image/png',
+              );
+            }),
+        },
+        {
+          quality,
+          reducedMotion: reduced,
+          compass: prefs.compass,
+          weather,
+          fov: camera.fov,
+          frozen: false,
         },
         params.freeze,
       );
@@ -281,12 +365,13 @@ export async function boot(): Promise<void> {
             camera,
             cam.controls.azimuthAngle,
             cam.tier,
-            testScene.cameraWorld,
+            loop.clock.dayTime,
             ctx.width,
             ctx.height,
           ),
       });
     }
+    if (reduced) events.emit('reducedMotionChanged', { reduced, motionScale: motionScale() });
     loader.setProgress(0.6);
 
     if (params.debug === 'wire') {
@@ -362,38 +447,66 @@ export async function boot(): Promise<void> {
 
     if (params.selftest === 'regen') await selftestRegen(api, params.seed, ctx);
 
+    // ---- intro (ART_BIBLE §8): off for intro=0, capture, reduced motion, the gallery.
     const runIntro = !params.freeze && params.intro && !reduced && !params.gallery && curtain;
-    if (runIntro) {
-      curtain.setClosed();
-      hud?.setLabelsHidden(true);
+    let hudShownByIntro = false;
+    if ((runIntro || introCapture) && curtain) {
       const cw = testScene.cameraWorld;
       const hero =
         cw.islands.find((i) => (i.archetypeName ?? i.name) === 'Hearthholm') ?? cw.islands[0];
-      const intro = createIntro({
+      hud?.setLabelsHidden(true);
+      const it = createIntro({
         cam,
-        centerX: cw.centerX,
-        centerZ: cw.centerZ,
         heroX: hero?.cx ?? cw.centerX,
         heroZ: hero?.cz ?? cw.centerZ,
-        onCurtainOpen: () => void curtain.open(),
+        onCurtainOpen: () => {
+          hud?.dockWordmark();
+          if (!introCapture) void curtain.open();
+        },
         onLabels: () => hud?.setLabelsHidden(false),
-        onDone: () => {
-          loop.remove(intro);
+        onHud: () => {
+          hudShownByIntro = true;
           hud?.show();
-          cam.setIdleOrbit(true);
+        },
+        onDone: () => {
+          loop.remove(it);
+          intro = null;
+          cam.setIdleOrbit(true, true);
+          for (const [type, fn] of skipListeners) window.removeEventListener(type, fn);
         },
       });
+      intro = it;
       cam.setIdleOrbit(false);
-      loop.add(intro);
-      const skip = (): void => intro.skip();
-      window.addEventListener('pointerdown', skip, { once: true });
-      window.addEventListener('keydown', skip, { once: true });
-      window.addEventListener('wheel', skip, { once: true, passive: true });
+      const skip = (): void => it.skip();
+      const skipListeners: Array<[string, () => void]> = [
+        ['pointerdown', skip],
+        ['keydown', skip],
+        ['wheel', skip],
+        ['touchstart', skip],
+      ];
+      if (introCapture) {
+        // Deterministic still of the sequence at `introt` seconds (TASK-181 timing review).
+        const t = params.introt;
+        it.seek(t);
+        curtain.setProgress((t - INTRO.curtainAt) / INTRO.curtainSeconds);
+        if (t >= INTRO.duration) {
+          it.dispose();
+          intro = null;
+          cam.applyPreset('overview', false);
+        }
+        loop.step(1 / 30, 1);
+      } else {
+        curtain.setClosed();
+        loop.add(it);
+        for (const [type, fn] of skipListeners)
+          window.addEventListener(type, fn, { passive: true });
+      }
     }
     await loader.finish();
     if (!params.freeze) loop.start();
-    if (!runIntro) hud?.show();
-    else hud?.showWordmark();
+    if (!runIntro && !introCapture) hud?.show();
+    else if (!hudShownByIntro) hud?.showWordmark();
+    if (params.panel) hud?.openPanel(params.panel);
     api.ready = true;
     console.info(
       `[marisland] ready in ${ctx.timings.boot.toFixed(0)} ms · ${backend.rendererString} · quality ${quality}`,
