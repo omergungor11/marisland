@@ -44,6 +44,13 @@
 - Art bible W-shot seeds (1001, 2024, …) are placeholders until TASK-113 pins real ones
 - **SMOKE-001 (2026-10-03):** Chromium 141 + Playwright 1.56 + SwiftShader: HalfFloat + MSAA render through pmndrs EffectComposer identical to low-quality path; 30 frames ≈9 ms CPU; determinism OK (same frame byte-identical); ready time ≈200 ms; KHR_parallel_shader_compile not supported (warning only)
 - Playwright CDN unreachable from container; 1.56 stays pinned; cannot upgrade to 1.63
+- `pnpm shots --port=<n>` reuses a port that is already served by *another* agent's preview ("already served
+  (not ours)") → wrong build gets captured. Every parallel agent needs a unique port
+- Camera: a pose set via `setLookAt` is not clamped, but the next rotate is → preset poses must sit inside
+  `pitchBand()` or the first input snaps the pitch
+- CSS: unitless `0` inside `calc()` in `translate()` invalidates the whole transform — use `0vmax`
+- World timing tests (`< 150 ms`, "full world generation time") are wall-clock: they fail under load
+  (parallel shots runs); re-run `pnpm vitest run src/world` on an idle machine before calling it a regression
 
 > Rules: read at session start; update gotchas/patterns as discovered; delete stale info; keep it
 > short. Architecture decisions go to DECISIONS.md, not here.

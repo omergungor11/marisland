@@ -93,8 +93,8 @@ Status flow: PENDING → IN_PROGRESS → REVIEW → COMPLETED (BLOCKED if deps u
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-181 | Intro, fly-to, orbit, touch, compass | engine | M | IN_PROGRESS | TASK-105, TASK-113 |
-| TASK-182 | HUD dock, time dial, photo mode + PNG export | engine | M | IN_PROGRESS | TASK-181 |
+| TASK-181 | Intro, fly-to, orbit, touch, compass | engine | M | COMPLETED | TASK-105, TASK-113 |
+| TASK-182 | HUD dock, time dial, photo mode + PNG export | engine | M | COMPLETED | TASK-181 |
 
 ### M10 — Hardening
 *W1–W10*
