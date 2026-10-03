@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
-import { type Acc, col, mat, qEuler, type PartOpts } from './kit.ts';
+import type { Rng } from '../core/rng.ts';
+import { Acc, col, mat, qEuler, type PartOpts } from './kit.ts';
 
 export const TAU = Math.PI * 2;
 export const V = (x: number, y: number, z: number): THREE.Vector3 => new THREE.Vector3(x, y, z);
@@ -11,7 +12,7 @@ export const TINT = {
   pool: '#8EEBE0',
   bottle: '#BFE8C8',
   cork: '#C9A06B',
-  glass: '#CFEFF2',
+  glass: '#FFEFC4',
   cloth: '#FFF4E0',
   rope: '#D9C3A0',
   seaweed: '#3E9A6A',
@@ -130,18 +131,20 @@ export interface WindowSpec {
   /** Pane glow mask. */
   emissive?: number;
   sill?: boolean;
+  /** Tilt of the wall (rad): top leans toward the building axis. */
+  lean?: number;
 }
 
 /** Inset window: frame box + emissive pane (+ sill). 14-26 tris. */
 export function windowAt(acc: Acc, o: WindowSpec): void {
   const w = o.w ?? 0.6;
   const h = o.h ?? 0.7;
-  const q = qEuler(0, o.yaw, 0);
+  const q = qEuler(0, o.yaw, 0).multiply(qEuler(-(o.lean ?? 0), 0, 0));
   const place = (g: THREE.BufferGeometry, off: THREE.Vector3): THREE.Matrix4 => {
     void g;
     return mat(o.at.clone().add(off.applyQuaternion(q)), q);
   };
-  const frame = new THREE.BoxGeometry(w + 0.2, h + 0.2, 0.08);
+  const frame = new THREE.BoxGeometry(w + 0.14, h + 0.14, 0.08);
   acc.add(frame, {
     m: place(frame, V(0, 0, 0)),
     color: typeof o.frame === 'string' ? col(o.frame) : o.frame,
@@ -157,7 +160,7 @@ export function windowAt(acc: Acc, o: WindowSpec): void {
     emissive: o.emissive ?? 1,
   });
   if (o.sill) {
-    const s = new THREE.BoxGeometry(w + 0.34, 0.1, 0.2);
+    const s = new THREE.BoxGeometry(w + 0.3, 0.1, 0.2);
     acc.add(s, {
       m: place(s, V(0, -(h / 2 + 0.15), 0.06)),
       color: typeof o.frame === 'string' ? col(o.frame) : o.frame,
@@ -176,8 +179,9 @@ export function doorAt(
   frame: string,
   w = 0.9,
   h = 1.6,
+  lean = 0,
 ): void {
-  const q = qEuler(0, yaw, 0);
+  const q = qEuler(0, yaw, 0).multiply(qEuler(-lean, 0, 0));
   const f = new THREE.BoxGeometry(w + 0.22, h + 0.14, 0.1).translate(0, (h + 0.14) / 2, 0);
   acc.add(f, {
     m: mat(at.clone(), q),
@@ -197,3 +201,15 @@ export function doorAt(
 /** Deterministic noise-free per-index pick helper. */
 export const cycle = <T>(arr: readonly T[], i: number): T =>
   arr[((i % arr.length) + arr.length) % arr.length];
+
+/** Acc whose parts are scaled a few percent per axis by the seed (about the ground pivot). */
+export function jitterAcc(rng: Rng, amt = 0.03): Acc {
+  const acc = new Acc();
+  const r = rng.fork('jit');
+  acc.xf = mat([0, 0, 0], null, [
+    1 + r.range(-amt, amt),
+    1 + r.range(-amt, amt),
+    1 + r.range(-amt, amt),
+  ]);
+  return acc;
+}

@@ -13,7 +13,58 @@ const TARGET: Record<string, number> = {
   reeds: 60,
   rockCluster: 300,
   treeBlob: 60,
+  cottage: 400,
+  stiltHut: 600,
+  windmill: 900,
+  lighthouse: 900,
+  clocktower: 700,
+  giantTree: 1400,
+  sunkenShip: 700,
+  seaStack: 400,
+  sailboat: 500,
+  towerHouse: 500,
+  barn: 500,
+  logCabin: 600,
+  marketStall: 450,
+  fence: 150,
+  lanternPost: 150,
+  laundryLine: 150,
+  bunting: 150,
+  bench: 150,
+  barrel: 150,
+  crate: 150,
+  well: 150,
+  steppingStone: 150,
+  shell: 150,
+  starfish: 150,
+  messageBottle: 150,
+  dock: 200,
+  rowboat: 250,
+  buoy: 150,
+  driftwood: 150,
+  tidePool: 200,
+  hotSpring: 300,
+  volcanoCrater: 200,
 };
+
+/** Props from the buildings/coastal/decor/landmarks families: carry an `emissive` attribute. */
+const NEW_IDS = new Set(Object.keys(TARGET).slice(10));
+/** Props whose LOD0 must actually glow somewhere (windows, lamps, lava). */
+const GLOWS = new Set([
+  'cottage',
+  'stiltHut',
+  'towerHouse',
+  'windmill',
+  'barn',
+  'logCabin',
+  'lanternPost',
+  'lighthouse',
+  'clocktower',
+  'giantTree',
+  'volcanoCrater',
+]);
+/** Props with cloth/sail/flag wind weights baked in. */
+const WINDY_CLOTH = new Set(['laundryLine', 'bunting', 'sailboat', 'clocktower', 'giantTree']);
 const tris = (g: THREE.BufferGeometry): number => g.getAttribute('position').count / 3;
 
 describe('prop geometry', () => {
@@ -54,7 +105,32 @@ describe('prop geometry', () => {
           const ao = g.getAttribute('ao').array as Float32Array;
           expect(ao.every((x) => x >= 0.75 && x <= 1)).toBe(true);
           const wind = g.getAttribute('wind').array as Float32Array;
-          expect(wind.every((x) => x >= 0 && x <= 1)).toBe(true);
+          const windMax = def.id === 'windmill' ? 2 : 1;
+          expect(wind.every((x) => x >= 0 && x <= windMax)).toBe(true);
+          if (def.id === 'windmill') {
+            // blades (and hub) carry wind = 2, the body/cap/door carry 0, nothing in between
+            expect(wind.some((x) => x === 2)).toBe(true);
+            expect(wind.every((x) => x === 0 || x === 2)).toBe(true);
+            const hub = g.userData.hub as number[];
+            expect(hub).toHaveLength(3);
+            expect(hub.every((x) => Number.isFinite(x))).toBe(true);
+            expect(hub[1]).toBeGreaterThan(4);
+          } else if (lod === 0 && WINDY_CLOTH.has(def.id)) {
+            expect(wind.some((x) => x > 0)).toBe(true);
+          }
+          if (NEW_IDS.has(def.id)) {
+            const em = g.getAttribute('emissive');
+            expect(em.itemSize).toBe(1);
+            expect(em.count).toBe(n);
+            const ea = em.array as Float32Array;
+            expect(ea.every((x) => Number.isFinite(x) && x >= 0 && x <= 1)).toBe(true);
+            if (lod === 0 && GLOWS.has(def.id)) expect(ea.some((x) => x === 1)).toBe(true);
+            // emissive faces are whole triangles
+            for (let f = 0; f < n; f += 3)
+              expect(ea[f] === ea[f + 1] && ea[f] === ea[f + 2]).toBe(true);
+          } else {
+            expect(g.getAttribute('emissive')).toBeUndefined();
+          }
           const bb = g.boundingBox!;
           expect(bb.min.y).toBeGreaterThanOrEqual(-0.05);
           const h = def.heights?.[v] ?? def.height;

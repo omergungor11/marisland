@@ -71,6 +71,8 @@ const smooth = (a: number, b: number, x: number): number => {
 
 /** Accumulates triangles from many parts, then bakes colour/wind/ao into one geometry. */
 export class Acc {
+  /** Optional group transform applied (outermost) to every part added. */
+  xf: THREE.Matrix4 | null = null;
   private pos: number[] = [];
   private colr: number[] = [];
   private wmul: number[] = [];
@@ -88,6 +90,7 @@ export class Acc {
     for (let i = 0; i < n; i++) {
       const p = new THREE.Vector3().fromBufferAttribute(src, i);
       if (o.m) p.applyMatrix4(o.m);
+      if (this.xf) p.applyMatrix4(this.xf);
       v.push(p);
       minY = Math.min(minY, p.y);
       maxY = Math.max(maxY, p.y);
