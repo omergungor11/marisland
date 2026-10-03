@@ -18,6 +18,8 @@
 - Shot presets are data in `src/content/shots.ts`; both the harness (`scripts/shots.ts`) and the app read them — keep them in sync
 
 ## Known Issues / Gotchas
+- NEVER `git add -A src` (or `git add src/render`) while agents are active — it sweeps their half-done files
+  into HEAD and turns CI red (happened twice). Stage explicit paths; agents never commit
 - Parallel agents share ONE working tree: `pnpm shots --tag=<name> --port=<n>` gives each its own `dist-<tag>/` and
   `shots/<set>-<tag>/`; `git add src/render` can sweep up another agent's half-done files — add paths explicitly
 - `.claude/worktrees/` (Agent isolation=worktree) sits inside the repo: ignored in eslint/prettier/git
