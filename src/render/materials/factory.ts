@@ -6,6 +6,7 @@ import { SHARED_LIT_GLSL } from '../shaders/chunks/lit.glsl.ts';
 import { NIGHT, SHADE } from '../../content/lighting.ts';
 import { CLOUD_SHADOW_GLSL } from '../shaders/chunks/cloud-shadow.glsl.ts';
 import { NIGHT_GLSL, POOL_GAIN } from '../shaders/chunks/night.glsl.ts';
+import { HOVER_RADIUS, HOVER_UNIFORMS } from './hover.ts';
 
 /**
  * Lit material factory (D-003, ARCHITECTURE §3 "Materials"): MeshLambertMaterial
@@ -171,7 +172,13 @@ const VERTEX_DISPLACE = /* glsl */ `
   }
   #endif
   #ifdef MAR_BLOOM_IN
+  // reduced motion (uMotionScale < 1): bloom-in becomes a dither fade, no scale spring
+  float marBloomD = 1.0;
+  if (uMotionScale < 0.999) {
+    marBloomD = smoothstep(0.0, ${f(BLOOM_IN.ditherMs / 1000)}, uTime - aAppear);
+  } else {
     transformed *= marSpringIn(uTime - aAppear, ${f(BLOOM_IN.k)}, ${f(BLOOM_IN.c)});
+  }
   #endif
   #ifdef MAR_WIND
   {
@@ -202,6 +209,9 @@ const VERTEX_DISPLACE = /* glsl */ `
   #else
     vFade = 1.0;
   #endif
+  #ifdef MAR_BLOOM_IN
+    vFade *= marBloomD;
+  #endif
 `;
 
 const VERTEX_COLOR_PARS = /* glsl */ `
@@ -212,6 +222,8 @@ attribute float emissive;
 varying float vMarEmissive;
 varying vec2 vMarCloudXZ;
 varying float vMarWorldY;
+varying float vMarHover;
+uniform vec4 uHover;
 uniform vec3 uLamps;
 uniform vec2 uLampMode;
 `;
@@ -226,6 +238,8 @@ const VERTEX_CLOUD = /* glsl */ `
     vMarCloudXZ = marWp.xz;
     vMarWorldY = marWp.y;
   }
+  // hover / click flash (TASK-162): the instance whose origin matches uHover.xyz
+  vMarHover = (uHover.w > 0.0 && distance(marOrigin, uHover.xyz) < ${f(HOVER_RADIUS)}) ? uHover.w : 0.0;
   #ifdef MAR_EMISSIVE
   if (vMarEmissive > 0.0) {
     float marLh = marHash12(marOrigin.xz * 0.731 + 3.7);
@@ -262,6 +276,8 @@ varying float vFade;
 varying float vMarEmissive;
 varying vec2 vMarCloudXZ;
 varying float vMarWorldY;
+varying float vMarHover;
+uniform vec3 uHoverCol;
 uniform float uTime;
 ${FIELDS_GLSL}
 ${SHARED_LIT_GLSL.fragmentPars}
@@ -301,6 +317,7 @@ const FRAG_OUTGOING = /* glsl */ `
         * (marPl.x * marUp * ${POOL_GAIN.prop} * marPoolFlicker(vMarCloudXZ, uTime) * (1.0 - uDebugMask));
     }
   }
+  outgoingLight += uHoverCol * vMarHover;
 `;
 
 /** Neutral values for optional attributes (three applies them via vertexAttrib1fv). */
@@ -378,6 +395,8 @@ export class LitMaterial extends THREE.MeshLambertMaterial {
       uPoolTex: SHARED.uPoolTex,
       uPoolMap: SHARED.uPoolMap,
       uPoolColor: SHARED.uPoolColor,
+      uHover: HOVER_UNIFORMS.uHover,
+      uHoverCol: HOVER_UNIFORMS.uHoverCol,
       uCloudShadow: SHARED.uCloudShadow,
       uCloudSun: SHARED.uCloudSun,
       uCloudSeed: SHARED.uCloudSeed,

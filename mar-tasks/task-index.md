@@ -78,7 +78,7 @@ Status flow: PENDING → IN_PROGRESS → REVIEW → COMPLETED (BLOCKED if deps u
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
 | TASK-161 | Villagers, cats, sheep, crabs | life | M | COMPLETED | TASK-151, TASK-131 |
-| TASK-162 | Picking, hover, reactions, reduced motion | life | M | IN_PROGRESS | TASK-161 |
+| TASK-162 | Picking, hover, reactions, reduced motion | life | M | COMPLETED | TASK-161 |
 
 ### M8 — Day/night & weather
 *Time ladder × weather*

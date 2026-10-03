@@ -2,6 +2,22 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-014: Click bursts ride the creature program; hover is a uniform; reduced motion keys off uMotionScale — 2026-10-03
+
+**Decision**: (1) Click-reaction particles (hearts, sparkles, leaves, "!", puffs) are flat glyph
+meshes merged into one geometry drawn with the shared creature material (`limb.w = 6` + per-instance
+`aGait.y` pick the glyph; billboarded and animated on the CPU as a closed-form function of the engine
+clock) — zero new programs, one draw call (none while nothing is alive). (2) Hover and the
+reduced-motion click flash are one `uHover` uniform (instance origin + strength) read by the lit
+factory — no per-instance attribute, no extra program. (3) Reduced motion is `SHARED.uMotionScale < 1`
+(set from `reducedMotionChanged`): wind/swell ×0.3 and bloom-in becomes a dither fade in the factory
+and the contact blobs; nothing else needs a new switch.
+**Rationale**: `programs` is at its low-quality budget (12) and the creature material is at the
+16-attribute limit (D-013). Before this, nothing wrote `SHARED.uMotionScale`, so reduced motion never
+reached the shaders.
+**Alternatives**: a dedicated particle `ShaderMaterial` (+1 program, bumps the budget); per-instance
+hover colour (`instanceColor` on prop meshes changes the program parameters).
+
 ## D-013: One shared creature material for gulls and land life — 2026-10-03
 
 **Decision**: Gulls, villagers, sheep, cats and crabs share a single `ShaderMaterial`

@@ -49,16 +49,23 @@ export function blobMaterial(): THREE.ShaderMaterial {
       uNight: SHARED.uNight,
       uDebugMask: SHARED.uDebugMask,
       uSpring: { value: new THREE.Vector2(BLOOM_IN.k, BLOOM_IN.c) },
+      uMotionScale: SHARED.uMotionScale,
     },
     vertexShader: /* glsl */ `
       ${FIELDS_GLSL}
       attribute float aAppear;
       uniform float uTime;
       uniform vec2 uSpring;
+      uniform float uMotionScale;
       varying vec2 vUv;
+      varying float vFadeIn;
       void main() {
         vUv = uv;
-        float s = marSpringIn(uTime - aAppear, uSpring.x, uSpring.y);
+        // reduced motion: the scale spring becomes an alpha fade (matches the lit materials' dither)
+        float bt = uTime - aAppear;
+        bool reduced = uMotionScale < 0.999;
+        vFadeIn = reduced ? smoothstep(0.0, ${(BLOOM_IN.ditherMs / 1000).toFixed(4)}, bt) : 1.0;
+        float s = reduced ? 1.0 : marSpringIn(bt, uSpring.x, uSpring.y);
         vec3 p = position * s;
         vec4 wp = modelMatrix * instanceMatrix * vec4(p, 1.0);
         gl_Position = projectionMatrix * viewMatrix * wp;
@@ -69,10 +76,11 @@ export function blobMaterial(): THREE.ShaderMaterial {
       uniform float uNight;
       uniform float uDebugMask;
       varying vec2 vUv;
+      varying float vFadeIn;
       void main() {
         if (uDebugMask > 0.5) discard;
         float r = length(vUv);
-        float a = (1.0 - smoothstep(0.55, 1.0, r)) * 0.25 * (1.0 - 0.5 * uNight);
+        float a = (1.0 - smoothstep(0.55, 1.0, r)) * 0.25 * (1.0 - 0.5 * uNight) * vFadeIn;
         if (a < 0.01) discard;
         gl_FragColor = vec4(uShadowTint * 0.6, a);
       }

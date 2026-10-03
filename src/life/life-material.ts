@@ -79,6 +79,10 @@ const BODY = /* glsl */ `
         // hat variant: only the villager's own is shown, the others collapse to a point
         float lV = floor(fract(aSeed * 13.7) * 3.0);
         if (abs(lV - limb.x) > 0.5) transformed = vec3(0.0, limb.y, 0.0);
+      } else if (lM == 6) {
+        // click-burst glyphs (render/particles/bursts.ts): one geometry holds every glyph;
+        // collapse all but the instance's own (aGait.y)
+        if (abs(limb.x - aGait.y) > 0.5) transformed = vec3(0.0);
       }
     }
   }

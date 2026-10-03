@@ -23,6 +23,11 @@
 - Shot presets are data in `src/content/shots.ts`; both the harness (`scripts/shots.ts`) and the app read them — keep them in sync
 
 ## Known Issues / Gotchas
+- Picking/reactions (TASK-162): `src/interact/` (pure `picking.ts`, per-world `interaction.ts`), `src/anim/` (pose maths +
+  matrix writer), bursts in `src/render/particles/bursts.ts`. `api.pick/hover/click(x, y)` (canvas CSS px) are the capture
+  hooks. Reaction matrices must be written after `life.update` (interaction runs after the world view); prop reactions
+  use partial `addUpdateRange`, agent meshes are re-uploaded whole every frame so never add ranges to them
+- `pkill -f` from an agent shell matches the shell itself (exit 144) — kill preview servers by pid
 - Never `git stash` in the shared tree (even for a quick baseline): it removes other agents' WIP files until
   `stash pop`. Baseline via a worktree instead
 - Every program is compiled twice on medium/high: `compileAsync(scene, camera)` targets the canvas (srgb) while

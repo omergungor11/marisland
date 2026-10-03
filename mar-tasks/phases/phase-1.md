@@ -407,7 +407,7 @@ See ARCHITECTURE §5 (critters, agents) and ART_BIBLE §7 (Life & animation cata
 
 ### TASK-162: Picking, hover, reactions, reduced motion
 
-**Agent**: life | **Complexity**: M | **Status**: PENDING | **Dependencies**: TASK-161
+**Agent**: life | **Complexity**: M | **Status**: COMPLETED | **Dependencies**: TASK-161
 
 ### Acceptance Criteria
 - [ ] Picking: ray march & bisect against heightfield; spatial-hash test on props and agents; nearest wins

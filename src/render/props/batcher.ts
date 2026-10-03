@@ -32,7 +32,7 @@ export interface BatcherDeps {
   blobs?: boolean;
 }
 
-interface Group {
+export interface Group {
   mesh: THREE.InstancedMesh;
   defIndex: number;
   def: PropDef;

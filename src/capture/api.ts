@@ -24,8 +24,14 @@ export interface Counters {
 }
 
 export interface PickResult {
+  /** 'prop' | 'agent' | 'terrain'. */
   kind: string;
+  /** Prop: PropStore index. Agent: slot in its kind. Terrain: −1. */
   id: number;
+  /** Prop def id, agent kind, or 'terrain' / 'water'. */
+  name?: string;
+  /** Same as `id` for props and agents. */
+  instanceIndex?: number;
   x: number;
   y: number;
   z: number;
@@ -57,8 +63,12 @@ export interface MarislandApi {
   setTime(hour: number): void;
   /** Dolly from `fromDist` to the current distance over `seconds`, stepping frames (W8 check). */
   dolly(fromDist: number, seconds: number): void;
-  /** CPU pick at CSS pixel coordinates. */
+  /** CPU pick at canvas-relative CSS pixel coordinates. */
   pick(x: number, y: number): PickResult | null;
+  /** Set the hover highlight as the pointer at (x, y) would (capture-mode script hook). */
+  hover(x: number, y: number): PickResult | null;
+  /** Click at (x, y): pick and start the reaction (capture-mode script hook). */
+  click(x: number, y: number): PickResult | null;
   /** Fly a 10 s path and report frame times (real GPU only). */
   perf(): Promise<PerfResult>;
   /** Regenerate with a new seed (used by selftest=regen). Resolves when ready. */

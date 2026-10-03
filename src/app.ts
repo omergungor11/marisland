@@ -29,6 +29,8 @@ import { loadPrefs, storePrefs, type UiPrefs } from './ui/settings.ts';
 import { photoFilename } from './ui/hud-math.ts';
 import type { WeatherName } from './core/params.ts';
 import type { TestScene } from './render/test-scene.ts';
+import { createInteraction, type Interaction } from './interact/interaction.ts';
+import type { PickHit } from './interact/picking.ts';
 
 /**
  * Composition root (ARCHITECTURE §1). Owns scopes, the loop and the systems.
@@ -213,6 +215,8 @@ export async function boot(): Promise<void> {
     appScope.defer(() => cam.dispose?.());
     /** The live world's life system (motion scale follows reduced motion; null in the gallery). */
     let worldLife: { setMotionScale(s: number): void } | null = null;
+    /** The live world's pointer interaction (picking, hover, reactions); null in the gallery. */
+    let interaction: Interaction | null = null;
     const motionScale = (): number => (cam.reducedMotion ? HUD.reducedMotionScale : 1);
     loop.add({
       name: 'tier-sync',
@@ -238,7 +242,31 @@ export async function boot(): Promise<void> {
       Object.assign(ctx.timings, wv.timings);
       worldLife = wv.life;
       if (cam.reducedMotion) wv.life.setMotionScale(motionScale());
-      return { group: wv.group, system: wv.system, hash: wv.hash, cameraWorld: wv.cameraWorld };
+      // picking / hover / reactions run right after the world view (agent matrices are final)
+      const ia = createInteraction({
+        wv,
+        camera,
+        dom: canvas,
+        events,
+        scope: worldScope,
+        seed,
+        quality,
+        counters: ctx.counters,
+        getTime: () => loop.clock.time,
+        reduced: cam.reducedMotion,
+        motionScale: motionScale(),
+        listen: !params.freeze,
+      });
+      interaction = ia;
+      const system = {
+        name: wv.system.name,
+        fixedUpdate: (dt: number) => wv.system.fixedUpdate?.(dt),
+        update: (dt: number, alpha: number) => {
+          wv.system.update?.(dt, alpha);
+          ia.system.update?.(dt, alpha);
+        },
+      };
+      return { group: wv.group, system, hash: wv.hash, cameraWorld: wv.cameraWorld };
     };
     const tGen = now();
     let testScene = buildWorld(params.seed);
@@ -417,7 +445,21 @@ export async function boot(): Promise<void> {
         loop.step(1 / 30, 1);
       }
     };
-    api.pick = () => null;
+    const asResult = (h: PickHit | null): ReturnType<MarislandApi['pick']> =>
+      h
+        ? {
+            kind: h.kind,
+            id: h.id,
+            name: h.name,
+            instanceIndex: h.instanceIndex,
+            x: h.x,
+            y: h.y,
+            z: h.z,
+          }
+        : null;
+    api.pick = (x, y) => asResult(interaction?.pickAt(x, y) ?? null);
+    api.hover = (x, y) => asResult(interaction?.hoverAt(x, y) ?? null);
+    api.click = (x, y) => asResult(interaction?.clickAt(x, y) ?? null);
     api.perf = async () => ({ p50: 0, p95: 0, frames: 0 });
     api.regen = async (seed: number) => {
       worldScope.dispose();
@@ -566,6 +608,8 @@ function installApi(): MarislandApi {
     setTime: () => {},
     dolly: () => {},
     pick: () => null,
+    hover: () => null,
+    click: () => null,
     perf: async () => ({ p50: 0, p95: 0, frames: 0 }),
     regen: async () => {},
     memory: () => ({ geometries: 0, textures: 0 }),
