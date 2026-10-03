@@ -11,7 +11,7 @@ Status flow: PENDING → IN_PROGRESS → REVIEW → COMPLETED (BLOCKED if deps u
 | TASK-003 | WebGLBackend, loader, test scene, `__marisland` ready/error | engine | M | COMPLETED | TASK-002 |
 | TASK-004 | `shots` harness: sets, manifest, contact sheet, fail checks | qa | M | COMPLETED | TASK-003 |
 | TASK-005 | `ci.yml` + `deploy.yml` | devops | S | COMPLETED | TASK-001, TASK-004 |
-| TASK-006 | Stats overlay, `debug=` views | engine | S | IN_PROGRESS | TASK-003 |
+| TASK-006 | Stats overlay, `debug=` views | engine | S | COMPLETED | TASK-003 |
 | TASK-007 | Verify D-001 in container (smoke test); write VISUAL_QA.md; refresh tech-stack/conventions | docs | S | COMPLETED | TASK-003 |
 
 ## Phase 1: Living diorama
@@ -34,7 +34,7 @@ Status flow: PENDING → IN_PROGRESS → REVIEW → COMPLETED (BLOCKED if deps u
 |----|------|-------|-----------|--------|-------------|
 | TASK-111 | Layout, roster rules, names, channels | worldgen | M | COMPLETED | TASK-101 |
 | TASK-112 | Archetype profiles, cliffs, black sand | worldgen | L | COMPLETED | TASK-111 |
-| TASK-113 | New-seed regen, cloud-curtain, labels, pinned W-seeds | engine | M | IN_PROGRESS | TASK-111, TASK-102 |
+| TASK-113 | New-seed regen, cloud-curtain, labels, pinned W-seeds | engine | M | COMPLETED | TASK-111, TASK-102 |
 
 ### M3 — Vegetation
 *Forests, palms, sway*
@@ -44,48 +44,48 @@ Status flow: PENDING → IN_PROGRESS → REVIEW → COMPLETED (BLOCKED if deps u
 | TASK-121 | `geo/` builders for the bible vegetation | props | M | COMPLETED | TASK-003 |
 | TASK-122 | PropDefs, rules, Poisson, OccupancyGrid | worldgen | M | COMPLETED | TASK-112 |
 | TASK-123 | PropBatcher, ground cover, blobs, cluster proxies | engine | M | COMPLETED | TASK-121, TASK-122 |
-| TASK-124 | Wind, bloom-in, dither, depth parity | shader | M | IN_PROGRESS | TASK-123 |
+| TASK-124 | Wind, bloom-in, dither, depth parity | shader | M | COMPLETED | TASK-123 |
 
 ### M4 — Settlements
 *Village, dock, landmarks*
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-131 | Sites, lots, paths, docks, landmark anchors | worldgen | L | IN_PROGRESS | TASK-122 |
-| TASK-132 | Buildings, landmarks, micro props, emissive masks | props | L | IN_PROGRESS | TASK-121 |
-| TASK-133 | Boat routes | worldgen | S | IN_PROGRESS | TASK-131 |
+| TASK-131 | Sites, lots, paths, docks, landmark anchors | worldgen | L | COMPLETED | TASK-122 |
+| TASK-132 | Buildings, landmarks, micro props, emissive masks | props | L | COMPLETED | TASK-121 |
+| TASK-133 | Boat routes | worldgen | S | COMPLETED | TASK-131 |
 
 ### M5 — Zoom detail
 *5-step zoom ladder*
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-141 | Tier FSM, fades, LOD swap, pop queue | engine | M | PENDING | TASK-124 |
-| TASK-142 | `budgets.ts` + `--assert` | qa | S | PENDING | TASK-141 |
+| TASK-141 | Tier FSM, fades, LOD swap, pop queue | engine | M | COMPLETED | TASK-124 |
+| TASK-142 | `budgets.ts` + `--assert` | qa | S | COMPLETED | TASK-141 |
 
 ### M6 — Sea & sky life
 *Boats, gulls, clouds*
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-151 | Agent framework, boats, foam trail | life | M | PENDING | TASK-133, TASK-141 |
-| TASK-152 | Gulls, fish, ambient scheduler | life | M | PENDING | TASK-151 |
-| TASK-153 | Clouds + aligned shadows, smoke, steam | shader | M | IN_PROGRESS | TASK-104 |
+| TASK-151 | Agent framework, boats, foam trail | life | M | COMPLETED | TASK-133, TASK-141 |
+| TASK-152 | Gulls, fish, ambient scheduler | life | M | COMPLETED | TASK-151 |
+| TASK-153 | Clouds + aligned shadows, smoke, steam | shader | M | COMPLETED | TASK-104 |
 
 ### M7 — Land life & interaction
 *Villagers, reaction frame*
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-161 | Villagers, cats, sheep, crabs | life | M | PENDING | TASK-151, TASK-131 |
-| TASK-162 | Picking, hover, reactions, reduced motion | life | M | PENDING | TASK-161 |
+| TASK-161 | Villagers, cats, sheep, crabs | life | M | IN_PROGRESS | TASK-151, TASK-131 |
+| TASK-162 | Picking, hover, reactions, reduced motion | life | M | IN_PROGRESS | TASK-161 |
 
 ### M8 — Day/night & weather
 *Time ladder × weather*
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-171 | EnvState, sky bodies, night emissives, beam | shader | M | PENDING | TASK-104, TASK-132 |
+| TASK-171 | EnvState, sky bodies, night emissives, beam | shader | M | IN_PROGRESS | TASK-104, TASK-132 |
 | TASK-172 | Weather FSM, rain, ripples, mist | shader | M | PENDING | TASK-171 |
 
 ### M9 — Camera/HUD/photo
@@ -94,7 +94,7 @@ Status flow: PENDING → IN_PROGRESS → REVIEW → COMPLETED (BLOCKED if deps u
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
 | TASK-181 | Intro, fly-to, orbit, touch, compass | engine | M | IN_PROGRESS | TASK-105, TASK-113 |
-| TASK-182 | HUD dock, time dial, photo mode + PNG export | engine | M | PENDING | TASK-181 |
+| TASK-182 | HUD dock, time dial, photo mode + PNG export | engine | M | IN_PROGRESS | TASK-181 |
 
 ### M10 — Hardening
 *W1–W10*
