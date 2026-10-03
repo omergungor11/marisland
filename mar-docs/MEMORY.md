@@ -49,6 +49,15 @@
 - SwiftShader leaves sub-pixel cracks even on bit-identical shared chunk edges → terrain skirts 0.15 u below edge
 - Water fogs itself with the FogExp2 curve (`1-exp(-(d·dist)²)`); keep `SHARED.uFogDensity` = scene.fog.density
 - Spring k=180,c=12 overshoots 21 %; bible's "8 %/300 ms" needs c=17 (D-008)
+- `InstancedMesh.dispose()` frees the instance matrix only — dispose `.geometry` yourself (the regen leak
+  99→130 geometries was contact-blob `InstancedBufferGeometry`s)
+- Regen: keep the OLD world's materials alive until the new world's `compileAsync` finished, then dispose
+  them — otherwise three re-links every program (1218 → 144 ms over 3 regens)
+- Context loss: dispose the world WHILE the context is lost (after restore it spams "object does not belong
+  to this context"); `restoreContext()` must not be called from a microtask inside the lost event (wait a
+  `setTimeout(0)`); `gl.finish` does not sync under SwiftShader (use a 1-px `readPixels`)
+- `scripts/shots.ts` runs `selftest=regen` + `selftest=ctxloss` on the first preset of ci/dev (~15 s);
+  `--no-selftest` skips
 - three r186: `PCFSoftShadowMap` removed; `THREE.Clock` deprecated
 - pmndrs `postprocessing@6.39.5` needs three `<0.187` — don't bump three
 - pmndrs `BloomEffect` defaults to `BlendFunction.SCREEN` → rings around HDR sources; use ADD (D-012)

@@ -2,6 +2,18 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-016: Governor = DPR steps, then a tier cap; one upgrade per session — 2026-10-03
+
+**Decision** (TASK-191): `core/governor.ts` watches a 1 s rolling p90 (checked every 0.25 s). p90 > 20 ms
+for ≥ 2 s steps one level down: DPR ×0.85 per step down to a per-quality floor (low 0.75, medium 1.0,
+high 1.25), then the detail tier is capped at 2 (world, tilt-shift and DOF render ≤ T2 while the camera
+can still zoom). Steps back up only after ≥ 10 s of p90 < 12 ms and at most once per session. Frames
+> 1000 ms are ignored; 1.5 s settle after boot / regen / restore / any step. Off in capture, `perf=1`,
+the gallery and frozen photo mode; `?dpr=` pins DPR so only the tier step remains.
+**Rationale**: a quality change needs a reload (composer, MSAA, shadows); a tier cap is instant and
+keeps the look. One upgrade avoids oscillation.
+**Impact**: `governorChanged` event; `debug=stats` shows the level.
+
 ## D-015: Weather = seeded FSM → EnvState deltas; mist is a height-fog term; rain fog ×1.3 — 2026-10-03
 
 **Decision** (TASK-172):
