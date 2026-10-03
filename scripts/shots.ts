@@ -249,7 +249,7 @@ async function runShot(
       if (ASSERT) assertBudgets(r, snap, /swiftshader/i.test(snap.renderer));
     }
     mkdirSync(OUT, { recursive: true });
-    png = await o.page.screenshot({ type: 'png' });
+    png = await o.page.screenshot({ type: 'png', timeout: 240_000 });
     writeFileSync(resolve(OUT, `${p.id}.png`), png);
     const m = await metricsOf(png);
     r.metrics = m;
@@ -257,7 +257,7 @@ async function runShot(
     if (isMagenta(m)) r.failures.push(`magenta ${(m.magentaFrac * 100).toFixed(1)}%`);
     if (p.deltaT && snap && !snap.error) {
       await o.page.evaluate(`window.__marisland.step(1/30, ${Math.round(p.deltaT * 30)})`);
-      const png2 = await o.page.screenshot({ type: 'png' });
+      const png2 = await o.page.screenshot({ type: 'png', timeout: 240_000 });
       writeFileSync(resolve(OUT, `${p.id}+dt.png`), png2);
       r.motion = changedFraction(png, png2);
     }
@@ -267,7 +267,10 @@ async function runShot(
   if (p.mask) {
     const mo = await open(browser, shotUrl(base, p, '&debug=mask'), p);
     try {
-      writeFileSync(resolve(OUT, `${p.id}.mask.png`), await mo.page.screenshot({ type: 'png' }));
+      writeFileSync(
+        resolve(OUT, `${p.id}.mask.png`),
+        await mo.page.screenshot({ type: 'png', timeout: 240_000 }),
+      );
     } finally {
       await mo.page.close();
     }
@@ -276,7 +279,7 @@ async function runShot(
   if (isFirst && png) {
     const again = await open(browser, url, p);
     try {
-      deterministic = png.equals(await again.page.screenshot({ type: 'png' }));
+      deterministic = png.equals(await again.page.screenshot({ type: 'png', timeout: 240_000 }));
     } finally {
       await again.page.close();
     }
