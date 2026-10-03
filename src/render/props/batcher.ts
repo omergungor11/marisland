@@ -8,6 +8,7 @@ import { unitHash } from '../../core/hash.ts';
 import { BLOOM_IN } from '../../content/anim.ts';
 import type { Counters } from '../../capture/api.ts';
 import { CHUNK_SIZE, CHUNKS_PER_SIDE } from '../../world/types.ts';
+import { makeBlobs } from './contact-blobs.ts';
 
 /**
  * PropBatcher (ARCHITECTURE §3, D-004): one InstancedMesh per
@@ -27,6 +28,8 @@ export interface BatcherDeps {
   castShadows: boolean;
   /** Ground-cover visibility radius around the focus (u). */
   groundCoverRadius?: number;
+  /** Contact-shadow blobs under grounded props (default true). */
+  blobs?: boolean;
 }
 
 interface Group {
@@ -40,6 +43,7 @@ interface Group {
   /** Store indices (or −1 for synthetic blobs). */
   members: Int32Array;
   appear: THREE.InstancedBufferAttribute;
+  blobs: THREE.InstancedMesh | null;
   visible: boolean;
   cx: number;
   cz: number;
@@ -160,6 +164,18 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
       mesh.dispose();
       geo.dispose();
     });
+    let blobs: THREE.InstancedMesh | null = null;
+    if ((d.blobs ?? true) && !gc && (def.flags & PropFlag.grounded) !== 0) {
+      const radii = new Float32Array(n);
+      for (let k = 0; k < n; k++) {
+        place(k, tmp);
+        radii[k] = def.footprint * tmp.scale * 0.6 * 1.6;
+      }
+      blobs = makeBlobs(mesh, radii, aAppear);
+      blobs.visible = false;
+      root.add(blobs);
+      d.scope.defer(() => blobs?.dispose());
+    }
     const g: Group = {
       mesh,
       defIndex,
@@ -169,6 +185,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
       groundCover: gc,
       members,
       appear: aAppear,
+      blobs,
       visible: false,
       cx: n ? cx / n : 0,
       cz: n ? cz / n : 0,
@@ -265,6 +282,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
     if (g.visible) return;
     g.visible = true;
     g.mesh.visible = true;
+    if (g.blobs) g.blobs.visible = true;
     const arr = g.appear.array as Float32Array;
     if (instant || !d.softAppear) {
       arr.fill(ALWAYS_APPEAR);
@@ -281,6 +299,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
     if (!g.visible) return;
     g.visible = false;
     g.mesh.visible = false;
+    if (g.blobs) g.blobs.visible = false;
   };
 
   const wantsVisible = (g: Group, t: number): boolean => {
