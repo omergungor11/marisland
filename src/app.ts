@@ -19,6 +19,7 @@ import { createCameraSystem, type CameraSystem } from './camera/controls.ts';
 import { buildGallery } from './render/gallery-scene.ts';
 import { buildWorldView } from './render/world-view.ts';
 import { createHud, type Hud } from './ui/hud.ts';
+import { createCurtain } from './ui/curtain.ts';
 import { ISLAND_ACCENTS } from './content/islands-ui.ts';
 import type { TestScene } from './render/test-scene.ts';
 
@@ -228,6 +229,23 @@ export async function boot(): Promise<void> {
     cam.applyPreset(params.cam || 'overview', false);
     cam.setIdleOrbit(!params.freeze);
 
+    const reduced = params.rm || matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const curtain = params.freeze ? null : createCurtain(root, reduced);
+    if (curtain) appScope.defer(() => curtain.dispose());
+    let regenBusy = false;
+    const newSeed = async (seed: number): Promise<void> => {
+      if (regenBusy) return;
+      regenBusy = true;
+      try {
+        if (curtain) await curtain.close();
+        await api.regen(seed);
+        cam.applyPreset('overview', false);
+        if (curtain) await curtain.open();
+      } finally {
+        regenBusy = false;
+      }
+    };
+
     let hud: Hud | null = null;
     if (params.hud && !params.gallery) {
       const TIME_STOPS = [7, 12, 15, 17.75, 19.25, 22, 2];
@@ -235,7 +253,7 @@ export async function boot(): Promise<void> {
       hud = createHud(
         root,
         {
-          onNewSeed: () => void api.regen((Math.random() * 1e9) >>> 0),
+          onNewSeed: () => void newSeed((Math.random() * 1e9) >>> 0),
           onTime: () => {
             timeStop = (timeStop + 1) % TIME_STOPS.length;
             loop.clock.dayTime = TIME_STOPS[timeStop];
