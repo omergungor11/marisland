@@ -1,0 +1,8 @@
+node_modules
+dist
+shots
+pnpm-lock.yaml
+mar-docs/shots
+*.md
+.claude
+public

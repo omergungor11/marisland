@@ -13,3 +13,5 @@ playwright-report/
 shots/tmp/
 shots/diff/
 .claude/settings.local.json
+shots/*
+!shots/.gitkeep
