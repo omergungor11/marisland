@@ -10,14 +10,12 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
-- 2026-10-03: Phase 0 + M1–M4 done and pushed (contact sheets `mar-docs/shots/M1–M4.jpg`); M5 (tier FSM,
-  fades, pop queue, budgets assert) effectively done inside the PropBatcher; M6 (boats, gulls, fish, clouds,
-  steam) done. In progress: TASK-161/162 (villagers, sheep, crabs, picking, reactions — `life` agent),
-  HUD time dial/weather/photo (TASK-182), lighthouse beam + weather FSM (TASK-171/172).
+- 2026-10-03 (session 2): Phase 0 + M1–M6 done and pushed (contact sheets `mar-docs/shots/M1–M4.jpg`); M5
+  lives inside the PropBatcher. The previous session's in-progress M7/M8/M9 agent work was never committed
+  and is gone — restarted from main. In flight via worktree agents: TASK-161 (`life`), TASK-171 (`shader`),
+  TASK-181/182 (`engine`); next: TASK-162 (picking/reactions) and TASK-172 (weather).
 - Known debts: W9 dusk water tint (water agent cut off mid-polish, partial diff committed and green),
   stair-stepped ring edges in the mask frame, D-golden foliage slightly grey-blue, no rain/mist yet.
-- Opus-model agents hit a session rate limit at ~13:40 UTC (reset 15:20 UTC) — use sonnet agents or do it
-  yourself until then.
 
 ## Important Patterns
 - Pixel determinism: same URL → byte-identical PNG under SwiftShader
