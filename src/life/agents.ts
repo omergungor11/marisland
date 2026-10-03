@@ -77,6 +77,9 @@ export abstract class AgentKind {
   simT = 0;
   /** Reduced motion: ambient amplitude multiplier. */
   motionScale = 1;
+  /** Picking sphere (TASK-162): radius and the centre's height above the agent origin, u. */
+  pickRadius = 1;
+  pickHeight = 0;
   private readonly camera: THREE.Vector3;
 
   constructor(o: AgentKindOpts) {
@@ -119,6 +122,25 @@ export abstract class AgentKind {
     if (o.ownsGeometry !== false) o.scope.add(o.geometry);
     o.scope.add(o.material);
     o.scope.add(this.mesh);
+  }
+
+  /**
+   * Spatial-hash feed for picking: packs `[x, y + pickHeight, z, pickRadius]` of every active
+   * agent into `out` (4 floats each) and the slot ids into `ids`; returns how many were written.
+   */
+  positions(out: Float32Array, ids?: Uint16Array): number {
+    let n = 0;
+    const room = Math.floor(out.length / 4);
+    for (let i = 0; i < this.capacity && n < room; i++) {
+      if (!this.active[i]) continue;
+      out[n * 4] = this.x[i];
+      out[n * 4 + 1] = this.y[i] + this.pickHeight;
+      out[n * 4 + 2] = this.z[i];
+      out[n * 4 + 3] = this.pickRadius;
+      if (ids) ids[n] = i;
+      n++;
+    }
+    return n;
   }
 
   /** Number of active agents. */

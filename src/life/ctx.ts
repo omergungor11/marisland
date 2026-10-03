@@ -18,7 +18,14 @@ export interface LifeWorld extends Omit<WorldData, 'boatRoutes' | 'docks'> {
   boatRoutes?: { x: number; z: number }[][];
   /** Dock indices each route passes (parallel to `boatRoutes`). */
   boatStops?: number[][];
-  docks?: { x: number; z: number; rotY: number; segments: number; islandId: number }[];
+  docks?: {
+    x: number;
+    z: number;
+    rotY: number;
+    segments: number;
+    islandId: number;
+    node: number;
+  }[];
 }
 
 export interface LifeDeps {
