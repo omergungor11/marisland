@@ -54,6 +54,13 @@ export const HUD = {
   dialWheelHours: 0.25,
   /** Weather button cycle (the shader agent renders the states). */
   weatherCycle: ['clear', 'cloudy', 'rain', 'fog'] as readonly WeatherName[],
+  /**
+   * Island labels sit above the island's top shelf edge (D2): the projected ring at land reach +
+   * this (u), the pill's bottom `labelGapPx` above it (and never below the peak + 8 u anchor).
+   */
+  labelRingPad: 12,
+  labelRingSamples: 12,
+  labelGapPx: 4,
   /** Dock buttons pop in staggered by this (ms). */
   dockStaggerMs: 60,
   /** Photo mode: HUD fade (ms), shutter flash (ms), polaroid on screen (ms). */

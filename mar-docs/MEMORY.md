@@ -30,6 +30,11 @@
   hooks. Reaction matrices must be written after `life.update` (interaction runs after the world view); prop reactions
   use partial `addUpdateRange`, agent meshes are re-uploaded whole every frame so never add ranges to them
 - `pkill -f` from an agent shell matches the shell itself (exit 144) — kill preview servers by pid
+- Two angle conventions: anchors / `rotY` are xz angles (cos, sin); camera-controls azimuth puts the camera at
+  (sin az, cos az). `rotY + 180°` is NOT an azimuth (mirrors about x = z, D1) — use `azimuthToward(rotY)`
+  (`camera/framing.ts`). Camera presets are fits over generated points (`camera/poses.ts`, D-017); the pure
+  pose maths runs in vitest against generated worlds (`poses.test.ts`)
+- FOV 35°: a horizon is in frame only when the camera looks down < 17.5° (top third: 6–17.5°)
 - Never `git stash` in the shared tree (even for a quick baseline): it removes other agents' WIP files until
   `stash pop`. Baseline via a worktree instead
 - Every program is compiled twice on medium/high: `compileAsync(scene, camera)` targets the canvas (srgb) while

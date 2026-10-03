@@ -2,6 +2,31 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-019: Fitted camera presets; W9 looks down 9°, not 22°; portrait overview may exceed 800 u — 2026-10-03
+
+**Decision** (TASK-192 D1/D2/D13, `camera/framing.ts` + `camera/poses.ts`, numbers in `content/camera.ts`):
+- `overview` fits every island's shelf ring (land reach + 22 u) and peak into the safe area — HUD dock
+  (96 px) and label row (44 px) excluded when the HUD is on — at the fixed 58° pitch, sliding the target so
+  the archipelago is centred in that area; distance ≥ 450 u. A 9:16 phone needs ≈ 1.3–2.2k u to fit the
+  width, so the zoom-out limit follows the fitted pose (`controls.maxDistance = max(800, fit)`).
+- `village` / `dock` fit the settlement pipeline's own output (all lots + plaza + piers / the first pier,
+  its moorings and the lots by its root) from over the water (heading = centroid → harbour bay, or the
+  deepest nearby water), on the pitch curve, 72–125 u / 64–110 u. The old target was the harbour↔centre
+  midpoint and the heading used `rotY + 180°` as an azimuth, which mixes the xz-angle (cos, sin) and the
+  camera-controls azimuth (sin, cos) conventions — the camera sat mirrored about x = z (D1).
+  `azimuthToward(rotY)` converts; `shore` / `macro-beach` use it too.
+- Tiny islands (land reach ≤ 20 u: Lonely Palm) get a hero framing: look-down 9°, heading −78° (toward the
+  evening sun), target fixed on the island, distance searched so the shelf ring and the palm top fit.
+  **The bible's W9 "pitch 22°" cannot show a horizon at FOV 35°** (the horizon is in frame only below
+  17.5°, in the top third between 6° and 17.5°), and at 22° the camera is above the crown so the palm reads
+  against water. W9 now says ≈ 9°.
+- The user pitch band's lower edge blends to 8° at ≤ 50 u (back to the curve by 90 u) so the hero pose is
+  reachable without a snap on the first drag.
+**Rationale**: fixed distances cannot frame settlements whose size and orientation vary per seed; a fit
+over the generated points is deterministic and seed-independent.
+**Impact**: `CameraWorld.islands[]` gains `reach`, `peakX/Z`, `frames`; `CameraSystem.setSafeInsets()`;
+`pitchBand` moved to `camera/poses.ts` (re-exported). Island labels sit above the projected shelf ring.
+
 ## D-016: Governor = DPR steps, then a tier cap; one upgrade per session — 2026-10-03
 
 **Decision** (TASK-191): `core/governor.ts` watches a 1 s rolling p90 (checked every 0.25 s). p90 > 20 ms

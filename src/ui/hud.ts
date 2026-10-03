@@ -435,7 +435,16 @@ export function createHud(
     }
   }
 
-  let labels: { name: string; el: HTMLElement; x: number; y: number; z: number }[] = [];
+  let labels: {
+    name: string;
+    el: HTMLElement;
+    x: number;
+    y: number;
+    z: number;
+    cx: number;
+    cz: number;
+    ring: number;
+  }[] = [];
   let labelsHidden = false;
   const hud: Hud = {
     el,
@@ -454,7 +463,16 @@ export function createHud(
         l.innerHTML = `<span class="mar-label-in" style="animation-delay:${n * INTRO.labelStaggerMs}ms"><span class="mar-dot" style="background:${accents[i.archetypeName ?? i.name] ?? accents[i.name] ?? UI.secondary}"></span>${i.name}</span>`;
         on(l, 'click', () => actions.onLabel(i.name));
         labelsEl.appendChild(l);
-        return { name: i.name, el: l, x: i.cx, y: i.peakY + 8, z: i.cz };
+        return {
+          name: i.name,
+          el: l,
+          x: i.peakX ?? i.cx,
+          y: i.peakY + 8,
+          z: i.peakZ ?? i.cz,
+          cx: i.cx,
+          cz: i.cz,
+          ring: (i.reach ?? i.radius * 1.4) + HUD.labelRingPad,
+        };
       });
     },
     setState(s) {
@@ -500,28 +518,54 @@ export function createHud(
       const dockHalf = dockEl.offsetWidth / 2 + 6;
       const underDock = (x: number, y: number, w: number, h: number): boolean =>
         y + h / 2 > dockTop && Math.abs(x - width / 2) < dockHalf + w / 2;
+      const lh = 28;
       for (const l of labels) {
-        _v.set(l.x, l.y, l.z).project(camera);
+        // Above the island's top shelf edge (D2): the highest projected point of the shelf ring
+        // and of the peak + 8 u anchor; x follows the island centre.
+        _v.set(l.cx, 0, l.cz).project(camera);
         if (_v.z > 1 || _v.z < -1) {
           l.el.style.display = 'none';
           continue;
         }
         l.el.style.display = '';
         let sx = (_v.x * 0.5 + 0.5) * width;
-        let sy = (-_v.y * 0.5 + 0.5) * height;
+        let top = Infinity;
+        let bottom = -Infinity;
+        for (let k = 0; k <= HUD.labelRingSamples; k++) {
+          if (k === HUD.labelRingSamples) _v.set(l.x, l.y, l.z);
+          else {
+            const a = (k / HUD.labelRingSamples) * Math.PI * 2;
+            _v.set(l.cx + Math.cos(a) * l.ring, 0, l.cz + Math.sin(a) * l.ring);
+          }
+          _v.project(camera);
+          if (_v.z > 1 || _v.z < -1) continue;
+          const y = (-_v.y * 0.5 + 0.5) * height;
+          top = Math.min(top, y);
+          if (k < HUD.labelRingSamples) bottom = Math.max(bottom, y);
+        }
         const w = l.el.offsetWidth || 90;
-        const lh = 28;
         // Keep labels on screen (portrait phones: the wide archipelago overhangs the edges).
         sx = Math.min(Math.max(sx, w / 2 + 8), width - w / 2 - 8);
-        if (underDock(sx, sy, w, lh)) sy = dockTop - lh / 2;
-        // screen-space collision nudge: push down until free (bounded), up when the dock is below
-        for (let n = 0; n < 6; n++) {
-          const hit = placed.find(
-            (p) =>
-              Math.abs(p.x - sx) < (p.w + w) / 2 + 6 && Math.abs(p.y - sy) < (p.h + lh) / 2 + 4,
+        const minY = lh / 2 + 8;
+        const hitAt = (x: number, y: number): (typeof placed)[number] | undefined =>
+          placed.find(
+            (p) => Math.abs(p.x - x) < (p.w + w) / 2 + 6 && Math.abs(p.y - y) < (p.h + lh) / 2 + 4,
           );
+        const free = (y: number): boolean =>
+          y >= minY && !underDock(sx, y, w, lh) && hitAt(sx, y) === undefined;
+        // Off the land: above the shelf ring, else below it, else nudge upward from above.
+        const above = top - HUD.labelGapPx - lh / 2;
+        const below = bottom + HUD.labelGapPx + lh / 2;
+        let sy = Math.max(above, minY);
+        if (!free(sy) && free(below)) sy = below;
+        if (underDock(sx, sy, w, lh)) sy = dockTop - lh / 2;
+        // screen-space collision nudge: push up (off the island) until free (bounded), down when
+        // that would leave the screen
+        for (let n = 0; n < 6; n++) {
+          const hit = hitAt(sx, sy);
           if (!hit) break;
-          sy = hit.y + hit.h + 6;
+          sy = hit.y - hit.h - 6;
+          if (sy < minY) sy = hit.y + hit.h + 6;
           if (underDock(sx, sy, w, lh)) sy = hit.y - hit.h - 6;
           sx += 4;
         }

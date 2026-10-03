@@ -190,7 +190,9 @@ Hover runs at 10 Hz and shows as a tint.
 - Wheel / pinch: zoom with `dollyToCursor`.
 - A click counts only if the pointer moved <6 px within <300 ms.
 
-**Bounds.** Distance 12–800 u. Polar angle is clamped by the pitch curve. Target is clamped to the archipelago AABB. Camera y ≥ terrain + 3.
+**Bounds.** Distance 12–800 u (the zoom-out limit grows to the fitted overview on portrait screens). Polar angle is clamped by the pitch curve ± slack (down to 8° at ≤ 50 u for horizon views, D-017). Target is clamped to the archipelago AABB. Camera y ≥ terrain + 3.
+
+**Presets** (D-017). `overview`, `village`, `dock` and the hero `island:` framing fit generated points (shelf rings, lots, piers) into the safe area (HUD dock + label row excluded when the HUD is on) — `camera/poses.ts`, numbers in `content/camera.ts`.
 
 **Focus.**
 - Double-clicking an island or tapping its label calls `fitToSphere`.
