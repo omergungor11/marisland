@@ -43,6 +43,29 @@ export class Scope {
     this.items.length = 0;
   }
 
+  /**
+   * Dispose everything except the items `keep` selects, in reverse order; the kept items move
+   * to the returned scope (dispose it later). Regen keeps the old world's materials alive until
+   * the new world has compiled, so programs with the same key are reused instead of relinked.
+   */
+  disposeExcept(keep: (item: Disposable) => boolean, name = `${this.name}-kept`): Scope {
+    const kept = new Scope(name);
+    for (let i = this.items.length - 1; i >= 0; i--) {
+      const it = this.items[i];
+      if (keep(it)) {
+        kept.items.unshift(it);
+        continue;
+      }
+      try {
+        it.dispose();
+      } catch (e) {
+        console.error(`dispose failed in scope "${this.name}"`, e);
+      }
+    }
+    this.items.length = 0;
+    return kept;
+  }
+
   /** Dispose and seal. */
   destroy(): void {
     this.dispose();

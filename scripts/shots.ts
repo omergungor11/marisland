@@ -1,8 +1,9 @@
 /* eslint-disable no-console */
 /**
  * Screenshot harness: `pnpm shots [ci|dev|wow|intro] [--assert] [--gpu] [--no-build] [--only=ID,ID] [--base=URL]
- *   [--tag=name] [--port=4173]` — `--tag` builds into dist-<tag>/ and writes shots/<set>-<tag>/ so parallel
- *   agents don't collide; pair it with a distinct `--port`.
+ *   [--tag=name] [--port=4173] [--no-selftest]` — `--tag` builds into dist-<tag>/ and writes shots/<set>-<tag>/
+ *   so parallel agents don't collide; pair it with a distinct `--port`. The ci and dev sets also run the
+ *   app self-tests (`selftest=regen` leak check, `selftest=ctxloss` context loss + restore) on the first shot.
  * Writes shots/<set>/{<id>.png, <id>+dt.png, <id>.mask.png, manifest.json, contact.jpg}.
  */
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
@@ -291,6 +292,43 @@ async function runShot(
   return { r, png, deterministic };
 }
 
+// ---------------------------------------------------------------- self-tests
+interface SelftestResult {
+  name: string;
+  ok: boolean;
+  failures: string[];
+  readyMs: number;
+  timings?: Json;
+}
+const SELFTESTS = ['regen', 'ctxloss'] as const;
+
+/** `selftest=regen|ctxloss` on preset `p`: the app throws (api.error) when a check fails. */
+async function runSelftest(
+  browser: Browser,
+  base: string,
+  p: ShotPreset,
+  name: (typeof SELFTESTS)[number],
+): Promise<SelftestResult> {
+  const o = await open(browser, shotUrl(base, p, `&selftest=${name}`), p);
+  const r: SelftestResult = { name, ok: true, failures: [...o.fatal], readyMs: o.readyMs };
+  try {
+    const snap = o.snap;
+    if (snap) {
+      r.timings = snap.timings;
+      if (snap.error) r.failures.push(`app error: ${snap.error.split('\n')[0]}`);
+      if (!(snap.info.calls > 0)) r.failures.push(`no draw calls (${snap.info.calls})`);
+      // the restored context must draw the world, not a cleared canvas
+      const m = await metricsOf(await o.page.screenshot({ type: 'png', timeout: 240_000 }));
+      if (isBlank(m))
+        r.failures.push(`blank frame after selftest (sigma ${m.lumSigma.toFixed(4)})`);
+    }
+  } finally {
+    await o.page.close();
+  }
+  r.ok = r.failures.length === 0;
+  return r;
+}
+
 // ---------------------------------------------------------------- contact sheet
 const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
@@ -349,6 +387,7 @@ async function main(): Promise<void> {
       : ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
   });
   const results: ShotResult[] = [];
+  const selftests: SelftestResult[] = [];
   let deterministic: boolean | null = null;
   let renderer = 'unknown';
   try {
@@ -359,18 +398,26 @@ async function main(): Promise<void> {
       if (out.deterministic !== undefined) deterministic = out.deterministic;
       renderer = out.r.renderer ?? renderer;
     }
+    if ((set === 'ci' || set === 'dev') && list.length > 0 && !flag('no-selftest')) {
+      for (const name of SELFTESTS) {
+        console.log(`[selftest] ${name} on ${list[0].id}`);
+        selftests.push(await runSelftest(browser, base, list[0], name));
+      }
+    }
   } finally {
     await browser.close();
     stopServer();
   }
   const failed = results.filter((r) => !r.ok).length;
+  const selftestsFailed = selftests.filter((r) => !r.ok).length;
   const manifest = {
     set,
     date: new Date().toISOString(),
     base,
     renderer,
     shots: results,
-    summary: { total: results.length, failed, deterministic },
+    selftests,
+    summary: { total: results.length, failed, deterministic, selftestsFailed },
   };
   writeFileSync(resolve(OUT, 'manifest.json'), JSON.stringify(manifest, null, 2));
   await contactSheet(results);
@@ -385,11 +432,15 @@ async function main(): Promise<void> {
       failures: r.failures.join('; '),
     })),
   );
+  for (const t of selftests)
+    console.log(
+      `selftest ${t.name}: ${t.ok ? 'ok' : 'FAIL ' + t.failures.join('; ')} (${t.readyMs} ms)`,
+    );
   console.log(`deterministic: ${String(deterministic)}  renderer: ${renderer}`);
   console.log(`done in ${((Date.now() - t0) / 1000).toFixed(0)}s`);
   for (const f of ['manifest.json', 'contact.jpg']) console.log(resolve(OUT, f));
   console.log(OUT);
-  process.exitCode = failed > 0 ? 1 : 0;
+  process.exitCode = failed > 0 || selftestsFailed > 0 ? 1 : 0;
 }
 
 main().catch((e) => {

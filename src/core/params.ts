@@ -26,7 +26,8 @@ export interface Params {
   hud: boolean;
   debug: DebugView;
   perf: boolean;
-  selftest: 'regen' | 'rebuild' | '';
+  /** `regen`: 5 regen cycles, memory back to baseline; `ctxloss`: lose + restore the context. */
+  selftest: 'regen' | 'rebuild' | 'ctxloss' | '';
   intro: boolean;
   gallery: boolean;
   /** Reduced motion forced on. */
@@ -94,7 +95,7 @@ export function parseParams(search: string): Params {
       ? debugRaw
       : 'none') as DebugView,
     perf: parseBool(q.get('perf'), false),
-    selftest: selftest === 'regen' || selftest === 'rebuild' ? selftest : '',
+    selftest: ['regen', 'rebuild', 'ctxloss'].includes(selftest) ? selftest : '',
     intro: parseBool(q.get('intro'), true),
     gallery: parseBool(q.get('gallery'), false),
     rm: parseBool(q.get('rm'), false),

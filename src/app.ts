@@ -14,8 +14,13 @@ import { createLoader } from './ui/loader.ts';
 import { injectStyles, preloadFonts } from './ui/styles.ts';
 import { createStatsOverlay, readInfo, type StatsOverlay } from './debug/stats.ts';
 import { findShot } from './content/shots.ts';
-import type { Counters, MarislandApi, RenderInfo } from './capture/api.ts';
-import { createCameraSystem, type CameraSystem } from './camera/controls.ts';
+import type { Counters, MarislandApi, PerfResult, RenderInfo } from './capture/api.ts';
+import { Governor, governorLabel, governorLevels, type GovernorAction } from './core/governor.ts';
+import { GOVERNOR, GOVERNOR_DPR_FLOOR, PERF_PATH } from './content/governor.ts';
+import { runPerfPath } from './debug/perf.ts';
+import { createGpuTimer, type GpuTimer } from './render/gpu-timer.ts';
+import { orbitPoseOf } from './camera/perf-path.ts';
+import { createCameraSystem, lookFromOrbit, type CameraSystem } from './camera/controls.ts';
 import { buildGallery } from './render/gallery-scene.ts';
 import { buildWorldView } from './render/world-view.ts';
 import { SHARED } from './render/uniforms.ts';
@@ -176,28 +181,79 @@ export async function boot(): Promise<void> {
     let stats: StatsOverlay | null = null;
     if (params.debug === 'stats') stats = createStatsOverlay(root);
 
+    /** GPU timer queries around each frame while a `perf` run is active. */
+    let gpuTimer: GpuTimer | null = null;
     const render = (): void => {
       const r = backend.renderer;
       r.info.reset();
+      gpuTimer?.begin();
       if (ctx.post) ctx.post.render(1 / 60);
       else r.render(scene, camera);
+      gpuTimer?.end();
       readInfo(r, ctx.info);
       const mem = (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory;
       if (mem) ctx.timings.jsHeapMB = Math.round(mem.usedJSHeapSize / 1048576);
       ctx.counters.gpuMemoryMB = Math.round(estimateGpuMB(r));
       if (stats)
-        stats.update(1000 / Math.max(frameMs, 1), loop.cpuMs, ctx.info, ctx.tier, ctx.counters, '');
+        stats.update(
+          1000 / Math.max(frameMs, 1),
+          loop.cpuMs,
+          ctx.info,
+          ctx.tier,
+          ctx.counters,
+          governorLabel(governor.state),
+        );
     };
     let frameMs = 16.7;
     let lastT = now();
     const loop = new Loop({ manual: params.freeze, render, now });
     ctx.loop = loop;
+
+    // ---- quality governor (TASK-191, ARCHITECTURE §8): DPR first, then the detail-tier cap.
+    // Off in capture (determinism), under `perf=1` (measure the quality as configured) and while
+    // photo mode is frozen. An explicit `?dpr=` pins the pixel ratio (tier steps only).
+    const dprFloor = Number.isFinite(params.dpr)
+      ? backend.dpr
+      : Math.min(backend.dpr, GOVERNOR_DPR_FLOOR[quality]);
+    const governor = new Governor(
+      governorLevels(backend.dpr, dprFloor, GOVERNOR),
+      GOVERNOR,
+      now() / 1000,
+    );
+    if (params.freeze) governor.setDisabled('capture', true, 0);
+    if (params.perf) governor.setDisabled('perf', true, 0);
+    if (params.gallery) governor.setDisabled('gallery', true, 0);
+    events.on('photoMode', ({ frozen }) => governor.setDisabled('photo', frozen, now() / 1000));
+    /** Highest detail tier the world renders (the governor's last resort lowers it). */
+    let tierCap = 3;
+    const applyGovernor = (a: GovernorAction): void => {
+      if (a.to.dpr !== backend.dpr) {
+        backend.setPixelRatio(a.to.dpr);
+        resize();
+      }
+      tierCap = a.to.tierCap;
+      ctx.timings.govLevel = a.level;
+      ctx.timings.govDpr = a.to.dpr;
+      ctx.timings.govTierCap = a.to.tierCap;
+      events.emit('governorChanged', {
+        level: a.level,
+        dpr: a.to.dpr,
+        tierCap: a.to.tierCap,
+        p90: a.p90,
+      });
+      console.info(
+        `[marisland] governor ${a.kind}: p90 ${a.p90.toFixed(1)} ms → dpr ${a.to.dpr}, tier cap ${a.to.tierCap}`,
+      );
+    };
     loop.add({
       name: 'frame-timer',
       update: () => {
         const t = now();
         frameMs = t - lastT;
         lastT = t;
+        if (!governor.enabled) return;
+        const a = governor.sample(frameMs, t / 1000);
+        if (a) applyGovernor(a);
       },
     });
     if (!Number.isNaN(params.time)) loop.clock.dayTime = params.time;
@@ -226,10 +282,11 @@ export async function boot(): Promise<void> {
       worldWeather?.set(w);
     });
     const motionScale = (): number => (cam.reducedMotion ? HUD.reducedMotionScale : 1);
+    const detailTier = (): number => Math.min(cam.tier, tierCap);
     loop.add({
       name: 'tier-sync',
       update: () => {
-        ctx.tier = cam.tier;
+        ctx.tier = detailTier();
       },
     });
 
@@ -243,7 +300,7 @@ export async function boot(): Promise<void> {
         scope: worldScope,
         getHour: () => loop.clock.dayTime,
         getTime: () => loop.clock.time,
-        getTier: () => cam.tier,
+        getTier: detailTier,
         counters: ctx.counters,
         now,
         weather: {
@@ -301,14 +358,87 @@ export async function boot(): Promise<void> {
     const introCapture = params.freeze && Number.isFinite(params.introt) && !params.gallery;
     const curtain = params.freeze && !introCapture ? null : createCurtain(root, reduced);
     if (curtain) appScope.defer(() => curtain.dispose());
+    // Prewarm against the composer's target when post is on: program keys include the
+    // output colour space / tone mapping of the current target, so compiling for the canvas
+    // would compile every program twice (once more on the first composer frame).
+    const prewarm = async (): Promise<void> => {
+      if (ctx.post) backend.renderer.setRenderTarget(ctx.post.composer.inputBuffer);
+      try {
+        await backend.renderer.compileAsync(scene, camera);
+      } finally {
+        backend.renderer.setRenderTarget(null);
+      }
+    };
+
+    /** Free the world's GPU resources and stop its system (idempotent). */
+    const teardownWorld = (): void => {
+      worldScope.dispose();
+      loop.remove(testScene.system);
+    };
+    /**
+     * Rebuild the world for `seed` (new seed, `api.regen`, context restore): dispose the world
+     * scope (materials last), generate + build, place the camera (`overview`, or keep the
+     * current orbit pose), prewarm the new programs and render one settle frame — all before
+     * the caller reveals the frame, so no program compiles and no bloom-in queue on the first
+     * visible frame. The RAF loop is paused meanwhile (a frame mid-`compileAsync` would compile
+     * synchronously).
+     */
+    const rebuildWorld = async (seed: number, pose: 'overview' | 'keep'): Promise<void> => {
+      const t0 = now();
+      const running = loop.isRunning;
+      loop.stop();
+      const kept = pose === 'keep' ? orbitPoseOf(cam.controls) : null;
+      // Old materials outlive the old world until the new one has compiled: three frees a
+      // program when its last material is disposed, so disposing them first relinks every
+      // program of the new world (≈ 0.4 s per regen under SwiftShader, TASK-191).
+      const oldMaterials = worldScope.disposeExcept(isMaterial, 'world-materials');
+      loop.remove(testScene.system);
+      testScene = buildWorld(seed);
+      scene.add(testScene.group);
+      worldScope.defer(() => scene.remove(testScene.group));
+      loop.add(testScene.system);
+      ctx.seed = seed;
+      ctx.worldHash = testScene.hash;
+      api.worldHash = testScene.hash;
+      api.seed = seed;
+      cam.setWorld(testScene.cameraWorld);
+      hud?.setWorld(testScene.cameraWorld, ISLAND_ACCENTS);
+      if (kept) {
+        lookFromOrbit(
+          cam.controls,
+          kept.tx,
+          kept.ty,
+          kept.tz,
+          kept.dist,
+          kept.pitch,
+          kept.az,
+          false,
+        );
+        cam.controls.update(0);
+      } else cam.applyPreset('overview', false);
+      const tBuilt = now();
+      ctx.timings.regenBuild = tBuilt - t0;
+      try {
+        await prewarm();
+      } finally {
+        oldMaterials.dispose();
+      }
+      const tCompiled = now();
+      ctx.timings.regenCompile = tCompiled - tBuilt;
+      loop.step(1 / 30, 1);
+      ctx.timings.regenMs = now() - t0;
+      governor.reset(now() / 1000);
+      events.emit('seedChanged', { seed });
+      if (running) loop.start();
+    };
+
     let regenBusy = false;
     const newSeed = async (seed: number): Promise<void> => {
       if (regenBusy) return;
       regenBusy = true;
       try {
         if (curtain) await curtain.close();
-        await api.regen(seed);
-        cam.applyPreset('overview', false);
+        await rebuildWorld(seed, 'overview');
         if (curtain) await curtain.open();
       } finally {
         regenBusy = false;
@@ -429,12 +559,7 @@ export async function boot(): Promise<void> {
 
     // ---- prewarm + warm-up
     const tCompile = now();
-    // Prewarm against the composer's target when post is on: program keys include the
-    // output colour space / tone mapping of the current target, so compiling for the canvas
-    // would compile every program twice (once more on the first composer frame).
-    if (ctx.post) backend.renderer.setRenderTarget(ctx.post.composer.inputBuffer);
-    await backend.renderer.compileAsync(scene, camera);
-    backend.renderer.setRenderTarget(null);
+    await prewarm();
     ctx.timings.compile = now() - tCompile;
     loader.setProgress(0.8);
     if (params.simt > 0) loop.warmUp(params.simt);
@@ -478,21 +603,44 @@ export async function boot(): Promise<void> {
     api.pick = (x, y) => asResult(interaction?.pickAt(x, y) ?? null);
     api.hover = (x, y) => asResult(interaction?.hoverAt(x, y) ?? null);
     api.click = (x, y) => asResult(interaction?.clickAt(x, y) ?? null);
-    api.perf = async () => ({ p50: 0, p95: 0, frames: 0 });
-    api.regen = async (seed: number) => {
-      worldScope.dispose();
-      loop.remove(testScene.system);
-      testScene = buildWorld(seed);
-      scene.add(testScene.group);
-      worldScope.defer(() => scene.remove(testScene.group));
-      loop.add(testScene.system);
-      ctx.worldHash = testScene.hash;
-      api.worldHash = testScene.hash;
-      api.seed = seed;
-      cam.setWorld(testScene.cameraWorld);
-      hud?.setWorld(testScene.cameraWorld, ISLAND_ACCENTS);
-      loop.step(1 / 30, 1);
+    // `?perf=1` / api.perf(): one run at a time; a second call joins the running one.
+    let perfRun: Promise<PerfResult> | null = null;
+    api.perf = () => {
+      if (perfRun) return perfRun;
+      const gl = backend.renderer.getContext() as WebGL2RenderingContext;
+      gpuTimer = params.freeze ? null : createGpuTimer(gl);
+      const run = runPerfPath({
+        cam,
+        loop,
+        now,
+        manual: params.freeze,
+        gl,
+        gpuTimer,
+        presets: PERF_PATH.presets,
+        seconds: PERF_PATH.seconds,
+        manualFps: PERF_PATH.manualFps,
+      }).then((r) => {
+        gpuTimer?.dispose();
+        gpuTimer = null;
+        perfRun = null;
+        ctx.timings.perfP50 = r.p50;
+        ctx.timings.perfP95 = r.p95;
+        ctx.timings.perfFrames = r.frames;
+        if (r.cpuP50 !== undefined) ctx.timings.perfCpuP50 = r.cpuP50;
+        if (r.cpuP95 !== undefined) ctx.timings.perfCpuP95 = r.cpuP95;
+        if (r.gpuP50 !== undefined) ctx.timings.perfGpuP50 = r.gpuP50;
+        if (r.gpuP95 !== undefined) ctx.timings.perfGpuP95 = r.gpuP95;
+        const gpu = r.gpuP50 !== undefined ? ` · gpu p50 ${r.gpuP50} / p95 ${r.gpuP95} ms` : '';
+        console.info(
+          `[marisland] perf ${PERF_PATH.seconds} s path · quality ${quality} · ${r.frames} frames · ` +
+            `frame p50 ${r.p50} / p95 ${r.p95} ms · cpu p50 ${r.cpuP50} / p95 ${r.cpuP95} ms${gpu}`,
+        );
+        return r;
+      });
+      perfRun = run;
+      return run;
     };
+    api.regen = (seed: number) => rebuildWorld(seed, 'keep');
     api.memory = () => ({
       geometries: backend.renderer.info.memory.geometries,
       textures: backend.renderer.info.memory.textures,
@@ -505,10 +653,64 @@ export async function boot(): Promise<void> {
     });
     api.worldHash = ctx.worldHash;
 
+    // ---- WebGL context loss (TASK-191, ARCHITECTURE §1): three re-inits its GL state on
+    // restore; we rebuild the world from the current seed (fresh uploads + prewarm) with the
+    // camera pose kept. api.ready is false between loss and the rebuilt first frame.
+    let booted = false;
+    let gpuReady = true;
+    const restoreWaiters: Array<(err: unknown) => void> = [];
+    const onLost = (e: Event): void => {
+      e.preventDefault(); // without this the browser never restores the context
+      gpuReady = false;
+      if (booted) api.ready = false;
+      loop.stop();
+      // Free the world now: GL deletes on a lost context are silent no-ops, while after the
+      // restore they would hit objects of the old context (INVALID_OPERATION spam).
+      teardownWorld();
+      ctx.timings.contextLosses = (ctx.timings.contextLosses ?? 0) + 1;
+      events.emit('contextLost', { lost: true });
+      console.warn('[marisland] WebGL context lost');
+    };
+    const onRestored = (): void => {
+      const t = now();
+      rebuildWorld(api.seed, 'keep')
+        .then(() => {
+          ctx.timings.contextRestoreMs = now() - t;
+          gpuReady = true;
+          if (booted) api.ready = true;
+          if (booted && !params.freeze) loop.start();
+          events.emit('contextLost', { lost: false });
+          console.info(
+            `[marisland] WebGL context restored, world rebuilt in ${(now() - t).toFixed(0)} ms`,
+          );
+          for (const w of restoreWaiters.splice(0)) w(null);
+        })
+        .catch((err: unknown) => {
+          api.error = `context restore failed: ${String(err)}`;
+          for (const w of restoreWaiters.splice(0)) w(err);
+        });
+    };
+    canvas.addEventListener('webglcontextlost', onLost);
+    canvas.addEventListener('webglcontextrestored', onRestored);
+    appScope.defer(() => {
+      canvas.removeEventListener('webglcontextlost', onLost);
+      canvas.removeEventListener('webglcontextrestored', onRestored);
+    });
+
     if (params.selftest === 'regen') await selftestRegen(api, params.seed, ctx);
+    if (params.selftest === 'ctxloss')
+      await selftestContextLoss(backend.renderer, ctx, {
+        isReady: () => gpuReady,
+        whenRestored: () =>
+          new Promise<void>((resolve, reject) =>
+            restoreWaiters.push((err) => (err ? reject(err as Error) : resolve())),
+          ),
+        step: () => loop.step(1 / 30, 1),
+      });
 
     // ---- intro (ART_BIBLE §8): off for intro=0, capture, reduced motion, the gallery.
-    const runIntro = !params.freeze && params.intro && !reduced && !params.gallery && curtain;
+    const runIntro =
+      !params.freeze && params.intro && !params.perf && !reduced && !params.gallery && curtain;
     let hudShownByIntro = false;
     if ((runIntro || introCapture) && curtain) {
       const cw = testScene.cameraWorld;
@@ -567,7 +769,10 @@ export async function boot(): Promise<void> {
     if (!runIntro && !introCapture) hud?.show();
     else if (!hudShownByIntro) hud?.showWordmark();
     if (params.panel) hud?.openPanel(params.panel);
-    api.ready = true;
+    booted = true;
+    api.ready = gpuReady;
+    governor.reset(now() / 1000);
+    if (params.perf) void api.perf();
     console.info(
       `[marisland] ready in ${ctx.timings.boot.toFixed(0)} ms · ${backend.rendererString} · quality ${quality}`,
     );
@@ -578,6 +783,8 @@ export async function boot(): Promise<void> {
     console.error(e);
   }
 }
+
+const isMaterial = (it: unknown): boolean => (it as { isMaterial?: boolean }).isMaterial === true;
 
 /** Rough GPU memory from renderer.info: textures + geometries + render targets (MB). */
 function estimateGpuMB(r: THREE.WebGLRenderer): number {
@@ -653,6 +860,39 @@ async function selftestRegen(api: MarislandApi, seed: number, ctx: Ctx): Promise
   if (after.geometries !== base.geometries || after.textures !== base.textures) {
     throw new Error(
       `selftest=regen leak: geometries ${base.geometries}→${after.geometries}, textures ${base.textures}→${after.textures}`,
+    );
+  }
+}
+
+/**
+ * `?selftest=ctxloss` (TASK-191): lose the WebGL context via `WEBGL_lose_context`, restore it,
+ * wait for the world rebuild, render a frame and assert the app is ready and drawing again.
+ */
+async function selftestContextLoss(
+  renderer: THREE.WebGLRenderer,
+  ctx: Ctx,
+  h: { isReady(): boolean; whenRestored(): Promise<void>; step(): void },
+): Promise<void> {
+  const canvas = renderer.domElement;
+  const ext = renderer.getContext().getExtension('WEBGL_lose_context');
+  if (!ext) throw new Error('selftest=ctxloss: WEBGL_lose_context unavailable');
+  const lost = new Promise<void>((resolve) =>
+    canvas.addEventListener('webglcontextlost', () => resolve(), { once: true }),
+  );
+  ext.loseContext();
+  await lost;
+  // the promise resumes inside the event dispatch (microtask checkpoint after our listener);
+  // Chromium only allows restoreContext once the dispatch has seen preventDefault()
+  await new Promise((r) => setTimeout(r, 0));
+  if (h.isReady()) throw new Error('selftest=ctxloss: still ready after context loss');
+  const restored = h.whenRestored();
+  ext.restoreContext();
+  await restored;
+  h.step();
+  ctx.timings.selftestCtxCalls = ctx.info.calls;
+  if (!h.isReady() || ctx.info.calls <= 0) {
+    throw new Error(
+      `selftest=ctxloss: ready ${String(h.isReady())}, draw calls ${ctx.info.calls} after restore`,
     );
   }
 }
