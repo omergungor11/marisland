@@ -99,6 +99,7 @@ vec3 marBeamFrag() {
   }
   // the beam lives in the fog: far beams soften but never vanish (they light the fog)
   float fogF = 1.0 - exp(-pow(uFogDensity * vBDist, 2.0));
-  return col * vis * (1.0 - 0.6 * fogF);
+  // weather (TASK-172): the beam scatters in the mist → brighter (uWeather.w, 0 when clear)
+  return col * vis * (1.0 - 0.6 * fogF) * (1.0 + uWeather.w);
 }
 `;

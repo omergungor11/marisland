@@ -11,7 +11,8 @@ import { hash32 } from '../clouds/cloud-field.ts';
  * TASK-153 — stateless GPU smoke / steam puffs (ART_BIBLE §7 #20/#21, ARCHITECTURE §5).
  * One InstancedMesh of a smooth icosphere; every instance is a puff slot whose
  * position/scale/fade are `f(uTime, aSeed)` in the vertex shader. Opaque with
- * Bayer-dither fade (no blending, no sorting). One draw call, one program.
+ * Bayer-dither fade (no blending, no sorting). One draw call, one program — which the rain
+ * streaks (weather/rain.ts, kind 4) reuse with their own mesh.
  */
 export const PUFF_CHIMNEY = 0;
 export const PUFF_STEAM = 1;
@@ -38,7 +39,12 @@ const KIND_CFG = {
   [PUFF_SPRING]: PUFFS.spring,
 } as const;
 
-export function createPuffs(scope: Scope, quality: Quality): Puffs {
+export function createPuffs(
+  scope: Scope,
+  quality: Quality,
+  /** Shared weather cloud tint (clouds.ts, TASK-172): x = toward grey, y = brightness ×. */
+  tint: { value: THREE.Vector2 } = { value: new THREE.Vector2(0, 1) },
+): Puffs {
   const capacity = PUFFS.capacity[quality];
   const geo = scope.add(new THREE.IcosahedronGeometry(1, 1));
   // smooth normals = unit position (smooth-shaded exception)
@@ -89,6 +95,13 @@ export function createPuffs(scope: Scope, quality: Quality): Puffs {
         uTop: { value: new THREE.Color(CLOUD.top) },
         uBelly: { value: new THREE.Color(CLOUD.belly) },
         uBellyNight: { value: new THREE.Color(CLOUD.bellyNight) },
+        uCloudTint: tint,
+        // rain streaks share this program (TASK-172, weather/rain.ts writes these)
+        uRainBox: { value: new THREE.Vector4(100, 80, 100, 0) },
+        uRainCentre: { value: new THREE.Vector3() },
+        uRainMotion: { value: new THREE.Vector4() },
+        uRainLook: { value: new THREE.Vector4(0.001, 1, 2, 0.6) },
+        uRainColor: { value: new THREE.Color(1, 1, 1) },
         uBurp: { value: new THREE.Vector4(B.period, B.life, B.radius, B.rise) },
         uBurpSize: { value: new THREE.Vector4(B.size[0], B.size[1], B.pulse, PUFFS.fadeLast) },
       },

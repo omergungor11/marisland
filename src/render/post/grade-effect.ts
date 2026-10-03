@@ -27,6 +27,7 @@ uniform vec3 uNightTint;
 uniform float uNight;
 uniform float uGoldenLift;
 uniform float uNightLift;
+uniform float uWSat;
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
   vec3 c = max(inputColor.rgb, 0.0);
@@ -34,6 +35,8 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
   float mid = smoothstep(0.0, 0.18, l) * (1.0 - smoothstep(0.5, 1.4, l));
   c = max(mix(vec3(l), c, 1.0 + uSat * mid), 0.0);
+  // weather saturation (TASK-172, bible weather table); 0 when clear
+  if (uWSat != 0.0) c = max(mix(vec3(l), c, 1.0 + uWSat), 0.0);
   c += uLift * (1.0 - smoothstep(0.0, 0.15, c));
   c = mix(c, uWarm * l, uGolden);
   c *= 1.0 + uGoldenLift * mid;
@@ -80,6 +83,7 @@ export class MarGradeEffect extends Effect {
         ['uNight', new THREE.Uniform(0)],
         ['uGoldenLift', new THREE.Uniform(0)],
         ['uNightLift', new THREE.Uniform(0)],
+        ['uWSat', new THREE.Uniform(0)],
       ]),
     });
   }
@@ -97,6 +101,11 @@ export class MarGradeEffect extends Effect {
       t * t * (3 - 2 * t) * POST.nightMix;
     (this.uniforms.get('uNightLift') as THREE.Uniform<number>).value =
       t * t * (3 - 2 * t) * POST.nightLift;
+  }
+
+  /** Weather saturation delta (SHARED.uWeatherGrade, e.g. −0.2 in rain). */
+  setWeatherSaturation(d: number): void {
+    (this.uniforms.get('uWSat') as THREE.Uniform<number>).value = d;
   }
 
   setMask(on: boolean): void {

@@ -1,4 +1,5 @@
 import { FIELDS_GLSL } from '../shaders/chunks/fields.glsl.ts';
+import { RAIN_FRAG_PARS, RAIN_KIND, RAIN_VERT_PARS } from '../weather/rain.glsl.ts';
 
 /**
  * Soft-lit smooth shading shared by clouds and puffs (TASK-153; ART_BIBLE §1
@@ -21,11 +22,18 @@ uniform float uDebugMask;
 uniform vec3 uTop;
 uniform vec3 uBelly;
 uniform vec3 uBellyNight;
+// weather (TASK-172): x = toward a luminance-kept grey, y = brightness × (0, 1 = clear)
+uniform vec2 uCloudTint;
 /* belly 0 → top 1 gradient value g, normal n (world), world position w */
 vec4 marSoftShade(float g, vec3 n, vec3 w) {
   vec3 belly = mix(uBelly, uBellyNight, uNight);
   vec3 top = mix(uTop, mix(uBellyNight, uTop, 0.35), uNight);
   vec3 base = mix(belly, top, g);
+  if (uCloudTint.x > 0.0 || uCloudTint.y != 1.0) {
+    float bl = dot(base, vec3(0.2126, 0.7152, 0.0722));
+    // rain clouds: greyer and darker, the belly more than the top
+    base = mix(base, vec3(bl), uCloudTint.x) * mix(uCloudTint.y, 1.0, g * 0.5);
+  }
   vec3 L = normalize(uSunDir);
   float wrap = clamp((dot(n, L) + 0.65) / 1.65, 0.0, 1.0);
   float dayK = clamp(uSunIntensity / 3.0, 0.0, 1.0);
@@ -74,7 +82,11 @@ ${FRAG_OUT}
 }
 `;
 
-/** Puff vertex shader: stateless f(uTime, aSeed) (ARCHITECTURE §5). Kinds: 0 chimney, 1 steam, 2 spring, 3 burp ring. */
+/**
+ * Puff vertex shader: stateless f(uTime, aSeed) (ARCHITECTURE §5). Kinds: 0 chimney, 1 steam,
+ * 2 spring, 3 burp ring, 4 rain streak (TASK-172: the rain mesh shares this program,
+ * weather/rain.glsl.ts).
+ */
 export const PUFF_VERT = /* glsl */ `
 uniform float uTime;
 uniform vec4 uWind;
@@ -90,12 +102,21 @@ varying vec3 vN;
 varying vec3 vW;
 varying float vFade;
 varying float vKind;
+${RAIN_VERT_PARS}
 float marPuffHash(vec2 p) {
   vec3 p3 = fract(vec3(p.xyx) * 0.1031);
   p3 += dot(p3, p3.yzx + 33.33);
   return fract((p3.x + p3.y) * p3.z);
 }
 void main() {
+  vKind = aKind;
+  if (aKind > ${RAIN_KIND - 0.5}) {
+    gl_Position = marRainVertex(vFade);
+    vN = vec3(0.0, 1.0, 0.0);
+    vW = vec3(0.0);
+    return;
+  }
+  vAlong = 0.0;
   vec3 c = aOrigin;
   float size = 0.0;
   float fadeLast = uBurpSize.w;
@@ -132,7 +153,6 @@ void main() {
   vec4 wp = modelMatrix * vec4(c + position * (0.5 * size), 1.0);
   vN = normalize(normal);
   vW = wp.xyz;
-  vKind = aKind;
   gl_Position = projectionMatrix * viewMatrix * wp;
 }
 `;
@@ -144,12 +164,19 @@ varying vec3 vN;
 varying vec3 vW;
 varying float vFade;
 varying float vKind;
+${RAIN_FRAG_PARS}
 void main() {
-  if (vFade < marBayer4(gl_FragCoord.xy)) discard;
-  vec3 n = normalize(vN);
-  // chimney smoke a touch greyer than steam
-  float g = (0.3 + 0.7 * (0.5 + 0.5 * n.y)) * (vKind < 0.5 ? 0.55 : 1.0);
-  gl_FragColor = marSoftShade(clamp(g, 0.0, 1.0), n, vW);
+  if (vKind > ${RAIN_KIND - 0.5}) {
+    // rain streak: flat colour, dithered coverage
+    if (uDebugMask > 0.5 || marRainCoverage(vFade) < marBayer4(gl_FragCoord.xy)) discard;
+    gl_FragColor = vec4(uRainColor, 1.0);
+  } else {
+    if (vFade < marBayer4(gl_FragCoord.xy)) discard;
+    vec3 n = normalize(vN);
+    // chimney smoke a touch greyer than steam
+    float g = (0.3 + 0.7 * (0.5 + 0.5 * n.y)) * (vKind < 0.5 ? 0.55 : 1.0);
+    gl_FragColor = marSoftShade(clamp(g, 0.0, 1.0), n, vW);
+  }
 ${FRAG_OUT}
 }
 `;

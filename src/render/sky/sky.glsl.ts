@@ -51,6 +51,8 @@ uniform vec4 uStars;
 // x = twinkle rate, yz = horizon fade band, w = max star radius (cells)
 uniform vec4 uStarFx;
 uniform vec2 uBands;
+// TASK-172: y = overcast veil (hides the sun disc), z = fog-band widening (w = beam boost, beam.glsl)
+uniform vec4 uWeather;
 varying vec3 vDir;
 ${BEAM_FRAG_PARS}
 
@@ -75,7 +77,7 @@ void main() {
   float h = d.y;
 
   // fog colour at and below the horizon → horizon band → zenith
-  float tFog = smoothstep(0.0, uBands.x, h);
+  float tFog = smoothstep(0.0, uBands.x + uWeather.z, h);
   float tZen = smoothstep(uBands.x, uBands.y, h);
   vec3 col = mix(uFogColor, uHorizon, tFog);
   col = mix(col, uZenith, tZen * tZen * (2.0 - tZen));
@@ -100,7 +102,7 @@ void main() {
     // the disc is paler than the light it casts: its bloom halo then reads as glow, not as a
     // saturated ring around a tone-mapped white core
     vec3 discCol = mix(uSunColor, vec3(1.0, 0.94, 0.84) * max(max(uSunColor.r, uSunColor.g), 1e-3), 0.25);
-    col += (discCol * disc * hdr + uSunColor * glow) * sunUp * (1.0 - uNight * 0.85) * above;
+    col += (discCol * disc * hdr + uSunColor * glow) * sunUp * (1.0 - uNight * 0.85) * above * (1.0 - uWeather.y);
   }
 
   // --- moon: soft crescent (lit limb faces the sun), earthshine, two-layer halo

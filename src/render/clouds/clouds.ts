@@ -10,6 +10,8 @@ import { CLOUD } from '../../content/palette.ts';
 import { SHARED } from '../uniforms.ts';
 import {
   cellBlob,
+  cellU,
+  coverThresholds,
   edgeFade,
   fieldForSeed,
   windOffset,
@@ -31,7 +33,13 @@ import { createPuffs, PUFF_SPRING, PUFF_STEAM, type Puffs } from '../particles/p
  */
 export interface CloudsView {
   group: THREE.Group;
-  update(time: number, env: EnvState, cameraPos: THREE.Vector3, tier: number): void;
+  update(
+    time: number,
+    env: EnvState,
+    cameraPos: THREE.Vector3,
+    tier: number,
+    weather?: CloudWeather,
+  ): void;
   /** Cloud-shadow parameters for terrain/water/props (= SHARED.uCloudShadow): xy = wind offset, z = coverage, w = strength. */
   shadowParams: { value: THREE.Vector4 };
   /** Smoke/steam puffs (chimney emitters are added later via `puffs.addEmitter` + `finalize`). */
@@ -40,6 +48,16 @@ export interface CloudsView {
   field: CloudFieldParams;
   /** Current visibility 0..1 (tier fade). */
   visibility(): number;
+}
+
+/** Weather cover for the clouds (TASK-172; env/weather.ts WeatherFx subset). Absent = clear. */
+export interface CloudWeather {
+  /** Cover as a fraction of the cells² candidates (the seed's own count is the floor). */
+  cloudCover: number;
+  cloudScale: number;
+  cloudGrey: number;
+  cloudDim: number;
+  cloudShadow: number;
 }
 
 interface Slot {
@@ -53,6 +71,8 @@ interface Slot {
   yaw: number;
   alt: number;
   phase: number;
+  /** Hash rank of the cell (0 = first to appear as the cover rises). */
+  rank: number;
 }
 
 const _m = new THREE.Matrix4();
@@ -85,6 +105,8 @@ export function createClouds(world: WorldData, quality: Quality, scope: Scope): 
 
   const defines: Record<string, string> = {};
   if (quality === 'low') defines.MAR_DIRECT = '';
+  /** Weather cloud colour (TASK-172): x = toward grey 0..1, y = brightness ×. */
+  const tint = { value: new THREE.Vector2(0, 1) };
   const mat = scope.add(
     new THREE.ShaderMaterial({
       name: 'clouds',
@@ -105,50 +127,72 @@ export function createClouds(world: WorldData, quality: Quality, scope: Scope): 
         uTop: { value: new THREE.Color(CLOUD.top) },
         uBelly: { value: new THREE.Color(CLOUD.belly) },
         uBellyNight: { value: new THREE.Color(CLOUD.bellyNight) },
+        uCloudTint: tint,
       },
       fog: false,
       lights: false,
     }),
   );
 
-  // active cells grouped by variant → one InstancedMesh per variant
+  // Every candidate cell gets a slot (TASK-172: the weather cover can switch extra cells on).
+  // Per variant: the seed's own active cells first, in scan order with the original phase draws
+  // (clear weather is unchanged), then the extra cells by hash rank, so the cells drawn at any
+  // cover are always a prefix → `mesh.count`.
+  const thresholds = coverThresholds(field.salt, field.cells);
+  const seedCount = Math.max(0, thresholds.indexOf(field.threshold));
+  const ranked: { ix: number; iz: number; u: number }[] = [];
+  for (let iz = 0; iz < field.cells; iz++)
+    for (let ix = 0; ix < field.cells; ix++)
+      ranked.push({ ix, iz, u: cellU(ix, iz, field.salt, 0) });
+  ranked.sort((a, b) => a.u - b.u);
   const byVariant: Slot[][] = [[], [], []];
+  const extraRng = rng.fork('weather-extra');
+  const addSlot = (ix: number, iz: number, rank: number, phase: number): void => {
+    const b = cellBlob(field, ix, iz);
+    byVariant[b.variant].push({
+      mesh: null as unknown as THREE.InstancedMesh,
+      index: byVariant[b.variant].length,
+      ix,
+      iz,
+      jx: b.jx,
+      jz: b.jz,
+      width: b.width,
+      yaw: b.yaw,
+      alt: b.alt,
+      phase,
+      rank,
+    });
+  };
+  const rankOf = (ix: number, iz: number): number =>
+    ranked.findIndex((r) => r.ix === ix && r.iz === iz);
   for (let iz = 0; iz < field.cells; iz++)
     for (let ix = 0; ix < field.cells; ix++) {
-      const b = cellBlob(field, ix, iz);
-      if (!b.active) continue;
-      byVariant[b.variant].push({
-        mesh: null as unknown as THREE.InstancedMesh,
-        index: byVariant[b.variant].length,
-        ix,
-        iz,
-        jx: b.jx,
-        jz: b.jz,
-        width: b.width,
-        yaw: b.yaw,
-        alt: b.alt,
-        phase: rng.next() * Math.PI * 2,
-      });
+      if (!cellBlob(field, ix, iz).active) continue;
+      addSlot(ix, iz, rankOf(ix, iz), rng.next() * Math.PI * 2);
     }
+  for (let r = seedCount; r < ranked.length; r++)
+    addSlot(ranked[r].ix, ranked[r].iz, r, extraRng.next() * Math.PI * 2);
   const slots: Slot[] = [];
+  const meshes: { mesh: THREE.InstancedMesh; list: Slot[] }[] = [];
   for (let v = 0; v < 3; v++) {
     const list = byVariant[v];
     if (list.length === 0) continue;
     const geo = scope.add(buildCloudGeometry(rng.fork('geo', v)));
     const mesh = new THREE.InstancedMesh(geo, mat, list.length);
     mesh.name = `clouds:${v}`;
-    mesh.frustumCulled = false; // ≤ 10 instances moving every frame
+    mesh.frustumCulled = false; // ≤ 16 instances moving every frame
     mesh.castShadow = false;
     mesh.receiveShadow = false;
-    for (const s of list) {
-      s.mesh = mesh;
-      slots.push(s);
+    for (const sl of list) {
+      sl.mesh = mesh;
+      slots.push(sl);
     }
+    meshes.push({ mesh, list });
     group.add(mesh);
   }
 
   // smoke & steam
-  const puffs = createPuffs(scope, quality);
+  const puffs = createPuffs(scope, quality, tint);
   for (const isl of world.islands) {
     if (isl.archetype !== 'emberpeak') continue;
     const cr = isl.anchors.crater;
@@ -168,8 +212,22 @@ export function createClouds(world: WorldData, quality: Quality, scope: Scope): 
   let lastTime = Number.NaN;
   const B = CLOUDS.breathe;
 
-  const update = (time: number, env: EnvState, cameraPos: THREE.Vector3, tier: number): void => {
+  const total = field.cells * field.cells;
+  const update = (
+    time: number,
+    env: EnvState,
+    cameraPos: THREE.Vector3,
+    tier: number,
+    weather?: CloudWeather,
+  ): void => {
     void cameraPos;
+    // weather cover: `full` cells at full size, the next one (rank `full`) at `part`
+    const cover = weather
+      ? Math.min(total, Math.max(seedCount, weather.cloudCover * total))
+      : seedCount;
+    const full = Math.floor(cover);
+    const part = cover - full;
+    const wScale = weather ? weather.cloudScale : 1;
     const target = tier >= CLOUDS.hideTier ? 0 : 1;
     if (Number.isNaN(lastTime)) vis = target;
     else {
@@ -188,16 +246,33 @@ export function createClouds(world: WorldData, quality: Quality, scope: Scope): 
         wrap(tile, (s.iz + s.jz - field.cells / 2) * field.cellSize + _off.z + tile / 2) - tile / 2;
       const edge = edgeFade(rx, rz, tile);
       const breathe = 1 + B.amp * Math.sin((time * 2 * Math.PI) / B.period + s.phase);
-      const k = s.width * eased * edge;
+      const cs = s.rank < full ? 1 : s.rank === full ? part : 0;
+      const k = s.width * eased * edge * cs * wScale;
       _p.set(field.centreX + rx, s.alt, field.centreZ + rz);
       _q.setFromAxisAngle(_up, s.yaw);
       _s.set(k * breathe, k * (2 - breathe), k * breathe);
       _m.compose(_p, _q, _s);
       s.mesh.setMatrixAt(s.index, _m);
     }
-    for (const c of group.children)
-      if (c instanceof THREE.InstancedMesh && c !== puffs.mesh) c.instanceMatrix.needsUpdate = true;
+    for (const { mesh, list } of meshes) {
+      let n = 0;
+      while (n < list.length && (list[n].rank < full || (list[n].rank === full && part > 0))) n++;
+      mesh.count = n;
+      mesh.visible = n > 0;
+      mesh.instanceMatrix.needsUpdate = true;
+    }
     group.visible = true;
+    // cover thresholds for the shadow (SHARED.uCloudSeed.y = full, uCloudCover = partial)
+    if (cover > seedCount) {
+      SHARED.uCloudSeed.value.y = thresholds[full];
+      SHARED.uCloudCover.value.set(thresholds[Math.min(full + 1, total)], part);
+    } else {
+      SHARED.uCloudSeed.value.y = field.threshold;
+      SHARED.uCloudCover.value.set(0, 0);
+    }
+    if (weather && (weather.cloudGrey > 0 || weather.cloudDim !== 1))
+      tint.value.set(weather.cloudGrey, weather.cloudDim);
+    else tint.value.set(0, 1);
 
     // shadows: projected along the sun; per-quality switch, off at night
     const sy = Math.max(env.sunDir.y, CLOUDS.minSunY);
@@ -211,8 +286,8 @@ export function createClouds(world: WorldData, quality: Quality, scope: Scope): 
     SHARED.uCloudShadow.value.set(
       _off.x,
       _off.z,
-      CLOUDS.shadowOn[quality] ? 1 : 0,
-      (1 - CLOUDS.shadowMul) * day,
+      CLOUDS.shadowOn[quality] ? wScale : 0,
+      (1 - CLOUDS.shadowMul) * day * (weather ? weather.cloudShadow : 1),
     );
   };
 

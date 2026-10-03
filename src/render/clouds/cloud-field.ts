@@ -25,6 +25,13 @@ export interface CloudFieldParams {
   /** Window centre (archipelago centre). */
   centreX: number;
   centreZ: number;
+  /**
+   * Weather cover (TASK-172): cells with threshold ≤ u < partialThreshold are drawn at
+   * `partialScale` of their footprint (one cell fades in at a time as the cover rises).
+   * Absent / ≤ threshold → only the seed's own cells (= SHARED.uCloudCover (0, 0)).
+   */
+  partialThreshold?: number;
+  partialScale?: number;
 }
 
 export interface CloudBlob {
@@ -97,6 +104,23 @@ export function activeThreshold(salt: number, cells: number, count: number): num
   if (n === 0) return 0;
   if (n === us.length) return 1;
   return (us[n - 1] + us[n]) / 2;
+}
+
+/**
+ * Thresholds for every active-cell count 0..cells² (index = count): the weather cover picks
+ * full / partial thresholds from this table. `table[count]` equals `activeThreshold(…, count)`.
+ */
+export function coverThresholds(salt: number, cells: number): number[] {
+  const out: number[] = [];
+  for (let n = 0; n <= cells * cells; n++) out.push(activeThreshold(salt, cells, n));
+  return out;
+}
+
+/** Per-cell scale for a cell with hash `u` under the (full, partial) thresholds. */
+export function coverScale(p: CloudFieldParams, u: number): number {
+  if (u < p.threshold) return 1;
+  if (u < (p.partialThreshold ?? 0)) return p.partialScale ?? 0;
+  return 0;
 }
 
 export function makeFieldParams(
@@ -260,7 +284,8 @@ function evalBlobs(p: CloudFieldParams, x: number, z: number, f: CloudFrame, mod
     const cz = bz + (k >> 1);
     const ix = mod(cx, cells);
     const iz = mod(cz, cells);
-    if (cellU(ix, iz, p.salt, 0) >= p.threshold) continue;
+    const cs = coverScale(p, cellU(ix, iz, p.salt, 0));
+    if (cs <= 0) continue;
     const cb = cellBytes(ix, iz, p.salt);
     const jx = JIT0 + (JIT1 - JIT0) * cb[0];
     const jz = JIT0 + (JIT1 - JIT0) * cb[1];
@@ -280,12 +305,12 @@ function evalBlobs(p: CloudFieldParams, x: number, z: number, f: CloudFrame, mod
     const lx = c * dx - s * dz;
     const lz = s * dx + c * dz;
     if (mode === 0) {
-      const ax = 0.5 * width;
+      const ax = 0.5 * width * cs;
       const az = ax * CLOUDS.aspect;
       const dn = Math.hypot(lx / ax, lz / az);
       m = Math.max(m, Math.max(0, 1 - dn) * edge);
     } else {
-      const ax = 0.5 * width * CLOUDS.shadowFit * f.coverage;
+      const ax = 0.5 * width * CLOUDS.shadowFit * f.coverage * cs;
       const az = ax * CLOUDS.aspect;
       const dn = Math.hypot(lx / ax, lz / az);
       const sd = (dn - 1) * Math.sqrt(ax * az);

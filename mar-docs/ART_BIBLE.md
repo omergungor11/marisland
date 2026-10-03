@@ -77,8 +77,11 @@ Night stays cozy:
 | Weather | Saturation | Other |
 |---|---|---|
 | Overcast | −15 % | sky `#A9C3D9` |
-| Rain | −20 % | fog `#9FB4C7`, fog density ×1.8 |
+| Rain | −20 % | fog `#9FB4C7`, fog density ×1.3 (D-013) |
 | Mist | — | fog band y 0–6 u, `#F2EFEA` |
+
+Weather saturation applies to the sky and fog (and only partly to the light on the land), so
+foliage keeps W10's ≥ 40 % in the rain (D-013).
 
 ## 3. Lighting & atmosphere
 

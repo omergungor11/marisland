@@ -11,6 +11,8 @@ const f = (v: number): string => v.toFixed(6);
  *  uCloudShadow xy = wind offset (wrapped), z = coverage (0 → off), w = strength (1 − 0.82 by day)
  *  uCloudSun    xy = −sunDir.xz / sunDir.y, zw = window centre
  *  uCloudSeed   x = salt, y = active threshold, z = cell size, w = cells
+ *  uCloudCover  x = partial-cell threshold, y = its footprint scale (weather cover, TASK-172;
+ *               (0, 0) = only the seed's own cells)
  *
  * `marCloudShadow(xz)` → 0..1 mask; `marCloudShadowMul(xz)` → lit-colour multiplier
  * (1 when off or in debug-mask mode). Fragment-only; needs WebGL2 (uint).
@@ -19,6 +21,7 @@ export const CLOUD_SHADOW_GLSL = /* glsl */ `
 uniform vec4 uCloudShadow;
 uniform vec4 uCloudSun;
 uniform vec4 uCloudSeed;
+uniform vec2 uCloudCover;
 uint marCloudH32(uint x) {
   x ^= x >> 16u; x *= 0x7feb352du; x ^= x >> 15u; x *= 0x846ca68bu; x ^= x >> 16u;
   return x;
@@ -57,7 +60,10 @@ float marCloudShadow(vec2 xz) {
     uint ix = uint(w.x + 0.5);
     uint iz = uint(w.y + 0.5);
     uint h = marCloudH32(ix + iz * 16u + salt * 256u);
-    if (float(marCloudH32(h) >> 8u) / 16777216.0 >= uCloudSeed.y) continue;
+    float cu = float(marCloudH32(h) >> 8u) / 16777216.0;
+    if (cu >= max(uCloudSeed.y, uCloudCover.x)) continue;
+    float cs = cu < uCloudSeed.y ? 1.0 : uCloudCover.y;
+    if (cs <= 0.0) continue;
     uint pk = marCloudH32(h + 1u);
     vec4 cb = (vec4(float(pk & 255u), float((pk >> 8u) & 255u), float((pk >> 16u) & 255u), float(pk >> 24u)) + 0.5) / 256.0;
     vec2 j = ${f(CLOUDS.jitter[0])} + ${f(CLOUDS.jitter[1] - CLOUDS.jitter[0])} * cb.xy;
@@ -70,7 +76,7 @@ float marCloudShadow(vec2 xz) {
     vec2 d = xz - (uCloudSun.zw + r + uCloudSun.xy * alt);
     float cy = cos(yaw), sy = sin(yaw);
     vec2 l = vec2(cy * d.x - sy * d.y, sy * d.x + cy * d.y);
-    float ax = 0.5 * width * ${f(CLOUDS.shadowFit)} * uCloudShadow.z;
+    float ax = 0.5 * width * ${f(CLOUDS.shadowFit)} * uCloudShadow.z * cs;
     float az = ax * ${f(CLOUDS.aspect)};
     float dn = length(l / vec2(ax, az));
     float sd = (dn - 1.0) * sqrt(ax * az);

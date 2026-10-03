@@ -213,6 +213,14 @@ export async function boot(): Promise<void> {
     appScope.defer(() => cam.dispose?.());
     /** The live world's life system (motion scale follows reduced motion; null in the gallery). */
     let worldLife: { setMotionScale(s: number): void } | null = null;
+    // Weather (TASK-172): `?weather=` holds a state; otherwise the world's seeded FSM cycles.
+    // The HUD button (weatherChanged) switches it; auto changes sync the HUD icon.
+    let worldWeather: { set(w: WeatherName): void } | null = null;
+    let currentWeather: WeatherName = params.weather || 'clear';
+    events.on('weatherChanged', ({ weather: w }) => {
+      currentWeather = w;
+      worldWeather?.set(w);
+    });
     const motionScale = (): number => (cam.reducedMotion ? HUD.reducedMotionScale : 1);
     loop.add({
       name: 'tier-sync',
@@ -234,9 +242,19 @@ export async function boot(): Promise<void> {
         getTier: () => cam.tier,
         counters: ctx.counters,
         now,
+        weather: {
+          initial: currentWeather,
+          forced: !!params.weather,
+          instant: params.freeze,
+          onChange: (w) => {
+            currentWeather = w;
+            hud?.setState({ weather: w });
+          },
+        },
       });
       Object.assign(ctx.timings, wv.timings);
       worldLife = wv.life;
+      worldWeather = wv.weather;
       if (cam.reducedMotion) wv.life.setMotionScale(motionScale());
       return { group: wv.group, system: wv.system, hash: wv.hash, cameraWorld: wv.cameraWorld };
     };

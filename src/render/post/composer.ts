@@ -133,6 +133,7 @@ export function createPostChain(
       grade.setGolden(SHARED.uGolden.value);
       grade.setNight(SHARED.uNight.value);
       grade.setMask(SHARED.uDebugMask.value > 0.5);
+      grade.setWeatherSaturation(SHARED.uWeatherGrade.value);
       const nb = SHARED.uSkyNight.value.z;
       if (nb !== bloomNight) {
         bloomNight = nb;

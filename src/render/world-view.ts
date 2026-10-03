@@ -11,8 +11,17 @@ import { createLightRig, type LightRig } from './lighting.ts';
 import { createClouds, type CloudsView } from './clouds/clouds.ts';
 import { createLife, type LifeSystem } from '../life/index.ts';
 import { createEnvState, sampleEnv, type EnvState } from '../env/env-state.ts';
-import { SHARED, setWind, writeEnvUniforms } from './uniforms.ts';
+import { SHARED, setWind, writeEnvUniforms, writeWeatherUniforms } from './uniforms.ts';
 import { FOG, FOG_T0_SCALE } from '../content/lighting.ts';
+import {
+  WeatherFsm,
+  applyWeather,
+  blendFx,
+  createWeatherFx,
+  type WeatherFx,
+  type WeatherName,
+} from '../env/weather.ts';
+import { createRain, type RainView } from './weather/rain.ts';
 import { remap } from '../core/math/index.ts';
 import type { CameraWorld } from '../camera/controls.ts';
 import type { Counters } from '../capture/api.ts';
@@ -43,10 +52,32 @@ export interface WorldView {
   props: PropBatcher;
   scatter: { props: PropStore; counts: Record<string, number> };
   env: EnvState;
+  /** Weather (TASK-172): FSM, the blended look of the last frame, rain streaks. */
+  weather: WorldWeather;
   system: System;
   cameraWorld: CameraWorld;
   hash: string;
   timings: Record<string, number>;
+}
+
+export interface WorldWeather {
+  fsm: WeatherFsm;
+  fx: WeatherFx;
+  rain: RainView;
+  /** HUD: switch to `w` (cross-fades unless capture; holds one dwell, then auto cycles). */
+  set(w: WeatherName): void;
+}
+
+/** Weather wiring from the app (TASK-172). */
+export interface WorldWeatherOptions {
+  /** Starting state (applied instantly). */
+  initial: WeatherName;
+  /** `?weather=` given: hold the state, no auto cycle. */
+  forced: boolean;
+  /** Capture (`freeze=1`): every change applies instantly. */
+  instant: boolean;
+  /** The auto cycle changed the state (HUD icon sync). */
+  onChange?: (w: WeatherName) => void;
 }
 
 export interface WorldViewDeps {
@@ -63,10 +94,12 @@ export interface WorldViewDeps {
   propMaterial?: (def: PropDef, lod: Lod, groundCover: boolean) => THREE.Material;
   propDepthMaterial?: (def: PropDef, lod: Lod, groundCover: boolean) => THREE.Material | null;
   softAppear?: boolean;
+  weather?: WorldWeatherOptions;
 }
 
 const _focus = new THREE.Vector3();
 const _camPos = new THREE.Vector3();
+const _camDir = new THREE.Vector3();
 
 export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   const timings: Record<string, number> = {};
@@ -129,19 +162,55 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   const env = createEnvState();
   let lastTier = -1;
 
+  // weather (TASK-172): seeded FSM → blended look → EnvState deltas + uniforms + rain
+  const wo = d.weather;
+  const fsm = new WeatherFsm({
+    seed,
+    t0: d.getTime(),
+    forced: wo?.forced ? wo.initial : null,
+    initial: wo?.initial,
+    instant: wo?.instant,
+    onChange: wo?.onChange,
+  });
+  const fx = createWeatherFx();
+  // rain streaks draw with the puff material (shared program, no compile when rain starts)
+  const rain = createRain(
+    seed,
+    d.quality,
+    d.scope,
+    clouds.puffs.mesh.material as THREE.ShaderMaterial,
+  );
+  group.add(rain.mesh);
+  // the shared weather uniforms outlive this world: reset them with it
+  d.scope.defer(() => {
+    writeWeatherUniforms(blendFx({ clear: 1, cloudy: 0, rain: 0, fog: 0 }, fx), env, 0, 0);
+    setWind(world.windDir, 1);
+  });
+  const weather: WorldWeather = {
+    fsm,
+    fx,
+    rain,
+    set: (w) => fsm.set(w, d.getTime()),
+  };
+
   const update = (dt: number, alpha: number): void => {
     sampleEnv(d.getHour(), env);
+    const time = d.getTime();
+    blendFx(fsm.update(time), fx);
+    applyWeather(env, fx);
     d.camera.getWorldPosition(_camPos);
     // focus = point on the sea plane the camera looks at (approximate: project forward)
     _focus.set(0, 0, -1).applyQuaternion(d.camera.quaternion);
     const t = _focus.y < -1e-3 ? -_camPos.y / _focus.y : 300;
     _focus.multiplyScalar(Math.min(t, 1500)).add(_camPos);
     const tier = d.getTier();
-    writeEnvUniforms(env, d.getTime(), _camPos, tier);
+    writeEnvUniforms(env, time, _camPos, tier);
+    writeWeatherUniforms(fx, env, world.windDir, time);
+    setWind(world.windDir, fx.gust);
     // T0 postcard: the fog curve is fitted for island/village views; at map distance it would
     // wash the whole archipelago out, so scale density down with camera distance (D-009).
     const camDist = _camPos.distanceTo(_focus);
-    const density = FOG.density * remap(camDist, 300, 650, 1, FOG_T0_SCALE);
+    const density = FOG.density * remap(camDist, 300, 650, 1, FOG_T0_SCALE) * fx.fog;
     sky.fog.density = density;
     SHARED.uFogDensity.value = density;
     lights.update(env, d.camera, _focus);
@@ -149,7 +218,10 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     beam.update();
     water.update(_camPos, d.getTime());
     terrain.update(d.getTime());
-    clouds.update(d.getTime(), env, _camPos, tier);
+    clouds.update(d.getTime(), env, _camPos, tier, fx);
+    d.camera.getWorldDirection(_camDir);
+    rain.update(fx.rain, env, _camPos, _camDir, camDist, world.windDir, fx.gust);
+    d.counters.particles = clouds.puffs.stats().used + rain.count();
     if (tier !== lastTier) {
       lastTier = tier;
       terrain.onTier(tier);
@@ -205,6 +277,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     props,
     scatter,
     env,
+    weather,
     system: { name: 'world-view', update, fixedUpdate: (dt) => life.fixedUpdate(dt) },
     cameraWorld,
     hash: world.hashes.world ?? '',

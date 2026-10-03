@@ -170,7 +170,8 @@ export const WEATHER_PRESETS = {
   cloudy: { saturation: -0.15, fogScale: 1.15, sky: '#A9C3D9', cloudCover: 0.75, gust: 1.2 },
   rain: {
     saturation: -0.2,
-    fogScale: 1.8,
+    // ×1.8 washed W10 foliage to 34 % saturation at the pinned 120 u camera (D-013)
+    fogScale: 1.3,
     sky: '#9FB4C7',
     cloudCover: 0.9,
     gust: 1.4,

@@ -45,6 +45,13 @@
   around the sky; stars < ~1.5 px alias into diagonal dashes under FXAA
 - Night grade + flat-shaded facets: a luminance-only "spare highlights" test flips facets of lamp-lit
   ground between warm and blue → spare by hue (r − b) too
+- `renderer.compileAsync(scene)` compiles EVERY mesh's material (`scene.traverse`, not
+  `traverseVisible`): a hidden mesh still costs a program in `info.programs`
+- Sharing one ShaderMaterial between meshes only shares the program if the geometries agree on
+  program-keyed attributes: a missing `normal` (`vertexNormals`) compiled a 2nd program (rain on
+  the puff material, TASK-172)
+- Weather: a fully clear blend must stay the exact identity (clear shots 0 px diff vs pre-weather);
+  guard new weather terms with `if (uX > 0.0)` / identity multipliers, not approximations
 - SwiftShader fps is meaningless; assert counts from `renderer.info`
 - Art bible W-shot seeds (1001, 2024, …) are placeholders until TASK-113 pins real ones
 - **SMOKE-001 (2026-10-03):** Chromium 141 + Playwright 1.56 + SwiftShader: HalfFloat + MSAA render through pmndrs EffectComposer identical to low-quality path; 30 frames ≈9 ms CPU; determinism OK (same frame byte-identical); ready time ≈200 ms; KHR_parallel_shader_compile not supported (warning only)

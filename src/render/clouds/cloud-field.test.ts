@@ -8,6 +8,7 @@ import {
   cloudField,
   cloudShadowMask,
   cloudsAt,
+  coverThresholds,
   fieldForSeed,
   hash32,
   windOffset,
@@ -62,6 +63,8 @@ interface U {
   shadow: [number, number, number, number];
   sun: [number, number, number, number];
   seed: [number, number, number, number];
+  /** uCloudCover (TASK-172): partial threshold, partial scale. */
+  cover: [number, number];
 }
 function glslShadow(u: U, x: number, z: number): number {
   if (u.shadow[2] <= 0) return 0;
@@ -86,7 +89,10 @@ function glslShadow(u: U, x: number, z: number): number {
     const ix = u32(Math.floor(wx + 0.5));
     const iz = u32(Math.floor(wz + 0.5));
     const h = gH32(u32(ix + Math.imul(iz, 16) + Math.imul(salt, 256)));
-    if (F((gH32(h) >>> 8) / 16777216) >= F(u.seed[1])) continue;
+    const cu = F((gH32(h) >>> 8) / 16777216);
+    if (cu >= Math.max(F(u.seed[1]), F(u.cover[0]))) continue;
+    const cs = cu < F(u.seed[1]) ? 1 : F(u.cover[1]);
+    if (cs <= 0) continue;
     const pk = gH32(u32(h + 1));
     const cb = [pk & 255, (pk >>> 8) & 255, (pk >>> 16) & 255, pk >>> 24].map((b) =>
       F(F(b + 0.5) / 256),
@@ -113,7 +119,7 @@ function glslShadow(u: U, x: number, z: number): number {
     const sy = F(Math.sin(yaw));
     const lx = F(F(cy * dx) - F(sy * dz));
     const lz = F(F(sy * dx) + F(cy * dz));
-    const ax = F(0.5 * width * CLOUDS.shadowFit * u.shadow[2]);
+    const ax = F(F(0.5 * width * CLOUDS.shadowFit * u.shadow[2]) * cs);
     const az = F(ax * CLOUDS.aspect);
     const dn = F(Math.hypot(F(lx / ax), F(lz / az)));
     let sd = F(F(dn - 1) * F(Math.sqrt(F(ax * az))));
@@ -136,6 +142,7 @@ const uniformsFor = (p: CloudFieldParams, f: CloudFrame): U => ({
   shadow: [f.ox, f.oz, f.coverage, 0.18],
   sun: [f.sunX, f.sunZ, p.centreX, p.centreZ],
   seed: [p.salt, p.threshold, p.cellSize, p.cells],
+  cover: [p.partialThreshold ?? 0, p.partialScale ?? 0],
 });
 const SUN = new THREE.Vector3(0.45, 0.75, -0.48).normalize();
 
@@ -146,11 +153,30 @@ describe('cloud field', () => {
     expect(hash32(0xffffffff)).toBe(gH32(0xffffffff));
   });
 
-  it('GLSL shadow formula matches the TS twin to 1e-3', () => {
+  it('GLSL shadow formula matches the TS twin to 1e-3 (seed cover and weather cover)', () => {
     let worst = 0;
     let lit = 0;
-    for (const seed of [1001, 42, 3003, 7]) {
-      const p = fieldForSeed(seed, 12, -8);
+    for (const [seed, extra] of [
+      [1001, 0],
+      [42, 0],
+      [3003, 3.4],
+      [7, 6.7],
+    ] as const) {
+      const base = fieldForSeed(seed, 12, -8);
+      const table = coverThresholds(base.salt, base.cells);
+      const n0 = table.indexOf(base.threshold);
+      expect(n0).toBeGreaterThanOrEqual(CLOUDS.count[0]);
+      const c = Math.min(base.cells * base.cells, n0 + extra);
+      const full = Math.floor(c);
+      const p: CloudFieldParams =
+        extra === 0
+          ? base
+          : {
+              ...base,
+              threshold: table[full],
+              partialThreshold: table[Math.min(full + 1, table.length - 1)],
+              partialScale: c - full,
+            };
       for (const t of [0, 13.7, 500]) {
         const f = frameFor(p, t, SUN);
         const u = uniformsFor(p, f);

@@ -1,6 +1,8 @@
 import { FIELDS_GLSL } from '../shaders/chunks/fields.glsl.ts';
 import { CLOUD_SHADOW_GLSL } from '../shaders/chunks/cloud-shadow.glsl.ts';
 import { NIGHT_GLSL, POOL_GAIN } from '../shaders/chunks/night.glsl.ts';
+import { MIST_GLSL } from '../shaders/chunks/mist.glsl.ts';
+import { RIPPLES } from '../../content/weather.ts';
 import { GRID_SAMPLE_GLSL } from '../world-textures.ts';
 import { WATER_SHADER as W } from '../../content/water.ts';
 import { bandDefines, glslFloat as f } from './water-bands.ts';
@@ -71,6 +73,16 @@ export function waterDefines(): string {
     `#define MAR_MOON_LAT ${f(W.moon.lateral)}`,
     `#define MAR_MOON_VERT ${f(W.moon.vertical)}`,
     `#define MAR_OUTER_RADIUS ${f(W.grid.outerRadius)}`,
+    `#define MAR_RIP_DENSITY ${f(RIPPLES.density)}`,
+    `#define MAR_RIP_RATE ${f(1 / RIPPLES.seconds)}`,
+    `#define MAR_RIP_RADIUS ${f(RIPPLES.radius * RIPPLES.density)}`,
+    `#define MAR_RIP_WIDTH ${f(RIPPLES.width)}`,
+    `#define MAR_RIP_BRIGHT ${f(RIPPLES.bright)}`,
+    `#define MAR_RIP_NORMAL ${f(RIPPLES.normal)}`,
+    `#define MAR_RIP_FP0 ${f(RIPPLES.footprint[0])}`,
+    `#define MAR_RIP_FP1 ${f(RIPPLES.footprint[1])}`,
+    `#define MAR_RIP_BFP0 ${f(RIPPLES.brightFootprint[0])}`,
+    `#define MAR_RIP_BFP1 ${f(RIPPLES.brightFootprint[1])}`,
   ].join('\n');
 }
 
@@ -123,9 +135,11 @@ uniform vec3 uMid;
 uniform vec3 uShallow;
 uniform vec3 uLagoon;
 uniform vec3 uFoam;
+uniform vec4 uWeather;
 varying vec3 vWorld;
 ${CLOUD_SHADOW_GLSL}
 ${NIGHT_GLSL}
+${MIST_GLSL}
 
 float marHash12(vec2 p) {
   vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -161,6 +175,29 @@ float marLap(float t) {
   if (p < MAR_LAP_IN) { float q = p / MAR_LAP_IN; return 1.0 - (1.0 - q) * (1.0 - q); }
   float q = (p - MAR_LAP_IN) / (1.0 - MAR_LAP_IN);
   return 1.0 - q * q;
+}
+
+/* Rain ripple rings (TASK-172): two hash-jittered cell layers, one expanding ring per active cell
+   (cells active with probability = rain intensity). x = ring 0..1, yz = normal xz offset. */
+vec3 marRainRipples(vec2 xz, float t, float fp, float rain) {
+  vec3 acc = vec3(0.0);
+  float w = max(MAR_RIP_WIDTH, fp * MAR_RIP_DENSITY * 0.7);
+  for (int l = 0; l < 2; l++) {
+    float fl = float(l);
+    vec2 p = xz * MAR_RIP_DENSITY + fl * vec2(0.5, 0.37);
+    vec2 ci = floor(p);
+    if (marHash12(ci + 9.1 + fl * 4.3) > rain) continue;
+    vec2 off = (vec2(marHash12(ci + 3.1 + fl), marHash12(ci + 5.7 + fl)) - 0.5) * (1.0 - 2.0 * MAR_RIP_RADIUS);
+    float ph = fract(t * MAR_RIP_RATE + marHash12(ci + 1.7 + fl * 7.9));
+    vec2 dv = fract(p) - 0.5 - off;
+    float d = length(dv);
+    float x = (d - (1.0 - (1.0 - ph) * (1.0 - ph)) * MAR_RIP_RADIUS) / w;  // ease-out growth
+    float g = exp(-x * x * 2.0);
+    float life = (1.0 - ph) * (1.0 - ph);
+    acc.x += g * life;
+    acc.yz += dv / max(d, 1e-3) * (x * g * life);
+  }
+  return acc;
 }
 
 void main() {
@@ -222,6 +259,16 @@ void main() {
   vec3 r2 = marNoised(xz * MAR_RIPPLE_SCALE * 2.7 - tm * 1.6 + 11.0);
   n.xz -= r2.yz * MAR_RIPPLE_STRENGTH * 0.5 * near;
 #endif
+  // rain ripple rings (TASK-172): off (no math) unless it rains
+  float rainRing = 0.0;
+  if (uWeather.x > 0.0) {
+    float ripF = (1.0 - smoothstep(MAR_RIP_FP0, MAR_RIP_FP1, fp)) * uWeather.x * uMotionScale;
+    if (ripF > 0.0) {
+      vec3 rr = marRainRipples(xz, t, fp, uWeather.x);
+      rainRing = min(rr.x, 1.0) * ripF * (1.0 - smoothstep(MAR_RIP_BFP0, MAR_RIP_BFP1, fp));
+      n.xz += rr.yz * MAR_RIP_NORMAL * ripF;
+    }
+  }
   n = normalize(n);
 
   // --- light: palette colour by day, hemisphere-tinted by night
@@ -285,6 +332,7 @@ void main() {
 
   col = mix(col, uFoam * light, foam);
   alpha = mix(alpha, 1.0, foam);
+  if (rainRing > 0.0) col = mix(col, uFoam * light, rainRing * MAR_RIP_BRIGHT * (1.0 - foam));
 
   // --- glints: thresholded sparkle mask × sharp sun highlight (> 1.0 → bloom)
   vec3 jit = marNoised(xz * MAR_GLINT_JSCALE + vec2(t * 0.6, -t * 0.4) * uMotionScale);
@@ -297,6 +345,8 @@ void main() {
                           marNoise(xz * MAR_GLINT_MSCALE + vec2(-t * 0.9, t * 0.7) * uMotionScale));
   float glint = spec * mask * MAR_GLINT_STRENGTH * (1.0 + (MAR_GLINT_GOLDEN - 1.0) * uGolden);
   glint *= (1.0 - uNight) * dayK * (1.0 - foam);
+  // overcast veil (TASK-172): no sun to glint
+  glint *= 1.0 - uWeather.y;
 
   // --- moon glitter streak: narrow across, long along the view
   vec3 Rg = reflect(-V, normalize(mix(n, ng, 0.6)));
@@ -311,13 +361,14 @@ void main() {
   float streak = exp(-lat * MAR_MOON_LAT) * exp(-mvert * mvert * MAR_MOON_VERT);
   streak *= smoothstep(0.45, 0.7, marNoise(xz * 2.3 + vec2(t * 0.5, -t * 0.3) * uMotionScale));
   streak *= uNight * smoothstep(0.0, 0.12, Lm.y) * MAR_MOON_STRENGTH * (1.0 - foam);
+  streak *= 1.0 - uWeather.y;
 
   // low sun (golden/dusk): warm glitter streak toward the sun + broad sparkle everywhere
   float lowSun = (1.0 - smoothstep(MAR_LOWSUN_Y0, MAR_LOWSUN_Y1, L.y)) * (1.0 - smoothstep(0.55, 0.9, uNight));
   float sunLat = 1.0 - dot(rh, mh);
   float sunStreak = exp(-sunLat * MAR_SUNSTREAK_LAT) * exp(-vert * vert * MAR_MOON_VERT);
   float broad = pow(max(dot(ng, H), 0.0), MAR_SUNSPARK_EXP) * MAR_SUNSPARK;
-  float warm = lowSun * mask * (sunStreak * MAR_SUNSTREAK + broad) * (1.0 - foam);
+  float warm = lowSun * mask * (sunStreak * MAR_SUNSTREAK + broad) * (1.0 - foam) * (1.0 - uWeather.y);
   vec3 warmCol = mix(uSunColor, uSunColor * vec3(1.0, 0.82, 0.6), 0.5);
 
   col += uSunColor * (glint + streak) + warmCol * warm;
@@ -346,6 +397,12 @@ void main() {
   col = mix(col, uFogColor, fogF);
   col = mix(col, uHorizon, smoothstep(0.7, 1.0, rim));
   alpha = mix(alpha, 1.0, fogF);
+  // low mist band (TASK-172)
+  if (uMist.x > 0.0) {
+    float mi = marMist(vWorld, uCameraPos);
+    col = mix(col, uMistColor, mi);
+    alpha = mix(alpha, 1.0, mi);
+  }
 
   gl_FragColor = vec4(col, alpha);
 #ifdef MAR_DIRECT
