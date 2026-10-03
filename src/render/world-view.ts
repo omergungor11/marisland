@@ -8,6 +8,7 @@ import { buildTerrain, type TerrainView } from './terrain/terrain.ts';
 import { createWater, type WaterView } from './water/water.ts';
 import { createSky, type SkyView } from './sky/sky.ts';
 import { createLightRig, type LightRig } from './lighting.ts';
+import { createClouds, type CloudsView } from './clouds/clouds.ts';
 import { createEnvState, sampleEnv, type EnvState } from '../env/env-state.ts';
 import { SHARED, setWind, writeEnvUniforms } from './uniforms.ts';
 import type { CameraWorld } from '../camera/controls.ts';
@@ -30,6 +31,7 @@ export interface WorldView {
   water: WaterView;
   sky: SkyView;
   lights: LightRig;
+  clouds: CloudsView;
   props: PropBatcher;
   scatter: ScatterResult;
   env: EnvState;
@@ -76,6 +78,8 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   if (sky.mesh) group.add(sky.mesh);
   const lights = createLightRig(d.quality, d.scope);
   group.add(lights.group);
+  const clouds = createClouds(world, d.quality, d.scope);
+  group.add(clouds.group);
   setWind(world.windDir, 1);
 
   const tScatter = d.now();
@@ -110,6 +114,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     sky.update(env, _camPos);
     water.update(_camPos, d.getTime());
     terrain.update(d.getTime());
+    clouds.update(d.getTime(), env, _camPos, tier);
     if (tier !== lastTier) {
       lastTier = tier;
       terrain.onTier(tier);
@@ -122,6 +127,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
 
   const islands = world.islands.map((i) => ({
     name: i.name,
+    archetypeName: i.archetypeName,
     cx: i.cx,
     cz: i.cz,
     radius: i.radius,
@@ -157,6 +163,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     water,
     sky,
     lights,
+    clouds,
     props,
     scatter,
     env,

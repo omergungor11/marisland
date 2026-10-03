@@ -6,12 +6,19 @@ import { createRng } from '../core/rng.ts';
 import type { WorldData } from './types.ts';
 import { GRID_N } from './types.ts';
 import { buildChunkFlags } from './gen/chunks.ts';
-import { cleanCoast, shoreSdf } from './gen/coast.ts';
+import { cleanCoast, shoreSdfOwners } from './gen/coast.ts';
 import { cellX, cellZ } from './gen/grid.ts';
-import { COAST } from './gen/params.ts';
+import { COAST } from '../content/islands.ts';
 import { combineHashes, hashBytes, hashFloats, hashLayout } from './gen/hash.ts';
-import { buildRawLand, finalizeHeight, measurePeaks, nearestIsland } from './gen/heightfield.ts';
+import {
+  buildRawLand,
+  finalAnchors,
+  finalizeHeight,
+  measurePeaks,
+  nearestIsland,
+} from './gen/heightfield.ts';
 import { generateLayout } from './gen/layout.ts';
+import { Tag } from './gen/profiles.ts';
 import { buildZones } from './gen/zones.ts';
 
 export * from './types.ts';
@@ -19,7 +26,7 @@ export { CHUNK_HAS_LAND, CHUNK_HAS_SHALLOW } from './gen/chunks.ts';
 export { slopeAtCell } from './gen/zones.ts';
 
 export interface GenerateOptions {
-  /** 1 = M1 single Hearthholm (default); 'auto' = archipelago (TASK-111). */
+  /** 'auto' = archipelago of 5–7 islands (default); 1 = single Hearthholm (M1 tests). */
   islands?: 1 | 'auto';
   /**
    * Optional clock for `timings` (ms). World code may not read wall time
@@ -45,14 +52,16 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
   };
 
   const { windDir, islands } = generateLayout(root.fork('layout'), {
-    islands: opts.islands ?? 1,
+    islands: opts.islands ?? 'auto',
   });
   lap('layout');
 
   const rawLand = buildRawLand(islands, windDir, root.fork('height'));
   const land = new Uint8Array(GRID_N * GRID_N);
   for (let i = 0; i < land.length; i++) land[i] = rawLand.raw[i] > 0 ? 1 : 0;
-  const cleanup = cleanCoast(land, GRID_N, COAST.closeRadius, COAST.openRadius);
+  const protect = new Uint8Array(GRID_N * GRID_N);
+  for (let i = 0; i < protect.length; i++) protect[i] = rawLand.tags[i] & Tag.noFill;
+  const cleanup = cleanCoast(land, GRID_N, COAST.closeRadius, COAST.openRadius, protect);
   for (const i of cleanup.added) {
     const isl = nearestIsland(islands, cellX(i % GRID_N), cellZ(Math.floor(i / GRID_N)));
     rawLand.islandMap[i] = isl ? isl.id + 1 : 0;
@@ -60,14 +69,18 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
   for (const i of cleanup.removed) rawLand.islandMap[i] = 0;
   lap('land');
 
-  const sdf = shoreSdf(land, GRID_N);
+  const { sdf, owner } = shoreSdfOwners(land, GRID_N, rawLand.islandMap);
   lap('sdf');
 
-  const height = finalizeHeight(rawLand, sdf, islands, windDir, root.fork('height'));
+  const height = finalizeHeight(rawLand, sdf, owner, islands, windDir, root.fork('height'));
   measurePeaks(height, rawLand.islandMap, islands);
+  finalAnchors(height, owner, rawLand.tags, islands);
   lap('height');
 
-  const zone = buildZones(height, sdf, rawLand.islandMap, islands, windDir, root.fork('zones'));
+  const zone = buildZones(
+    { h: height, sdf, islandMap: rawLand.islandMap, owner, tags: rawLand.tags, islands, windDir },
+    root.fork('zones'),
+  );
   lap('zones');
 
   const chunkFlags = buildChunkFlags(height);
@@ -91,6 +104,7 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
     zone,
     shoreSdf: sdf,
     islandMap: rawLand.islandMap,
+    streams: rawLand.streams,
     chunkFlags,
     hashes,
     timings,

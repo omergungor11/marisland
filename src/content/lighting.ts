@@ -10,7 +10,8 @@ import { LIGHTING } from './palette.ts';
  * Fit a FogExp2 density (f = 1 − exp(−(d·x)²)) to the bible's fog curve,
  * least squares on √(−ln(1 − f)) = d·x, weighted by distance. With the bible
  * points (200 u 10 %, 700 u 45 %, 1200 u 75 %) this gives
- * 200 u ≈ 4 %, 700 u ≈ 40 %, 1200 u ≈ 78 % (d ≈ 0.00103) — near views stay crisp, far
+ * 200 u ≈ 4 %, 700 u ≈ 40 %, 1200 u ≈ 78 % (d ≈ 0.00103), then × 0.78 (D-009: the T0 postcard at
+ * 450–650 u was turning grey; 0.0008 keeps deep water blue and far islands pastel) — near views stay crisp, far
  * islands go pastel but never vanish.
  */
 export function fitFogExp2(points: readonly (readonly [number, number])[]): number {
@@ -26,7 +27,7 @@ export function fitFogExp2(points: readonly (readonly [number, number])[]): numb
 
 export const FOG = {
   /** FogExp2 density; also written to SHARED.uFogDensity for manually fogged shaders. */
-  density: fitFogExp2(LIGHTING.fogAt),
+  density: fitFogExp2(LIGHTING.fogAt) * 0.78,
 } as const;
 
 /** Light rig numbers. */

@@ -16,6 +16,7 @@ export interface CameraWorld {
   radius: number;
   islands: Array<{
     name: string;
+    archetypeName?: string;
     cx: number;
     cz: number;
     radius: number;
@@ -134,16 +135,14 @@ export function createCameraSystem(
       switch (kind) {
         case 'overview': {
           const o = CAMERA.overview;
-          lookFromOrbit(
-            controls,
-            world.centerX,
-            0,
-            world.centerZ,
-            o.dist,
-            o.pitch,
-            o.azimuthDeg,
-            t,
-          );
+          // Fit the archipelago: distance so the cluster radius fills ~80 % of the vertical FOV
+          // at the overview pitch (foreshortened), clamped to the T0 range.
+          const fit =
+            (world.radius * 1.15) /
+            Math.sin((camera.fov * DEG) / 2) /
+            Math.max(0.6, Math.sin(o.pitch * DEG));
+          const dist = clamp(Math.max(o.dist, fit), o.dist, CAMERA.maxDist);
+          lookFromOrbit(controls, world.centerX, 0, world.centerZ, dist, o.pitch, o.azimuthDeg, t);
           break;
         }
         case 'island': {

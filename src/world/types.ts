@@ -54,6 +54,8 @@ export interface IslandData {
   archetype: ArchetypeId;
   /** Display name (seeded syllables; Hearthholm keeps its own). */
   name: string;
+  /** Archetype display name from the roster table, e.g. 'Beacon Rock' (camera `island:<name>` matches either). */
+  archetypeName: string;
   /** Centre in world u. */
   cx: number;
   cz: number;
@@ -70,6 +72,8 @@ export interface IslandData {
   minZ: number;
   maxX: number;
   maxZ: number;
+  /** Bounding-disc radius in u: every land cell of the island lies within it of (cx, cz). */
+  reach: number;
   /** Anchor points filled by later stages (settlements). Radians for facing. */
   anchors: Record<string, { x: number; z: number; rotY: number }>;
 }
@@ -84,6 +88,12 @@ export interface Heightfield {
   originZ: number;
 }
 
+/** A carved stream (Mossgrove): polyline in world u from source to mouth. */
+export interface StreamData {
+  islandId: number;
+  points: { x: number; z: number }[];
+}
+
 export interface WorldData {
   seed: number;
   /** Wind direction in radians (y-up, angle in the xz plane). */
@@ -96,6 +106,8 @@ export interface WorldData {
   shoreSdf: Float32Array;
   /** Island id + 1 per sample (0 = open sea). */
   islandMap: Uint8Array;
+  /** Carved streams (optional; Mossgrove). */
+  streams?: StreamData[];
   /** Per-chunk flags: bit0 = has land, bit1 = has shallow water (needs a mesh). */
   chunkFlags: Uint8Array;
   /** Stage hashes (hex strings) for determinism snapshots. */

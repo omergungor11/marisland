@@ -349,7 +349,8 @@ export async function boot(): Promise<void> {
       curtain.setClosed();
       hud?.setLabelsHidden(true);
       const cw = testScene.cameraWorld;
-      const hero = cw.islands.find((i) => i.name === 'Hearthholm') ?? cw.islands[0];
+      const hero =
+        cw.islands.find((i) => (i.archetypeName ?? i.name) === 'Hearthholm') ?? cw.islands[0];
       const intro = createIntro({
         cam,
         centerX: cw.centerX,

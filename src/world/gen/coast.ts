@@ -6,7 +6,14 @@ const BIG = 1e20;
  * 1-D squared distance transform of sampled function f (Felzenszwalb &
  * Huttenlocher 2012). O(n). Writes into d; v/z are scratch.
  */
-function edt1d(f: Float64Array, n: number, d: Float64Array, v: Int32Array, z: Float64Array): void {
+function edt1d(
+  f: Float64Array,
+  n: number,
+  d: Float64Array,
+  v: Int32Array,
+  z: Float64Array,
+  arg: Int32Array | null,
+): void {
   let k = 0;
   v[0] = 0;
   z[0] = -Infinity;
@@ -27,6 +34,7 @@ function edt1d(f: Float64Array, n: number, d: Float64Array, v: Int32Array, z: Fl
     while (z[k + 1] < q) k++;
     const dq = q - v[k];
     d[q] = dq * dq + f[v[k]];
+    if (arg) arg[q] = v[k];
   }
 }
 
@@ -36,27 +44,60 @@ function edt1d(f: Float64Array, n: number, d: Float64Array, v: Int32Array, z: Fl
  * (0 on those cells). Cells with no target anywhere get a huge value.
  */
 export function edt(mask: Uint8Array, w: number, h: number, target: number): Float32Array {
+  return edtImpl(mask, w, h, target, false).dist;
+}
+
+/**
+ * EDT plus the feature transform: `nearest[i]` is the index of the nearest
+ * target cell (−1 if there is none). Distances are bit-identical to `edt`.
+ */
+export function edtNearest(
+  mask: Uint8Array,
+  w: number,
+  h: number,
+  target: number,
+): { dist: Float32Array; nearest: Int32Array } {
+  const r = edtImpl(mask, w, h, target, true);
+  return { dist: r.dist, nearest: r.nearest as Int32Array };
+}
+
+function edtImpl(
+  mask: Uint8Array,
+  w: number,
+  h: number,
+  target: number,
+  withNearest: boolean,
+): { dist: Float32Array; nearest: Int32Array | null } {
   const n = Math.max(w, h);
   const f = new Float64Array(n);
   const d = new Float64Array(n);
   const v = new Int32Array(n);
   const z = new Float64Array(n + 1);
+  const arg = withNearest ? new Int32Array(n) : null;
   const tmp = new Float64Array(w * h);
+  const colArg = withNearest ? new Int32Array(w * h) : null;
   // columns
   for (let x = 0; x < w; x++) {
     for (let y = 0; y < h; y++) f[y] = mask[y * w + x] === target ? 0 : BIG;
-    edt1d(f, h, d, v, z);
+    edt1d(f, h, d, v, z, arg);
     for (let y = 0; y < h; y++) tmp[y * w + x] = d[y];
+    if (colArg && arg) for (let y = 0; y < h; y++) colArg[y * w + x] = arg[y];
   }
   // rows
   const out = new Float32Array(w * h);
+  const nearest = withNearest ? new Int32Array(w * h) : null;
   for (let y = 0; y < h; y++) {
     const row = y * w;
     for (let x = 0; x < w; x++) f[x] = tmp[row + x];
-    edt1d(f, w, d, v, z);
+    edt1d(f, w, d, v, z, arg);
     for (let x = 0; x < w; x++) out[row + x] = Math.sqrt(d[x]);
+    if (nearest && colArg && arg)
+      for (let x = 0; x < w; x++) {
+        const nx = arg[x];
+        nearest[row + x] = d[x] >= BIG ? -1 : colArg[row + nx] * w + nx;
+      }
   }
-  return out;
+  return { dist: out, nearest };
 }
 
 /** SDF magnitude cap when one side is empty (no land at all). */
@@ -68,8 +109,29 @@ const SDF_CAP = WORLD_SIZE * 1.5;
  * sample, so boundary samples sit at ±CELL_SIZE/2.
  */
 export function shoreSdf(land: Uint8Array, n: number): Float32Array {
+  return shoreSdfOwners(land, n, null).sdf;
+}
+
+/**
+ * Shore SDF plus, per cell, the owning island (id + 1) of the nearest coast:
+ * land cells keep their own `islandMap` value, water cells take the island of
+ * the nearest land cell (exact feature transform, so shelves meet on the
+ * Voronoi seam of the coastlines, not of the island centres).
+ */
+export function shoreSdfOwners(
+  land: Uint8Array,
+  n: number,
+  islandMap: Uint8Array | null,
+): { sdf: Float32Array; owner: Uint8Array } {
   const toWater = edt(land, n, n, 0);
-  const toLand = edt(land, n, n, 1);
+  const near = edtNearest(land, n, n, 1);
+  const toLand = near.dist;
+  const owner = new Uint8Array(n * n);
+  if (islandMap)
+    for (let i = 0; i < owner.length; i++) {
+      const j = land[i] === 1 ? i : near.nearest[i];
+      owner[i] = j >= 0 ? islandMap[j] : 0;
+    }
   const half = CELL_SIZE / 2;
   const sdf = new Float32Array(n * n);
   for (let i = 0; i < sdf.length; i++) {
@@ -78,7 +140,7 @@ export function shoreSdf(land: Uint8Array, n: number): Float32Array {
         ? Math.min(SDF_CAP, toWater[i] * CELL_SIZE - half)
         : -Math.min(SDF_CAP, toLand[i] * CELL_SIZE - half);
   }
-  return sdf;
+  return { sdf, owner };
 }
 
 export interface CoastCleanup {
@@ -98,6 +160,7 @@ export function cleanCoast(
   n: number,
   closeRadius: number,
   openRadius: number,
+  protect: Uint8Array | null = null,
 ): CoastCleanup {
   let x0 = n;
   let z0 = n;
@@ -127,7 +190,12 @@ export function cleanCoast(
     const x = j % w;
     return ((j - x) / w + z0) * n + x + x0;
   };
-  const added = morph(sub, w, h, closeRadius, 'close').map(toFull);
+  const added: number[] = [];
+  for (const j of morph(sub, w, h, closeRadius, 'close')) {
+    const i = toFull(j);
+    if (protect && protect[i] !== 0) sub[j] = 0;
+    else added.push(i);
+  }
   const removed = morph(sub, w, h, openRadius, 'open').map(toFull);
   for (const i of added) land[i] = 1;
   for (const i of removed) land[i] = 0;

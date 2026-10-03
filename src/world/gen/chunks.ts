@@ -1,6 +1,6 @@
 import type { Heightfield } from '../types.ts';
 import { CHUNK_CELLS, CHUNKS_PER_SIDE } from '../types.ts';
-import { CHUNK_SHALLOW_DEPTH } from './params.ts';
+import { CHUNK_SHALLOW_DEPTH } from '../../content/islands.ts';
 
 export const CHUNK_HAS_LAND = 1;
 export const CHUNK_HAS_SHALLOW = 2;

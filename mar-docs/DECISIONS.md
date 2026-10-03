@@ -12,8 +12,8 @@ Dropping DOF to photo mode only would lose the bible's T3 look; 4 extra programs
 
 ## D-009: Fog density 0.00103 (bible curve is not reachable with FogExp2) — 2026-10-03
 
-**Decision**: `FogExp2` density ≈ 0.00103 (`content/lighting.ts` FOG), the same value in `SHARED.uFogDensity`
-so the water shader fogs identically.
+**Decision**: `FogExp2` density = 0.78 × the fitted 0.00103 ≈ 0.0008 (`content/lighting.ts` FOG), the same
+value in `SHARED.uFogDensity` so the water shader fogs identically. (The raw fit turned the T0 postcard grey.)
 **Rationale**: three's FogExp2 is `1 − exp(−(d·dist)²)`. The bible asks 10 % @ 200 u, 45 % @ 700 u,
 75 % @ 1200 u — no single d satisfies all three; the fit gives ≈ 4 % / 40 % / 78 %. Far islands still
 go pastel and never vanish, which is the intent.

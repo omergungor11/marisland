@@ -69,8 +69,8 @@ describe('generateWorld — determinism', () => {
   });
 
   it('same seed twice → identical hashes and bytes', () => {
-    const a = generateWorld(42);
-    const b = generateWorld(42);
+    const a = generateWorld(42, { islands: 1 });
+    const b = generateWorld(42, { islands: 1 });
     expect(a.hashes).toEqual(b.hashes);
     expect(new Uint32Array(a.height.data.buffer)).toEqual(new Uint32Array(b.height.data.buffer));
     expect(a.zone).toEqual(b.zone);
@@ -232,7 +232,7 @@ describe('islands and zones', () => {
   it('property: 50 seeds — no NaN, hearthholm peak 8–16 u, land area ±30 % of πr²', () => {
     const ratios: number[] = [];
     for (let s = 0; s < 50; s++) {
-      const w = generateWorld(s * 7919 + 13);
+      const w = generateWorld(s * 7919 + 13, { islands: 1 });
       let land = 0;
       let nonFinite = 0;
       for (let i = 0; i < w.height.data.length; i++) {
@@ -255,9 +255,9 @@ describe('islands and zones', () => {
   });
 
   it('one-island generation < 150 ms in Node', () => {
-    generateWorld(77, { now }); // warm-up (JIT)
+    generateWorld(77, { islands: 1, now }); // warm-up (JIT)
     const ms: number[] = [];
-    for (const s of [1, 42, 1001]) ms.push(generateWorld(s, { now }).timings.total);
+    for (const s of [1, 42, 1001]) ms.push(generateWorld(s, { islands: 1, now }).timings.total);
     console.info(`gen ms (warm) seeds 1/42/1001: ${ms.map((m) => m.toFixed(1)).join(' / ')}`);
     console.info(`cold first-call ms seed 1: ${world(1).timings.total.toFixed(1)}`);
     for (const m of ms) expect(m).toBeLessThan(150);

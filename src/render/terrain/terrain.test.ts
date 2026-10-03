@@ -6,7 +6,7 @@ import { Scope } from '../../core/scope.ts';
 import { createWorldTextures } from '../world-textures.ts';
 import { buildTerrain } from './terrain.ts';
 
-const world = generateWorld(1001);
+const world = generateWorld(1001, { islands: 1 });
 const scope = new Scope('test');
 const textures = createWorldTextures(world, scope);
 const t0 = performance.now();

@@ -103,7 +103,7 @@ export function createHud(root: HTMLElement, actions: HudActions, instant = fals
       labels = world.islands.map((i) => {
         const l = document.createElement('button');
         l.className = 'mar-label';
-        l.innerHTML = `<span class="mar-label-in"><span class="mar-dot" style="background:${accents[i.name] ?? UI.secondary}"></span>${i.name}</span>`;
+        l.innerHTML = `<span class="mar-label-in"><span class="mar-dot" style="background:${accents[i.archetypeName ?? i.name] ?? accents[i.name] ?? UI.secondary}"></span>${i.name}</span>`;
         l.addEventListener('click', () => actions.onLabel(i.name));
         labelsEl.appendChild(l);
         return { name: i.name, el: l, x: i.cx, y: i.peakY + 8, z: i.cz };

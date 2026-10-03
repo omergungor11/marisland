@@ -1,7 +1,8 @@
 /**
  * Capture presets (ART_BIBLE §11 + ARCHITECTURE §9). Pure data: the app resolves
- * `?shot=<id>` here, the shots harness picks sets from here. Seeds for W-shots
- * are placeholders until TASK-113 pins real ones.
+ * `?shot=<id>` here, the shots harness picks sets from here. W-seeds pinned by TASK-113:
+ * 1001 = Hearthholm, Beacon Rock, Millbrook, Palmlagoon, Mossgrove, Lonely Palm; 2024 Beacon Rock;
+ * 3003 Emberpeak; 4004 Palmlagoon; 1000 Millbrook; 6006 Mossgrove; 1002 has all seven.
  */
 export type ShotSet = 'ci' | 'dev' | 'wow';
 
