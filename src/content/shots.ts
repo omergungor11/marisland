@@ -24,6 +24,9 @@ export interface ShotPreset {
   deltaT?: number;
   /** Also capture the semantic mask frame. */
   mask?: boolean;
+  /** Before capture: dolly in from this distance over `dollySeconds` (hardPops must stay 0). */
+  dollyFrom?: number;
+  dollySeconds?: number;
   sets: ShotSet[];
 }
 

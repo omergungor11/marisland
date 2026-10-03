@@ -317,6 +317,16 @@ export async function boot(): Promise<void> {
       loop.clock.dayTime = ((hour % 24) + 24) % 24;
       loop.step(1 / 30, 1);
     };
+    api.dolly = (fromDist: number, seconds: number) => {
+      const c = cam.controls;
+      const to = c.distance;
+      const n = Math.max(1, Math.round(seconds * 30));
+      for (let i = 0; i <= n; i++) {
+        const t = i / n;
+        void c.dollyTo(fromDist + (to - fromDist) * (t * t * (3 - 2 * t)), false);
+        loop.step(1 / 30, 1);
+      }
+    };
     api.pick = () => null;
     api.perf = async () => ({ p50: 0, p95: 0, frames: 0 });
     api.regen = async (seed: number) => {
@@ -436,6 +446,7 @@ function installApi(): MarislandApi {
     step: () => {},
     setCamera: () => {},
     setTime: () => {},
+    dolly: () => {},
     pick: () => null,
     perf: async () => ({ p50: 0, p95: 0, frames: 0 }),
     regen: async () => {},

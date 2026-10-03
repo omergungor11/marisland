@@ -173,6 +173,10 @@ async function open(browser: Browser, url: string, p: ShotPreset): Promise<Opene
   let snap: ApiSnap | null = null;
   try {
     await page.waitForFunction(readyExpr, null, { timeout: 180_000 });
+    if (p.dollyFrom && p.dollySeconds) {
+      // W8: dolly in from far; hardPops must stay 0 (checked from the snapshot below).
+      await page.evaluate(`window.__marisland.dolly(${p.dollyFrom}, ${p.dollySeconds})`);
+    }
     snap = (await page.evaluate(snapExpr)) as ApiSnap;
   } catch (e) {
     fatal.push(`not ready: ${(e as Error).message.split('\n')[0]}`);

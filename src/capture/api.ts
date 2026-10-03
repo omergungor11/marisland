@@ -55,6 +55,8 @@ export interface MarislandApi {
   setCamera(preset: string): void;
   /** Set game hour and re-render. */
   setTime(hour: number): void;
+  /** Dolly from `fromDist` to the current distance over `seconds`, stepping frames (W8 check). */
+  dolly(fromDist: number, seconds: number): void;
   /** CPU pick at CSS pixel coordinates. */
   pick(x: number, y: number): PickResult | null;
   /** Fly a 10 s path and report frame times (real GPU only). */
