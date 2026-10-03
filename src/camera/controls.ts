@@ -244,10 +244,21 @@ export function createCameraSystem(
         case 'macro-beach': {
           const dist = kind === 'shore' ? 40 : 18;
           const a = findAnchor(world, 'beach', arg);
-          const y = world.heightAt(a.x, a.z);
-          // the beach anchor faces the water: the camera stands inland, looking out to sea
-          const az = azimuthToward(a.rotY + Math.PI);
-          lookFromOrbit(controls, a.x, Math.max(0, y), a.z, dist, pitchForDistance(dist), az, t);
+          const y = Math.max(0, world.heightAt(a.x, a.z));
+          // The beach anchor faces the water. Preferred: the camera stands inland looking out to
+          // sea; but inland may be a hill at 18–40 u, so fall back to along-shore, then the water
+          // side — the first orbit whose camera and line of sight stay above the terrain.
+          const pitch = pitchForDistance(dist);
+          const offsets = [Math.PI, Math.PI / 2, -Math.PI / 2, 0];
+          let az = azimuthToward(a.rotY + Math.PI);
+          for (const off of offsets) {
+            const cand = azimuthToward(a.rotY + off);
+            if (orbitClearsTerrain(world, a.x, y, a.z, dist, pitch, cand)) {
+              az = cand;
+              break;
+            }
+          }
+          lookFromOrbit(controls, a.x, y, a.z, dist, pitch, az, t);
           break;
         }
         default: {
@@ -494,6 +505,32 @@ function findAnchor(
 }
 
 /** Place the camera on an orbit: target, distance, pitch (deg from horizontal), azimuth (deg). */
+/** True when the camera and the segment camera → target stay ≥ `clearance` above the terrain. */
+export function orbitClearsTerrain(
+  world: CameraWorld,
+  tx: number,
+  ty: number,
+  tz: number,
+  dist: number,
+  pitchDeg: number,
+  azimuthDeg: number,
+  clearance = 2,
+): boolean {
+  const pitch = pitchDeg * DEG;
+  const az = azimuthDeg * DEG;
+  const px = tx + Math.sin(az) * Math.cos(pitch) * dist;
+  const pz = tz + Math.cos(az) * Math.cos(pitch) * dist;
+  const py = ty + Math.sin(pitch) * dist;
+  for (let i = 1; i <= 8; i++) {
+    const f = i / 8;
+    const x = tx + (px - tx) * f;
+    const z = tz + (pz - tz) * f;
+    const yy = ty + (py - ty) * f;
+    if (world.heightAt(x, z) > yy - clearance * f) return false;
+  }
+  return true;
+}
+
 export function lookFromOrbit(
   controls: CameraControls,
   tx: number,
