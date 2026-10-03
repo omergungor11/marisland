@@ -15,6 +15,7 @@ import {
   heightAt,
   sampleGrid,
   zoneAt,
+  Zone,
   WORLD_SIZE,
   CHUNK_SIZE,
   CHUNKS_PER_SIDE,
@@ -174,21 +175,12 @@ export function scatterProps(
         const radius = def.footprint * scale;
         if (!isGround && !occupancy.isFree(x, z, radius)) continue;
         if (isGround && groundCoverTotal >= GROUND_COVER_CAP) break;
-        const y = heightAt(h, x, z);
+        const zone = zoneAt(h, world.zone, x, z);
+        const floats = zone === Zone.lagoon && !(def.flags & PropFlag.underwater);
+        const y = floats ? 0 : heightAt(h, x, z);
         const variant = rng.int(0, def.variants - 1);
         const rotY = rng.range(0, Math.PI * 2);
-        store.push(
-          defIndex,
-          variant,
-          x,
-          isGround ? Math.max(y, -0.05) : y,
-          z,
-          rotY,
-          scale,
-          island.id,
-          chunkIdAt(x, z),
-          def.flags,
-        );
+        store.push(defIndex, variant, x, y, z, rotY, scale, island.id, chunkIdAt(x, z), def.flags);
         if (!isGround) occupancy.mark(x, z, radius);
         else groundCoverTotal++;
         placed++;
