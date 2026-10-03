@@ -225,6 +225,8 @@ export class Villagers extends LandKind {
   private readonly prev: Uint8Array;
   private readonly look: Float32Array;
   private readonly dur: Float32Array;
+  /** Length (s) of the wave in progress (camera wave vs. click emote). */
+  private readonly waveLen: Float32Array;
   private readonly routes: (number[] | null)[];
   readonly compOf: Int32Array;
   private readonly nodes: WorldNodes;
@@ -256,6 +258,7 @@ export class Villagers extends LandKind {
     this.prev = new Uint8Array(n);
     this.look = new Float32Array(n);
     this.dur = new Float32Array(n);
+    this.waveLen = new Float32Array(n).fill(VILLAGERS.wave.seconds);
     this.compOf = new Int32Array(n);
     this.routes = new Array<number[] | null>(n).fill(null);
     this.nodes = nodesByComponent(graph);
@@ -287,6 +290,24 @@ export class Villagers extends LandKind {
     return (
       (Number.isNaN(d) ? this.ctx.h(this.graph.x[node], this.graph.z[node]) : d) + LAND.footLift
     );
+  }
+
+  /**
+   * Click emote: villager `i` turns to the camera and waves for `VILLAGERS.wave.emoteSeconds`, then
+   * resumes what it was doing. Called by the interaction layer (interaction → life, never back).
+   * False when the villager is not alive (tier below the reveal) or `i` is out of range.
+   */
+  wave(i: number): boolean {
+    if (!(i >= 0 && i < this.capacity) || this.vis[i] !== 1) return false;
+    const V = VILLAGERS.wave;
+    if (this.state[i] !== V_WAVE) {
+      this.prev[i] = this.state[i];
+      this.state[i] = V_WAVE;
+    }
+    this.timer[i] = 0;
+    this.waveLen[i] = V.emoteSeconds;
+    this.cool[i] = Math.max(this.cool[i], V.cooldown[0]);
+    return true;
   }
 
   /** Camera within the wave radius (3-D). */
@@ -351,6 +372,7 @@ export class Villagers extends LandKind {
       this.prev[i] = s;
       this.state[i] = s = V_WAVE;
       this.timer[i] = 0;
+      this.waveLen[i] = V.wave.seconds;
       this.cool[i] = this.range(i, V.wave.cooldown[0], V.wave.cooldown[1]) + V.wave.seconds;
     }
     let moving = 0;
@@ -359,12 +381,13 @@ export class Villagers extends LandKind {
     if (s === V_WAVE) {
       this.timer[i] += dt;
       const t = this.timer[i];
-      const down = V.wave.seconds - V.wave.lower;
+      const len = this.waveLen[i];
+      const down = len - V.wave.lower;
       pose =
         t < down ? springIn(t, V.wave.k, V.wave.c) : Math.max(0, 1 - (t - down) / V.wave.lower);
       const c = this.ctx.cameraPos;
       want = Math.atan2(c.z - this.z[i], c.x - this.x[i]);
-      if (t >= V.wave.seconds) {
+      if (t >= len) {
         this.state[i] = this.prev[i];
         if (this.prev[i] === V_PAUSE) this.timer[i] = this.dur[i] * 0.5;
         this.look[i] = this.hd[i];

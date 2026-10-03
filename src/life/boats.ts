@@ -9,6 +9,7 @@ import { makeLitMaterial } from '../render/materials/factory.ts';
 import { AgentKind, rotYFor, type AgentKindOpts } from './agents.ts';
 import type { LifeCtx } from './ctx.ts';
 import { buildBoatPlaceholder } from './geo/creatures.ts';
+import { WakeFoam } from './wake.ts';
 
 const DEG = Math.PI / 180;
 
@@ -123,7 +124,11 @@ export class Sailboats extends AgentKind {
   /** Arc length travelled (integrated, so the speed can vary). */
   private readonly dist: Float64Array;
   private readonly dir: Float32Array;
+  /** Travelled distance at the last wake stamp (NaN = none yet). */
+  private readonly wakeAt: Float64Array;
   readonly routes: Route[];
+  /** Foam-dot wake behind the hulls (one mesh for all boats). */
+  readonly foam: WakeFoam;
   private readonly p = { x: 0, y: 0 };
   private readonly a = { x: 0, y: 0 };
   private readonly b = { x: 0, y: 0 };
@@ -146,6 +151,8 @@ export class Sailboats extends AgentKind {
     this.d0 = new Float32Array(count);
     this.dist = new Float64Array(count);
     this.dir = new Float32Array(count).fill(1);
+    this.wakeAt = new Float64Array(count).fill(Number.NaN);
+    this.foam = new WakeFoam(o, ctx, this.capacity);
     const per = new Array<number>(routes.length).fill(0);
     for (let i = 0; i < this.capacity; i++) per[i % routes.length]++;
     const seen = new Array<number>(routes.length).fill(0);
@@ -223,10 +230,28 @@ export class Sailboats extends AgentKind {
     this.pitch[i] = Math.atan((sF - sB) / (2 * tf));
     const gust = gustAt(x, z, t, this.ctx.gust);
     this.sx[i] = 1 + SAILBOAT.puff * gust * this.ctx.motion.scale;
-    if (t > 0) {
-      const w = SAILBOAT.wake;
-      this.ctx.water.splat(x - fx * w.offset, z - fz * w.offset, w.radius, w.strength);
-    }
+    if (t > 0) this.stampWake(i, x, z, fx, fz);
+  }
+
+  /** One foam-dot pair at the stern per `spacing` u of travel; none at T0 (boats are specks there). */
+  private stampWake(i: number, x: number, z: number, fx: number, fz: number): void {
+    const w = SAILBOAT.wake;
+    if (this.ctx.getTier() < w.minTier) return;
+    const d = this.dist[i];
+    const last = this.wakeAt[i];
+    if (!Number.isNaN(last) && Math.abs(d - last) < w.spacing) return;
+    this.wakeAt[i] = d;
+    this.foam.stamp(i, x - fx * w.back, z - fz * w.back, -fz, fx, this.simT);
+  }
+
+  override fixedUpdate(dt?: number): void {
+    super.fixedUpdate(dt);
+    this.foam.fixedUpdate(dt);
+  }
+
+  override update(alpha: number): void {
+    super.update(alpha);
+    this.foam.update(alpha);
   }
 }
 

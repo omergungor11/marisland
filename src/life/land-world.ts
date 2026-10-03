@@ -385,14 +385,14 @@ export interface WanderSpawn {
   hz: number;
 }
 
-interface IslandCells {
+export interface IslandCells {
   /** Cell world positions of a zone set per island, in grid order. */
   x: number[];
   z: number[];
 }
 
 /** World xz of every grid cell of island `id` whose zone is in `zones` (and sdf window). */
-function islandCells(
+export function islandCells(
   ctx: LifeCtx,
   id: number,
   zones: readonly number[],
@@ -452,6 +452,20 @@ function spotNear(
   return mask(hx, hz) ? { x: hx, z: hz } : null;
 }
 
+/**
+ * Where the flocks belong on island `id`: barns, windmills and the settlement hub. The village camera
+ * frames the hub, so a flock that lives beside them is on screen (TASK-192 W7: sheep were scattered
+ * over the whole plateau, mostly out of frame).
+ */
+export function sheepAnchors(ctx: LifeCtx, id: number): { x: number; z: number }[] {
+  const out: { x: number; z: number }[] = [];
+  for (const l of ctx.world.lots ?? []) if (l.islandId === id && l.kind === 'barn') out.push(l);
+  for (const m of ctx.world.landmarks ?? [])
+    if (m.islandId === id && m.kind === 'windmill') out.push(m);
+  for (const s of ctx.world.settlements ?? []) if (s.islandId === id) out.push(s.hub);
+  return out;
+}
+
 export function planSheep(ctx: LifeCtx, mask: Mask, total: number, rng: Rng): WanderSpawn[] {
   const isl = ctx.world.islands;
   const cells = isl.map((_, id) => islandCells(ctx, id, SHEEP.zones));
@@ -471,6 +485,20 @@ export function planSheep(ctx: LifeCtx, mask: Mask, total: number, rng: Rng): Wa
     const r = rng.fork('sheep', id);
     const order = cells[id].x.map((_, i) => i);
     r.shuffle(order);
+    // nearest to a barn / windmill / hub first (stable sort keeps the shuffle as tie-break)
+    const anchors = sheepAnchors(ctx, id);
+    if (anchors.length > 0) {
+      const near = (i: number): number => {
+        let d = Infinity;
+        for (const a of anchors)
+          d = Math.min(d, Math.hypot(cells[id].x[i] - a.x, cells[id].z[i] - a.z));
+        return d;
+      };
+      const key = new Map<number, number>(
+        order.map((i) => [i, Math.floor(near(i) / SHEEP.anchorBand)]),
+      );
+      order.sort((a, b) => (key.get(a) as number) - (key.get(b) as number));
+    }
     const homes: { x: number; z: number }[] = [];
     while (left > 0) {
       const size = Math.min(left, r.int(SHEEP.flockSize[0], SHEEP.flockSize[1]));

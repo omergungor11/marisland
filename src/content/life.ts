@@ -18,6 +18,8 @@ export interface LifePlan {
   cats: number;
   sheep: number;
   crabs: number;
+  /** Night fireflies (particles, not agents: one draw call, excluded from `agents`). */
+  fireflies: number;
 }
 export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
   low: {
@@ -32,8 +34,9 @@ export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
     dolphins: 0,
     villagers: 3,
     cats: 1,
-    sheep: 3,
+    sheep: 4,
     crabs: 1,
+    fireflies: 12,
   },
   medium: {
     sailboats: 3,
@@ -47,8 +50,9 @@ export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
     dolphins: 2,
     villagers: 5,
     cats: 2,
-    sheep: 6,
+    sheep: 8,
     crabs: 3,
+    fireflies: 18,
   },
   high: {
     sailboats: 4,
@@ -62,12 +66,50 @@ export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
     dolphins: 2,
     villagers: 9,
     cats: 4,
-    sheep: 10,
+    sheep: 12,
     crabs: 5,
+    fireflies: 24,
   },
 };
 
 /** Sim LOD: beyond `farDistance` u from the camera an agent updates every `farEvery`-th fixed step. */
+/**
+ * Fireflies (ART_BIBLE W3 Lantern Night; TASK-192): a handful of warm points bobbing on slow Lissajous
+ * paths at the forest/meadow edges of the settlement island. Pure functions of the engine clock and
+ * `night`, so capture mode freezes them; zero agents, zero programs (creature glyph mode), one draw.
+ */
+export const FIREFLIES = {
+  /** Zoom tier from which they are shown. */
+  minTier: 2,
+  color: '#FFD54A',
+  /** Dot radius, u (an octahedron; blinking scales it 0 → 1 → 0). */
+  size: 0.36,
+  /** Night 0..1 window: nothing below `night[0]`; the swarm is complete at `night[1]` (each firefly lights at its own point of the ramp). */
+  night: [0.5, 0.85] as const,
+  /** Fraction of the ramp over which one firefly fades in (the rest is per-firefly stagger). */
+  stagger: 0.6,
+  /** Fireflies per swarm and swarm radius, u. */
+  perSwarm: 6,
+  swarmRadius: 3,
+  /** Lissajous half-extents (u), periods (s) and height above the ground (u). */
+  extent: [0.9, 2.4] as const,
+  period: [7, 13] as const,
+  height: [0.5, 1.7] as const,
+  bob: 0.25,
+  /** Blink: period (s) per firefly and the lit fraction of it. */
+  blink: [2, 3] as const,
+  duty: 0.7,
+  /** Swarm centres: forest edge cells (grass/meadow with forest within `edgeRing` u), keep-out beyond lamp pools. */
+  edgeRing: 3.5,
+  minEdgeHits: 2,
+  shoreMin: 5,
+  minHeight: 0.8,
+  lampClear: 1.5,
+  /** Swarm centres are ranked by distance to the settlement hub in bands of this width (u). */
+  hubBand: 8,
+  minSeparation: 8,
+} as const;
+
 export const SIM_LOD = { farDistance: 400, farEvery: 6 } as const;
 
 export const SAILBOAT = {
@@ -83,8 +125,26 @@ export const SAILBOAT = {
   tapSide: 0.9,
   tapFront: 1.6,
   puff: 0.05,
-  /** Wake splat behind the stern: offset u, radius u, strength. */
-  wake: { offset: 2.5, radius: 1.2, strength: 0.35 },
+  /**
+   * Foam wake (TASK-192 D4): small flat foam discs, NOT the water foam-trail texture. That texture has
+   * 3 u texels (384 u / 256), so any splat is ≥ 2 u wide and per-step splats saturate into a ~10 u white
+   * band. Here a pair of dots is laid every `spacing` u of travel `back` u behind the origin, `side` u
+   * either side of the track; each dot drifts outward `spread` u/s (the V), grows in over `pop` of its
+   * life and shrinks away over `life` s (≈ 3 u/s × 2.8 s ≈ 8 u ≈ 2 boat lengths). `radius` u is the
+   * disc radius (± `jitter`). None below `minTier` (T0: boats are specks).
+   */
+  wake: {
+    spacing: 0.7,
+    back: 2.2,
+    side: 0.3,
+    spread: 0.45,
+    radius: 0.3,
+    jitter: 0.3,
+    life: 2.8,
+    pop: 0.12,
+    lift: 0.12,
+    minTier: 1,
+  },
   /** Fallback route: ring radius beyond the island, minimum depth, loop spacing. */
   route: { margin: 25, minDepth: 2, spacing: 2, count: 2, pushStep: 2, pushMax: 80 },
 } as const;
@@ -195,8 +255,11 @@ export const LIFE_COLORS = {
 export const LAND = {
   /** First zoom tier at which each kind is alive (ART_BIBLE §6: villagers/sheep T2, crabs T3). */
   minTier: { villagers: 2, cats: 2, sheep: 2, crabs: 3 },
-  /** Instance size multiplier per kind (chunky-cute: figures are drawn bigger than life). */
-  size: { villagers: 1.3, cats: 1.25, sheep: 1.25, crabs: 1.4 },
+  /**
+   * Instance size multiplier per kind (chunky-cute: figures are drawn bigger than life). TASK-192
+   * D11: sheep/villagers/cats were 2–10 px at the village zoom; they must read as a blob + head.
+   */
+  size: { villagers: 1.7, cats: 1.65, sheep: 2.1, crabs: 1.4 },
   /** Reveal: staggered spring-in (BLOOM_IN k/c), then a short ease-out when the tier drops. */
   appearStagger: 0.22,
   outSeconds: 0.14,
@@ -241,7 +304,17 @@ export const VILLAGERS = {
   /** Trips: chance to head to a dock end, else a random door / hub. */
   dockChance: 0.2,
   /** Wave at a camera within `radius` u (tier ≥ `minTier`): spring raise, then lower. */
-  wave: { radius: 25, minTier: 3, seconds: 2.2, k: 200, c: 16, lower: 0.35, cooldown: [9, 16] },
+  wave: {
+    radius: 25,
+    minTier: 3,
+    seconds: 2.2,
+    /** Click emote (`Villagers.wave`): the same wave, shorter (TASK-192). */
+    emoteSeconds: 1.5,
+    k: 200,
+    c: 16,
+    lower: 0.35,
+    cooldown: [9, 16],
+  },
   /** Turn rate toward the heading / camera (1/s). */
   turnRate: 9,
   /** Walkable land: nodes below this terrain height are dropped (boardwalks over water). */
@@ -279,6 +352,8 @@ export const SHEEP = {
   headLambda: 4,
   /** Flock radius at spawn (u). */
   spawnSpread: 2.2,
+  /** Flock homes are taken from the nearest `anchorBand`-u band (barn / windmill / hub) outward. */
+  anchorBand: 6,
   /** Candidate flock homes must have this fraction of the ring (radius 3 u) on meadow. */
   homeCover: 0.85,
   pickRadius: 0.6,

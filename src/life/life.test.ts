@@ -5,6 +5,7 @@ import { Scope } from '../core/scope.ts';
 import { QUALITY_PRESETS } from '../core/quality.ts';
 import type { Quality } from '../core/params.ts';
 import { SWELL } from '../content/anim.ts';
+import { SAILBOAT } from '../content/life.ts';
 import { swellY } from '../shared/fields.ts';
 import { generateWorld, heightAt, Zone, type WorldData } from '../world/index.ts';
 import { AmbientScheduler } from './ambient.ts';
@@ -12,6 +13,7 @@ import type { AgentKind } from './agents.ts';
 import { createLife, type LifeSystem } from './index.ts';
 import { buildFish, buildGull } from './geo/creatures.ts';
 import { sailboatGeometry } from './boats.ts';
+import { WAKE_PAIRS, WakeFoam } from './wake.ts';
 
 // Tests measure wall time; the life code itself never reads a clock.
 // eslint-disable-next-line no-restricted-properties
@@ -157,21 +159,69 @@ describe('life: boats', () => {
     expect(minDepth).toBeGreaterThan(1.2);
   });
 
-  it('emits at most one wake splat per sailboat per step, behind the heading', () => {
+  it('wake: foam-dot pairs stamped by distance travelled, none at T0, no water-texture splats', () => {
     const r = rig();
     const sb = r.life.kinds.sailboats!;
+    const foam = sb.foam;
     run(r, 3);
+    r.life.update(FIXED_STEP, 1);
     r.splats.length = 0;
-    run(r, 1);
-    expect(r.splats.length).toBeLessThanOrEqual(sb.capacity);
-    expect(r.splats.length).toBeGreaterThan(0);
-    // behind: the splat is ~2.5 u from the boat
-    const near = r.splats.filter((s) => {
-      for (let i = 0; i < sb.capacity; i++)
-        if (Math.abs(Math.hypot(s.x - sb.x[i], s.z - sb.z[i]) - 2.5) < 0.05) return true;
-      return false;
-    });
-    expect(near.length).toBe(r.splats.length);
+    // T0: boats are specks, no wake is laid
+    run(r, 90);
+    r.life.update(FIXED_STEP, 1);
+    expect(foam.alive(sb.simT)).toBe(0);
+    expect(foam.mesh.count).toBe(0);
+    r.tier.v = 1;
+    run(r, 30 * 20);
+    r.life.update(FIXED_STEP, 1);
+    // the 256² foam-trail texture has 3 u texels: any splat there is a smear, so none are made
+    expect(r.splats.length).toBe(0);
+    const alive = foam.alive(sb.simT);
+    expect(alive).toBeGreaterThan(sb.capacity * 4);
+    expect(alive).toBeLessThanOrEqual(sb.capacity * WAKE_PAIRS);
+    // two dots per pair, one draw call
+    expect(foam.mesh.count).toBeGreaterThan(0);
+    expect(foam.mesh.count).toBeLessThanOrEqual(foam.capacity);
+  });
+
+  it('wake: a short V of small dots — drifts apart, shrinks away within ~2 boat lengths and 3 s', () => {
+    const w = SAILBOAT.wake;
+    expect(w.life).toBeLessThanOrEqual(3);
+    expect(w.life * SAILBOAT.speed).toBeLessThanOrEqual(2.2 * 4); // sailboat ≈ 4 u long
+    expect(w.radius * (1 + w.jitter)).toBeLessThanOrEqual(0.5); // small dots, ≪ the 2–3 u smear
+    expect(WakeFoam.scaleAt(-0.1)).toBe(0);
+    expect(WakeFoam.scaleAt(w.life)).toBe(0);
+    expect(WakeFoam.scaleAt(w.life * 0.5)).toBeGreaterThan(WakeFoam.scaleAt(w.life * 0.9));
+    expect(WakeFoam.scaleAt(w.life * w.pop)).toBeGreaterThan(WakeFoam.scaleAt(w.life * 0.02));
+    // V: arms widen with age
+    expect(WakeFoam.armAt(2)).toBeGreaterThan(WakeFoam.armAt(0.5));
+  });
+
+  it('wake dots sit within the wake length behind the boats, deterministically', () => {
+    const grab = (): { out: number[]; near: number } => {
+      const r = rig();
+      r.tier.v = 1;
+      const sb = r.life.kinds.sailboats!;
+      run(r, 30 * 12);
+      r.life.update(FIXED_STEP, 1);
+      const m = sb.foam.mesh.instanceMatrix.array as Float32Array;
+      const w = SAILBOAT.wake;
+      const lim = w.back + WakeFoam.armAt(w.life) + SAILBOAT.speed * w.life + 1;
+      let near = 0;
+      for (let k = 0; k < sb.foam.mesh.count; k++) {
+        const x = m[k * 16 + 12];
+        const z = m[k * 16 + 14];
+        for (let i = 0; i < sb.capacity; i++)
+          if (Math.hypot(x - sb.x[i], z - sb.z[i]) < lim) {
+            near++;
+            break;
+          }
+      }
+      expect(sb.foam.mesh.count).toBeGreaterThan(0);
+      expect(near).toBe(sb.foam.mesh.count);
+      return { out: Array.from(m.slice(0, sb.foam.mesh.count * 16)), near };
+    };
+    expect(grab().out).toEqual(grab().out);
   });
 
   it('moored rowboats bob with differing phases', () => {
