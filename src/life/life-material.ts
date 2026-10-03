@@ -1,7 +1,7 @@
 import type * as THREE from 'three';
 import { GULLS } from '../content/life.ts';
 import { SHARED } from '../render/uniforms.ts';
-import { makeLitMaterial, type LitMaterial } from '../render/materials/factory.ts';
+import { makeLitMaterial, marAttr, type LitMaterial } from '../render/materials/factory.ts';
 
 /**
  * One shared program for every creature that animates in the vertex shader (gulls' wings, the land
@@ -18,9 +18,10 @@ import { makeLitMaterial, type LitMaterial } from '../render/materials/factory.t
 
 const FLAP_CYCLE = GULLS.flaps * GULLS.flapPeriod + GULLS.glide;
 
+// fixed locations: gulls rely on limb's default (w = -1), see ATTR_LOCATION
 const PARS = /* glsl */ `
-attribute vec4 limb;
-attribute vec3 aGait;
+${marAttr('vec4', 'limb')}
+${marAttr('vec3', 'aGait')}
 uniform float uTintAll;
 `;
 
@@ -109,6 +110,8 @@ export function makeLifeMaterial(name: string, tintAll: boolean): LitMaterial {
   const orig = mat.onBeforeCompile.bind(mat);
   mat.onBeforeCompile = (shader: THREE.WebGLProgramParametersWithUniforms, renderer) => {
     orig(shader, renderer);
+    // no windmill branch: keeps the creature program at 15 of 16 vertex attributes (D-013)
+    delete (shader.defines as Record<string, unknown>).MAR_SPIN;
     shader.uniforms.uTime = SHARED.uTime;
     shader.uniforms.uMotionScale = SHARED.uMotionScale;
     shader.uniforms.uTintAll = tint;

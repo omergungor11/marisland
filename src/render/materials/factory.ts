@@ -11,8 +11,11 @@ import { MIST_GLSL } from '../shaders/chunks/mist.glsl.ts';
 
 /**
  * Lit material factory (D-003, ARCHITECTURE §3 "Materials"): MeshLambertMaterial
- * + vertex colours, patched with onBeforeCompile behind fixed defines so there is
- * exactly one program per feature set (customProgramCacheKey = feature key).
+ * + vertex colours, patched with onBeforeCompile. Every lit material compiles the SAME
+ * program (customProgramCacheKey = `mar-lit`, `:s` for smooth normals): the look-changing
+ * features `bloomIn` and `rim` are per-material uniform switches, windmill spin keys off
+ * the `aSpin` attribute (default 0 = off), and wind / dither / emissive are free no-ops
+ * without their attribute / fade distances (D-016: program budget).
  *
  * Geometry attributes read (all optional — `defaultAttributeValues` keeps the
  * neutral value when absent): `wind` (sway weight 0..1), `ao` (×vColor),
@@ -29,8 +32,8 @@ export interface LitFeatures {
   /** Smooth normals (creatures, clouds-ish props); default is faceted. */
   smooth?: boolean;
   /**
-   * Windmill blades: vertices with `aSpin.w > 0.5` rotate about local +z through
-   * `aSpin.xyz` (hub). Orthogonal flag like `smooth` (adds a `:spin` key).
+   * Informational: windmill blades (vertices with `aSpin.w > 0.5`) rotate about local +z
+   * through `aSpin.xyz` (hub). Every lit program carries the branch; not part of the key.
    */
   spin?: boolean;
 }
@@ -52,30 +55,20 @@ export interface LitOptions {
 type FeatureFlag = 'wind' | 'bloomIn' | 'dither' | 'emissive' | 'rim';
 
 /**
- * The only variants the project compiles (prewarm list). Any request resolves to
- * the first variant that is a superset of it; `bloomIn` and `rim` must match
- * exactly (they change the look), while `wind`, `emissive` and `dither` are free
- * no-ops without their attribute/uniform, so they are folded in to keep the
- * program count at 4 (×2 where `smooth` is used).
+ * The one lit program (prewarm list): every feature is compiled in. `bloomIn` and `rim`
+ * change the look, so they are uniform switches (`uMarBloomIn` / `uMarRim`, per material);
+ * `wind`, `emissive`, `dither` and spin are no-ops without their attribute / fade distances.
+ * Before D-016 these were 4 define variants (+ `:spin`), i.e. up to 5 colour + 2 depth programs.
  */
-export const MATERIAL_VARIANTS: readonly {
-  id: string;
-  features: Required<Pick<LitFeatures, FeatureFlag>>;
-}[] = [
-  { id: 'lit', features: { wind: true, bloomIn: false, dither: true, emissive: true, rim: false } },
-  { id: 'rim', features: { wind: true, bloomIn: false, dither: true, emissive: true, rim: true } },
-  {
-    id: 'bloom',
-    features: { wind: true, bloomIn: true, dither: true, emissive: true, rim: false },
-  },
-  {
-    id: 'bloom-rim',
-    features: { wind: true, bloomIn: true, dither: true, emissive: true, rim: true },
-  },
-];
+export const PROGRAM_FEATURES: Readonly<Record<FeatureFlag, true>> = {
+  wind: true,
+  bloomIn: true,
+  dither: true,
+  emissive: true,
+  rim: true,
+};
 
 const FLAGS: readonly FeatureFlag[] = ['wind', 'bloomIn', 'dither', 'emissive', 'rim'];
-const EXACT: readonly FeatureFlag[] = ['bloomIn', 'rim'];
 
 const DEFINE: Record<FeatureFlag, string> = {
   wind: 'MAR_WIND',
@@ -86,38 +79,46 @@ const DEFINE: Record<FeatureFlag, string> = {
 };
 
 export interface ResolvedVariant {
-  id: string;
+  /** Requested features: `bloomIn` / `rim` drive the material's uniform switches. */
   features: Record<FeatureFlag, boolean>;
   smooth: boolean;
   spin: boolean;
-  /** Program cache key (shared by every material of this variant). */
+  /** Program cache key (shared by every material with the same normals mode). */
   key: string;
 }
 
 export function resolveVariant(req: LitFeatures): ResolvedVariant {
-  for (const v of MATERIAL_VARIANTS) {
-    let ok = true;
-    for (const fl of FLAGS) {
-      const want = !!req[fl];
-      const has = v.features[fl];
-      if (EXACT.includes(fl) ? want !== has : want && !has) {
-        ok = false;
-        break;
-      }
-    }
-    if (ok) {
-      const smooth = !!req.smooth;
-      const spin = !!req.spin;
-      return {
-        id: v.id,
-        features: { ...v.features },
-        smooth,
-        spin,
-        key: `mar-lit:${v.id}${smooth ? ':s' : ''}${spin ? ':spin' : ''}`,
-      };
-    }
-  }
-  throw new Error(`no material variant covers ${JSON.stringify(req)}`);
+  const features = {} as Record<FeatureFlag, boolean>;
+  for (const fl of FLAGS) features[fl] = !!req[fl];
+  const smooth = !!req.smooth;
+  return { features, smooth, spin: !!req.spin, key: `mar-lit${smooth ? ':s' : ''}` };
+}
+
+/**
+ * Fixed vertex-attribute locations for every attribute that may be absent from a geometry and
+ * fall back to `defaultAttributeValues` (D-016). three writes those fallbacks with
+ * `gl.vertexAttrib*` only when it (re)builds a VAO, but generic attribute values are CONTEXT
+ * state, not VAO state: the last program to set location L wins for every later draw. With
+ * linker-assigned locations, merging programs reshuffled them and e.g. `ao` read another
+ * attribute's 0 (black props) / `aSpin.w` read a float default's implicit w = 1 (spinning
+ * houses). Pinning each such attribute to its own location, the same in every program that
+ * declares it (lit, depth, creature), means location L only ever holds that attribute's own
+ * default. Built-ins (position, normal, color, instanceMatrix ×4, instanceColor = 8) take 0–7.
+ */
+export const ATTR_LOCATION = {
+  wind: 8,
+  ao: 9,
+  aSeed: 10,
+  aAppear: 11,
+  emissive: 12,
+  aSpin: 13,
+  limb: 14,
+  aGait: 15,
+} as const;
+
+/** `layout(location = N) attribute <type> <name>;` (three defines `attribute` as `in`). */
+export function marAttr(type: string, name: keyof typeof ATTR_LOCATION): string {
+  return `layout(location = ${ATTR_LOCATION[name]}) attribute ${type} ${name};`;
 }
 
 const f = (v: number): string => v.toFixed(6);
@@ -134,11 +135,12 @@ uniform float uMotionScale;
 uniform vec3 uCameraPos;
 uniform float uFadeNear;
 uniform float uFadeFar;
-attribute float wind;
-attribute float aSeed;
-attribute float aAppear;
+uniform float uMarBloomIn;
+${marAttr('float', 'wind')}
+${marAttr('float', 'aSeed')}
+${marAttr('float', 'aAppear')}
 #ifdef MAR_SPIN
-attribute vec4 aSpin;
+${marAttr('vec4', 'aSpin')}
 #endif
 varying float vFade;
 ${FIELDS_GLSL}
@@ -175,10 +177,12 @@ const VERTEX_DISPLACE = /* glsl */ `
   #ifdef MAR_BLOOM_IN
   // reduced motion (uMotionScale < 1): bloom-in becomes a dither fade, no scale spring
   float marBloomD = 1.0;
-  if (uMotionScale < 0.999) {
-    marBloomD = smoothstep(0.0, ${f(BLOOM_IN.ditherMs / 1000)}, uTime - aAppear);
-  } else {
-    transformed *= marSpringIn(uTime - aAppear, ${f(BLOOM_IN.k)}, ${f(BLOOM_IN.c)});
+  if (uMarBloomIn > 0.5) {
+    if (uMotionScale < 0.999) {
+      marBloomD = smoothstep(0.0, ${f(BLOOM_IN.ditherMs / 1000)}, uTime - aAppear);
+    } else {
+      transformed *= marSpringIn(uTime - aAppear, ${f(BLOOM_IN.k)}, ${f(BLOOM_IN.c)});
+    }
   }
   #endif
   #ifdef MAR_WIND
@@ -216,9 +220,9 @@ const VERTEX_DISPLACE = /* glsl */ `
 `;
 
 const VERTEX_COLOR_PARS = /* glsl */ `
-attribute float ao;
+${marAttr('float', 'ao')}
 #ifdef MAR_EMISSIVE
-attribute float emissive;
+${marAttr('float', 'emissive')}
 #endif
 varying float vMarEmissive;
 varying vec2 vMarCloudXZ;
@@ -280,6 +284,7 @@ varying float vMarWorldY;
 varying float vMarHover;
 uniform vec3 uHoverCol;
 uniform float uTime;
+uniform float uMarRim;
 ${FIELDS_GLSL}
 ${SHARED_LIT_GLSL.fragmentPars}
 ${CLOUD_SHADOW_GLSL}
@@ -317,7 +322,7 @@ const FRAG_OUTGOING = /* glsl */ `
   ${SHARED_LIT_GLSL.shadowTint}
   #endif
   #ifdef MAR_RIM
-  ${SHARED_LIT_GLSL.rim}
+  if (uMarRim > 0.5) ${SHARED_LIT_GLSL.rim}
   #endif
   #ifdef MAR_EMISSIVE
     // night glow: mask × lamps (staggered, flickering; vertex) × gain → crosses the bloom threshold
@@ -353,10 +358,12 @@ function replaceOnce(src: string, find: string, insert: string, where: 'after' |
     : src.slice(0, i) + insert + src.slice(i);
 }
 
-function defineMap(v: ResolvedVariant): Record<string, string> {
+function defineMap(): Record<string, string> {
   const d: Record<string, string> = {};
-  for (const fl of FLAGS) if (v.features[fl]) d[DEFINE[fl]] = '';
-  if (v.spin) d.MAR_SPIN = '';
+  for (const fl of FLAGS) d[DEFINE[fl]] = '';
+  // every lit program carries the windmill branch (aSpin.w defaults to 0); the creature
+  // material drops it (life-material.ts) to stay inside the 16 vertex attributes
+  d.MAR_SPIN = '';
   if (SHADE.enabled) d.MAR_SHADOW_TINT = '';
   return d;
 }
@@ -366,8 +373,12 @@ export interface FadeUniforms {
   uFadeFar: THREE.IUniform<number>;
 }
 
-function sharedVertexUniforms(fade: FadeUniforms): Record<string, THREE.IUniform> {
+function sharedVertexUniforms(
+  fade: FadeUniforms,
+  v: ResolvedVariant,
+): Record<string, THREE.IUniform> {
   return {
+    uMarBloomIn: { value: v.features.bloomIn ? 1 : 0 },
     uTime: SHARED.uTime,
     uWind: SHARED.uWind,
     uGustSpeed: SHARED.uGustSpeed,
@@ -398,9 +409,10 @@ export class LitMaterial extends THREE.MeshLambertMaterial {
       uFadeFar: { value: opts.fadeFar ?? 2e6 },
     };
     const lampMode = new THREE.Vector2(opts.lamps?.stagger ? 1 : 0, opts.lamps?.lateOff ? 1 : 0);
-    const defines = defineMap(variant);
+    const defines = defineMap();
     const uniforms: Record<string, THREE.IUniform> = {
-      ...sharedVertexUniforms(this.fade),
+      ...sharedVertexUniforms(this.fade, variant),
+      uMarRim: { value: variant.features.rim ? 1 : 0 },
       uHorizon: SHARED.uHorizon,
       uShadowTint: SHARED.uShadowTint,
       uNight: SHARED.uNight,
@@ -464,8 +476,8 @@ export function makeDepthMaterial(
   const fadeU: FadeUniforms = fade ?? { uFadeNear: { value: 1e6 }, uFadeFar: { value: 2e6 } };
   const mat = new THREE.MeshDepthMaterial();
   mat.name = `${variant.key}:depth`;
-  const defines = defineMap(variant);
-  const uniforms = sharedVertexUniforms(fadeU);
+  const defines = defineMap();
+  const uniforms = sharedVertexUniforms(fadeU, variant);
   (mat as unknown as { defaultAttributeValues: typeof DEFAULT_ATTRS }).defaultAttributeValues =
     DEFAULT_ATTRS;
   mat.onBeforeCompile = (shader) => {
@@ -486,10 +498,5 @@ export function makeDepthMaterial(
 
 /** Every program key the factory can produce (for prewarm / budget accounting). */
 export function allVariantKeys(withSmooth = false): string[] {
-  const out: string[] = [];
-  for (const v of MATERIAL_VARIANTS) {
-    out.push(`mar-lit:${v.id}`);
-    if (withSmooth) out.push(`mar-lit:${v.id}:s`);
-  }
-  return out;
+  return withSmooth ? ['mar-lit', 'mar-lit:s'] : ['mar-lit'];
 }

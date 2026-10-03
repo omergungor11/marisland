@@ -2,6 +2,29 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-017: One lit program, one depth program; optional attributes on fixed locations — 2026-10-03
+
+**Decision** (TASK-191 program audit):
+- The lit factory compiles ONE program (`mar-lit`; `:s` smooth): `bloomIn` / `rim` are per-material
+  uniforms (`uMarBloomIn`, `uMarRim`), windmill spin is a branch on `aSpin.w` in every lit / depth
+  program (the creature material drops it: 15 of 16 attributes). Was lit / rim / bloom / bloom-rim /
+  bloom-rim:spin + 2 depth variants. Clear frames bit-identical.
+- Terrain chunks are 1-instance `InstancedMesh`es (identity instance matrix — exact) with the
+  factory depth material, so terrain shadows share the props' instanced depth program.
+- `wind, ao, aSeed, aAppear, emissive, aSpin, limb, aGait` are declared `layout(location = 8…15)`
+  (`ATTR_LOCATION`). three writes `defaultAttributeValues` with `gl.vertexAttrib*` only when it builds
+  a VAO, but generic attribute values are context state: with linker-assigned locations another
+  program's default leaked in. Before this fix fish read `ao = 0` (sailboat/prop `emissive` default at
+  the same location) and rendered black; they now show their content colours (W8/W9 fish pixels
+  differ — intended).
+- Result (programs): low 12 → 9, medium 20–22 → 15–17, high (T3 + DOF) 28 → 24.
+**Rationale**: D-010 budgets (12 / 20 / 24) were exceeded on medium and high; a uniform branch costs
+nothing measurable, a program costs a compile + a prewarm stall.
+**Alternatives**: raising the budgets; merging the high tilt-shift pass into the bloom pass (changes
+bloom input in tilt bands); sailboats with a white `instanceColor` would merge the fish program too
+(-1, life/ owner).
+**Impact**: ARCHITECTURE §3 Materials, threejs-stylized skill.
+
 ## D-015: Weather = seeded FSM → EnvState deltas; mist is a height-fog term; rain fog ×1.3 — 2026-10-03
 
 **Decision** (TASK-172):

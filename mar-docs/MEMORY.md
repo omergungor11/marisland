@@ -32,8 +32,15 @@
 - `pkill -f` from an agent shell matches the shell itself (exit 144) — kill preview servers by pid
 - Never `git stash` in the shared tree (even for a quick baseline): it removes other agents' WIP files until
   `stash pop`. Baseline via a worktree instead
-- Every program is compiled twice on medium/high: `compileAsync(scene, camera)` targets the canvas (srgb) while
-  frames render into the composer target (srgb-linear) → `info.programs` ≈ 2× real variants (TASK-153 finding)
+- Prewarm compiles against the composer target (fixed in app.ts): `programs` at ready == after 60 frames (checked
+  in the D-016 audit). Program inventory: `tsx scripts/programs-dump.ts <url> "<query>"` (FULL=1 keys,
+  ATTRS=1 attribute locations + generic values, MESHES=1 meshes relying on default attributes)
+- three `defaultAttributeValues` are applied only at VAO build and generic attribute values are context state →
+  any attribute that may be missing from a geometry needs a fixed `layout(location)` (`ATTR_LOCATION`, D-016),
+  otherwise another program's default leaks in (fish were black for that reason)
+- Program key gotchas: `instanceColor` present/absent, `transparent` (opaque flag), Mesh vs InstancedMesh and a
+  missing `normal` each split a program even with the same `customProgramCacheKey`
+- The session scratchpad is shared by all agents: use a unique sub-dir (e.g. `prog-base-wow/`), not `base-wow/`
 - NEVER `git add -A src` (or `git add src/render`) while agents are active — it sweeps their half-done files
   into HEAD and turns CI red (happened twice). Stage explicit paths; agents never commit
 - Parallel agents share ONE working tree: `pnpm shots --tag=<name> --port=<n>` gives each its own `dist-<tag>/` and
