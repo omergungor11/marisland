@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { SHARED } from '../uniforms.ts';
 import { FIELDS_GLSL } from '../shaders/chunks/fields.glsl.ts';
 import { BLOOM_IN } from '../../content/anim.ts';
+import { MIST_GLSL } from '../shaders/chunks/mist.glsl.ts';
 
 /**
  * Contact-shadow blobs (ART_BIBLE §1): a soft dark disc under every grounded prop,
@@ -50,6 +51,9 @@ export function blobMaterial(): THREE.ShaderMaterial {
       uDebugMask: SHARED.uDebugMask,
       uSpring: { value: new THREE.Vector2(BLOOM_IN.k, BLOOM_IN.c) },
       uMotionScale: SHARED.uMotionScale,
+      uMist: SHARED.uMist,
+      uMistColor: SHARED.uMistColor,
+      uMistMax: SHARED.uMistMax,
     },
     vertexShader: /* glsl */ `
       ${FIELDS_GLSL}
@@ -59,6 +63,7 @@ export function blobMaterial(): THREE.ShaderMaterial {
       uniform float uMotionScale;
       varying vec2 vUv;
       varying float vFadeIn;
+      varying vec3 vWorld;
       void main() {
         vUv = uv;
         // reduced motion: the scale spring becomes an alpha fade (matches the lit materials' dither)
@@ -68,6 +73,7 @@ export function blobMaterial(): THREE.ShaderMaterial {
         float s = reduced ? 1.0 : marSpringIn(bt, uSpring.x, uSpring.y);
         vec3 p = position * s;
         vec4 wp = modelMatrix * instanceMatrix * vec4(p, 1.0);
+        vWorld = wp.xyz;
         gl_Position = projectionMatrix * viewMatrix * wp;
       }
     `,
@@ -77,10 +83,14 @@ export function blobMaterial(): THREE.ShaderMaterial {
       uniform float uDebugMask;
       varying vec2 vUv;
       varying float vFadeIn;
+      varying vec3 vWorld;
+      ${MIST_GLSL}
       void main() {
         if (uDebugMask > 0.5) discard;
         float r = length(vUv);
         float a = (1.0 - smoothstep(0.55, 1.0, r)) * 0.25 * (1.0 - 0.5 * uNight) * vFadeIn;
+        // the low weather mist (TASK-172) hides the contact shadow with the ground under it
+        if (uMist.x > 0.0) a *= 1.0 - marMist(vWorld, cameraPosition);
         if (a < 0.01) discard;
         gl_FragColor = vec4(uShadowTint * 0.6, a);
       }

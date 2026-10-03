@@ -2,6 +2,33 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-015: Weather = seeded FSM → EnvState deltas; mist is a height-fog term; rain fog ×1.3 — 2026-10-03
+
+**Decision** (TASK-172):
+- `env/weather.ts`: a seeded Markov FSM {clear, cloudy, rain, fog} over render time. Transition `i`
+  draws its next state and dwell from `rng.fork('weather', i)` only (frame-rate independent).
+  `?weather=` forces a state (instant, no auto cycle); the HUD button blends to a state over 10 s
+  and holds it one dwell; capture (`freeze=1`) applies changes instantly. The blend weights fold
+  the per-state looks (`content/weather.ts`) into one `WeatherFx`, applied to EnvState after
+  `sampleEnv` and to the shared uniforms. A fully clear blend is the exact identity, so clear
+  frames are bit-identical to the pre-weather renderer (checked: every clear dev/wow shot 0 px diff).
+- Low mist band = analytic exponential height fog (density at sea level, e-folding 3–4 u)
+  integrated camera → fragment in the terrain / prop / water / contact-blob programs
+  (`chunks/mist.glsl.ts`, CPU twin `mistAmount`). No mesh, no program; over open sea the amount
+  depends only on the view pitch, so one density reads the same at every zoom tier.
+- Rain = one InstancedMesh of dithered streak quads in a camera-local wrapped box, drawn with the
+  puff material (the puff program got a rain branch, `aKind` 4) → +1 draw call while it rains,
+  0 programs (low was exactly at its 12-program budget). Ripples are a procedural term in the
+  water shader.
+- Weather cloud cover switches extra cells of the periodic cloud field on (one fading in at a
+  time; `uCloudCover`), so cloud meshes and their shadows stay aligned.
+- Bible weather saturation (−15 % / −20 %) is applied to the sky and fog colours; the light on the
+  land only takes `lightTint` of it and the post grade a small delta. Rain fog density ×1.8 → ×1.3:
+  with ×1.8 the W10 foliage measured 34 % HSL saturation (criterion ≥ 40 %); with ×1.3 it is 42 %.
+**Rationale**: ARCHITECTURE §7; W10 is a pinned shot; program budget on medium is already over.
+**Impact**: ART_BIBLE §2 weather table (fog ×1.3, saturation note); +1 draw call in rain, no new
+program on any tier.
+
 ## D-014: Click bursts ride the creature program; hover is a uniform; reduced motion keys off uMotionScale — 2026-10-03
 
 **Decision**: (1) Click-reaction particles (hearts, sparkles, leaves, "!", puffs) are flat glyph

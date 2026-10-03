@@ -65,6 +65,7 @@ export function createSkyProgramMaterial(
       uNight: SHARED.uNight,
       uTime: SHARED.uTime,
       uDebugMask: SHARED.uDebugMask,
+      uWeather: SHARED.uWeather,
       uSun: {
         value: new THREE.Vector4(
           SKY.sunDiscDeg * 0.5 * DEG,

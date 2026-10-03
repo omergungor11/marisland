@@ -7,6 +7,7 @@ import { NIGHT, SHADE } from '../../content/lighting.ts';
 import { CLOUD_SHADOW_GLSL } from '../shaders/chunks/cloud-shadow.glsl.ts';
 import { NIGHT_GLSL, POOL_GAIN } from '../shaders/chunks/night.glsl.ts';
 import { HOVER_RADIUS, HOVER_UNIFORMS } from './hover.ts';
+import { MIST_GLSL } from '../shaders/chunks/mist.glsl.ts';
 
 /**
  * Lit material factory (D-003, ARCHITECTURE §3 "Materials"): MeshLambertMaterial
@@ -283,6 +284,20 @@ ${FIELDS_GLSL}
 ${SHARED_LIT_GLSL.fragmentPars}
 ${CLOUD_SHADOW_GLSL}
 ${NIGHT_GLSL}
+${MIST_GLSL}
+`;
+
+/**
+ * Low mist band (TASK-172): after three's fog, in the same (output) colour space as fogColor.
+ * uMist.x == 0 → marMist returns 0 before any math (clear weather is unchanged).
+ */
+const FRAG_MIST = /* glsl */ `
+  #ifdef USE_FOG
+  if (uMist.x > 0.0 && uDebugMask < 0.5) {
+    float marMi = marMist(vec3(vMarCloudXZ.x, vMarWorldY, vMarCloudXZ.y), cameraPosition);
+    gl_FragColor.rgb = mix(gl_FragColor.rgb, linearToOutputTexel(vec4(uMistColor, 1.0)).rgb, marMi);
+  }
+  #endif
 `;
 
 /** Cloud shadows (TASK-153): multiply the lit colour before tint/rim/emissive are added. */
@@ -400,6 +415,10 @@ export class LitMaterial extends THREE.MeshLambertMaterial {
       uCloudShadow: SHARED.uCloudShadow,
       uCloudSun: SHARED.uCloudSun,
       uCloudSeed: SHARED.uCloudSeed,
+      uCloudCover: SHARED.uCloudCover,
+      uMist: SHARED.uMist,
+      uMistColor: SHARED.uMistColor,
+      uMistMax: SHARED.uMistMax,
     };
     this.onBeforeCompile = (shader) => {
       Object.assign(shader.uniforms, uniforms);
@@ -418,6 +437,7 @@ export class LitMaterial extends THREE.MeshLambertMaterial {
       fs = replaceOnce(fs, '#include <clipping_planes_fragment>', FRAG_DITHER, 'after');
       fs = replaceOnce(fs, '#include <opaque_fragment>', FRAG_CLOUD, 'before');
       fs = replaceOnce(fs, '#include <opaque_fragment>', FRAG_OUTGOING, 'before');
+      fs = replaceOnce(fs, '#include <fog_fragment>', FRAG_MIST, 'after');
       shader.fragmentShader = fs;
     };
   }

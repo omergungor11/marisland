@@ -7,6 +7,7 @@ import { SHARED } from '../uniforms.ts';
 import type { WorldTextures } from '../world-textures.ts';
 import { CLOUD_SHADOW_GLSL } from '../shaders/chunks/cloud-shadow.glsl.ts';
 import { NIGHT_GLSL, POOL_GAIN } from '../shaders/chunks/night.glsl.ts';
+import { MIST_GLSL } from '../shaders/chunks/mist.glsl.ts';
 
 /**
  * Terrain material (D-003): MeshLambertMaterial + vertex colours, patched with
@@ -15,7 +16,8 @@ import { NIGHT_GLSL, POOL_GAIN } from '../shaders/chunks/night.glsl.ts';
  *  (b) a subtle fresnel rim × horizon colour on grazing land faces (ART_BIBLE §3),
  *  (c) scrolling caustics below y = 0 (define MAR_CAUSTICS; off on low quality),
  *  (d) the wet-sand shore lap (SDF band, 4.5 s period) that the water foam matches,
- *  (f) lantern pools at night (TASK-171, chunks/night.glsl.ts): additive warm light × albedo.
+ *  (f) lantern pools at night (TASK-171, chunks/night.glsl.ts): additive warm light × albedo,
+ *  (g) the low weather mist band after three's fog (TASK-172, chunks/mist.glsl.ts).
  * One program per quality level; all chunks share one material instance.
  */
 export interface TerrainMaterial {
@@ -37,10 +39,14 @@ export function createTerrainMaterial(
     uCloudShadow: SHARED.uCloudShadow,
     uCloudSun: SHARED.uCloudSun,
     uCloudSeed: SHARED.uCloudSeed,
+    uCloudCover: SHARED.uCloudCover,
     uLamps: SHARED.uLamps,
     uPoolTex: SHARED.uPoolTex,
     uPoolMap: SHARED.uPoolMap,
     uPoolColor: SHARED.uPoolColor,
+    uMist: SHARED.uMist,
+    uMistColor: SHARED.uMistColor,
+    uMistMax: SHARED.uMistMax,
     uTerrainSdf: { value: textures.sdf },
     uTerrainZone: { value: textures.zone },
     // xy = origin, z = 1 / cellSize, w = samples per side (texel-centre mapping)
@@ -82,6 +88,7 @@ uniform sampler2D uTerrainZone;
 uniform vec4 uTerrainGrid;
 ${CLOUD_SHADOW_GLSL}
 ${NIGHT_GLSL}
+${MIST_GLSL}
 vec2 marTerrainUv(vec2 xz) {
   return ((xz - uTerrainGrid.xy) * uTerrainGrid.z + 0.5) / uTerrainGrid.w;
 }
@@ -141,6 +148,17 @@ float marCaustic(vec2 p, float t) {
     }
   }
 #include <opaque_fragment>`,
+      )
+      .replace(
+        '#include <fog_fragment>',
+        /* glsl */ `#include <fog_fragment>
+#ifdef USE_FOG
+  if (uMist.x > 0.0) {
+    // (g) low mist band, same (output) colour space as three's fogColor
+    float marMi = marMist(vMarWorld, cameraPosition);
+    gl_FragColor.rgb = mix(gl_FragColor.rgb, linearToOutputTexel(vec4(uMistColor, 1.0)).rgb, marMi);
+  }
+#endif`,
       )
       .replace(
         '#include <dithering_fragment>',

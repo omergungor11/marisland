@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import type { EnvState } from '../env/env-state.ts';
+import { mistColor, type WeatherFx } from '../env/weather.ts';
+import { MIST } from '../content/weather.ts';
 import { GUST, SWELL } from '../content/anim.ts';
 import { POOLS } from '../content/lighting.ts';
 
@@ -43,6 +45,8 @@ export const SHARED = {
   uCloudSun: { value: new THREE.Vector4(0, 0, 0, 0) },
   /** x = salt, y = active-cell threshold, z = cell size, w = cells. */
   uCloudSeed: { value: new THREE.Vector4(0, 0, 180, 4) },
+  /** Weather cloud cover (TASK-172): x = partial-cell threshold, y = its footprint scale. */
+  uCloudCover: { value: new THREE.Vector2(0, 0) },
   // ---- sky bodies & night lights (TASK-171)
   /** True sun direction for the sky disc (may be below the horizon; uSunDir is the key light). */
   uSunSkyDir: { value: new THREE.Vector3(0, 1, 0) },
@@ -59,6 +63,19 @@ export const SHARED = {
   uPoolMap: { value: new THREE.Vector4(0, 0, 1, 0) },
   /** Lantern-pool light colour (linear, content POOLS.color). */
   uPoolColor: { value: new THREE.Color(POOLS.color) },
+  // ---- weather (TASK-172; all zero / neutral while the weather is fully clear)
+  /** x = rain 0..1 (water ripples), y = overcast veil 0..1 (sun disc, glints), z = sky fog-band
+   *  widening (sin elevation), w = lighthouse beam boost (+). */
+  uWeather: { value: new THREE.Vector4(0, 0, 0, 0) },
+  /** Low mist band (chunks/mist.glsl.ts): x = density at sea level (1/u, 0 = off), y = 1/height,
+   *  zw = noise drift offset (u). */
+  uMist: { value: new THREE.Vector4(0, 1, 0, 0) },
+  /** Mist colour (linear; the mist hue at the fog colour's luminance). */
+  uMistColor: { value: new THREE.Color(1, 1, 1) },
+  /** Mist cap 0..1. */
+  uMistMax: { value: 0 },
+  /** Post-grade weather saturation delta (read by the composer in JS; not a shader uniform). */
+  uWeatherGrade: { value: 0 },
 };
 
 export type SharedUniforms = typeof SHARED;
@@ -88,6 +105,32 @@ export function writeEnvUniforms(
   SHARED.uSkyNight.value.set(env.moonVis, env.starAlpha, env.bloom);
   SHARED.uLamps.value.set(env.lamps, env.lampsLateOff, env.beam);
 }
+
+/** Weather → shared uniforms (TASK-172). Neutral values when `fx` is fully clear. */
+export function writeWeatherUniforms(
+  fx: WeatherFx,
+  env: EnvState,
+  windDir: number,
+  time: number,
+): void {
+  SHARED.uWeather.value.set(fx.rain, fx.veil, fx.fogBand, fx.beam);
+  const mistOn = fx.mist > 0;
+  const drift = time * MIST.drift;
+  SHARED.uMist.value.set(
+    fx.mist,
+    1 / Math.max(fx.mistHeight, 1e-3),
+    mistOn ? -Math.cos(windDir) * drift : 0,
+    mistOn ? -Math.sin(windDir) * drift : 0,
+  );
+  SHARED.uMistMax.value = fx.mistMax;
+  if (mistOn) {
+    mistColor(env, _mist);
+    SHARED.uMistColor.value.setRGB(_mist.r, _mist.g, _mist.b);
+  }
+  SHARED.uWeatherGrade.value = fx.saturation;
+  SHARED.uSwell.value.x = SWELL.amplitude * fx.swell;
+}
+const _mist = { r: 1, g: 1, b: 1 };
 
 export function setWind(dir: number, strength: number): void {
   SHARED.uWind.value.set(Math.cos(dir), Math.sin(dir), strength, GUST.wavelength);
