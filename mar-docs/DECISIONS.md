@@ -2,6 +2,16 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-013: One shared creature material for gulls and land life — 2026-10-03
+
+**Decision**: Gulls, villagers, sheep, cats and crabs share a single `ShaderMaterial`
+(`src/life/life-material.ts`): per-vertex `limb` id + per-instance `aGait` (x = wing spread /
+gait amplitude, z = phase) + `instanceColor`. Creatures cast no shadows.
+**Rationale**: A separate material per kind failed to link at the 17th vertex attribute and would
+have added programs on a medium budget that is already at 20–22/20; a depth program for creature
+shadows would add one more. Limb animation stays closed-form on the GPU.
+**Alternatives**: per-kind materials (more programs), CPU skinning (per-frame uploads).
+
 ## D-012: Night lights without point lights; bloom blends ADD — 2026-10-03
 
 **Decision** (TASK-171):

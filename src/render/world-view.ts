@@ -205,7 +205,15 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     props,
     scatter,
     env,
-    system: { name: 'world-view', update, fixedUpdate: (dt) => life.fixedUpdate(dt) },
+    system: {
+      name: 'world-view',
+      update,
+      fixedUpdate: (dt) => {
+        // Warm-up runs fixed steps before the first render: keep the life camera current.
+        d.camera.getWorldPosition(_camPos);
+        life.fixedUpdate(dt);
+      },
+    },
     cameraWorld,
     hash: world.hashes.world ?? '',
     timings,

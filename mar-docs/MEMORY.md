@@ -31,7 +31,11 @@
   into HEAD and turns CI red (happened twice). Stage explicit paths; agents never commit
 - Parallel agents share ONE working tree: `pnpm shots --tag=<name> --port=<n>` gives each its own `dist-<tag>/` and
   `shots/<set>-<tag>/`; `git add src/render` can sweep up another agent's half-done files — add paths explicitly
-- `.claude/worktrees/` (Agent isolation=worktree) sits inside the repo: ignored in eslint/prettier/git
+- `.claude/worktrees/` (Agent isolation=worktree) sits inside the repo: ignored in eslint/prettier/git. The
+  harness may create the worktree from an OLD commit (not the orchestrator's HEAD) → tell every worktree agent
+  to `git merge <orchestrator-branch>` before editing, and verify with `git log -1`
+- Vertex attribute limit: a 17th attribute fails to link under SwiftShader/ANGLE — pack per-instance data
+  into vec4s (`aGait`) and share materials (D-013)
 - CSS: a second `animation` on an element replaces a `forwards`-filled pop animation → element vanishes / inline
   transform ignored. Animate an inner span, or add a `.shown` class that sets final styles after the pop
 - PropBatcher: the first `setTier`/ground-cover reveal must be instant (before the first frame) or `hardPops` > 0

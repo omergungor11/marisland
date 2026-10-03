@@ -77,7 +77,7 @@ Status flow: PENDING → IN_PROGRESS → REVIEW → COMPLETED (BLOCKED if deps u
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-161 | Villagers, cats, sheep, crabs | life | M | IN_PROGRESS | TASK-151, TASK-131 |
+| TASK-161 | Villagers, cats, sheep, crabs | life | M | COMPLETED | TASK-151, TASK-131 |
 | TASK-162 | Picking, hover, reactions, reduced motion | life | M | IN_PROGRESS | TASK-161 |
 
 ### M8 — Day/night & weather
@@ -86,7 +86,7 @@ Status flow: PENDING → IN_PROGRESS → REVIEW → COMPLETED (BLOCKED if deps u
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
 | TASK-171 | EnvState, sky bodies, night emissives, beam | shader | M | COMPLETED | TASK-104, TASK-132 |
-| TASK-172 | Weather FSM, rain, ripples, mist | shader | M | PENDING | TASK-171 |
+| TASK-172 | Weather FSM, rain, ripples, mist | shader | M | IN_PROGRESS | TASK-171 |
 
 ### M9 — Camera/HUD/photo
 *HUD, mobile, photo*
