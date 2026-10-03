@@ -94,6 +94,11 @@ export class TriBuilder {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3));
     g.setAttribute('color', new THREE.Float32BufferAttribute(this.col, 3));
+    // explicit neutral values for the lit material's optional attributes (wind 0, ao 1, emissive 0)
+    const n = this.pos.length / 3;
+    g.setAttribute('wind', new THREE.Float32BufferAttribute(new Float32Array(n), 1));
+    g.setAttribute('ao', new THREE.Float32BufferAttribute(new Float32Array(n).fill(1), 1));
+    g.setAttribute('emissive', new THREE.Float32BufferAttribute(new Float32Array(n), 1));
     g.computeVertexNormals();
     g.computeBoundingSphere();
     return g;

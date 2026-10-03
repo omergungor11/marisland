@@ -11,6 +11,7 @@ import { createLightRig, type LightRig } from './lighting.ts';
 import { createClouds, type CloudsView } from './clouds/clouds.ts';
 import { createLife, type LifeSystem } from '../life/index.ts';
 import { createBeacons } from './beacon.ts';
+import { createFireflies } from './particles/fireflies.ts';
 import { createEnvState, sampleEnv, type EnvState } from '../env/env-state.ts';
 import { SHARED, setWind, writeEnvUniforms } from './uniforms.ts';
 import { FOG, FOG_T0_SCALE } from '../content/lighting.ts';
@@ -88,6 +89,12 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   const settlement = appendSettlementProps(world);
   const beacons = createBeacons(world, d.scope);
   group.add(beacons.group);
+  const fireflies = createFireflies(
+    world,
+    d.quality === 'low' ? 160 : d.quality === 'medium' ? 400 : 700,
+    d.scope,
+  );
+  group.add(fireflies.mesh);
   const clouds = createClouds(world, d.quality, d.scope);
   group.add(clouds.group);
   for (const c of settlement.emitters.chimneys)

@@ -337,4 +337,25 @@ describe('critters: sheep, cats, crabs, others', () => {
     expect(tris(buildCapybara())).toBeLessThanOrEqual(90);
     void SHEEP;
   });
+
+  it('every creature geometry carries color/wind/ao/emissive and is not dark', () => {
+    const geos = [
+      buildVillager(),
+      buildCat(),
+      buildCatTail(),
+      buildSheep(),
+      buildCrab(),
+      buildCrabClaws(),
+      buildDuck(),
+      buildCapybara(),
+    ];
+    for (const g of geos) {
+      for (const a of ['color', 'wind', 'ao', 'emissive', 'normal'])
+        expect(g.getAttribute(a)).toBeDefined();
+      const c = g.getAttribute('color');
+      let sum = 0;
+      for (let i = 0; i < c.count; i++) sum += (c.getX(i) + c.getY(i) + c.getZ(i)) / 3;
+      expect(sum / c.count).toBeGreaterThan(0.2);
+    }
+  });
 });
