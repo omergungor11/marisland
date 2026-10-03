@@ -39,7 +39,24 @@ export const CAMERA = {
   /** Click = pointer moved < px within < ms. */
   clickMaxPx: 6,
   clickMaxMs: 300,
+  /** Two clicks/taps within this many ms and px = double-click (fly-to). */
+  doubleTapMs: 350,
+  doubleTapPx: 24,
 } as const;
 
 /** Spring/ease for camera moves (cute-motion: critically damped). */
-export const CAMERA_MOVE = { flyToSeconds: 1.6, snapSeconds: 0.4 } as const;
+export const CAMERA_MOVE = {
+  flyToSeconds: 1.6,
+  snapSeconds: 0.4,
+  /** camera-controls smoothTime for fly-tos (≈ flyToSeconds / 3.5, critically damped). */
+  flySmoothTime: 0.45,
+  /** Idle orbit eases in over this many seconds (no sudden start). */
+  orbitRampSeconds: 2.5,
+  /** Island fly-to: sphere radius × this, distance clamp (u). */
+  islandFitScale: 1.35,
+  islandMaxDist: 380,
+  /** Ray-march step (u) when picking an island under the cursor. */
+  pickStep: 2,
+  /** A hit within radius × this of an island centre picks it (shallows count). */
+  pickSlack: 1.3,
+} as const;

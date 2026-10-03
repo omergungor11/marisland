@@ -27,4 +27,21 @@ describe('params', () => {
     expect(p.debug).toBe('mask');
     expect(p.weather).toBe('rain');
   });
+  it('parses HUD panel and intro capture time', () => {
+    const d = parseParams('');
+    expect(d.panel).toBe('');
+    expect(Number.isNaN(d.introt)).toBe(true);
+    expect(d.intro).toBe(true);
+    expect(d.rm).toBe(false);
+    const p = parseParams('?panel=photo&introt=4.5&intro=0&rm=1');
+    expect(p.panel).toBe('photo');
+    expect(p.introt).toBeCloseTo(4.5);
+    expect(p.intro).toBe(false);
+    expect(p.rm).toBe(true);
+    expect(parseParams('?panel=settings').panel).toBe('settings');
+    expect(parseParams('?panel=nope').panel).toBe('');
+    expect(Number.isNaN(parseParams('?introt=-1').introt)).toBe(true);
+    expect(Number.isNaN(parseParams('?introt=abc').introt)).toBe(true);
+    expect(parseParams('?introt=0').introt).toBe(0);
+  });
 });

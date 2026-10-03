@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 /**
- * Screenshot harness: `pnpm shots [ci|dev|wow] [--assert] [--gpu] [--no-build] [--only=ID,ID] [--base=URL]
+ * Screenshot harness: `pnpm shots [ci|dev|wow|intro] [--assert] [--gpu] [--no-build] [--only=ID,ID] [--base=URL]
  *   [--tag=name] [--port=4173]` — `--tag` builds into dist-<tag>/ and writes shots/<set>-<tag>/ so parallel
  *   agents don't collide; pair it with a distinct `--port`.
  * Writes shots/<set>/{<id>.png, <id>+dt.png, <id>.mask.png, manifest.json, contact.jpg}.
@@ -21,7 +21,7 @@ const flag = (n: string): boolean => args.includes(`--${n}`);
 const opt = (n: string): string | undefined =>
   args.find((a) => a.startsWith(`--${n}=`))?.slice(n.length + 3);
 const set = (args.find((a) => !a.startsWith('--')) ?? 'ci') as ShotSet;
-if (!(set in SET_DEFAULTS)) throw new Error(`unknown set "${set}" (ci|dev|wow)`);
+if (!(set in SET_DEFAULTS)) throw new Error(`unknown set "${set}" (ci|dev|wow|intro)`);
 const ASSERT = flag('assert');
 const GPU = flag('gpu');
 const ROOT = resolve(import.meta.dirname, '..');
@@ -133,10 +133,12 @@ function shotUrl(base: string, p: ShotPreset, extra = ''): string {
     weather: p.weather ?? 'clear',
     simt: String(p.simt ?? 0),
     freeze: '1',
-    hud: '0',
+    hud: p.hud ? '1' : '0',
     dpr: '1',
     quality: p.quality ?? SET_DEFAULTS[set].quality,
   });
+  if (p.panel) q.set('panel', p.panel);
+  if (p.introt !== undefined) q.set('introt', String(p.introt));
   return `${base}?${q.toString()}${extra}`;
 }
 
