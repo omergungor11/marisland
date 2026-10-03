@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { EnvState } from '../env/env-state.ts';
 import { GUST, SWELL } from '../content/anim.ts';
+import { POOLS } from '../content/lighting.ts';
 
 /**
  * Shared uniform objects (ARCHITECTURE §7): every material references these same
@@ -42,6 +43,22 @@ export const SHARED = {
   uCloudSun: { value: new THREE.Vector4(0, 0, 0, 0) },
   /** x = salt, y = active-cell threshold, z = cell size, w = cells. */
   uCloudSeed: { value: new THREE.Vector4(0, 0, 180, 4) },
+  // ---- sky bodies & night lights (TASK-171)
+  /** True sun direction for the sky disc (may be below the horizon; uSunDir is the key light). */
+  uSunSkyDir: { value: new THREE.Vector3(0, 1, 0) },
+  /** True moon direction (sky disc, water glitter streak). The night key light (uSunDir) is the
+   * art-directed MOON.nightKey, not this. */
+  uMoonDir: { value: new THREE.Vector3(0, -1, 0) },
+  /** x = moon visibility, y = star alpha, z = night bloom ramp (0..1 each). */
+  uSkyNight: { value: new THREE.Vector3(0, 0, 0) },
+  /** x = lamps on 0..1 (instances stagger inside the ramp), y = late switch-off 0..1, z = beam. */
+  uLamps: { value: new THREE.Vector3(0, 0, 0) },
+  /** Lantern-pool texture (RG8: R light, G ground height / POOL_HEIGHT_RANGE), per world. */
+  uPoolTex: { value: null as THREE.Texture | null },
+  /** xy = pool texture origin (world xz), z = 1 / extent (u), w = 1 when a pool texture is bound. */
+  uPoolMap: { value: new THREE.Vector4(0, 0, 1, 0) },
+  /** Lantern-pool light colour (linear, content POOLS.color). */
+  uPoolColor: { value: new THREE.Color(POOLS.color) },
 };
 
 export type SharedUniforms = typeof SHARED;
@@ -66,6 +83,10 @@ export function writeEnvUniforms(
   SHARED.uGolden.value = env.golden;
   SHARED.uCameraPos.value.copy(cameraPos);
   SHARED.uTier.value = tier;
+  SHARED.uSunSkyDir.value.set(env.sunSkyDir.x, env.sunSkyDir.y, env.sunSkyDir.z);
+  SHARED.uMoonDir.value.set(env.moonDir.x, env.moonDir.y, env.moonDir.z);
+  SHARED.uSkyNight.value.set(env.moonVis, env.starAlpha, env.bloom);
+  SHARED.uLamps.value.set(env.lamps, env.lampsLateOff, env.beam);
 }
 
 export function setWind(dir: number, strength: number): void {

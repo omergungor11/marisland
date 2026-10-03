@@ -9,7 +9,8 @@ import { POST } from '../../content/lighting.ts';
  *  - +4 % saturation weighted to midtones,
  *  - lifted blacks (darks only),
  *  - golden-hour warm overlay (6 % × uGolden toward #FFB866, luminance kept),
- *  - night: luminance-kept shift toward a moonlit blue (spares emissives),
+ *  - night: luminance-kept shift toward a moonlit blue (spares emissives and warm lamp-lit
+ *    pixels — lantern pools, windows — by hue),
  *  - coloured vignette (intensity 0.22, softness 0.6, colour #2A2350) — pmndrs'
  *    VignetteEffect can only darken to black, hence the custom effect.
  * Bypassed in debug-mask mode so mask colours stay exact.
@@ -38,6 +39,12 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   c *= 1.0 + uGoldenLift * mid;
   // day-for-night: luminance-preserving shift to blue, sparing highlights (emissives)
   float spare = 1.0 - smoothstep(0.25, 0.9, l);
+  // lamp-lit pixels (warm, almost no blue vs red) keep their colour too, so lantern pools
+  // fade warm → dark by hue instead of flipping per facet at a luminance threshold
+  float warm = max(
+    (1.0 - smoothstep(0.12, 0.4, c.b / max(c.r, 1e-4))) * smoothstep(0.01, 0.06, c.r),
+    smoothstep(0.04, 0.16, c.r - c.b));
+  spare *= 1.0 - warm;
   c = mix(c, uNightTint * l, uNight * spare);
   c += uNightTint * (uNightLift * (1.0 - smoothstep(0.0, 0.05, l)));
   vec2 p = (uv - 0.5) * vec2(aspect, 1.0);

@@ -57,7 +57,9 @@ export function createLightRig(quality: Quality, scope: Scope): LightRig {
       sun.intensity =
         env.sunIntensity *
         THREE.MathUtils.lerp(LIGHT_RIG.sunScale, LIGHT_RIG.moonScale, night) *
-        THREE.MathUtils.lerp(1, LIGHT_RIG.goldenSun, golden);
+        THREE.MathUtils.lerp(1, LIGHT_RIG.goldenSun, golden) *
+        // dim through the sun ↔ moon handover so the direction swing reads as a soft fade
+        (1 - LIGHT_RIG.handoverDip * 4 * env.keyBlend * (1 - env.keyBlend));
       hemi.color.setRGB(env.hemiSky.r, env.hemiSky.g, env.hemiSky.b);
       hemi.groundColor.setRGB(env.hemiGround.r, env.hemiGround.g, env.hemiGround.b);
       hemi.intensity =

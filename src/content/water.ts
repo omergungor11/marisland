@@ -61,10 +61,10 @@ export const WATER_SHADER = {
     maskThreshold: [0.67, 0.77] as const,
   },
   moon: {
-    strength: 2.2,
+    strength: 1.3,
     /** Sharpness across the streak (azimuth) and length along it (elevation). */
-    lateral: 700,
-    vertical: 3,
+    lateral: 2400,
+    vertical: 5,
   },
   trail: { size: 256, extent: 384, decayPerStep: 0.98, stepSec: 1 / 30 },
 } as const;

@@ -1,5 +1,6 @@
 import { FIELDS_GLSL } from '../shaders/chunks/fields.glsl.ts';
 import { CLOUD_SHADOW_GLSL } from '../shaders/chunks/cloud-shadow.glsl.ts';
+import { NIGHT_GLSL, POOL_GAIN } from '../shaders/chunks/night.glsl.ts';
 import { GRID_SAMPLE_GLSL } from '../world-textures.ts';
 import { WATER_SHADER as W } from '../../content/water.ts';
 import { bandDefines, glslFloat as f } from './water-bands.ts';
@@ -116,6 +117,7 @@ uniform vec3 uCameraPos;
 uniform float uNight;
 uniform float uGolden;
 uniform float uDebugMask;
+uniform vec3 uMoonDir;
 uniform vec3 uDeep;
 uniform vec3 uMid;
 uniform vec3 uShallow;
@@ -123,6 +125,7 @@ uniform vec3 uLagoon;
 uniform vec3 uFoam;
 varying vec3 vWorld;
 ${CLOUD_SHADOW_GLSL}
+${NIGHT_GLSL}
 
 float marHash12(vec2 p) {
   vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -299,11 +302,15 @@ void main() {
   vec3 Rg = reflect(-V, normalize(mix(n, ng, 0.6)));
   vec2 rh = normalize(Rg.xz + 1e-5);
   vec2 mh = normalize(L.xz + 1e-5);
-  float lat = 1.0 - dot(rh, mh);
   float vert = Rg.y - L.y;
-  float streak = exp(-lat * MAR_MOON_LAT) * exp(-vert * vert * MAR_MOON_VERT);
+  // the streak follows the sky moon (SHARED.uMoonDir, TASK-171), not the night key light
+  vec3 Lm = normalize(uMoonDir);
+  vec2 mmh = normalize(Lm.xz + 1e-5);
+  float lat = 1.0 - dot(rh, mmh);
+  float mvert = Rg.y - Lm.y;
+  float streak = exp(-lat * MAR_MOON_LAT) * exp(-mvert * mvert * MAR_MOON_VERT);
   streak *= smoothstep(0.45, 0.7, marNoise(xz * 2.3 + vec2(t * 0.5, -t * 0.3) * uMotionScale));
-  streak *= uNight * MAR_MOON_STRENGTH * (1.0 - foam);
+  streak *= uNight * smoothstep(0.0, 0.12, Lm.y) * MAR_MOON_STRENGTH * (1.0 - foam);
 
   // low sun (golden/dusk): warm glitter streak toward the sun + broad sparkle everywhere
   float lowSun = (1.0 - smoothstep(MAR_LOWSUN_Y0, MAR_LOWSUN_Y1, L.y)) * (1.0 - smoothstep(0.55, 0.9, uNight));
@@ -318,6 +325,16 @@ void main() {
 
   // --- cloud shadows (TASK-153): same field as the clouds, ×0.82 with a 6 u soft edge
   col *= marCloudShadowMul(xz, uDebugMask);
+
+  // --- lantern pools (TASK-171): warm reflection of nearby shore/dock lamps (only low pools)
+  {
+    vec2 pl = marPool(xz);
+    if (pl.x > 0.0) {
+      float pw = pl.x * (1.0 - smoothstep(2.5, 6.0, pl.y)) * ${POOL_GAIN.water} * marPoolFlicker(xz, uTime);
+      col += uPoolColor * pw;
+      alpha = max(alpha, min(1.0, pw));
+    }
+  }
 
   // --- fog (exponential, like ART_BIBLE §3) and a soft rim at the grid edge
   // far sea eases into fog, the last stretch into the horizon colour → no hard line

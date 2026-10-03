@@ -47,6 +47,8 @@ export const LIGHT_RIG = {
   /** Golden hour (EnvState.golden): extra sun and sky fill so the low sun reads warm and bright. */
   goldenSun: 1.3,
   goldenHemi: 1.25,
+  /** Key light dims by this much at the middle of the sun ↔ moon handover (hides the swing). */
+  handoverDip: 0.6,
 } as const;
 
 /**
@@ -88,25 +90,161 @@ export const SHADOW = {
   pcfMax: 3,
 } as const;
 
-/** Sky dome. */
+/** Sky dome (TASK-171): gradient + sun disc + moon + hashed stars, one draw call. */
 export const SKY = {
   radius: 2500,
   /** Sun disc angular diameter (deg) and HDR brightness (> 1 so bloom catches it). */
   sunDiscDeg: 2.5,
-  sunDiscIntensity: 6,
+  sunDiscIntensity: 2.4,
+  /** Near the horizon the disc grows by this factor (eased in below `sunGrowBelow` elevation sin). */
+  sunHorizonScale: 1.7,
+  sunGrowBelow: 0.3,
+  /** Soft-edge width as a fraction of the disc radius. */
+  sunEdge: 0.45,
   /** Soft halo around the sun, multiplies sun colour. */
   sunGlow: 0.35,
   sunGlowPower: 24,
-  moonDiscDeg: 3.2,
-  moonIntensity: 1.6,
+  moonDiscDeg: 3.4,
+  moonIntensity: 1.7,
   moonColor: '#F4F1FF',
+  /** Moon soft limb (fraction of the radius) — never a hard pixel edge. */
+  moonEdge: 0.12,
+  /** Crescent: shadow-disc offset in moon radii toward the anti-sun side (0 = new, ≥ 2 = full). */
+  moonPhase: 0.62,
+  /** Unlit part of the disc: fraction of the moon colour (earthshine) — still hides stars. */
+  moonEarthshine: 0.06,
+  /** Halo: tight glow (strength, power) + wide bluish glow (strength, power). */
+  moonHalo: [0.22, 900, 0.1, 60] as const,
+  moonHaloColor: '#9FB4FF',
   /** Stars: grid cells per radian, fraction of lit cells, peak brightness. */
-  starCells: 90,
-  starDensity: 0.07,
+  starCells: 70,
+  starDensity: 0.06,
   starBrightness: 1.4,
+  /** Max star radius in cells (min = 55 %); ≈ 1.5–2.5 px at 540p, never sub-pixel. */
+  starSize: 0.2,
+  /** Twinkle: relative depth (±) and base rate (rad/s, varied per star). */
+  starTwinkle: 0.22,
+  starTwinkleRate: 1.6,
+  /** Stars fade in over this elevation band (sin) above the fog band. */
+  starHorizonFade: [0.1, 0.32] as const,
   /** Elevation (sin) where the fog colour hands over to the horizon colour, and horizon → zenith. */
   fogBand: 0.06,
   horizonBand: 0.45,
+} as const;
+
+/**
+ * Moon path (TASK-171). The moon rises in the east (−x) at `rise`, culminates at the midpoint
+ * on the −z side (low sun sits on +z, so the moon is opposite-ish), sets in the west at `set`.
+ * Hours wrap past midnight. The sky disc and the water's glitter streak follow it; the night
+ * key light is `nightKey`. `yawDeg` is tuned so that at 21:30–22:00 the moon sits ahead of the
+ * pinned W3/W4 cameras at ≈ their pitch → the moon glitter streak lands on the harbour water.
+ */
+export const MOON = {
+  rise: 17.5,
+  set: 6.5,
+  peakDeg: 50,
+  /** Azimuth yaw of the whole path (deg, about +y). */
+  yawDeg: 45,
+  /**
+   * Night key light ("moonlight") direction, toward the light. Art-directed rather than the sky
+   * moon's exact position: from the camera side so village fronts and cliff faces stay readable
+   * (land ≥ L 12 %) while the sky moon sits ahead of the W3/W4 cameras for the glitter streak.
+   */
+  nightKey: [0.55, 0.78, 0.45] as const,
+  /** Key light: sun → night key handover hours at dusk and back at dawn (slerp, smoothstep). */
+  keyDusk: [19.0, 20.6] as const,
+  keyDawn: [4.4, 5.6] as const,
+  /** The key light (sun or moon) never drops below this elevation (sin) — land ≥ L 12 %. */
+  keyMinY: 0.12,
+} as const;
+
+/**
+ * Night lights (TASK-171, ART_BIBLE §2 night, §7 #19/#25). Everything that glows at night is
+ * an emissive mask × `lamps` (no point lights). Hours are game hours.
+ */
+export const NIGHT = {
+  /** Windows/lanterns switch on one by one over [on0, on1] and off at dawn over [off0, off1]. */
+  lampsOn: [18.75, 19.5] as const,
+  lampsOff: [5.75, 6.5] as const,
+  /** Fraction of windows that go dark late, switching over [lateOff0, lateOff1]. */
+  lateOffFraction: 0.3,
+  lateOff: [23.0, 23.4] as const,
+  /** Prop geos whose lights never go dark late (street/landmark lights). */
+  alwaysOn: ['lanternPost', 'lighthouse', 'clocktower'] as readonly string[],
+  /** Emissive gain on the mask (> 1 so windows cross the bloom threshold). */
+  emissiveGain: 2.6,
+  /** Flicker ±amp, periods 0.2–0.5 s (ART_BIBLE §7 #25). */
+  flickerAmp: 0.08,
+  flickerPeriod: [0.2, 0.5] as const,
+  /** Bloom at night: intensity × `bloomBoost`, threshold lowered to `bloomThreshold` (moonlit
+   * land stays far below it, so only emissives / moon / beam bloom). Ramp follows `lamps`. */
+  bloomBoost: 1.6,
+  bloomThreshold: 0.92,
+} as const;
+
+/**
+ * Lantern pools (TASK-171): additive warm light baked into a small world-space texture
+ * (soft falloff, wobbly rim so they never read as discs) and added by terrain, props and water
+ * at night. `sources` maps prop geo → pool radius (u), intensity and a door-side offset (u).
+ */
+export const POOLS = {
+  color: '#FFB347',
+  /** Texels per u (0.75 → 1.33 u per texel). */
+  texelsPerUnit: 0.75,
+  /** Ground gain (× albedo × lamps) and the prop / water gains. */
+  gain: 1.15,
+  propGain: 0.75,
+  waterGain: 0.5,
+  /** Props: light fades out between these heights above the pool's ground (u). */
+  propFade: [1.2, 4.5] as const,
+  /** Rim wobble: ± fraction of the radius, angular frequency. */
+  wobble: 0.09,
+  wobbleFreq: 5,
+  sources: {
+    lanternPost: { radius: 4.2, intensity: 1, offset: 0 },
+    marketStall: { radius: 3.4, intensity: 0.6, offset: 0.6 },
+    cottage: { radius: 2.8, intensity: 0.45, offset: 1.9 },
+    logCabin: { radius: 2.8, intensity: 0.45, offset: 1.9 },
+    towerHouse: { radius: 3.0, intensity: 0.45, offset: 2.1 },
+    stiltHut: { radius: 2.6, intensity: 0.4, offset: 1.5 },
+    lighthouse: { radius: 4.5, intensity: 0.5, offset: 0 },
+    clocktower: { radius: 3.4, intensity: 0.45, offset: 0 },
+  } as Record<string, { radius: number; intensity: number; offset: number }>,
+} as const;
+
+/**
+ * Lighthouse beam (TASK-171, ART_BIBLE §7 #19: 18:30–06:30, 8 s/rev, 40 u cone, opacity 0.35).
+ * `lampY` = lamp-room centre above the lighthouse pivot (geo/landmarks.ts: H 9.4 + 0.24 + 0.75).
+ */
+export const BEAM = {
+  color: '#FFE3A6',
+  secondsPerRev: 8,
+  length: 40,
+  /** Half-angle of the cone (deg) and its radius at the lamp (u). */
+  halfAngleDeg: 7,
+  startRadius: 0.45,
+  /** Downward tilt (deg) so the beam grazes the fog over the sea. */
+  tiltDeg: 3,
+  opacity: 0.35,
+  /** Second, fainter beam opposite the first (rotating double lamp), × opacity. */
+  backOpacity: 0.45,
+  /** Soft edges: power on |N·V| (higher → thinner, softer silhouette). */
+  edgePower: 1.6,
+  /** Along-axis fade-in from the lamp and fade-out toward the tip (fractions of length). */
+  fadeIn: 0.04,
+  fadeOut: [0.35, 1.0] as const,
+  /** Lamp flare billboard: radius (u), HDR intensity, extra when the beam faces the camera. */
+  flareRadius: 2.6,
+  flareIntensity: 2.2,
+  flareFacing: 6,
+  /** The flare quad is pulled this far toward the camera so the lamp-room glass doesn't clip it. */
+  flarePull: 1.6,
+  lampY: 10.39,
+  /** Visible hours: fades in over [on0, on1], out over [off0, off1]. */
+  on: [18.5, 18.9] as const,
+  off: [6.1, 6.5] as const,
+  radialSegments: 16,
+  lengthSegments: 6,
 } as const;
 
 /** Post-processing (pmndrs) numbers beyond the bible ones in LIGHTING. */

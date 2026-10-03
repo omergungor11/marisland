@@ -2,6 +2,7 @@ import type * as THREE from 'three';
 import type { Scope } from '../../core/scope.ts';
 import type { Lod } from '../../geo/types.ts';
 import { TIER_FADE, type PropDef } from '../../content/props.ts';
+import { NIGHT } from '../../content/lighting.ts';
 import { PropFlag } from '../../world/prop-store.ts';
 import {
   makeDepthMaterial,
@@ -44,7 +45,13 @@ export function createPropMaterials(scope: Scope): PropMaterials {
     if (!m) {
       const [near, far] = def.fade ?? TIER_FADE[def.tier] ?? TIER_FADE[0];
       m = scope.add(
-        makeLitMaterial(propFeatures(def, gc), { fadeNear: near, fadeFar: far, name: `prop:${k}` }),
+        makeLitMaterial(propFeatures(def, gc), {
+          fadeNear: near,
+          fadeFar: far,
+          name: `prop:${k}`,
+          // static instances: lights switch on one by one; houses lose some windows late
+          lamps: { stagger: true, lateOff: !NIGHT.alwaysOn.includes(def.geo) },
+        }),
       );
       lit.set(k, m);
     }
