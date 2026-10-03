@@ -3,6 +3,7 @@ import type { Rng } from '../core/rng.ts';
 import type { Scope } from '../core/scope.ts';
 import type { System } from '../core/loop.ts';
 import { ROOFS, WALLS, WATER, GRASS } from '../content/palette.ts';
+import type { CameraWorld } from '../camera/controls.ts';
 
 /**
  * TASK-003 placeholder scene: a seeded field of bevel-less boxes on a sea plane
@@ -13,6 +14,7 @@ export interface TestScene {
   group: THREE.Group;
   system: System;
   hash: string;
+  cameraWorld: CameraWorld;
 }
 
 export function buildTestScene(rng: Rng, scope: Scope): TestScene {
@@ -96,5 +98,25 @@ export function buildTestScene(rng: Rng, scope: Scope): TestScene {
     },
   };
 
-  return { group, system, hash: hash.toString(16).padStart(8, '0') };
+  const cameraWorld: CameraWorld = {
+    centerX: 0,
+    centerZ: 0,
+    radius: 300,
+    islands: [
+      {
+        name: 'Hearthholm',
+        cx: 0,
+        cz: 0,
+        radius: 80,
+        peakY: 6,
+        anchors: {
+          beach: { x: 0, z: 70, rotY: 0 },
+          village: { x: 0, z: 20, rotY: 0.5 },
+          dock: { x: 40, z: 60, rotY: 1 },
+        },
+      },
+    ],
+    heightAt: (x, z) => (Math.hypot(x, z) < 80 ? 6 : 0),
+  };
+  return { group, system, hash: hash.toString(16).padStart(8, '0'), cameraWorld };
 }

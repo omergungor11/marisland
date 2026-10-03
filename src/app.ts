@@ -17,6 +17,7 @@ import { createStatsOverlay, readInfo, type StatsOverlay } from './debug/stats.t
 import { findShot } from './content/shots.ts';
 import type { Counters, MarislandApi, RenderInfo } from './capture/api.ts';
 import { buildTestScene } from './render/test-scene.ts';
+import { createCameraSystem, type CameraSystem } from './camera/controls.ts';
 
 /**
  * Composition root (ARCHITECTURE §1). Owns scopes, the loop and the systems.
@@ -32,6 +33,7 @@ export interface Ctx {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   post: PostChain | null;
+  cam: CameraSystem;
   quality: 'low' | 'medium' | 'high';
   width: number;
   height: number;
@@ -111,6 +113,7 @@ export async function boot(): Promise<void> {
       scene,
       camera,
       post: null,
+      cam: null as unknown as CameraSystem,
       quality,
       width: 1,
       height: 1,
@@ -182,6 +185,18 @@ export async function boot(): Promise<void> {
     if (!Number.isNaN(params.time)) loop.clock.dayTime = params.time;
     if (params.freeze) loop.clock.daySpeed = 0;
 
+    const cam = createCameraSystem(camera, canvas, events, !params.freeze);
+    ctx.cam = cam;
+    loop.add(cam);
+    cam.setReducedMotion(params.rm || matchMedia('(prefers-reduced-motion: reduce)').matches);
+    appScope.defer(() => cam.dispose?.());
+    loop.add({
+      name: 'tier-sync',
+      update: () => {
+        ctx.tier = cam.tier;
+      },
+    });
+
     // ---- world (TASK-003: test scene; replaced by terrain/water in M1)
     const tGen = now();
     const rng = createRng(params.seed);
@@ -191,6 +206,9 @@ export async function boot(): Promise<void> {
     loop.add(testScene.system);
     ctx.worldHash = testScene.hash;
     ctx.timings.gen = now() - tGen;
+    cam.setWorld(testScene.cameraWorld);
+    cam.applyPreset(params.cam || 'overview', false);
+    cam.setIdleOrbit(!params.freeze);
     loader.setProgress(0.6);
 
     // ---- prewarm + warm-up
@@ -207,7 +225,7 @@ export async function boot(): Promise<void> {
     // ---- api
     api.step = (dt = 1 / 30, n = 1) => loop.step(dt, n);
     api.setCamera = (preset: string) => {
-      applyRawCamera(camera, preset);
+      cam.applyPreset(preset, false);
       loop.step(1 / 30, 1);
     };
     api.setTime = (hour: number) => {
@@ -226,6 +244,7 @@ export async function boot(): Promise<void> {
       loop.add(ts2.system);
       ctx.worldHash = ts2.hash;
       api.worldHash = ts2.hash;
+      cam.setWorld(ts2.cameraWorld);
       api.seed = seed;
       loop.step(1 / 30, 1);
     };
@@ -270,15 +289,6 @@ function applyShotPreset(p: Params): Params {
   if (!q.has('simt') && s.simt !== undefined) p.simt = s.simt;
   if (!q.has('quality') && s.quality) p.quality = s.quality;
   return p;
-}
-
-/** Raw camera grammar `x,y,z,tx,ty,tz` (presets arrive with TASK-105). */
-function applyRawCamera(camera: THREE.PerspectiveCamera, preset: string): void {
-  const parts = preset.split(',').map(Number);
-  if (parts.length === 6 && parts.every((n) => Number.isFinite(n))) {
-    camera.position.set(parts[0], parts[1], parts[2]);
-    camera.lookAt(parts[3], parts[4], parts[5]);
-  }
 }
 
 function installApi(): MarislandApi {

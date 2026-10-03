@@ -25,7 +25,7 @@ Status flow: PENDING → IN_PROGRESS → REVIEW → COMPLETED (BLOCKED if deps u
 | TASK-102 | Terrain mesher: facets, jitter, AO, LOD, skirts | shader | M | PENDING | TASK-101, TASK-003 |
 | TASK-103 | Water: swell, depth ramp/alpha, SDF foam, glints | shader | L | PENDING | TASK-101 |
 | TASK-104 | Material factory, sky, fog, lights, fitted shadows, post | shader | M | PENDING | TASK-102 |
-| TASK-105 | Camera wrapper, presets, pitch curve, bounds | engine | S | IN_PROGRESS | TASK-003 |
+| TASK-105 | Camera wrapper, presets, pitch curve, bounds | engine | S | COMPLETED | TASK-003 |
 
 ### M2 — Archipelago
 *3 seeds × 5–7 distinct islands*
