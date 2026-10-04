@@ -2,6 +2,20 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-021: Prop thumbnails from a short-lived second context; edit mode holds the governor — 2026-10-04
+
+**Decision** (TASK-221): the edit panel's prop picker renders every placeable def once into a 64 px
+atlas with a throw-away second `WebGLRenderer` (same builders + prop material, neutral-daylight
+uniform swap by reference), reads it back once, caches PNG data URLs and disposes the context, so the
+main renderer's programs/memory stay untouched. It runs 400 ms after the panel first opens (or at
+once when Place is picked); in capture only with `panel=edit:prop`, before `ready`. In edit mode the
+governor is held (`setDisabled('edit')`) and the tier cap lifted; idle orbit and intro are off.
+**Rationale**: a 41-def picker needs real-looking thumbnails without 41 extra draw calls per frame
+or a second scene in the main renderer; the governor stepping the tier down mid-stroke would make the
+brush target change under the pointer.
+**Cost**: 0.4–0.9 s in capture, 2.5–5 s live under SwiftShader (two GPU-process waits), hidden by
+the prefetch.
+
 ## D-020: Sandbox edit model — in-place commands with byte-exact inverses, incremental SDF, varint log — 2026-10-04
 
 **Decision** (TASK-201/202/211/212): `applyEdit(world, cmd)` mutates `WorldData` in place and returns

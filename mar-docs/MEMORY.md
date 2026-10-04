@@ -62,6 +62,12 @@
 - Agent worktrees were created from `origin/main` (not the orchestrator's HEAD) on 2026-10-04: every
   worktree agent must `git fetch` + `git reset --hard <orchestrator-branch>` (not merge) when its base has
   unrelated history, then verify `git log -1`
+- A second WebGL context's synchronous calls (context creation, `readPixels`) wait for the main context's
+  queued frames (0.9–2.5 s under SwiftShader) — do such work at idle time, once, and cache
+- Swap textures in shared uniforms by reference, never `texture.clone()` (a clone is a second GPU texture
+  that survives regen → `selftest=regen` leaks 5→6)
+- `selftest=regen` / `selftest=edit` report a ±1 geometry delta with `cam=village` (pre-existing, not with
+  `cam=overview` where the harness runs them) — open item
 - The first `gl.texSubImage2D` of a session stalls until the in-flight frame finishes (50–950 ms under
   SwiftShader) → the rebuild path is prewarmed at idle time after `ready` (interactive mode only)
 - `PickHit.id` for props is the edit-model id (scatter index / ≥ 2²⁰ for edit-added / −1 settlement);
