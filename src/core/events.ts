@@ -46,6 +46,8 @@ export interface AppEvents extends Record<string, unknown> {
   photoMode: { active: boolean; frozen: boolean };
   /** The quality governor stepped (TASK-191): new pixel ratio and detail-tier cap. */
   governorChanged: { level: number; dpr: number; tierCap: number; p90: number };
+  /** Sandbox edit mode entered / left (TASK-212: `E`, the HUD edit button). */
+  editModeChanged: { active: boolean };
   /** The WebGL context was lost (`lost: true`) or restored and the world rebuilt (`false`). */
   contextLost: { lost: boolean };
 }

@@ -8,6 +8,18 @@ import type { WorldTextures } from '../world-textures.ts';
 import { CLOUD_SHADOW_GLSL } from '../shaders/chunks/cloud-shadow.glsl.ts';
 import { NIGHT_GLSL, POOL_GAIN } from '../shaders/chunks/night.glsl.ts';
 import { MIST_GLSL } from '../shaders/chunks/mist.glsl.ts';
+import { BRUSH_RING } from '../../content/edit-ui.ts';
+
+/**
+ * Editor brush ring (TASK-212), shared by every terrain material like `HOVER_UNIFORMS`:
+ * `uBrush` = (centre x, centre z, radius, w) with w = 0 hidden, w > 0 strength (valid),
+ * w < 0 invalid (|w| = strength). Written by `edit/cursor.ts`; reset with the world.
+ */
+export const BRUSH_UNIFORMS = {
+  uBrush: { value: new THREE.Vector4(0, 0, 0, 0) },
+  uBrushCol: { value: new THREE.Color(BRUSH_RING.color).multiplyScalar(BRUSH_RING.brightness) },
+  uBrushBad: { value: new THREE.Color(BRUSH_RING.invalid).multiplyScalar(BRUSH_RING.brightness) },
+};
 
 /**
  * Terrain material (D-003): MeshLambertMaterial + vertex colours, patched with
@@ -18,7 +30,8 @@ import { MIST_GLSL } from '../shaders/chunks/mist.glsl.ts';
  *  (d) the wet-sand shore lap (SDF band, 4.5 s period) that the water foam matches,
  *  (f) lantern pools at night (TASK-171, chunks/night.glsl.ts): additive warm light × albedo,
  *  (g) the low weather mist band after three's fog (TASK-172, chunks/mist.glsl.ts),
- *  (h) the Emberpeak crater glow (D5, content CRATER_GLOW): emissive, brightest on the floor.
+ *  (h) the Emberpeak crater glow (D5, content CRATER_GLOW): emissive, brightest on the floor,
+ *  (i) the editor brush ring (TASK-212, `BRUSH_UNIFORMS`): off (`uBrush.w == 0`) → no-op.
  * One program per quality level; all chunks share one material instance.
  */
 export interface TerrainMaterial {
@@ -68,6 +81,9 @@ export function createTerrainMaterial(
     uMaskWet: { value: new THREE.Color(TERRAIN_MASK.wetSand) },
     uMaskRock: { value: new THREE.Color(TERRAIN_MASK.rock) },
     uMaskSeabed: { value: new THREE.Color(TERRAIN_MASK.seabed) },
+    uBrush: BRUSH_UNIFORMS.uBrush,
+    uBrushCol: BRUSH_UNIFORMS.uBrushCol,
+    uBrushBad: BRUSH_UNIFORMS.uBrushBad,
   };
   const caustics = quality !== 'low';
   const f = (v: number): string => v.toFixed(4);
@@ -101,6 +117,9 @@ uniform vec3 uMaskLand, uMaskWet, uMaskRock, uMaskSeabed;
 uniform sampler2D uTerrainSdf;
 uniform sampler2D uTerrainZone;
 uniform vec4 uTerrainGrid;
+uniform vec4 uBrush;
+uniform vec3 uBrushCol;
+uniform vec3 uBrushBad;
 ${CLOUD_SHADOW_GLSL}
 ${NIGHT_GLSL}
 ${MIST_GLSL}
@@ -173,6 +192,19 @@ float marCaustic(vec2 p, float t) {
       outgoingLight += diffuseColor.rgb * uPoolColor
         * (marPl.x * marNear * marFacet * ${POOL_GAIN.ground} * marPoolFlicker(vMarWorld.xz, uTime));
     }
+  }
+  if (uBrush.w != 0.0) {
+    // (i) editor brush: a soft ~1-cell band at the radius over a faint fill (never < 1.5 px;
+    // thinner on small rings so a prop footprint still reads as a ring)
+    float marBd = length(vMarWorld.xz - uBrush.xy);
+    float marBw = max(min(${f(BRUSH_RING.widthCells)} / uTerrainGrid.z, ${f(BRUSH_RING.maxWidthOfRadius)} * uBrush.z), 1.5 * fwidth(marBd));
+    float marRing = 1.0 - smoothstep(0.3 * marBw, 0.6 * marBw, abs(marBd - uBrush.z));
+    float marFill = (1.0 - smoothstep(uBrush.z - 0.6 * marBw, uBrush.z - 0.3 * marBw, marBd)) * ${f(BRUSH_RING.fill)};
+    float marBa = max(marRing * mix(${f(BRUSH_RING.alpha[0])}, ${f(BRUSH_RING.alpha[1])}, clamp(abs(uBrush.w), 0.0, 1.0)), marFill);
+    // soft darker rim either side of the band: reads on pale sand as well as on grass
+    float marEdge = max(1.0 - smoothstep(0.6 * marBw, 1.1 * marBw, abs(marBd - uBrush.z)) - marRing, 0.0);
+    outgoingLight *= 1.0 - ${f(BRUSH_RING.outline)} * marEdge;
+    outgoingLight = mix(outgoingLight, uBrush.w < 0.0 ? uBrushBad : uBrushCol, marBa);
   }
 #include <opaque_fragment>`,
       )

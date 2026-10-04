@@ -37,6 +37,15 @@ import type { WeatherName } from './core/params.ts';
 import type { TestScene } from './render/test-scene.ts';
 import { createInteraction, type Interaction } from './interact/interaction.ts';
 import type { PickHit } from './interact/picking.ts';
+// ---- edit mode (TASK-212) imports
+import { heightAt as worldHeightAt, type WorldData } from './world/index.ts';
+import type { DirtyRegion } from './world/edit-types.ts';
+import { createEditSession, type EditSession } from './edit/session.ts';
+import type { HistoryLike, StorageLike, WorldEditApi } from './edit/session-types.ts';
+import { createToolState } from './edit/tools.ts';
+import { createBrushCursor } from './edit/cursor.ts';
+import { createGhost } from './edit/ghost.ts';
+import { createEditMode, editCameraOf, EDIT_FALLBACKS, type EditMode } from './edit/edit-mode.ts';
 
 /**
  * Composition root (ARCHITECTURE §1). Owns scopes, the loop and the systems.
@@ -65,6 +74,19 @@ export interface Ctx {
 }
 
 const now = (): number => performance.now();
+
+// ---- edit mode (TASK-212) injection points: the orchestrator maps these onto TASK-201
+// (`world/edit.ts`: applyEdit, canPlace, encodeLog, decodeLog) and TASK-211 (`edit/history.ts`)
+// after merge. Until then the fallbacks reject every edit and keep no history.
+const worldEditApi = (): WorldEditApi<WorldData> | null => null;
+const createEditHistory = (): HistoryLike => EDIT_FALLBACKS.history;
+const editStorage = (): StorageLike | null => {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+};
 
 export async function boot(): Promise<void> {
   const root = document.getElementById('app');
@@ -274,6 +296,9 @@ export async function boot(): Promise<void> {
     let worldLife: { setMotionScale(s: number): void } | null = null;
     /** The live world's pointer interaction (picking, hover, reactions); null in the gallery. */
     let interaction: Interaction | null = null;
+    /** The live world's editor (TASK-212); null in capture / the gallery. */
+    let editMode: EditMode | null = null;
+    let editSession: EditSession | null = null;
     // Weather (TASK-172): `?weather=` holds a state; otherwise the world's seeded FSM cycles.
     // The HUD button (weatherChanged) switches it; auto changes sync the HUD icon.
     let worldWeather: { set(w: WeatherName): void } | null = null;
@@ -334,6 +359,71 @@ export async function boot(): Promise<void> {
         listen: !params.freeze,
       });
       interaction = ia;
+
+      // ---- edit mode (TASK-212) ----------------------------------------------------------
+      // Per world: session (applyEdit → rebuildDirty → log → autosave), tools, brush cursor,
+      // prop ghost, input routing. Not in capture (`freeze=1`: no cursor, deterministic frames).
+      // `?edit=` is replayed before the build by TASK-211 (then `session.adopt(log)`); otherwise
+      // the autosave for this seed is restored here.
+      if (!params.freeze) {
+        const we = worldEditApi();
+        const rebuildable = wv as typeof wv & { rebuildDirty?: (r: DirtyRegion) => void };
+        const session = createEditSession({
+          seed,
+          apply: we ? (cmd) => we.applyEdit(wv.world, cmd) : EDIT_FALLBACKS.apply,
+          rebuild: (r) => rebuildable.rebuildDirty?.(r),
+          history: createEditHistory(),
+          encode: we ? we.encodeLog : EDIT_FALLBACKS.encode,
+          decode: we ? we.decodeLog : EDIT_FALLBACKS.decode,
+          storage: editStorage(),
+          timer: {
+            set: (fn, ms) => window.setTimeout(fn, ms),
+            clear: (h) => window.clearTimeout(h as number),
+          },
+          now: () => Date.now(),
+          resetWorld: () => void rebuildWorld(seed, 'keep'),
+        });
+        const ground = (x: number, z: number): number => worldHeightAt(wv.world.height, x, z);
+        const mode = createEditMode({
+          session,
+          tools: createToolState(seed),
+          cursor: createBrushCursor({
+            terrainAt: ia.terrainAt,
+            heightAt: ground,
+            reduced: () => cam.reducedMotion,
+          }),
+          ghost: createGhost({ scope: worldScope, parent: wv.group, seed, camera }),
+          interaction: ia,
+          cam: editCameraOf(cam),
+          events,
+          dom: canvas,
+          canPlace: we ? (cmd) => we.canPlace(wv.world, cmd) : EDIT_FALLBACKS.canPlace,
+          heightAt: ground,
+          propRotY: (id) => wv.scatter.props.rotY[id] ?? 0,
+          reduced: () => cam.reducedMotion,
+          listen: true,
+        });
+        editSession = session;
+        editMode = mode;
+        loop.add(mode.system);
+        if (!new URLSearchParams(location.search).has('edit')) session.restore();
+        const flush = (): void => session.flush();
+        window.addEventListener('pagehide', flush);
+        // entering edit mode ends the opening sequence (the intro owns the camera)
+        const offEdit = events.on('editModeChanged', ({ active }) => {
+          if (active) intro?.skip();
+        });
+        worldScope.defer(() => {
+          offEdit();
+          window.removeEventListener('pagehide', flush);
+          loop.remove(mode.system);
+          mode.dispose();
+          session.dispose();
+          if (editMode === mode) editMode = null;
+          if (editSession === session) editSession = null;
+        });
+      }
+      // ---- end edit mode (TASK-212) ------------------------------------------------------
       const system = {
         name: wv.system.name,
         fixedUpdate: (dt: number) => wv.system.fixedUpdate?.(dt),

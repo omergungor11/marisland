@@ -70,6 +70,13 @@ export interface Interaction {
   hoverAt(x: number, y: number): PickHit | null;
   /** Pick and start the reaction (what a counted click does). */
   clickAt(x: number, y: number): PickHit | null;
+  /**
+   * Terrain-only ray-march at canvas-relative CSS pixels (sea plane included; props and agents
+   * ignored) — the editor's brush cursor (TASK-212). Reads the live heightfield.
+   */
+  terrainAt(x: number, y: number): PickHit | null;
+  /** Edit mode (TASK-212): no hover tint, cursor or click reactions while on. */
+  setSuspended(on: boolean): void;
   readonly reduced: boolean;
   /** Reactions currently animating. */
   readonly activeReactions: number;
@@ -329,6 +336,20 @@ export function createInteraction(d: InteractionDeps): Interaction {
     return r ? picker.pick(r) : null;
   };
 
+  let suspended = false;
+  const terrainOnly = new Picker({
+    march: { ...PICK.march, heightAt: ground, maxY: maxY + 5 },
+    hash: null,
+    defNames: [],
+    agents: [],
+    near: camera.near,
+    far: Math.min(camera.far, 2500),
+  });
+  const terrainAt = (x: number, y: number): PickHit | null => {
+    const r = rayAt(x, y);
+    return r ? terrainOnly.pick(r) : null;
+  };
+
   const hoverFrom = (hit: PickHit | null): void => {
     const target = hit && hit.kind !== 'terrain' ? meshesOf(hit) : null;
     hover = hit && target ? { hit, target } : null;
@@ -400,7 +421,8 @@ export function createInteraction(d: InteractionDeps): Interaction {
       }
       if (
         filter.up(e.pointerId, e.clientX, e.clientY, e.timeStamp) &&
-        (wasTouch || e.button === 0)
+        (wasTouch || e.button === 0) &&
+        !suspended
       ) {
         const [x, y] = local(e);
         clickAt(x, y);
@@ -422,8 +444,9 @@ export function createInteraction(d: InteractionDeps): Interaction {
       acc += Math.min(dt, 0.1);
       if (acc >= period) {
         acc %= period;
-        if (pointer.inside && !pointer.touch && !pointer.dragging) hoverAt(pointer.x, pointer.y);
-        else if (hover && (!pointer.inside || pointer.dragging)) hoverFrom(null);
+        if (pointer.inside && !pointer.touch && !pointer.dragging && !suspended)
+          hoverAt(pointer.x, pointer.y);
+        else if (hover && (!pointer.inside || pointer.dragging || suspended)) hoverFrom(null);
       }
       reactions.update(dt);
       // one highlight uniform: the reduced-motion click flash wins over the hover tint
@@ -447,6 +470,10 @@ export function createInteraction(d: InteractionDeps): Interaction {
     pickAt: doPick,
     hoverAt,
     clickAt,
+    terrainAt,
+    setSuspended(on) {
+      suspended = on;
+    },
     get reduced() {
       return reduced;
     },
