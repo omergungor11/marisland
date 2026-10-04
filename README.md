@@ -32,10 +32,10 @@ A cute, cozy, fully procedural 3D archipelago in the browser — built with thre
 - **Sky:** Gradient dome with sun, moon, hashed stars; exponential fog that keeps far islands readable
 
 ### HUD & controls
-- **Dock** (bottom): time dial (drag/scroll to scrub, tap to cycle the bible time stops), weather (clear → cloudy → rain → fog), new seed, photo mode (time + FOV 15–60° sliders, freeze, PNG export), settings (quality, reduce motion, compass, hide HUD)
+- **Dock** (bottom): time dial (drag/scroll to scrub, tap to cycle the bible time stops), weather (clear → cloudy → rain → fog), new seed, edit (brush — the sandbox, see below), photo mode (time + FOV 15–60° sliders, freeze, PNG export), settings (quality, reduce motion, compass, hide HUD)
 - **Compass** (top-right): Reset camera to north
 - **Island labels** (at T0): Click to fly to an island; auto-hide at closer zoom
-- **Keyboard shortcuts:** `h` to hide HUD, `Esc` to exit photo mode, double-click island to fly to it
+- **Keyboard shortcuts:** `h` to hide HUD, `e` to edit, `Esc` to exit photo / edit mode, double-click island to fly to it
 - **Touch:** one finger pans, two fingers pinch-zoom and twist-rotate, double-tap an island to fly to it
 
 ### Performance & budgets
@@ -55,6 +55,29 @@ A cute, cozy, fully procedural 3D archipelago in the browser — built with thre
 | **Exit photo mode** | Press `Esc` |
 | **Click reactions** | Click buildings, trees, creatures |
 | **Compass reset** | Click compass icon (top-right) |
+| **Edit (sandbox)** | Press `e` or the brush button; `Esc` / Done to leave |
+| **Undo / redo edits** | `Ctrl/⌘+Z` / `Shift+Ctrl/⌘+Z` (or `Ctrl+Y`) |
+| **Brush size** | `[` / `]` |
+
+## Sandbox
+
+Press **`E`** or the **brush** button in the dock: the dock folds into the edit panel (a card at the
+bottom on desktop, a bottom sheet on phones, a side sheet on landscape phones).
+
+- **Tools:** Raise · Lower · Flatten · Smooth (terrain brushes with a size and a strength slider; lower
+  below sea level and the land floods) · Paint (grass, meadow, forest, sand, rock) · Place (pick one of 41
+  props from the thumbnail grid; the ghost turns red where it cannot go) · Erase (tap a prop) · Move (drag a
+  prop). Tap the active tool again to put it down and look around.
+- **Mouse:** left-drag paints with the active tool; right-drag orbits, middle-drag pans, the wheel zooms.
+  **Touch:** one finger paints, two fingers pan / pinch / twist.
+- **Undo / redo:** the arrows in the panel or `Ctrl/⌘+Z`, `Shift+Ctrl/⌘+Z`; a whole drag is one step.
+- **Share:** the link button copies the current URL with `edit=<log>` (a compact, versioned edit log);
+  opening it on any machine replays the same edits on the same seed. **Reset** (tap twice) restores the
+  generated world.
+- **Autosave:** edits are saved per seed in `localStorage` (`marisland.edit.<seed>.v1`) half a second after
+  each change and restored on the next visit, unless the URL carries its own `edit=`.
+- While editing, the idle orbit and the intro stop and the quality governor holds (no detail-tier cap), so
+  the detail under the brush never steps. Photo mode leaves edit mode.
 
 ## URL Parameters
 
@@ -74,11 +97,12 @@ Query parameters control the view and capture mode. Example: `?seed=1001&time=17
 | `hud` | 1 or 0 | 1 | Show HUD (0 = hide) |
 | `debug` | none, stats, mask, overdraw, wire, height, zone, slope, coast | none | Debug visualization overlay |
 | `perf` | 1 or 0 | 0 | Fly a fixed 10 s path and report p50/p95 frame, CPU and GPU times (`__marisland.perf()`) |
-| `selftest` | regen, rebuild, ctxloss, or '' | '' | Self-tests: `regen` runs 5 seed cycles and asserts no GPU leak; `ctxloss` loses and restores the WebGL context |
+| `selftest` | regen, rebuild, ctxloss, edit, or '' | '' | Self-tests: `regen` runs 5 seed cycles and asserts no GPU leak; `ctxloss` loses and restores the WebGL context; `edit` runs 50 brush edits + undo all and asserts no GPU leak |
+| `edit` | encoded edit log | '' | Sandbox edits replayed on `seed` before the first frame (what the share link carries) |
 | `intro` | 1 or 0 | 1 | Play intro animation (0 = skip) |
 | `rm` | 1 or 0 | 0 | Force reduced motion (longer fades, no bloom-in pop) |
 | `gallery` | 1 or 0 | 0 | Prop gallery scene instead of the world (for model review) |
-| `panel` | photo, settings, or '' | '' | Open that HUD panel at boot (for screenshots) |
+| `panel` | photo, settings, edit, edit:*tool*, or '' | '' | Open that HUD panel at boot (for screenshots); `edit:prop` etc. also picks the edit tool (static under `freeze=1`) |
 | `introt` | seconds | — | With `freeze=1`: freeze the opening sequence at this time |
 
 *Capture/debug only:* `freeze`, `shot`, `simt`, `selftest`, `perf`, `panel`, `introt`, `debug`, `gallery`.
@@ -103,10 +127,11 @@ pnpm build && pnpm preview
 pnpm typecheck && pnpm lint && pnpm test
 
 # Screenshot capture with deterministic headless rendering
-pnpm shots [ci|dev|wow] [--assert] [--tag=<name>] [--port=<port>] [--no-selftest]
+pnpm shots [ci|dev|wow|edit] [--assert] [--tag=<name>] [--port=<port>] [--no-selftest]
   # ci:   4 shots, 640×360, low quality (PR checks)
   # dev:  23 dev shots, 960×540 (milestone review; includes HUD and phone layouts)
   # wow:  W1–W10 hero shots, 1920×1080, medium quality
+  # edit: sandbox edits (hill, flood, meadow + props, lagoon islet) + the edit panel on desktop/phones
   # --assert: fail if budgets exceeded
   # --tag=<name>: parallel run (isolates dist-<name>/, shots/<set>-<name>/)
   # --port=<port>: preview server port (use a unique one per parallel run)
@@ -127,7 +152,8 @@ src/
   anim/, env/    Animation catalog, environmental state (time, weather, lighting)
   camera/        Camera controls, presets, pitch curve
   interact/      Click picking and creature reactions
-  ui/            HUD, photo mode, settings panel
+  edit/          Sandbox: edit session (undo/redo, autosave, share), tools + stroke sampler, brush cursor, ghost
+  ui/            HUD, photo mode, settings panel, sandbox edit panel (+ prop thumbnails)
   capture/       Deterministic screenshot harness
   debug/         Stats overlay and dev tools
 
@@ -174,4 +200,4 @@ mar-config/
 
 **Phase 1 — Living diorama:** M1–M10 implemented (hardening in progress: program-budget audit and the 10-seed sweep).
 
-**Phase 2 — Sandbox editing:** Planned for future development (terrain brush, prop place/remove/move, undo/redo, save/share).
+**Phase 2 — Sandbox editing:** M11–M13 implemented — terrain brushes, zone paint, prop place/erase/move, undo/redo, autosave, share links (`edit=`), the edit panel and the `edit` shot set (TASK-222 QA sweep pending). See [D-020](mar-docs/DECISIONS.md).

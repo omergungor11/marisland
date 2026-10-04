@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { ENV_KEYS, UI } from '../content/palette.ts';
 import { HUD, INTRO } from '../content/ui.ts';
+import { EDIT_PANEL } from '../content/edit-ui.ts';
+import { createEditPanel, type EditPanelBinding } from './edit-panel.ts';
 import { CAMERA } from '../content/tiers.ts';
 import type { CameraWorld } from '../camera/controls.ts';
 import type { HudPanel, Quality, WeatherName } from '../core/params.ts';
@@ -17,8 +19,9 @@ import {
 } from './hud-math.ts';
 
 /**
- * HUD (ART_BIBLE §9): wordmark, compass, dock (time dial, weather, new seed, photo, sound,
- * settings), settings sheet, photo bar, island labels at T0, hidden-HUD ghost button.
+ * HUD (ART_BIBLE §9): wordmark, compass, dock (time dial, weather, new seed, edit, photo, sound,
+ * settings), settings sheet, photo bar, sandbox edit panel (TASK-221: the dock collapses into
+ * it), island labels at T0, hidden-HUD ghost button.
  * Plain DOM + CSS (styles.ts) + inline SVG. `?hud=0` skips it entirely. The HUD owns its
  * display state; the app reacts through `HudActions`.
  */
@@ -35,6 +38,8 @@ export interface HudActions {
   onReducedMotion(on: boolean): void;
   onCompassVisible(on: boolean): void;
   onPhotoMode(active: boolean): void;
+  /** The edit panel opened / closed (dock button, Done, photo mode, Esc): enter / leave edit mode. */
+  onEditPanel(open: boolean): void;
   onFov(deg: number): void;
   onFreeze(on: boolean): void;
   /** Render a frame and grab the canvas. `null` when the export failed. */
@@ -74,6 +79,12 @@ export interface Hud {
   readonly visible: boolean;
   openPanel(panel: HudPanel): void;
   readonly photoMode: boolean;
+  /** The edit panel is open. */
+  readonly editing: boolean;
+  /** What the edit panel drives (the live world's edit mode, a static binding in capture). */
+  bindEdit(b: EditPanelBinding | null): void;
+  /** Resolves when the open panels finished loading (edit-panel thumbnails decoded). */
+  settled(): Promise<void>;
   dispose(): void;
 }
 
@@ -93,6 +104,7 @@ const ICONS: Record<string, string> = {
   freeze:
     '<path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9"/><path d="M9.5 4.5L12 7l2.5-2.5M9.5 19.5L12 17l2.5 2.5"/>',
   eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>',
+  edit: '<path d="M18.5 3.5l2 2-8.5 8.5-2-2z"/><path d="M9.5 12.5c-2.6 0-4 1.7-4 4 0 1.5-.9 2.7-2.5 3h5.5a4 4 0 0 0 4-4"/>',
   hide: '<path d="M2.5 12S6 5.5 12 5.5c2 0 3.7.7 5 1.6M21.5 12S18 18.5 12 18.5c-2 0-3.7-.7-5-1.6"/><path d="M4 20L20 4"/>',
 };
 
@@ -128,9 +140,10 @@ export function createHud(
   const state: HudState = { ...initial };
   const el = document.createElement('div');
   el.className = instant ? 'mar-hud mar-hud-instant' : 'mar-hud';
-  const dockButtons = ['weather', 'seed', 'photo', 'sound', 'settings'];
+  const dockButtons = ['weather', 'seed', 'edit', 'photo', 'sound', 'settings'];
   const tips: Record<string, string> = {
     seed: 'New seed',
+    edit: EDIT_PANEL.tips.edit,
     photo: 'Photo mode',
     sound: 'Sound',
     settings: 'Settings',
@@ -206,6 +219,13 @@ export function createHud(
   const freezeBtn = q<HTMLButtonElement>('[data-photo="freeze"]');
   const ghost = q<HTMLButtonElement>('.mar-ghost');
   const flash = q<HTMLElement>('.mar-flash');
+  const editBtn = q<HTMLButtonElement>('[data-action="edit"]');
+  const editPanel = createEditPanel(el, {
+    capture: instant,
+    onDone: () => hud.openPanel(''),
+  });
+  // the panel sits before the flash / ghost so `.mar-hud-hidden` fades it like the dock
+  el.insertBefore(editPanel.el, ghost);
 
   const cleanups: Array<() => void> = [];
   const timers = new Set<ReturnType<typeof setTimeout>>();
@@ -235,6 +255,7 @@ export function createHud(
   // ---- dock
   let hour = 15;
   let photo = false;
+  let editing = false;
   let visible = true;
   const handlers: Record<string, () => void> = {
     weather: () => {
@@ -243,6 +264,7 @@ export function createHud(
       actions.onWeather(w);
     },
     seed: actions.onNewSeed,
+    edit: () => hud.openPanel(editing ? '' : 'edit'),
     photo: () => hud.openPanel('photo'),
     sound: actions.onSound,
     settings: () => hud.openPanel(el.classList.contains('mar-panel-settings') ? '' : 'settings'),
@@ -399,7 +421,7 @@ export function createHud(
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       hud.setVisible(!visible);
     } else if (e.key === 'Escape') {
-      if (photo || el.classList.contains('mar-panel-settings')) hud.openPanel('');
+      if (photo || editing || el.classList.contains('mar-panel-settings')) hud.openPanel('');
       else if (!visible) hud.setVisible(true);
     }
   });
@@ -446,6 +468,8 @@ export function createHud(
     ring: number;
   }[] = [];
   let labelsHidden = false;
+  /** Last `update` arguments: opening / closing the edit panel re-lays the labels at once. */
+  let lastUpdate: Parameters<Hud['update']> | null = null;
   const hud: Hud = {
     el,
     get visible() {
@@ -453,6 +477,15 @@ export function createHud(
     },
     get photoMode() {
       return photo;
+    },
+    get editing() {
+      return editing;
+    },
+    bindEdit(b) {
+      editPanel.bind(b);
+    },
+    settled() {
+      return editPanel.settled();
     },
     setWorld(world, accents) {
       labelsEl.innerHTML = '';
@@ -502,6 +535,7 @@ export function createHud(
       }
     },
     update(camera, azimuth, tier, h, width, height) {
+      lastUpdate = [camera, azimuth, tier, h, width, height];
       const deg = compassDeg(azimuth);
       if (Math.abs(deg - lastCompass) > 0.05 || !Number.isFinite(lastCompass)) {
         lastCompass = deg;
@@ -509,16 +543,29 @@ export function createHud(
       }
       if (!drag) hour = h;
       renderDial();
+      if (editing) editPanel.update();
       const showLabels = tier === 0 && !labelsHidden && !photo && visible;
       labelsEl.style.display = showLabels ? '' : 'none';
       if (!showLabels) return;
       const placed: { x: number; y: number; w: number; h: number }[] = [];
+      const lh = 28;
       // Keep labels off the dock (layout box: unaffected by the pop-in transform).
       const dockTop = dockEl.offsetTop - 8;
       const dockHalf = dockEl.offsetWidth / 2 + 6;
+      // In edit mode the panel replaces the dock: a bottom card / sheet (labels go above it) or
+      // the landscape side sheet (labels go left of it).
+      // (bounding box: the desktop card is centred with a transform; `t` clears the title tab)
+      const pr = editing ? editPanel.el.getBoundingClientRect() : null;
+      const panel = pr
+        ? { l: pr.left - 6, t: pr.top - 22, r: pr.right + 6, side: pr.height > height * 0.6 }
+        : null;
       const underDock = (x: number, y: number, w: number, h: number): boolean =>
-        y + h / 2 > dockTop && Math.abs(x - width / 2) < dockHalf + w / 2;
-      const lh = 28;
+        panel
+          ? y + h / 2 > panel.t && x + w / 2 > panel.l && x - w / 2 < panel.r
+          : y + h / 2 > dockTop && Math.abs(x - width / 2) < dockHalf + w / 2;
+      /** Move a label off the panel / dock: above it, or left of a side sheet. */
+      const offDock = (x: number, w: number): { x: number; y?: number } =>
+        panel?.side ? { x: panel.l - w / 2 } : { x, y: (panel ? panel.t : dockTop) - lh / 2 };
       for (const l of labels) {
         // Above the island's top shelf edge (D2): the highest projected point of the shelf ring
         // and of the peak + 8 u anchor; x follows the island centre.
@@ -558,7 +605,11 @@ export function createHud(
         const below = bottom + HUD.labelGapPx + lh / 2;
         let sy = Math.max(above, minY);
         if (!free(sy) && free(below)) sy = below;
-        if (underDock(sx, sy, w, lh)) sy = dockTop - lh / 2;
+        if (underDock(sx, sy, w, lh)) {
+          const o = offDock(sx, w);
+          sx = o.x;
+          if (o.y !== undefined) sy = o.y;
+        }
         // screen-space collision nudge: push up (off the island) until free (bounded), down when
         // that would leave the screen
         for (let n = 0; n < 6; n++) {
@@ -566,7 +617,11 @@ export function createHud(
           if (!hit) break;
           sy = hit.y - hit.h - 6;
           if (sy < minY) sy = hit.y + hit.h + 6;
-          if (underDock(sx, sy, w, lh)) sy = hit.y - hit.h - 6;
+          if (underDock(sx, sy, w, lh)) {
+            const o = offDock(sx, w);
+            sx = o.x;
+            sy = o.y ?? hit.y - hit.h - 6;
+          }
           sx += 4;
         }
         placed.push({ x: sx, y: sy, w, h: lh });
@@ -600,10 +655,15 @@ export function createHud(
     },
     openPanel(panel) {
       const wasPhoto = photo;
+      const wasEditing = editing;
       el.classList.toggle('mar-panel-settings', panel === 'settings');
       photo = panel === 'photo';
       el.classList.toggle('mar-panel-photo', photo);
       settings.setAttribute('aria-hidden', String(panel !== 'settings'));
+      editing = panel === 'edit';
+      el.classList.toggle('mar-panel-edit', editing);
+      editBtn.setAttribute('aria-pressed', String(editing));
+      editPanel.setOpen(editing);
       if (photo !== wasPhoto) {
         if (!photo && state.frozen) {
           hud.setState({ frozen: false });
@@ -611,8 +671,15 @@ export function createHud(
         }
         actions.onPhotoMode(photo);
       }
+      // photo mode, settings, Esc and Done all leave edit mode through here
+      if (editing !== wasEditing) {
+        actions.onEditPanel(editing);
+        // labels move off / back over the panel now (capture renders no further HUD frame)
+        if (lastUpdate) hud.update(...lastUpdate);
+      }
     },
     dispose() {
+      editPanel.dispose();
       for (const c of cleanups) c();
       cleanups.length = 0;
       for (const t of timers) clearTimeout(t);

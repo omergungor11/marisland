@@ -31,7 +31,8 @@ src/
   detail/          zoom-tier FSM, fade/pop scheduler, LOD swap
   life/            agents/ (boats, villagers, critters, gulls, fish), gpu/ (swarms, smoke, rain),
                    ambient-events, reactions
-  anim/ env/ camera/ interact/ ui/ capture/ debug/
+  edit/            Phase 2 editor: session (undo/redo, autosave, share), tools, cursor, ghost
+  anim/ env/ camera/ interact/ ui/ (HUD, edit panel) capture/ debug/
 ```
 
 **Loop: one `Clock`, one RAF.**
@@ -359,11 +360,41 @@ These replace the template's TASK-001..007 placeholders.
 | TASK-192 | 10-seed sweep; user checks M1 60 fps / phone 30 fps | qa | M | 191 | VISUAL_QA all green |
 | TASK-193 | README, MEMORY gotchas | docs | S | 192 | Merged |
 
-### Phase 2 — Sandbox (sketch)
-- `world/edit.ts` commands: terrain brushes (raise/lower/flatten/smooth/paint) and prop add/remove/move; each has an inverse (undo/redo) and marks dirty chunks.
-- A dirty chunk rebuilds within one frame: remesh the chunk, `texSubImage2D` the height texture, run a local EDT, rewrite the affected PropBatcher groups.
-- The OccupancyGrid validates placement. Ghost previews dither in.
-- Save = seed + a versioned edit log (deterministic replay), stored in localStorage and shareable by URL.
+### Phase 2 — Sandbox (built: M11–M13, D-020)
+What was built (the sketch it replaces: commands with inverses, dirty-chunk rebuild, OccupancyGrid
+validation, ghost previews, seed + versioned edit log in localStorage / the URL — all kept):
+
+- **Model** (`world/edit.ts`, `world/edit-derive.ts`, contract `world/edit-types.ts`): `applyEdit(world,
+  cmd)` mutates `WorldData` in place for raise / lower / flatten / smooth / paint / propAdd / propRemove /
+  propMove and returns byte-exact inverses (a private `patch` kind restores samples and prop slots
+  verbatim) plus an exact `DirtyRegion`. Zones are re-derived locally (painted cells win until their
+  height changes); the shore SDF is maintained incrementally through nearest-site maps, not a windowed
+  EDT. `canPlace` validates placement against the OccupancyGrid, water and slope. `pathGraph` and island
+  metadata are not rebuilt (paths may float).
+- **Log** (`encodeLog` / `decodeLog`): sync base64url of a varint stream on a fixed grid (1/16 u,
+  1/256 strength, 1/4096 turn), versioned, ~2.7 KB per 200 commands. `?edit=` is replayed right after
+  `generateWorld`, before the first build (no rebuild path at boot).
+- **Live rebuild** (`render/rebuild.ts`, `WorldView.rebuildDirty`): ≤ 2 chunks remeshed per frame (all
+  at once in capture), height / SDF textures updated by `texSubImage2D` sub-rects, the PropBatcher rewrites
+  touched instances and grows groups with headroom; removed props fade out through a reversed `aAppear`.
+- **Editor** (`edit/`): `EditSession` (apply → rebuild → log → debounced autosave
+  `marisland.edit.<seed>.v1`, undo/redo where a stroke is one step, share URL), tools + stroke sampler,
+  brush ring (terrain `uBrush`), ghost prop through the shared lit program, input routing (`E`, Esc,
+  `Ctrl/⌘+Z`, `[` `]`; left / one-finger drag edits, two fingers navigate). Capture never creates it.
+- **Panel** (`ui/edit-panel.ts`, TASK-221): the HUD dock's brush button (or `E`) folds the dock into the
+  panel — tool row, size / strength sliders, zone swatches, a prop picker with thumbnails, undo / redo,
+  share (clipboard + toast), two-tap reset, an "edited · N changes" tab. Desktop card / portrait bottom
+  sheet / landscape side sheet; labels avoid whichever box it is. `editModeChanged` ↔ `hud.openPanel`
+  keep the key, the button, Done, Esc and photo mode (which leaves edit mode) in step. While editing the
+  governor holds and the detail-tier cap is lifted; idle orbit and the intro stop.
+- **Thumbnails** (`ui/edit-thumbs.ts`): each placeable def is built like a batcher instance and rendered
+  once through the prop material by a short-lived second `WebGLRenderer` into a 64 px atlas (neutral
+  daylight: the shared night / lamp / cloud / mist / pool / hover uniforms are swapped for the synchronous
+  render and restored), read back once and cached as PNG data URLs; the renderer, its context and every
+  geometry / material are disposed right after, so the main renderer's programs and memory counters are
+  untouched. Lazy: shortly after the first panel open (at once when the place tool is picked).
+- **Capture**: `panel=edit[:tool]` shows a static panel (no edit mode under `freeze=1`); the `edit` shot
+  set (`content/shots.ts` `EDIT_LOGS`) replays encoded logs on seed 1001.
 
 ## 11. Risks & mitigations
 

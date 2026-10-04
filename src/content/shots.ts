@@ -4,7 +4,9 @@
  * 1001 = Hearthholm, Beacon Rock, Millbrook, Palmlagoon, Mossgrove, Lonely Palm; 2024 Beacon Rock;
  * 3003 Emberpeak; 4004 Palmlagoon; 1000 Millbrook; 6006 Mossgrove; 1002 has all seven.
  */
-export type ShotSet = 'ci' | 'dev' | 'wow' | 'intro';
+import type { EditToolKind } from './edit-ui.ts';
+
+export type ShotSet = 'ci' | 'dev' | 'wow' | 'intro' | 'edit';
 
 export interface ShotPreset {
   id: string;
@@ -29,12 +31,25 @@ export interface ShotPreset {
   dollySeconds?: number;
   /** Show the HUD (the harness defaults to `hud=0`). */
   hud?: boolean;
-  /** HUD panel open (`panel=`): photo bar or settings sheet. */
-  panel?: 'photo' | 'settings';
+  /** HUD panel open (`panel=`): photo bar, settings sheet or edit panel (`edit:<tool>`). */
+  panel?: 'photo' | 'settings' | 'edit' | `edit:${EditToolKind}`;
+  /** Phase 2 edit log (`edit=`, `encodeLog`), replayed before the first build. */
+  edit?: string;
   /** Opening-sequence still at this time (s) (`introt=`). */
   introt?: number;
   sets: ShotSet[];
 }
+
+/** Encoded edit logs (seed 1001) of the `edit` set; regenerate with `encodeLog` when the codec changes. */
+export const EDIT_LOGS = {
+  hill: 'AekHAAgAwFTAJ4AFgA4AwAE_AAAAwAFAAAAA_wFAAAAAgAEfAAAAPz-_Av8FAwAggAL_BQQAH58CAQ',
+  flood:
+    'AekHABABwFyANsADgAwBgAKAAgAAAYABvwIAAAH_AYAFAAABwAP_AQAAAb8IwAcAAAHAAkAAAAHAAr8BAAABf_8IAAABgAKAAgAAAYABvwIAAAH_AYAFAAABwAP_AQAAAb8IwAcAAAHAAkAAAAHAAr8BAAA',
+  meadow:
+    'AekHBQRwaW5lC3JvY2tDbHVzdGVyBmZsb3dlcgRidXNoDWdpYW50TXVzaHJvb20YA4CBAYBIgAS0AgQAAAABBIACoAG_AQE1AADFAZcBsRGKAgE1AAArjgLhG6ECADUAAJMBpwP1B_cBATUAAGxlkAKGAgE1AADWA84B4giYAgE1AAD7BcAB3g-eAgA1AAGOBLsD_RfpAQA1AAGZApQEiBztAQE1AAF88QPrDvwBATUAASuWA60Z3wEBNQAC3wEIqB3vAQA1AAKEAuUB8ASMAgA1AAKGAQTGEIYCADUAAgc8zxr7AQA1AAIid-cX2gEBNQACUWLJEPQBATUAA1Nl3RX7AQE1AAPqAZABsRKKAgA1AAPFAUyJGJMCADUAA64B2wG9Bo8CATUABEfmAf4ajgIA',
+  mixed:
+    'AekHBgdjb3R0YWdlBHBhbG0EYnVzaAtyb2NrQ2x1c3RlcgdsaWx5UGFkB3Jvd2JvYXQTAMBewGOABYAMAAAAAAACAAC_ArMGAgAAAAACAAAAAAMAAMABlwMEAADfAQMEQB9_AQHACqAEgAHMDQEAAAAAAQAAAAA1AADFC7cDiwmAAgA1AAFZOK8E7gEANQAB4AIAkQ-ZAgA1AAGJA9sBhROQAgA1AAIqPJUF7wEANQAD1AImmQaOAgA1AASzBPoBzQHvAQA1AAXABSDfAv0BAA',
+} as const;
 
 export const SHOT_PRESETS: readonly ShotPreset[] = [
   // ---- bible wow shots (1920×1080, medium quality)
@@ -386,6 +401,94 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     panel: 'photo',
     sets: ['dev'],
   },
+  // ---- sandbox edits (TASK-221): `pnpm shots edit`. Logs on seed 1001 generated with
+  // `encodeLog` (world/edit.ts) — hill: 6 raises + smooth + meadow top behind the Hearthholm
+  // village; flood: 16 lowers on the harbour bay's east shore and south arm; meadow: smooth + meadow paint + 21 props on Millbrook
+  // (pines, rocks, flowers, bushes, a mushroom; macro view so the T3 flowers show); mixed: a
+  // flattened islet in the Palmlagoon lagoon (sand + meadow, cottage, palms, bush, rock, lily pad,
+  // rowboat) and a channel lowered through the ring. The panel shots reuse them.
+  {
+    id: 'E-panel',
+    title: 'Edit panel · place',
+    seed: 1001,
+    cam: '-28,70,-100,-42,6,-200',
+    time: 15,
+    simt: 2,
+    width: 1280,
+    height: 720,
+    hud: true,
+    panel: 'edit:prop',
+    edit: EDIT_LOGS.hill,
+    sets: ['edit'],
+  },
+  {
+    id: 'E-hill',
+    title: 'Hill behind the village',
+    seed: 1001,
+    cam: '-28,70,-100,-42,6,-200',
+    time: 15,
+    simt: 2,
+    edit: EDIT_LOGS.hill,
+    sets: ['edit'],
+  },
+  {
+    id: 'E-flood',
+    title: 'Flooded bay',
+    seed: 1001,
+    cam: 'island:Hearthholm',
+    time: 15,
+    simt: 2,
+    edit: EDIT_LOGS.flood,
+    sets: ['edit'],
+  },
+  {
+    id: 'E-meadow',
+    title: 'Meadow + 21 props',
+    seed: 1001,
+    cam: '144,23,-64,132,3.5,-96',
+    time: 14,
+    simt: 2,
+    edit: EDIT_LOGS.meadow,
+    sets: ['edit'],
+  },
+  {
+    id: 'E-mixed',
+    title: 'Lagoon islet + channel',
+    seed: 1001,
+    cam: 'island:Palmlagoon',
+    time: 15,
+    simt: 2,
+    edit: EDIT_LOGS.mixed,
+    sets: ['edit'],
+  },
+  {
+    id: 'E-mobile-panel',
+    title: 'Edit panel 390×844',
+    seed: 1001,
+    cam: 'overview',
+    time: 15,
+    simt: 2,
+    width: 390,
+    height: 844,
+    hud: true,
+    panel: 'edit',
+    edit: EDIT_LOGS.flood,
+    sets: ['edit'],
+  },
+  {
+    id: 'E-land-panel',
+    title: 'Edit panel 844×390 · paint',
+    seed: 1001,
+    cam: 'overview',
+    time: 15,
+    simt: 2,
+    width: 844,
+    height: 390,
+    hud: true,
+    panel: 'edit:paint',
+    edit: EDIT_LOGS.mixed,
+    sets: ['edit'],
+  },
   // ---- opening sequence every 0.5 s (ART_BIBLE §8 timing review): `pnpm shots intro`
   ...Array.from({ length: 21 }, (_, i): ShotPreset => ({
     id: `I-${(i * 0.5).toFixed(1)}`,
@@ -407,6 +510,7 @@ export const SET_DEFAULTS: Record<
   dev: { width: 960, height: 540, quality: 'low' },
   wow: { width: 1920, height: 1080, quality: 'medium' },
   intro: { width: 640, height: 360, quality: 'low' },
+  edit: { width: 960, height: 540, quality: 'low' },
 };
 
 export function shotsForSet(set: ShotSet): ShotPreset[] {

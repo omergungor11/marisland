@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 /**
- * Screenshot harness: `pnpm shots [ci|dev|wow|intro] [--assert] [--gpu] [--no-build] [--only=ID,ID] [--base=URL]
+ * Screenshot harness: `pnpm shots [ci|dev|wow|intro|edit] [--assert] [--gpu] [--no-build] [--only=ID,ID] [--base=URL]
  *   [--tag=name] [--port=4173] [--no-selftest]` — `--tag` builds into dist-<tag>/ and writes shots/<set>-<tag>/
  *   so parallel agents don't collide; pair it with a distinct `--port`. The ci and dev sets also run the
  *   app self-tests (`selftest=regen` leak check, `selftest=ctxloss` context loss + restore,
@@ -23,7 +23,7 @@ const flag = (n: string): boolean => args.includes(`--${n}`);
 const opt = (n: string): string | undefined =>
   args.find((a) => a.startsWith(`--${n}=`))?.slice(n.length + 3);
 const set = (args.find((a) => !a.startsWith('--')) ?? 'ci') as ShotSet;
-if (!(set in SET_DEFAULTS)) throw new Error(`unknown set "${set}" (ci|dev|wow|intro)`);
+if (!(set in SET_DEFAULTS)) throw new Error(`unknown set "${set}" (ci|dev|wow|intro|edit)`);
 const ASSERT = flag('assert');
 const GPU = flag('gpu');
 const ROOT = resolve(import.meta.dirname, '..');
@@ -140,6 +140,7 @@ function shotUrl(base: string, p: ShotPreset, extra = ''): string {
     quality: p.quality ?? SET_DEFAULTS[set].quality,
   });
   if (p.panel) q.set('panel', p.panel);
+  if (p.edit) q.set('edit', p.edit);
   if (p.introt !== undefined) q.set('introt', String(p.introt));
   return `${base}?${q.toString()}${extra}`;
 }
