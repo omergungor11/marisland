@@ -137,10 +137,30 @@ export interface WorldData {
   props: PropStore;
   /** Per-chunk flags: bit0 = has land, bit1 = has shallow water (needs a mesh). */
   chunkFlags: Uint8Array;
+  /**
+   * Phase 2: 1 where the user painted the zone (TASK-202). Painted zones win over local
+   * re-derivation until the height of that sample changes again. All 0 after generation.
+   */
+  zonePainted: Uint8Array;
+  /** Generation-time masks kept so edits can re-derive data with the generation rules. */
+  genAux: GenAux;
   /** Stage hashes (hex strings) for determinism snapshots. */
   hashes: Record<string, string>;
   /** Stage timings in ms (informational). */
   timings: Record<string, number>;
+}
+
+/** Generation leftovers needed by Phase 2 edits (not hashed into `hashes`). */
+export interface GenAux {
+  /** Profile `Tag` bits per sample (lagoon, cliff, crater, pond, field, meadow…). */
+  tags: Uint8Array;
+  /** Field hue per sample before settlements took cells (1 + palette FIELDS index, 0 = none). */
+  fieldHue: Uint8Array;
+  /**
+   * Static OccupancyGrid data (1 u cells, `OCC_STRUCTURE` / `OCC_PATH`) after settlements and
+   * before scatter: lots, docks, landmarks, plaza, footpaths. Edit placement validation reads it.
+   */
+  siteOccupancy: Uint8Array;
 }
 
 export interface XZ {

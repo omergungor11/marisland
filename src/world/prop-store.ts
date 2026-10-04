@@ -13,10 +13,24 @@ export const PropFlag = {
   groundCover: 8,
   /** Appears as a T0 cluster-proxy blob member (trees). */
   clusterable: 16,
+  /**
+   * Removed by an edit (Phase 2): the slot stays (ids are indices) but consumers must skip it.
+   * Scatter props are only ever hidden this way; edit-added props may also be popped.
+   */
+  removed: 32,
 } as const;
+
+/** Alias used by the Phase 2 spec. */
+export const PROP_FLAGS = PropFlag;
 
 export interface PropStore {
   count: number;
+  /**
+   * Phase 2: index of the first edit-added slot (= scatter count at generation). Prop id ↔
+   * index: scatter ids are indices (< editBase); edit-added id `EDIT_PROP_ID_BASE + k` lives at
+   * `editBase + k`. Set by `generateWorld`; absent on render-side copies.
+   */
+  editBase?: number;
   /** Index into content/props PROP_DEFS. */
   defId: Uint16Array;
   variant: Uint8Array;
@@ -47,7 +61,7 @@ export function createPropStore(capacity: number): PropStore & { push: PushFn } 
   };
   s.push = (defId, variant, x, y, z, rotY, scale, islandId, chunkId, flags) => {
     const i = s.count;
-    if (i >= capacity) throw new Error('PropStore capacity exceeded');
+    if (i >= s.defId.length) throw new Error('PropStore capacity exceeded');
     s.defId[i] = defId;
     s.variant[i] = variant;
     s.x[i] = x;
@@ -77,20 +91,67 @@ export type PushFn = (
   flags: number,
 ) => number;
 
-/** Trim a store to its count (for hashing / serialisation). */
-export function compactPropStore(s: PropStore): PropStore {
+/**
+ * Trim a store to its count (for hashing / serialisation), optionally keeping `headroom` spare
+ * zeroed slots (Phase 2 edits append there without reallocating).
+ */
+export function compactPropStore(s: PropStore, headroom = 0): PropStore {
   const n = s.count;
+  const cap = n + Math.max(0, headroom);
+  const cut = <T extends Uint8Array | Uint16Array | Float32Array>(
+    a: T,
+    make: (len: number) => T,
+  ): T => {
+    const out = make(cap);
+    out.set(a.subarray(0, n) as never);
+    return out;
+  };
   return {
     count: n,
-    defId: s.defId.slice(0, n),
-    variant: s.variant.slice(0, n),
-    x: s.x.slice(0, n),
-    y: s.y.slice(0, n),
-    z: s.z.slice(0, n),
-    rotY: s.rotY.slice(0, n),
-    scale: s.scale.slice(0, n),
-    islandId: s.islandId.slice(0, n),
-    chunkId: s.chunkId.slice(0, n),
-    flags: s.flags.slice(0, n),
+    defId: cut(s.defId, (l) => new Uint16Array(l)),
+    variant: cut(s.variant, (l) => new Uint8Array(l)),
+    x: cut(s.x, (l) => new Float32Array(l)),
+    y: cut(s.y, (l) => new Float32Array(l)),
+    z: cut(s.z, (l) => new Float32Array(l)),
+    rotY: cut(s.rotY, (l) => new Float32Array(l)),
+    scale: cut(s.scale, (l) => new Float32Array(l)),
+    islandId: cut(s.islandId, (l) => new Uint8Array(l)),
+    chunkId: cut(s.chunkId, (l) => new Uint16Array(l)),
+    flags: cut(s.flags, (l) => new Uint8Array(l)),
   };
+}
+
+/** Allocated slots (count ≤ capacity). */
+export const propCapacity = (s: PropStore): number => s.defId.length;
+
+/**
+ * Ensure room for `extra` more slots. Reallocates the typed arrays **on the same object**
+ * (×1.5 growth, slots past `count` zeroed), so holders of the store see the new arrays on their
+ * next read — but anyone who cached `store.x` etc. must re-read after a grow. Returns true when
+ * the arrays were reallocated.
+ */
+export function growPropStore(s: PropStore, extra: number): boolean {
+  const need = s.count + Math.max(0, extra);
+  const cap = propCapacity(s);
+  if (need <= cap) return false;
+  const next = Math.max(need, Math.ceil(cap * 1.5), 64);
+  const grow = <T extends Uint8Array | Uint16Array | Float32Array>(
+    a: T,
+    make: (len: number) => T,
+  ): T => {
+    const out = make(next);
+    out.set(a as never);
+    return out;
+  };
+  s.defId = grow(s.defId, (l) => new Uint16Array(l));
+  s.variant = grow(s.variant, (l) => new Uint8Array(l));
+  s.x = grow(s.x, (l) => new Float32Array(l));
+  s.y = grow(s.y, (l) => new Float32Array(l));
+  s.z = grow(s.z, (l) => new Float32Array(l));
+  s.rotY = grow(s.rotY, (l) => new Float32Array(l));
+  s.scale = grow(s.scale, (l) => new Float32Array(l));
+  s.islandId = grow(s.islandId, (l) => new Uint8Array(l));
+  s.chunkId = grow(s.chunkId, (l) => new Uint16Array(l));
+  s.flags = grow(s.flags, (l) => new Uint8Array(l));
+  return true;
 }
