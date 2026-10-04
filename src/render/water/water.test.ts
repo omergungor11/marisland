@@ -119,7 +119,17 @@ describe('createWater', () => {
       sdf: tex(),
       zone: new THREE.DataTexture(new Uint8Array(4), 2, 2, THREE.RedFormat),
       uGridMap: { value: new THREE.Vector3(-384, -384, 1 / 768) },
-      update: () => {},
+      update: () => ({
+        height: 'none',
+        sdf: 'none',
+        zone: 'none',
+        heightRect: null,
+        sdfRect: null,
+        zoneRect: null,
+        geometryRect: null,
+        colorRect: null,
+        uploadMs: 0,
+      }),
     };
     const w = createWater({} as WorldData, textures, 'low', scope);
     const mat = w.mesh.material as THREE.ShaderMaterial;

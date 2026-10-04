@@ -35,6 +35,10 @@ import { PUFF_CHIMNEY } from './particles/puffs.ts';
 import type { Lod } from '../geo/index.ts';
 import { createLanternPools } from './night/lantern-pools.ts';
 import { createBeam } from './night/beam.ts';
+import type { DirtyRegion } from '../world/edit-types.ts';
+import type { SubImageRenderer } from './gl-subimage.ts';
+import { createPropMirror } from './props/prop-mirror.ts';
+import { createRebuilder, type Rebuilder } from './rebuild.ts';
 
 /**
  * Everything seed-derived on the render side (ARCHITECTURE §1 "world scope").
@@ -59,6 +63,12 @@ export interface WorldView {
   cameraWorld: CameraWorld;
   hash: string;
   timings: Record<string, number>;
+  /**
+   * TASK-211: rebuild what an edit touched — textures and props now, terrain chunks queued
+   * (≤ 2 per frame; capture mode: all before returning).
+   */
+  rebuildDirty(region: DirtyRegion): void;
+  rebuild: Rebuilder;
 }
 
 export interface WorldWeather {
@@ -96,6 +106,12 @@ export interface WorldViewDeps {
   propDepthMaterial?: (def: PropDef, lod: Lod, groundCover: boolean) => THREE.Material | null;
   softAppear?: boolean;
   weather?: WorldWeatherOptions;
+  /** Sub-rect texture uploads after edits (`texSubImage2D`); null → full re-uploads. */
+  renderer?: SubImageRenderer | null;
+  /** Capture (`freeze=1`): edits rebuild synchronously and props appear / vanish instantly. */
+  instantEdits?: boolean;
+  /** Right after `generateWorld`, before anything is built: the `?edit=` log replay. */
+  beforeBuild?: (world: WorldData) => void;
 }
 
 const _focus = new THREE.Vector3();
@@ -106,10 +122,11 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   const timings: Record<string, number> = {};
   const t0 = d.now();
   const world = generateWorld(seed, { now: d.now });
+  d.beforeBuild?.(world);
   timings.gen = d.now() - t0;
 
   const t1 = d.now();
-  const textures = createWorldTextures(world, d.scope);
+  const textures = createWorldTextures(world, d.scope, d.renderer ?? null);
   const group = new THREE.Group();
   group.name = 'world';
   const terrain = buildTerrain(world, textures, d.quality, d.scope);
@@ -156,8 +173,21 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     depthMaterialFor: d.propDepthMaterial ?? pm.depthMaterialFor,
     softAppear: d.softAppear ?? true,
     castShadows: d.quality !== 'low',
+    instantEdits: d.instantEdits ?? false,
   });
   group.add(props.group);
+  const rebuild = createRebuilder({
+    world,
+    terrain,
+    textures,
+    props,
+    mirror: createPropMirror(scatter.props, world.props.count, world.height),
+    instant: d.instantEdits ?? false,
+    getTime: d.getTime,
+    now: d.now,
+    counters: d.counters,
+    timings,
+  });
   timings.build = d.now() - t1;
 
   const env = createEnvState();
@@ -195,6 +225,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   };
 
   const update = (dt: number, alpha: number): void => {
+    rebuild.update();
     sampleEnv(d.getHour(), env);
     const time = d.getTime();
     blendFx(fsm.update(time), fx);
@@ -305,6 +336,8 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     cameraWorld,
     hash: world.hashes.world ?? '',
     timings,
+    rebuildDirty: (region) => rebuild.rebuildDirty(region),
+    rebuild,
   };
 }
 

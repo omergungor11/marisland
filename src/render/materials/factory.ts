@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { APPEAR_OUT_GLSL } from '../props/appear.ts';
 import { BLOOM_IN, TREE_SWAY, WINDMILL } from '../../content/anim.ts';
 import { SHARED } from '../uniforms.ts';
 import { FIELDS_GLSL } from '../shaders/chunks/fields.glsl.ts';
@@ -144,6 +145,7 @@ ${marAttr('vec4', 'aSpin')}
 #endif
 varying float vFade;
 ${FIELDS_GLSL}
+${APPEAR_OUT_GLSL}
 float marHash12(vec2 p) {
   vec3 p3 = fract(vec3(p.xyx) * 0.1031);
   p3 += dot(p3, p3.yzx + 33.33);
@@ -177,7 +179,13 @@ const VERTEX_DISPLACE = /* glsl */ `
   #ifdef MAR_BLOOM_IN
   // reduced motion (uMotionScale < 1): bloom-in becomes a dither fade, no scale spring
   float marBloomD = 1.0;
-  if (uMarBloomIn > 0.5) {
+  if (marIsRemoved(aAppear)) {
+    // removed by an edit (TASK-211): the bloom-in reversed (dither out under reduced motion)
+    bool marRm = uMotionScale < 0.999;
+    float marOut = marRemoveFade(aAppear, uTime, marRm);
+    if (marRm) marBloomD = marOut;
+    else transformed *= marOut;
+  } else if (uMarBloomIn > 0.5) {
     if (uMotionScale < 0.999) {
       marBloomD = smoothstep(0.0, ${f(BLOOM_IN.ditherMs / 1000)}, uTime - aAppear);
     } else {

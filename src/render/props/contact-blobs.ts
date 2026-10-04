@@ -3,6 +3,7 @@ import { SHARED } from '../uniforms.ts';
 import { FIELDS_GLSL } from '../shaders/chunks/fields.glsl.ts';
 import { BLOOM_IN } from '../../content/anim.ts';
 import { MIST_GLSL } from '../shaders/chunks/mist.glsl.ts';
+import { APPEAR_OUT_GLSL } from './appear.ts';
 
 /**
  * Contact-shadow blobs (ART_BIBLE §1): a soft dark disc under every grounded prop,
@@ -57,6 +58,7 @@ export function blobMaterial(): THREE.ShaderMaterial {
     },
     vertexShader: /* glsl */ `
       ${FIELDS_GLSL}
+      ${APPEAR_OUT_GLSL}
       attribute float aAppear;
       uniform float uTime;
       uniform vec2 uSpring;
@@ -71,6 +73,11 @@ export function blobMaterial(): THREE.ShaderMaterial {
         bool reduced = uMotionScale < 0.999;
         vFadeIn = reduced ? smoothstep(0.0, ${(BLOOM_IN.ditherMs / 1000).toFixed(4)}, bt) : 1.0;
         float s = reduced ? 1.0 : marSpringIn(bt, uSpring.x, uSpring.y);
+        // removed by an edit (TASK-211): fade the blob out with its prop
+        if (marIsRemoved(aAppear)) {
+          vFadeIn = marRemoveFade(aAppear, uTime, reduced);
+          s = 1.0;
+        }
         vec3 p = position * s;
         vec4 wp = modelMatrix * instanceMatrix * vec4(p, 1.0);
         vWorld = wp.xyz;
@@ -109,11 +116,15 @@ const _p = new THREE.Vector3();
 const _q = new THREE.Quaternion();
 const _s = new THREE.Vector3();
 
-/** Build a blob InstancedMesh mirroring `mesh` (same count/matrices, shared aAppear). */
+/**
+ * Build a blob InstancedMesh mirroring `mesh` (same count/matrices, shared aAppear);
+ * `capacity` ≥ mesh.count allocates spare instances for edits (TASK-211).
+ */
 export function makeBlobs(
   mesh: THREE.InstancedMesh,
   radii: Float32Array,
   aAppear: THREE.InstancedBufferAttribute,
+  capacity = mesh.count,
 ): THREE.InstancedMesh {
   const g = new THREE.InstancedBufferGeometry();
   const base = blobGeometry();
@@ -121,7 +132,8 @@ export function makeBlobs(
   g.setAttribute('uv', base.attributes.uv);
   g.setIndex(base.index);
   g.setAttribute('aAppear', aAppear);
-  const blobs = new THREE.InstancedMesh(g, blobMaterial(), mesh.count);
+  const blobs = new THREE.InstancedMesh(g, blobMaterial(), Math.max(capacity, mesh.count));
+  blobs.count = mesh.count;
   for (let i = 0; i < mesh.count; i++) {
     mesh.getMatrixAt(i, _m);
     _m.decompose(_p, _q, _s);
@@ -137,3 +149,25 @@ export function makeBlobs(
   blobs.name = `${mesh.name}:blobs`;
   return blobs;
 }
+
+/**
+ * Rewrite blob `k` for a prop at (x, y, z) with yaw `rotY` and blob radius `r` (0 = hidden),
+ * as `makeBlobs` places it (TASK-211 edits). Adds an update range; the caller recomputes bounds.
+ */
+export function writeBlobMatrix(
+  blobs: THREE.InstancedMesh,
+  k: number,
+  x: number,
+  y: number,
+  z: number,
+  rotY: number,
+  r: number,
+): void {
+  _p.set(x, y + 0.06, z);
+  _q.setFromAxisAngle(_up, rotY);
+  _m.compose(_p, _q, _s.set(r, 1, r));
+  blobs.setMatrixAt(k, _m);
+  blobs.instanceMatrix.addUpdateRange(k * 16, 16);
+  blobs.instanceMatrix.needsUpdate = true;
+}
+const _up = new THREE.Vector3(0, 1, 0);

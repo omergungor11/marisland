@@ -46,6 +46,10 @@ import { createToolState } from './edit/tools.ts';
 import { createBrushCursor } from './edit/cursor.ts';
 import { createGhost } from './edit/ghost.ts';
 import { createEditMode, editCameraOf, EDIT_FALLBACKS, type EditMode } from './edit/edit-mode.ts';
+import type { WorldView } from './render/world-view.ts';
+import { loadWorldEditApi } from './edit/world-edit-api.ts';
+import { createEditApplier } from './edit/apply.ts';
+import { runEditSelftest, testBrush } from './render/rebuild-testing.ts';
 
 /**
  * Composition root (ARCHITECTURE §1). Owns scopes, the loop and the systems.
@@ -175,6 +179,7 @@ export async function boot(): Promise<void> {
         agents: 0,
         particles: 0,
         gpuMemoryMB: 0,
+        rebuilds: 0,
       },
       timings: {},
       tier: 0,
@@ -316,6 +321,15 @@ export async function boot(): Promise<void> {
       },
     });
 
+    // ---- Phase 2 edits (TASK-211): the edit model loads lazily (null when world/edit.ts is not
+    // in the build); `?edit=` is replayed right after generateWorld, before the first build.
+    const edits = createEditApplier(params.gallery ? null : await loadWorldEditApi(), {
+      seed: params.seed,
+      encoded: params.edit,
+    });
+    /** The live world view (edit target, test brush); null in the gallery / while torn down. */
+    let liveWorld: WorldView | null = null;
+
     // ---- world
     const buildWorld = (seed: number): TestScene => {
       if (params.gallery) return buildGallery(worldScope);
@@ -338,7 +352,14 @@ export async function boot(): Promise<void> {
             hud?.setState({ weather: w });
           },
         },
+        renderer: backend.renderer,
+        instantEdits: params.freeze,
+        beforeBuild: (w) => edits.beforeBuild(w),
       });
+      liveWorld = wv;
+      edits.attach({ world: wv.world, rebuildDirty: (r) => wv.rebuildDirty(r) });
+      // rebuild timings / counters land in the world's timings object: mirror them each frame
+      const timings = wv.timings;
       Object.assign(ctx.timings, wv.timings);
       worldLife = wv.life;
       worldWeather = wv.weather;
@@ -430,6 +451,14 @@ export async function boot(): Promise<void> {
         update: (dt: number, alpha: number) => {
           wv.system.update?.(dt, alpha);
           ia.system.update?.(dt, alpha);
+          if (timings.rebuildMs !== undefined) {
+            ctx.timings.rebuildMs = timings.rebuildMs;
+            ctx.timings.rebuildMaxMs = timings.rebuildMaxMs;
+            ctx.timings.rebuildAvgMs = timings.rebuildAvgMs;
+            ctx.timings.rebuildTexMs = timings.rebuildTexMs;
+            ctx.timings.rebuildUploadMs = timings.rebuildUploadMs;
+            ctx.timings.rebuildPropsMs = timings.rebuildPropsMs;
+          }
         },
       };
       return { group: wv.group, system, hash: wv.hash, cameraWorld: wv.cameraWorld };
@@ -465,6 +494,8 @@ export async function boot(): Promise<void> {
 
     /** Free the world's GPU resources and stop its system (idempotent). */
     const teardownWorld = (): void => {
+      edits.attach(null);
+      liveWorld = null;
       worldScope.dispose();
       loop.remove(testScene.system);
     };
@@ -734,6 +765,39 @@ export async function boot(): Promise<void> {
       return run;
     };
     api.regen = (seed: number) => rebuildWorld(seed, 'keep');
+    // Phase 2 (TASK-211): capture mode renders the edited frame right away
+    const afterEdit = (): void => {
+      if (params.freeze) loop.step(1 / 30, 1);
+    };
+    api.edit = (cmd) => {
+      const r = edits.apply(cmd);
+      if (r.ok) afterEdit();
+      return r.reason === undefined ? { ok: r.ok } : { ok: r.ok, reason: r.reason };
+    };
+    api.undo = () => {
+      const ok = edits.undo();
+      if (ok) afterEdit();
+      return ok;
+    };
+    api.redo = () => {
+      const ok = edits.redo();
+      if (ok) afterEdit();
+      return ok;
+    };
+    api.editLog = () => (edits.available ? edits.log() : null);
+    api.testBrush = (x, z, r, delta) => {
+      const wv = liveWorld;
+      if (!wv) return null;
+      const res = testBrush(wv.world, x, z, r, delta);
+      wv.rebuildDirty(res.dirty);
+      afterEdit();
+      return {
+        chunks: res.dirty.chunks.length,
+        props: res.dirty.props.length,
+        sdf: res.dirty.sdf,
+        pending: wv.rebuild.pending,
+      };
+    };
     api.memory = () => ({
       geometries: backend.renderer.info.memory.geometries,
       textures: backend.renderer.info.memory.textures,
@@ -791,6 +855,25 @@ export async function boot(): Promise<void> {
     });
 
     if (params.selftest === 'regen') await selftestRegen(api, params.seed, ctx);
+    if (params.selftest === 'edit' && liveWorld) {
+      const wv: WorldView = liveWorld;
+      const r = runEditSelftest(
+        {
+          world: wv.world,
+          rebuildDirty: (region) => wv.rebuildDirty(region),
+          flush: () => wv.rebuild.flush(),
+          step: () => loop.step(1 / 30, 1),
+          memory: () => api.memory(),
+          calls: () => ctx.info.calls,
+          now,
+        },
+        params.seed,
+      );
+      ctx.timings.selftestEditGeoDelta = r.geoDelta;
+      ctx.timings.selftestEditTexDelta = r.texDelta;
+      ctx.timings.selftestEditMs = r.ms;
+      ctx.timings.selftestEditCalls = r.calls;
+    }
     if (params.selftest === 'ctxloss')
       await selftestContextLoss(backend.renderer, ctx, {
         isReady: () => gpuReady,
@@ -920,6 +1003,7 @@ function installApi(): MarislandApi {
       agents: 0,
       particles: 0,
       gpuMemoryMB: 0,
+      rebuilds: 0,
     },
     step: () => {},
     setCamera: () => {},
@@ -931,6 +1015,11 @@ function installApi(): MarislandApi {
     perf: async () => ({ p50: 0, p95: 0, frames: 0 }),
     regen: async () => {},
     memory: () => ({ geometries: 0, textures: 0 }),
+    edit: () => ({ ok: false, reason: 'not ready' }),
+    undo: () => false,
+    redo: () => false,
+    editLog: () => null,
+    testBrush: () => null,
   };
   window.__marisland = api;
   window.addEventListener('error', (ev) => {
