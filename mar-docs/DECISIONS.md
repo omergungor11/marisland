@@ -2,6 +2,19 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-023: The session-2 branch supersedes main's parallel M7–M10 line — 2026-10-04
+
+**Decision** (user-approved): `claude/inspiring-pascal-19nwjr` becomes `main`. The 11 commits session 1
+pushed to `main` on 2026-10-03 15:42–16:13 UTC (9501fbe…71b2077: a second, independent implementation of
+TASK-161/162/171/172/181/182/191) are merged with `-s ours`: their history stays reachable, their tree is
+not applied.
+**Rationale**: both lines implemented the same tasks in parallel. This line was validated by the 10-seed
+sweep + polish rounds, runs at 9/17/24 programs within the D-010 budgets and carries Phase 2; main's
+line raised the budgets to 22/32/36 and its wow set (27–29 programs) still shows the shelf seams, dim
+night lamps and a faint beam. Picking per file would have mixed two incompatible APIs.
+**To mine from 71b2077 later**: taller lit steam column (478bc09), ducks + capybaras (c9ffe83), polaroid
+photo frame (9501fbe), W8 shell/starfish scatter, ripple rings around moored boats.
+
 ## D-022: Flooded settlements hide as units; LOD1 prop groups span all islands; GPU memory is summed from allocations (amends D-010) — 2026-10-04
 
 **Decision** (Phase 2 polish after the edit sweep, defects 1/4/5/6):

@@ -14,9 +14,8 @@
   after the edit sweep (`mar-docs/qa/edit-sweep-2026-10-04.md`); sets ci/dev/edit/wow green with
   `--assert` (incl. gpuMemoryMB, now real and asserted — D-022), 6 self-tests. Sheets:
   `mar-docs/shots/M13-edit.jpg`, `M13-sweep.jpg`.
-- NOT done / owed by the user: merge this branch to `main` (D-020 supersede of the parallel session-1 line
-  was refused by the auto-mode classifier — the user decides), real-GPU checks (M1 60 fps high, phone
-  30 fps medium, `?perf=1`).
+- Merged to `main` 2026-10-04 with the user's approval (D-023: main's parallel session-1 line superseded,
+  kept in history). Still owed by the user: real-GPU checks (M1 60 fps high, phone 30 fps medium, `?perf=1`).
 - Open items: villagers/sheep/crabs still walk onto flooded ground (walk graph built once); the lighthouse
   beam does not follow a reshaped lighthouse; high-quality composer `outputBuffer` carries MSAA×4 for
   nothing (~95 MB at 1080p); T0 tree-blob groups per island × variant (~18 calls); landmarks are not in
