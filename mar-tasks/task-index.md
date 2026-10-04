@@ -114,21 +114,21 @@ Details and the shared contract in `phases/phase-2.md` (`src/world/edit-types.ts
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-201 | Edit commands, inverse, replay, log codec | worldgen | L | IN_PROGRESS | Phase 1 |
-| TASK-202 | Incremental derived data (zones, local EDT, chunk flags) | worldgen | M | IN_PROGRESS | TASK-201 |
+| TASK-201 | Edit commands, inverse, replay, log codec | worldgen | L | COMPLETED | Phase 1 |
+| TASK-202 | Incremental derived data (zones, local EDT, chunk flags) | worldgen | M | COMPLETED | TASK-201 |
 
 ### M12 — Live rebuild
 *Dirty chunks in one frame, brush cursor, ghosts*
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-211 | Dirty-chunk rebuild: remesh, texSubImage2D, batcher rewrite, `?edit=`, `api.edit` | engine | L | IN_PROGRESS | TASK-201 (contract) |
-| TASK-212 | EditSession, stroke sampler, brush cursor, ghost previews | engine | M | IN_PROGRESS | TASK-211, TASK-162 |
+| TASK-211 | Dirty-chunk rebuild: remesh, texSubImage2D, batcher rewrite, `?edit=`, `api.edit` | engine | L | COMPLETED | TASK-201 (contract) |
+| TASK-212 | EditSession, stroke sampler, brush cursor, ghost previews | engine | M | COMPLETED | TASK-211, TASK-162 |
 
 ### M13 — Editor UI & QA
 *Panel, persistence, share, QA*
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-221 | Edit panel + HUD integration, `edit` shot set, docs | engine | M | PENDING | TASK-212 |
+| TASK-221 | Edit panel + HUD integration, `edit` shot set, docs | engine | M | IN_PROGRESS | TASK-212 |
 | TASK-222 | Phase 2 QA: edit sweep, regression baseline | qa | S | PENDING | TASK-221 |

@@ -2,6 +2,26 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-020: Sandbox edit model — in-place commands with byte-exact inverses, incremental SDF, varint log — 2026-10-04
+
+**Decision** (TASK-201/202/211/212): `applyEdit(world, cmd)` mutates `WorldData` in place and returns
+`inverse` commands (a private `patch` kind restores grid samples / prop slots verbatim → byte-exact
+undo) plus an exact `DirtyRegion`. The shore SDF is NOT recomputed by a windowed EDT: two persistent
+nearest-site maps are updated incrementally (error ≤ 0.064 u vs a full EDT, signs exact). The edit
+log is base64url of a varint stream on a fixed grid (1/16 u, 1/256 strength, 1/4096 turn), ~2.7 KB
+per 200 commands; `?edit=` replays it before the first build (no rebuild path at boot). Live edits
+rebuild ≤ 2 chunks per frame (all at once in capture); textures are updated with `gl.texSubImage2D`
+sub-rects through `renderer.state` (full `needsUpdate` fallback); removed props fade out through a
+reversed `aAppear`; the batcher keeps a mirror of `world.props` so edit-added slots map to render
+slots. The interactive `EditSession` owns history (strokes = one step) and autosave
+(`marisland.edit.<seed>.v1`); the capture path uses the bare applier. Terrain edits do not touch
+`pathGraph` or island metadata (paths may float; documented).
+**Rationale**: in-place mutation keeps the Phase 1 pipeline (textures, mesher, batcher) untouched;
+verbatim patches make undo exact without replaying; the varint codec keeps share URLs short and sync.
+**Known fidelity gaps**: a `village`/`dock` preset is fitted from terrain heights, so a shared link
+frames an edited village slightly differently than the editor saw it; the live SDF texture is only
+refreshed within `EDIT_RENDER.sdfScanPad` of the edit.
+
 ## D-019: Fitted camera presets; W9 looks down 9°, not 22°; portrait overview may exceed 800 u — 2026-10-03
 
 **Decision** (TASK-192 D1/D2/D13, `camera/framing.ts` + `camera/poses.ts`, numbers in `content/camera.ts`):

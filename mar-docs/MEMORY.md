@@ -59,6 +59,11 @@
 - `.claude/worktrees/` (Agent isolation=worktree) sits inside the repo: ignored in eslint/prettier/git. The
   harness may create the worktree from an OLD commit (not the orchestrator's HEAD) → tell every worktree agent
   to `git merge <orchestrator-branch>` before editing, and verify with `git log -1`
+- Agent worktrees were created from `origin/main` (not the orchestrator's HEAD) on 2026-10-04: every
+  worktree agent must `git fetch` + `git reset --hard <orchestrator-branch>` (not merge) when its base has
+  unrelated history, then verify `git log -1`
+- `freeze=1` + `api.edit` steps the loop once per command: compare frames only at equal step counts
+  (`step(1/30, n)`), never "before" vs "after" directly
 - Vertex attribute limit: a 17th attribute fails to link under SwiftShader/ANGLE — pack per-instance data
   into vec4s (`aGait`) and share materials (D-013)
 - CSS: a second `animation` on an element replaces a `forwards`-filled pop animation → element vanishes / inline
