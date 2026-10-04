@@ -4,6 +4,7 @@
  * (Brush falloff / max delta per command live with the edit commands in `content/edit.ts`.)
  */
 import type { ZonePaint } from '../world/edit-types.ts';
+import { FOLIAGE, GRASS, ROCK, SAND } from './palette.ts';
 
 export type EditToolKind =
   'raise' | 'lower' | 'flatten' | 'smooth' | 'paint' | 'prop' | 'erase' | 'move';
@@ -96,4 +97,79 @@ export const GHOST = {
   /** …and when it is not. */
   invalidEmissive: '#B8321F',
   invalidColor: '#FF9C8C',
+} as const;
+
+/**
+ * Edit panel (TASK-221, `ui/edit-panel.ts`): tool labels and hints, zone swatches, footer text,
+ * share toast, reset confirm. Swatch colours are the terrain palette's zone colours.
+ */
+export const EDIT_PANEL = {
+  tools: {
+    raise: { label: 'Raise', hint: 'Drag on the land to raise it' },
+    lower: { label: 'Lower', hint: 'Drag to dig · below sea level it floods' },
+    flatten: { label: 'Flatten', hint: 'Drag from the height you want to keep' },
+    smooth: { label: 'Smooth', hint: 'Drag to soften slopes' },
+    paint: { label: 'Paint', hint: 'Drag to paint the ground' },
+    prop: { label: 'Place', hint: 'Tap to place' },
+    erase: { label: 'Erase', hint: 'Tap a prop to remove it' },
+    move: { label: 'Move', hint: 'Drag a prop to a new spot' },
+  } as Readonly<Record<EditToolKind, { label: string; hint: string }>>,
+  /** Hint while no tool is selected (tap the active tool again to look around). */
+  idleHint: 'Drag to look around · pick a tool',
+  zones: [
+    { id: 'grass', label: 'Grass', color: GRASS[2] },
+    { id: 'meadow', label: 'Meadow', color: GRASS[0] },
+    { id: 'forest', label: 'Forest', color: FOLIAGE.deciduous[2] },
+    { id: 'sand', label: 'Sand', color: SAND.dry },
+    { id: 'rock', label: 'Rock', color: ROCK[1] },
+  ] as readonly { id: ZonePaint; label: string; color: string }[],
+  /** Slider labels; strength is shown as a percentage. */
+  radiusLabel: 'Size',
+  strengthLabel: 'Strength',
+  /** Footer: title while unedited, badge `edited · N changes` once the log has commands. */
+  title: 'Sandbox',
+  badge: (n: number): string => `edited · ${n} ${n === 1 ? 'change' : 'changes'}`,
+  tips: {
+    undo: 'Undo · Ctrl Z',
+    redo: 'Redo · Shift Ctrl Z',
+    share: 'Copy share link',
+    reset: 'Reset all edits',
+    done: 'Done · E',
+    edit: 'Edit · E',
+  },
+  doneLabel: 'Done',
+  /** Share: toast text and how long it stays (ms); the prompt fallback when the clipboard fails. */
+  copied: 'Link copied',
+  copyPrompt: 'Copy this link',
+  toastMs: 1800,
+  /** Prop thumbnails render this long after the panel first opens (ms; the place tool: at once). */
+  thumbsDelayMs: 400,
+  /** Reset asks for a second tap within this long (ms). */
+  resetConfirm: 'Reset all?',
+  resetArmMs: 3000,
+  /** Capture (`freeze=1`, `panel=edit`): the tool shown when `panel=edit:<tool>` gives none. */
+  captureTool: 'raise' as EditToolKind,
+} as const;
+
+/**
+ * Prop-picker thumbnails (TASK-221): every placeable def rendered once through the prop material
+ * into a small offscreen WebGL canvas (neutral daylight, no fog / night / weather), cached as
+ * PNG data URLs. Fixed geometry seed so the cache is shared by every world.
+ */
+export const EDIT_THUMBS = {
+  /** Thumbnail size (px, square) and atlas columns of the offscreen canvas. */
+  size: 64,
+  cols: 8,
+  seed: 1001,
+  variant: 0,
+  /** Camera: vertical FOV, yaw (deg, from +z toward +x) and pitch (deg above horizontal). */
+  fov: 30,
+  yaw: 35,
+  pitch: 24,
+  /** Bounding-sphere fill of the frame (1 = touching the edges). */
+  fill: 0.92,
+  sun: { color: '#FFF6E5', intensity: 3, dir: [0.6, 1, 0.8] as const },
+  hemi: { sky: '#CFEAFF', ground: '#B9D08A', intensity: 1.2 },
+  /** Rim (fresnel) colour while the thumbnails render. */
+  horizon: '#CFEAFF',
 } as const;

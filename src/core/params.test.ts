@@ -44,4 +44,13 @@ describe('params', () => {
     expect(Number.isNaN(parseParams('?introt=abc').introt)).toBe(true);
     expect(parseParams('?introt=0').introt).toBe(0);
   });
+  it('parses the edit panel and its tool (TASK-221)', () => {
+    expect(parseParams('?panel=edit').panel).toBe('edit');
+    expect(parseParams('?panel=edit').panelTool).toBe('');
+    const p = parseParams('?panel=edit:prop');
+    expect(p.panel).toBe('edit');
+    expect(p.panelTool).toBe('prop');
+    expect(parseParams('?panel=edit:nope').panelTool).toBe('');
+    expect(parseParams('?panel=photo:prop').panelTool).toBe('');
+  });
 });

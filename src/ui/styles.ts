@@ -13,6 +13,7 @@ canvas.mar-canvas{display:block;width:100%;height:100%;touch-action:none;outline
   padding:6px 8px;border-radius:8px;white-space:pre;z-index:40;pointer-events:none;}
 ${LOADER_CSS}
 ${HUD_CSS}
+${EDIT_PANEL_CSS}
 ${CURTAIN_CSS}
 `;
   document.head.appendChild(style);
@@ -163,7 +164,7 @@ export const HUD_CSS = `
   .mar-compass{width:52px;height:52px;}
   .mar-btn{width:44px;height:44px;}
   .mar-dial{--d:56px;}
-  .mar-dock{gap:8px;max-width:calc(100vw - 24px);}
+  .mar-dock{gap:6px;max-width:calc(100vw - 24px);}
   .mar-sheet{bottom:${16 + 56 + 12}px;}
   .mar-photo{gap:10px;}
   .mar-photo-panel{order:-1;flex-basis:100%;width:100%;}
@@ -183,5 +184,92 @@ export const HUD_CSS = `
 }
 @media (prefers-reduced-motion:reduce){
   .mar-hud *{transition-duration:0s!important;animation-duration:.01s!important;}
+}
+`;
+
+/**
+ * Sandbox edit panel (TASK-221, `edit-panel.ts`): replaces the dock in edit mode. Desktop: a card
+ * at the bottom centre; portrait phones: a full-width bottom sheet; short landscape phones: a side
+ * sheet on the right under the compass (labels avoid whichever box it is).
+ */
+export const EDIT_PANEL_CSS = `
+.mar-edit{position:absolute;left:50%;bottom:16px;width:452px;max-width:calc(100vw - 32px);transform:translate(-50%,12px);display:flex;flex-direction:column;gap:8px;
+  padding:16px 12px 10px;background:${UI.surface};border-radius:20px;box-shadow:${lip},${soft};opacity:0;visibility:hidden;pointer-events:none;touch-action:manipulation;
+  transition:opacity ${fade},transform .3s ${ease},visibility 0s ${fade};}
+.mar-panel-edit .mar-edit{opacity:1;visibility:visible;pointer-events:auto;transform:translate(-50%,0);transition:opacity ${fade},transform .3s ${ease},visibility 0s;}
+.mar-panel-edit .mar-dock,.mar-panel-edit .mar-settings{opacity:0;visibility:hidden;pointer-events:none;transition:opacity ${fade},visibility 0s ${fade};}
+.mar-edit-tools{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;}
+.mar-tool{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;height:54px;min-width:0;border:0;border-radius:14px;padding:4px 0 3px;
+  background:#3B3A5A0D;color:${UI.ink};cursor:pointer;transition:transform .12s ease,background-color .15s;}
+.mar-tool span{font:800 11px/1 'Nunito',sans-serif;letter-spacing:.1px;white-space:nowrap;}
+.mar-tool[aria-pressed="true"]{background:${UI.secondary};box-shadow:0 3px 0 #3B3A5A22;}
+@media (hover:hover){.mar-hud .mar-tool:hover{transform:translateY(-2px);}}
+.mar-tool:active{transform:scale(.92);}
+.mar-edit-ctx{display:flex;flex-direction:column;gap:4px;min-height:0;}
+.mar-edit-hint{font:700 13px/18px 'Nunito',sans-serif;color:#3B3A5AB3;padding:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mar-edit-sliders{display:grid;gap:0;padding:0 4px;}
+.mar-edit .mar-slider{grid-template-columns:68px 1fr 44px;height:34px;}
+.mar-edit .mar-slider input{height:32px;}
+.mar-edit-zones,.mar-edit-props{display:none;}
+.mar-edit[data-tool="flatten"] .mar-edit-strength,.mar-edit[data-tool="paint"] .mar-edit-strength{display:none;}
+.mar-edit[data-tool="prop"] .mar-edit-sliders,.mar-edit[data-tool="erase"] .mar-edit-sliders,.mar-edit[data-tool="move"] .mar-edit-sliders,.mar-edit[data-tool="none"] .mar-edit-sliders{display:none;}
+.mar-edit[data-tool="paint"] .mar-edit-zones{display:flex;}
+.mar-edit-zones{gap:6px;justify-content:space-between;padding:2px 2px 0;}
+.mar-zone{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;border:0;background:none;padding:2px 0;cursor:pointer;min-width:0;}
+.mar-zone i{width:30px;height:30px;border-radius:50%;box-shadow:inset 0 -3px 0 #3B3A5A22,0 0 0 2px #3B3A5A1A;transition:transform .15s ${ease};}
+.mar-zone span{font:800 11px/1 'Nunito',sans-serif;}
+.mar-zone[aria-checked="true"] i{box-shadow:inset 0 -3px 0 #3B3A5A22,0 0 0 3px ${UI.surface},0 0 0 5.5px ${UI.secondary};transform:scale(1.08);}
+.mar-edit[data-tool="prop"] .mar-edit-props{display:grid;}
+.mar-edit-props{grid-template-columns:repeat(auto-fill,minmax(50px,1fr));gap:5px;max-height:146px;overflow-y:auto;overscroll-behavior:contain;padding:3px 3px 4px;
+  scrollbar-width:thin;scrollbar-color:${UI.muted} transparent;}
+.mar-prop{position:relative;height:52px;min-width:0;border:0;border-radius:12px;padding:0;background:#3B3A5A0D;cursor:pointer;display:flex;align-items:center;justify-content:center;overflow:hidden;
+  transition:transform .12s ease,background-color .15s;}
+.mar-prop img{width:50px;height:50px;display:block;pointer-events:none;}
+.mar-prop span{font:800 9px/1.1 'Nunito',sans-serif;padding:2px;text-align:center;}
+.mar-prop[aria-selected="true"]{background:#4FC3C933;box-shadow:inset 0 0 0 3px ${UI.secondary};}
+@media (hover:hover){.mar-hud .mar-prop:hover{transform:translateY(-2px);}}
+.mar-edit-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:38px;}
+/* title tab on the panel's top edge: "Sandbox", then "edited · N changes" */
+.mar-edit-badge{position:absolute;left:16px;top:0;transform:translateY(-60%);height:26px;display:flex;align-items:center;padding:0 12px;border-radius:999px;white-space:nowrap;
+  background:${UI.surface};box-shadow:${lip};font:700 15px/1 'Fredoka',sans-serif;color:${UI.ink};pointer-events:none;}
+.mar-edit-badge.mar-edited{background:${UI.secondary};font:800 13px/1 'Nunito',sans-serif;}
+.mar-edit-acts{display:flex;align-items:center;gap:6px;flex:none;}
+.mar-ebtn{position:relative;height:38px;min-width:38px;border-radius:999px;border:0;padding:0 9px;background:#3B3A5A10;color:${UI.ink};cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;
+  transition:transform .12s ease,background-color .15s;}
+.mar-ebtn:disabled{opacity:.38;cursor:default;}
+@media (hover:hover){.mar-hud .mar-ebtn:not(:disabled):hover{transform:translateY(-2px);}.mar-ebtn:not(:disabled):hover .mar-tip{opacity:1;transition-delay:.4s;}}
+.mar-ereset{display:none;font:800 12px/1 'Nunito',sans-serif;white-space:nowrap;}
+.mar-ebtn.mar-armed{background:${UI.primary};color:#FFFFFF;}
+.mar-ebtn.mar-armed .mar-ereset{display:inline;}
+.mar-ebtn.mar-armed .mar-tip{display:none;}
+.mar-edone{height:38px;border:0;border-radius:999px;padding:0 16px;background:${UI.primary};color:#FFFFFF;font:700 16px/1 'Fredoka',sans-serif;box-shadow:0 3px 0 #3B3A5A26;cursor:pointer;
+  transition:transform .12s ease;}
+@media (hover:hover){.mar-hud .mar-edone:hover{transform:translateY(-2px);}}
+.mar-toast{position:absolute;left:50%;bottom:calc(100% + 10px);transform:translate(-50%,6px);background:${UI.ink};color:${UI.surface};font:700 14px/1 'Nunito',sans-serif;
+  padding:10px 14px;border-radius:999px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .18s,transform .25s ${ease};}
+.mar-toast.mar-toast-on{opacity:1;transform:translate(-50%,0);}
+
+/* portrait phones: full-width bottom sheet */
+@media (max-width:480px){
+  .mar-edit{left:8px;right:8px;bottom:8px;width:auto;max-width:none;transform:translateY(12px);padding:16px 10px 10px;border-radius:20px;}
+  .mar-panel-edit .mar-edit{transform:none;}
+  .mar-tool{height:52px;}
+  .mar-tool svg{width:22px;height:22px;}
+  .mar-tool span{font-size:10px;}
+  .mar-edit-props{max-height:132px;}
+  .mar-ebtn{min-width:40px;height:40px;}
+  .mar-edone{height:40px;padding:0 14px;}
+}
+/* short landscape phones: side sheet on the right, below the compass */
+@media (max-height:480px) and (min-width:481px){
+  .mar-edit{left:auto;right:10px;top:78px;bottom:10px;width:304px;max-width:calc(100vw - 20px);transform:translateX(12px);padding:14px 10px 8px;gap:6px;}
+  .mar-panel-edit .mar-edit{transform:none;}
+  .mar-edit-tools{grid-template-columns:repeat(4,1fr);}
+  .mar-tool{height:44px;flex-direction:row;gap:5px;padding:0 4px;}
+  .mar-tool svg{width:20px;height:20px;flex:none;}
+  .mar-tool span{font-size:10px;}
+  .mar-edit-ctx{flex:1 1 auto;overflow-y:auto;}
+  .mar-edit-props{max-height:none;flex:1 1 auto;}
+  .mar-edit .mar-slider{height:32px;}
 }
 `;

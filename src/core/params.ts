@@ -2,6 +2,8 @@
  * URL parameters (ARCHITECTURE §9). Parsed once at boot; every system reads from
  * the resulting object, never from `location` directly.
  */
+import { EDIT_TOOLS, type EditToolKind } from '../content/edit-ui.ts';
+
 export type Quality = 'low' | 'medium' | 'high';
 export type DebugView =
   'none' | 'stats' | 'mask' | 'overdraw' | 'wire' | 'height' | 'zone' | 'slope' | 'coast';
@@ -37,13 +39,18 @@ export interface Params {
   gallery: boolean;
   /** Reduced motion forced on. */
   rm: boolean;
-  /** HUD panel open at boot (capture review of the photo bar / settings): '' | photo | settings. */
+  /**
+   * HUD panel open at boot (capture review of the photo bar / settings / edit panel):
+   * '' | photo | settings | edit. `panel=edit:<tool>` also selects the edit tool.
+   */
   panel: HudPanel;
+  /** Edit tool from `panel=edit:<tool>`; '' = the default. */
+  panelTool: EditToolKind | '';
   /** Capture: freeze the opening sequence at this time (s); NaN = off. Needs `freeze=1`. */
   introt: number;
 }
 
-export type HudPanel = '' | 'photo' | 'settings';
+export type HudPanel = '' | 'photo' | 'settings' | 'edit';
 
 export const DEFAULT_SEED = 1001;
 
@@ -72,7 +79,10 @@ export function parseParams(search: string): Params {
   const quality = (q.get('quality') ?? '') as Params['quality'];
   const debugRaw = q.get('debug') ?? 'none';
   const selftest = (q.get('selftest') ?? '') as Params['selftest'];
-  const panel = q.get('panel') ?? '';
+  const [panel, panelToolRaw = ''] = (q.get('panel') ?? '').split(':');
+  const panelTool = (EDIT_TOOLS as readonly string[]).includes(panelToolRaw)
+    ? (panelToolRaw as EditToolKind)
+    : '';
   const introtRaw = q.get('introt');
   const introt = introtRaw === null || introtRaw === '' ? NaN : Number(introtRaw);
   return {
@@ -105,7 +115,8 @@ export function parseParams(search: string): Params {
     intro: parseBool(q.get('intro'), true),
     gallery: parseBool(q.get('gallery'), false),
     rm: parseBool(q.get('rm'), false),
-    panel: panel === 'photo' || panel === 'settings' ? panel : '',
+    panel: panel === 'photo' || panel === 'settings' || panel === 'edit' ? panel : '',
+    panelTool: panel === 'edit' ? panelTool : '',
     introt: Number.isFinite(introt) && introt >= 0 ? introt : NaN,
   };
 }

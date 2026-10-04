@@ -54,6 +54,8 @@ import {
 import { SessionHistory } from './edit/session-history.ts';
 import { createEditApplier } from './edit/apply.ts';
 import { runEditSelftest, testBrush } from './render/rebuild-testing.ts';
+import { staticEditBinding } from './ui/edit-panel.ts';
+import { EDIT_PANEL } from './content/edit-ui.ts';
 
 /**
  * Composition root (ARCHITECTURE §1). Owns scopes, the loop and the systems.
@@ -271,6 +273,13 @@ export async function boot(): Promise<void> {
     events.on('photoMode', ({ frozen }) => governor.setDisabled('photo', frozen, now() / 1000));
     /** Highest detail tier the world renders (the governor's last resort lowers it). */
     let tierCap = 3;
+    // Edit mode (TASK-221): the governor holds its level and the tier cap is lifted, so the
+    // detail under the brush never steps while editing (placed props stay visible).
+    let editing = false;
+    events.on('editModeChanged', ({ active }) => {
+      editing = active;
+      governor.setDisabled('edit', active, now() / 1000);
+    });
     const applyGovernor = (a: GovernorAction): void => {
       if (a.to.dpr !== backend.dpr) {
         backend.setPixelRatio(a.to.dpr);
@@ -330,7 +339,7 @@ export async function boot(): Promise<void> {
       worldWeather?.set(w);
     });
     const motionScale = (): number => (cam.reducedMotion ? HUD.reducedMotionScale : 1);
-    const detailTier = (): number => Math.min(cam.tier, tierCap);
+    const detailTier = (): number => (editing ? cam.tier : Math.min(cam.tier, tierCap));
     loop.add({
       name: 'tier-sync',
       update: () => {
@@ -532,6 +541,10 @@ export async function boot(): Promise<void> {
      */
     const rebuildWorld = async (seed: number, pose: 'overview' | 'keep'): Promise<void> => {
       const t0 = now();
+      // the old world's edit mode ends with it; the new world's resumes editing (reset, new seed)
+      // (capture keeps its static panel binding)
+      const wasEditing = editMode?.active ?? false;
+      if (!params.freeze) hud?.bindEdit(null);
       const running = loop.isRunning;
       loop.stop();
       const kept = pose === 'keep' ? orbitPoseOf(cam.controls) : null;
@@ -550,6 +563,8 @@ export async function boot(): Promise<void> {
       api.seed = seed;
       cam.setWorld(testScene.cameraWorld);
       hud?.setWorld(testScene.cameraWorld, ISLAND_ACCENTS);
+      if (!params.freeze) hud?.bindEdit(editMode);
+      if (wasEditing) editMode?.setActive(true);
       if (kept) {
         lookFromOrbit(
           cam.controls,
@@ -654,6 +669,7 @@ export async function boot(): Promise<void> {
             if (!active) cam.setFov(CAMERA.fov);
             events.emit('photoMode', { active, frozen: photoFrozen });
           },
+          onEditPanel: (open) => editMode?.setActive(open),
           onFov: (deg) => cam.setFov(deg),
           onFreeze: setFrozen,
           onShutter: () =>
@@ -681,6 +697,22 @@ export async function boot(): Promise<void> {
       );
       hud.setWorld(testScene.cameraWorld, ISLAND_ACCENTS);
       appScope.defer(() => hud?.dispose());
+      // ---- edit panel (TASK-221): drives the live world's edit mode; `E` / Esc / the brush
+      // button / Done / photo mode all meet in `editModeChanged` ↔ `openPanel`. Capture has no
+      // edit mode: `panel=edit[:tool]` shows a static panel (fixed tool, the log's change count).
+      const liveEdit = editMode as EditMode | null;
+      if (liveEdit) hud.bindEdit(liveEdit);
+      else if (params.panel === 'edit')
+        hud.bindEdit(
+          staticEditBinding(
+            createToolState(params.seed, { tool: params.panelTool || EDIT_PANEL.captureTool }),
+            edits.log().cmds.length,
+          ),
+        );
+      events.on('editModeChanged', ({ active }) => {
+        if (active && !hud?.editing) hud?.openPanel('edit');
+        else if (!active && hud?.editing) hud.openPanel('');
+      });
       loop.add({
         name: 'hud',
         update: () =>
@@ -967,7 +999,12 @@ export async function boot(): Promise<void> {
     if (!params.freeze) loop.start();
     if (!runIntro && !introCapture) hud?.show();
     else if (!hudShownByIntro) hud?.showWordmark();
+    // (`editMode` is assigned inside buildWorld: widen the narrowed `null`)
+    const bootEdit = editMode as EditMode | null;
+    if (params.panel === 'edit' && params.panelTool) bootEdit?.setTool(params.panelTool);
     if (params.panel) hud?.openPanel(params.panel);
+    // capture: the edit panel's thumbnails must have decoded before the screenshot
+    if (params.panel && hud) await hud.settled();
     booted = true;
     api.ready = gpuReady;
     // ---- TASK-213: first-edit prewarm (interactive only, idle time after ready) ----------
@@ -1025,6 +1062,7 @@ function applyShotPreset(p: Params): Params {
   if (!q.has('weather') && s.weather) p.weather = s.weather;
   if (!q.has('simt') && s.simt !== undefined) p.simt = s.simt;
   if (!q.has('quality') && s.quality) p.quality = s.quality;
+  if (!q.has('edit') && s.edit) p.edit = s.edit;
   return p;
 }
 
