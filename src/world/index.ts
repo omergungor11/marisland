@@ -26,10 +26,26 @@ import { buildRoutes } from './gen/routes.ts';
 import { createOccupancy, scatterProps } from './gen/scatter.ts';
 import { compactPropStore, createPropStore } from './prop-store.ts';
 import { hashPolylines, hashProps, hashSites } from './gen/hash.ts';
+import { EDIT_PROPS } from '../content/edit.ts';
 
 export * from './types.ts';
+export * from './edit-types.ts';
 export { CHUNK_HAS_LAND, CHUNK_HAS_SHALLOW } from './gen/chunks.ts';
 export { slopeAtCell } from './gen/zones.ts';
+export { PropFlag, PROP_FLAGS, growPropStore, propCapacity, type PropStore } from './prop-store.ts';
+export {
+  applyEdit,
+  canPlace,
+  canonicalCmd,
+  decodeLog,
+  editHash,
+  encodeLog,
+  propIdAt,
+  propIndexOf,
+  replay,
+  type EditPatchData,
+  type PlaceCheck,
+} from './edit.ts';
 
 export interface GenerateOptions {
   /** 'auto' = archipelago of 5–7 islands (default); 1 = single Hearthholm (M1 tests). */
@@ -117,6 +133,7 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
   );
   // field hues only where the zone is still `field` (lots, paths and plaza took the rest)
   const fieldColor = rawLand.fieldColor;
+  const fieldHue = fieldColor.slice();
   for (let i = 0; i < fieldColor.length; i++) if (zone[i] !== Zone.field) fieldColor[i] = 0;
   lap('sites');
 
@@ -152,12 +169,17 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
     fieldColor,
     props: createPropStore(0),
     chunkFlags,
+    zonePainted: new Uint8Array(GRID_N * GRID_N),
+    genAux: { tags: rawLand.tags, fieldHue, siteOccupancy: new Uint8Array(0) },
     hashes,
     timings,
   };
   const occupancy = createOccupancy();
   markSites(occupancy, world, sites.shapes);
-  world.props = compactPropStore(scatterProps(world, occupancy).props);
+  world.genAux.siteOccupancy = occupancy.data.slice();
+  // spare slots for Phase 2 edits; hashes and consumers only read `count` entries
+  world.props = compactPropStore(scatterProps(world, occupancy).props, EDIT_PROPS.propHeadroom);
+  world.props.editBase = world.props.count;
   lap('props');
 
   hashes.layout = hashLayout(windDir, islands);

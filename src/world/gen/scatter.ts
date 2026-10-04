@@ -34,18 +34,20 @@ export interface OccupancyGrid {
   originX: number;
   originZ: number;
   data: Uint8Array;
-  isFree(x: number, z: number, radius: number): boolean;
+  /** No cell ≥ `minValue` (default 1 = anything) within `radius` of (x, z). */
+  isFree(x: number, z: number, radius: number, minValue?: number): boolean;
   mark(x: number, z: number, radius: number, value?: number): void;
   /** Value of the cell containing (x, z) (0 outside). */
   valueAt(x: number, z: number): number;
 }
 
-export function createOccupancy(): OccupancyGrid {
+/** New grid, or a view over existing `data` (Phase 2 validation over `genAux.siteOccupancy`). */
+export function createOccupancy(existing?: Uint8Array): OccupancyGrid {
   const cell = OCCUPANCY_CELL;
   const n = Math.ceil(WORLD_SIZE / cell);
   const originX = -WORLD_SIZE / 2;
   const originZ = -WORLD_SIZE / 2;
-  const data = new Uint8Array(n * n);
+  const data = existing ?? new Uint8Array(n * n);
   const idx = (x: number, z: number): number => {
     const ix = Math.floor((x - originX) / cell);
     const iz = Math.floor((z - originZ) / cell);
@@ -58,7 +60,7 @@ export function createOccupancy(): OccupancyGrid {
     originX,
     originZ,
     data,
-    isFree(x, z, radius) {
+    isFree(x, z, radius, minValue = 1) {
       const r = Math.max(0, Math.ceil(radius / cell));
       const cx = Math.floor((x - originX) / cell);
       const cz = Math.floor((z - originZ) / cell);
@@ -66,7 +68,7 @@ export function createOccupancy(): OccupancyGrid {
         for (let dx = -r; dx <= r; dx++) {
           if (dx * dx + dz * dz > r * r + r) continue;
           const i = idx(x + dx * cell, z + dz * cell);
-          if (i >= 0 && data[i]) return false;
+          if (i >= 0 && data[i] >= minValue) return false;
         }
       }
       void cx;

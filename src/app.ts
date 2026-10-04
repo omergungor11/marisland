@@ -47,7 +47,11 @@ import { createBrushCursor } from './edit/cursor.ts';
 import { createGhost } from './edit/ghost.ts';
 import { createEditMode, editCameraOf, EDIT_FALLBACKS, type EditMode } from './edit/edit-mode.ts';
 import type { WorldView } from './render/world-view.ts';
-import { loadWorldEditApi } from './edit/world-edit-api.ts';
+import {
+  loadWorldEditApi,
+  type WorldEditApi as LoadedWorldEditApi,
+} from './edit/world-edit-api.ts';
+import { SessionHistory } from './edit/session-history.ts';
 import { createEditApplier } from './edit/apply.ts';
 import { runEditSelftest, testBrush } from './render/rebuild-testing.ts';
 
@@ -82,8 +86,21 @@ const now = (): number => performance.now();
 // ---- edit mode (TASK-212) injection points: the orchestrator maps these onto TASK-201
 // (`world/edit.ts`: applyEdit, canPlace, encodeLog, decodeLog) and TASK-211 (`edit/history.ts`)
 // after merge. Until then the fallbacks reject every edit and keep no history.
-const worldEditApi = (): WorldEditApi<WorldData> | null => null;
-const createEditHistory = (): HistoryLike => EDIT_FALLBACKS.history;
+let loadedEditApi: LoadedWorldEditApi | null = null;
+const worldEditApi = (): WorldEditApi<WorldData> | null => {
+  const api = loadedEditApi;
+  if (!api) return null;
+  return {
+    applyEdit: api.applyEdit,
+    encodeLog: api.encodeLog,
+    decodeLog: api.decodeLog,
+    canPlace: (w, cmd) => {
+      const r = api.canPlace?.(w, cmd);
+      return r === undefined ? { ok: true } : typeof r === 'boolean' ? { ok: r } : r;
+    },
+  };
+};
+const createEditHistory = (): HistoryLike => new SessionHistory();
 const editStorage = (): StorageLike | null => {
   try {
     return window.localStorage;
@@ -323,7 +340,8 @@ export async function boot(): Promise<void> {
 
     // ---- Phase 2 edits (TASK-211): the edit model loads lazily (null when world/edit.ts is not
     // in the build); `?edit=` is replayed right after generateWorld, before the first build.
-    const edits = createEditApplier(params.gallery ? null : await loadWorldEditApi(), {
+    loadedEditApi = params.gallery ? null : await loadWorldEditApi();
+    const edits = createEditApplier(loadedEditApi, {
       seed: params.seed,
       encoded: params.edit,
     });
@@ -427,7 +445,9 @@ export async function boot(): Promise<void> {
         editSession = session;
         editMode = mode;
         loop.add(mode.system);
-        if (!new URLSearchParams(location.search).has('edit')) session.restore();
+        const bootLog = edits.log();
+        if (bootLog.cmds.length) session.adopt(bootLog);
+        else if (!new URLSearchParams(location.search).has('edit')) session.restore();
         const flush = (): void => session.flush();
         window.addEventListener('pagehide', flush);
         // entering edit mode ends the opening sequence (the intro owns the camera)
@@ -494,6 +514,9 @@ export async function boot(): Promise<void> {
 
     /** Free the world's GPU resources and stop its system (idempotent). */
     const teardownWorld = (): void => {
+      // the session owns the interactive log: hand it to the applier so a `keep` rebuild
+      // (context restore) replays the same edits before the new build
+      if (editSession) edits.adoptLog(editSession.log);
       edits.attach(null);
       liveWorld = null;
       worldScope.dispose();
@@ -770,21 +793,21 @@ export async function boot(): Promise<void> {
       if (params.freeze) loop.step(1 / 30, 1);
     };
     api.edit = (cmd) => {
-      const r = edits.apply(cmd);
+      const r = editSession ? editSession.apply(cmd) : edits.apply(cmd);
       if (r.ok) afterEdit();
       return r.reason === undefined ? { ok: r.ok } : { ok: r.ok, reason: r.reason };
     };
     api.undo = () => {
-      const ok = edits.undo();
+      const ok = editSession ? editSession.undo() : edits.undo();
       if (ok) afterEdit();
       return ok;
     };
     api.redo = () => {
-      const ok = edits.redo();
+      const ok = editSession ? editSession.redo() : edits.redo();
       if (ok) afterEdit();
       return ok;
     };
-    api.editLog = () => (edits.available ? edits.log() : null);
+    api.editLog = () => (editSession ? editSession.log : edits.available ? edits.log() : null);
     api.testBrush = (x, z, r, delta) => {
       const wv = liveWorld;
       if (!wv) return null;

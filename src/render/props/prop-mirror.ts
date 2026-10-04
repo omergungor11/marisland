@@ -1,6 +1,6 @@
-import type { PropStore } from '../../world/prop-store.ts';
 import { heightAt, type Heightfield } from '../../world/types.ts';
 import { EDIT_PROP_ID_BASE } from '../../world/edit-types.ts';
+import { PropFlag, type PropStore } from '../../world/prop-store.ts';
 
 /**
  * The batcher draws a render-side PropStore: a copy of `world.props` (indices 0 … base − 1 map
@@ -72,7 +72,15 @@ export function createPropMirror(render: PropStore, base: number, h: Heightfield
       const out: number[] = [];
       for (const id of ids) {
         const w = id >= EDIT_PROP_ID_BASE ? base + (id - EDIT_PROP_ID_BASE) : id;
-        if (w < 0 || w >= world.count) continue;
+        if (w < 0) continue;
+        if (w >= world.count) {
+          // the world popped this edit slot (undo of the last propAdd): hide its render instance
+          const r = editSlot.get(w);
+          if (r === undefined) continue;
+          render.flags[r] |= PropFlag.removed;
+          out.push(r);
+          continue;
+        }
         const r = renderIndexOf(w);
         for (const f of FIELDS) render[f][r] = world[f][w];
         out.push(r);

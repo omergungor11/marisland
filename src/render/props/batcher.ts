@@ -8,7 +8,6 @@ import { unitHash } from '../../core/hash.ts';
 import { BLOOM_IN } from '../../content/anim.ts';
 import type { Counters } from '../../capture/api.ts';
 import { CHUNK_SIZE, CHUNKS_PER_SIDE } from '../../world/types.ts';
-import { PROP_FLAG_REMOVED } from '../../world/prop-flags-ext.ts';
 import { EDIT_RENDER } from '../../content/edit.ts';
 import { makeBlobs, writeBlobMatrix } from './contact-blobs.ts';
 import { ALWAYS_APPEAR, APPEAR_OUT_SECONDS, HIDDEN_APPEAR, encodeAppearOut } from './appear.ts';
@@ -128,7 +127,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
   for (let i = 0; i < store.count; i++) {
     const def = PROP_DEFS[store.defId[i]];
     if (!def) continue;
-    if (store.flags[i] & PROP_FLAG_REMOVED) continue; // removed by a replayed edit log
+    if (store.flags[i] & PropFlag.removed) continue; // removed by a replayed edit log
     const gc = (store.flags[i] & PropFlag.groundCover) !== 0;
     const bucket = gc ? store.chunkId[i] : store.islandId[i];
     const key = `${store.defId[i]}:${store.variant[i]}:${gc ? 'c' : 'i'}${bucket}`;
@@ -270,7 +269,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
     const cells = new Map<string, { x: number; z: number; y: number; n: number; island: number }>();
     for (let i = 0; i < store.count; i++) {
       if (!(store.flags[i] & PropFlag.clusterable)) continue;
-      if (store.flags[i] & PROP_FLAG_REMOVED) continue;
+      if (store.flags[i] & PropFlag.removed) continue;
       const cx = Math.floor(store.x[i] / 8);
       const cz = Math.floor(store.z[i] / 8);
       const k = `${cx},${cz}`;
@@ -371,7 +370,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
   const instantEdits = d.instantEdits ?? false;
   /** Removal fades in flight: the instance is zero-scaled once its fade is over. */
   let pending: { g: Group; k: number; i: number; at: number }[] = [];
-  /** Store indices currently hidden by an edit (`PROP_FLAG_REMOVED`). */
+  /** Store indices currently hidden by an edit (`PropFlag.removed`). */
   const removedIdx = new Set<number>();
   // store index → instance slots, and (def, variant, bucket) → LOD groups; built on first edit
   let slotMap: Map<number, { g: Group; k: number }[]> | null = null;
@@ -672,7 +671,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
         if (i < 0 || i >= store.count) continue;
         const def = PROP_DEFS[store.defId[i]];
         if (!def) continue;
-        const removed = (store.flags[i] & PROP_FLAG_REMOVED) !== 0;
+        const removed = (store.flags[i] & PropFlag.removed) !== 0;
         const sl = slots.get(i);
         if (!sl) {
           if (!removed) append(i, def, time, st);

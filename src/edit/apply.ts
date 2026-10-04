@@ -30,6 +30,11 @@ export interface EditApplier {
   redo(): boolean;
   /** Seed + every applied command (boot log first). */
   log(): EditLog;
+  /**
+   * Take over a log as the boot log (not undoable): the live `EditSession` hands its log over
+   * before a `keep` rebuild (context restore, reset) so `beforeBuild` replays the same edits.
+   */
+  adoptLog(log: EditLog): void;
   readonly history: EditHistory<EditCommand>;
 }
 
@@ -123,5 +128,10 @@ export function createEditApplier(api: WorldEditApi | null, o: EditApplierOption
       return true;
     },
     log,
+    adoptLog(l) {
+      seed = l.seed;
+      boot = l.cmds.slice();
+      history.clear();
+    },
   };
 }

@@ -82,6 +82,8 @@ export class FakeWorld {
         this.props.set(cmd.id, { ...p, x: cmd.x, z: cmd.z, rotY: cmd.rotY });
         return { ok: true, inverse: [inv], dirty: this.dirty(cmd.x, cmd.z, cmd.id) };
       }
+      default:
+        return fail('unsupported command');
     }
   };
 

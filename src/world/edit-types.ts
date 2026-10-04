@@ -3,6 +3,7 @@
  * commands (`world/edit.ts`), the dirty-chunk rebuild (`render/world-view.ts`) and the
  * editor session/UI (`edit/`, `ui/edit-panel.ts`). No three import.
  */
+import type { EditPatchData } from './edit.ts';
 
 /** Zone paints the brush can apply (subset of `Zone`, land only). */
 export type ZonePaint = 'grass' | 'meadow' | 'forest' | 'sand' | 'rock';
@@ -33,7 +34,14 @@ export type EditCommand =
       variant?: number;
     }
   | { k: 'propRemove'; id: number }
-  | { k: 'propMove'; id: number; x: number; z: number; rotY: number };
+  | { k: 'propMove'; id: number; x: number; z: number; rotY: number }
+  /**
+   * Private inverse produced by `applyEdit` (TASK-201): restores grid samples and prop slots
+   * verbatim (byte-exact undo). Only ever found in `EditResult.inverse`; UI code never builds
+   * one and it is never logged (`encodeLog` throws on it). Applying it returns the patch that
+   * re-does it, so undo/redo can also be done patch ↔ patch.
+   */
+  | { k: 'patch'; data: EditPatchData };
 
 /** Prop ids below this are scatter/settlement props from `WorldData.props`; above: edit-added. */
 export const EDIT_PROP_ID_BASE = 1 << 20;

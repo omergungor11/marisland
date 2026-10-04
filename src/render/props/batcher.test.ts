@@ -4,7 +4,6 @@ import { createPropBatcher } from './batcher.ts';
 import { createPropStore, PropFlag } from '../../world/prop-store.ts';
 import { PROP_DEF_INDEX } from '../../content/props.ts';
 import { Scope } from '../../core/scope.ts';
-import { PROP_FLAG_REMOVED } from '../../world/prop-flags-ext.ts';
 import { BLOOM_IN } from '../../content/anim.ts';
 import { APPEAR_OUT_BELOW, removeFade } from './appear.ts';
 
@@ -217,7 +216,7 @@ describe('PropBatcher.rewrite (TASK-211)', () => {
 
   it('removal reverses the bloom-in, then zero-scales; restore blooms back in', () => {
     const { store, b, c } = setup();
-    store.flags[3] |= PROP_FLAG_REMOVED;
+    store.flags[3] |= PropFlag.removed;
     expect(b.rewrite([3], 5).removed).toBe(1);
     const [lod0, lod1] = slots(b, 3);
     const a = (lod0.g.appear.array as Float32Array)[lod0.k];
@@ -233,7 +232,7 @@ describe('PropBatcher.rewrite (TASK-211)', () => {
     expect(scaleOf(lod0.g.blobs!, lod0.k)).toBe(0);
     // a second rewrite of a removed index is a no-op
     expect(b.rewrite([3], 5.6).removed).toBe(0);
-    store.flags[3] &= ~PROP_FLAG_REMOVED;
+    store.flags[3] &= ~PropFlag.removed;
     expect(b.rewrite([3], 6).restored).toBe(1);
     expect(scaleOf(lod0.g.mesh, lod0.k)).toBeCloseTo(1, 5);
     expect((lod0.g.appear.array as Float32Array)[lod0.k]).toBe(6); // bloom-in from now
@@ -242,10 +241,10 @@ describe('PropBatcher.rewrite (TASK-211)', () => {
 
   it('capture mode removes and restores instantly', () => {
     const { store, b } = setup(true);
-    store.flags[3] |= PROP_FLAG_REMOVED;
+    store.flags[3] |= PropFlag.removed;
     b.rewrite([3], 5);
     for (const { g, k } of slots(b, 3)) expect(scaleOf(g.mesh, k)).toBe(0);
-    store.flags[3] &= ~PROP_FLAG_REMOVED;
+    store.flags[3] &= ~PropFlag.removed;
     b.rewrite([3], 6);
     const [lod0] = slots(b, 3);
     expect(scaleOf(lod0.g.mesh, lod0.k)).toBeCloseTo(1, 5);
