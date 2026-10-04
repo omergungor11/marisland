@@ -15,7 +15,8 @@ import { ALWAYS_APPEAR, APPEAR_OUT_SECONDS, HIDDEN_APPEAR, encodeAppearOut } fro
 
 /**
  * PropBatcher (ARCHITECTURE §3, D-004): one InstancedMesh per
- * (def, variant, LOD, island group) — ground cover per chunk — with per-instance
+ * (def, variant, LOD0, island) and per (def, variant, LOD1) across islands (sweep D5) —
+ * ground cover per chunk — with per-instance
  * `aSeed` / `aAppear`. Tier changes queue bloom-ins (≤ BLOOM_IN.maxPerFrame per
  * frame, 0–220 ms stagger). T0 shows cluster-proxy blobs instead of trees.
  *
@@ -49,7 +50,7 @@ export interface Group {
   def: PropDef;
   variant: number;
   lod: Lod;
-  /** islandId or chunkId. */
+  /** islandId (LOD0), chunkId (ground cover) or `ALL_ISLANDS` (LOD1). */
   bucket: number;
   groundCover: boolean;
   /** Store indices (or −1 for synthetic blobs); length = live instance count. */
@@ -116,6 +117,8 @@ const _p = new THREE.Vector3();
 const _q = new THREE.Quaternion();
 const _s = new THREE.Vector3();
 const _axis = new THREE.Vector3(0, 1, 0);
+/** `Group.bucket` of the LOD1 groups, which hold the instances of every island (D5). */
+export const ALL_ISLANDS = -1;
 
 export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher {
   const root = new THREE.Group();
@@ -248,6 +251,18 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
     return g;
   };
 
+  const placeFrom =
+    (members: Int32Array) =>
+    (k: number, o: { x: number; y: number; z: number; rotY: number; scale: number }): void => {
+      const i = members[k];
+      o.x = store.x[i];
+      o.y = store.y[i];
+      o.z = store.z[i];
+      o.rotY = store.rotY[i];
+      o.scale = store.scale[i];
+    };
+  /** `${defId}:${variant}` → store indices of every island, for the merged LOD1 group. */
+  const farMembers = new Map<string, number[]>();
   for (const [key, arr] of buckets) {
     const [defIdStr, variantStr] = key.split(':');
     const defIndex = Number(defIdStr);
@@ -256,21 +271,34 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
     const gc = key.includes(':c');
     const bucket = Number(key.slice(key.indexOf(gc ? ':c' : ':i') + 2));
     const members = Int32Array.from(arr);
-    const place = (
-      k: number,
-      o: { x: number; y: number; z: number; rotY: number; scale: number },
-    ): void => {
-      const i = members[k];
-      o.x = store.x[i];
-      o.y = store.y[i];
-      o.z = store.z[i];
-      o.rotY = store.rotY[i];
-      o.scale = store.scale[i];
-    };
-    const lods: Lod[] = gc ? [0] : [0, 1];
-    for (const lod of lods) makeGroup(def, defIndex, variant, lod, bucket, gc, members, place);
-    if (gc) groundCover += members.length;
-    else instances += members.length;
+    makeGroup(def, defIndex, variant, 0, bucket, gc, members, placeFrom(members));
+    if (gc) {
+      groundCover += members.length;
+      continue;
+    }
+    instances += members.length;
+    const fk = `${defIndex}:${variant}`;
+    const far = farMembers.get(fk);
+    if (far) far.push(...arr);
+    else farMembers.set(fk, arr.slice());
+  }
+  // LOD1 (tiers 0–1: overview and island views, most islands in frame) is one group per
+  // (def, variant) across all islands — per-island groups cost a draw call (+ blobs, + depth)
+  // each for little culling (sweep D5). LOD0 (village / close views) stays per island.
+  for (const [fk, arr] of farMembers) {
+    const [defIdStr, variantStr] = fk.split(':');
+    const defIndex = Number(defIdStr);
+    const members = Int32Array.from(arr);
+    makeGroup(
+      PROP_DEFS[defIndex],
+      defIndex,
+      Number(variantStr),
+      1,
+      ALL_ISLANDS,
+      false,
+      members,
+      placeFrom(members),
+    );
   }
 
   // ---- T0 cluster proxies from clusterable trees: one blob per 8 u cell with ≥ 1 tree
@@ -379,22 +407,24 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
   const removedIdx = new Set<number>();
   // store index → instance slots, and (def, variant, bucket) → LOD groups; built on first edit
   let slotMap: Map<number, { g: Group; k: number }[]> | null = null;
-  let keyMap: Map<string, Group[]> | null = null;
-  const groupKey = (defIndex: number, variant: number, gc: boolean, bucket: number): string =>
-    `${defIndex}:${variant}:${gc ? 'c' : 'i'}${bucket}`;
+  let keyMap: Map<string, Group> | null = null;
+  const groupKey = (
+    defIndex: number,
+    variant: number,
+    gc: boolean,
+    bucket: number,
+    lod: Lod,
+  ): string => `${defIndex}:${variant}:${gc ? 'c' : 'i'}${bucket}:L${lod}`;
   const maps = (): {
     slots: Map<number, { g: Group; k: number }[]>;
-    keys: Map<string, Group[]>;
+    keys: Map<string, Group>;
   } => {
     if (!slotMap || !keyMap) {
       slotMap = new Map();
       keyMap = new Map();
       for (const g of groups) {
         if (g.members.length && g.members[0] < 0) continue; // T0 cluster proxies
-        const key = groupKey(g.defIndex, g.variant, g.groundCover, g.bucket);
-        let arr = keyMap.get(key);
-        if (!arr) keyMap.set(key, (arr = []));
-        arr.push(g);
+        keyMap.set(groupKey(g.defIndex, g.variant, g.groundCover, g.bucket, g.lod), g);
         for (let k = 0; k < g.members.length; k++) {
           const i = g.members[k];
           let sl = slotMap.get(i);
@@ -534,25 +564,15 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
     const defIndex = store.defId[i];
     const variant = store.variant[i];
     const gc = (store.flags[i] & PropFlag.groundCover) !== 0;
-    const bucket = gc ? store.chunkId[i] : store.islandId[i];
-    const key = groupKey(defIndex, variant, gc, bucket);
-    const gs = keys.get(key);
     const sl: { g: Group; k: number }[] = [];
-    if (!gs) {
-      const members = Int32Array.of(i);
-      const made: Group[] = [];
-      const place = (
-        _k: number,
-        o: { x: number; y: number; z: number; rotY: number; scale: number },
-      ): void => {
-        o.x = store.x[i];
-        o.y = store.y[i];
-        o.z = store.z[i];
-        o.rotY = store.rotY[i];
-        o.scale = store.scale[i];
-      };
-      for (const lod of (gc ? [0] : [0, 1]) as Lod[]) {
-        const g = makeGroup(
+    for (const lod of (gc ? [0] : [0, 1]) as Lod[]) {
+      // ground cover per chunk; LOD0 per island; LOD1 merged across islands
+      const bucket = gc ? store.chunkId[i] : lod === 1 ? ALL_ISLANDS : store.islandId[i];
+      const key = groupKey(defIndex, variant, gc, bucket, lod);
+      const g = keys.get(key);
+      if (!g) {
+        const members = Int32Array.of(i);
+        const made = makeGroup(
           def,
           defIndex,
           variant,
@@ -560,23 +580,20 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
           bucket,
           gc,
           members,
-          place,
+          placeFrom(members),
           grownCapacity(1),
         );
-        g.instantShow = instantEdits;
-        made.push(g);
-        sl.push({ g, k: 0 });
+        made.instantShow = instantEdits;
+        sl.push({ g: made, k: 0 });
         // ground cover is gated by `update`; the rest follows the current tier now
         if (!gc && tier >= 0) {
-          if (wantsVisible(g, tier)) show(g, time, instantEdits);
-          else hide(g);
+          if (wantsVisible(made, tier)) show(made, time, instantEdits);
+          else hide(made);
         }
-      }
-      keys.set(key, made);
-      st.created += made.length;
-      stats.groups = groups.length;
-    } else {
-      for (const g of gs) {
+        keys.set(key, made);
+        st.created++;
+        stats.groups = groups.length;
+      } else {
         const k = g.mesh.count;
         if (k >= g.capacity) {
           grow(g, grownCapacity(k + 1));

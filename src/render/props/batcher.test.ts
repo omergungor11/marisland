@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { createPropBatcher } from './batcher.ts';
+import { ALL_ISLANDS, createPropBatcher } from './batcher.ts';
 import { createPropStore, PropFlag } from '../../world/prop-store.ts';
 import { PROP_DEF_INDEX } from '../../content/props.ts';
 import { Scope } from '../../core/scope.ts';
@@ -52,7 +52,7 @@ const counters = () => ({
 });
 
 describe('PropBatcher', () => {
-  it('groups per (def, variant, lod, island) and ground cover per chunk', () => {
+  it('groups per (def, variant, LOD0, island), (def, variant, LOD1) and ground cover per chunk', () => {
     const c = counters();
     const b = createPropBatcher(makeStore(), {
       scope: new Scope('t'),
@@ -62,11 +62,16 @@ describe('PropBatcher', () => {
       softAppear: true,
       castShadows: false,
     });
-    // trees: 3 variants × 2 islands × 2 lods = 12; grass: 2 variants × 2 chunks × 1 lod = 4; blobs: ≥1
+    // trees: 3 variants × 2 islands LOD0 + 3 variants LOD1 (all islands, D5) = 9;
+    // grass: 2 variants × 2 chunks × 1 lod = 4; blobs: ≥1
     const trees = b.groups.filter((g) => g.def.id === 'roundTree');
     const grass = b.groups.filter((g) => g.def.id === 'grassTuft');
     const blobs = b.groups.filter((g) => g.def.id === 'treeBlob');
-    expect(trees.length).toBe(12);
+    expect(trees.length).toBe(9);
+    const far = trees.filter((g) => g.lod === 1);
+    expect(far.map((g) => g.bucket)).toEqual([ALL_ISLANDS, ALL_ISLANDS, ALL_ISLANDS]);
+    // every tree is in exactly one LOD0 and one LOD1 group
+    expect(far.reduce((a, g) => a + g.members.length, 0)).toBe(120);
     expect(grass.length).toBe(4);
     expect(blobs.length).toBeGreaterThan(0);
     expect(b.stats.instances).toBeGreaterThanOrEqual(120);
@@ -94,7 +99,7 @@ describe('PropBatcher', () => {
     expect(vis('treeBlob')).toBe(0);
     expect(
       b.groups.filter((g) => g.def.id === 'roundTree' && g.mesh.visible && g.lod === 1).length,
-    ).toBe(6);
+    ).toBe(3);
     b.setTier(3, 2);
     b.update(2, -384 + 5 * 64 + 32, -384 + 32); // chunk 5 centre
     expect(vis('grassTuft')).toBe(4); // chunks 5 and 6 (64 u apart) both inside 60 + 45 u
@@ -278,13 +283,17 @@ describe('PropBatcher.rewrite (TASK-211)', () => {
     const groupsBefore = b.groups.length;
     const lone = tree(store, 1, 0, 2);
     expect(b.rewrite([lone], 8).appended).toBe(1);
-    // two tree LODs + the island's first T0 cluster-blob group (TASK-213)
-    expect(b.groups.length).toBe(groupsBefore + 3);
+    // the island's LOD0 tree group + its first T0 cluster-blob group (TASK-213); LOD1 joins
+    // the existing all-islands group of the variant (D5)
+    expect(b.groups.length).toBe(groupsBefore + 2);
     expect(b.stats.groups).toBe(b.groups.length);
     const made = b.groups.slice(groupsBefore).filter((g) => g.def.id === 'roundTree');
-    expect(made).toHaveLength(2);
-    expect(made.find((g) => g.lod === 0)!.mesh.visible).toBe(true);
-    expect(made.find((g) => g.lod === 1)!.mesh.visible).toBe(false);
+    expect(made).toHaveLength(1);
+    expect(made[0].lod).toBe(0);
+    expect(made[0].mesh.visible).toBe(true);
+    const lodFar = slots(b, lone).find((x) => x.g.lod === 1)!;
+    expect(lodFar.g.bucket).toBe(ALL_ISLANDS);
+    expect(lodFar.g.mesh.visible).toBe(false);
     expect(c.hardPops).toBe(0);
   });
 

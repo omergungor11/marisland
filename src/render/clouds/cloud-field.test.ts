@@ -336,6 +336,36 @@ describe('puffs', () => {
     scope.dispose();
   });
 
+  it('setEmitter moves an emitter and switches it off / on (flooded chimneys, D1)', () => {
+    const scope = new Scope('t');
+    const puffs = createPuffs(scope, 'medium');
+    puffs.addEmitter(1, 20, 2, PUFF_STEAM);
+    const e = puffs.addEmitter(-3, 4, 0, PUFF_CHIMNEY);
+    puffs.finalize();
+    expect(e).toBe(1);
+    const g = puffs.mesh.geometry;
+    const shape = g.getAttribute('aShape');
+    const origin = g.getAttribute('aOrigin');
+    const first = PUFFS.steam.slots + PUFFS.burp.ring;
+    const slots = Array.from({ length: PUFFS.chimney.slots }, (_, k) => first + k);
+    puffs.setEmitter(e, -3, 9, 0, false);
+    for (const i of slots) {
+      expect(origin.getY(i)).toBe(9);
+      expect(shape.getX(i)).toBe(0);
+      expect(shape.getY(i)).toBe(0);
+    }
+    expect(shape.getX(0)).toBeCloseTo(PUFFS.steam.size[0], 6); // other emitters untouched
+    puffs.setEmitter(e, -3, 4, 0, true);
+    for (const i of slots) {
+      expect(origin.getY(i)).toBe(4);
+      expect(shape.getX(i)).toBeCloseTo(PUFFS.chimney.size[0], 6);
+      expect(shape.getY(i)).toBeCloseTo(PUFFS.chimney.size[1], 6);
+    }
+    puffs.setEmitter(99, 0, 0, 0, false); // unknown: ignored
+    expect(puffs.mesh.count).toBe(first + PUFFS.chimney.slots);
+    scope.dispose();
+  });
+
   it('drops emitters beyond capacity instead of overflowing', () => {
     const scope = new Scope('t');
     const puffs = createPuffs(scope, 'low');

@@ -3,6 +3,8 @@ import { createPropStore, PropFlag } from '../../world/prop-store.ts';
 import { EDIT_PROP_ID_BASE } from '../../world/edit-types.ts';
 import type { Heightfield } from '../../world/types.ts';
 import { createPropMirror } from './prop-mirror.ts';
+import { PROP_DEF_INDEX } from '../../content/props.ts';
+import { EDIT_RENDER } from '../../content/edit.ts';
 
 const flat: Heightfield = { data: new Float32Array(4), n: 2, cellSize: 1, originX: 0, originZ: 0 };
 
@@ -61,5 +63,99 @@ describe('prop mirror', () => {
     world.count = 3;
     expect(m.sync(world, [EDIT_PROP_ID_BASE + 1])).toEqual([5]);
     expect(render.flags[5] & PropFlag.removed).not.toBe(0);
+  });
+
+  describe('flooding (sweep D1)', () => {
+    const grid = (v: number): Heightfield => ({
+      data: new Float32Array(25).fill(v),
+      n: 5,
+      cellSize: 1,
+      originX: 0,
+      originZ: 0,
+    });
+    /** house + decor (lot 0), pier segment + root lantern (dock 0), bench, lighthouse. */
+    const settlement = (h: Heightfield) => {
+      const r = createPropStore(8);
+      const y = (x: number, z: number) => h.data[z * h.n + x];
+      r.push(PROP_DEF_INDEX.cottage, 0, 1, y(1, 1), 1, 0, 1, 0, 0, 0); // 0
+      r.push(PROP_DEF_INDEX.barrel, 0, 2, y(2, 1), 1, 0, 1, 0, 0, 0); // 1
+      r.push(PROP_DEF_INDEX.dock, 0, 1, 0, 3, 0, 1, 0, 0, 0); // 2 (planks at the waterline)
+      r.push(PROP_DEF_INDEX.lanternPost, 0, 2, y(2, 3), 3, 0, 1, 0, 0, 0); // 3
+      r.push(PROP_DEF_INDEX.bench, 0, 3, y(3, 3), 3, 0, 1, 0, 0, 0); // 4
+      r.push(PROP_DEF_INDEX.lighthouse, 0, 3, y(3, 1), 1, 0, 1, 0, 0, 0); // 5
+      return r;
+    };
+    const groups = {
+      lots: [{ x: 1, z: 1, members: [0, 1] }],
+      docks: [{ x: 2, z: 3, members: [2, 3] }],
+    };
+    const removed = (r: ReturnType<typeof settlement>) =>
+      Array.from({ length: r.count }, (_, i) => (r.flags[i] & PropFlag.removed ? 1 : 0));
+
+    it('hides lots, piers and props whose ground sinks under the flood level; undo restores', () => {
+      const h = grid(1);
+      const r = settlement(h);
+      const m = createPropMirror(r, 0, h, 0, groups);
+      expect(removed(r)).toEqual([0, 0, 0, 0, 0, 0]);
+      h.data.fill(EDIT_RENDER.floodLevel - 0.5);
+      const changed = m.reground(0, 4, 0, 4);
+      // every settlement prop re-grounded or hidden (the planks only through their pier)
+      expect(changed).toEqual([0, 1, 2, 3, 4, 5]);
+      // lighthouse never floods (beam); everything else hides
+      expect(removed(r)).toEqual([1, 1, 1, 1, 1, 0]);
+      expect([...m.floodedLots]).toEqual([0]);
+      expect([...m.floodedDocks]).toEqual([0]);
+      h.data.fill(1);
+      m.reground(0, 4, 0, 4);
+      expect(removed(r)).toEqual([0, 0, 0, 0, 0, 0]);
+      expect(m.floodedLots.size + m.floodedDocks.size).toBe(0);
+      expect(r.y[0]).toBe(1);
+    });
+
+    it('a lot hides as one unit; side decor also hides on its own ground', () => {
+      const h = grid(1);
+      const r = settlement(h);
+      const m = createPropMirror(r, 0, h, 0, groups);
+      // only the decor's cell floods: the decor goes, the house stays
+      h.data[1 * 5 + 2] = -2;
+      m.reground(2, 2, 1, 1);
+      expect(removed(r).slice(0, 2)).toEqual([0, 1]);
+      expect(m.floodedLots.size).toBe(0);
+      // the house's cell floods too: the whole lot is hidden
+      h.data[1 * 5 + 1] = -2;
+      m.reground(1, 1, 1, 1);
+      expect(removed(r).slice(0, 2)).toEqual([1, 1]);
+      // raising the house's ground back: the decor stays hidden on its own flooded cell
+      h.data[1 * 5 + 1] = 1;
+      m.reground(1, 1, 1, 1);
+      expect(removed(r).slice(0, 2)).toEqual([0, 1]);
+    });
+
+    it('a pier is hidden by its root only; units built under water never flood', () => {
+      const h = grid(1);
+      const r = settlement(h);
+      const m = createPropMirror(r, 0, h, 0, groups);
+      h.data[3 * 5 + 2] = -2; // the root (and the lantern on it)
+      m.reground(2, 2, 3, 3);
+      expect(removed(r).slice(2, 4)).toEqual([1, 1]);
+      expect([...m.floodedDocks]).toEqual([0]);
+      // a pier whose root was already in the sea at generation is not a flood unit
+      const h2 = grid(1);
+      h2.data[3 * 5 + 2] = -2;
+      const r2 = settlement(h2);
+      const m2 = createPropMirror(r2, 0, h2, 0, groups);
+      expect(removed(r2)).toEqual([0, 0, 0, 0, 0, 0]);
+      h2.data[3 * 5 + 2] = -3;
+      m2.reground(0, 4, 0, 4);
+      expect(removed(r2).slice(2, 4)).toEqual([0, 0]);
+    });
+
+    it('a world flooded before the build (?edit= replay) starts hidden against the generated ground', () => {
+      const h0 = grid(1);
+      const h = grid(-2);
+      const r = settlement(h); // props placed on the edited (sunk) ground
+      createPropMirror(r, 0, h, 0, groups, h0);
+      expect(removed(r)).toEqual([1, 1, 1, 1, 1, 0]);
+    });
   });
 });

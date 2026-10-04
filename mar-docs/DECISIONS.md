@@ -2,6 +2,43 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-022: Flooded settlements hide as units; LOD1 prop groups span all islands; GPU memory is summed from allocations (amends D-010) — 2026-10-04
+
+**Decision** (Phase 2 polish after the edit sweep, defects 1/4/5/6):
+- **Flooding**: a ground-following settlement prop whose ground sinks below
+  `EDIT_RENDER.floodLevel` (−0.15 u) gets `PropFlag.removed` in the render store (batcher fade-out,
+  instant in capture; lantern pools and contact blobs follow the flag) and loses it when the ground
+  comes back (undo). Lots (building + side decor) and piers (plank segments + cargo + root lantern)
+  are units: a lot floods with the ground under its centre, a pier with the ground at its shore root.
+  Only what stood above the level in the *generated* world can flood (`?edit=` worlds are judged
+  against a pre-replay copy of the heights, so a shared flooded link starts hidden); the lighthouse,
+  crater, hot spring and wreck never do (`floodKeep`: beam / steam emitters). Chimney smoke follows
+  its house (re-grounded, off while flooded: `puffs.setEmitter`); `life.setDocksHidden` stops
+  villager trips to flooded pier ends and gull landings there (boats keep their moorings).
+- **Draw calls**: LOD1 prop groups (tiers 0–1) are one InstancedMesh per (def, variant) across all
+  islands (`ALL_ISLANDS` bucket); LOD0 stays per island (close views keep their culling). Seed 42
+  `island:Hearthholm`: 129 → 96 calls (low), 260 → 202 (medium); worst of the 10 sweep seeds now
+  96 / 202 (budgets 120 / 220); dev frames 0 px. Island views submit +2…+12 k off-screen triangles.
+- **GPU memory** (`render/gpu-memory.ts`, replaces the per-object guess): geometry buffers of the
+  scene (shared buffers once), uploaded textures, *allocated* render targets (×samples for MSAA),
+  shadow maps and the drawing buffer, read lazily (`counters.gpuMemoryMB`, split in
+  `timings.gpu{Geometry,Texture,Target,Shadow,Canvas}MB`). Measured: low 960×540 39–44 MB (geometry
+  20–26, MSAA canvas 18; 1280×720 panel shot 56); medium 1920×1080 132–140 MB (composer buffers 2 × 23.7, luminance 15.8,
+  bloom / tilt 25, shadow 8, canvas 16); high 1920×1080 352 (T1) – 421 (T3 + DOF) MB (MSAA×4
+  HalfFloat composer buffers 2 × 118.7, shadow 32). Budgets (D-010 amended, DPR 1, low ≤ 1280×720,
+  medium / high 1920×1080): **low 64, medium 170, high 480 MB**, asserted by `shots --assert`.
+- **Leak self-tests**: `renderer.info.memory` counts a geometry from its first draw, so a hidden or
+  culled life mesh (wake, sailboat) drawn between the two measurements read as ±1 (sweep D4, not a
+  leak). Before each measurement the self-tests draw every scene object once (forced visible,
+  unculled); `shots` also runs regen / edit at `cam=village`.
+- **`worldHash`**: `hashes.world`, plus `:<editHash(world)>` while edits are applied.
+**Rationale**: a village standing in the sea broke the diorama; units keep a pier or a house from
+losing half its pieces. Per-island LOD1 groups bought little culling at the tiers where most islands
+are in frame. The old memory figure double-counted targets and ignored MSAA.
+**Open**: high could drop ~95 MB by not multisampling the composer's output buffer (post owner);
+villagers / sheep still walk into flooded ground (walk graph and masks are build-time);
+ARCHITECTURE §8 budget table still lists 40 / 90 / 160 MB "tex + RTs".
+
 ## D-021: Prop thumbnails from a short-lived second context; edit mode holds the governor — 2026-10-04
 
 **Decision** (TASK-221): the edit panel's prop picker renders every placeable def once into a 64 px

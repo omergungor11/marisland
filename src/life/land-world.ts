@@ -197,6 +197,8 @@ export interface WalkGraph {
   compCount: number;
   /** Node ids that are lot doors, hubs and dock ends. */
   kind: Uint8Array;
+  /** Dock (index into `world.docks`) of each dock-end node, −1 elsewhere. */
+  dockOf: Int32Array;
 }
 
 export const NodeKind = { plain: 0, door: 1, hub: 2, dockEnd: 3 } as const;
@@ -216,6 +218,7 @@ export function buildWalkGraph(ctx: LifeCtx): WalkGraph {
   const edges: [number, number][] = [];
   if (g0) for (let e = 0; e < g0.edges.length; e += 2) edges.push([g0.edges[e], g0.edges[e + 1]]);
   const kind: number[] = new Array<number>(base).fill(0);
+  const dockEnds: [number, number][] = [];
 
   const nearest = (x: number, z: number, maxD: number): number => {
     let best = -1;
@@ -231,7 +234,7 @@ export function buildWalkGraph(ctx: LifeCtx): WalkGraph {
   };
 
   // dock spurs: a chain of deck nodes from the dock root to its seaward end
-  for (const d of w.docks ?? []) {
+  for (const [di, d] of (w.docks ?? []).entries()) {
     const root = d.node >= 0 && d.node < base ? d.node : nearest(d.x, d.z, 4);
     if (root < 0) continue;
     const len = d.segments * 2;
@@ -248,6 +251,7 @@ export function buildWalkGraph(ctx: LifeCtx): WalkGraph {
       prev = id;
     }
     kind[prev] = NodeKind.dockEnd;
+    dockEnds.push([prev, di]);
   }
   const n = xs.length;
   const x = Float32Array.from(xs);
@@ -286,7 +290,9 @@ export function buildWalkGraph(ctx: LifeCtx): WalkGraph {
     }
     compCount++;
   }
-  return { n, x, z, deckY, adj, comp, compCount, kind: Uint8Array.from(kind) };
+  const dockOf = new Int32Array(n).fill(-1);
+  for (const [node, di] of dockEnds) if (kind[node] === NodeKind.dockEnd) dockOf[node] = di;
+  return { n, x, z, deckY, adj, comp, compCount, kind: Uint8Array.from(kind), dockOf };
 }
 
 /** Shortest node route (inclusive) from `a` to `b`, or null when unreachable. */

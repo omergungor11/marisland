@@ -4,7 +4,8 @@
  *   [--tag=name] [--port=4173] [--no-selftest]` — `--tag` builds into dist-<tag>/ and writes shots/<set>-<tag>/
  *   so parallel agents don't collide; pair it with a distinct `--port`. The ci and dev sets also run the
  *   app self-tests (`selftest=regen` leak check, `selftest=ctxloss` context loss + restore,
- *   `selftest=edit` 50 brush edits + undo with a leak check) on the first shot, plus the harness-side
+ *   `selftest=edit` 50 brush edits + undo with a leak check) on the first shot (regen and edit again
+ *   with `cam=village`), plus the harness-side
  *   `editpick` check (picking follows `api.edit` / `api.undo` / `propMove`, TASK-213).
  * Writes shots/<set>/{<id>.png, <id>+dt.png, <id>.mask.png, manifest.json, contact.jpg}.
  */
@@ -212,6 +213,8 @@ function assertBudgets(r: ShotResult, snap: ApiSnap, headless: boolean): void {
     ['groundCover', snap.counters.groundCover, b.groundCover],
     ['agents', snap.counters.agents, b.agents],
     ['particles', snap.counters.particles, b.particles],
+    // summed from the allocations since D-022 (deterministic); budgets are at the reference sizes
+    ['gpuMemoryMB', snap.counters.gpuMemoryMB, b.gpuMemoryMB],
   ];
   for (const [name, v, max] of checks)
     if (v !== undefined && v > max) r.failures.push(`budget ${name} ${v} > ${max}`);
@@ -313,7 +316,8 @@ async function runSelftest(
   name: (typeof SELFTESTS)[number],
 ): Promise<SelftestResult> {
   const o = await open(browser, shotUrl(base, p, `&selftest=${name}`), p);
-  const r: SelftestResult = { name, ok: true, failures: [...o.fatal], readyMs: o.readyMs };
+  const label = p.cam === 'overview' ? name : `${name}@${p.cam}`;
+  const r: SelftestResult = { name: label, ok: true, failures: [...o.fatal], readyMs: o.readyMs };
   try {
     const snap = o.snap;
     if (snap) {
@@ -496,6 +500,13 @@ async function main(): Promise<void> {
       for (const name of SELFTESTS) {
         console.log(`[selftest] ${name} on ${list[0].id}`);
         selftests.push(await runSelftest(browser, base, list[0], name));
+      }
+      // the leak checks again at the village preset: life meshes enter / leave the view there
+      // (sweep D4 — a sailboat or the wake uploaded between the two measurements)
+      const village: ShotPreset = { ...list[0], cam: 'village' };
+      for (const name of ['regen', 'edit'] as const) {
+        console.log(`[selftest] ${name} on ${list[0].id} @ village`);
+        selftests.push(await runSelftest(browser, base, village, name));
       }
       console.log(`[selftest] editpick on ${list[0].id}`);
       selftests.push(await runEditPickSelftest(browser, base, list[0]));

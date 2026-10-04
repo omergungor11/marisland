@@ -21,12 +21,25 @@ const LANDMARK_DEF: Record<string, { def: string; scale: number; underwater?: bo
 };
 
 export interface SettlementEmitters {
-  chimneys: { x: number; y: number; z: number }[];
+  /** `lot`: index into `world.lots` (the chimney's house; it follows the lot's flood state). */
+  chimneys: { x: number; y: number; z: number; lot: number }[];
+}
+
+/**
+ * Render indices that belong together (sweep D1: a flooded lot or pier hides as one unit).
+ * `lots[l]`: the building of `world.lots[l]` first, then its side decor (laundry / barrel /
+ * crate). `docks[d]`: the plank segments of `world.docks[d]` (root first), the cargo on them and
+ * the lantern post at the root. Lots / docks that pushed nothing have empty lists.
+ */
+export interface SettlementGroups {
+  lots: number[][];
+  docks: number[][];
 }
 
 export function appendSettlementProps(world: WorldData): {
   props: PropStore;
   emitters: SettlementEmitters;
+  groups: SettlementGroups;
 } {
   const base = world.props;
   const extra = 4000;
@@ -48,7 +61,12 @@ export function appendSettlementProps(world: WorldData): {
   }
   const rng = createRng(world.seed).fork('settlement-decor');
   const h = world.height;
-  const chimneys: { x: number; y: number; z: number }[] = [];
+  const chimneys: SettlementEmitters['chimneys'] = [];
+  const groups: SettlementGroups = { lots: [], docks: [] };
+  /** Push into a group (`push` returns −1 when the def is unknown or the store is full). */
+  const into = (g: number[], r: number): void => {
+    if (r >= 0) g.push(r);
+  };
   const push = (
     defName: string,
     x: number,
@@ -80,11 +98,13 @@ export function appendSettlementProps(world: WorldData): {
   const facing = (rotY: number): [number, number] => [Math.cos(rotY), Math.sin(rotY)];
 
   // lots
-  for (const lot of world.lots) {
+  for (const [li, lot] of world.lots.entries()) {
+    const group: number[] = [];
+    groups.lots.push(group);
     // our prop pivots face +z by convention? geometry faces −z (door on −z) → rotate so the door faces rotY.
     const yaw = Math.atan2(Math.cos(lot.rotY), Math.sin(lot.rotY));
     // variant = worldgen's roof-colour pick (neighbours never share a roof colour)
-    push(
+    const house = push(
       lot.defId,
       lot.x,
       lot.z,
@@ -94,6 +114,7 @@ export function appendSettlementProps(world: WorldData): {
       lot.kind === 'hut' ? 0 : undefined,
       lot.variant,
     );
+    into(group, house);
     if (lot.defId === 'cottage' || lot.defId === 'logCabin' || lot.defId === 'towerHouse') {
       const [fx, fz] = facing(lot.rotY);
       const y = heightAt(h, lot.x, lot.z);
@@ -101,20 +122,24 @@ export function appendSettlementProps(world: WorldData): {
         x: lot.x - fz * 0.9 + fx * 0.4,
         y: y + (lot.defId === 'towerHouse' ? 6 : 3.6),
         z: lot.z + fx * 0.9 + fz * 0.4,
+        lot: li,
       });
       // decor beside the house: laundry line or barrel/crate
       const side = rng.chance(0.5) ? 1 : -1;
       const sx = lot.x - fz * side * (lot.w / 2 + 2.4);
       const sz = lot.z + fx * side * (lot.w / 2 + 2.4);
-      if (rng.chance(0.45)) push('laundryLine', sx, sz, lot.rotY, 1, lot.islandId);
+      if (rng.chance(0.45)) into(group, push('laundryLine', sx, sz, lot.rotY, 1, lot.islandId));
       else if (rng.chance(0.6))
-        push(
-          rng.chance(0.5) ? 'barrel' : 'crate',
-          sx,
-          sz,
-          rng.range(0, Math.PI * 2),
-          1,
-          lot.islandId,
+        into(
+          group,
+          push(
+            rng.chance(0.5) ? 'barrel' : 'crate',
+            sx,
+            sz,
+            rng.range(0, Math.PI * 2),
+            1,
+            lot.islandId,
+          ),
         );
     }
   }
@@ -135,32 +160,40 @@ export function appendSettlementProps(world: WorldData): {
   }
   // docks: 2 u plank segments along the facing, planks at the waterline (pivot y = 0)
   for (const d of world.docks) {
+    const group: number[] = [];
+    groups.docks.push(group);
     const [fx, fz] = facing(d.rotY);
     // dock planks span local +x → rotate so +x points seaward
     const yaw = Math.atan2(-fz, fx);
     for (let k = 0; k < d.segments; k++) {
       const x = d.x + fx * (k * 2 + 1);
       const z = d.z + fz * (k * 2 + 1);
-      push('dock', x, z, yaw, 1, d.islandId, 0, k === d.segments - 1 ? 1 : 0);
+      into(group, push('dock', x, z, yaw, 1, d.islandId, 0, k === d.segments - 1 ? 1 : 0));
       if (k > 0 && rng.chance(0.25))
-        push(
-          rng.chance(0.5) ? 'barrel' : 'crate',
-          x - fz * 0.45,
-          z + fx * 0.45,
-          rng.range(0, 6.28),
-          0.8,
-          d.islandId,
-          1.0,
+        into(
+          group,
+          push(
+            rng.chance(0.5) ? 'barrel' : 'crate',
+            x - fz * 0.45,
+            z + fx * 0.45,
+            rng.range(0, 6.28),
+            0.8,
+            d.islandId,
+            1.0,
+          ),
         );
     }
     if (d.segments > 1)
-      push(
-        'lanternPost',
-        d.x + fx * 0.6 - fz * 0.5,
-        d.z + fz * 0.6 + fx * 0.5,
-        yaw,
-        0.9,
-        d.islandId,
+      into(
+        group,
+        push(
+          'lanternPost',
+          d.x + fx * 0.6 - fz * 0.5,
+          d.z + fz * 0.6 + fx * 0.5,
+          yaw,
+          0.9,
+          d.islandId,
+        ),
       );
   }
   // fences along polylines
@@ -255,5 +288,5 @@ export function appendSettlementProps(world: WorldData): {
       isl,
     );
   }
-  return { props: s, emitters: { chimneys } };
+  return { props: s, emitters: { chimneys }, groups };
 }
