@@ -46,7 +46,7 @@ export interface TestBrushOutcome {
 export interface PickResult {
   /** 'prop' | 'agent' | 'terrain'. */
   kind: string;
-  /** Prop: PropStore index. Agent: slot in its kind. Terrain: −1. */
+  /** Prop: edit-model id (scatter index, ≥ EDIT_PROP_ID_BASE when edit-added, −1 for settlement props; `instanceIndex` is the render-store slot). Agent: slot in its kind. Terrain: −1. */
   id: number;
   /** Prop def id, agent kind, or 'terrain' / 'water'. */
   name?: string;

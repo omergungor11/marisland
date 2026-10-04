@@ -62,6 +62,10 @@
 - Agent worktrees were created from `origin/main` (not the orchestrator's HEAD) on 2026-10-04: every
   worktree agent must `git fetch` + `git reset --hard <orchestrator-branch>` (not merge) when its base has
   unrelated history, then verify `git log -1`
+- The first `gl.texSubImage2D` of a session stalls until the in-flight frame finishes (50–950 ms under
+  SwiftShader) → the rebuild path is prewarmed at idle time after `ready` (interactive mode only)
+- `PickHit.id` for props is the edit-model id (scatter index / ≥ 2²⁰ for edit-added / −1 settlement);
+  the render-store slot is `instanceIndex`
 - `freeze=1` + `api.edit` steps the loop once per command: compare frames only at equal step counts
   (`step(1/30, n)`), never "before" vs "after" directly
 - Vertex attribute limit: a 17th attribute fails to link under SwiftShader/ANGLE — pack per-instance data
