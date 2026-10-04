@@ -34,6 +34,11 @@ export interface LifeSystem extends System {
   setMotionScale(s: number): void;
   /** Fish scatter point (world xz) or null. */
   setCursorWorld(x: number | null, z?: number | null): void;
+  /**
+   * Piers (indices into `world.docks`) hidden by flooding (sweep D1): villagers stop walking out
+   * to their ends and gulls stop landing there. Boats keep their moorings (they float anyway).
+   */
+  setDocksHidden(docks: ReadonlySet<number>): void;
   readonly stats: { agents: number };
   readonly ambient: AmbientScheduler;
   /** Kinds by name, for tests / debug / the reaction layer. */
@@ -200,6 +205,12 @@ export function createLife(deps: LifeDeps): LifeSystem {
     },
     setCursorWorld(x, z = null) {
       kinds.fish?.setRepel(x, z);
+    },
+    setDocksHidden(docks) {
+      kinds.villagers?.setDocksHidden(docks);
+      // dock perches come first, one per dock (see `perches` above)
+      const nDocks = (ctx.world.docks ?? []).length;
+      for (let p = 0; p < nDocks; p++) kinds.gulls?.setPerchOff(p, docks.has(p));
     },
     dispose() {
       group.removeFromParent();

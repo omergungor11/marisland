@@ -179,4 +179,14 @@ export const EDIT_RENDER = {
   ringPad: 32,
   /** Extra EDT window around `ringPad` (nearest-coast search radius, cells). */
   ringSearch: 32,
+  /**
+   * Flooded settlements (sweep D1): a ground-following settlement prop (house, stall, bunting,
+   * well, fence …) whose ground sinks below this height fades out, a lot when the ground under
+   * its centre does, a pier when its shore root does (u; the sea surface is 0). −0.15: a stall
+   * left standing in the surf at −0.2…−0.3 still read as "in the water" (5005 harbour flood).
+   * Raising the ground again (undo) brings them back.
+   */
+  floodLevel: -0.15,
+  /** Settlement defs that never flood away (the beam / steam emitters are tied to them). */
+  floodKeep: ['lighthouse', 'volcanoCrater', 'hotSpring', 'sunkenShip'] as readonly string[],
 } as const;

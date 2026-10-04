@@ -24,8 +24,17 @@ export type PuffKind = typeof PUFF_CHIMNEY | typeof PUFF_STEAM | typeof PUFF_SPR
 
 export interface Puffs {
   mesh: THREE.InstancedMesh;
-  /** Register an emitter; slots are written immediately, call `finalize()` after a batch. */
-  addEmitter(x: number, y: number, z: number, kind: PuffKind): void;
+  /**
+   * Register an emitter; slots are written immediately, call `finalize()` after a batch.
+   * Returns the emitter id (for `setEmitter`).
+   */
+  addEmitter(x: number, y: number, z: number, kind: PuffKind): number;
+  /**
+   * Move emitter `e` / switch it off (sweep D1: the chimney of a flooded house; size-0 puffs,
+   * no draw call change) and upload. Steam ring puffs (sized by uniforms) only move. Unknown
+   * ids are ignored.
+   */
+  setEmitter(e: number, x: number, y: number, z: number, enabled: boolean): void;
   /** Upload attributes after `addEmitter` calls. */
   finalize(): void;
   /** No CPU work (uTime is shared); kept for API symmetry. */
@@ -134,6 +143,8 @@ export function createPuffs(
   let used = 0;
   let dropped = 0;
   let emitters = 0;
+  /** Per emitter: its slot range [start, end) (steam ring puffs included) and kind. */
+  const ranges: { start: number; end: number; kind: number }[] = [];
 
   const put = (
     x: number,
@@ -162,6 +173,7 @@ export function createPuffs(
     addEmitter(x, y, z, kind) {
       const cfg = KIND_CFG[kind];
       const e = emitters++;
+      const start = used;
       const phase = (hash32(e * 7919 + kind * 104729 + 1) >>> 8) / 16777216;
       const life = cfg.spawn * cfg.slots;
       for (let s = 0; s < cfg.slots; s++) {
@@ -179,6 +191,23 @@ export function createPuffs(
       if (kind === PUFF_STEAM) {
         for (let r = 0; r < B.ring; r++)
           put(x, y + 1, z, PUFF_RING, (r + 0.5 * phase) / B.ring, [0, 0, 0, 1], 0, 0);
+      }
+      ranges.push({ start, end: used, kind });
+      return e;
+    },
+    setEmitter(e, x, y, z, enabled) {
+      const r = ranges[e];
+      if (!r || r.end <= r.start) return;
+      const cfg = KIND_CFG[r.kind as PuffKind];
+      for (let i = r.start; i < r.end; i++) {
+        const ring = aKind.getX(i) === PUFF_RING;
+        aOrigin.setXYZ(i, x, ring ? y + 1 : y, z);
+        if (!ring) aShape.setXY(i, enabled ? cfg.size[0] : 0, enabled ? cfg.size[1] : 0);
+      }
+      // ranges accumulate until the next upload (several emitters may change in one frame)
+      for (const a of [aOrigin, aShape]) {
+        a.addUpdateRange(r.start * a.itemSize, (r.end - r.start) * a.itemSize);
+        a.needsUpdate = true;
       }
     },
     finalize() {

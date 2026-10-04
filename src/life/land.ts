@@ -230,6 +230,8 @@ export class Villagers extends LandKind {
   private readonly routes: (number[] | null)[];
   readonly compOf: Int32Array;
   private readonly nodes: WorldNodes;
+  /** Dock-end nodes of piers hidden by flooding (sweep D1): no new trips go there. */
+  private hiddenEnds: ReadonlySet<number> = new Set();
 
   constructor(
     o: LandOpts,
@@ -320,11 +322,22 @@ export class Villagers extends LandKind {
     return dx * dx + dy * dy + dz * dz < r * r;
   }
 
+  /** Piers (indices into `world.docks`) hidden by flooding: their ends stop being trip targets. */
+  setDocksHidden(docks: ReadonlySet<number>): void {
+    const ends = new Set<number>();
+    if (docks.size)
+      for (let k = 0; k < this.graph.n; k++)
+        if (this.graph.dockOf[k] >= 0 && docks.has(this.graph.dockOf[k])) ends.add(k);
+    this.hiddenEnds = ends;
+  }
+
   /** Choose the next destination (a door / hub, sometimes a dock end) and a route to it. */
   private planTrip(i: number): boolean {
     const c = this.compOf[i];
     const here = this.na[i];
-    const docks = this.nodes.docks[c];
+    const all = this.nodes.docks[c];
+    const hidden = this.hiddenEnds;
+    const docks = hidden.size ? all.filter((k) => !hidden.has(k)) : all;
     const doors = this.nodes.targets[c];
     const pool =
       docks.length > 0 && (doors.length === 0 || this.draw(i) < VILLAGERS.dockChance)

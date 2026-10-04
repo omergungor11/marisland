@@ -19,6 +19,7 @@ import { Governor, governorLabel, governorLevels, type GovernorAction } from './
 import { GOVERNOR, GOVERNOR_DPR_FLOOR, PERF_PATH } from './content/governor.ts';
 import { runPerfPath } from './debug/perf.ts';
 import { createGpuTimer, type GpuTimer } from './render/gpu-timer.ts';
+import { measureGpuMemory, type GpuMemory } from './render/gpu-memory.ts';
 import { orbitPoseOf } from './camera/perf-path.ts';
 import { createCameraSystem, lookFromOrbit, type CameraSystem } from './camera/controls.ts';
 import { buildGallery } from './render/gallery-scene.ts';
@@ -38,7 +39,7 @@ import type { TestScene } from './render/test-scene.ts';
 import { createInteraction, type Interaction } from './interact/interaction.ts';
 import type { PickHit } from './interact/picking.ts';
 // ---- edit mode (TASK-212) imports
-import { heightAt as worldHeightAt, type WorldData } from './world/index.ts';
+import { editHash, heightAt as worldHeightAt, type WorldData } from './world/index.ts';
 import type { DirtyRegion } from './world/edit-types.ts';
 import { createEditSession, type EditSession } from './edit/session.ts';
 import type { HistoryLike, StorageLike, WorldEditApi } from './edit/session-types.ts';
@@ -230,6 +231,36 @@ export async function boot(): Promise<void> {
 
     /** GPU timer queries around each frame while a `perf` run is active. */
     let gpuTimer: GpuTimer | null = null;
+    // GPU memory (D-022): summed from the allocations when read (harness snapshot, stats), at
+    // most once per rendered frame — no per-frame cost
+    let gpuMem: GpuMemory | null = null;
+    let gpuMemFrame = -1;
+    const gpuMemory = (): GpuMemory => {
+      const r = backend.renderer;
+      if (!gpuMem || r.info.render.frame !== gpuMemFrame) {
+        gpuMemFrame = r.info.render.frame;
+        const t = now();
+        gpuMem = measureGpuMemory(r, scene, ctx.post?.composer ?? null);
+        ctx.timings.gpuMemoryMs = now() - t;
+      }
+      return gpuMem;
+    };
+    Object.defineProperty(ctx.counters, 'gpuMemoryMB', {
+      enumerable: true,
+      get: () => Math.round(gpuMemory().total),
+    });
+    const gpuParts: [string, (g: GpuMemory) => number][] = [
+      ['gpuGeometryMB', (g) => g.geometry],
+      ['gpuTextureMB', (g) => g.textures],
+      ['gpuTargetMB', (g) => g.targets],
+      ['gpuShadowMB', (g) => g.shadow],
+      ['gpuCanvasMB', (g) => g.canvas],
+    ];
+    for (const [key, part] of gpuParts)
+      Object.defineProperty(ctx.timings, key, {
+        enumerable: true,
+        get: () => Math.round(part(gpuMemory()) * 10) / 10,
+      });
     const render = (): void => {
       const r = backend.renderer;
       r.info.reset();
@@ -240,7 +271,6 @@ export async function boot(): Promise<void> {
       readInfo(r, ctx.info);
       const mem = (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory;
       if (mem) ctx.timings.jsHeapMB = Math.round(mem.usedJSHeapSize / 1048576);
-      ctx.counters.gpuMemoryMB = Math.round(estimateGpuMB(r));
       if (stats)
         stats.update(
           1000 / Math.max(frameMs, 1),
@@ -559,7 +589,6 @@ export async function boot(): Promise<void> {
       loop.add(testScene.system);
       ctx.seed = seed;
       ctx.worldHash = testScene.hash;
-      api.worldHash = testScene.hash;
       api.seed = seed;
       cam.setWorld(testScene.cameraWorld);
       hud?.setWorld(testScene.cameraWorld, ISLAND_ACCENTS);
@@ -862,8 +891,18 @@ export async function boot(): Promise<void> {
       counters: { get: () => ctx.counters },
       timings: { get: () => ctx.timings },
       tier: { get: () => ctx.tier },
+      // generated-world hash, `:<editHash>` appended while edits are applied (sweep item 6):
+      // an edited frame is told apart in the manifest, an unedited one keeps its old hash
+      worldHash: {
+        get: () => {
+          const wv = liveWorld as WorldView | null;
+          const log = api.editLog();
+          return wv && log && log.cmds.length > 0
+            ? `${ctx.worldHash}:${editHash(wv.world)}`
+            : ctx.worldHash;
+        },
+      },
     });
-    api.worldHash = ctx.worldHash;
 
     // ---- WebGL context loss (TASK-191, ARCHITECTURE §1): three re-inits its GL state on
     // restore; we rebuild the world from the current seed (fresh uploads + prewarm) with the
@@ -909,7 +948,35 @@ export async function boot(): Promise<void> {
       canvas.removeEventListener('webglcontextrestored', onRestored);
     });
 
-    if (params.selftest === 'regen') await selftestRegen(api, params.seed, ctx);
+    /**
+     * Leak checks compare `renderer.info.memory`, which counts a geometry from its first draw:
+     * a life mesh that is hidden (`count 0`) or frustum-culled at one measurement and drawn at
+     * the other (a sailboat entering the view, the wake starting) read as ±1 (sweep D4). Before
+     * each measurement every object of the scene is uploaded once — all forced visible and
+     * unculled for one render into the composer target (selftest pages only) — so the count is
+     * every live geometry, whatever the camera sees.
+     */
+    const memoryAll = (): { geometries: number; textures: number } => {
+      const r = backend.renderer;
+      const saved: [THREE.Object3D, boolean, boolean][] = [];
+      scene.traverse((o) => {
+        saved.push([o, o.visible, o.frustumCulled]);
+        o.visible = true;
+        o.frustumCulled = false;
+      });
+      if (ctx.post) r.setRenderTarget(ctx.post.composer.inputBuffer);
+      try {
+        r.render(scene, camera);
+      } finally {
+        r.setRenderTarget(null);
+        for (const [o, v, f] of saved) {
+          o.visible = v;
+          o.frustumCulled = f;
+        }
+      }
+      return api.memory();
+    };
+    if (params.selftest === 'regen') await selftestRegen(api, params.seed, ctx, memoryAll);
     if (params.selftest === 'edit' && liveWorld) {
       const wv: WorldView = liveWorld;
       const r = runEditSelftest(
@@ -918,7 +985,7 @@ export async function boot(): Promise<void> {
           rebuildDirty: (region) => wv.rebuildDirty(region),
           flush: () => wv.rebuild.flush(),
           step: () => loop.step(1 / 30, 1),
-          memory: () => api.memory(),
+          memory: memoryAll,
           calls: () => ctx.info.calls,
           now,
         },
@@ -1042,14 +1109,6 @@ export async function boot(): Promise<void> {
 
 const isMaterial = (it: unknown): boolean => (it as { isMaterial?: boolean }).isMaterial === true;
 
-/** Rough GPU memory from renderer.info: textures + geometries + render targets (MB). */
-function estimateGpuMB(r: THREE.WebGLRenderer): number {
-  const m = r.info.memory;
-  // ~1.5 MB per texture (R16F 385² ≈ 0.3 MB, shadow 2048² ≈ 16 MB, HalfFloat RTs scale with the canvas)
-  const canvas = r.domElement.width * r.domElement.height * 8 * 3;
-  return (m.textures * 1.5 * 1048576 + m.geometries * 0.4 * 1048576 + canvas) / 1048576;
-}
-
 /** `?shot=W1` fills seed/cam/time/weather/simt unless given explicitly. */
 function applyShotPreset(p: Params): Params {
   if (!p.shot) return p;
@@ -1113,11 +1172,16 @@ function installApi(): MarislandApi {
 }
 
 /** `?selftest=regen`: 5 regen cycles; memory must return to baseline (ARCHITECTURE §1). */
-async function selftestRegen(api: MarislandApi, seed: number, ctx: Ctx): Promise<void> {
-  const base = api.memory();
+async function selftestRegen(
+  api: MarislandApi,
+  seed: number,
+  ctx: Ctx,
+  memory: () => { geometries: number; textures: number },
+): Promise<void> {
+  const base = memory();
   for (let i = 1; i <= 5; i++) await api.regen(seed + i);
   await api.regen(seed);
-  const after = api.memory();
+  const after = memory();
   ctx.timings.selftestGeoDelta = after.geometries - base.geometries;
   ctx.timings.selftestTexDelta = after.textures - base.textures;
   if (after.geometries !== base.geometries || after.textures !== base.textures) {

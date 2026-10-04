@@ -22,7 +22,10 @@ export interface Counters {
   groundCover: number;
   agents: number;
   particles: number;
-  /** Approximate GPU memory of textures + render targets, MB. */
+  /**
+   * GPU memory, MB: geometry buffers + textures + render targets + shadow maps + the drawing
+   * buffer, summed from the allocations (`render/gpu-memory.ts`; split in `timings.gpu*MB`).
+   */
   gpuMemoryMB: number;
   /** Terrain chunks remeshed by edits (TASK-211). */
   rebuilds: number;
@@ -79,6 +82,10 @@ export interface MarislandApi {
   renderer: string;
   quality: 'low' | 'medium' | 'high';
   seed: number;
+  /**
+   * `world.hashes.world` of the generated world; with edits applied (`?edit=` or live, until
+   * undone) `<that>:<editHash(world)>` — the exact hash of the edited data (sweep item 6).
+   */
   worldHash: string;
   tier: number;
   info: RenderInfo;

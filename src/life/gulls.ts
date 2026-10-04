@@ -135,7 +135,7 @@ export class Gulls extends AgentKind {
       let best = -1;
       let bd = Infinity;
       for (let p = 0; p < this.perches.length; p++) {
-        if (this.perchTaken[p]) continue;
+        if (this.perchTaken[p] || this.perchOff[p]) continue;
         const q = this.perches[p];
         const d =
           Math.hypot(q.x - this.x[i], q.z - this.z[i]) * (0.8 + 0.4 * ((p * 0.618 + r2) % 1));
@@ -165,6 +165,14 @@ export class Gulls extends AgentKind {
     return -1;
   }
   private readonly perchOf = new Int16Array(32).fill(-1);
+  /** Perches out of use (the pier under them flooded away, sweep D1). */
+  private perchOff = new Uint8Array(0);
+  /** Switch perch `p` off / on for new landings (a gull already sitting there stays). */
+  setPerchOff(p: number, off: boolean): void {
+    if (this.perchOff.length !== this.perches.length)
+      this.perchOff = new Uint8Array(this.perches.length);
+    if (p >= 0 && p < this.perchOff.length) this.perchOff[p] = off ? 1 : 0;
+  }
 
   protected override stepAgent(i: number, dt: number, t: number): void {
     const L = GULLS.land;

@@ -10,7 +10,11 @@ export interface Budget {
   agents: number;
   particles: number;
   programs: number;
-  /** Textures + render targets, MB. */
+  /**
+   * GPU memory, MB (`render/gpu-memory.ts`: geometry + textures + render targets + shadow map +
+   * drawing buffer), at the reference capture size — low ≤ 1280×720, medium / high 1920×1080, DPR 1
+   * (targets and the drawing buffer scale with the pixel count). D-022 (amends D-010).
+   */
   gpuMemoryMB: number;
   /** Max JS heap, MB. */
   jsHeapMB: number;
@@ -27,7 +31,7 @@ export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
     agents: 25,
     particles: 2_000,
     programs: 12,
-    gpuMemoryMB: 40,
+    gpuMemoryMB: 64,
     jsHeapMB: 120,
     newSeedMs: 1500,
   },
@@ -39,7 +43,7 @@ export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
     agents: 50,
     particles: 6_000,
     programs: 20,
-    gpuMemoryMB: 90,
+    gpuMemoryMB: 170,
     jsHeapMB: 180,
     newSeedMs: 800,
   },
@@ -51,7 +55,7 @@ export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
     agents: 90,
     particles: 12_000,
     programs: 24,
-    gpuMemoryMB: 160,
+    gpuMemoryMB: 480,
     jsHeapMB: 250,
     newSeedMs: 500,
   },

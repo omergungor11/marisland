@@ -29,7 +29,7 @@ import type { Counters } from '../capture/api.ts';
 import { createPropBatcher, type PropBatcher } from './props/batcher.ts';
 import { createPropMaterials } from './materials/prop-materials.ts';
 import type { PropDef } from '../content/props.ts';
-import type { PropStore } from '../world/prop-store.ts';
+import { PropFlag, type PropStore } from '../world/prop-store.ts';
 import { appendSettlementProps } from './props/settlement-props.ts';
 import { PUFF_CHIMNEY } from './particles/puffs.ts';
 import type { Lod } from '../geo/index.ts';
@@ -132,6 +132,9 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   const timings: Record<string, number> = {};
   const t0 = d.now();
   const world = generateWorld(seed, { now: d.now });
+  // the generated ground decides what can flood (D1): a `?edit=` log replayed below may already
+  // have sunk a village, which must then start hidden, not be taken for a seabed village
+  const pristine = d.beforeBuild ? { ...world.height, data: world.height.data.slice() } : null;
   d.beforeBuild?.(world);
   timings.gen = d.now() - t0;
 
@@ -148,14 +151,37 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   const lights = createLightRig(d.quality, d.scope);
   group.add(lights.group);
   const settlement = appendSettlementProps(world);
+  // `editBase`: a `?edit=` log replayed before the build may have appended props already. The
+  // mirror flags flooded settlement props before the pools / batcher / chimneys read the store.
+  const mirror = createPropMirror(
+    settlement.props,
+    world.props.count,
+    world.height,
+    world.props.editBase ?? world.props.count,
+    {
+      lots: world.lots.map((l, i) => ({ x: l.x, z: l.z, members: settlement.groups.lots[i] })),
+      docks: world.docks.map((k, i) => ({ x: k.x, z: k.z, members: settlement.groups.docks[i] })),
+    },
+    pristine ?? undefined,
+  );
   // night lights (TASK-171): lantern-pool texture → SHARED, lighthouse beam mesh
   const pools = createLanternPools(settlement.props, d.scope, d.renderer ?? null);
   const beam = createBeam(settlement.props, d.scope);
   if (beam.mesh) group.add(beam.mesh);
   const clouds = createClouds(world, d.quality, d.scope);
   group.add(clouds.group);
-  for (const c of settlement.emitters.chimneys)
-    clouds.puffs.addEmitter(c.x, c.y, c.z, PUFF_CHIMNEY);
+  /** House render index → its chimney emitters (follow re-grounding, off while flooded). */
+  const chimneys = new Map<number, { e: number; x: number; z: number; dy: number }[]>();
+  for (const c of settlement.emitters.chimneys) {
+    const e = clouds.puffs.addEmitter(c.x, c.y, c.z, PUFF_CHIMNEY);
+    const house = settlement.groups.lots[c.lot]?.[0];
+    if (house === undefined) continue;
+    let list = chimneys.get(house);
+    if (!list) chimneys.set(house, (list = []));
+    list.push({ e, x: c.x, z: c.z, dy: c.y - settlement.props.y[house] });
+    if (settlement.props.flags[house] & PropFlag.removed)
+      clouds.puffs.setEmitter(e, c.x, c.y, c.z, false);
+  }
   clouds.puffs.finalize();
   const life = createLife({
     world,
@@ -169,6 +195,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   });
   group.add(life.group);
   d.scope.add(life);
+  if (mirror.floodedDocks.size) life.setDocksHidden(mirror.floodedDocks);
   setWind(world.windDir, 1);
 
   const tScatter = d.now();
@@ -186,13 +213,6 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     instantEdits: d.instantEdits ?? false,
   });
   group.add(props.group);
-  // `editBase`: a `?edit=` log replayed before the build may have appended props already
-  const mirror = createPropMirror(
-    scatter.props,
-    world.props.count,
-    world.height,
-    world.props.editBase ?? world.props.count,
-  );
   const rebuild = createRebuilder({
     world,
     terrain,
@@ -208,8 +228,26 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   });
   let alive = true;
   d.scope.defer(() => (alive = false));
-  // lantern pools follow added / removed / moved / re-grounded pool props (TASK-213)
-  d.scope.defer(rebuild.onProps({ after: (ids) => void pools.update(ids) }));
+  // lantern pools follow added / removed / moved / re-grounded pool props (TASK-213); chimney
+  // smoke follows its house (re-grounded, off while flooded) and life avoids flooded piers (D1)
+  const dockMembers = new Set(settlement.groups.docks.flat());
+  d.scope.defer(
+    rebuild.onProps({
+      after: (ids) => {
+        pools.update(ids);
+        const store = settlement.props;
+        let docks = false;
+        for (const i of ids) {
+          if (dockMembers.has(i)) docks = true;
+          const list = chimneys.get(i);
+          if (!list) continue;
+          const on = (store.flags[i] & PropFlag.removed) === 0;
+          for (const c of list) clouds.puffs.setEmitter(c.e, c.x, store.y[i] + c.dy, c.z, on);
+        }
+        if (docks) life.setDocksHidden(mirror.floodedDocks);
+      },
+    }),
+  );
   timings.build = d.now() - t1;
 
   const env = createEnvState();
