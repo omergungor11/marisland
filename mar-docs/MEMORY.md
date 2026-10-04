@@ -125,8 +125,9 @@
 - Camera: a pose set via `setLookAt` is not clamped, but the next rotate is → preset poses must sit inside
   `pitchBand()` or the first input snaps the pitch
 - CSS: unitless `0` inside `calc()` in `translate()` invalidates the whole transform — use `0vmax`
-- World timing tests (`< 150 ms`, "full world generation time") are wall-clock: they fail under load
-  (parallel shots runs); re-run `pnpm vitest run src/world` on an idle machine before calling it a regression
+- Wall-clock perf tests use `perfLimit()` (`src/test/perf.ts`): ×2 under `CI` (2-core runners), ×1 locally,
+  `MAR_PERF_SCALE=0` disables them; on a loaded container re-run `pnpm vitest run src/world` alone before
+  calling a failure a regression (best-of-N already filters worker contention)
 
 > Rules: read at session start; update gotchas/patterns as discovered; delete stale info; keep it
 > short. Architecture decisions go to DECISIONS.md, not here.

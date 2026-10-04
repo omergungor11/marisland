@@ -1,3 +1,4 @@
+import { perfLimit } from '../test/perf.ts';
 import { describe, expect, it } from 'vitest';
 import { createRng } from '../core/rng.ts';
 import { edt } from './gen/coast.ts';
@@ -284,6 +285,6 @@ describe('islands and zones', () => {
       `gen ms (warm, best of 3) seeds 1/42/1001: ${ms.map((m) => m.toFixed(1)).join(' / ')}`,
     );
     console.info(`cold first-call ms seed 1: ${world(1).timings.total.toFixed(1)}`);
-    for (const m of ms) expect(m).toBeLessThan(150);
+    for (const m of ms) expect(m).toBeLessThan(perfLimit(150));
   });
 });

@@ -5,6 +5,7 @@ import { PROP_DEFS } from '../content/props.ts';
 import { PropFlag } from './prop-store.ts';
 import { heightAt, zoneAt, Zone } from './types.ts';
 import { PLACEMENT_RULES } from '../content/placement.ts';
+import { perfLimit } from '../test/perf.ts';
 
 describe('prop scatter', () => {
   const world = generateWorld(1001, { islands: 1 });
@@ -62,6 +63,6 @@ describe('prop scatter', () => {
   });
 
   it('is fast enough', () => {
-    expect(ms).toBeLessThan(600);
+    expect(ms).toBeLessThan(perfLimit(600));
   });
 });

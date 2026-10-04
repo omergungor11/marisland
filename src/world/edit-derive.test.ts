@@ -1,3 +1,4 @@
+import { perfLimit } from '../test/perf.ts';
 import { describe, expect, it } from 'vitest';
 import { createRng } from '../core/rng.ts';
 import { edtNearest, shoreSdf } from './gen/coast.ts';
@@ -320,8 +321,8 @@ describe('edit performance', () => {
     console.info(
       `30 u brush (warm, best of 3): inland raise ${msInland.toFixed(2)} ms, coastal raise ${msCoast.toFixed(2)} ms, coastal smooth ${msSmooth.toFixed(2)} ms`,
     );
-    expect(msInland).toBeLessThanOrEqual(4);
-    expect(msCoast).toBeLessThanOrEqual(4);
+    expect(msInland).toBeLessThanOrEqual(perfLimit(4));
+    expect(msCoast).toBeLessThanOrEqual(perfLimit(4));
     // ghost preview: one placement check per frame
     const p = at(inl);
     canPlace(w, { k: 'propAdd', def: 'roundTree', ...p, rotY: 0, scale: 1 });
@@ -340,6 +341,6 @@ describe('edit performance', () => {
       per = Math.min(per, (now() - t0) / 200);
     }
     console.info(`canPlace: ${(per * 1000).toFixed(0)} µs per call (${w.props.count} props)`);
-    expect(per).toBeLessThan(1);
+    expect(per).toBeLessThan(perfLimit(1));
   });
 });

@@ -1,3 +1,4 @@
+import { perfLimit } from '../test/perf.ts';
 import { describe, expect, it } from 'vitest';
 import { DOCK, LANDMARKS, LOT_ROOFS, OUTPOSTS, VILLAGE } from '../content/settlements.ts';
 import { PROP_DEFS, PROP_DEF_INDEX } from '../content/props.ts';
@@ -470,6 +471,6 @@ describe('settlements — 20-seed sweep', () => {
       `stage ms sites/routes/props: ${runs.map((t) => `${t.sites.toFixed(0)}/${t.routes.toFixed(0)}/${t.props.toFixed(0)}`).join('  ')}`,
     );
     const sorted = runs.map((t) => t.total).sort((x, y) => x - y);
-    expect(sorted[2]).toBeLessThan(400);
+    expect(sorted[2]).toBeLessThan(perfLimit(400));
   });
 });

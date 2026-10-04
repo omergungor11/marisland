@@ -3,6 +3,7 @@ import { createRng } from '../core/rng.ts';
 import { ARCHETYPES, LAYOUT } from '../content/islands.ts';
 import { adjacentPairs, contrasts, generateLayout, nearestGaps } from './gen/layout.ts';
 import type { IslandData } from './types.ts';
+import { perfLimit } from '../test/perf.ts';
 
 // Tests measure wall time; generation itself never reads a clock.
 // eslint-disable-next-line no-restricted-properties
@@ -103,7 +104,7 @@ describe('archipelago layout — 500-seed properties', () => {
         `max nearest gap ${maxNear.toFixed(1)} u`,
     );
     expect(lonely / 500).toBeGreaterThanOrEqual(0.7);
-    expect(ms).toBeLessThan(2000);
+    expect(ms).toBeLessThan(perfLimit(2000));
   });
 
   it('is deterministic and independent of the island count option', () => {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { adjacentPairs } from './gen/layout.ts';
 import { generateWorld, heightAt, Zone, type IslandData, type WorldData } from './index.ts';
+import { perfLimit } from '../test/perf.ts';
 
 // Tests measure wall time; generation itself never reads a clock.
 // eslint-disable-next-line no-restricted-properties
@@ -282,6 +283,6 @@ describe('archipelago — 30-seed full generation', () => {
     console.info(
       `stages seed 1001: ${JSON.stringify(Object.fromEntries(Object.entries(t).map(([k, v]) => [k, Math.round(v)])))}`,
     );
-    for (const m of ms) expect(m).toBeLessThan(600);
+    for (const m of ms) expect(m).toBeLessThan(perfLimit(600));
   });
 });
