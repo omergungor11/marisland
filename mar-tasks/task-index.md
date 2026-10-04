@@ -131,4 +131,4 @@ Details and the shared contract in `phases/phase-2.md` (`src/world/edit-types.ts
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
 | TASK-221 | Edit panel + HUD integration, `edit` shot set, docs | engine | M | COMPLETED | TASK-212 |
-| TASK-222 | Phase 2 QA: edit sweep, regression baseline | qa | S | IN_PROGRESS | TASK-221 |
+| TASK-222 | Phase 2 QA: edit sweep, regression baseline | qa | S | COMPLETED | TASK-221 |

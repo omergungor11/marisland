@@ -234,7 +234,7 @@ These are worst case across tiers. CI enforces them **as counts**, because fps u
 | Particles | ≤2k | ≤6k | ≤12k |
 | Shadow map | blobs | 1024² | 2048² |
 | Shader programs | ≤12 | ≤16 | ≤20 |
-| GPU memory (tex + RTs) | ≤40 MB | ≤90 MB | ≤160 MB |
+| GPU memory (geometry + textures + allocated RTs × samples + shadow + canvas, `render/gpu-memory.ts`, DPR 1 — D-022) | ≤64 MB | ≤170 MB | ≤480 MB |
 | JS heap | ≤120 MB | ≤180 MB | ≤250 MB |
 | Main thread per frame | ≤8 ms | ≤6 ms | ≤5 ms |
 | New seed (gen + build) | ≤1.5 s | ≤0.8 s | ≤0.5 s |

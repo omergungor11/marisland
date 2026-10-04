@@ -10,20 +10,21 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
-- 2026-10-03 (session 2, end): Phase 1 M1–M10 implemented on `claude/inspiring-pascal-19nwjr`. After the
-  10-seed sweep (`mar-docs/qa/sweep-2026-10-03.md`) a polish round fixed D1–D9, D11–D14 (camera framing,
-  piers/huts/islets/fields/roof colours, wake/sheep size/fireflies, shelf seams/glitter/steam/pools/mist).
-  Wow + dev + ci sets all green with `--assert` (medium programs 15–17/20, low 9/12), self-tests ok.
-  Exit sheets: `mar-docs/shots/M10.jpg` (wow), `M10-dev.jpg`, `M10-cam.jpg`, `M10-sweep.jpg` (pre-polish).
-- TASK-192 is REVIEW: needs the user's real-GPU sign-off (M1 60 fps high, phone 30 fps medium) and a
-  `?perf=1` run on hardware. Then merge the branch to `main` (Pages deploy).
-- Open visual debts: D10 stepped beach/cliff bands (needs shore paths ≥ 2.5 u + sand↔grass blend by shore
-  distance); W5 camera looks along the steam plume (needs a wind-aware yaw); portrait overview sits at
-  ~1700 u and fogs pale (tune the fog curve beyond 800 u); W9 has no sun glint (camera faces away from the
-  sun); `marGridUv` samples at i/(n−1) not texel centres (±1 u at the world edge); `estimateGpuMB` is crude
-  (counts render targets twice, ignores MSAA) — not asserted; boats sample content SWELL on CPU so in rain
-  they can float ~0.06 u off; high quality has no program headroom (24/24 at T3 with DOF).
-- Phase 2 (sandbox editing) not started — see `mar-tasks/phases/phase-2.md`.
+- 2026-10-04: Phase 2 (sandbox) M11–M13 implemented on `claude/inspiring-pascal-19nwjr` and polished
+  after the edit sweep (`mar-docs/qa/edit-sweep-2026-10-04.md`); sets ci/dev/edit/wow green with
+  `--assert` (incl. gpuMemoryMB, now real and asserted — D-022), 6 self-tests. Sheets:
+  `mar-docs/shots/M13-edit.jpg`, `M13-sweep.jpg`.
+- NOT done / owed by the user: merge this branch to `main` (D-020 supersede of the parallel session-1 line
+  was refused by the auto-mode classifier — the user decides), real-GPU checks (M1 60 fps high, phone
+  30 fps medium, `?perf=1`).
+- Open items: villagers/sheep/crabs still walk onto flooded ground (walk graph built once); the lighthouse
+  beam does not follow a reshaped lighthouse; high-quality composer `outputBuffer` carries MSAA×4 for
+  nothing (~95 MB at 1080p); T0 tree-blob groups per island × variant (~18 calls); landmarks are not in
+  `EDIT_BRUSH.protect`; no "edited" hint outside edit mode; rejected-brush reasons (`dock`/`plaza`) have
+  no UI text; Phase 1 debts still listed in the 2026-10-03 note below are unchanged.
+- Phase 1 debts (2026-10-03): D10 stepped beach/cliff bands; W5 camera looks along the steam plume;
+  portrait overview ~1700 u fogs pale; W9 no sun glint; `marGridUv` ±1 u at the world edge; boats sample
+  content SWELL on CPU (rain float ~0.06 u); high quality has no program headroom (24/24).
 
 ## Important Patterns
 - Pixel determinism: same URL → byte-identical PNG under SwiftShader
@@ -62,6 +63,13 @@
 - Agent worktrees were created from `origin/main` (not the orchestrator's HEAD) on 2026-10-04: every
   worktree agent must `git fetch` + `git reset --hard <orchestrator-branch>` (not merge) when its base has
   unrelated history, then verify `git log -1`
+- `renderer.info.memory.geometries` counts a geometry from its FIRST DRAW: leak checks must draw every
+  scene object once (forced visible, culling off) before counting, or hidden/culled life meshes read ±1
+- Zones are generated before settlements terrace lots / carve docks, so `world.zone` is stale there (20–80
+  samples per world); recomputing after settlements would change every hash and shot — edits re-derive
+  shore-driven changes only (D-020 addendum)
+- Stale `vite preview` servers from other agents can hold a port for an hour: pick a port, check it is
+  free (`curl -s localhost:<p>` fails), never reuse another agent's
 - A second WebGL context's synchronous calls (context creation, `readPixels`) wait for the main context's
   queued frames (0.9–2.5 s under SwiftShader) — do such work at idle time, once, and cache
 - Swap textures in shared uniforms by reference, never `texture.clone()` (a clone is a second GPU texture

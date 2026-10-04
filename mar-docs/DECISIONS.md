@@ -72,6 +72,17 @@ verbatim patches make undo exact without replaying; the varint codec keeps share
 **Known fidelity gaps**: a `village`/`dock` preset is fitted from terrain heights, so a shared link
 frames an edited village slightly differently than the editor saw it; the live SDF texture is only
 refreshed within `EDIT_RENDER.sdfScanPad` of the edit.
+**Addendum (edit sweep polish, 2026-10-04)**: (1) zones are generated BEFORE settlements reshape the
+terrain, so stored zones are stale on terraces; `rederiveZones` therefore only applies shore-driven
+transitions (sand bands / water classes) to cells whose height and 3×3 neighbourhood did not change —
+slope-driven rock/cliff only where the height changed. (2) Raise/lower falloff is modulated by a seeded
+8 u noise (`EDIT_BRUSH.noise`, amp 0.15, raise outline stretched up to 1.3×) and tapered above
+`softCap` 12 u (×0.5 by 18 u) so stacked strokes build faceted hills, not domes; patches keep undo
+exact. (3) Protected ground (`EDIT_BRUSH.protect`: piers ±0.8 u + 1 cell, mooring footprints, plaza
+discs) never rises; lowering is allowed. (4) Placement uses the exact disc footprint
+(`OccupancyGrid.isFreeDisc`). (5) Render side: ground-following settlement props (lots as one unit with
+their decor, piers with cargo + root lantern) hide below `EDIT_RENDER.floodLevel` (−0.15 u) and bloom
+back when the ground rises; `floodKeep` defs (lighthouse, crater, hot spring, wreck) never hide.
 
 ## D-019: Fitted camera presets; W9 looks down 9°, not 22°; portrait overview may exceed 800 u — 2026-10-03
 
