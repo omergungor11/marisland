@@ -12,7 +12,12 @@
  *   cell (8-neighbour brushfire, test: within 1 cell).
  * - **Zones**: the touched samples (+1 for slope) and every sdf-changed sample are re-derived
  *   with the generation rules (`deriveZoneCell`); painted samples and untouched
- *   path/plaza/field keep their zone. `fieldColor` follows (`genAux.fieldHue`).
+ *   path/plaza/field keep their zone. A sample whose height and 8 neighbours are unchanged
+ *   (only its shore distance moved) accepts only shore-driven transitions
+ *   (`EDIT_DERIVE.sdfZones`): generation coloured zones *before* settlements terraced lots and
+ *   carved docks, so the slope rules disagree with ≈ 20–80 samples per world (terrace edges
+ *   read meadow, the rules say cliff) and must not fire on a mere sdf change (sweep defect 2).
+ *   `fieldColor` follows (`genAux.fieldHue`).
  * - **islandMap / chunkFlags** for flipped samples / touched chunks.
  * - **Journal**: every grid write records the previous value so the command's inverse is an
  *   exact `patch`.
@@ -22,13 +27,17 @@
  *   first edit (two full EDTs, ≈ 20–40 ms once — `replay` at boot pays it once).
  */
 import { createRng } from '../core/rng.ts';
-import { EDIT_DERIVE } from '../content/edit.ts';
+import { createNoise, type Noise } from '../core/noise.ts';
+import { EDIT_BRUSH, EDIT_DERIVE } from '../content/edit.ts';
+import { PROP_DEFS, PROP_DEF_INDEX } from '../content/props.ts';
+import { DOCK } from '../content/settlements.ts';
 import {
   CELL_SIZE,
   CHUNK_CELLS,
   CHUNKS_PER_SIDE,
   WORLD_SIZE,
   Zone,
+  ZONE_COUNT,
   type WorldData,
 } from './types.ts';
 import { edtNearest } from './gen/coast.ts';
@@ -139,6 +148,91 @@ export function nextEpoch(st: EditState): number {
     st.epoch = 1;
   }
   return st.epoch;
+}
+
+// ---------------------------------------------------------------- brush aux
+
+/** Protect-mask values (`EDIT_BRUSH.protect`): ground that never rises under a brush. */
+export const PROTECT_DOCK = 1;
+export const PROTECT_PLAZA = 2;
+
+interface BrushAux {
+  /** Per-seed falloff modulation field (`EDIT_BRUSH.noise`), fixed for the world's lifetime. */
+  noise: Noise;
+  /** Per-sample protect value (0 = free); built from generation data that edits never change. */
+  protect: Uint8Array;
+}
+
+const brushAux = new WeakMap<WorldData, BrushAux>();
+
+/** Brush noise + protect mask of `world`, built on first use (docks / plazas never move). */
+export function brushAuxOf(world: WorldData): BrushAux {
+  let a = brushAux.get(world);
+  if (a) return a;
+  a = {
+    noise: createNoise(createRng(world.seed).fork('edit-brush')),
+    protect: buildProtectMask(world),
+  };
+  brushAux.set(world, a);
+  return a;
+}
+
+/** Brush falloff multiplier at sample (ix, iz): 1 + amp · fbm (≈ 1 ± amp). */
+export function brushNoiseAt(a: BrushAux, ix: number, iz: number): number {
+  const { amp, scale, octaves } = EDIT_BRUSH.noise;
+  return 1 + amp * a.noise.fbm(cellX(ix) / scale, cellZ(iz) / scale, octaves);
+}
+
+/** Radial stretch at sample (ix, iz): 1 + stretch · u, u ∈ [0, 1] (independent field). */
+export function brushStretchAt(a: BrushAux, ix: number, iz: number): number {
+  const { stretch, scale, octaves } = EDIT_BRUSH.noise;
+  const f = a.noise.fbm(cellX(ix) / scale + 31.7, cellZ(iz) / scale - 47.3, octaves);
+  return 1 + stretch * Math.min(1, Math.max(0, 0.5 + 0.5 * f));
+}
+
+function buildProtectMask(world: WorldData): Uint8Array {
+  const h = world.height;
+  const n = h.n;
+  const mask = new Uint8Array(n * n);
+  const P = EDIT_BRUSH.protect;
+  const pad = P.padCells * h.cellSize;
+  /** Mark samples within `r` of segment a→b (a point when a = b). */
+  const capsule = (ax: number, az: number, bx: number, bz: number, r: number, v: number): void => {
+    const x0 = Math.max(0, Math.ceil((Math.min(ax, bx) - r - h.originX) / h.cellSize));
+    const x1 = Math.min(n - 1, Math.floor((Math.max(ax, bx) + r - h.originX) / h.cellSize));
+    const z0 = Math.max(0, Math.ceil((Math.min(az, bz) - r - h.originZ) / h.cellSize));
+    const z1 = Math.min(n - 1, Math.floor((Math.max(az, bz) + r - h.originZ) / h.cellSize));
+    const vx = bx - ax;
+    const vz = bz - az;
+    const ll = vx * vx + vz * vz;
+    for (let iz = z0; iz <= z1; iz++)
+      for (let ix = x0; ix <= x1; ix++) {
+        const px = cellX(ix) - ax;
+        const pz = cellZ(iz) - az;
+        const t = ll > 0 ? Math.min(1, Math.max(0, (px * vx + pz * vz) / ll)) : 0;
+        const dx = px - vx * t;
+        const dz = pz - vz * t;
+        const i = iz * n + ix;
+        if (dx * dx + dz * dz <= r * r && (mask[i] === 0 || v < mask[i])) mask[i] = v;
+      }
+  };
+  if (P.list.includes('dock'))
+    for (const d of world.docks) {
+      const L = d.segments * DOCK.segment;
+      const ex = d.x + Math.cos(d.rotY) * L;
+      const ez = d.z + Math.sin(d.rotY) * L;
+      capsule(d.x, d.z, ex, ez, P.dockHalfWidth + pad, PROTECT_DOCK);
+    }
+  if (P.list.includes('mooring'))
+    for (const m of world.moorings) {
+      const def = PROP_DEFS[PROP_DEF_INDEX[m.defId]];
+      capsule(m.x, m.z, m.x, m.z, def.footprint + pad, PROTECT_DOCK);
+    }
+  if (P.list.includes('plaza'))
+    for (const s of world.settlements)
+      if (s.plaza)
+        capsule(s.plaza.x, s.plaza.z, s.plaza.x, s.plaza.z, s.plaza.r + P.plazaPad, PROTECT_PLAZA);
+  return mask;
 }
 
 // ---------------------------------------------------------------- journal
@@ -385,10 +479,43 @@ export function writeSdf(
   return out;
 }
 
+/** 1 for zones that follow the shore distance alone (content `EDIT_DERIVE.sdfZones`). */
+const SDF_ZONE = new Uint8Array(ZONE_COUNT);
+for (const z of EDIT_DERIVE.sdfZones) SDF_ZONE[z] = 1;
+
+/**
+ * May a sample whose slope did not change (own height and 8 neighbours unchanged) go from zone
+ * `z0` to `z1`? Only through the shore bands: into a sand / water class, or out of one into
+ * anything but the slope classes (rock, cliff).
+ */
+export function sdfDrivenChange(z0: number, z1: number): boolean {
+  if (SDF_ZONE[z1]) return true;
+  return SDF_ZONE[z0] === 1 && z1 !== Zone.rock && z1 !== Zone.cliff;
+}
+
+/** Did sample i or one of its 8 neighbours change height in the command of epoch `hEpoch`? */
+function slopeTouched(st: EditState, i: number, hEpoch: number): boolean {
+  const n = st.n;
+  const hs = st.hStamp;
+  const ix = i % n;
+  const iz = (i - ix) / n;
+  for (let oz = -1; oz <= 1; oz++) {
+    const z = iz + oz;
+    if (z < 0 || z >= n) continue;
+    for (let ox = -1; ox <= 1; ox++) {
+      const x = ix + ox;
+      if (x >= 0 && x < n && hs[z * n + x] === hEpoch) return true;
+    }
+  }
+  return false;
+}
+
 /**
  * Re-derive zones (and field hues) over `cells` (may contain duplicates). Samples in
  * `heightChanged` (hStamp == epoch) are fully re-derived and lose their paint; other samples
- * keep painted zones and path / plaza / field. Returns cells whose zone or fieldColor changed.
+ * keep painted zones and path / plaza / field. Samples whose slope is unchanged (no height
+ * change in the 3×3 around them) only take shore-driven transitions (`sdfDrivenChange`).
+ * Returns cells whose zone or fieldColor changed.
  */
 export function rederiveZones(
   st: EditState,
@@ -418,7 +545,8 @@ export function rederiveZones(
       continue;
     const ix = i % n;
     const iz = (i - ix) / n;
-    const z1 = deriveZoneCell(st.zctx, ix, iz, ownerOf(st, world, i));
+    let z1 = deriveZoneCell(st.zctx, ix, iz, ownerOf(st, world, i));
+    if (z1 !== z0 && !touched && !sdfDrivenChange(z0, z1) && !slopeTouched(st, i, hEpoch)) z1 = z0;
     let changed = false;
     if (z1 !== z0) {
       j.zone.push(i, z0);

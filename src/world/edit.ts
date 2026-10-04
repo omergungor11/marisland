@@ -37,6 +37,11 @@ import { StageHash } from './gen/hash.ts';
 import {
   DIRTY,
   Journal,
+  PROTECT_DOCK,
+  PROTECT_PLAZA,
+  brushAuxOf,
+  brushNoiseAt,
+  brushStretchAt,
   editState,
   forChunks,
   islandForNewLand,
@@ -281,7 +286,7 @@ function checkSpot(
   const ground0 = (def.flags & PropFlag.groundCover) !== 0;
   const occ = createOccupancy(world.genAux.siteOccupancy);
   const min = ground0 || isIn(EDIT_PROPS.pathOk, def.id) ? OCC_STRUCTURE : 1;
-  if (!occ.isFree(x, z, r, min)) return { ok: false, reason: 'occupied' };
+  if (!occ.isFreeDisc(x, z, r, min)) return { ok: false, reason: 'occupied' };
   if (!ground0) {
     const s = world.props;
     for (let i = 0; i < s.count; i++) {
@@ -313,8 +318,10 @@ const noop = (): EditResult => ({
 
 /**
  * Apply one command to `world` (in place). Returns ok:false + reason (world untouched) when the
- * command is malformed or a prop placement is invalid; otherwise the exact inverse and the
- * dirty region. See the module header for the in-place canonicalisation / id contract.
+ * command is malformed, a prop placement is invalid or a brush would only have raised protected
+ * ground (`'dock'` / `'plaza'`, `EDIT_BRUSH.protect`; partially protected brushes apply to the
+ * free samples); otherwise the exact inverse and the dirty region. See the module header for
+ * the in-place canonicalisation / id contract.
  */
 export function applyEdit(world: WorldData, cmd: EditCommand): EditResult {
   if (cmd.k === 'patch') return applyPatch(world, cmd.data);
@@ -359,6 +366,19 @@ function discRange(
   return x0 > x1 || z0 > z1 ? null : { fx, fz, rc, x0, x1, z0, z1 };
 }
 
+/** Raise taper above `EDIT_BRUSH.softCap` (×1 → ×capScale over capRamp u). */
+function cap(y: number): number {
+  const { softCap, capScale, capRamp } = EDIT_BRUSH;
+  if (y <= softCap) return 1;
+  return 1 - (1 - capScale) * Math.min(1, (y - softCap) / capRamp);
+}
+
+/** Rejection reason of a brush that only hit protected ground. */
+const PROTECT_REASON: Readonly<Record<number, string>> = {
+  [PROTECT_DOCK]: 'dock',
+  [PROTECT_PLAZA]: 'plaza',
+};
+
 function applyBrush(world: WorldData, c: BrushCmd): EditResult {
   const rg = discRange(world, c.x, c.z, c.r);
   if (!rg) return reject('outside world');
@@ -370,18 +390,27 @@ function applyBrush(world: WorldData, c: BrushCmd): EditResult {
   const nv: number[] = [];
   const kr = EDIT_BRUSH.smoothKernel;
   const md = EDIT_BRUSH.maxDelta;
+  const aux = brushAuxOf(world);
+  const protect = aux.protect;
+  let blocked = 0;
   for (let iz = rg.z0; iz <= rg.z1; iz++) {
     for (let ix = rg.x0; ix <= rg.x1; ix++) {
       const dx = ix - fx;
       const dz = iz - fz;
-      const t2 = (dx * dx + dz * dz) / (rc * rc);
+      let t2 = (dx * dx + dz * dz) / (rc * rc);
       if (t2 >= 1) continue;
+      if (c.k === 'raise') {
+        // lobed footprint (raise only: a lowered channel keeps the full brush width)
+        const k = brushStretchAt(aux, ix, iz);
+        t2 *= k * k;
+        if (t2 >= 1) continue;
+      }
       const w = Math.pow(1 - t2, EDIT_BRUSH.falloffPower);
       const i = iz * n + ix;
       const old = hd[i];
       let v: number;
-      if (c.k === 'raise') v = old + c.s * w;
-      else if (c.k === 'lower') v = old - c.s * w;
+      if (c.k === 'raise') v = old + Math.min(md, c.s * w * brushNoiseAt(aux, ix, iz) * cap(old));
+      else if (c.k === 'lower') v = old - Math.min(md, c.s * w * brushNoiseAt(aux, ix, iz));
       else if (c.k === 'flatten')
         v = old + clamp((c.s - old) * w * EDIT_BRUSH.flattenRate, -md, md);
       else {
@@ -397,13 +426,18 @@ function applyBrush(world: WorldData, c: BrushCmd): EditResult {
         v = old + clamp((sum / cnt - old) * c.s * w, -md, md);
       }
       v = Math.fround(clamp(v, SEABED_Y, EDIT_BRUSH.maxY));
+      if (v > old && protect[i] !== 0) {
+        // piers, moorings and plazas never rise (lowering stays allowed)
+        if (blocked === 0 || protect[i] < blocked) blocked = protect[i];
+        continue;
+      }
       if (v !== old) {
         idx.push(i);
         nv.push(v);
       }
     }
   }
-  if (idx.length === 0) return noop();
+  if (idx.length === 0) return blocked === 0 ? noop() : reject(PROTECT_REASON[blocked]);
   const st = editState(world);
   const hEp = nextEpoch(st);
   let bx0 = n;

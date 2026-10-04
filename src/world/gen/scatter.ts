@@ -36,6 +36,12 @@ export interface OccupancyGrid {
   data: Uint8Array;
   /** No cell ≥ `minValue` (default 1 = anything) within `radius` of (x, z). */
   isFree(x: number, z: number, radius: number, minValue?: number): boolean;
+  /**
+   * Exact disc test (Phase 2 placement): no cell ≥ `minValue` whose square comes closer than
+   * `radius` to (x, z). `isFree` rounds the radius up to whole cells plus slack (scatter
+   * semantics, kept for determinism); this one uses the footprint as is.
+   */
+  isFreeDisc(x: number, z: number, radius: number, minValue?: number): boolean;
   mark(x: number, z: number, radius: number, value?: number): void;
   /** Value of the cell containing (x, z) (0 outside). */
   valueAt(x: number, z: number): number;
@@ -73,6 +79,24 @@ export function createOccupancy(existing?: Uint8Array): OccupancyGrid {
       }
       void cx;
       void cz;
+      return true;
+    },
+    isFreeDisc(x, z, radius, minValue = 1) {
+      const fx = (x - originX) / cell;
+      const fz = (z - originZ) / cell;
+      const rc = radius / cell;
+      const x0 = Math.max(0, Math.floor(fx - rc));
+      const x1 = Math.min(n - 1, Math.floor(fx + rc));
+      const z0 = Math.max(0, Math.floor(fz - rc));
+      const z1 = Math.min(n - 1, Math.floor(fz + rc));
+      for (let iz = z0; iz <= z1; iz++) {
+        const dz = fz < iz ? iz - fz : fz > iz + 1 ? fz - iz - 1 : 0;
+        for (let ix = x0; ix <= x1; ix++) {
+          if (data[iz * n + ix] < minValue) continue;
+          const dx = fx < ix ? ix - fx : fx > ix + 1 ? fx - ix - 1 : 0;
+          if (dx * dx + dz * dz < rc * rc) return false;
+        }
+      }
       return true;
     },
     valueAt(x, z) {

@@ -4,12 +4,14 @@ import { edtNearest, shoreSdf } from './gen/coast.ts';
 import { buildChunkFlags } from './gen/chunks.ts';
 import { cellX, cellZ } from './gen/grid.ts';
 import { deriveZoneCell, zoneNoise } from './gen/zones.ts';
+import { EDIT_DERIVE } from '../content/edit.ts';
 import {
   applyEdit,
   canPlace,
   CHUNK_CELLS,
   CHUNKS_PER_SIDE,
   CHUNK_HAS_LAND,
+  decodeLog,
   generateWorld,
   slopeAtCell,
   Zone,
@@ -156,6 +158,102 @@ describe('local zone re-derivation', () => {
     applyEdit(w, { k: 'raise', ...node, r: 20, s: 4 });
     expect(w.pathGraph).toBe(graph);
     expect(w.pathGraph.nodes).toEqual(nodes);
+  });
+});
+
+describe('zone drift (sweep defect 2): unchanged slope keeps its zone', () => {
+  const shore = new Set<number>(EDIT_DERIVE.sdfZones);
+  /** Samples whose own height or one of their 8 neighbours changed between a and b. */
+  const slopeChanged = (a: Float32Array, b: Float32Array, n: number): Uint8Array => {
+    const out = new Uint8Array(n * n);
+    for (let i = 0; i < n * n; i++) {
+      if (a[i] === b[i]) continue;
+      const ix = i % n;
+      const iz = (i - ix) / n;
+      for (let oz = -1; oz <= 1; oz++)
+        for (let ox = -1; ox <= 1; ox++) {
+          const x = ix + ox;
+          const z = iz + oz;
+          if (x >= 0 && z >= 0 && x < n && z < n) out[z * n + x] = 1;
+        }
+    }
+    return out;
+  };
+  /** Zone changes on samples with an unchanged 3×3 height that are not shore-band moves. */
+  const drift = (
+    w: WorldData,
+    h0: Float32Array,
+    z0: Uint8Array,
+  ): { bad: string[]; shoreMoves: number } => {
+    const n = w.height.n;
+    const moved = slopeChanged(h0, w.height.data, n);
+    const bad: string[] = [];
+    let shoreMoves = 0;
+    for (let i = 0; i < n * n; i++) {
+      if (moved[i] || w.zone[i] === z0[i]) continue;
+      const a = z0[i];
+      const b = w.zone[i];
+      const ok = (shore.has(a) || shore.has(b)) && b !== Zone.rock && b !== Zone.cliff;
+      if (ok) shoreMoves++;
+      else bad.push(`${i}: ${a} → ${b}`);
+    }
+    return { bad, shoreMoves };
+  };
+
+  it('20 random coastal edits on 5 seeds: only sand / water bands move outside the 3×3 of a height change', () => {
+    let moves = 0;
+    for (const seed of [7, 42, 1001, 2024, 5005]) {
+      const w = seed === 42 ? clone() : generateWorld(seed);
+      const n = w.height.n;
+      const rng = createRng(seed).fork('zone-drift');
+      for (let k = 0; k < 20; k++) {
+        let i = -1;
+        for (let t = 0; t < n * n && i < 0; t++) {
+          const j = (rng.int(0, n * n - 1) + t * 104729) % (n * n);
+          const ix = j % n;
+          const iz = (j - ix) / n;
+          if (ix > 25 && iz > 25 && ix < n - 26 && iz < n - 26 && Math.abs(w.shoreSdf[j]) < 3)
+            i = j;
+        }
+        const kind = rng.pick(['raise', 'lower', 'lower', 'smooth', 'flatten'] as const);
+        const s = kind === 'flatten' ? rng.range(-3, 3) : kind === 'smooth' ? 1 : 4;
+        const h0 = w.height.data.slice();
+        const z0 = w.zone.slice();
+        const r = applyEdit(w, {
+          k: kind,
+          x: cellX(i % n),
+          z: cellZ(Math.floor(i / n)),
+          r: rng.range(6, 30),
+          s,
+        });
+        if (!r.ok) continue;
+        const d = drift(w, h0, z0);
+        expect(d.bad, `seed ${seed} edit ${k} (${kind})`).toEqual([]);
+        moves += d.shoreMoves;
+      }
+    }
+    // the rule is exercised: shore distance moved sand / water bands outside the brushes
+    expect(moves).toBeGreaterThan(100);
+  });
+
+  it('seed 2024 harbour flood (QA log): the terraces beside the tower stay meadow', () => {
+    const w = generateWorld(2024);
+    const h0 = w.height.data.slice();
+    const z0 = w.zone.slice();
+    // mar-docs/qa/edit-sweep-2026-10-04-logs.json → 2024.logs.flood.enc (12 lowers, r 14)
+    const log = decodeLog(
+      'AegPAAwBjGOOSMADgAwBoAK_AQAAAZ8CwAoAAAGfAr8EAAAB4AbfBgAAAd8GwAQAAAEAwAQAAAGACf8IAAAB3wPADQAAAZ8CAAAAAeAG3w8AAAGfBYASAAA',
+    );
+    let applied = 0;
+    for (const c of log.cmds) if (applyEdit(w, c).ok) applied++;
+    expect(applied).toBe(12);
+    const d = drift(w, h0, z0);
+    expect(d.bad).toEqual([]);
+    let terrace = 0;
+    const moved = slopeChanged(h0, w.height.data, w.height.n);
+    for (let i = 0; i < z0.length; i++)
+      if (!moved[i] && z0[i] === Zone.meadow && w.zone[i] !== Zone.meadow) terrace++;
+    expect(terrace).toBe(0);
   });
 });
 

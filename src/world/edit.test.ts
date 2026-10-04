@@ -28,6 +28,8 @@ import {
   type WorldData,
 } from './index.ts';
 import { cellX, cellZ } from './gen/grid.ts';
+import { createOccupancy } from './gen/scatter.ts';
+import { DOCK } from '../content/settlements.ts';
 
 const SEED = 42;
 const base = generateWorld(SEED);
@@ -595,5 +597,175 @@ describe('prop store growth', () => {
     expect(applyEdit(w, { k: 'propAdd', def: 'bush', ...p, rotY: 0, scale: 1 }).ok).toBe(true);
     expect(w.props).toBe(s);
     expect(s.defId[s.count - 1]).toBe(PROP_DEF_INDEX.bush);
+  });
+});
+
+describe('brush shape (sweep defect 6): terrain, not a balloon', () => {
+  it('raise falloff is modulated by a fixed per-seed field (lobed outline), bounded by maxDelta', () => {
+    const w = clone();
+    const p = inland(w, 13);
+    const h0 = w.height.data.slice();
+    const r = 16;
+    const s = 3;
+    expect(applyEdit(w, { k: 'raise', x: p.x, z: p.z, r, s }).ok).toBe(true);
+    const { amp, stretch } = EDIT_BRUSH.noise;
+    const fall = (t2: number): number => (t2 >= 1 ? 0 : Math.pow(1 - t2, EDIT_BRUSH.falloffPower));
+    // Δh / (s · w(t)) on a ring: 1 for a round brush, here it varies around the ring
+    const ring: number[] = [];
+    const rc = r / 2;
+    const cx = Math.round((p.x - w.height.originX) / w.height.cellSize);
+    const cz = Math.round((p.z - w.height.originZ) / w.height.cellSize);
+    for (let dz = -rc; dz <= rc; dz++)
+      for (let dx = -rc; dx <= rc; dx++) {
+        const t2 = (dx * dx + dz * dz) / (rc * rc);
+        if (t2 >= 1) continue;
+        const i = (cz + dz) * N + cx + dx;
+        if (h0[i] > EDIT_BRUSH.softCap) continue;
+        const d = w.height.data[i] - h0[i];
+        expect(d).toBeLessThanOrEqual(EDIT_BRUSH.maxDelta);
+        expect(d).toBeLessThanOrEqual(s * (1 + 1.5 * amp) * fall(t2) + 1e-4);
+        const k = 1 + stretch;
+        expect(d).toBeGreaterThanOrEqual(s * (1 - 1.5 * amp) * fall(t2 * k * k) - 1e-4);
+        if (t2 > 0.25 && t2 < 0.5) ring.push(d / (s * fall(t2)));
+      }
+    expect(ring.length).toBeGreaterThan(30);
+    expect(Math.max(...ring) - Math.min(...ring)).toBeGreaterThan(0.2);
+    // same seed, same command → same bits (the field is per seed, not per call)
+    const w2 = clone();
+    applyEdit(w2, { k: 'raise', x: p.x, z: p.z, r, s });
+    expect(editHash(w2)).toBe(editHash(w));
+  });
+
+  it('stacked raises taper above softCap; the inverse of a capped raise is byte-exact', () => {
+    const w = clone();
+    const p = inland(w, 17);
+    const i = p.i;
+    let last = 0;
+    for (let k = 0; k < 30 && w.height.data[i] < EDIT_BRUSH.softCap + EDIT_BRUSH.capRamp; k++) {
+      const before = w.height.data[i];
+      applyEdit(w, { k: 'raise', x: p.x, z: p.z, r: 14, s: 4 });
+      last = w.height.data[i] - before;
+    }
+    expect(w.height.data[i]).toBeGreaterThanOrEqual(EDIT_BRUSH.softCap + EDIT_BRUSH.capRamp);
+    expect(last).toBeGreaterThan(0);
+    const y0 = w.height.data[i];
+    roundTrip(w, { k: 'raise', x: p.x, z: p.z, r: 14, s: 4 });
+    const d = w.height.data[i] - y0;
+    // full taper: × capScale of the (noise-modulated) stroke
+    expect(d).toBeGreaterThan(0);
+    expect(d).toBeLessThanOrEqual(4 * (1 + 1.5 * EDIT_BRUSH.noise.amp) * EDIT_BRUSH.capScale);
+  });
+});
+
+describe('protected ground (sweep defect 3): piers, moorings and plazas never rise', () => {
+  const pierCells = (w: WorldData, d: WorldData['docks'][number]): number[] => {
+    const out: number[] = [];
+    const L = d.segments * DOCK.segment;
+    for (let t = 0; t <= L; t += 0.5) {
+      const x = d.x + Math.cos(d.rotY) * t;
+      const z = d.z + Math.sin(d.rotY) * t;
+      const ix = Math.round((x - w.height.originX) / w.height.cellSize);
+      const iz = Math.round((z - w.height.originZ) / w.height.cellSize);
+      out.push(iz * N + ix);
+    }
+    return Array.from(new Set(out));
+  };
+
+  it('a raise over a pier leaves every pier sample untouched and refuses when only the pier is hit', () => {
+    expect(EDIT_BRUSH.protect.list).toEqual(['dock', 'mooring', 'plaza']);
+    const w = clone();
+    expect(w.docks.length).toBeGreaterThan(0);
+    for (const d of w.docks) {
+      const cells = pierCells(w, d);
+      const h0 = cells.map((i) => w.height.data[i]);
+      const L = d.segments * DOCK.segment;
+      const mx = d.x + Math.cos(d.rotY) * (L / 2);
+      const mz = d.z + Math.sin(d.rotY) * (L / 2);
+      const before = snap(w);
+      const r = applyEdit(w, { k: 'raise', x: mx, z: mz, r: 16, s: 4 });
+      expect(cells.map((i) => w.height.data[i])).toEqual(h0);
+      if (r.ok) {
+        // the free samples around the pier did rise; undo is exact
+        expect(r.inverse.length).toBe(1);
+        for (const inv of r.inverse) applyEdit(w, inv);
+        expectSame(before, snap(w));
+      }
+      // flatten towards a high target over the pier: no sample under it rises either
+      applyEdit(w, { k: 'flatten', x: d.x, z: d.z, r: 8, s: 6 });
+      expect(cells.every((i, k) => w.height.data[i] <= h0[k])).toBe(true);
+    }
+    // a 2 u brush on the pier middle only hits protected samples → refused, world untouched
+    const d = w.docks[0];
+    const mid = { x: d.x + Math.cos(d.rotY) * 2, z: d.z + Math.sin(d.rotY) * 2 };
+    const h = editHash(w);
+    const r = applyEdit(w, { k: 'raise', ...mid, r: 2, s: 4 });
+    expect(r).toMatchObject({ ok: false, reason: 'dock', inverse: [] });
+    expect(editHash(w)).toBe(h);
+    // lowering stays allowed (floods are the render side's business)
+    const lo = applyEdit(w, { k: 'lower', ...mid, r: 2, s: 1 });
+    expect(lo.ok).toBe(true);
+    expect(editHash(w)).not.toBe(h);
+  });
+
+  it('moorings and the plaza are protected; brushes beside them still work', () => {
+    const w = clone();
+    const m = w.moorings[0];
+    expect(m).toBeDefined();
+    const at = (x: number, z: number): number =>
+      Math.round((z - w.height.originZ) / w.height.cellSize) * N +
+      Math.round((x - w.height.originX) / w.height.cellSize);
+    const hm = w.height.data[at(m.x, m.z)];
+    applyEdit(w, { k: 'raise', x: m.x, z: m.z, r: 10, s: 4 });
+    expect(w.height.data[at(m.x, m.z)]).toBe(hm);
+    const plaza = w.settlements.find((s) => s.plaza)?.plaza;
+    expect(plaza).toBeDefined();
+    if (!plaza) return;
+    const hp = w.height.data[at(plaza.x, plaza.z)];
+    const r = applyEdit(w, { k: 'raise', x: plaza.x, z: plaza.z, r: Math.min(plaza.r, 4), s: 4 });
+    expect(r).toMatchObject({ ok: false, reason: 'plaza' });
+    applyEdit(w, { k: 'raise', x: plaza.x, z: plaza.z, r: plaza.r + 12, s: 4 });
+    expect(w.height.data[at(plaza.x, plaza.z)]).toBe(hp);
+  });
+});
+
+describe('placement on edited land (sweep: cottage never accepted)', () => {
+  it('a flattened islet in open water accepts a cottage', () => {
+    const w = clone();
+    // open water with no prop (sunken ships, buoys) within 12 u
+    const free = (i: number): boolean => {
+      if (w.shoreSdf[i] > -60) return false;
+      const x = cellX(i % N);
+      const z = cellZ(Math.floor(i / N));
+      const s = w.props;
+      for (let k = 0; k < s.count; k++) if (Math.hypot(s.x[k] - x, s.z[k] - z) < 12) return false;
+      return true;
+    };
+    const p = findCell(w, (i) => free(i), 5);
+    for (let k = 0; k < 16 && w.height.data[p.i] < 3; k++)
+      applyEdit(w, { k: 'raise', x: p.x, z: p.z, r: 20, s: 4 });
+    expect(w.height.data[p.i]).toBeGreaterThan(0);
+    for (let k = 0; k < 8; k++) applyEdit(w, { k: 'flatten', x: p.x, z: p.z, r: 12, s: 2 });
+    const cottage: EditCommand = { k: 'propAdd', def: 'cottage', ...xz(p), rotY: 0, scale: 1.1 };
+    expect(canPlace(w, cottage)).toMatchObject({ ok: true });
+    expect(applyEdit(w, cottage).ok).toBe(true);
+    expect(w.props.y[w.props.count - 1]).toBeGreaterThan(0);
+  });
+
+  it('occupancy uses the real footprint (no whole-cell rounding)', () => {
+    const occ = createOccupancy();
+    occ.data[occ.n * 200 + 200] = 2; // one structure cell, x/z ∈ [cell 200, 201)
+    const x0 = occ.originX + 201; // its +x edge
+    const z = occ.originZ + 200.5;
+    const r = PROP_DEFS[PROP_DEF_INDEX.cottage].footprint; // 2.1 u
+    expect(occ.isFreeDisc(x0 + r - 0.05, z, r)).toBe(false);
+    expect(occ.isFreeDisc(x0 + r + 0.05, z, r)).toBe(true);
+    // the scatter test rounds 2.1 u up to 3 cells plus slack
+    expect(occ.isFree(x0 + r + 0.05, z, r)).toBe(false);
+    // a cottage on top of a landmark stays occupied
+    const w = clone();
+    const lm = w.landmarks[0];
+    expect(
+      canPlace(w, { k: 'propAdd', def: 'cottage', x: lm.x, z: lm.z, rotY: 0, scale: 1 }),
+    ).toMatchObject({ ok: false, reason: 'occupied' });
   });
 });

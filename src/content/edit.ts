@@ -25,6 +25,37 @@ export const EDIT_BRUSH = {
   smoothKernel: 1,
   /** Height clamp: [SEABED_Y, maxY]. */
   maxY: 60,
+  /**
+   * Raise/lower read as terrain, not a balloon (sweep defect 6). Two fixed per-seed fields
+   * (fbm at x / scale, z / scale; stacked strokes reinforce the same lobes):
+   * - `amp`: the falloff of every cell is scaled by (1 + amp · fbm) — facets and shoulders;
+   * - `stretch` (raise only): the radial parameter is t · (1 + stretch · u), u = fbm remapped
+   *   to [0, 1] — the footprint shrinks by up to 1 / (1 + stretch) in places, so the outline is
+   *   lobed, never a circle, and still reaches zero with zero slope inside the brush disc.
+   *   Lower keeps the full disc so a carved channel is as wide as the cursor.
+   * Flatten and smooth are not modulated.
+   */
+  noise: { amp: 0.15, stretch: 0.3, scale: 8, octaves: 2 },
+  /**
+   * Raise taper: above `softCap` u the per-command delta shrinks linearly to ×`capScale` over
+   * `capRamp` u, so stacked raises broaden into a hill instead of shooting up a sphere.
+   */
+  softCap: 12,
+  capScale: 0.5,
+  capRamp: 6,
+  /**
+   * Ground that never rises under a brush (raise / flatten / smooth may only lower it; undo
+   * patches restore verbatim): dock piers (segment line ± `dockHalfWidth` + `padCells`), their
+   * moorings (boat def footprint + `padCells`) and village plazas (disc + `plazaPad` u). A brush
+   * that would only have raised protected cells is refused with `reason` = the list entry
+   * (`'dock'` covers piers and moorings).
+   */
+  protect: {
+    list: ['dock', 'mooring', 'plaza'] as readonly ('dock' | 'mooring' | 'plaza')[],
+    dockHalfWidth: 0.8,
+    padCells: 1,
+    plazaPad: 0,
+  },
 } as const;
 
 export const EDIT_DERIVE = {
@@ -40,6 +71,21 @@ export const EDIT_DERIVE = {
    * (TERRAIN_AO.steps × stepCells = 3) and normals (1). Used for the dirty chunk list.
    */
   renderMarginCells: 3,
+  /**
+   * Zones that follow the shore distance alone (sand bands, wet sand, water bands). A sample
+   * whose own height and 8 neighbours did not change in a command only re-derives transitions
+   * into / out of these; slope-driven classes (rock, cliff, forest, meadow …) stay as they are —
+   * generation coloured them before settlements terraced the ground (sweep defect 2).
+   */
+  sdfZones: [
+    Zone.sandWet,
+    Zone.sandDry,
+    Zone.sandBlack,
+    Zone.lagoon,
+    Zone.shallow,
+    Zone.mid,
+    Zone.deep,
+  ] as readonly ZoneId[],
 } as const;
 
 /** `SDF_MARGIN` of the task spec (cells). */
