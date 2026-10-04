@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { poolFalloff, splatPools } from './lantern-pools.ts';
+import {
+  collectPoolSources,
+  poolFalloff,
+  poolLayout,
+  PoolSources,
+  splatPools,
+  splatPoolsRect,
+} from './lantern-pools.ts';
+import { createPropStore, PropFlag } from '../../world/prop-store.ts';
+import { PROP_DEF_INDEX } from '../../content/props.ts';
 import { buildBeamGeometry } from './beam.ts';
 import { BEAM, POOLS } from '../../content/lighting.ts';
 import { POOL_HEIGHT_RANGE } from '../shaders/chunks/night.glsl.ts';
@@ -52,6 +61,62 @@ describe('lantern pools (TASK-171)', () => {
     const a = splatPools(src);
     const b = splatPools(src);
     expect(a?.data).toEqual(b?.data);
+  });
+});
+
+describe('lantern pools follow edits (TASK-213)', () => {
+  const lamps = () => {
+    const s = createPropStore(32);
+    const L = PROP_DEF_INDEX.lanternPost;
+    s.push(L, 0, 0, 1, 0, 0, 1, 0, 0, 0);
+    s.push(L, 0, 30, 2, 10, 0, 1, 0, 0, 0);
+    s.push(L, 0, 12, 1.5, 28, 0, 1, 0, 0, 0);
+    s.push(PROP_DEF_INDEX.pine, 0, 6, 1, 6, 0, 1, 0, 0, 0); // no pool
+    return s;
+  };
+
+  it('skips removed props', () => {
+    const s = lamps();
+    expect(collectPoolSources(s)).toHaveLength(3);
+    s.flags[1] |= PropFlag.removed;
+    expect(collectPoolSources(s)).toHaveLength(2);
+  });
+
+  it('a local re-splat equals a fresh splat over the same layout (move, remove, add)', () => {
+    const s = lamps();
+    const book = new PoolSources(s);
+    const full = splatPools(book.list())!;
+    const layout = poolLayout(book.list())!;
+    const data = full.data.slice();
+    const step = (indices: number[]): void => {
+      const t = book.touch(indices, layout);
+      expect(t.changed).toBe(true);
+      expect(t.outside).toBe(false);
+      splatPoolsRect(book.list(), layout, t.rect!, data);
+      const want = new Uint8Array(layout.size * layout.size * 2);
+      splatPoolsRect(book.list(), layout, { x: 0, y: 0, w: layout.size, h: layout.size }, want);
+      expect(data).toEqual(want);
+    };
+    s.x[0] = 4; // move inside the layout
+    step([0]);
+    s.flags[1] |= PropFlag.removed; // remove
+    step([1]);
+    s.push(PROP_DEF_INDEX.lanternPost, 0, 20, 1, 20, 0, 1, 0, 0, 0); // add
+    step([s.count - 1]);
+    // an unrelated / unchanged index is a no-op
+    expect(book.touch([3], layout).changed).toBe(false);
+  });
+
+  it('a pool outside the layout asks for a rebuild', () => {
+    const s = lamps();
+    const book = new PoolSources(s);
+    const layout = poolLayout(book.list())!;
+    s.push(PROP_DEF_INDEX.lanternPost, 0, 400, 1, 400, 0, 1, 0, 0, 0);
+    const t = book.touch([s.count - 1], layout);
+    expect(t.changed).toBe(true);
+    expect(t.outside).toBe(true);
+    const grown = poolLayout(book.list())!;
+    expect(grown.originX + grown.extent).toBeGreaterThan(400);
   });
 });
 

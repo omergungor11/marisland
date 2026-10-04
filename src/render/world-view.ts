@@ -33,11 +33,11 @@ import type { PropStore } from '../world/prop-store.ts';
 import { appendSettlementProps } from './props/settlement-props.ts';
 import { PUFF_CHIMNEY } from './particles/puffs.ts';
 import type { Lod } from '../geo/index.ts';
-import { createLanternPools } from './night/lantern-pools.ts';
+import { createLanternPools, type LanternPools } from './night/lantern-pools.ts';
 import { createBeam } from './night/beam.ts';
 import type { DirtyRegion } from '../world/edit-types.ts';
 import type { SubImageRenderer } from './gl-subimage.ts';
-import { createPropMirror } from './props/prop-mirror.ts';
+import { createPropMirror, type PropMirror } from './props/prop-mirror.ts';
 import { createRebuilder, type Rebuilder } from './rebuild.ts';
 
 /**
@@ -69,6 +69,16 @@ export interface WorldView {
    */
   rebuildDirty(region: DirtyRegion): void;
   rebuild: Rebuilder;
+  /** Render-store ↔ edit-model prop ids (TASK-213: picking returns edit ids). */
+  mirror: PropMirror;
+  /** Night lantern pools (re-splatted after prop edits, TASK-213). */
+  pools: LanternPools;
+  /**
+   * TASK-213: run the edit rebuild path once on unchanged data (chunk under the camera focus)
+   * so the first live edit is warm. Interactive mode only; `between` waits between the steps
+   * (idle callbacks). Stops when the world is torn down. Resolves to the time spent (ms).
+   */
+  prewarmEdits(between?: () => Promise<void>): Promise<number>;
 }
 
 export interface WorldWeather {
@@ -139,7 +149,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   group.add(lights.group);
   const settlement = appendSettlementProps(world);
   // night lights (TASK-171): lantern-pool texture → SHARED, lighthouse beam mesh
-  createLanternPools(settlement.props, d.scope);
+  const pools = createLanternPools(settlement.props, d.scope, d.renderer ?? null);
   const beam = createBeam(settlement.props, d.scope);
   if (beam.mesh) group.add(beam.mesh);
   const clouds = createClouds(world, d.quality, d.scope);
@@ -176,18 +186,30 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     instantEdits: d.instantEdits ?? false,
   });
   group.add(props.group);
+  // `editBase`: a `?edit=` log replayed before the build may have appended props already
+  const mirror = createPropMirror(
+    scatter.props,
+    world.props.count,
+    world.height,
+    world.props.editBase ?? world.props.count,
+  );
   const rebuild = createRebuilder({
     world,
     terrain,
     textures,
     props,
-    mirror: createPropMirror(scatter.props, world.props.count, world.height),
+    mirror,
     instant: d.instantEdits ?? false,
     getTime: d.getTime,
     now: d.now,
     counters: d.counters,
     timings,
+    renderer: d.renderer ?? null,
   });
+  let alive = true;
+  d.scope.defer(() => (alive = false));
+  // lantern pools follow added / removed / moved / re-grounded pool props (TASK-213)
+  d.scope.defer(rebuild.onProps({ after: (ids) => void pools.update(ids) }));
   timings.build = d.now() - t1;
 
   const env = createEnvState();
@@ -338,6 +360,13 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     timings,
     rebuildDirty: (region) => rebuild.rebuildDirty(region),
     rebuild,
+    mirror,
+    pools,
+    prewarmEdits: (between) =>
+      rebuild.prewarm(_focus.x, _focus.z, async () => {
+        await between?.();
+        return alive;
+      }),
   };
 }
 

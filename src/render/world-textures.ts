@@ -214,6 +214,12 @@ export interface WorldTextures {
    * with `texSubImage2D` (fallback: full upload). Without: everything, full upload.
    */
   update(region?: DirtyRegion): TextureUpdateStats;
+  /**
+   * TASK-213 first-edit prewarm: run the ring-scale re-derivation (coast flip → nearest-coast
+   * EDT window → blur) around sample (i, j) on scratch copies of the CPU caches. Nothing the
+   * textures or later edits read is written.
+   */
+  prewarm(i: number, j: number): void;
 }
 
 export interface TextureUpdateStats {
@@ -298,6 +304,16 @@ export function createWorldTextures(
     sdf,
     zone,
     uGridMap: { value: new THREE.Vector3(world.height.originX, world.height.originZ, 1 / extent) },
+    prewarm(i, j) {
+      const scratch: RingCache = {
+        land: ring.land.slice(),
+        raw: ring.raw.slice(),
+        ring: ring.ring.slice(),
+      };
+      const k = Math.min(n - 1, Math.max(0, j)) * n + Math.min(n - 1, Math.max(0, i));
+      scratch.land[k] ^= 1; // a fake coast flip: the full update path runs on the scratch copy
+      updateRingRegion(world, scratch, i, i, j, j);
+    },
     update(region) {
       if (!region) {
         fill();

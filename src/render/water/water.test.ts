@@ -130,6 +130,7 @@ describe('createWater', () => {
         colorRect: null,
         uploadMs: 0,
       }),
+      prewarm: () => {},
     };
     const w = createWater({} as WorldData, textures, 'low', scope);
     const mat = w.mesh.material as THREE.ShaderMaterial;

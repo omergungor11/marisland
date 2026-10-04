@@ -4,7 +4,8 @@
  *   [--tag=name] [--port=4173] [--no-selftest]` — `--tag` builds into dist-<tag>/ and writes shots/<set>-<tag>/
  *   so parallel agents don't collide; pair it with a distinct `--port`. The ci and dev sets also run the
  *   app self-tests (`selftest=regen` leak check, `selftest=ctxloss` context loss + restore,
- *   `selftest=edit` 50 brush edits + undo with a leak check) on the first shot.
+ *   `selftest=edit` 50 brush edits + undo with a leak check) on the first shot, plus the harness-side
+ *   `editpick` check (picking follows `api.edit` / `api.undo` / `propMove`, TASK-213).
  * Writes shots/<set>/{<id>.png, <id>+dt.png, <id>.mask.png, manifest.json, contact.jpg}.
  */
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
@@ -330,6 +331,97 @@ async function runSelftest(
   return r;
 }
 
+/**
+ * `editpick` (TASK-213, harness-side, capture mode): at the village preset, add a pine where a
+ * screen ray meets dry land; `api.pick` there must return that pine with its edit id
+ * (≥ EDIT_PROP_ID_BASE, the id `applyEdit` assigned); after `api.undo()` it must not; after
+ * `api.redo()` + `propMove` the pick follows the pine to its new spot. Edits are undone after.
+ */
+const EDITPICK_EXPR = `(() => {
+  const api = window.__marisland;
+  const fail = [];
+  const t0 = performance.now();
+  api.setCamera('village');
+  const c = document.querySelector('canvas');
+  const W = c.clientWidth;
+  const H = c.clientHeight;
+  const spots = [];
+  for (let j = 0; j < 5; j++)
+    for (let i = 0; i < 7; i++) spots.push([W * (0.2 + i * 0.1), H * (0.35 + j * 0.1)]);
+  const land = (x, y) => {
+    const h = api.pick(x, y);
+    return h && h.kind === 'terrain' && h.name === 'terrain' ? h : null;
+  };
+  let at = null;
+  let id = -1;
+  for (const [x, y] of spots) {
+    const h = land(x, y);
+    if (!h) continue;
+    const r = api.edit({ k: 'propAdd', def: 'pine', x: h.x, z: h.z, rotY: 0.5, scale: 1 });
+    if (!r.ok) continue;
+    const cmds = api.editLog().cmds;
+    id = cmds[cmds.length - 1].id;
+    at = [x, y];
+    break;
+  }
+  if (!at) return { fail: ['no spot accepted a pine'], ms: performance.now() - t0 };
+  const isPine = (h) => !!h && h.kind === 'prop' && h.name === 'pine' && h.id === id;
+  const p1 = api.pick(at[0], at[1]);
+  if (!(id >= ${1 << 20})) fail.push('assigned id ' + id + ' is not an edit id');
+  if (!isPine(p1)) fail.push('after propAdd: pick ' + JSON.stringify(p1) + ' is not pine ' + id);
+  if (!api.undo()) fail.push('undo failed');
+  const p2 = api.pick(at[0], at[1]);
+  if (isPine(p2)) fail.push('after undo: still picks the pine');
+  if (!api.redo()) fail.push('redo failed');
+  if (!isPine(api.pick(at[0], at[1]))) fail.push('after redo: pine not picked');
+  let moved = null;
+  for (const [x, y] of spots) {
+    if (Math.hypot(x - at[0], y - at[1]) < W * 0.15) continue;
+    const h = land(x, y);
+    if (!h) continue;
+    const r = api.edit({ k: 'propMove', id, x: h.x, z: h.z, rotY: 0.5 });
+    if (r.ok) {
+      moved = [x, y];
+      break;
+    }
+  }
+  if (!moved) fail.push('no spot accepted the move');
+  else {
+    if (!isPine(api.pick(moved[0], moved[1]))) fail.push('after propMove: pick does not follow');
+    if (isPine(api.pick(at[0], at[1]))) fail.push('after propMove: old spot still picks the pine');
+    api.undo();
+  }
+  api.undo();
+  return { fail, ms: performance.now() - t0, id, at, moved };
+})()`;
+
+async function runEditPickSelftest(
+  browser: Browser,
+  base: string,
+  p: ShotPreset,
+): Promise<SelftestResult> {
+  const o = await open(browser, shotUrl(base, p), p);
+  const r: SelftestResult = {
+    name: 'editpick',
+    ok: true,
+    failures: [...o.fatal],
+    readyMs: o.readyMs,
+  };
+  try {
+    if (o.snap && !o.snap.error) {
+      const res = (await o.page.evaluate(EDITPICK_EXPR)) as { fail: string[]; ms: number };
+      r.failures.push(...res.fail);
+      r.timings = { editPickMs: Math.round(res.ms) };
+      const err = (await o.page.evaluate('window.__marisland.error')) as string | null;
+      if (err) r.failures.push(`app error: ${err.split('\n')[0]}`);
+    } else if (o.snap?.error) r.failures.push(`app error: ${o.snap.error.split('\n')[0]}`);
+  } finally {
+    await o.page.close();
+  }
+  r.ok = r.failures.length === 0;
+  return r;
+}
+
 // ---------------------------------------------------------------- contact sheet
 const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
@@ -404,6 +496,8 @@ async function main(): Promise<void> {
         console.log(`[selftest] ${name} on ${list[0].id}`);
         selftests.push(await runSelftest(browser, base, list[0], name));
       }
+      console.log(`[selftest] editpick on ${list[0].id}`);
+      selftests.push(await runEditPickSelftest(browser, base, list[0]));
     }
   } finally {
     await browser.close();

@@ -21,6 +21,7 @@ import { PROP_DEFS } from '../content/props.ts';
 import { PropFlag } from '../world/prop-store.ts';
 import { heightAt } from '../world/index.ts';
 import type { WorldView } from '../render/world-view.ts';
+import type { Group } from '../render/props/batcher.ts';
 import { createBursts } from '../render/particles/bursts.ts';
 import { clearHover, setHover } from '../render/materials/hover.ts';
 import { SHARED } from '../render/uniforms.ts';
@@ -28,13 +29,13 @@ import { createReactions, type ReactionTarget } from '../anim/reactions.ts';
 import {
   ClickFilter,
   makeRay,
-  PropHash,
+  PropPickIndex,
   Picker,
   screenRay,
   type AgentSource,
   type PickCamera,
   type PickHit,
-  type PropProxies,
+  type ProxyDims,
   type Ray,
 } from './picking.ts';
 
@@ -42,6 +43,11 @@ import {
  * Pointer interaction for one world (TASK-162): picking, 10 Hz hover tint + cursor, the click
  * jitter filter, reactions and their particle bursts, fish scatter from the cursor, and the
  * reduced-motion switches. Built per world (`buildWorldView`), torn down with the world scope.
+ *
+ * Edits (TASK-213): the prop proxies follow every rebuild (`wv.rebuild.onProps` → `refresh`):
+ * moved props are re-hashed, removed ones dropped, edit-added ones inserted with their def's
+ * proxy. Prop hits carry the edit-model id (`wv.mirror.idOf`) in `id` — what `propRemove` /
+ * `propMove` expect — and the render index in `instanceIndex`.
  */
 export interface InteractionDeps {
   wv: WorldView;
@@ -77,6 +83,13 @@ export interface Interaction {
   terrainAt(x: number, y: number): PickHit | null;
   /** Edit mode (TASK-212): no hover tint, cursor or click reactions while on. */
   setSuspended(on: boolean): void;
+  /**
+   * TASK-213: re-derive the pick proxies and mesh slots of render-store indices `indices`
+   * (called automatically after every rebuild's prop rewrite).
+   */
+  refresh(indices: readonly number[]): void;
+  /** Live prop proxies (tests / debugging). */
+  readonly proxyCount: number;
   readonly reduced: boolean;
   /** Reactions currently animating. */
   readonly activeReactions: number;
@@ -96,11 +109,26 @@ export function createInteraction(d: InteractionDeps): Interaction {
   SHARED.uMotionScale.value = d.motionScale;
 
   // ---- prop proxies (cylinders from geometry bounds) + store → mesh slot maps
-  const n = store.count;
-  const slotA = new Int32Array(n).fill(-1);
-  const groupA = new Int32Array(n).fill(-1);
-  const slotB = new Int32Array(n).fill(-1);
-  const groupB = new Int32Array(n).fill(-1);
+  // (growable: edits append render slots, TASK-213)
+  let cap = store.count;
+  let slotA = new Int32Array(cap).fill(-1);
+  let groupA = new Int32Array(cap).fill(-1);
+  let slotB = new Int32Array(cap).fill(-1);
+  let groupB = new Int32Array(cap).fill(-1);
+  const ensure = (n: number): void => {
+    if (n <= cap) return;
+    const next = Math.max(n, Math.ceil(cap * 1.25) + 64);
+    const grow = (a: Int32Array<ArrayBuffer>): Int32Array<ArrayBuffer> => {
+      const b = new Int32Array(next).fill(-1);
+      b.set(a);
+      return b;
+    };
+    slotA = grow(slotA);
+    groupA = grow(groupA);
+    slotB = grow(slotB);
+    groupB = grow(groupB);
+    cap = next;
+  };
   groups.forEach((g, gi) => {
     for (let k = 0; k < g.members.length; k++) {
       const i = g.members[k];
@@ -115,19 +143,20 @@ export function createInteraction(d: InteractionDeps): Interaction {
     }
   });
   const skip = new Set<string>(PICK.skipDefs);
-  const px: number[] = [];
-  const py: number[] = [];
-  const pz: number[] = [];
-  const pr: number[] = [];
-  const ph: number[] = [];
-  const pid: number[] = [];
-  const pdef: number[] = [];
-  const slotByStore = new Int32Array(n).fill(-1);
+  /** Groups whose instances get pick proxies (LOD0, not ground cover / underwater / skipped). */
+  const pickable = (g: Group): boolean =>
+    g.lod === 0 &&
+    !g.groundCover &&
+    !skip.has(g.def.id) &&
+    (g.def.flags & (PropFlag.underwater | PropFlag.groundCover)) === 0 &&
+    !(g.members.length && g.members[0] < 0);
   const bbox = new THREE.Box3();
-  for (const g of groups) {
-    if (g.lod !== 0 || g.groundCover || skip.has(g.def.id)) continue;
-    if ((g.def.flags & (PropFlag.underwater | PropFlag.groundCover)) !== 0) continue;
+  /** Unit-scale proxy of a group's geometry (cached per geometry). */
+  const dimsCache = new Map<Group['mesh']['geometry'], ProxyDims>();
+  const dimsOf = (g: Group): ProxyDims => {
     const geo = g.mesh.geometry;
+    let dims = dimsCache.get(geo);
+    if (dims) return dims;
     if (!geo.boundingBox) geo.computeBoundingBox();
     bbox.copy(geo.boundingBox!);
     const ov = PICK.proxy[g.def.id];
@@ -138,32 +167,20 @@ export function createInteraction(d: InteractionDeps): Interaction {
       : Math.max(PICK.minRadius, (Math.sqrt(sizeX * sizeZ) / 2) * PICK.radiusFit);
     const baseH = ov ? ov[1] : (bbox.max.y - Math.min(0, bbox.min.y)) * PICK.heightFit;
     const y0 = ov ? 0 : Math.min(0, bbox.min.y);
-    for (const i of g.members) {
-      if (i < 0) continue;
-      const s = store.scale[i];
-      slotByStore[i] = px.length;
-      px.push(store.x[i]);
-      py.push(store.y[i] + y0 * s);
-      pz.push(store.z[i]);
-      pr.push(baseR * s);
-      ph.push(Math.max(0.3, baseH * s));
-      pid.push(i);
-      pdef.push(store.defId[i]);
-    }
-  }
-  const proxies: PropProxies = {
-    count: px.length,
-    id: Int32Array.from(pid),
-    def: Uint16Array.from(pdef),
-    x: Float32Array.from(px),
-    y: Float32Array.from(py),
-    z: Float32Array.from(pz),
-    r: Float32Array.from(pr),
-    h: Float32Array.from(ph),
+    dims = [baseR, baseH, y0];
+    dimsCache.set(geo, dims);
+    return dims;
   };
+  const items: { i: number; dims: ProxyDims }[] = [];
+  for (const g of groups) {
+    if (!pickable(g)) continue;
+    const dims = dimsOf(g);
+    for (const i of g.members) if (i >= 0) items.push({ i, dims });
+  }
   const hf = world.height;
-  const hash = new PropHash(
-    proxies,
+  const pickIndex = new PropPickIndex(
+    store,
+    items,
     {
       minX: hf.originX,
       minZ: hf.originZ,
@@ -172,9 +189,46 @@ export function createInteraction(d: InteractionDeps): Interaction {
     },
     PICK.cell,
   );
+  const hash = pickIndex.hash;
+  const proxies = hash.props;
   const propVisible = (id: number): boolean =>
     (groupA[id] >= 0 && groups[groupA[id]].visible) ||
     (groupB[id] >= 0 && groups[groupB[id]].visible);
+
+  /** Group → index in `groups` (refreshed when edits created groups). */
+  const groupIndex = new Map<Group, number>();
+  const indexOfGroup = (g: Group): number => {
+    if (groupIndex.size !== groups.length) {
+      groupIndex.clear();
+      groups.forEach((x, gi) => groupIndex.set(x, gi));
+    }
+    return groupIndex.get(g) ?? -1;
+  };
+  const refresh = (indices: readonly number[]): void => {
+    // mesh slots (appended instances, reallocated groups)
+    for (const i of indices) {
+      if (i < 0 || i >= store.count) continue;
+      ensure(i + 1);
+      const sl = wv.props.slotsOf(i);
+      groupA[i] = slotA[i] = groupB[i] = slotB[i] = -1;
+      if (sl)
+        for (const { g, k } of sl) {
+          const gi = indexOfGroup(g);
+          if (g.lod === 0) {
+            slotA[i] = k;
+            groupA[i] = gi;
+          } else {
+            slotB[i] = k;
+            groupB[i] = gi;
+          }
+        }
+    }
+    // proxies: re-hashed from the store (removed → dropped)
+    pickIndex.refresh(store, indices, (i) => {
+      const g = groupA[i] >= 0 ? groups[groupA[i]] : null;
+      return g && pickable(g) ? dimsOf(g) : null;
+    });
+  };
 
   // ---- agents
   const sources: AgentSource[] = [];
@@ -197,6 +251,7 @@ export function createInteraction(d: InteractionDeps): Interaction {
     defNames: PROP_DEFS.map((p) => p.id),
     agents: sources,
     propVisible,
+    propId: (i) => wv.mirror.idOf(i),
     near: camera.near,
     far: Math.min(camera.far, 2500),
   });
@@ -218,6 +273,25 @@ export function createInteraction(d: InteractionDeps): Interaction {
     },
   });
   d.scope.defer(() => reactions.clear());
+  /** Render indices of props clicked while reactions run (an edit to one cancels them). */
+  const reacting = new Set<number>();
+  d.scope.defer(
+    wv.rebuild.onProps({
+      // a reaction restores its saved matrix when it ends: stop it before the edit rewrites
+      before(ids) {
+        if (!reacting.size) return;
+        if (reactions.active === 0) {
+          reacting.clear();
+          return;
+        }
+        if (ids.some((i) => reacting.has(i))) {
+          reactions.clear();
+          reacting.clear();
+        }
+      },
+      after: refresh,
+    }),
+  );
 
   const offReduced = d.events.on('reducedMotionChanged', (e) => {
     reduced = e.reduced;
@@ -272,7 +346,7 @@ export function createInteraction(d: InteractionDeps): Interaction {
 
   const meshesOf = (hit: PickHit): ReactionTarget | null => {
     if (hit.kind === 'prop') {
-      const i = hit.id;
+      const i = hit.instanceIndex;
       const ms: THREE.InstancedMesh[] = [];
       let slot = -1;
       if (groupA[i] >= 0) {
@@ -300,15 +374,16 @@ export function createInteraction(d: InteractionDeps): Interaction {
 
   const anchorOf = (hit: PickHit): BurstAnchor => {
     if (hit.kind === 'prop') {
-      const s = slotByStore[hit.id];
-      const x = store.x[hit.id];
-      const z = store.z[hit.id];
+      const i = hit.instanceIndex;
+      const s = pickIndex.slotOf(i);
+      const x = store.x[i];
+      const z = store.z[i];
       return {
         x,
-        y: store.y[hit.id],
+        y: store.y[i],
         z,
         r: s >= 0 ? proxies.r[s] : 0.5,
-        h: s >= 0 ? proxies.h[s] + (proxies.y[s] - store.y[hit.id]) : 1,
+        h: s >= 0 ? proxies.h[s] + (proxies.y[s] - store.y[i]) : 1,
         floor: Math.max(0, ground(x, z)),
       };
     }
@@ -333,7 +408,9 @@ export function createInteraction(d: InteractionDeps): Interaction {
 
   const doPick = (x: number, y: number): PickHit | null => {
     const r = rayAt(x, y);
-    return r ? picker.pick(r) : null;
+    const hit = r ? picker.pick(r) : null;
+    if (hit && hit.kind === 'prop') hit.rotY = store.rotY[hit.instanceIndex];
+    return hit;
   };
 
   let suspended = false;
@@ -370,8 +447,9 @@ export function createInteraction(d: InteractionDeps): Interaction {
     if (!hit || hit.kind === 'terrain') return hit;
     const target = meshesOf(hit);
     if (!target) return hit;
-    const key = `${hit.kind}:${hit.name}:${hit.id}`;
+    const key = `${hit.kind}:${hit.name}:${hit.instanceIndex}`;
     reactions.trigger(key, specFor(hit), target, anchorOf(hit), reduced);
+    if (hit.kind === 'prop') reacting.add(hit.instanceIndex);
     // the villager's `emote` reaction also drives its wave state (interaction → life API)
     if (hit.kind === 'agent' && hit.name === 'villagers' && !reduced)
       wv.life.kinds.villagers?.wave(hit.id);
@@ -473,6 +551,10 @@ export function createInteraction(d: InteractionDeps): Interaction {
     terrainAt,
     setSuspended(on) {
       suspended = on;
+    },
+    refresh,
+    get proxyCount() {
+      return hash.live;
     },
     get reduced() {
       return reduced;

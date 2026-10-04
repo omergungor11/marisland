@@ -191,9 +191,12 @@ export function createEditMode(d: EditModeDeps): EditMode {
   const withProp = (h: EditHit, x: number, y: number): EditHit => {
     if (tools.tool !== 'erase' && tools.tool !== 'move') return h;
     const p = d.interaction.pickAt(x, y);
+    // `p.id` is the edit-model prop id (scatter index or EDIT_PROP_ID_BASE + k, TASK-213);
+    // render-only settlement props (id −1) cannot be erased / moved
     return {
       ...h,
-      prop: p && p.kind === 'prop' ? { id: p.id, rotY: d.propRotY(p.id) } : null,
+      prop:
+        p && p.kind === 'prop' && p.id >= 0 ? { id: p.id, rotY: p.rotY ?? d.propRotY(p.id) } : null,
     };
   };
 

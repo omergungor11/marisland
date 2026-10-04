@@ -4,16 +4,23 @@ import {
   makeRay,
   marchTerrain,
   Picker,
+  PICK_REMOVED_FLAG,
   PropHash,
+  PropPickIndex,
   rayCylinder,
   raySphere,
   screenRay,
   type AgentSource,
   type PickCamera,
+  type PickStore,
   type PropProxies,
+  type ProxyDims,
   type Ray,
 } from './picking.ts';
 import { PICK } from '../content/anim.ts';
+import { PropFlag } from '../world/prop-store.ts';
+import { EDIT_PROP_ID_BASE } from '../world/edit-types.ts';
+import { createRng } from '../core/rng.ts';
 
 /** Synthetic world: a 60 u wide cosine hill (peak 20) at the origin, sea elsewhere. */
 const hill = (x: number, z: number): number => {
@@ -249,5 +256,152 @@ describe('ClickFilter (jitter filter)', () => {
     f.down(1, 100, 100, 1000);
     f.cancel();
     expect(f.up(1, 100, 100, 1050)).toBe(false);
+  });
+});
+
+describe('PropPickIndex: picking follows edits (TASK-213)', () => {
+  /** Growable store of `n` props on flat ground (y 0) in a 160 u square. */
+  const makeStore = (n: number, seed: number) => {
+    const rng = createRng(seed).fork('pick-store');
+    const s = {
+      count: n,
+      defId: [] as number[],
+      x: [] as number[],
+      y: [] as number[],
+      z: [] as number[],
+      scale: [] as number[],
+      flags: [] as number[],
+    };
+    for (let i = 0; i < n; i++) {
+      s.defId.push(i % 3);
+      s.x.push(rng.range(-80, 80));
+      s.y.push(0);
+      s.z.push(rng.range(-80, 80));
+      s.scale.push(rng.range(0.7, 1.4));
+      s.flags.push(0);
+    }
+    return s;
+  };
+  const DIMS: ProxyDims[] = [
+    [0.6, 4, 0],
+    [1.5, 3, -0.2],
+    [0.9, 1.2, 0],
+  ];
+  /** Def 2 is "not pickable" (e.g. ground cover) in these tests. */
+  const dimsOf = (s: PickStore) => (i: number) => (s.defId[i] === 2 ? null : DIMS[s.defId[i]]);
+  const build = (s: PickStore): PropPickIndex => {
+    const items: { i: number; dims: ProxyDims }[] = [];
+    for (let i = 0; i < s.count; i++) {
+      const d = dimsOf(s)(i);
+      if (d && !(s.flags[i] & PICK_REMOVED_FLAG)) items.push({ i, dims: d });
+    }
+    return new PropPickIndex(s, items, BOUNDS, PICK.cell);
+  };
+  /** Straight-down ray onto (x, z). */
+  const down = (x: number, z: number): Ray => ray([x, 50, z], [x, 0, z]);
+  const pickWith = (idx: PropPickIndex, r: Ray): number => {
+    const p = new Picker({
+      march: { ...PICK.march, heightAt: () => 0, maxY: 1 },
+      hash: idx.hash,
+      defNames: ['palm', 'cottage', 'rock'],
+      agents: [],
+      near: 0.1,
+      far: 600,
+    });
+    const h = p.pick(r);
+    return h && h.kind === 'prop' ? h.instanceIndex : -1;
+  };
+
+  it('uses the world removed flag', () => {
+    expect(PICK_REMOVED_FLAG).toBe(PropFlag.removed);
+  });
+
+  it('add / move / remove: proxies follow, picks hit the new state only', () => {
+    const s = makeStore(10, 1);
+    s.x[0] = 10;
+    s.z[0] = 10;
+    s.defId[0] = 0;
+    const idx = build(s);
+    expect(pickWith(idx, down(10, 10))).toBe(0);
+    // move 0 → (40, -20)
+    s.x[0] = 40;
+    s.z[0] = -20;
+    idx.refresh(s, [0], dimsOf(s));
+    expect(pickWith(idx, down(10, 10))).not.toBe(0);
+    expect(pickWith(idx, down(40, -20))).toBe(0);
+    // remove it
+    s.flags[0] |= PICK_REMOVED_FLAG;
+    idx.refresh(s, [0], dimsOf(s));
+    expect(idx.slotOf(0)).toBe(-1);
+    expect(pickWith(idx, down(40, -20))).not.toBe(0);
+    // an appended (edit-added) prop beyond the store's build size
+    const k = s.count++;
+    s.defId.push(1);
+    s.x.push(-60);
+    s.y.push(0);
+    s.z.push(70);
+    s.scale.push(1);
+    s.flags.push(0);
+    idx.refresh(s, [k], dimsOf(s));
+    expect(idx.slotOf(k)).toBeGreaterThanOrEqual(0);
+    expect(pickWith(idx, down(-60, 70))).toBe(k);
+    // a non-pickable def gets no proxy
+    s.defId[k] = 2;
+    idx.refresh(s, [k], dimsOf(s));
+    expect(pickWith(idx, down(-60, 70))).toBe(-1);
+  });
+
+  it('300 random edits (incl. overlay compaction) pick like a fresh index', () => {
+    const s = makeStore(400, 2);
+    const idx = build(s);
+    const rng = createRng(3).fork('pick-edits');
+    for (let e = 0; e < 300; e++) {
+      const op = rng.int(0, 3);
+      let i = rng.int(0, s.count - 1);
+      if (op === 0) {
+        s.x[i] = rng.range(-80, 80);
+        s.z[i] = rng.range(-80, 80);
+      } else if (op === 1) s.flags[i] |= PICK_REMOVED_FLAG;
+      else if (op === 2) s.flags[i] &= ~PICK_REMOVED_FLAG;
+      else {
+        i = s.count++;
+        s.defId.push(rng.int(0, 2));
+        s.x.push(rng.range(-80, 80));
+        s.y.push(0);
+        s.z.push(rng.range(-80, 80));
+        s.scale.push(1);
+        s.flags.push(0);
+      }
+      idx.refresh(s, [i], dimsOf(s));
+    }
+    const fresh = build(s);
+    expect(idx.hash.live).toBe(fresh.hash.live);
+    for (let k = 0; k < 400; k++) {
+      const x = rng.range(-85, 85);
+      const z = rng.range(-85, 85);
+      const r = ray([x - 30, 40, z + 20], [x, 0, z]);
+      expect(pickWith(idx, r), `ray ${k}`).toBe(pickWith(fresh, r));
+    }
+  });
+
+  it('carries the caller id (edit-model prop id) in hits, the instance in instanceIndex', () => {
+    const p = new Picker({
+      march: { ...PICK.march, heightAt: () => 0, maxY: 1 },
+      hash: new PropHash(
+        proxies([{ id: 7, def: 0, x: 0, y: 0, z: 0, r: 1, h: 3 }]),
+        BOUNDS,
+        PICK.cell,
+      ),
+      defNames: ['pine'],
+      agents: [],
+      propId: (i) => (i === 7 ? EDIT_PROP_ID_BASE + 2 : -1),
+      near: 0.1,
+      far: 600,
+    });
+    const h = p.pick(down(0, 0))!;
+    expect(h.kind).toBe('prop');
+    expect(h.name).toBe('pine');
+    expect(h.id).toBe(EDIT_PROP_ID_BASE + 2);
+    expect(h.instanceIndex).toBe(7);
   });
 });

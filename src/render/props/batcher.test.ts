@@ -6,6 +6,7 @@ import { PROP_DEF_INDEX } from '../../content/props.ts';
 import { Scope } from '../../core/scope.ts';
 import { BLOOM_IN } from '../../content/anim.ts';
 import { APPEAR_OUT_BELOW, removeFade } from './appear.ts';
+import { clusterKey, clusterScale } from './clusters.ts';
 
 function makeStore() {
   const s = createPropStore(500);
@@ -277,11 +278,61 @@ describe('PropBatcher.rewrite (TASK-211)', () => {
     const groupsBefore = b.groups.length;
     const lone = tree(store, 1, 0, 2);
     expect(b.rewrite([lone], 8).appended).toBe(1);
-    expect(b.groups.length).toBe(groupsBefore + 2);
+    // two tree LODs + the island's first T0 cluster-blob group (TASK-213)
+    expect(b.groups.length).toBe(groupsBefore + 3);
     expect(b.stats.groups).toBe(b.groups.length);
-    const made = b.groups.slice(groupsBefore);
+    const made = b.groups.slice(groupsBefore).filter((g) => g.def.id === 'roundTree');
+    expect(made).toHaveLength(2);
     expect(made.find((g) => g.lod === 0)!.mesh.visible).toBe(true);
     expect(made.find((g) => g.lod === 1)!.mesh.visible).toBe(false);
     expect(c.hardPops).toBe(0);
+  });
+
+  it('T0 cluster blobs follow removed / added / moved trees (TASK-213)', () => {
+    const { store, b } = setup(true);
+    b.setTier(0, 1);
+    const blobAt = (x: number, z: number): { scale: number; visible: boolean } | null => {
+      for (const g of b.groups) {
+        if (g.def.id !== 'treeBlob') continue;
+        for (let k = 0; k < g.mesh.count; k++) {
+          g.mesh.getMatrixAt(k, m4);
+          v3.setFromMatrixPosition(m4);
+          if (Math.abs(v3.x - x) < 1e-4 && Math.abs(v3.z - z) < 1e-4)
+            return { scale: v3.setFromMatrixScale(m4).x, visible: g.mesh.visible };
+        }
+      }
+      return null;
+    };
+    // empty a cell: its blob is hidden (zero scale), the slot stays
+    const key = clusterKey(store.x[0], store.z[0]);
+    const cell = b.clusters.cells.get(key)!;
+    const [cx, cz] = [cell.x, cell.z];
+    expect(blobAt(cx, cz)!.scale).toBeCloseTo(clusterScale(cell.n), 5);
+    const members = [...cell.members];
+    for (const i of members) store.flags[i] |= PropFlag.removed;
+    expect(b.rewrite(members, 2).clusters).toBe(1);
+    expect(b.clusters.cells.get(key)!.n).toBe(0);
+    expect(blobAt(cx, cz)!.scale).toBe(0);
+    // a tree in a new cell appends a visible blob; moving it inside the cell moves the blob
+    const blobsBefore = b.groups
+      .filter((g) => g.def.id === 'treeBlob')
+      .reduce((a, g) => a + g.mesh.count, 0);
+    const t = tree(store, 0, 200, 0);
+    store.z[t] = 200;
+    expect(b.rewrite([t], 3).clusters).toBe(1);
+    const added = blobAt(200, 200)!;
+    expect(added.scale).toBeCloseTo(clusterScale(1), 5);
+    expect(added.visible).toBe(true);
+    expect(
+      b.groups.filter((g) => g.def.id === 'treeBlob').reduce((a, g) => a + g.mesh.count, 0),
+    ).toBe(blobsBefore + 1);
+    store.x[t] = 201;
+    b.rewrite([t], 4);
+    expect(blobAt(200, 200)).toBeNull();
+    expect(blobAt(201, 200)!.scale).toBeCloseTo(clusterScale(1), 5);
+    // restoring the emptied cell brings its blob back at the original mean
+    for (const i of members) store.flags[i] &= ~PropFlag.removed;
+    b.rewrite(members, 5);
+    expect(blobAt(cx, cz)!.scale).toBeCloseTo(clusterScale(members.length), 5);
   });
 });

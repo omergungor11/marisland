@@ -163,7 +163,12 @@ export function raySphere(
   return t >= tMin ? t : -1;
 }
 
-/** Static prop proxies (cylinders) in a CSR spatial hash over the xz plane. */
+/**
+ * Prop proxies (cylinders) in a CSR spatial hash over the xz plane. Proxy slots are stable:
+ * edits (TASK-213) `remove` a slot (it stays allocated, skipped by queries) and `add` new ones
+ * (a moved prop = remove + add), which go to a per-cell overlay next to the CSR arrays; the
+ * CSR is rebuilt from the live slots once the overlay grows past `compactAt`.
+ */
 export interface PropProxies {
   count: number;
   /** Caller's instance id (PropStore index) per proxy. */
@@ -177,14 +182,22 @@ export interface PropProxies {
   h: Float32Array;
 }
 
+const PROXY_FIELDS = ['id', 'def', 'x', 'y', 'z', 'r', 'h'] as const;
+
 export class PropHash {
   private readonly minX: number;
   private readonly minZ: number;
   private readonly w: number;
   private readonly d: number;
-  private readonly start: Int32Array;
-  private readonly items: Int32Array;
-  private readonly stamp: Int32Array;
+  private start!: Int32Array;
+  private items!: Int32Array;
+  private stamp: Int32Array;
+  /** 1 = removed slot (skipped by queries, dropped by the next compaction). */
+  private dead: Uint8Array;
+  /** Slots added after the last CSR build, per cell. */
+  private extra = new Map<number, number[]>();
+  private extraItems = 0;
+  private deadCount = 0;
   private query = 0;
 
   constructor(
@@ -196,17 +209,43 @@ export class PropHash {
     this.minZ = bounds.minZ;
     this.w = Math.max(1, Math.ceil((bounds.maxX - bounds.minX) / cell));
     this.d = Math.max(1, Math.ceil((bounds.maxZ - bounds.minZ) / cell));
-    const cells = this.w * this.d;
-    const n = props.count;
-    const counts = new Int32Array(cells + 1);
-    const span = (i: number): [number, number, number, number] => [
-      this.cx(props.x[i] - props.r[i]),
-      this.cx(props.x[i] + props.r[i]),
-      this.cz(props.z[i] - props.r[i]),
-      this.cz(props.z[i] + props.r[i]),
+    this.dead = new Uint8Array(props.id.length);
+    this.stamp = new Int32Array(props.id.length);
+    this.build();
+  }
+
+  /** Live proxies. */
+  get live(): number {
+    return this.props.count - this.deadCount;
+  }
+
+  /** Overlay entries above which `add` rebuilds the CSR. */
+  get compactAt(): number {
+    return Math.max(256, this.props.count >> 3);
+  }
+
+  isLive(slot: number): boolean {
+    return slot >= 0 && slot < this.props.count && this.dead[slot] === 0;
+  }
+
+  private span(i: number): [number, number, number, number] {
+    const P = this.props;
+    return [
+      this.cx(P.x[i] - P.r[i]),
+      this.cx(P.x[i] + P.r[i]),
+      this.cz(P.z[i] - P.r[i]),
+      this.cz(P.z[i] + P.r[i]),
     ];
+  }
+
+  /** (Re)build the CSR arrays from every live slot; clears the overlay. */
+  private build(): void {
+    const cells = this.w * this.d;
+    const n = this.props.count;
+    const counts = new Int32Array(cells + 1);
     for (let i = 0; i < n; i++) {
-      const [x0, x1, z0, z1] = span(i);
+      if (this.dead[i]) continue;
+      const [x0, x1, z0, z1] = this.span(i);
       for (let cz = z0; cz <= z1; cz++)
         for (let cx = x0; cx <= x1; cx++) counts[cz * this.w + cx + 1]++;
     }
@@ -215,11 +254,61 @@ export class PropHash {
     this.items = new Int32Array(counts[cells]);
     const fill = counts.slice(0, cells);
     for (let i = 0; i < n; i++) {
-      const [x0, x1, z0, z1] = span(i);
+      if (this.dead[i]) continue;
+      const [x0, x1, z0, z1] = this.span(i);
       for (let cz = z0; cz <= z1; cz++)
         for (let cx = x0; cx <= x1; cx++) this.items[fill[cz * this.w + cx]++] = i;
     }
-    this.stamp = new Int32Array(n);
+    this.extra.clear();
+    this.extraItems = 0;
+  }
+
+  /** Append a proxy (TASK-213: edit-added / moved / restored prop); returns its slot. */
+  add(id: number, def: number, x: number, y: number, z: number, r: number, h: number): number {
+    const P = this.props;
+    const slot = P.count;
+    if (slot >= P.id.length) {
+      const cap = Math.max(16, Math.ceil(P.id.length * 1.5));
+      for (const f of PROXY_FIELDS) {
+        const old = P[f];
+        const next = new (old.constructor as new (n: number) => typeof old)(cap);
+        next.set(old as never);
+        (P as unknown as Record<string, unknown>)[f] = next;
+      }
+      const dead = new Uint8Array(cap);
+      dead.set(this.dead);
+      this.dead = dead;
+      const stamp = new Int32Array(cap);
+      stamp.set(this.stamp);
+      this.stamp = stamp;
+    }
+    P.id[slot] = id;
+    P.def[slot] = def;
+    P.x[slot] = x;
+    P.y[slot] = y;
+    P.z[slot] = z;
+    P.r[slot] = r;
+    P.h[slot] = h;
+    P.count = slot + 1;
+    this.dead[slot] = 0;
+    const [x0, x1, z0, z1] = this.span(slot);
+    for (let cz = z0; cz <= z1; cz++)
+      for (let cx = x0; cx <= x1; cx++) {
+        const c = cz * this.w + cx;
+        let a = this.extra.get(c);
+        if (!a) this.extra.set(c, (a = []));
+        a.push(slot);
+        this.extraItems++;
+      }
+    if (this.extraItems > this.compactAt) this.build();
+    return slot;
+  }
+
+  /** Drop a proxy from every query (TASK-213: removed / moved prop). */
+  remove(slot: number): void {
+    if (!this.isLive(slot)) return;
+    this.dead[slot] = 1;
+    this.deadCount++;
   }
 
   private cx(x: number): number {
@@ -264,19 +353,21 @@ export class PropHash {
     let best = -1;
     let bestT = tMax;
     const q = ++this.query;
+    const test = (i: number): void => {
+      if (this.stamp[i] === q || this.dead[i]) return;
+      this.stamp[i] = q;
+      if (visible && !visible(P.id[i])) return;
+      const t = rayCylinder(r, P.x[i], P.y[i], P.z[i], P.r[i], P.h[i], 0);
+      if (t >= 0 && t < bestT) {
+        bestT = t;
+        best = i;
+      }
+    };
     for (;;) {
       const c = cz * this.w + cx;
-      for (let k = this.start[c]; k < this.start[c + 1]; k++) {
-        const i = this.items[k];
-        if (this.stamp[i] === q) continue;
-        this.stamp[i] = q;
-        if (visible && !visible(P.id[i])) continue;
-        const t = rayCylinder(r, P.x[i], P.y[i], P.z[i], P.r[i], P.h[i], 0);
-        if (t >= 0 && t < bestT) {
-          bestT = t;
-          best = i;
-        }
-      }
+      for (let k = this.start[c]; k < this.start[c + 1]; k++) test(this.items[k]);
+      const ex = this.extra.size ? this.extra.get(c) : undefined;
+      if (ex) for (const i of ex) test(i);
       // advance to the next cell; stop once it starts beyond the best hit / the ray's end
       const tNext = Math.min(nx, nz);
       if (tNext > bestT || tNext > tExit || tNext === big) break;
@@ -295,6 +386,111 @@ export class PropHash {
   }
 }
 
+/** The PropStore fields the pick index reads (structural: no world import needed in tests). */
+export interface PickStore {
+  count: number;
+  defId: ArrayLike<number>;
+  x: ArrayLike<number>;
+  y: ArrayLike<number>;
+  z: ArrayLike<number>;
+  scale: ArrayLike<number>;
+  flags: ArrayLike<number>;
+}
+
+/** Unit-scale cylinder proxy of a def: radius, height, base offset below the prop origin. */
+export type ProxyDims = readonly [r: number, h: number, y0: number];
+
+/** `PropFlag.removed` (world/prop-store.ts); duplicated so this module stays import-free. */
+export const PICK_REMOVED_FLAG = 32;
+
+/**
+ * Store index → proxy slot over a `PropHash` (TASK-213): the hash is built once per world from
+ * the props' cylinders; `refresh` re-derives the proxies of touched store indices after an edit
+ * (moved → re-hashed, removed → dropped, appended → inserted). Pure; unit-tested.
+ */
+export class PropPickIndex {
+  readonly hash: PropHash;
+  private slots: Int32Array;
+
+  /**
+   * @param items store indices with their def's unit proxy, in insertion order (the batcher's
+   *   group order at build: proxy slots and hit tie-breaks match the Phase 1 picker).
+   */
+  constructor(
+    store: PickStore,
+    items: readonly { i: number; dims: ProxyDims }[],
+    bounds: { minX: number; minZ: number; maxX: number; maxZ: number },
+    cell: number,
+  ) {
+    const n = items.length;
+    const P: PropProxies = {
+      count: n,
+      id: new Int32Array(n),
+      def: new Uint16Array(n),
+      x: new Float32Array(n),
+      y: new Float32Array(n),
+      z: new Float32Array(n),
+      r: new Float32Array(n),
+      h: new Float32Array(n),
+    };
+    this.slots = new Int32Array(store.count).fill(-1);
+    items.forEach(({ i, dims }, k) => {
+      const s = store.scale[i];
+      P.id[k] = i;
+      P.def[k] = store.defId[i];
+      P.x[k] = store.x[i];
+      P.y[k] = store.y[i] + dims[2] * s;
+      P.z[k] = store.z[i];
+      P.r[k] = dims[0] * s;
+      P.h[k] = Math.max(0.3, dims[1] * s);
+      this.slots[i] = k;
+    });
+    this.hash = new PropHash(P, bounds, cell);
+  }
+
+  /** Proxy slot of store index `i` (−1 = none). */
+  slotOf(i: number): number {
+    return i >= 0 && i < this.slots.length ? this.slots[i] : -1;
+  }
+
+  /**
+   * Re-derive the proxies of `indices` from the store. `dimsOf(i)`: the unit proxy of index `i`,
+   * null when it is not pickable (no LOD0 instance, ground cover, skipped def…). Removed
+   * indices (`PICK_REMOVED_FLAG`) lose their proxy.
+   */
+  refresh(
+    store: PickStore,
+    indices: readonly number[],
+    dimsOf: (i: number) => ProxyDims | null,
+  ): void {
+    for (const i of indices) {
+      if (i < 0 || i >= store.count) continue;
+      if (i >= this.slots.length) {
+        const next = new Int32Array(Math.max(i + 1, Math.ceil(this.slots.length * 1.25) + 64));
+        next.fill(-1);
+        next.set(this.slots);
+        this.slots = next;
+      }
+      const old = this.slots[i];
+      if (old >= 0) this.hash.remove(old);
+      this.slots[i] = -1;
+      if (store.flags[i] & PICK_REMOVED_FLAG) continue;
+      const dims = dimsOf(i);
+      if (!dims) continue;
+      const s = store.scale[i];
+      this.slots[i] = this.hash.add(
+        i,
+        store.defId[i],
+        store.x[i],
+        store.y[i] + dims[2] * s,
+        store.z[i],
+        dims[0] * s,
+        Math.max(0.3, dims[1] * s),
+      );
+    }
+  }
+}
+
 /** A pool of agents exposing `[x, y + height, z, radius]` sphere records (AgentKind.positions). */
 export interface AgentSource {
   name: string;
@@ -306,12 +502,17 @@ export type PickKind = 'prop' | 'agent' | 'terrain';
 
 export interface PickHit {
   kind: PickKind;
-  /** Prop: PropStore index. Agent: slot in its kind. Terrain: −1. */
+  /**
+   * Prop: edit-model prop id (TASK-213 — scatter index, or `EDIT_PROP_ID_BASE + k` for an
+   * edit-added prop; −1 for render-only settlement props). Agent: slot in its kind. Terrain: −1.
+   */
   id: number;
   /** Prop def id / agent kind key / 'terrain' | 'water'. */
   name: string;
-  /** Same as `id` for props and agents (the instance slot), −1 for terrain. */
+  /** Prop: render PropStore index (the instance). Agent: same as `id`. Terrain: −1. */
   instanceIndex: number;
+  /** Prop: its rotation (rad), for the move tool. */
+  rotY?: number;
   /** Distance along the ray. */
   t: number;
   x: number;
@@ -328,6 +529,8 @@ export interface PickerDeps {
   agents: readonly AgentSource[];
   /** Prop visibility (tier LOD gating); omitted = all visible. */
   propVisible?: (id: number) => boolean;
+  /** Proxy instance id → the hit's `id` (edit-model prop id); omitted = the instance id. */
+  propId?: (instance: number) => number;
   near: number;
   far: number;
 }
@@ -371,11 +574,12 @@ export class Picker {
         const t = this.tOut[0];
         const P = d.hash.props;
         tBest = t;
+        const inst = P.id[slot];
         hit = {
           kind: 'prop',
-          id: P.id[slot],
+          id: d.propId ? d.propId(inst) : inst,
           name: d.defNames[P.def[slot]] ?? '?',
-          instanceIndex: P.id[slot],
+          instanceIndex: inst,
           t,
           x: r.ox + r.dx * t,
           y: r.oy + r.dy * t,

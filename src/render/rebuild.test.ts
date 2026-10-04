@@ -215,4 +215,29 @@ describe('dirty-chunk rebuild (TASK-211)', () => {
     expect(checked).toBeGreaterThan(0);
     expect(e.dirty.props.length).toBeGreaterThan(0);
   });
+
+  it('prewarm runs the path on unchanged data: same buffers, no rebuild counted (TASK-213)', async () => {
+    const world = generateWorld(1001, { islands: 1 });
+    const { terrain, rb, timings, c, textures, props, store } = setup(world, false);
+    const isl = world.islands[0];
+    const heights = Array.from((textures.height.image as { data: Uint16Array }).data);
+    const matrices = props.groups.map((g) => Array.from(g.mesh.instanceMatrix.array));
+    const seen: number[][] = [];
+    rb.onProps({ after: (ids) => seen.push([...ids]) });
+    let waits = 0;
+    const ms = await rb.prewarm(isl.cx, isl.cz, () => {
+      waits++;
+      return true;
+    });
+    expect(waits).toBe(6); // between the 7 steps
+    expect(ms).toBeGreaterThanOrEqual(0);
+    expect(timings.editPrewarmMs).toBe(ms);
+    expect(c.rebuilds).toBe(0);
+    expect(rb.pending).toBe(0);
+    expect(seen).toHaveLength(1); // one prop re-synced through the listeners
+    expect(store.count).toBeGreaterThan(0);
+    expect(Array.from((textures.height.image as { data: Uint16Array }).data)).toEqual(heights);
+    expect(props.groups.map((g) => Array.from(g.mesh.instanceMatrix.array))).toEqual(matrices);
+    expectMatchesFreshBuild(world, terrain);
+  });
 });

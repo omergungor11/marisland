@@ -10,6 +10,7 @@ import type { Counters } from '../../capture/api.ts';
 import { CHUNK_SIZE, CHUNKS_PER_SIDE } from '../../world/types.ts';
 import { EDIT_RENDER } from '../../content/edit.ts';
 import { makeBlobs, writeBlobMatrix } from './contact-blobs.ts';
+import { ClusterIndex, clusterScale, type ClusterCell } from './clusters.ts';
 import { ALWAYS_APPEAR, APPEAR_OUT_SECONDS, HIDDEN_APPEAR, encodeAppearOut } from './appear.ts';
 
 /**
@@ -83,6 +84,13 @@ export interface PropBatcher {
    * append indices that have no instance yet; `time` = engine time (fade starts).
    */
   rewrite(indices: readonly number[], time: number): RewriteStats;
+  /**
+   * TASK-213: instance slots of store index `i` (one per LOD group; current meshes — a group may
+   * have been reallocated by an edit). Undefined when the index has no instance.
+   */
+  slotsOf(i: number): readonly { g: Group; k: number }[] | undefined;
+  /** TASK-213: T0 cluster cells (tests / debugging). */
+  readonly clusters: ClusterIndex;
 }
 
 export interface RewriteStats {
@@ -94,6 +102,8 @@ export interface RewriteStats {
   grown: number;
   /** Groups created for a new (def, variant, bucket). */
   created: number;
+  /** T0 cluster cells re-derived (TASK-213). */
+  clusters: number;
 }
 
 /** Instances to allocate so `needed` fit with edit headroom. */
@@ -265,32 +275,14 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
 
   // ---- T0 cluster proxies from clusterable trees: one blob per 8 u cell with ≥ 1 tree
   const blobDef = PROP_DEFS[PROP_DEF_INDEX.treeBlob];
+  const clusters = new ClusterIndex(store);
+  /** Cell key → its blob instance (TASK-213: edits move / hide / append cells). */
+  const cellSlot = new Map<number, { g: Group; k: number; rotY: number }>();
+  /** `${island}:${variant}` → the blob group cells of that island / variant append to. */
+  const blobGroups = new Map<string, Group>();
   if (blobDef) {
-    const cells = new Map<string, { x: number; z: number; y: number; n: number; island: number }>();
-    for (let i = 0; i < store.count; i++) {
-      if (!(store.flags[i] & PropFlag.clusterable)) continue;
-      if (store.flags[i] & PropFlag.removed) continue;
-      const cx = Math.floor(store.x[i] / 8);
-      const cz = Math.floor(store.z[i] / 8);
-      const k = `${cx},${cz}`;
-      let c = cells.get(k);
-      if (!c) {
-        c = { x: 0, z: 0, y: 0, n: 0, island: store.islandId[i] };
-        cells.set(k, c);
-      }
-      c.x += store.x[i];
-      c.z += store.z[i];
-      c.y += store.y[i];
-      c.n++;
-    }
-    const byIsland = new Map<
-      number,
-      { x: number; z: number; y: number; n: number; island: number }[]
-    >();
-    for (const c of cells.values()) {
-      c.x /= c.n;
-      c.z /= c.n;
-      c.y /= c.n;
+    const byIsland = new Map<number, ClusterCell[]>();
+    for (const c of clusters.cells.values()) {
       let a = byIsland.get(c.island);
       if (!a) {
         a = [];
@@ -303,14 +295,27 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
         const mine = list.filter((_, idx) => idx % blobDef.variants === variant);
         if (!mine.length) continue;
         const members = new Int32Array(mine.length).fill(-1);
-        makeGroup(blobDef, PROP_DEF_INDEX.treeBlob, variant, 0, island, false, members, (k, o) => {
-          const c = mine[k];
-          o.x = c.x;
-          o.y = c.y;
-          o.z = c.z;
-          o.rotY = unitHash(d.seed, k, 77) * Math.PI * 2;
-          o.scale = Math.min(2.4, 0.9 + 0.3 * Math.sqrt(c.n));
-        });
+        const g = makeGroup(
+          blobDef,
+          PROP_DEF_INDEX.treeBlob,
+          variant,
+          0,
+          island,
+          false,
+          members,
+          (k, o) => {
+            const c = mine[k];
+            o.x = c.x;
+            o.y = c.y;
+            o.z = c.z;
+            o.rotY = unitHash(d.seed, k, 77) * Math.PI * 2;
+            o.scale = clusterScale(c.n);
+          },
+        );
+        mine.forEach((c, k) =>
+          cellSlot.set(c.key, { g, k, rotY: unitHash(d.seed, k, 77) * Math.PI * 2 }),
+        );
+        blobGroups.set(`${island}:${variant}`, g);
         instances += mine.length;
       }
     }
@@ -494,8 +499,15 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
     if (g.blobs) {
       const oldBlobs = g.blobs;
       const blobs = makeBlobs(mesh, new Float32Array(mesh.count), aAppear, cap);
+      const oldArr = oldBlobs.instanceMatrix.array as Float32Array;
+      const newArr = blobs.instanceMatrix.array as Float32Array;
       for (let k = 0; k < g.members.length; k++) {
         const i = g.members[k];
+        if (i < 0) {
+          // synthetic (cluster blob): keep its current matrix
+          newArr.set(oldArr.subarray(k * 16, k * 16 + 16), k * 16);
+          continue;
+        }
         writeBlobMatrix(
           blobs,
           k,
@@ -590,6 +602,88 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
     st.appended++;
   };
 
+  /** Cluster cells currently hidden because they lost their last tree. */
+  const emptyCells = new Set<number>();
+  /** Blob instance of cluster cell `c` (zero scale when the cell lost its last tree). */
+  const writeCell = (g: Group, k: number, c: ClusterCell, rotY: number, time: number): void => {
+    _p.set(c.x, c.y, c.z);
+    _q.setFromAxisAngle(_axis, rotY);
+    const scale = c.n ? clusterScale(c.n) : 0;
+    _s.setScalar(scale);
+    _m.compose(_p, _q, _s);
+    g.mesh.setMatrixAt(k, _m);
+    g.mesh.instanceMatrix.addUpdateRange(k * 16, 16);
+    g.mesh.instanceMatrix.needsUpdate = true;
+    if (g.blobs) writeBlobMatrix(g.blobs, k, c.x, c.y, c.z, rotY, blobRadius(g.def, scale));
+    touched.add(g);
+    if (!c.n) emptyCells.add(c.key);
+    else if (emptyCells.delete(c.key)) setAppear(g, k, appearNow(g, time));
+  };
+  /** Re-derive the T0 cluster blobs of the touched clusterable store indices (TASK-213). */
+  const rewriteClusters = (indices: readonly number[], time: number): number => {
+    if (!blobDef) return 0;
+    const idx = indices.filter(
+      (i) => i >= 0 && i < store.count && (store.flags[i] & PropFlag.clusterable) !== 0,
+    );
+    if (!idx.length) return 0;
+    const cells = clusters.update(store, idx);
+    for (const c of cells) {
+      const sl = cellSlot.get(c.key);
+      if (sl) {
+        writeCell(sl.g, sl.k, c, sl.rotY, time);
+        continue;
+      }
+      if (!c.n) continue;
+      const variant = Math.min(
+        blobDef.variants - 1,
+        Math.floor(unitHash(d.seed, c.key, 78) * blobDef.variants),
+      );
+      const rotY = unitHash(d.seed, c.key, 77) * Math.PI * 2;
+      const gk = `${c.island}:${variant}`;
+      const g = blobGroups.get(gk);
+      if (!g) {
+        const made = makeGroup(
+          blobDef,
+          PROP_DEF_INDEX.treeBlob,
+          variant,
+          0,
+          c.island,
+          false,
+          Int32Array.of(-1),
+          (_k, o) => {
+            o.x = c.x;
+            o.y = c.y;
+            o.z = c.z;
+            o.rotY = rotY;
+            o.scale = clusterScale(c.n);
+          },
+          grownCapacity(1),
+        );
+        made.instantShow = instantEdits;
+        if (tier >= 0) {
+          if (wantsVisible(made, tier)) show(made, time, instantEdits);
+          else hide(made);
+        }
+        blobGroups.set(gk, made);
+        cellSlot.set(c.key, { g: made, k: 0, rotY });
+        stats.groups = groups.length;
+      } else {
+        const k = g.mesh.count;
+        if (k >= g.capacity) grow(g, grownCapacity(k + 1));
+        const m = new Int32Array(k + 1).fill(-1);
+        m.set(g.members);
+        g.members = m;
+        g.mesh.count = k + 1;
+        if (g.blobs) g.blobs.count = k + 1;
+        writeCell(g, k, c, rotY, time);
+        setAppear(g, k, appearNow(g, time));
+        cellSlot.set(c.key, { g, k, rotY });
+      }
+      stats.instances++;
+    }
+    return cells.length;
+  };
+
   const batcher: PropBatcher = {
     group: root,
     stats,
@@ -657,6 +751,10 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
           ? groups.reduce((a, g) => a + (g.groundCover && g.visible ? g.mesh.count : 0), 0)
           : 0;
     },
+    slotsOf(i) {
+      return maps().slots.get(i);
+    },
+    clusters,
     rewrite(indices, time) {
       const st: RewriteStats = {
         updated: 0,
@@ -665,6 +763,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
         restored: 0,
         grown: 0,
         created: 0,
+        clusters: 0,
       };
       const { slots } = maps();
       for (const i of indices) {
@@ -704,6 +803,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
           st.restored++;
         } else st.updated++;
       }
+      st.clusters = rewriteClusters(indices, time);
       flushTouched();
       return st;
     },

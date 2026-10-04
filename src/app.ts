@@ -809,7 +809,7 @@ export async function boot(): Promise<void> {
     };
     api.editLog = () => (editSession ? editSession.log : edits.available ? edits.log() : null);
     api.testBrush = (x, z, r, delta) => {
-      const wv = liveWorld;
+      const wv = liveWorld as WorldView | null;
       if (!wv) return null;
       const res = testBrush(wv.world, x, z, r, delta);
       wv.rebuildDirty(res.dirty);
@@ -970,6 +970,26 @@ export async function boot(): Promise<void> {
     if (params.panel) hud?.openPanel(params.panel);
     booted = true;
     api.ready = gpuReady;
+    // ---- TASK-213: first-edit prewarm (interactive only, idle time after ready) ----------
+    // Runs the rebuild path once on unchanged data (JIT + texSubImage2D hot); capture skips it.
+    if (!params.freeze && !params.gallery) {
+      // one step per idle period (no long task); a page that is never idle still gets there
+      const idle = (timeout = 500): Promise<void> =>
+        new Promise((resolve) => {
+          if (typeof window.requestIdleCallback === 'function')
+            window.requestIdleCallback(() => resolve(), { timeout });
+          else window.setTimeout(resolve, 100);
+        });
+      const wv = liveWorld as WorldView | null;
+      void idle(2000)
+        .then(() => wv?.prewarmEdits(() => idle()))
+        .then(() => {
+          // total + per-step times (`api.timings.editPrewarm*`)
+          for (const [k, v] of Object.entries(wv?.timings ?? {}))
+            if (k.startsWith('editPrewarm')) ctx.timings[k] = v;
+        });
+    }
+    // ---- end TASK-213 ----------------------------------------------------------------------
     governor.reset(now() / 1000);
     if (params.perf) void api.perf();
     console.info(
