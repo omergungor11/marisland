@@ -1,7 +1,10 @@
 /**
  * `window.__marisland` — the contract between the app and scripts/shots.ts
- * (ARCHITECTURE §9). Keep this file dependency-free so the harness can import the types.
+ * (ARCHITECTURE §9). Keep this file dependency-free so the harness can import the types
+ * (type-only imports below are erased).
  */
+import type { EditCommand, EditLog } from '../world/edit-types.ts';
+
 export interface RenderInfo {
   calls: number;
   triangles: number;
@@ -21,6 +24,23 @@ export interface Counters {
   particles: number;
   /** Approximate GPU memory of textures + render targets, MB. */
   gpuMemoryMB: number;
+  /** Terrain chunks remeshed by edits (TASK-211). */
+  rebuilds: number;
+}
+
+/** `api.edit` result (the edit model's `EditResult` without its inverse / dirty payload). */
+export interface EditOutcome {
+  ok: boolean;
+  reason?: string;
+}
+
+/** `api.testBrush` summary (test-only terrain brush, TASK-211). */
+export interface TestBrushOutcome {
+  chunks: number;
+  props: number;
+  sdf: boolean;
+  /** Chunks still queued after the call (0 in capture mode). */
+  pending: number;
 }
 
 export interface PickResult {
@@ -84,6 +104,20 @@ export interface MarislandApi {
   regen(seed: number): Promise<void>;
   /** renderer.info.memory snapshot for leak checks. */
   memory(): { geometries: number; textures: number };
+  /**
+   * Phase 2 (TASK-211): apply an edit command through the edit model (`world/edit.ts`) and
+   * rebuild; capture mode renders one frame. `{ ok: false }` when the model is not built in.
+   */
+  edit(cmd: EditCommand): EditOutcome;
+  undo(): boolean;
+  redo(): boolean;
+  /** Seed + applied commands (null without the edit model). */
+  editLog(): EditLog | null;
+  /**
+   * TEST-ONLY: raise (delta > 0) / lower the terrain around (x, z) with the render tests'
+   * brush (no edit model, no history) and rebuild; capture mode renders one frame.
+   */
+  testBrush(x: number, z: number, r: number, delta: number): TestBrushOutcome | null;
 }
 
 declare global {

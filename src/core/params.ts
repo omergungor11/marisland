@@ -26,8 +26,13 @@ export interface Params {
   hud: boolean;
   debug: DebugView;
   perf: boolean;
-  /** `regen`: 5 regen cycles, memory back to baseline; `ctxloss`: lose + restore the context. */
-  selftest: 'regen' | 'rebuild' | 'ctxloss' | '';
+  /**
+   * `regen`: 5 regen cycles, memory back to baseline; `ctxloss`: lose + restore the context;
+   * `edit`: 50 brush edits + undo all, memory back to baseline (TASK-211).
+   */
+  selftest: 'regen' | 'rebuild' | 'ctxloss' | 'edit' | '';
+  /** Phase 2 edit log (`encodeLog`, URL-safe), replayed before the first build; '' = none. */
+  edit: string;
   intro: boolean;
   gallery: boolean;
   /** Reduced motion forced on. */
@@ -95,7 +100,8 @@ export function parseParams(search: string): Params {
       ? debugRaw
       : 'none') as DebugView,
     perf: parseBool(q.get('perf'), false),
-    selftest: ['regen', 'rebuild', 'ctxloss'].includes(selftest) ? selftest : '',
+    selftest: ['regen', 'rebuild', 'ctxloss', 'edit'].includes(selftest) ? selftest : '',
+    edit: q.get('edit') ?? '',
     intro: parseBool(q.get('intro'), true),
     gallery: parseBool(q.get('gallery'), false),
     rm: parseBool(q.get('rm'), false),

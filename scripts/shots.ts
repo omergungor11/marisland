@@ -3,7 +3,8 @@
  * Screenshot harness: `pnpm shots [ci|dev|wow|intro] [--assert] [--gpu] [--no-build] [--only=ID,ID] [--base=URL]
  *   [--tag=name] [--port=4173] [--no-selftest]` — `--tag` builds into dist-<tag>/ and writes shots/<set>-<tag>/
  *   so parallel agents don't collide; pair it with a distinct `--port`. The ci and dev sets also run the
- *   app self-tests (`selftest=regen` leak check, `selftest=ctxloss` context loss + restore) on the first shot.
+ *   app self-tests (`selftest=regen` leak check, `selftest=ctxloss` context loss + restore,
+ *   `selftest=edit` 50 brush edits + undo with a leak check) on the first shot.
  * Writes shots/<set>/{<id>.png, <id>+dt.png, <id>.mask.png, manifest.json, contact.jpg}.
  */
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
@@ -300,9 +301,9 @@ interface SelftestResult {
   readyMs: number;
   timings?: Json;
 }
-const SELFTESTS = ['regen', 'ctxloss'] as const;
+const SELFTESTS = ['regen', 'ctxloss', 'edit'] as const;
 
-/** `selftest=regen|ctxloss` on preset `p`: the app throws (api.error) when a check fails. */
+/** `selftest=regen|ctxloss|edit` on preset `p`: the app throws (api.error) when a check fails. */
 async function runSelftest(
   browser: Browser,
   base: string,

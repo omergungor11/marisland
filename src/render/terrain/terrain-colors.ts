@@ -133,15 +133,37 @@ function seabedColor(y: number, out: THREE.Color): THREE.Color {
 }
 
 export function buildColorGrid(world: WorldData): TerrainColorGrid {
+  const n = world.height.n;
+  const grid: TerrainColorGrid = {
+    rgb: new Float32Array(n * n * 3),
+    ao: new Float32Array(n * n),
+    cliff: new Uint8Array(n * n),
+    cls: new Uint8Array(n * n),
+  };
+  fillColorGrid(world, grid, 0, n - 1, 0, n - 1);
+  return grid;
+}
+
+/**
+ * (Re)compute the colour / AO / class samples of the inclusive sample rect
+ * [ix0, ix1] × [iz0, iz1] from the current world data (TASK-211: a dirty chunk refreshes its
+ * own 33×33 samples before remeshing; same arithmetic as the full build, so a rebuilt chunk
+ * matches a fresh boot of the edited world).
+ */
+export function fillColorGrid(
+  world: WorldData,
+  grid: TerrainColorGrid,
+  ix0: number,
+  ix1: number,
+  iz0: number,
+  iz1: number,
+): void {
   const h = world.height;
   const n = h.n;
   const d = h.data;
   const P = pal();
   const S = TERRAIN_SHAPE;
-  const rgb = new Float32Array(n * n * 3);
-  const ao = new Float32Array(n * n);
-  const cliff = new Uint8Array(n * n);
-  const cls = new Uint8Array(n * n);
+  const { rgb, ao, cliff, cls } = grid;
   const A = TERRAIN_AO;
   const dirs = [
     [1, 0],
@@ -156,10 +178,11 @@ export function buildColorGrid(world: WorldData): TerrainColorGrid {
   const at = (ix: number, iz: number): number =>
     d[Math.min(n - 1, Math.max(0, iz)) * n + Math.min(n - 1, Math.max(0, ix))];
 
-  for (let iz = 0; iz < n; iz++) {
-    for (let ix = 0; ix < n; ix++) {
+  for (let iz = Math.max(0, iz0); iz <= Math.min(n - 1, iz1); iz++) {
+    for (let ix = Math.max(0, ix0); ix <= Math.min(n - 1, ix1); ix++) {
       const i = iz * n + ix;
       const y = d[i];
+      cliff[i] = 0;
       // 8-neighbour mean → crease (concave > 0) / crest (convex < 0)
       let sum = 0;
       for (const [dx, dz] of dirs) sum += at(ix + dx, iz + dz);
@@ -243,20 +266,80 @@ export function buildColorGrid(world: WorldData): TerrainColorGrid {
       rgb[i * 3 + 2] = col.b;
     }
   }
-  return { rgb, ao, cliff, cls };
 }
 
 /** Cliff strata colour at a face centre (alternating horizontal bands). */
-function strataAt(x: number, y: number, z: number, out: THREE.Color): THREE.Color {
+export function strataAt(x: number, y: number, z: number, out: THREE.Color): THREE.Color {
   const S = TERRAIN_SHAPE;
   const w = S.strataWobble * Math.sin(x * 0.07 + z * 0.05) + 0.3 * Math.sin(z * 0.13 - x * 0.04);
   const band = Math.floor((y + w) / S.strataBand);
   return out.copy(pal().strata[band & 1]);
 }
 
+// sRGB transfer, HSL ↔ RGB: the exact arithmetic of three r186 (`ColorManagement`
+// SRGBToLinear / LinearToSRGB, `Color.getHSL` / `setHSL` / `hue2rgb`) on plain numbers — the
+// face colour runs ~2 600× per chunk and the Color-object round trips dominated an edit's
+// chunk rebuild (TASK-211). `terrain-colors.test.ts` checks bit-parity with the Color path.
+const srgbToLinear = (c: number): number =>
+  c < 0.04045 ? c * 0.0773993808 : Math.pow(c * 0.9478672986 + 0.0521327014, 2.4);
+const linearToSrgb = (c: number): number =>
+  c < 0.0031308 ? c * 12.92 : 1.055 * Math.pow(c, 0.41666) - 0.055;
+function hue2rgb(p: number, q: number, t: number): number {
+  if (t < 0) t += 1;
+  if (t > 1) t -= 1;
+  if (t < 1 / 6) return p + (q - p) * 6 * t;
+  if (t < 1 / 2) return q;
+  if (t < 2 / 3) return p + (q - p) * 6 * (2 / 3 - t);
+  return p;
+}
+/** HSL of an sRGB triple into `_hsl` (Color.getHSL after the working → sRGB conversion). */
+function hslOf(r: number, g: number, b: number): void {
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let hue: number;
+  let sat: number;
+  const light = (min + max) / 2.0;
+  if (min === max) {
+    hue = 0;
+    sat = 0;
+  } else {
+    const delta = max - min;
+    sat = light <= 0.5 ? delta / (max + min) : delta / (2 - max - min);
+    switch (max) {
+      case r:
+        hue = (g - b) / delta + (g < b ? 6 : 0);
+        break;
+      case g:
+        hue = (b - r) / delta + 2;
+        break;
+      default:
+        hue = (r - g) / delta + 4;
+        break;
+    }
+    hue /= 6;
+  }
+  _hsl.h = hue;
+  _hsl.s = sat;
+  _hsl.l = light;
+}
+/** sRGB triple of (h, s, l) into `_rgb` (Color.setHSL before its sRGB → working conversion). */
+function rgbOfHsl(h: number, s: number, l: number): void {
+  h = ((h % 1) + 1) % 1;
+  s = Math.max(0, Math.min(1, s));
+  l = Math.max(0, Math.min(1, l));
+  if (s === 0) {
+    _rgb.r = _rgb.g = _rgb.b = l;
+  } else {
+    const p = l <= 0.5 ? l * (1 + s) : l + s - l * s;
+    const q = 2 * l - p;
+    _rgb.r = hue2rgb(q, p, h + 1 / 3);
+    _rgb.g = hue2rgb(q, p, h);
+    _rgb.b = hue2rgb(q, p, h - 1 / 3);
+  }
+}
+
 const _hsl = { h: 0, s: 0, l: 0 };
 const _rgb = { r: 0, g: 0, b: 0 };
-const _acc = new THREE.Color();
 const _tmp = new THREE.Color();
 
 /**
@@ -277,8 +360,9 @@ export function faceColor(
   out: THREE.Color,
 ): THREE.Color {
   const { rgb, cliff, ao, cls } = grid;
-  _acc.setRGB(0, 0, 0);
-  const idx = [i0, i1, i2];
+  let ar = 0;
+  let ag = 0;
+  let ab = 0;
   const c0 = cls[i0];
   const c1 = cls[i1];
   const c2 = cls[i2];
@@ -294,23 +378,34 @@ export function faceColor(
     c1 === TerrainClass.cliff ||
     c2 === TerrainClass.cliff;
   for (let k = 0; k < 3; k++) {
-    const i = idx[k];
+    const i = k === 0 ? i0 : k === 1 ? i1 : i2;
     const ck = cls[i];
     const same = (ck === c0 ? 1 : 0) + (ck === c1 ? 1 : 0) + (ck === c2 ? 1 : 0);
     const w = hard ? same * same : same;
+    let tr: number;
+    let tg: number;
+    let tb: number;
     if (cliff[i] && cy > 0) {
       strataAt(cx, cy, cz, _tmp);
+      tr = _tmp.r;
+      tg = _tmp.g;
+      tb = _tmp.b;
     } else {
-      _tmp.setRGB(rgb[i * 3], rgb[i * 3 + 1], rgb[i * 3 + 2]);
+      tr = rgb[i * 3];
+      tg = rgb[i * 3 + 1];
+      tb = rgb[i * 3 + 2];
     }
-    _acc.r += _tmp.r * w;
-    _acc.g += _tmp.g * w;
-    _acc.b += _tmp.b * w;
+    ar += tr * w;
+    ag += tg * w;
+    ab += tb * w;
     wsum += w;
   }
-  _acc.multiplyScalar(1 / wsum);
+  const inv = 1 / wsum;
+  ar *= inv;
+  ag *= inv;
+  ab *= inv;
   const occ = (ao[i0] + ao[i1] + ao[i2]) / 3;
-  _acc.getHSL(_hsl, THREE.SRGBColorSpace);
+  hslOf(linearToSrgb(ar), linearToSrgb(ag), linearToSrgb(ab));
   let hue = _hsl.h;
   let l = _hsl.l;
   if (jitterHash !== 0) {
@@ -320,20 +415,37 @@ export function faceColor(
     l += (b * 2 - 1) * TERRAIN_JITTER.lightness;
   }
   hue = hue - Math.floor(hue);
-  out.setHSL(hue, _hsl.s, clamp01(l), THREE.SRGBColorSpace);
+  rgbOfHsl(hue, _hsl.s, clamp01(l));
+  // setHSL(…, sRGB) stores linear; getRGB(…, sRGB) converts back (not an exact identity)
+  let r = linearToSrgb(srgbToLinear(_rgb.r));
+  let g = linearToSrgb(srgbToLinear(_rgb.g));
+  let b = linearToSrgb(srgbToLinear(_rgb.b));
   // AO: scale the sRGB value (not HSL L, which would raise chroma and turn sand
   // orange) and lean the shade slightly cool (ART_BIBLE P4).
-  out.getRGB(_rgb, THREE.SRGBColorSpace);
   const o = 1 - occ;
-  _rgb.r *= occ * (1 - TERRAIN_AO.coolShift * o);
-  _rgb.g *= occ;
-  _rgb.b *= occ * (1 + TERRAIN_AO.coolShift * o);
-  out.setRGB(clamp01(_rgb.r), clamp01(_rgb.g), clamp01(_rgb.b), THREE.SRGBColorSpace);
-  if (cy > 0) {
-    out.getHSL(_hsl, THREE.SRGBColorSpace);
-    if (_hsl.l < TERRAIN_FX.minLandL)
-      out.setHSL(_hsl.h, _hsl.s, TERRAIN_FX.minLandL, THREE.SRGBColorSpace);
+  r *= occ * (1 - TERRAIN_AO.coolShift * o);
+  g *= occ;
+  b *= occ * (1 + TERRAIN_AO.coolShift * o);
+  r = clamp01(r);
+  g = clamp01(g);
+  b = clamp01(b);
+  let lr = srgbToLinear(r);
+  let lg = srgbToLinear(g);
+  let lb = srgbToLinear(b);
+  // The land L floor reads L after an sRGB → linear → sRGB round trip (error ~1e-15): only
+  // when the plain sRGB L is near the floor can the exact test differ — skip the 3 pows else.
+  if (cy > 0 && (Math.max(r, g, b) + Math.min(r, g, b)) / 2 < TERRAIN_FX.minLandL + 1e-6) {
+    hslOf(linearToSrgb(lr), linearToSrgb(lg), linearToSrgb(lb));
+    if (_hsl.l < TERRAIN_FX.minLandL) {
+      rgbOfHsl(_hsl.h, _hsl.s, TERRAIN_FX.minLandL);
+      lr = srgbToLinear(_rgb.r);
+      lg = srgbToLinear(_rgb.g);
+      lb = srgbToLinear(_rgb.b);
+    }
   }
+  out.r = lr;
+  out.g = lg;
+  out.b = lb;
   return out;
 }
 
