@@ -42,6 +42,16 @@ export const OFFICE_DEFS: Readonly<Record<string, OfficeDef>> = {
   researchHut: { theme: 'research', kind: 'outpost', w: 3, d: 3, variants: 2 },
 };
 
+/** Top of the thin floor slab inside every shell, above the lot pivot (u); interiors stand on it. */
+export const FLOOR_Y = 0.08;
+/** Shells whose floor line sits on a raised deck (u above the lot pivot); interior and workers lift by it. */
+export const RAISED_FLOOR: Readonly<Record<string, number>> = {
+  // deck top 1.2 + 0.02, like the legacy stiltHut
+  testLabStilt: 1.22,
+};
+/** Floor a def's interior (and its seated workers) stands on, above the lot pivot (u). */
+export const floorOf = (defId: string): number => (RAISED_FLOOR[defId] ?? 0) + FLOOR_Y;
+
 export type WorkPose = 'type' | 'stand' | 'paint' | 'inspect' | 'look' | 'rack';
 
 export interface WorkSpot {

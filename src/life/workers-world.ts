@@ -5,10 +5,16 @@
  * `world/lot-frame.ts`, i.e. exactly where the interior geometry builds its desks.
  */
 import { WORKERS } from '../content/life.ts';
-import { OFFICE_DEFS, WORK_SPOTS, type WorkPose } from '../content/offices.ts';
+import {
+  INTERIOR_OF,
+  OFFICE_DEFS,
+  WORK_SPOTS,
+  floorOf,
+  type WorkPose,
+} from '../content/offices.ts';
 import { THEMES } from '../content/themes.ts';
 import type { Rng } from '../core/rng.ts';
-import { lotLocalToWorld } from '../world/lot-frame.ts';
+import { lotLocalToWorld, lotPivotY } from '../world/lot-frame.ts';
 import type { ThemeId, WorldData } from '../world/types.ts';
 import type { LifeCtx } from './ctx.ts';
 import { allocate, type Mask, type WalkGraph } from './land-world.ts';
@@ -25,6 +31,12 @@ export interface Seat {
   hd: number;
   pose: WorkPose;
   sit: number;
+  /**
+   * World y of the floor under the seat: the interior floor the desk is built on (lot pivot +
+   * floorOf(def), raised on the stilt lab). NaN = the terrain (shells without an interior, legacy
+   * door-side benches).
+   */
+  floor: number;
   /** Walk-graph node of the lot door. */
   node: number;
   /** Just inside the door (NaN when the seat is outdoors, e.g. a bench). */
@@ -36,12 +48,13 @@ export interface Seat {
 }
 
 /** Every seat of every lot, in lot order then spot order. */
-export function seatsOf(world: Pick<WorldData, 'lots'>): Seat[] {
+export function seatsOf(world: Pick<WorldData, 'lots' | 'height'>): Seat[] {
   const out: Seat[] = [];
   (world.lots ?? []).forEach((lot, li) => {
     const spots = WORK_SPOTS[lot.defId];
     if (!spots) return;
     const themed = lot.defId in OFFICE_DEFS;
+    const floor = INTERIOR_OF[lot.defId] ? lotPivotY(lot, world.height) + floorOf(lot.defId) : NaN;
     const ent = lotLocalToWorld(lot, 0, lot.d / 2 - 0.3);
     const front = lotLocalToWorld(lot, 0, lot.d / 2 + WORKERS.outpost.anchorGap);
     spots.forEach((s, si) => {
@@ -57,6 +70,7 @@ export function seatsOf(world: Pick<WorldData, 'lots'>): Seat[] {
         hd: lot.rotY - s.face,
         pose: (themed ? s.pose : WORKERS.legacyPose) as WorkPose,
         sit: s.sit,
+        floor,
         node: lot.node,
         ex: inside ? ent.x : NaN,
         ez: inside ? ent.z : NaN,

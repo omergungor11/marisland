@@ -355,6 +355,8 @@ export const WORKERS = {
   /** Walking inside / to the seat (u/s) and the standing-up beat (s). */
   seatSpeed: 1.0,
   standSeconds: 0.35,
+  /** Door-side ramp (u) between the terrain and a shell floor (the stilt lab's ladder). */
+  floorRamp: 1.2,
   /** Sit / stand-up easing rate (1/s) and the typing spring-in (k, c). */
   sitLambda: 9,
   typeK: 160,

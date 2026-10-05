@@ -4,7 +4,7 @@ import { THEMES } from '../../content/themes.ts';
 import { EMITTERS, INTERIOR_OF, OFFICE_DEFS, type EmitterSpot } from '../../content/offices.ts';
 import { createPropStore, PropFlag, type PropStore } from '../../world/prop-store.ts';
 import { heightAt, type WorldData } from '../../world/types.ts';
-import { lotLocalToWorld, lotYaw } from '../../world/lot-frame.ts';
+import { lotLocalToWorld, lotPivotY, lotYaw } from '../../world/lot-frame.ts';
 import { chunkIdAt } from '../../world/gen/scatter.ts';
 
 /**
@@ -116,7 +116,7 @@ export function appendSettlementProps(world: WorldData): {
     groups.lots.push(group);
     // geometry has its door on local +z → rotate so the door faces rotY (world/lot-frame.ts)
     const yaw = lotYaw(lot);
-    const y0 = lot.kind === 'hut' ? 0 : undefined;
+    const y0 = lotPivotY(lot, h);
     // variant = worldgen's roof-colour pick (neighbours never share a roof colour)
     const house = push(lot.defId, lot.x, lot.z, yaw, 1, lot.islandId, y0, lot.variant);
     into(group, house);
@@ -124,11 +124,10 @@ export function appendSettlementProps(world: WorldData): {
     if (house < 0) continue;
     const inner = INTERIOR_OF[lot.defId];
     if (inner) into(group, push(inner.def, lot.x, lot.z, yaw, 1, lot.islandId, y0, inner.variant));
-    // emitter y is above the ground at the lot centre (the building's pivot)
-    const baseY = y0 ?? heightAt(h, lot.x, lot.z);
+    // emitter y is above the building's pivot
     for (const e of EMITTERS[lot.defId] ?? []) {
       const p = lotLocalToWorld(lot, e.x, e.z);
-      chimneys.push({ x: p.x, y: baseY + e.y, z: p.z, lot: li, preset: e.preset });
+      chimneys.push({ x: p.x, y: y0 + e.y, z: p.z, lot: li, preset: e.preset });
     }
     if (lot.defId === 'cottage' || lot.defId === 'logCabin' || lot.defId === 'towerHouse') {
       const [fx, fz] = facing(lot.rotY);

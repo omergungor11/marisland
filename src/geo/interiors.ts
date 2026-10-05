@@ -2,20 +2,21 @@
  * Tier-2 office interiors (TASK-303): one `officeInterior` geometry per shell in
  * OFFICE_INTERIOR_SHELLS (variant = index). Furniture is built exactly at WORK_SPOTS[shell]: a spot
  * is where a worker's hips are; the desk / bench / rack / easel sits `DESK_OFF` ahead along the
- * spot's `face`, a chair at the spot. Lot-local frame, shell floor line = FLOOR_Y (STILT_FLOOR
- * for the stilt hut). Screens and rack LEDs carry emissive = 2 (the TASK-305 "screen" class).
+ * spot's `face`, a chair at the spot. Lot-local frame, shell floor line = floorOf(shell)
+ * (content/offices: FLOOR_Y, raised for the stilt hut). Screens and rack LEDs carry emissive = 2 (the TASK-305 "screen" class).
  */
 import * as THREE from 'three';
 import {
   OFFICE_DEFS,
   OFFICE_INTERIOR_SHELLS,
   WORK_SPOTS,
+  floorOf,
   type WorkSpot,
 } from '../content/offices.ts';
 import { OFFICE_COLORS as C } from '../content/palette-offices.ts';
 import { THEMES } from '../content/themes.ts';
 import { qEuler, type Acc } from './kit.ts';
-import { FLOOR_Y, STILT_FLOOR, easel, monitor, plant, rack, sculpture } from './office-kit.ts';
+import { easel, monitor, plant, rack, sculpture } from './office-kit.ts';
 import { V, baseBox, cylB, jitterAcc, put } from './parts.ts';
 import type { BuildOpts, Lod } from './types.ts';
 
@@ -492,7 +493,7 @@ export function officeInterior({ rng, lod, variant }: BuildOpts): THREE.BufferGe
   const c: Ctx = {
     acc,
     lod,
-    fy: shell === 'testLabStilt' ? STILT_FLOOR + FLOOR_Y : FLOOR_Y,
+    fy: floorOf(shell),
     accent: THEMES[theme].accent,
   };
   BUILDERS[shell](c);

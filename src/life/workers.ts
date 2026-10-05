@@ -163,7 +163,7 @@ export class Workers extends LandKind {
       this.timer[i] = 0;
       this.dur[i] = this.range(i, 8, WORKERS.desk[1]);
       this.stretchIn[i] = this.range(i, WORKERS.stretch[0], WORKERS.stretch[1]);
-      this.y[i] = this.ground(seat.x, seat.z) - seat.sit;
+      this.y[i] = this.floorY(s.seat) - seat.sit;
     } else if (s.comp >= 0) {
       this.na[i] = this.nb[i] = s.node;
       this.x[i] = g.x[s.node];
@@ -194,6 +194,12 @@ export class Workers extends LandKind {
     this.gPose[i] = this.typeAmt[i] > 0 ? 2 + this.typeAmt[i] : 0;
     this.setGait(i);
     this.snap(i);
+  }
+
+  /** Feet y at seat `k` when standing: the shell floor, or the terrain for legacy benches. */
+  private floorY(k: number): number {
+    const seat = this.seats[k];
+    return Number.isNaN(seat.floor) ? this.ground(seat.x, seat.z) : seat.floor + LAND.footLift;
   }
 
   private nodeY(node: number): number {
@@ -594,7 +600,22 @@ export class Workers extends LandKind {
     const seated = this.seatOf[i] >= 0 && this.sitAmt[i] > 0;
     const a = this.na[i];
     const b = this.nb[i];
-    if (s === W_ENTER || s === W_EXIT || s === W_WORK || this.compOf[i] < 0) {
+    const held = this.seatOf[i];
+    if (held >= 0 && (s === W_ENTER || s === W_EXIT || s === W_WORK || s === W_WAVE)) {
+      // at / walking to a desk: on the shell's floor (raised on the stilt lab), ramped at the door
+      const seat = this.seats[held];
+      const floor = this.floorY(held);
+      const hasEx = !Number.isNaN(seat.ex);
+      const outside =
+        (s === W_ENTER && this.wi[i] === 0) ||
+        (s === W_EXIT && this.wi[i] === this.wn[i] - 1 && this.timer[i] >= V.standSeconds);
+      if (outside && !Number.isNaN(seat.floor)) {
+        const rx = hasEx ? seat.ex : seat.x;
+        const rz = hasEx ? seat.ez : seat.z;
+        const t = clamp(Math.hypot(this.x[i] - rx, this.z[i] - rz) / V.floorRamp, 0, 1);
+        this.y[i] = floor + (this.ground(this.x[i], this.z[i]) - floor) * t;
+      } else this.y[i] = floor;
+    } else if (s === W_ENTER || s === W_EXIT || s === W_WORK || this.compOf[i] < 0) {
       this.y[i] = this.ground(this.x[i], this.z[i]);
     } else {
       const da = g.deckY[a];

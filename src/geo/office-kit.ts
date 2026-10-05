@@ -7,18 +7,18 @@
  * Lot-local frame: +z = door side. A wall's `yaw` is the yaw of its outward normal (0 = +z).
  */
 import * as THREE from 'three';
+import { FLOOR_Y, RAISED_FLOOR } from '../content/offices.ts';
 import { OFFICE_COLORS as C } from '../content/palette-offices.ts';
 import { THEMES } from '../content/themes.ts';
 import type { ThemeId } from '../world/types.ts';
 import { col, qEuler, type Acc } from './kit.ts';
 import { TAU, V, V2, baseBox, cylB, prism, put } from './parts.ts';
 
-/** Top of the thin floor slab inside every shell; interiors stand on it. */
-export const FLOOR_Y = 0.08;
+export { FLOOR_Y } from '../content/offices.ts';
 /** Wall thickness of hollow shells. */
 export const WALL_T = 0.16;
-/** Floor line of the testLabStilt hut (deck top 1.2 + 0.02): its interior and workers lift by this. */
-export const STILT_FLOOR = 1.22;
+/** Floor line of the testLabStilt hut (content/offices RAISED_FLOOR): its interior and workers lift by this. */
+export const STILT_FLOOR = RAISED_FLOOR.testLabStilt;
 
 export interface Opening {
   /** Wall-local x range, measured from the wall centre (right-hand when facing the wall from outside). */

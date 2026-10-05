@@ -3,7 +3,7 @@
  * +x = its right hand. Shared by render (settlement-props), geo-aligned desks and life so
  * desks and seats never drift apart. Pure, no three import.
  */
-import type { LotData } from './types.ts';
+import { heightAt, type Heightfield, type LotData } from './types.ts';
 
 type LotFrame = Pick<LotData, 'x' | 'z' | 'rotY'>;
 
@@ -20,3 +20,7 @@ export function lotLocalToWorld(lot: LotFrame, lx: number, lz: number): { x: num
 
 /** Lot-local heading (worker looks along (sin face, cos face) locally) → world three rotation.y. */
 export const lotFaceToWorldYaw = (lot: LotFrame, face: number): number => lotYaw(lot) + face;
+
+/** World y of a lot building's pivot: stilt huts stand on the sea level, everything else on the ground. */
+export const lotPivotY = (lot: Pick<LotData, 'x' | 'z' | 'kind'>, h: Heightfield): number =>
+  lot.kind === 'hut' ? 0 : heightAt(h, lot.x, lot.z);

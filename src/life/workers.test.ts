@@ -5,9 +5,16 @@ import { Scope } from '../core/scope.ts';
 import type { Quality } from '../core/params.ts';
 import { LAND, LIFE_PLAN, VILLAGERS, WORKER_ZONES, WORKERS } from '../content/life.ts';
 import { THEMES } from '../content/themes.ts';
-import { OFFICE_DEFS, WORK_SPOTS } from '../content/offices.ts';
+import {
+  FLOOR_Y,
+  INTERIOR_OF,
+  OFFICE_DEFS,
+  RAISED_FLOOR,
+  WORK_SPOTS,
+  floorOf,
+} from '../content/offices.ts';
 import { generateWorld, type WorldData } from '../world/index.ts';
-import { lotLocalToWorld } from '../world/lot-frame.ts';
+import { lotLocalToWorld, lotPivotY } from '../world/lot-frame.ts';
 import { perfLimit } from '../test/perf.ts';
 import { createLife, type LifeSystem } from './index.ts';
 import { makeCtx } from './ctx.ts';
@@ -79,6 +86,27 @@ describe('workers: planning', () => {
       const def = w.lots[s.lot].defId;
       if (!(def in OFFICE_DEFS)) expect(s.pose).toBe(WORKERS.legacyPose);
     }
+  });
+
+  it('seats stand on their shell floor: lot pivot + floorOf(def), lifted on the stilt lab', () => {
+    let stilt = 0;
+    for (const seed of SEEDS) {
+      const w = world(seed);
+      for (const s of seatsOf(w)) {
+        const lot = w.lots[s.lot];
+        if (!INTERIOR_OF[lot.defId]) {
+          expect(s.floor).toBeNaN();
+          continue;
+        }
+        expect(s.floor).toBeCloseTo(lotPivotY(lot, w.height) + floorOf(lot.defId), 6);
+        if (lot.defId === 'testLabStilt') {
+          stilt++;
+          // the hut stands on the sea (pivot 0) like stiltHut: the floor is the deck, above water
+          expect(s.floor).toBeCloseTo(RAISED_FLOOR.testLabStilt + FLOOR_Y, 6);
+        }
+      }
+    }
+    expect(stilt).toBeGreaterThan(0);
   });
 
   it('allocates by island theme within the per-quality plan and the theme caps', () => {
@@ -211,6 +239,16 @@ describe('workers: behaviour', () => {
     run(r, 30 * 120, () => {
       for (let i = 0; i < w.capacity; i++) {
         const g = ctx.h(w.x[i], w.z[i]);
+        const k = w.seatOf[i];
+        const seat = k >= 0 ? w.seats[k] : undefined;
+        if (seat && !Number.isNaN(seat.floor)) {
+          // at / walking to a desk: on the interior floor (ramped from the terrain at the door)
+          const lo = Math.min(g, seat.floor) - seat.sit;
+          const hi = Math.max(g, seat.floor) + LAND.footLift + WORKERS.hop;
+          expect(w.y[i]).toBeGreaterThan(lo - 1e-3);
+          expect(w.y[i]).toBeLessThan(hi + 1e-3);
+          continue;
+        }
         if (w.graph.deckY.length && g < 0.15) continue; // dock decks
         const above = w.y[i] - g;
         expect(above).toBeGreaterThan(-0.3 - 1e-3);
