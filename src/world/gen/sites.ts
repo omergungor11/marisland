@@ -25,6 +25,7 @@ import type {
   LandmarkData,
   LotData,
   MooringData,
+  Polyline,
   StreamData,
   XZ,
 } from '../types.ts';
@@ -168,6 +169,8 @@ export interface SitePlan {
   hubKey: number;
   /** Theme districts (M14b): collected into `world.districts` in plan order. */
   districts: DistrictData[];
+  /** Theme polylines (M14b, e.g. kind 'pipe'): appended to `world.fences` in plan order. */
+  lines?: Polyline[];
 }
 
 /** Shared planner state across all islands (one per `buildSettlements` call). */

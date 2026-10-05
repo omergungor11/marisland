@@ -1074,6 +1074,7 @@ export function buildSettlements(input: SettlementInput, rng: Rng): SettlementRe
       ),
     );
   }
+  for (const plan of plans) if (plan.lines) fences.push(...plan.lines);
 
   const settlements: SettlementData[] = plans.map((p) => {
     const hubNode = p.hubKey >= 0 ? (built.nodeOf.get(p.hubKey) ?? -1) : -1;
