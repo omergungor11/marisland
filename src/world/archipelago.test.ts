@@ -90,9 +90,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "d1121c38c86ab914",
-          "1001": "280861f1f77c138f",
-          "42": "67de7a8dc8fe8ce7",
+          "1": "68d10f49bfea2246",
+          "1001": "e114bed5d3b4bc0d",
+          "42": "47e8d1b246cf5862",
         }
       `);
     },
@@ -122,7 +122,8 @@ describe('archipelago — 30-seed full generation', () => {
           const land = [...zc.values()].reduce((a, b) => a + b, 0);
           expect(land, ctx).toBeGreaterThan(0);
           expect(sum(zc, SAND), ctx).toBeGreaterThan(0);
-          if (isl.archetype === 'lonelypalm') expect(sum(zc, SAND), ctx).toBe(land);
+          // Lonely Palm: sand only, plus the Research outpost's short trail to its pier
+          if (isl.archetype === 'lonelypalm') expect(sum(zc, [...SAND, Zone.path]), ctx).toBe(land);
           else expect(sum(zc, GREEN), ctx).toBeGreaterThan(0);
         }
         const reachFrac = w.islands.map(() => 0);
@@ -243,7 +244,9 @@ describe('archipelago — 30-seed full generation', () => {
           }
           case 'millbrook':
             expect(isl.peakY, ctx).toBeLessThanOrEqual(8.5);
-            expect(sum(zc, [Zone.field]), ctx).toBeGreaterThan(land * 0.2);
+            // 7-island rosters (D-024) + the Coding campus lots (grass under them, TASK-302)
+            // reach an 18 % tail over 60 seeds; median ≈ 35 %
+            expect(sum(zc, [Zone.field]), ctx).toBeGreaterThan(land * 0.15);
             expect(isl.anchors.knoll0 && isl.anchors.knoll1 && isl.anchors.pond, ctx).toBeTruthy();
             break;
           case 'mossgrove':

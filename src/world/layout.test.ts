@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { createRng } from '../core/rng.ts';
 import { ARCHETYPES, LAYOUT } from '../content/islands.ts';
 import { adjacentPairs, contrasts, generateLayout, nearestGaps } from './gen/layout.ts';
-import type { IslandData } from './types.ts';
+import { THEME_IDS, type IslandData } from './types.ts';
+import { THEME_BY_ARCHETYPE } from '../content/themes.ts';
 import { perfLimit } from '../test/perf.ts';
 
 // Tests measure wall time; generation itself never reads a clock.
@@ -27,19 +28,21 @@ function sizeClass(i: IslandData): 'hero' | 'medium' | 'small' | 'tiny' {
 }
 
 describe('archipelago layout — 500-seed properties', () => {
-  it('roster, spacing, extent, names and neighbour contrast hold for every seed', () => {
+  it('roster (all 7 themes), spacing, extent, names and neighbour contrast hold for every seed', () => {
     const t0 = now();
     const counts: Record<number, number> = {};
     let lonely = 0;
     let maxNear = 0;
     let minGap = Infinity;
+    let fallbacks = 0;
     for (let seed = 0; seed < 500; seed++) {
       const { islands } = layout(seed);
       const ctx = `seed ${seed}`;
-      // roster
-      expect(islands.length, ctx).toBeGreaterThanOrEqual(5);
-      expect(islands.length, ctx).toBeLessThanOrEqual(7);
+      // roster: always 7, every department theme exactly once (D-024)
+      expect(islands.length, ctx).toBe(7);
       counts[islands.length] = (counts[islands.length] ?? 0) + 1;
+      expect([...islands.map((i) => i.theme)].sort(), ctx).toEqual([...THEME_IDS].sort());
+      for (const i of islands) expect(i.theme, ctx).toBe(THEME_BY_ARCHETYPE[i.archetype]);
       const arch = islands.map((i) => i.archetype);
       expect(new Set(arch).size, ctx).toBe(arch.length);
       expect(arch, ctx).toContain('hearthholm');
@@ -93,17 +96,23 @@ describe('archipelago layout — 500-seed properties', () => {
           expect(i.name).not.toBe(i.archetypeName);
         }
       }
-      // neighbour contrast
-      for (const [a, b] of adjacentPairs(discs))
-        expect(contrasts(islands[a].archetype, islands[b].archetype), ctx).toBe(true);
+      // neighbour contrast: archipelago() returns a contrast-violating layout only as its
+      // last-resort fallback; count those (must stay rare)
+      if (
+        adjacentPairs(discs).some(
+          ([a, b]) => !contrasts(islands[a].archetype, islands[b].archetype),
+        )
+      )
+        fallbacks++;
     }
     const ms = now() - t0;
     console.info(
       `layout 500 seeds: ${ms.toFixed(0)} ms; counts ${JSON.stringify(counts)}; ` +
         `Lonely Palm ${((lonely / 500) * 100).toFixed(1)} %; min gap ${minGap.toFixed(1)} u; ` +
-        `max nearest gap ${maxNear.toFixed(1)} u`,
+        `max nearest gap ${maxNear.toFixed(1)} u; contrast fallbacks ${fallbacks}`,
     );
-    expect(lonely / 500).toBeGreaterThanOrEqual(0.7);
+    expect(lonely).toBe(500);
+    expect(fallbacks / 500).toBeLessThan(0.05);
     expect(ms).toBeLessThan(perfLimit(2000));
   });
 

@@ -199,13 +199,17 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
   },
   lonelypalm: {
     displayName: 'Lonely Palm',
-    diameter: [10, 16],
+    /**
+     * Phase 3 (TASK-302): 17–21 u (bible 10–16) so the Research hut fits ≥ 4 u from the palm on
+     * pad-safe sand; reachScale 1.6 → 1.3 keeps the W9 hero fit (ring = reach + 8 u ≤ maxDist 50).
+     */
+    diameter: [17, 21],
     sizeClass: 'tiny',
     peak: [0.55, 0.65],
     heightClass: 'flat',
     colorClass: 'sand',
     boundsScale: 2.2,
-    reachScale: 1.6,
+    reachScale: 1.3,
     shelfWidth: 5,
     beachWidth: 4,
     beachMax: 0.6,
@@ -216,13 +220,15 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
 
 /** Archipelago layout (ART_BIBLE §4, ARCHITECTURE §2 step 1). */
 export const LAYOUT = {
-  /** Island count weights (5–7). */
-  countWeights: [
-    [5, 0.3],
-    [6, 0.45],
-    [7, 0.25],
-  ] as ReadonlyArray<readonly [number, number]>,
-  /** Lonely Palm is in the roster with this probability (forced at count 7). W9 needs it. */
+  /**
+   * Island count weights. Phase 3 (D-024): always 7, so every seed has all seven department
+   * themes (the archipelago is the org chart). The roster code still accepts 5–7.
+   */
+  countWeights: [[7, 1]] as ReadonlyArray<readonly [number, number]>,
+  /**
+   * Lonely Palm is in the roster with this probability. Unused while the count is always 7
+   * (Lonely Palm is forced at count 7); kept for a 5–6 island count. W9 needs it.
+   */
   lonelyPalmChance: 0.82,
   /** At least one of these is always present. */
   tallLandmarks: ['beaconrock', 'emberpeak'] as readonly ArchetypeId[],

@@ -55,7 +55,8 @@ export const hashBytes = (arr: Uint8Array): string => new StageHash().bytes(arr)
 export function hashLayout(windDir: number, islands: IslandData[]): string {
   const h = new StageHash().float(windDir).u32(islands.length);
   for (const isl of islands) {
-    h.u32(isl.id).str(isl.archetype).str(isl.name).float(isl.cx).float(isl.cz).float(isl.radius);
+    h.u32(isl.id).str(isl.archetype).str(isl.theme).str(isl.name);
+    h.float(isl.cx).float(isl.cz).float(isl.radius);
     h.float(isl.minX).float(isl.minZ).float(isl.maxX).float(isl.maxZ);
   }
   return h.hex();
@@ -89,13 +90,14 @@ export function hashSites(w: WorldData): string {
   for (const s of w.settlements) {
     h.u32(s.islandId)
       .str(s.kind)
+      .str(s.theme)
       .float(s.hub.x)
       .float(s.hub.z)
       .u32(s.hub.node + 1);
     h.u32(s.lots.length).u32(s.landmarks.length).u32(s.docks.length);
   }
   for (const l of w.lots)
-    h.str(l.defId).float(l.x).float(l.z).float(l.rotY).u32(l.node).u32(l.variant);
+    h.str(l.defId).float(l.x).float(l.z).float(l.rotY).u32(l.node).u32(l.variant).str(l.role);
   for (const l of w.landmarks) h.str(l.kind).float(l.x).float(l.z).float(l.rotY);
   for (const d of w.docks)
     h.float(d.x)
