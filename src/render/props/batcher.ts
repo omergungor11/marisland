@@ -80,7 +80,12 @@ export const STRUCTURE_MIN_SIZE = 3;
 /** Smooth-twin grounding threshold |smooth − bilinear| (u). */
 export const SMOOTH_GROUND_MIN = 0.02;
 /** Blob shape variant per dominant canopy kind (treeBlob heights 4.4 / 5.0 / 5.8 u). */
-const BLOB_SHAPE: Readonly<Record<CanopyKind, number>> = { deciduous: 0, palm: 1, pine: 2 };
+const BLOB_SHAPE: Readonly<Record<CanopyKind, number>> = {
+  deciduous: 0,
+  palm: 1,
+  pine: 2,
+  blossom: 0,
+};
 export interface BatcherDeps {
   scope: Scope;
   seed: number;
@@ -284,6 +289,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
       deciduous: 'roundTree',
       pine: 'pine',
       palm: 'palm',
+      blossom: 'blossomTree',
     };
     const kindBase = new Map<CanopyKind, Rgb>();
     const kindColor = (pal: TreePalette, k: CanopyKind): Rgb => {
@@ -300,6 +306,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
         if (a > 0) for (let c = 0; c < 3; c++) base[c] /= a;
         kindBase.set(k, base);
       }
+      if (k === 'blossom') return base;
       const r = rampRatio(pal[k], FOLIAGE[k]);
       return [base[0] * r[0], base[1] * r[1], base[2] * r[2]];
     };
@@ -307,13 +314,13 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
     const paletteSig: string[] = [];
     const classes = new Map<string, { pal: TreePalette; counts: number[] }>();
     const geos = new Map<string, THREE.BufferGeometry>();
-    const w = [0, 0, 0];
+    const w = CANOPY_KINDS.map(() => 0);
     return {
       /** Colour class of a non-empty cell: `${palette}:${lattice counts}`. */
       classOf(c: ClusterCell): string {
         const theme = d.world?.islands[c.island]?.theme;
         const pal: TreePalette = theme ? THEMES[theme].treePalette : FOLIAGE;
-        const sig = CANOPY_KINDS.map((k) => pal[k].join(',')).join('|');
+        const sig = (['deciduous', 'pine', 'palm'] as const).map((k) => pal[k].join(',')).join('|');
         let pi = paletteSig.indexOf(sig);
         if (pi < 0) {
           pi = paletteSig.push(sig) - 1;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DESIGN_SITES } from '../content/themes/design.ts';
 import { THEMES } from '../content/themes/index.ts';
-import { BLOSSOM_CANOPY } from '../content/props-themes/design.ts';
+import { canopyKindOf } from '../render/props/clusters.ts';
 import { PROP_DEFS } from '../content/props.ts';
 import { generateWorld, heightAt, zoneAt, Zone, type WorldData, type XZ } from './index.ts';
 
@@ -126,7 +126,8 @@ describe('Design island plan (TASK-367), 30 seeds', () => {
   );
 
   it('far tree blobs use the blossom canopy (cross-tier colour)', () => {
-    for (const hex of BLOSSOM_CANOPY) expect(THEMES.design.treePalette.deciduous).toContain(hex);
+    // blossomTree is its own canopy kind: its blobs take the tree's own (pink) canopy colour
+    expect(canopyKindOf('blossomTree')).toBe('blossom');
     expect(THEMES.design.scatterOff).toContain('roundTree');
   });
 

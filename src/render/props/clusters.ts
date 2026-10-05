@@ -116,14 +116,21 @@ export const clusterScale = (n: number): number => Math.min(2.4, 0.9 + 0.3 * Mat
 
 // ---- blob colours (TASK-373, D-031): a blob takes the canopy colour of the trees it stands for
 
-/** Canopy kinds = `ThemeTreePalette` keys (content/themes). */
-export const CANOPY_KINDS = ['deciduous', 'pine', 'palm'] as const;
+/**
+ * Canopy kinds. The first three are `ThemeTreePalette` keys (content/themes); 'blossom'
+ * (Design's blossomTree) is not palette-driven: its colour is its own geometry's canopy.
+ */
+export const CANOPY_KINDS = ['deciduous', 'pine', 'palm', 'blossom'] as const;
 export type CanopyKind = (typeof CANOPY_KINDS)[number];
-export type TreePalette = Readonly<Record<CanopyKind, readonly string[]>>;
+export type PaletteKind = Exclude<CanopyKind, 'blossom'>;
+export type TreePalette = Readonly<Record<PaletteKind, readonly string[]>>;
 
 /** Canopy kind of a clusterable def (unknown trees count as deciduous). */
 export function canopyKindOf(defId: string): CanopyKind {
-  return defId === 'pine' ? 'pine' : defId === 'palm' ? 'palm' : 'deciduous';
+  if (defId === 'pine') return 'pine';
+  if (defId === 'palm') return 'palm';
+  if (defId === 'blossomTree') return 'blossom';
+  return 'deciduous';
 }
 
 /**

@@ -1,6 +1,5 @@
 /** Design / Art (Mossgrove, forest dome) — M14b plan §2.6 (TASK-367). */
 import { FOLIAGE } from '../palette.ts';
-import { BLOSSOM_CANOPY } from '../props-themes/design.ts';
 import type { CampusSpec } from '../settlements.ts';
 import { Zone } from '../../world/types.ts';
 import type { ThemeDef } from './index.ts';
@@ -194,5 +193,6 @@ export const DESIGN_THEME: ThemeDef = {
   // sheep weight comes from content/life.ts THEME_LIFE.design (5 × meadow cells)
   life: {},
   // deciduous = the blossom trees only (roundTree is off here), so far blobs stay pink (D-031)
-  treePalette: { deciduous: BLOSSOM_CANOPY, pine: FOLIAGE.pine, palm: FOLIAGE.palm },
+  // blossomTree is its own canopy kind (render/props/clusters.ts); other deciduous stay green
+  treePalette: FOLIAGE,
 };
