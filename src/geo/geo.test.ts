@@ -173,7 +173,8 @@ describe('prop geometry', () => {
             let spun = 0;
             for (let i = 0; i < n; i++) {
               const w4 = sa[i * 4 + 3];
-              expect(w4 === 0 || w4 === 1).toBe(true);
+              // 0 static, 1 spin, negative integer = TASK-384 animated-surface tag (screens)
+              expect(w4 === 0 || w4 === 1 || (w4 <= -1 && Number.isInteger(w4))).toBe(true);
               if (w4 === 1) {
                 spun++;
                 expect(

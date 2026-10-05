@@ -55,9 +55,11 @@ describe('coding + devops structures (TASK-376)', () => {
         const spin = g.getAttribute('aSpin');
         expect(spin.count).toBe(n);
         let spun = 0;
-        for (let i = 0; i < n; i++) if (spin.getW(i) === 1) spun++;
+        // TASK-384: the head yaws (w 2), the rotor yaws + spins (w 3), the tower is static
+        for (let i = 0; i < n; i++) if (spin.getW(i) === 3) spun++;
         expect(spun).toBeGreaterThan(0);
         for (let i = 0; i < y.first; i++) expect(spin.getW(i)).toBe(0);
+        for (let i = y.first; i < n; i++) expect([2, 3]).toContain(spin.getW(i));
       }
     }
   });
