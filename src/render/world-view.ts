@@ -344,6 +344,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     return {
       name: i.name,
       archetypeName: i.archetypeName,
+      theme: i.theme,
       cx: i.cx,
       cz: i.cz,
       radius: i.radius,
