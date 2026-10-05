@@ -10,6 +10,18 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- 2026-10-05 (TASK-380 M14b integration, engine): tests green on the theme-first world (hash pins
+  re-done, layout hash unchanged); shots ci/dev/edit/wow green with `--assert`. W5 = Forge & Steam
+  (village:devops, seed 1001), W6 = QA Lagoon (village:qa, 4004), W7 = Turbine Morning (raw cam over
+  Coding, 1001), W10 = Atelier Tree in the rain (village:design, 6006). DESK_CAM on devPod lot 12.
+  New content hooks: `ThemeDef.plazaDecor`, `FIXTURE_EMITTERS` (per-variant, prop render index →
+  emitter `prop`), `FLOATING_FIXTURES`, `FRAMING.village.tall`, `LANDMARKS.windTurbine`. Open: a low
+  horizon W5 look costs 281–373 calls on medium (> D-028 255); DevOps basalt reads as grey blotches;
+  QA ring ridge shows stepped facets; T0 blob p95 4.42 (Design pine + blossom residue).
+  Ladder (seed 1001, low): HQ / Coding / QA pairs pass; misses are Design 42→21 u (the ladder camera
+  dollies into the Atelier Tree canopy), Research (tiny land, 480→340 p95 13.4 / pair 380), DevOps
+  (drift 30 u 4.74, blob 1.9 % at 42→30, pair 380 IoU 0.908), QA drift 21 u 4.07, Marketing pair 250
+  blob 0.7 %. Sheets: `mar-docs/shots/M14b.jpg`, `M14b-ladder.jpg`.
 - 2026-10-05 (TASK-309 + M14 integration, engine): shots ci/dev/edit/wow green with `--assert` on
   low/medium/high (`pnpm shots <set> --quality=<q>`), programs 9/17/24, budgets D-028. Seats stand on
   `Seat.floor` (lot pivot + `floorOf(def)`), desk sit drop 0.06; LOD1 office proxies scale by
