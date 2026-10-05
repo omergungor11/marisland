@@ -1,24 +1,34 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { generateWorld } from '../../world/index.ts';
-import { PROP_DEFS, PROP_DEF_INDEX, type PropDef } from '../../content/props.ts';
+import { PROP_DEFS, PROP_DEF_INDEX } from '../../content/props.ts';
 import { THEMES } from '../../content/themes.ts';
-import { EMITTERS, INTERIOR_OF } from '../../content/offices.ts';
+import { EMITTERS, INTERIOR_OF, OFFICE_DEFS } from '../../content/offices.ts';
 import { PropFlag } from '../../world/prop-store.ts';
 import { lotLocalToWorld, lotYaw } from '../../world/lot-frame.ts';
 import { appendSettlementProps } from './settlement-props.ts';
-import { withFakeDefs } from './fake-defs.test-util.ts';
 
 describe('settlement props: flood units (sweep D1)', () => {
   const world = generateWorld(1001, { islands: 1 });
   const { props, groups, emitters } = appendSettlementProps(world);
   const defOf = (r: number): string => PROP_DEFS[props.defId[r]].id;
 
-  it('one group per lot, building first, decor beside it', () => {
+  it('one group per lot, building first, then its interior, decor beside it', () => {
     expect(groups.lots).toHaveLength(world.lots.length);
+    const legacyDecor = ['laundryLine', 'barrel', 'crate'];
     for (const [i, g] of groups.lots.entries()) {
+      const lot = world.lots[i];
       expect(g.length).toBeGreaterThanOrEqual(1);
-      expect(defOf(g[0])).toBe(world.lots[i].defId);
-      for (const r of g.slice(1)) expect(['laundryLine', 'barrel', 'crate']).toContain(defOf(r));
+      expect(defOf(g[0])).toBe(lot.defId);
+      let rest = g.slice(1);
+      if (INTERIOR_OF[lot.defId]) {
+        expect(defOf(rest[0])).toBe(INTERIOR_OF[lot.defId].def);
+        rest = rest.slice(1);
+      }
+      // office lots take their theme's decor, legacy houses laundry / barrel / crate
+      const allowed = OFFICE_DEFS[lot.defId]
+        ? THEMES[world.islands[lot.islandId].theme].decor.map(([id]) => id)
+        : legacyDecor;
+      for (const r of rest) expect(allowed).toContain(defOf(r));
     }
   });
 
@@ -41,23 +51,16 @@ describe('settlement props: flood units (sweep D1)', () => {
 });
 
 describe('settlement props: office lots (TASK-304)', () => {
-  const { grounded, clusterable } = PropFlag;
-  // fake defs over existing geometry: the themed shells / interior of TASK-303 may not exist yet
-  const FAKES: PropDef[] = [
-    { id: 'dataCenter', geo: 'barn', tier: 1, variants: 2, footprint: 3, flags: grounded },
-    {
-      id: 'officeInterior',
-      geo: 'bench',
-      tier: 2,
-      variants: 10,
-      footprint: 1,
-      flags: grounded | clusterable,
-      interior: true,
-    },
-  ];
-  let undo = (): void => {};
-  beforeAll(() => (undo = withFakeDefs(FAKES)));
-  afterAll(() => undo());
+  // `rackShed` has EMITTERS (vents) and theme decor; hiding its PropDef makes it a genuinely
+  // unknown def (geometry not landed), so the unknown-def case covers group, smoke and decor
+  let saved = -1;
+  beforeAll(() => {
+    saved = PROP_DEF_INDEX.rackShed;
+    delete PROP_DEF_INDEX.rackShed;
+  });
+  afterAll(() => {
+    PROP_DEF_INDEX.rackShed = saved;
+  });
 
   const make = () => {
     const world = generateWorld(1001, { islands: 1 });
@@ -100,7 +103,11 @@ describe('settlement props: office lots (TASK-304)', () => {
       expect(c.x).toBeCloseTo(p.x, 5);
       expect(c.z).toBeCloseTo(p.z, 5);
     }
-    for (const c of emitters.chimneys) if (c.lot !== office) expect(c.preset).toBe('chimney');
+    // every other emitter carries its own lot's EMITTERS preset
+    for (const c of emitters.chimneys) {
+      const own = EMITTERS[world.lots[c.lot].defId];
+      expect(own?.map((e) => e.preset)).toContain(c.preset);
+    }
   });
 
   it('an unknown def pushes nothing: empty group, no smoke, no decor', () => {
