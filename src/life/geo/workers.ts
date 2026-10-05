@@ -8,7 +8,7 @@ import { hex, TriBuilder, v3 } from './builder.ts';
  * tags as `geo/land.ts` plus
  *   mode 7  arm: swing / wave (right, pivotZ > 0) / typing   limb = (amp, pivotY, pivotZ, 7)
  *   mode 8  accessory variant `limb.x` (shown when floor(aSeed) matches)   limb = (variant, y, 0, 8)
- * and per-vertex `emissive` (eyes and the antenna ball glow at night; 2 = screen class).
+ * and per-vertex `emissive`: only the eyes carry the screen class (2); everything else stays 0 (TASK-305).
  * White vertices take the instance tint (team colour): body, arms, ear pads.
  */
 
@@ -135,7 +135,7 @@ export function buildWorker(): THREE.BufferGeometry {
   bevelBox(b, v3(0, 0.39, 0), 0.15, 0.17, 0.19, 0.05, WHITE);
   // belly plate + status light
   b.box(v3(0.152, 0.38, 0), 0.006, 0.07, 0.1, hex(W.plate));
-  b.setEmissive(1);
+  b.setEmissive(0);
   b.box(v3(0.157, 0.43, 0.06), 0.006, 0.018, 0.018, hex(W.light));
   b.setEmissive(0);
   // arms: pivot at the shoulder; left swings opposite the right
@@ -162,7 +162,7 @@ export function buildWorker(): THREE.BufferGeometry {
   // antenna: stalk + glowing ball, bobbing sideways about the head top
   b.setLimb(1.4, HEAD_TOP, 0, 2);
   b.box(v3(-0.03, HEAD_TOP + 0.07, 0), 0.014, 0.075, 0.014, metal);
-  b.setEmissive(1);
+  b.setEmissive(0);
   b.ellipsoid(v3(-0.03, HEAD_TOP + 0.17, 0), 0.05, 0.05, 0.05, 6, 3, () => hex(W.antenna));
   b.setEmissive(0);
   b.clearLimb();
@@ -228,7 +228,7 @@ function accessories(b: TriBuilder): void {
     b.ellipsoid(v3(HEAD_HX + 0.02, HEAD_TOP - 0.06, 0.1 * side), 0.03, 0.07, 0.07, 5, 3, () =>
       hex(A.rim),
     );
-    b.setEmissive(1);
+    b.setEmissive(0);
     b.ellipsoid(v3(HEAD_HX + 0.045, HEAD_TOP - 0.06, 0.1 * side), 0.012, 0.052, 0.052, 5, 3, () =>
       hex(A.lens),
     );
