@@ -170,7 +170,17 @@ export const NIGHT = {
   lateOffFraction: 0.3,
   lateOff: [23.0, 23.4] as const,
   /** Prop geos whose lights never go dark late (street/landmark lights). */
-  alwaysOn: ['lanternPost', 'lighthouse', 'clocktower'] as readonly string[],
+  alwaysOn: ['lanternPost', 'lighthouse', 'clocktower', 'stoneLantern'] as readonly string[],
+  /**
+   * Screen class (TASK-305): vertices with `emissive ≥ 1.5` (monitors, bot eyes; mask = emissive − 1,
+   * so 2 → 1) glow by day at `screenDay` × the night glow (× emissiveGain on the albedo: stays
+   * under the bloom threshold) and ramp to full glow with `lamps`. All screens switch together
+   * (no stagger) and never go dark late.
+   */
+  screenDay: 0.35,
+  /** Screen shimmer (× uMotionScale): a slow per-screen flicker ±`amp` over `period` s plus a soft
+   * band ±`scrollAmp` scrolling down the screen at `scrollSpeed` u/s with wavelength `scrollLength` u. */
+  screenFlicker: { amp: 0.05, period: 3.5, scrollAmp: 0.08, scrollLength: 1.6, scrollSpeed: 0.5 },
   /** Emissive gain on the mask (> 1 so windows cross the bloom threshold). */
   emissiveGain: 2.6,
   /** Flicker ±amp, periods 0.2–0.5 s (ART_BIBLE §7 #25). */
@@ -218,6 +228,10 @@ export const POOLS = {
     stiltHut: { radius: 3.2, intensity: 0.4, offset: 1.5 },
     lighthouse: { radius: 5.4, intensity: 0.5, offset: 0 },
     clocktower: { radius: 4.2, intensity: 0.45, offset: 0 },
+    // Phase 3 lamps (TASK-305; geos land in TASK-303 / TASK-341 — unknown geos never match)
+    stoneLantern: { radius: 4.2, intensity: 0.7, offset: 0 },
+    coffeeKiosk: { radius: 4, intensity: 0.6, offset: 0.7 },
+    broadcastStudio: { radius: 3.6, intensity: 0.5, offset: 1.9 },
   } as Record<string, { radius: number; intensity: number; offset: number }>,
 } as const;
 
@@ -263,6 +277,9 @@ export const POST = {
    * bright pixels (emissives, moon) are spared so windows stay warm. */
   nightTint: '#7484E0',
   nightMix: 0.5,
+  /** Screen spare (TASK-305): luminance ramp [l0, l1] × chroma ramp [c0, c1] with chroma =
+   * 1 − r / max(g, b); cyan/blue screens above it keep their hue under the night shift. */
+  nightScreenSpare: [0.3, 0.6, 0.6, 0.85] as const,
   /** Night shift ramps in over night ∈ [nightFrom, 1] so dusk keeps its colours. */
   nightFrom: 0.5,
   /** Extra linear lift for the darkest pixels at night (× night tint), keeps land ≥ L 12 %. */
