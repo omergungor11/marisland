@@ -205,6 +205,9 @@ interface Ctx {
   fixtures: FixtureData[];
 }
 
+/** Planner state and plan record, exposed type-only for the per-theme planners (world/gen/plans). */
+export type { Ctx as SiteCtx, Plan as SitePlan };
+
 const ang = (dx: number, dz: number): number => Math.atan2(dz, dx);
 const segDist = (p: XZ, a: XZ, b: XZ): number => {
   const vx = b.x - a.x;

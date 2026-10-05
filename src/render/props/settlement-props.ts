@@ -1,6 +1,7 @@
 import { createRng, type Rng } from '../../core/rng.ts';
 import { PROP_DEFS, PROP_DEF_INDEX } from '../../content/props.ts';
 import { THEMES } from '../../content/themes.ts';
+import { LANDMARK_RENDER } from '../../content/landmark-render.ts';
 import { EMITTERS, INTERIOR_OF, OFFICE_DEFS, type EmitterSpot } from '../../content/offices.ts';
 import { createPropStore, PropFlag, type PropStore } from '../../world/prop-store.ts';
 import { heightAt, type WorldData } from '../../world/types.ts';
@@ -16,16 +17,6 @@ import { chunkIdAt } from '../../world/gen/scatter.ts';
  * `landmarkVariant`. Themed extras draw from their own RNG fork so the legacy decor stream
  * (and every pre-Phase-3 world) is unchanged.
  */
-const LANDMARK_DEF: Record<string, { def: string; scale: number; underwater?: boolean }> = {
-  lighthouse: { def: 'lighthouse', scale: 1 },
-  clocktower: { def: 'clocktower', scale: 1 },
-  windmill: { def: 'windmill', scale: 1 },
-  hotSpring: { def: 'hotSpring', scale: 1 },
-  volcanoCrater: { def: 'volcanoCrater', scale: 1 },
-  sunkenShip: { def: 'sunkenShip', scale: 1, underwater: true },
-  giantTree: { def: 'giantTree', scale: 1 },
-  lonelyPalm: { def: 'palm', scale: 1.35 },
-};
 
 export interface SettlementEmitters {
   /**
@@ -169,7 +160,7 @@ export function appendSettlementProps(world: WorldData): {
   }
   // landmarks
   for (const lm of world.landmarks) {
-    const m = LANDMARK_DEF[lm.kind];
+    const m = LANDMARK_RENDER[lm.kind];
     const def = m && PROP_DEFS[PROP_DEF_INDEX[m.def]];
     if (!m || !def) continue;
     const yaw = Math.atan2(Math.cos(lm.rotY), Math.sin(lm.rotY));

@@ -171,7 +171,10 @@ export function buildWorker(): THREE.BufferGeometry {
   return b.finish();
 }
 
-/** The 7 department accessories (content/themes `accessory` = index), tagged mode 8. */
+/**
+ * The 7 department accessories (content/themes `accessory` = index), tagged mode 8. Slots 7.. are
+ * reserved for carried items (content/themes CARRIED_ITEM_SLOT, M14c TASK-383).
+ */
 function accessories(b: TriBuilder): void {
   const A = W.acc;
   const tag = (i: number): void => b.setLimb(i, HEAD_Y, 0, 8);

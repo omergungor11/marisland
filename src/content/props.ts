@@ -5,6 +5,13 @@
  */
 import { PropFlag } from '../world/prop-store.ts';
 import { PROP_DEFS_BUILDINGS } from './props-buildings.ts';
+import { HQ_PROP_DEFS } from './props-themes/hq.ts';
+import { CODING_PROP_DEFS } from './props-themes/coding.ts';
+import { MARKETING_PROP_DEFS } from './props-themes/marketing.ts';
+import { QA_PROP_DEFS } from './props-themes/qa.ts';
+import { DESIGN_PROP_DEFS } from './props-themes/design.ts';
+import { DEVOPS_PROP_DEFS } from './props-themes/devops.ts';
+import { RESEARCH_PROP_DEFS } from './props-themes/research.ts';
 
 export interface PropDef {
   id: string;
@@ -91,8 +98,21 @@ const VEGETATION_DEFS: readonly PropDef[] = [
   { id: 'treeBlob', geo: 'treeBlob', tier: 0, variants: 3, footprint: 2, flags: 0 },
 ];
 
-/** Vegetation/rocks first (scatter indices stay stable), then buildings/landmarks/decor. */
-export const PROP_DEFS: readonly PropDef[] = [...VEGETATION_DEFS, ...PROP_DEFS_BUILDINGS];
+/**
+ * Vegetation/rocks first (scatter indices stay stable), then buildings/landmarks/decor, then the
+ * M14b theme structures (content/props-themes/<theme>.ts) in fixed theme order.
+ */
+export const PROP_DEFS: readonly PropDef[] = [
+  ...VEGETATION_DEFS,
+  ...PROP_DEFS_BUILDINGS,
+  ...HQ_PROP_DEFS,
+  ...CODING_PROP_DEFS,
+  ...MARKETING_PROP_DEFS,
+  ...QA_PROP_DEFS,
+  ...DESIGN_PROP_DEFS,
+  ...DEVOPS_PROP_DEFS,
+  ...RESEARCH_PROP_DEFS,
+];
 
 export const PROP_DEF_INDEX: Record<string, number> = Object.fromEntries(
   PROP_DEFS.map((d, i) => [d.id, i]),

@@ -65,6 +65,7 @@ import {
   testLabStilt,
 } from './offices.ts';
 import { giantMushroom, palm, pine, roundTree, treeBlob } from './trees.ts';
+import { THEME_GEO } from './themes/index.ts';
 import type { Lod, PropGeoDef } from './types.ts';
 import type * as THREE from 'three';
 
@@ -201,6 +202,8 @@ defs.push(
     [1.27, 1.08, 1.29, 1.18, 1.92, 1.29, 2.42, 1.6, 2.05, 1.66],
   ),
 );
+// M14b theme structures (geo/themes/<theme>.ts), fixed theme order
+defs.push(...THEME_GEO);
 
 export const PROP_GEO: Record<string, PropGeoDef> = Object.fromEntries(defs.map((d) => [d.id, d]));
 

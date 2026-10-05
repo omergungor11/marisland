@@ -6,7 +6,7 @@
  */
 import type { EditToolKind } from './edit-ui.ts';
 
-export type ShotSet = 'ci' | 'dev' | 'wow' | 'intro' | 'edit';
+export type ShotSet = 'ci' | 'dev' | 'wow' | 'intro' | 'edit' | 'ladder';
 
 export interface ShotPreset {
   id: string;
@@ -37,6 +37,12 @@ export interface ShotPreset {
   edit?: string;
   /** Opening-sequence still at this time (s) (`introt=`). */
   introt?: number;
+  /**
+   * Zoom-ladder preset (M14b TASK-374, set 'ladder'): frames at fixed pitch / azimuth aimed at the
+   * island hero target (`cam=ladder:<island>:<dist>`), one per distance (u, far → near); `pairs`:
+   * tier-boundary distances b captured at 1.06 b and 0.94 b. Pitch in degrees.
+   */
+  ladder?: { island: string; dists: number[]; pitch: number; pairs: number[] };
   sets: ShotSet[];
 }
 
@@ -557,6 +563,8 @@ export const SET_DEFAULTS: Record<
   wow: { width: 1920, height: 1080, quality: 'medium' },
   intro: { width: 640, height: 360, quality: 'low' },
   edit: { width: 960, height: 540, quality: 'low' },
+  // zoom-ladder metric frames (TASK-374 adds the L-* presets)
+  ladder: { width: 960, height: 540, quality: 'low' },
 };
 
 export function shotsForSet(set: ShotSet): ShotPreset[] {

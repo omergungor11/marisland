@@ -167,6 +167,7 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
     fences: sites.fences,
     fields: rawLand.fields,
     fieldColor,
+    districts: [],
     props: createPropStore(0),
     chunkFlags,
     zonePainted: new Uint8Array(GRID_N * GRID_N),

@@ -943,7 +943,7 @@ The archetype shape is kept for all seven islands. Ground hexes are base albedo;
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-360 | M14b contract: per-theme content split + schema, ground tables, `LANDMARK_RENDER`, per-theme prop/geo modules, districts type, terrain vertex/texture contract, ladder preset type | engine (orchestrator) | M | PENDING | M14 |
+| TASK-360 | M14b contract: per-theme content split + schema, ground tables, `LANDMARK_RENDER`, per-theme prop/geo modules, districts type, terrain vertex/texture contract, ladder preset type | engine (orchestrator) | M | COMPLETED | M14 |
 | TASK-361 | Settlement refactor: `sites.ts` primitives + per-theme planner dispatch + theme-gated zones/scatter/patchwork, hash-identical | worldgen | L | PENDING | TASK-360 |
 | TASK-362 | HQ island plan + content | worldgen | M | PENDING | TASK-361 |
 | TASK-363 | Coding island plan + content (turbines on knolls, solar districts, tech park) | worldgen | M | PENDING | TASK-361 |
@@ -997,6 +997,13 @@ The archetype shape is kept for all seven islands. Ground hexes are base albedo;
 - The terrain material reads `textures.albedo`, `textures.palette` and `textures.zone`.
 
 **Acceptance:** all hashes identical, dev frames 0 px diff, programs 9/17/24.
+
+**Done (2026-10-05).** Decisions taken while implementing:
+- `patchwork` is `'fields' | 'off' | 'districts'`: `'fields'` (Coding default) = today's farm patchwork, so the default reproduces the current world; `'off'` on the other six is a no-op today (no `Tag.field` cells there).
+- `life` fields are optional (unset = archetype / settlement-kind weight); `treePalette` defaults to palette `FOLIAGE`; `scatterOff` names `PlacementRule.def` ids.
+- Planner contract: `ThemePlanner = (a: ThemePlanArgs) => SitePlan | null`, with `a.legacy()` = archetype planner + campus. `SiteCtx` / `SitePlan` are type-only re-exports of settlements.ts `Ctx` / `Plan` (no code moved). The stubs are not dispatched yet (TASK-361).
+- Carried-item accessory slots 7..10 (`CARRIED_ITEM_SLOT`, content/themes/index.ts). The mode-8 decode is unchanged, so only one slot shows: a carrying bot hides its department accessory.
+- The terrain vertex/texture contract stays as the contract notes above (no code until TASK-371/372).
 
 ### TASK-361: Settlement refactor (worldgen, L; must be hash-identical)
 

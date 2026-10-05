@@ -147,6 +147,8 @@ export interface WorldData {
    * `field`, else 0. Terrain colours read it so the patchwork shows ≥ 4 hues (sweep D11).
    */
   fieldColor: Uint8Array;
+  /** Theme districts (M14b): solar fields, quads, yards, gardens… Filled by the theme plans. */
+  districts: DistrictData[];
   /** Scattered props (scatter runs inside generateWorld, after settlements). */
   props: PropStore;
   /** Per-chunk flags: bit0 = has land, bit1 = has shallow water (needs a mesh). */
@@ -256,6 +258,25 @@ export interface FieldPatchData {
   w: number;
   d: number;
   color: number;
+}
+
+/** District kinds (M14b). Extend the union when a theme plan needs a new kind. */
+export type DistrictKind =
+  'solar' | 'quad' | 'yard' | 'garden' | 'terrace' | 'stage' | 'sandbox' | 'sculpture';
+
+/**
+ * A theme district (M14b): a rectangle with a purpose (render emits its props, e.g. solar rows on
+ * a lattice). Same rect convention as lots / field patches: `d` along (cos rotY, sin rotY), `w`
+ * across it, centre (x, z).
+ */
+export interface DistrictData {
+  islandId: number;
+  kind: DistrictKind;
+  x: number;
+  z: number;
+  rotY: number;
+  w: number;
+  d: number;
 }
 
 /** Landmark kinds: lighthouse, clocktower, windmill, hotSpring, volcanoCrater, sunkenShip, giantTree, lonelyPalm. */
