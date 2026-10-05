@@ -1,7 +1,8 @@
 /* eslint-disable no-console */
 /**
  * Screenshot harness: `pnpm shots [ci|dev|wow|intro|edit] [--assert] [--gpu] [--no-build] [--only=ID,ID] [--base=URL]
- *   [--tag=name] [--port=4173] [--no-selftest]` — `--tag` builds into dist-<tag>/ and writes shots/<set>-<tag>/
+ *   [--tag=name] [--port=4173] [--no-selftest] [--quality=low|medium|high]` — `--quality` overrides every
+ *   preset's quality (budget sweeps per tier); `--tag` builds into dist-<tag>/ and writes shots/<set>-<tag>/
  *   so parallel agents don't collide; pair it with a distinct `--port`. The ci and dev sets also run the
  *   app self-tests (`selftest=regen` leak check, `selftest=ctxloss` context loss + restore,
  *   `selftest=edit` 50 brush edits + undo with a leak check) on the first shot (regen and edit again
@@ -34,6 +35,9 @@ const OUT = resolve(ROOT, 'shots', TAG ? `${set}-${TAG}` : set);
 const PORT = Number(opt('port') ?? 4173);
 const DIST = TAG ? `dist-${TAG}` : 'dist';
 const only = opt('only')?.split(',');
+const QUALITY = opt('quality') as 'low' | 'medium' | 'high' | undefined;
+if (QUALITY && !['low', 'medium', 'high'].includes(QUALITY))
+  throw new Error(`unknown quality "${QUALITY}" (low|medium|high)`);
 
 type Json = Record<string, number>;
 interface ApiSnap {
@@ -139,7 +143,7 @@ function shotUrl(base: string, p: ShotPreset, extra = ''): string {
     freeze: '1',
     hud: p.hud ? '1' : '0',
     dpr: '1',
-    quality: p.quality ?? SET_DEFAULTS[set].quality,
+    quality: QUALITY ?? p.quality ?? SET_DEFAULTS[set].quality,
   });
   if (p.panel) q.set('panel', p.panel);
   if (p.edit) q.set('edit', p.edit);
