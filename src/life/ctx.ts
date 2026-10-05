@@ -1,5 +1,6 @@
 import type * as THREE from 'three';
 import { GUST, SWELL } from '../content/anim.ts';
+import type { LifePlan } from '../content/life.ts';
 import type { Quality } from '../core/params.ts';
 import type { Scope } from '../core/scope.ts';
 import type { GustParams, SwellParams } from '../shared/fields.ts';
@@ -38,6 +39,8 @@ export interface LifeDeps {
   getTier(): number;
   /** Live reference, read every step. */
   cameraPos: THREE.Vector3;
+  /** Overrides of `LIFE_PLAN[quality]` (tests; e.g. `villagers` for a later "visitors" option). */
+  plan?: Partial<LifePlan>;
 }
 
 /** Everything the kinds share: world, fields (live motion scale), water, tier. */

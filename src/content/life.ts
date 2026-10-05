@@ -15,6 +15,8 @@ export interface LifePlan {
   dolphins: number;
   /** Land agents (TASK-161), totals across the archipelago; spawned per island by what it offers. */
   villagers: number;
+  /** Department workers (Phase 3, D-026): replace the villagers; allocated by island theme weight. */
+  workers: number;
   cats: number;
   sheep: number;
   crabs: number;
@@ -32,9 +34,10 @@ export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
     fishPerSchool: [4, 5],
     jumpers: 1,
     dolphins: 0,
-    villagers: 3,
+    villagers: 0,
+    workers: 6,
     cats: 1,
-    sheep: 4,
+    sheep: 2,
     crabs: 1,
     fireflies: 12,
   },
@@ -48,7 +51,8 @@ export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
     fishPerSchool: [4, 6],
     jumpers: 2,
     dolphins: 2,
-    villagers: 5,
+    villagers: 0,
+    workers: 16,
     cats: 2,
     sheep: 8,
     crabs: 3,
@@ -64,7 +68,8 @@ export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
     fishPerSchool: [6, 10],
     jumpers: 3,
     dolphins: 2,
-    villagers: 9,
+    villagers: 0,
+    workers: 30,
     cats: 4,
     sheep: 12,
     crabs: 5,
@@ -254,12 +259,12 @@ export const LIFE_COLORS = {
  */
 export const LAND = {
   /** First zoom tier at which each kind is alive (ART_BIBLE §6: villagers/sheep T2, crabs T3). */
-  minTier: { villagers: 2, cats: 2, sheep: 2, crabs: 3 },
+  minTier: { villagers: 2, workers: 2, cats: 2, sheep: 2, crabs: 3 },
   /**
    * Instance size multiplier per kind (chunky-cute: figures are drawn bigger than life). TASK-192
    * D11: sheep/villagers/cats were 2–10 px at the village zoom; they must read as a blob + head.
    */
-  size: { villagers: 1.7, cats: 1.65, sheep: 2.1, crabs: 1.4 },
+  size: { villagers: 1.7, workers: 1.7, cats: 1.65, sheep: 2.1, crabs: 1.4 },
   /** Reveal: staggered spring-in (BLOOM_IN k/c), then a short ease-out when the tier drops. */
   appearStagger: 0.22,
   outSeconds: 0.14,
@@ -326,6 +331,74 @@ export const VILLAGERS = {
   pickRadius: 0.7,
   pickHeight: 0.65,
 } as const;
+
+/**
+ * Workers (Phase 3, TASK-307): department bots. They walk the path graph between doors, hub and
+ * dock ends like the villagers did, but go INTO their lot (ENTER → WORK → EXIT) and sit at a
+ * `WORK_SPOTS` seat. Times in s, speeds in u/s.
+ */
+export const WORKERS = {
+  speed: 1.3,
+  /** One footstep = half a leg cycle. */
+  stepPeriod: 0.45,
+  hop: 0.1,
+  squash: 0.08,
+  sway: 0.05,
+  pauseDoor: [0.8, 2] as const,
+  pauseNode: [1.2, 2.4] as const,
+  pauseDock: [5, 10] as const,
+  lookYaw: 0.7,
+  /** Trips: chance to head to a dock end, else a random door / hub. */
+  dockChance: 0.12,
+  /** At a lot door: chance to go in and sit down when a seat is free. */
+  enterChance: 0.75,
+  /** Walking inside / to the seat (u/s) and the standing-up beat (s). */
+  seatSpeed: 1.0,
+  standSeconds: 0.35,
+  /** Sit / stand-up easing rate (1/s) and the typing spring-in (k, c). */
+  sitLambda: 9,
+  typeK: 160,
+  typeC: 14,
+  /** Time at the desk (s); a stretch beat every `stretch` s lasting `stretchSeconds`. */
+  desk: [20, 60] as const,
+  stretch: [8, 15] as const,
+  stretchSeconds: 1.1,
+  /** Share of the typing amount per work pose (seated or standing). */
+  typeAmount: { type: 1, paint: 0.7, inspect: 0.55, rack: 0.55, look: 0, stand: 0 } as Record<
+    string,
+    number
+  >,
+  /** Legacy (pre-Phase-3) lots have only a door-side bench: the worker sits there typing on a laptop. */
+  legacyPose: 'type',
+  /** Wave at a camera within `wave.radius` u: same beat as the villagers had (VILLAGERS.wave). */
+  wave: {
+    radius: 25,
+    minTier: 3,
+    seconds: 2.2,
+    emoteSeconds: 1.5,
+    k: 200,
+    c: 16,
+    lower: 0.35,
+    cooldown: [9, 16],
+  },
+  turnRate: 9,
+  /** Outpost loop (an island without a path graph): straight legs between anchors. */
+  outpost: { speed: 0.9, pause: [3, 8] as const, anchorGap: 1.2, palmGap: 3 },
+  pickRadius: 0.85,
+  pickHeight: 0.9,
+} as const;
+
+/** Ground workers may stand on outside the path graph (outpost loops). */
+export const WORKER_ZONES = [
+  Zone.grass,
+  Zone.meadow,
+  Zone.forest,
+  Zone.path,
+  Zone.plaza,
+  Zone.sandWet,
+  Zone.sandDry,
+  Zone.sandBlack,
+];
 
 export const SHEEP = {
   zones: [Zone.meadow],
@@ -413,6 +486,40 @@ export const CRABS = {
   spawnSpread: 1.5,
   pickRadius: 0.35,
   pickHeight: 0.15,
+} as const;
+
+/** Worker bot palette (life/geo/workers.ts). Body, arms and ear pads take the instance team tint. */
+export const WORKER_COLORS = {
+  metal: '#8C94A8',
+  foot: '#454B5C',
+  hand: '#E4E8F0',
+  shell: '#F1F3F8',
+  screen: '#2B2B36',
+  plate: '#D3D8E3',
+  light: '#7CFFB2',
+  eye: '#BDF7FF',
+  blush: '#FF9EB5',
+  antenna: '#FFD54A',
+  acc: {
+    headsetBand: '#2F3340',
+    headsetCup: '#FF8A6A',
+    hood: '#6F7FA3',
+    phoneBand: '#2F3340',
+    phoneCup: '#7CFFB2',
+    cap: '#FFF4E0',
+    capBrim: '#E35D6A',
+    badge: '#F5C84C',
+    badgeIcon: '#FFF8E8',
+    visor: '#2E9E74',
+    monocle: '#F5C84C',
+    beret: '#D6477D',
+    beretNub: '#8E2E58',
+    hat: '#FFD23F',
+    hatRidge: '#E0A800',
+    strap: '#6B4A33',
+    rim: '#C9A24B',
+    lens: '#7DE8F2',
+  },
 } as const;
 
 export const LAND_COLORS = {
