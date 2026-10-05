@@ -321,6 +321,9 @@ export const ACTIVITY_SURFACE = /* glsl */ `
       // so the board's own slide shows through them, extrusion sides included
       if (marAsp < 0.0 && marId > 0.5) discard;
       marC.rgb = marSlide(marId, marUv, abs(marAsp), diffuseColor.rgb, marLt);
+      // slide timer: a ticker growing along the bottom edge of the board (continuous motion)
+      if (marAsp > 0.0 && marUv.y < ${f(SLIDES.ticker)} && marUv.x < marLt / ${f(SLIDES.period)})
+        marC.rgb = ${v3(SLIDES.ink.ticker)};
     } else if (marK > ${f(SURFACE.led - 0.5)}) {
       marC = marLeds(marUv, vMarSurf.z, diffuseColor.rgb, vMarSurfSeed, marSt);
     } else if (marK > ${f(SURFACE.spectrum - 0.5)}) {

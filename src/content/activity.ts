@@ -109,6 +109,8 @@ export const SLIDES = {
   period: 3.5,
   wipe: 0.35,
   count: 4,
+  /** Height of the slide timer bar along the bottom edge (fraction of the board). */
+  ticker: 0.07,
   /** Slide inks: chart bg / bars, product bg / disc, event stripes. */
   ink: {
     paper: WALLS[0],
@@ -117,6 +119,7 @@ export const SLIDES = {
     productDisc: THEMES.marketing.accent,
     stripes: ['#FF8FB1', WALLS[1]] as const,
     text: '#4F4A5E',
+    ticker: '#FFC870',
   },
 } as const;
 
