@@ -65,7 +65,13 @@ export interface WorkSpot {
   sit: number;
 }
 
-const S = 0.28; // seated drop
+/**
+ * Seated drop at a chair: the bot's hips (body bottom 0.22 × LAND.size 1.7 = 0.37 u above its feet)
+ * rest on the seat top (geo/interiors chair: 0.33 above the floor), feet just inside the floor slab.
+ */
+const S = 0.06;
+/** Legacy door-side bench spots (no chair geometry): sit low on the ground. */
+const BENCH = 0.28;
 const PI = Math.PI;
 
 /**
@@ -147,9 +153,9 @@ export const WORK_SPOTS: Readonly<Record<string, readonly WorkSpot[]>> = {
     { x: 0.6, z: 0.4, face: PI / 2, pose: 'inspect', sit: 0 },
   ],
   // legacy: a bench spot just outside the door
-  cottage: [{ x: 0.9, z: 2.0, face: 0, pose: 'look', sit: S }],
-  logCabin: [{ x: 1.0, z: 2.0, face: 0, pose: 'look', sit: S }],
-  stiltHut: [{ x: 0.9, z: 1.9, face: 0, pose: 'look', sit: S }],
+  cottage: [{ x: 0.9, z: 2.0, face: 0, pose: 'look', sit: BENCH }],
+  logCabin: [{ x: 1.0, z: 2.0, face: 0, pose: 'look', sit: BENCH }],
+  stiltHut: [{ x: 0.9, z: 1.9, face: 0, pose: 'look', sit: BENCH }],
 };
 
 /** Shells with a tier-2 interior; the index is the `officeInterior` variant. */
