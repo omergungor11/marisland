@@ -347,7 +347,7 @@ export function planWorkers(
 
 /**
  * Near-focus ambient slots (TASK-383): `round(ACTIVITY.slots[theme] × scale)` per island that hosts
- * workers (a walk graph, or an outpost with ≥ 2 anchors; outposts take at most
+ * workers (a walk graph, or an outpost with an anchor: its work spots carry it; outposts take at most
  * `ACTIVITY.outpostSlots`). They carry no start position: a slot is placed when it wakes.
  */
 export function planAmbient(
@@ -360,11 +360,11 @@ export function planAmbient(
   if (!(scale > 0)) return out;
   ctx.world.islands.forEach((isl, id) => {
     const comp = comps[id] ?? -1;
-    if (comp < 0 && (base.anchors[id]?.length ?? 0) < 2) return;
+    if (comp < 0 && (base.anchors[id]?.length ?? 0) < 1) return;
     const want = ACTIVITY.slots[isl.theme] ?? 0;
     const room = Math.min(want, comp < 0 ? ACTIVITY.outpostSlots : want);
-    // at least 3 where the island can host them: a thin campus is still a campus at low quality
-    const n = Math.max(Math.round(room * scale), Math.min(room, 3));
+    // at least 4 where the island can host them: a thin campus is still a campus at low quality
+    const n = Math.max(Math.round(room * scale), Math.min(room, 4));
     for (let k = 0; k < n; k++)
       out.push({
         island: id,

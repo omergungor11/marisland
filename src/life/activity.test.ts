@@ -25,7 +25,7 @@ const world = (seed: number): WorldData => {
 function rig(seed: number, q: Quality, island: number, tier = 2) {
   const w = world(seed);
   const hub = w.settlements.find((s) => s.islandId === island)!.hub;
-  const cam = new THREE.Vector3(hub.x, tier === 2 ? 70 : 20, hub.z + (tier === 2 ? 60 : 22));
+  const cam = new THREE.Vector3(hub.x, tier === 2 ? 45 : 20, hub.z + (tier === 2 ? 35 : 22));
   const counters = { agents: 0 };
   const life: LifeSystem = createLife({
     world: w,

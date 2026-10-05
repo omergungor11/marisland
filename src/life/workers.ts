@@ -520,6 +520,17 @@ export class Workers extends LandKind {
       this.anchorAt[i] = k;
       return true;
     }
+    // a lone anchor (or no clear line between them): potter about nearby
+    for (let t = 0; t < 6; t++) {
+      const a = this.draw(i) * TAU;
+      const d = this.range(i, 1.5, 3.5);
+      const nx = this.x[i] + Math.cos(a) * d;
+      const nz = this.z[i] + Math.sin(a) * d;
+      if (!this.tight(nx, nz) || !lineOk(this.tight, this.x[i], this.z[i], nx, nz)) continue;
+      this.tx[i] = nx;
+      this.tz[i] = nz;
+      return true;
+    }
     return false;
   }
 
