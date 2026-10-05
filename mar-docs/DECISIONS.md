@@ -2,6 +2,19 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-028: Phase 3 M14 budgets = measured worst case + ~10 % — 2026-10-05
+
+**Decision** (TASK-309): raise only what the ci/dev/edit sets (all three qualities, `pnpm shots <set>
+--quality=<q> --assert`) measured above the old budget. drawCalls low 120 → **170** (worst 157,
+E-meadow; D-macro 146 — T3 views over the 7-island layout draw ~47 terrain chunks plus the LOD0
+groups of 3–4 islands; themed groups are ~5 of those calls), medium 220 → **255** (worst 232; overview
+229 vs 205 before Phase 3, shadow depth doubles the campus groups), high 350 kept (243).
+gpuMemoryMB low 64 → **70** (63 at E-panel 1280×720). Agents 25/60/110 (set earlier, measured
+25/58/93). Triangles, instances, ground cover, jsHeap, newSeed unchanged (well inside).
+**Programs stay 9 / 17 / 24**, equal to the pre-Phase-3 baseline (measured at 7b35622^).
+**Rationale**: the plan's 135 low estimate assumed the old macro framing; the new layout, not the
+campuses, moved the T3 shots. Shrinking far terrain chunk calls is a shader/terrain follow-up.
+
 ## D-023: The session-2 branch supersedes main's parallel M7–M10 line — 2026-10-04
 
 **Decision** (user-approved): `claude/inspiring-pascal-19nwjr` becomes `main`. The 11 commits session 1

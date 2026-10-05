@@ -10,6 +10,13 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- 2026-10-05 (TASK-309 + M14 integration, engine): shots ci/dev/edit/wow green with `--assert` on
+  low/medium/high (`pnpm shots <set> --quality=<q>`), programs 9/17/24, budgets D-028. Seats stand on
+  `Seat.floor` (lot pivot + `floorOf(def)`), desk sit drop 0.06; LOD1 office proxies scale by
+  `PropDef.lod1.size`. Open: stilt-lab seats are unreachable (door node over water, boardwalks are not
+  walk-graph decks) so its interior stays empty; D-desk shows 1 typing bot (low has 6 workers); a
+  scatter tree stands at the Coding devOffice door; D-campus-qa village frame crops the campus at the
+  bottom; night screens read faint at T2.
 - 2026-10-04: Phase 2 (sandbox) M11–M13 implemented on `claude/inspiring-pascal-19nwjr` and polished
   after the edit sweep (`mar-docs/qa/edit-sweep-2026-10-04.md`); sets ci/dev/edit/wow green with
   `--assert` (incl. gpuMemoryMB, now real and asserted — D-022), 6 self-tests. Sheets:
@@ -35,6 +42,8 @@
   matrix writer), bursts in `src/render/particles/bursts.ts`. `api.pick/hover/click(x, y)` (canvas CSS px) are the capture
   hooks. Reaction matrices must be written after `life.update` (interaction runs after the world view); prop reactions
   use partial `addUpdateRange`, agent meshes are re-uploaded whole every frame so never add ranges to them
+- Shot cams / EDIT_LOGS are absolute world coords: any layout change (roster, campus) moves them —
+  re-record (translate by the island-centre delta, drop rejected placements) and re-check E-* and D-desk
 - `pkill -f` from an agent shell matches the shell itself (exit 144) — kill preview servers by pid
 - Two angle conventions: anchors / `rotY` are xz angles (cos, sin); camera-controls azimuth puts the camera at
   (sin az, cos az). `rotY + 180°` is NOT an azimuth (mirrors about x = z, D1) — use `azimuthToward(rotY)`
