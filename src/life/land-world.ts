@@ -633,15 +633,24 @@ export function planCrabs(ctx: LifeCtx, mask: Mask, total: number, rng: Rng): Wa
     const homes: { x: number; z: number }[] = [];
     const first = beachPoint(ctx, id, cells[id]);
     if (first) homes.push(first);
-    for (const i of order) {
+    let next = 0;
+    for (; next < order.length; next++) {
       if (homes.length >= quota[id]) break;
+      const i = order[next];
       const p = { x: cells[id].x[i], z: cells[id].z[i] };
       if (homes.every((o) => Math.hypot(o.x - p.x, o.z - p.z) >= 10)) homes.push(p);
     }
     for (let k = 0; k < quota[id]; k++) {
-      const home = homes[k % Math.max(1, homes.length)];
+      const h = k % Math.max(1, homes.length);
+      let home = homes[h];
       if (!home) break;
-      const s = spotNear(mask, r, home.x, home.z, 0.3, CRABS.spawnSpread);
+      let s = spotNear(mask, r, home.x, home.z, 0.3, CRABS.spawnSpread);
+      // a home buried under a structure / rock cluster: move it to the next unused beach cell
+      for (let t = 0; !s && t < 8 && next < order.length; t++, next++) {
+        const i = order[next];
+        home = homes[h] = { x: cells[id].x[i], z: cells[id].z[i] };
+        s = spotNear(mask, r, home.x, home.z, 0.3, CRABS.spawnSpread);
+      }
       if (s) out.push({ island: id, x: s.x, z: s.z, hx: home.x, hz: home.z });
     }
   });
