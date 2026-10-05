@@ -3,6 +3,7 @@ import { TAU } from '../../core/math/index.ts';
 import type { ArchetypeId, IslandData } from '../types.ts';
 import { WORLD_SIZE } from '../types.ts';
 import { ARCHETYPES, LAYOUT, NAME_SYLLABLES } from '../../content/islands.ts';
+import { THEME_BY_ARCHETYPE } from '../../content/themes.ts';
 
 export interface LayoutOptions {
   /** 1 = M1 single Hearthholm; 'auto' = archipelago (TASK-111). */
@@ -39,6 +40,7 @@ export function islandAt(
     archetype,
     name: p.displayName,
     archetypeName: p.displayName,
+    theme: THEME_BY_ARCHETYPE[archetype],
     cx,
     cz,
     radius,

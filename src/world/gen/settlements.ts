@@ -331,6 +331,7 @@ function tryLot(
     d,
     node: -1,
     variant: 0,
+    role: 'legacy',
     key: -1,
     settlement,
   });
@@ -1676,6 +1677,7 @@ export function buildSettlements(input: SettlementInput, rng: Rng): SettlementRe
       d: l.d,
       node,
       variant: 0,
+      role: l.role,
     });
   });
   assignLotVariants(lots, rng.fork('roofs').nextU32());
@@ -1733,6 +1735,7 @@ export function buildSettlements(input: SettlementInput, rng: Rng): SettlementRe
     return {
       islandId: p.islandId,
       kind: p.kind,
+      theme: input.islands[p.islandId].theme,
       hub: { x: hubPos.x, z: hubPos.z, node: hubNode },
       plaza: p.plaza,
       lots: p.lots.map((i) => lotMap[i]).filter((i) => i >= 0),

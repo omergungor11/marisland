@@ -18,6 +18,10 @@ export interface PropDef {
   flags: number;
   /** Distance fade (u) for the per-instance dither: [near, far]. Defaults by tier. */
   fade?: [number, number];
+  /** Shared LOD1 proxy: LOD1 instances group by this geometry key instead of the def's own (D-027). */
+  lod1?: { geo: string; variant: number };
+  /** Tier-2 office interior shell: never placeable or clusterable, shadows on high only. */
+  interior?: true;
 }
 
 const { grounded, windy, groundCover, clusterable } = PropFlag;

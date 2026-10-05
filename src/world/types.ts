@@ -47,6 +47,18 @@ export type ArchetypeId =
   | 'mossgrove'
   | 'lonelypalm';
 
+/** Department theme of an island (Phase 3, D-024). Order is stable: index = variant / accessory index. */
+export type ThemeId = 'hq' | 'coding' | 'marketing' | 'qa' | 'design' | 'devops' | 'research';
+export const THEME_IDS: readonly ThemeId[] = [
+  'hq',
+  'coding',
+  'marketing',
+  'qa',
+  'design',
+  'devops',
+  'research',
+];
+
 export type HeightClass = 'flat' | 'mid' | 'tall';
 export type ColorClass = 'green' | 'sand' | 'dark';
 
@@ -57,6 +69,8 @@ export interface IslandData {
   name: string;
   /** Archetype display name from the roster table, e.g. 'Beacon Rock' (camera `island:<name>` matches either). */
   archetypeName: string;
+  /** Department theme (content/themes THEME_BY_ARCHETYPE). */
+  theme: ThemeId;
   /** Centre in world u. */
   cx: number;
   cz: number;
@@ -188,7 +202,23 @@ export interface PathGraph {
   edges: Uint16Array;
 }
 
-export type LotKind = 'house' | 'stall' | 'barn' | 'cabin' | 'hut' | 'tower';
+export type LotKind =
+  | 'house'
+  | 'stall'
+  | 'barn'
+  | 'cabin'
+  | 'hut'
+  | 'tower'
+  | 'office'
+  | 'studio'
+  | 'lab'
+  | 'shed'
+  | 'kiosk'
+  | 'pavilion'
+  | 'outpost';
+
+/** Campus role of a lot (informational; life and decor read it). 'legacy' = pre-Phase-3 building. */
+export type LotRole = 'main' | 'office' | 'annex' | 'kiosk' | 'pavilion' | 'legacy';
 
 /**
  * A building lot. Ground under it is flattened (except kind 'hut' = stilt hut
@@ -211,6 +241,7 @@ export interface LotData {
    * worldgen so path-adjacent lots never share a roof colour (sweep D12).
    */
   variant: number;
+  role: LotRole;
 }
 
 /**
@@ -267,11 +298,12 @@ export interface FixtureData {
 
 export interface SettlementData {
   islandId: number;
-  /** 'village' | 'lighthouse' | 'farm' | 'spring' | 'beachhut' | 'cabin'. */
+  /** 'village' | 'lighthouse' | 'farm' | 'spring' | 'beachhut' | 'cabin' | 'campus'. */
   kind: string;
+  theme: ThemeId;
   /** Hub the paths radiate from (plaza centre or main landmark); `node` in pathGraph. */
   hub: { x: number; z: number; node: number };
-  /** Plaza disc (Zone.plaza), Hearthholm only. */
+  /** Plaza / campus quad disc (Zone.plaza); null when the island has none. */
   plaza: { x: number; z: number; r: number } | null;
   /** Indices into world.lots / landmarks / docks. */
   lots: number[];
