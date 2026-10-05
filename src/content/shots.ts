@@ -42,14 +42,17 @@ export interface ShotPreset {
 
 /** Encoded edit logs (seed 1001) of the `edit` set; regenerate with `encodeLog` when the codec changes. */
 export const EDIT_LOGS = {
-  hill: 'AekHAAgAwFTAJ4AFgA4AwAE_AAAAwAFAAAAA_wFAAAAAgAEfAAAAPz-_Av8FAwAggAL_BQQAH58CAQ',
+  hill: 'AekHAAgA5HbsKoAFgA4AwAE_AAAAwAFAAAAA_wFAAAAAgAEfAAAAPz-_Av8FAwAggAL_BQQAH58CAQ',
   flood:
-    'AekHABABwFyANsADgAwBgAKAAgAAAYABvwIAAAH_AYAFAAABwAP_AQAAAb8IwAcAAAHAAkAAAAHAAr8BAAABf_8IAAABgAKAAgAAAYABvwIAAAH_AYAFAAABwAP_AQAAAb8IwAcAAAHAAkAAAAHAAr8BAAA',
+    'AekHABAB5H6sOcADgAwBgAKAAgAAAYABvwIAAAH_AYAFAAABwAP_AQAAAb8IwAcAAAHAAkAAAAHAAr8BAAABf_8IAAABgAKAAgAAAYABvwIAAAH_AYAFAAABwAP_AQAAAb8IwAcAAAHAAkAAAAHAAr8BAAA',
   meadow:
-    'AekHBQRwaW5lC3JvY2tDbHVzdGVyBmZsb3dlcgRidXNoDWdpYW50TXVzaHJvb20YA4CBAYBIgAS0AgQAAAABBIACoAG_AQE1AADFAZcBsRGKAgE1AAArjgLhG6ECADUAAJMBpwP1B_cBATUAAGxlkAKGAgE1AADWA84B4giYAgE1AAD7BcAB3g-eAgA1AAGOBLsD_RfpAQA1AAGZApQEiBztAQE1AAF88QPrDvwBATUAASuWA60Z3wEBNQAC3wEIqB3vAQA1AAKEAuUB8ASMAgA1AAKGAQTGEIYCADUAAgc8zxr7AQA1AAIid-cX2gEBNQACUWLJEPQBATUAA1Nl3RX7AQE1AAPqAZABsRKKAgA1AAPFAUyJGJMCADUAA64B2wG9Bo8CATUABEfmAf4ajgIA',
+    'AekHBQRwaW5lC3JvY2tDbHVzdGVyBmZsb3dlcgRidXNoDWdpYW50TXVzaHJvb20WA_BupGmABLQCBAAAAAEEgAKgAb8BATUAAMUBlwGxEYoCATUAACuOAuEboQIANQAAkwGnA_UH9wEBNQAAbGWQAoYCATUAAKUCjgPeD54CADUAAY4EuwP9F-kBADUAAZkClASIHO0BATUAAXzxA-sO_AEBNQABK5YDrRnfAQE1AAIk3QHwBIwCADUAAoYBBMYQhgIANQACBzzPGvsBADUAAiJ35xfaAQE1AAJRYskQ9AEBNQADU2XdFfsBATUAA-oBkAGxEooCADUAA8UBTIkYkwIANQADrgHbAb0GjwIBNQAER-YB_hqOAgA',
   mixed:
-    'AekHBgdjb3R0YWdlBHBhbG0EYnVzaAtyb2NrQ2x1c3RlcgdsaWx5UGFkB3Jvd2JvYXQTAMBewGOABYAMAAAAAAACAAC_ArMGAgAAAAACAAAAAAMAAMABlwMEAADfAQMEQB9_AQHACqAEgAHMDQEAAAAAAQAAAAA1AADFC7cDiwmAAgA1AAFZOK8E7gEANQAB4AIAkQ-ZAgA1AAGJA9sBhROQAgA1AAIqPJUF7wEANQAD1AImmQaOAgA1AASzBPoBzQHvAQA1AAXABSDfAv0BAA',
+    'AekHBQdjb3R0YWdlBHBhbG0EYnVzaAtyb2NrQ2x1c3RlcgdsaWx5UGFkEQDGO6Q0gAWADAAAAAAAAgAAvwKzBgIAAAAAAgAAAAADAADAAZcDBAAA3wEDBDIZfwEBpgWuAYABzA0BAAAAAAEAAAAANQAAjwZbiwmAAgA1AAHQAS6RD5kCADUAAbcCrQGFE5ACADUAAiIulQXvAQA1AAOMAh6ZBo4CADUABL0DxgHNAe8BAA',
 } as const;
+
+/** D-desk camera (raw `x,y,z,tx,ty,tz`), re-pin when the seed 1001 layout changes. */
+const DESK_CAM = '121,7.6,37.5,126.6,5.6,35.2';
 
 export const SHOT_PRESETS: readonly ShotPreset[] = [
   // ---- bible wow shots (1920×1080, medium quality)
@@ -341,6 +344,48 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     height: 844,
     sets: ['dev'],
   },
+  // ---- Phase 3 campuses (TASK-309): one village framing per department (findIsland matches the
+  // theme id), a T3 desk close-up over the Coding dev office (front opening, typing bots) and a
+  // night campus (screens and rack LEDs glow).
+  ...(
+    [
+      ['hq', 'HQ'],
+      ['coding', 'Coding'],
+      ['marketing', 'Marketing'],
+      ['qa', 'QA'],
+      ['design', 'Design'],
+      ['devops', 'DevOps'],
+      ['research', 'Research'],
+    ] as const
+  ).map(([theme, name]): ShotPreset => ({
+    id: `D-campus-${theme}`,
+    title: `Campus · ${name}`,
+    seed: 1001,
+    cam: `village:${theme}`,
+    time: 14,
+    simt: 2,
+    sets: ['dev'],
+  })),
+  {
+    id: 'D-desk',
+    title: 'Desk · Coding',
+    seed: 1001,
+    // seed 1001 devOffice (lot 15, door facing −x): from outside its front windows, ~7 u (T3)
+    cam: DESK_CAM,
+    time: 14,
+    simt: 2,
+    deltaT: 0.2,
+    sets: ['dev'],
+  },
+  {
+    id: 'D-campus-night',
+    title: 'Campus night · Coding',
+    seed: 1001,
+    cam: 'village:coding',
+    time: 22,
+    simt: 2,
+    sets: ['dev'],
+  },
   // ---- HUD review (TASK-182): dock + dial, settings sheet, photo bar on desktop and phones
   {
     id: 'D-hud',
@@ -402,16 +447,17 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     sets: ['dev'],
   },
   // ---- sandbox edits (TASK-221): `pnpm shots edit`. Logs on seed 1001 generated with
-  // `encodeLog` (world/edit.ts) — hill: 6 raises + smooth + meadow top behind the Hearthholm
-  // village; flood: 16 lowers on the harbour bay's east shore and south arm; meadow: smooth + meadow paint + 21 props on Millbrook
+  // `encodeLog` (world/edit.ts); re-recorded for the Phase 3 layout (TASK-309: moved with their
+  // island, rejected placements dropped) — hill: 6 raises + smooth + meadow top behind the Hearthholm
+  // village; flood: 16 lowers on the harbour bay's east shore and south arm; meadow: smooth + meadow paint + 19 props on Millbrook
   // (pines, rocks, flowers, bushes, a mushroom; macro view so the T3 flowers show); mixed: a
-  // flattened islet in the Palmlagoon lagoon (sand + meadow, cottage, palms, bush, rock, lily pad,
-  // rowboat) and a channel lowered through the ring. The panel shots reuse them.
+  // flattened islet in the Palmlagoon lagoon (sand + meadow, cottage, palms, bush, rock, lily pad)
+  // and a channel lowered through the ring. The panel shots reuse them.
   {
     id: 'E-panel',
     title: 'Edit panel · place',
     seed: 1001,
-    cam: '-28,70,-100,-42,6,-200',
+    cam: '109.1,70,-86.6,95.1,6,-186.6',
     time: 15,
     simt: 2,
     width: 1280,
@@ -425,7 +471,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'E-hill',
     title: 'Hill behind the village',
     seed: 1001,
-    cam: '-28,70,-100,-42,6,-200',
+    cam: '109.1,70,-86.6,95.1,6,-186.6',
     time: 15,
     simt: 2,
     edit: EDIT_LOGS.hill,
@@ -443,9 +489,9 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   },
   {
     id: 'E-meadow',
-    title: 'Meadow + 21 props',
+    title: 'Meadow + 19 props',
     seed: 1001,
-    cam: '144,23,-64,132,3.5,-96',
+    cam: '71.5,23,69.1,59.5,6,37.1',
     time: 14,
     simt: 2,
     edit: EDIT_LOGS.meadow,
