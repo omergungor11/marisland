@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { OFFICE_DEFS, OFFICE_INTERIOR_SHELLS, WORK_SPOTS } from '../content/offices.ts';
 import { PROP_GEO, buildProp } from './index.ts';
+import { THEME_GEO } from './themes/index.ts';
 
 const TARGET: Record<string, number> = {
   palm: 700,
@@ -68,10 +69,11 @@ const TARGET: Record<string, number> = {
   telescope: 400,
   officeLod1: 150,
   officeInterior: 2500,
+  ...Object.fromEntries(THEME_GEO.map((d) => [d.id, 3500])),
 };
 
 /** Props from the buildings/coastal/decor/landmarks families: carry an `emissive` attribute. */
-const NEW_IDS = new Set(Object.keys(TARGET).slice(10));
+const NEW_IDS = new Set([...Object.keys(TARGET).slice(10), ...THEME_GEO.map((d) => d.id)]);
 /** Props whose LOD0 must actually glow somewhere (windows, lamps, lava). */
 const GLOWS = new Set([
   'cottage',
@@ -89,7 +91,7 @@ const GLOWS = new Set([
   'officeLod1',
 ]);
 /** Phase-3 props whose geometry carries `aSpin` (fans, beacon ring, pinwheel): z-axis spin about a hub. */
-const SPINNERS = new Set(['serverShed', 'dataCenter', 'rackShed', 'researchHut']);
+const SPINNERS = new Set(['serverShed', 'dataCenter', 'rackShed', 'researchHut', 'weatherMast']);
 /** Props with cloth/sail/flag wind weights baked in. */
 const WINDY_CLOTH = new Set(['laundryLine', 'bunting', 'sailboat', 'clocktower', 'giantTree']);
 const tris = (g: THREE.BufferGeometry): number => g.getAttribute('position').count / 3;
@@ -276,4 +278,124 @@ describe('office shells (TASK-303)', () => {
       }
     });
   });
+});
+
+/* ------------------------- LOD0 vs LOD1 colour fidelity (TASK-378, D-031) ------------------------- */
+
+/** Camera looks towards -axis: 'top' = down -y, 'front' = from +z, 'side' = from +x. */
+type View = 'top' | 'front' | 'side';
+
+/** Linear RGB -> CIE Lab (D65). */
+function lab(r: number, g: number, b: number): [number, number, number] {
+  const X = 0.4124564 * r + 0.3575761 * g + 0.1804375 * b;
+  const Y = 0.2126729 * r + 0.7151522 * g + 0.072175 * b;
+  const Z = 0.0193339 * r + 0.119192 * g + 0.9503041 * b;
+  const f = (t: number): number => (t > 216 / 24389 ? Math.cbrt(t) : ((24389 / 27) * t + 16) / 116);
+  const fx = f(X / 0.95047);
+  const fy = f(Y);
+  const fz = f(Z / 1.08883);
+  return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
+}
+
+/**
+ * Occlusion-aware mean colour of a view: every triangle is rasterised into a depth buffer (nearest
+ * wins), then the visible vertex colours are averaged in Lab. Returns [L, a, b, covered area u2].
+ */
+function viewMean(
+  g: THREE.BufferGeometry,
+  view: View,
+  cell = 0.1,
+): [number, number, number, number] {
+  const pos = g.getAttribute('position');
+  const colA = g.getAttribute('color');
+  // (u, v) = image axes, w = towards the camera
+  const pick = (i: number): [number, number, number] => {
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const z = pos.getZ(i);
+    return view === 'top' ? [x, z, y] : view === 'front' ? [x, y, z] : [-z, y, x];
+  };
+  const min = -8;
+  const W = Math.round(16 / cell);
+  const depth = new Float32Array(W * W).fill(-Infinity);
+  const rgb = new Float32Array(W * W * 3);
+  const clampI = (x: number): number => Math.max(0, Math.min(W - 1, x));
+  for (let t = 0; t < pos.count; t += 3) {
+    const p = [pick(t), pick(t + 1), pick(t + 2)];
+    const den =
+      (p[1][1] - p[2][1]) * (p[0][0] - p[2][0]) + (p[2][0] - p[1][0]) * (p[0][1] - p[2][1]);
+    if (Math.abs(den) < 1e-9) continue;
+    const c = [0, 0, 0];
+    c[0] = (colA.getX(t) + colA.getX(t + 1) + colA.getX(t + 2)) / 3;
+    c[1] = (colA.getY(t) + colA.getY(t + 1) + colA.getY(t + 2)) / 3;
+    c[2] = (colA.getZ(t) + colA.getZ(t + 1) + colA.getZ(t + 2)) / 3;
+    const iu0 = clampI(Math.floor((Math.min(p[0][0], p[1][0], p[2][0]) - min) / cell));
+    const iu1 = clampI(Math.floor((Math.max(p[0][0], p[1][0], p[2][0]) - min) / cell));
+    const iv0 = clampI(Math.floor((Math.min(p[0][1], p[1][1], p[2][1]) - min) / cell));
+    const iv1 = clampI(Math.floor((Math.max(p[0][1], p[1][1], p[2][1]) - min) / cell));
+    for (let iu = iu0; iu <= iu1; iu++)
+      for (let iv = iv0; iv <= iv1; iv++) {
+        const cu = min + (iu + 0.5) * cell;
+        const cv = min + (iv + 0.5) * cell;
+        const l1 =
+          ((p[1][1] - p[2][1]) * (cu - p[2][0]) + (p[2][0] - p[1][0]) * (cv - p[2][1])) / den;
+        const l2 =
+          ((p[2][1] - p[0][1]) * (cu - p[2][0]) + (p[0][0] - p[2][0]) * (cv - p[2][1])) / den;
+        const l3 = 1 - l1 - l2;
+        if (l1 < 0 || l2 < 0 || l3 < 0) continue;
+        const w = l1 * p[0][2] + l2 * p[1][2] + l3 * p[2][2];
+        const k = iv * W + iu;
+        if (w > depth[k]) {
+          depth[k] = w;
+          rgb[k * 3] = c[0];
+          rgb[k * 3 + 1] = c[1];
+          rgb[k * 3 + 2] = c[2];
+        }
+      }
+  }
+  let sl = 0;
+  let sa = 0;
+  let sb = 0;
+  let cnt = 0;
+  for (let k = 0; k < W * W; k++) {
+    if (depth[k] === -Infinity) continue;
+    const [L, A, B] = lab(rgb[k * 3], rgb[k * 3 + 1], rgb[k * 3 + 2]);
+    sl += L;
+    sa += A;
+    sb += B;
+    cnt++;
+  }
+  return [sl / cnt, sa / cnt, sb / cnt, cnt * cell * cell];
+}
+
+const deltaE = (a: number[], b: number[]): number =>
+  Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+
+/** Lab mean over several seeds: the per-face colour jitter is seed noise, the bias between LODs is what we test. */
+function seedMean(id: string, v: number, lod: 0 | 1, view: View): number[] {
+  const acc = [0, 0, 0, 0];
+  const seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  for (const seed of seeds) {
+    const m = viewMean(buildProp(id, seed, v, lod), view);
+    for (let k = 0; k < 4; k++) acc[k] += m[k] / seeds.length;
+  }
+  return acc;
+}
+
+describe('LOD1 keeps the LOD0 colours (TASK-378, D-031)', () => {
+  const IDS = [...Object.keys(OFFICE_DEFS), 'lighthouse', 'clocktower', 'giantTree'];
+  for (const id of IDS) {
+    for (let v = 0; v < PROP_GEO[id].variants; v++) {
+      it(`${id} v${v}: top-view mean ΔE <= 3, side views <= 12`, () => {
+        // top = what the T0 camera (pitch 48 deg) mostly sees; the facade views are looser: LOD0
+        // facades carry signs, pipes and frames that LOD1 only averages into its window quads
+        expect(deltaE(seedMean(id, v, 0, 'top'), seedMean(id, v, 1, 'top'))).toBeLessThanOrEqual(3);
+        for (const view of ['front', 'side'] as const)
+          expect(
+            deltaE(seedMean(id, v, 0, view), seedMean(id, v, 1, view)),
+            view,
+          ).toBeLessThanOrEqual(12);
+      });
+    }
+  }
 });

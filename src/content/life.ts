@@ -546,3 +546,57 @@ export const LAND_COLORS = {
   crabLeg: '#D9503C',
   crabEye: '#22222C',
 } as const;
+
+/**
+ * Creature allocation weights by island theme (M14b, TASK-379). The theme-first redesign moves
+ * sheep from the farm islands to Design's meadow (none on Coding: solar gravel + lawns), keeps
+ * the crab beaches where sand remains and thins cats where there is no village feel.
+ * Values replace the archetype / settlement-kind weight of the same creature:
+ *   sheep: × meadow cells (SHEEP.weights replacement; unlisted theme = SHEEP.otherWeight)
+ *   crabs: per island (CRABS.weights replacement)
+ *   cats:  per settlement on the island (CATS.weights replacement)
+ * Consumers (life/land-world.ts planSheep / planCrabs / planCats) call `lifeWeight`.
+ */
+export const THEME_LIFE: Readonly<
+  Record<
+    'hq' | 'coding' | 'marketing' | 'qa' | 'design' | 'devops' | 'research',
+    { sheep: number; crabs: number; cats: number }
+  >
+> = {
+  hq: { sheep: 0.5, crabs: 4, cats: 3 },
+  coding: { sheep: 0, crabs: 1, cats: 2 },
+  marketing: { sheep: 0, crabs: 0, cats: 1 },
+  qa: { sheep: 0, crabs: 3.5, cats: 1.5 },
+  design: { sheep: 5, crabs: 1, cats: 2 },
+  devops: { sheep: 0, crabs: 0, cats: 0 },
+  research: { sheep: 0, crabs: 1.5, cats: 0 },
+};
+
+/**
+ * Weight of a creature on a themed island. `override` is `THEMES[theme].life[kind]` (an island plan
+ * may tune it); else the THEME_LIFE table. `legacy` (archetype / settlement-kind weight) is only
+ * used when `theme` is unknown (pre-theme worlds, tests).
+ */
+export function lifeWeight(
+  theme: keyof typeof THEME_LIFE | undefined,
+  kind: 'sheep' | 'crabs' | 'cats',
+  legacy: number,
+  override?: number,
+): number {
+  if (override !== undefined) return override;
+  return theme ? THEME_LIFE[theme][kind] : legacy;
+}
+
+/**
+ * Stilt-lab reachability (TASK-379). A lot whose door node is not on a walkable component (the stilt
+ * lab stands in water; `buildWalkGraph` drops water nodes) gets a deck spur: a chain of nodes from the
+ * door to the nearest walkable node within `maxReach` u, feet on `deckY`. Skipped when worldgen already
+ * made the door walkable, so a real walk-graph spur supersedes this.
+ */
+export const STILT_SPUR = {
+  maxReach: 12,
+  /** Node spacing along the spur (u). */
+  step: 1,
+  /** Deck height above the waterline (u): the hut deck rises to RAISED_FLOOR from here. */
+  deckY: 0.7,
+} as const;

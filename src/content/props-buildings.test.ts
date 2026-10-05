@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { PROP_GEO, buildProp } from '../geo/index.ts';
+import { PROP_GEO } from '../geo/index.ts';
+import { THEME_GEO } from '../geo/themes/index.ts';
 import { PropFlag } from '../world/prop-store.ts';
+import { OFFICE_DEFS } from './offices.ts';
 import { PROP_DEFS_BUILDINGS } from './props-buildings.ts';
 
 describe('PROP_DEFS_BUILDINGS', () => {
@@ -31,9 +33,12 @@ describe('PROP_DEFS_BUILDINGS', () => {
       'flower',
       'rockCluster',
       'treeBlob',
+      // M14b theme structures are covered by content/props-themes (their own PropDefs)
+      ...THEME_GEO.map((d) => d.id),
     ]);
+    const themed = new Set(THEME_GEO.map((d) => d.id));
     const want = Object.keys(PROP_GEO)
-      .filter((k) => !old.has(k))
+      .filter((k) => !old.has(k) && !themed.has(k))
       .sort();
     expect(PROP_DEFS_BUILDINGS.map((d) => d.geo).sort()).toEqual(want);
   });
@@ -43,18 +48,13 @@ describe('PROP_DEFS_BUILDINGS', () => {
     }
   });
 
-  it('lod1.size matches the shell LOD1 bounds (within 8 %, every variant: variants differ a little)', () => {
-    for (const d of PROP_DEFS_BUILDINGS) {
-      const want = d.lod1?.size;
-      if (!want) continue;
-      for (let v = 0; v < d.variants; v++) {
-        const g = buildProp(d.geo, 1, v, 1);
-        g.computeBoundingBox();
-        const { min, max } = g.boundingBox!;
-        [max.x - min.x, max.y - min.y, max.z - min.z].forEach((got, a) => {
-          expect(Math.abs(got / want[a] - 1), `${d.id} v${v} axis ${a}`).toBeLessThan(0.08);
-        });
-      }
+  it('office shells are tier 0 and carry their own LOD1 (no shared proxy, D-032)', () => {
+    for (const id of Object.keys(OFFICE_DEFS)) {
+      const d = PROP_DEFS_BUILDINGS.find((x) => x.id === id);
+      expect(d, id).toBeDefined();
+      expect(d!.tier, id).toBe(0);
+      expect(d!.lod1, id).toBeUndefined();
     }
+    expect(PROP_DEFS_BUILDINGS.some((d) => d.lod1)).toBe(false);
   });
 });

@@ -4,10 +4,11 @@
  * seats, quotas and spawn points. Seats come from `content/offices.ts` WORK_SPOTS through
  * `world/lot-frame.ts`, i.e. exactly where the interior geometry builds its desks.
  */
-import { WORKERS } from '../content/life.ts';
+import { STILT_SPUR, WORKERS } from '../content/life.ts';
 import {
   INTERIOR_OF,
   OFFICE_DEFS,
+  RAISED_FLOOR,
   WORK_SPOTS,
   floorOf,
   type WorkPose,
@@ -80,6 +81,82 @@ export function seatsOf(world: Pick<WorldData, 'lots' | 'height'>): Seat[] {
     });
   });
   return out;
+}
+
+/**
+ * Deck spurs for raised shells standing in water (the stilt lab, TASK-379). `buildWalkGraph` drops
+ * water nodes, so such a door is an isolated node (comp −1) and its seats were unreachable. For
+ * each one this adds a chain of deck nodes (`STILT_SPUR.step` apart, feet on `STILT_SPUR.deckY`)
+ * from the door to the nearest walkable node within `STILT_SPUR.maxReach`, and marks the door
+ * walkable. The graph is extended IN PLACE (typed arrays are re-allocated; node ids of existing
+ * nodes never change), so every holder of `g` sees it. Doors that are already walkable (a real
+ * worldgen spur) are left alone, so this is a fallback that never fights worldgen. Returns the
+ * number of spurs added.
+ */
+export function attachDeckSpurs(ctx: Pick<LifeCtx, 'world'>, g: WalkGraph): number {
+  const adds: { door: number; to: number; pts: { x: number; z: number }[] }[] = [];
+  for (const l of ctx.world.lots ?? []) {
+    if (!(RAISED_FLOOR[l.defId] > 0) || l.node < 0 || l.node >= g.n || g.comp[l.node] >= 0)
+      continue;
+    if (adds.some((a) => a.door === l.node)) continue;
+    let to = -1;
+    let best: number = STILT_SPUR.maxReach;
+    for (let i = 0; i < g.n; i++) {
+      if (g.comp[i] < 0) continue;
+      const d = Math.hypot(g.x[i] - g.x[l.node], g.z[i] - g.z[l.node]);
+      if (d < best) {
+        best = d;
+        to = i;
+      }
+    }
+    if (to < 0) continue;
+    const k = Math.max(0, Math.ceil(best / STILT_SPUR.step) - 1);
+    const pts: { x: number; z: number }[] = [];
+    for (let j = 1; j <= k; j++) {
+      const t = j / (k + 1);
+      pts.push({
+        x: g.x[l.node] + (g.x[to] - g.x[l.node]) * t,
+        z: g.z[l.node] + (g.z[to] - g.z[l.node]) * t,
+      });
+    }
+    adds.push({ door: l.node, to, pts });
+  }
+  if (adds.length === 0) return 0;
+  const n0 = g.n;
+  const n1 = n0 + adds.reduce((a, b) => a + b.pts.length, 0);
+  const grow = <T extends Float32Array | Int32Array | Uint8Array>(a: T, fill: number): T => {
+    const out = new (a.constructor as new (n: number) => T)(n1);
+    out.set(a);
+    out.fill(fill, n0);
+    return out;
+  };
+  g.x = grow(g.x, 0);
+  g.z = grow(g.z, 0);
+  g.deckY = grow(g.deckY, STILT_SPUR.deckY);
+  g.comp = grow(g.comp, -1);
+  g.kind = grow(g.kind, 0);
+  g.dockOf = grow(g.dockOf, -1);
+  let id = n0;
+  for (const a of adds) {
+    const c = g.comp[a.to];
+    const chain = [a.door];
+    for (const p of a.pts) {
+      g.x[id] = p.x;
+      g.z[id] = p.z;
+      g.comp[id] = c;
+      g.adj.push([]);
+      chain.push(id++);
+    }
+    chain.push(a.to);
+    g.comp[a.door] = c;
+    g.deckY[a.door] = STILT_SPUR.deckY;
+    for (let j = 0; j + 1 < chain.length; j++) {
+      g.adj[chain[j]].push(chain[j + 1]);
+      g.adj[chain[j + 1]].push(chain[j]);
+    }
+  }
+  g.n = n1;
+  return adds.length;
 }
 
 /** An outpost stop: in front of a lot door (`lot` ≥ 0), or a fixture / landmark. */
@@ -156,6 +233,7 @@ export function planWorkers(
   rng: Rng,
 ): WorkerPlan {
   const w = ctx.world;
+  attachDeckSpurs(ctx, g);
   const seats = seatsOf(w);
   const compSize = new Map<number, number>();
   for (let i = 0; i < g.n; i++)
@@ -201,7 +279,10 @@ export function planWorkers(
     // seated at t = 0: prefer seats that type (visible work), the rest in shuffled order
     const order = r.shuffle(it.reach.slice());
     const typing = (s: number): number => (WORKERS.typeAmount[seats[s].pose] > 0 ? 0 : 1);
-    order.sort((a, b) => typing(a) - typing(b));
+    // a deck lab (stilt) is only visited on purpose: its typing seats go to the front of the queue
+    const remote = (s: number): number =>
+      RAISED_FLOOR[w.lots[seats[s].lot].defId] > 0 && typing(s) === 0 ? 0 : 1;
+    order.sort((a, b) => remote(a) - remote(b) || typing(a) - typing(b));
     const seated = Math.min(order.length, Math.ceil(q * it.T.deskShare));
     for (let s = 0; s < seated; s++) {
       const seat = order[s];

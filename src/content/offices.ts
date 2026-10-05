@@ -152,6 +152,30 @@ export const WORK_SPOTS: Readonly<Record<string, readonly WorkSpot[]>> = {
     { x: -0.5, z: 0.6, face: 0, pose: 'type', sit: S },
     { x: 0.6, z: 0.4, face: PI / 2, pose: 'inspect', sit: 0 },
   ],
+  // Outdoor structures (M14b, TASK-379): free-standing props, not lots, so `seatsOf` never sees
+  // them. Same frame as lots but STRUCTURE-local: origin = the instance pivot, +z = the structure's
+  // front, +x = its right hand; a spot at (x, z) looking at the pivot has face = atan2(-x, -z).
+  // A consumer (TASK-383) maps it with `lotLocalToWorld({ x, z, rotY }, spot.x, spot.z)` from the
+  // prop instance, world heading = rotY - face. All stand (sit 0) on the terrain outside the
+  // footprint, >= 0.6 u clear; sizes assume the M14b tables (easel ~1.2 u wide, cooling tower
+  // base radius ~3 u, gate / checklist board ~2 u wide, solar row on a 2.4 u lattice).
+  easel: [{ x: 0, z: 0.9, face: PI, pose: 'paint', sit: 0 }],
+  checklistBoard: [{ x: 0, z: 0.8, face: PI, pose: 'inspect', sit: 0 }],
+  solarRow: [
+    { x: -1.2, z: 1.0, face: PI, pose: 'inspect', sit: 0 },
+    { x: 1.2, z: 1.0, face: PI, pose: 'inspect', sit: 0 },
+  ],
+  windTurbine: [{ x: 0, z: 1.3, face: PI, pose: 'look', sit: 0 }],
+  coolingTower: [
+    { x: 0, z: 3.6, face: PI, pose: 'inspect', sit: 0 },
+    { x: 2.6, z: 2.6, face: -(3 * PI) / 4, pose: 'inspect', sit: 0 },
+  ],
+  stage: [
+    { x: -1, z: 2.8, face: PI, pose: 'look', sit: 0 },
+    { x: 1, z: 2.8, face: PI, pose: 'look', sit: 0 },
+  ],
+  weatherMast: [{ x: 0.7, z: 0.7, face: -(3 * PI) / 4, pose: 'inspect', sit: 0 }],
+  barrierGate: [{ x: 0, z: 0.9, face: PI, pose: 'inspect', sit: 0 }],
   // legacy: a bench spot just outside the door
   cottage: [{ x: 0.9, z: 2.0, face: 0, pose: 'look', sit: BENCH }],
   logCabin: [{ x: 1.0, z: 2.0, face: 0, pose: 'look', sit: BENCH }],

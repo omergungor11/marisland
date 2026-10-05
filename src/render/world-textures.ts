@@ -9,6 +9,15 @@ import { WATER_BANDS } from '../content/palette.ts';
 import { WATER_SHADER } from '../content/water.ts';
 import { EDIT_RENDER } from '../content/edit.ts';
 import { TERRAIN_AO } from '../content/terrain.ts';
+import { ZONE_COUNT } from '../world/types.ts';
+import {
+  PALETTE_ROWS,
+  PALETTE_TEXELS,
+  buildAlbedoGrid,
+  buildGroundPalette,
+  fillAlbedoGrid,
+} from './terrain/terrain-colors.ts';
+import { createGroundDetailTexture, type MipUploadRenderer } from './terrain/ground-detail.ts';
 import {
   DirtyRect,
   rectFromBounds,
@@ -206,6 +215,20 @@ export interface WorldTextures {
   /** R = signed shore distance (u), G = leeward ring scale (water bands). */
   sdf: THREE.DataTexture;
   zone: THREE.DataTexture;
+  /**
+   * Terrain albedo (TASK-372; `albedo` / `palette` / `groundDetail` are always set by
+   * `createWorldTextures` — optional only so older test fakes still type-check; the terrain
+   * material requires them): RGBA8 sRGB per sample, linear filtering; A = island id
+   * (`terrain-colors.ts` `buildAlbedoGrid`). Refreshed over `colorRect` after edits.
+   */
+  albedo?: THREE.DataTexture;
+  /** Ground palette: 16 zones × 4 texels wide, 8 rows (island id); `buildGroundPalette`. */
+  palette?: THREE.DataTexture;
+  /**
+   * Ground detail layers (`ground-detail.ts`), created on first call (medium / high terrain only)
+   * and owned by the world scope; the CPU bytes are shared by every world.
+   */
+  groundDetail?(): THREE.DataArrayTexture;
   /** Uniform-ready mapping: xy = origin, z = 1 / world extent (n−1)·cellSize. */
   uGridMap: { value: THREE.Vector3 };
   /**
@@ -226,6 +249,8 @@ export interface TextureUpdateStats {
   height: UploadKind;
   sdf: UploadKind;
   zone: UploadKind;
+  /** Albedo texels re-derived over `colorRect` (optional for fakes that predate TASK-372). */
+  albedo?: UploadKind;
   /** Texel rects written (null = unchanged). `sdfRect` covers both channels. */
   heightRect: TexRect | null;
   sdfRect: TexRect | null;
@@ -293,6 +318,25 @@ export function createWorldTextures(
   const sdf = mk(sdfHalf, THREE.HalfFloatType, THREE.LinearFilter, THREE.RGFormat);
   // zones as an R8 copy (the world array may be replaced or edited in place)
   const zone = mk(zoneCopy, THREE.UnsignedByteType, THREE.NearestFilter);
+  // albedo: sRGB8_ALPHA8 (hardware decode before filtering), island id in the linear alpha
+  const albedoGrid = buildAlbedoGrid(world);
+  const albedo = mk(albedoGrid.rgba, THREE.UnsignedByteType, THREE.LinearFilter, THREE.RGBAFormat);
+  albedo.colorSpace = THREE.SRGBColorSpace;
+  albedo.unpackAlignment = 1;
+  const palData = buildGroundPalette(world);
+  const palette = new THREE.DataTexture(
+    palData,
+    ZONE_COUNT * PALETTE_TEXELS,
+    PALETTE_ROWS,
+    THREE.RGBAFormat,
+    THREE.UnsignedByteType,
+  );
+  palette.colorSpace = THREE.NoColorSpace;
+  palette.magFilter = palette.minFilter = THREE.NearestFilter;
+  palette.generateMipmaps = false;
+  palette.needsUpdate = true;
+  scope.add(palette);
+  let detail: THREE.DataArrayTexture | null = null;
   const extent = (n - 1) * world.height.cellSize;
   const hRect = new DirtyRect();
   const sRect = new DirtyRect();
@@ -303,6 +347,12 @@ export function createWorldTextures(
     height,
     sdf,
     zone,
+    albedo,
+    palette,
+    groundDetail() {
+      detail ??= scope.add(createGroundDetailTexture(renderer as MipUploadRenderer | null));
+      return detail;
+    },
     uGridMap: { value: new THREE.Vector3(world.height.originX, world.height.originZ, 1 / extent) },
     prewarm(i, j) {
       const scratch: RingCache = {
@@ -320,11 +370,14 @@ export function createWorldTextures(
         height.needsUpdate = true;
         sdf.needsUpdate = true;
         zone.needsUpdate = true;
+        fillAlbedoGrid(world, albedoGrid, 0, n - 1, 0, n - 1);
+        albedo.needsUpdate = true;
         const all = { x: 0, y: 0, w: n, h: n };
         return {
           height: 'full',
           sdf: 'full',
           zone: 'full',
+          albedo: 'full',
           heightRect: all,
           sdfRect: all,
           zoneRect: all,
@@ -383,11 +436,17 @@ export function createWorldTextures(
         cRect.mark(r.x, r.y);
         cRect.mark(r.x + r.w - 1, r.y + r.h - 1);
       }
+      const colorRect = cRect.rect;
+      if (colorRect) {
+        const c = colorRect;
+        fillAlbedoGrid(world, albedoGrid, c.x, c.x + c.w - 1, c.y, c.y + c.h - 1);
+      }
       const tGl = performance.now();
       const up = {
         height: uploadTextureRect(renderer, height, heightRect),
         sdf: uploadTextureRect(renderer, sdf, sdfRect),
         zone: uploadTextureRect(renderer, zone, zoneRect),
+        albedo: uploadTextureRect(renderer, albedo, colorRect),
       };
       return {
         ...up,
@@ -396,7 +455,7 @@ export function createWorldTextures(
         sdfRect,
         zoneRect,
         geometryRect,
-        colorRect: cRect.rect,
+        colorRect,
       };
     },
   };
