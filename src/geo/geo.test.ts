@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { OFFICE_DEFS, OFFICE_INTERIOR_SHELLS, WORK_SPOTS } from '../content/offices.ts';
 import { PROP_GEO, buildProp } from './index.ts';
+import { THEME_GEO } from './themes/index.ts';
 
 const TARGET: Record<string, number> = {
   palm: 700,
@@ -71,7 +72,7 @@ const TARGET: Record<string, number> = {
 };
 
 /** Props from the buildings/coastal/decor/landmarks families: carry an `emissive` attribute. */
-const NEW_IDS = new Set(Object.keys(TARGET).slice(10));
+const NEW_IDS = new Set([...Object.keys(TARGET).slice(10), ...THEME_GEO.map((d) => d.id)]);
 /** Props whose LOD0 must actually glow somewhere (windows, lamps, lava). */
 const GLOWS = new Set([
   'cottage',

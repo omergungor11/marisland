@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PROP_GEO, buildProp } from '../geo/index.ts';
+import { THEME_GEO } from '../geo/themes/index.ts';
 import { PropFlag } from '../world/prop-store.ts';
 import { PROP_DEFS_BUILDINGS } from './props-buildings.ts';
 
@@ -31,6 +32,8 @@ describe('PROP_DEFS_BUILDINGS', () => {
       'flower',
       'rockCluster',
       'treeBlob',
+      // M14b theme structures are covered by content/props-themes (their own PropDefs)
+      ...THEME_GEO.map((d) => d.id),
     ]);
     const want = Object.keys(PROP_GEO)
       .filter((k) => !old.has(k))
