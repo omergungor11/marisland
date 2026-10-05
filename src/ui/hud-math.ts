@@ -125,3 +125,82 @@ export function angleDelta(a: number, b: number): number {
   if (d > Math.PI) d -= TAU;
   return d;
 }
+
+/** A placed label: centre and size in CSS px. */
+export interface LabelBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Gaps kept between label pills (px). */
+const LABEL_PAD_X = 6;
+const LABEL_PAD_Y = 4;
+/** Screen-edge margin (px). */
+const LABEL_EDGE = 8;
+
+/** True when two label boxes (plus the gaps) overlap. */
+export function labelsOverlap(a: LabelBox, b: LabelBox): boolean {
+  return (
+    Math.abs(a.x - b.x) < (a.w + b.w) / 2 + LABEL_PAD_X &&
+    Math.abs(a.y - b.y) < (a.h + b.h) / 2 + LABEL_PAD_Y
+  );
+}
+
+/** A wanted label centre; `cost` biases the choice between several (0 = preferred). */
+export interface LabelSpot {
+  x: number;
+  y: number;
+  cost: number;
+}
+
+/**
+ * Width-aware label placement: the cheapest free spot near one of `spots`. Candidates are each
+ * spot and the spots just clear of every placed box (above / below / left / right of it, and their
+ * combinations), clamped to the screen; a candidate is free when it overlaps no placed box and
+ * `blocked` (dock / edit panel) rejects it. Cost = spot cost + 1.5 × |dx| + |dy| upward or
+ * 1.25 × dy downward, so labels nudge upward (off the island) first. When nothing is free the
+ * first spot is returned clamped (overlap unavoidable).
+ */
+export function placeLabel(
+  w: number,
+  h: number,
+  spots: readonly LabelSpot[],
+  placed: readonly LabelBox[],
+  view: { width: number; height: number },
+  blocked: (b: LabelBox) => boolean = () => false,
+): LabelBox {
+  const minX = w / 2 + LABEL_EDGE;
+  const maxX = Math.max(minX, view.width - w / 2 - LABEL_EDGE);
+  const minY = h / 2 + LABEL_EDGE;
+  const maxY = Math.max(minY, view.height - h / 2 - LABEL_EDGE);
+  const cx = (x: number): number => Math.min(Math.max(x, minX), maxX);
+  const cy = (y: number): number => Math.min(Math.max(y, minY), maxY);
+  let best: LabelBox | null = null;
+  let bestCost = Infinity;
+  for (const s of spots) {
+    const sx = cx(s.x);
+    const sy = cy(s.y);
+    const xs = [sx];
+    const ys = [sy];
+    for (const p of placed) {
+      const ox = (p.w + w) / 2 + LABEL_PAD_X + 0.5;
+      const oy = (p.h + h) / 2 + LABEL_PAD_Y + 0.5;
+      xs.push(cx(p.x - ox), cx(p.x + ox));
+      ys.push(cy(p.y - oy), cy(p.y + oy));
+    }
+    for (const x of xs)
+      for (const y of ys) {
+        const dy = y - s.y;
+        const cost = s.cost + Math.abs(x - s.x) * 1.5 + (dy < 0 ? -dy : dy * 1.25);
+        if (cost >= bestCost) continue;
+        const b = { x, y, w, h };
+        if (blocked(b) || placed.some((p) => labelsOverlap(p, b))) continue;
+        best = b;
+        bestCost = cost;
+      }
+  }
+  const s0 = spots[0] ?? { x: view.width / 2, y: view.height / 2 };
+  return best ?? { x: cx(s0.x), y: cy(s0.y), w, h };
+}

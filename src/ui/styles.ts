@@ -2,6 +2,7 @@ import { LOADER_CSS } from './loader.ts';
 import { CURTAIN_CSS } from './curtain.ts';
 import { UI } from '../content/palette.ts';
 import { HUD } from '../content/ui.ts';
+import { mixHex } from './hud-math.ts';
 
 export function injectStyles(): void {
   const style = document.createElement('style');
@@ -153,6 +154,13 @@ export const HUD_CSS = `
   font:600 16px/1 'Fredoka',sans-serif;box-shadow:0 2px 0 #3B3A5A22;animation:mar-label-pop .25s ${ease} both;}
 @keyframes mar-label-pop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
 .mar-dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
+/* theme labels (Phase 3): [accent disc + white glyph] Theme · muted island name (≥ 600 px) */
+.mar-label-theme{gap:6px;padding:0 12px 0 5px;}
+.mar-label-disc{width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff;flex:none;box-shadow:inset 0 -1.5px 0 #3B3A5A1F;}
+.mar-label-disc svg{display:block;}
+.mar-label-sub{font:700 12px/1 'Nunito',sans-serif;color:${mixHex(UI.ink, UI.muted, 0.45)};padding-left:2px;}
+.mar-label-sub::before{content:'·';margin-right:5px;}
+@media (max-width:599px){.mar-label-sub{display:none;}}
 
 /* capture (freeze=1): no motion at all */
 .mar-hud-instant.mar-hud-on .mar-pop,.mar-hud-instant.mar-hud-on .mar-wm-in,.mar-hud-instant.mar-hud-wordmark .mar-wm-in,.mar-hud-instant .mar-label-in{animation:none!important;opacity:1;transform:none;}

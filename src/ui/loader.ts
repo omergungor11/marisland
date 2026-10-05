@@ -1,16 +1,11 @@
 import { UI } from '../content/palette.ts';
+import { LOADER_CAPTIONS } from '../content/ui.ts';
 
 /**
  * Loading screen (ART_BIBLE §8 "Loading screen"): gradient, canvas island blob with
  * a turquoise ring, a tiny boat whose lap is the progress bar, rotating captions.
  */
-const CAPTIONS = [
-  'Raising islands…',
-  'Planting palms…',
-  'Teaching crabs to walk sideways…',
-  'Filling the lagoon…',
-  'Hanging the laundry…',
-];
+const CAPTIONS = LOADER_CAPTIONS;
 
 export interface Loader {
   setProgress(p: number): void;

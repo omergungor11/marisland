@@ -6,6 +6,8 @@
 import { CAMERA, CAMERA_MOVE, TIERS } from '../content/tiers.ts';
 import { FRAMING, type SafeInsets } from '../content/camera.ts';
 import { pitchForDistance } from '../detail/tier.ts';
+import { THEMES, THEME_BY_ARCHETYPE } from '../content/themes.ts';
+import type { ArchetypeId, ThemeId } from '../world/types.ts';
 import type { CameraFrame } from './frames.ts';
 import {
   azimuthToward,
@@ -29,6 +31,8 @@ export interface CameraWorld {
   islands: Array<{
     name: string;
     archetypeName?: string;
+    /** Department theme (Phase 3, D-024); see `themeOf` for the archetype fallback. */
+    theme?: ThemeId;
     cx: number;
     cz: number;
     radius: number;
@@ -54,6 +58,28 @@ export interface Viewport {
 }
 
 export const reachOf = (i: CameraIsland): number => i.reach ?? i.radius * 1.4;
+
+/** The island's department: `theme`, else derived from the archetype display name ('Beacon Rock' → beaconrock). */
+export function themeOf(i: CameraIsland): ThemeId | undefined {
+  if (i.theme) return i.theme;
+  const id = (i.archetypeName ?? '').toLowerCase().replace(/\s+/g, '');
+  return Object.hasOwn(THEME_BY_ARCHETYPE, id) ? THEME_BY_ARCHETYPE[id as ArchetypeId] : undefined;
+}
+
+/** Island by name, archetype name, theme id or theme display name (`cam=island:coding`); '' = the first. */
+export function findIsland(world: CameraWorld, name: string): CameraIsland | undefined {
+  const norm = (v: string | undefined): string => (v ?? '').toLowerCase().replace(/\s+/g, '');
+  const n = norm(name);
+  return (
+    world.islands.find((i) => norm(i.name) === n) ??
+    world.islands.find((i) => norm(i.archetypeName) === n) ??
+    world.islands.find((i) => {
+      const t = themeOf(i);
+      return t !== undefined && (t === n || norm(THEMES[t].displayName) === n);
+    }) ??
+    (n === '' ? world.islands[0] : undefined)
+  );
+}
 
 /**
  * Allowed pitch (deg from horizontal) at an orbit distance: the pitch curve ± slack, widened at
