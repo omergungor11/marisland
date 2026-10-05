@@ -37,7 +37,7 @@ export const QUALITY_PRESETS: Record<Quality, QualityPreset> = {
     dof: false,
     groundCoverCap: 12000,
     instanceCap: 15000,
-    agentCap: 50,
+    agentCap: 60,
   },
   high: {
     name: 'high',
@@ -49,7 +49,7 @@ export const QUALITY_PRESETS: Record<Quality, QualityPreset> = {
     dof: true,
     groundCoverCap: 30000,
     instanceCap: 30000,
-    agentCap: 90,
+    agentCap: 110,
   },
 };
 
