@@ -10,7 +10,10 @@ import { makeLitMaterial, marAttr, type LitMaterial } from '../render/materials/
  *
  * Per-vertex `limb` (vec4, default w = -1 = gull wing) and per-instance `aGait` (vec3: x = move
  * amount 0..1, y = pose amount 0..1 — wave / graze, z = gait phase rad, integrated on the CPU so
- * feet never slide). Gulls read the same attribute as x = wing spread, z = flap phase 0..1 (the
+ * feet never slide). Workers encode the pose kind in y: 0..1 = wave, 2..3 = typing amount (y - 2);
+ * mode 7 = worker arm (swing / wave / typing), mode 8 = accessory variant floor(aSeed) (aSeed =
+ * accessory + phase01; every existing `sin(.. aSeed * 2π)` term is unchanged for the integer part).
+ * Gulls read the same attribute as x = wing spread, z = flap phase 0..1 (the
  * vertex-attribute budget is 16: position, normal, color, 4 × instanceMatrix, instanceColor, the
  * factory's wind/ao/aSeed/aAppear/emissive, limb, aGait = 15). Instance tint: `uTintAll` 1 = every
  * vertex takes `instanceColor`, 0 = only pure-white vertices do (villager shirts).
@@ -45,7 +48,9 @@ const BODY = /* glsl */ `
       transformed.z *= mix(0.25, 1.0, aGait.x);
     } else {
       float lMove = aGait.x * uMotionScale;
-      float lPose = aGait.y;
+      // pose y: 0..1 = wave / graze amount, 2..3 = typing amount (y - 2); identity for y in [0, 1]
+      float lPose = aGait.y >= 1.5 ? 0.0 : aGait.y;
+      float lType = aGait.y >= 1.5 ? aGait.y - 2.0 : 0.0;
       float lPh = aGait.z + limb.z;
       int lM = int(lMode + 0.5);
       if (lM == 0) {
@@ -80,6 +85,36 @@ const BODY = /* glsl */ `
         // hat variant: only the villager's own is shown, the others collapse to a point
         float lV = floor(fract(aSeed * 13.7) * 3.0);
         if (abs(lV - limb.x) > 0.5) transformed = vec3(0.0, limb.y, 0.0);
+      } else if (lM == 7) {
+        // worker arm: walk swing, wave (right arm, limb.z > 0) and typing (both): the arm pitches
+        // forward about the shoulder, alternating +-0.12 rad at ~9 Hz
+        float lSg = limb.z >= 0.0 ? 1.0 : -1.0;
+        transformed.x += limb.x * sin(aGait.z) * max(limb.y - transformed.y, 0.0) * lMove * (1.0 - lPose) * (1.0 - lType);
+        float lA = 0.0;
+        if (lPose > 0.0 && lSg > 0.0)
+          lA = lPose * (2.7 + 0.35 * sin(uTime * 12.0 + aSeed * 6.2831853)) * uMotionScale;
+        else if (lType > 0.0)
+          lA = lType * (1.2 + 0.12 * sin(uTime * 56.548668 + aSeed * 6.2831853 + (lSg > 0.0 ? 3.14159 : 0.0))) * uMotionScale;
+        if (lA != 0.0) {
+          // wave raises the arm sideways-up (about x), typing pitches it forward (about z)
+          if (lPose > 0.0 && lSg > 0.0) {
+            vec2 lR = vec2((transformed.z - abs(limb.z)) , transformed.y - limb.y);
+            float lC = cos(lA);
+            float lSn = sin(lA);
+            lR = vec2(lR.x * lC - lR.y * lSn, lR.x * lSn + lR.y * lC);
+            transformed.z = abs(limb.z) + lR.x;
+            transformed.y = limb.y + lR.y;
+          } else {
+            vec2 lR = vec2(transformed.x, transformed.y - limb.y);
+            float lC = cos(lA);
+            float lSn = sin(lA);
+            transformed.x = lR.x * lC - lR.y * lSn;
+            transformed.y = limb.y + lR.x * lSn + lR.y * lC;
+          }
+        }
+      } else if (lM == 8) {
+        // worker accessory: only the one named by floor(aSeed) shows, the rest collapse to a point
+        if (abs(floor(aSeed) - limb.x) > 0.5) transformed = vec3(0.0, limb.y, 0.0);
       } else if (lM == 6) {
         // click-burst glyphs (render/particles/bursts.ts): one geometry holds every glyph;
         // collapse all but the instance's own (aGait.y)

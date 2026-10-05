@@ -415,6 +415,40 @@ export const CRABS = {
   pickHeight: 0.15,
 } as const;
 
+/** Worker bot palette (life/geo/workers.ts). Body, arms and ear pads take the instance team tint. */
+export const WORKER_COLORS = {
+  metal: '#8C94A8',
+  foot: '#454B5C',
+  hand: '#E4E8F0',
+  shell: '#F1F3F8',
+  screen: '#2B2B36',
+  plate: '#D3D8E3',
+  light: '#7CFFB2',
+  eye: '#BDF7FF',
+  blush: '#FF9EB5',
+  antenna: '#FFD54A',
+  acc: {
+    headsetBand: '#2F3340',
+    headsetCup: '#FF8A6A',
+    hood: '#4A5368',
+    phoneBand: '#2F3340',
+    phoneCup: '#7CFFB2',
+    cap: '#FFF4E0',
+    capBrim: '#E35D6A',
+    badge: '#F5C84C',
+    badgeIcon: '#FFF8E8',
+    visor: '#2E9E74',
+    monocle: '#F5C84C',
+    beret: '#D6477D',
+    beretNub: '#8E2E58',
+    hat: '#FFD23F',
+    hatRidge: '#E0A800',
+    strap: '#6B4A33',
+    rim: '#C9A24B',
+    lens: '#7DE8F2',
+  },
+} as const;
+
 export const LAND_COLORS = {
   skin: '#FFD6B0',
   trousers: '#5B6C86',

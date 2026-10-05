@@ -5,6 +5,9 @@ export class TriBuilder {
   private pos: number[] = [];
   private col: number[] = [];
   private limb: number[] = [];
+  private emi: number[] = [];
+  private emiCur = 0;
+  private emiUsed = false;
   private cur: [number, number, number, number] = [0, 0, 0, 0];
   private limbUsed = false;
 
@@ -19,6 +22,12 @@ export class TriBuilder {
 
   clearLimb(): void {
     this.cur = [0, 0, 0, 0];
+  }
+
+  /** Per-vertex night / screen glow (`emissive` attribute) for every following triangle; 0 = none. */
+  setEmissive(v: number): void {
+    this.emiCur = v;
+    if (v !== 0) this.emiUsed = true;
   }
 
   tri(
@@ -37,6 +46,7 @@ export class TriBuilder {
       this.pos.push(p.x, p.y, p.z);
       this.col.push(k.r, k.g, k.b);
       this.limb.push(this.cur[0], this.cur[1], this.cur[2], this.cur[3]);
+      this.emi.push(this.emiCur);
     }
   }
 
@@ -187,6 +197,7 @@ export class TriBuilder {
     g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3));
     g.setAttribute('color', new THREE.Float32BufferAttribute(this.col, 3));
     if (this.limbUsed) g.setAttribute('limb', new THREE.Float32BufferAttribute(this.limb, 4));
+    if (this.emiUsed) g.setAttribute('emissive', new THREE.Float32BufferAttribute(this.emi, 1));
     g.computeVertexNormals();
     g.computeBoundingSphere();
     return g;
