@@ -22,21 +22,27 @@ export interface Budget {
   newSeedMs: number;
 }
 
+/**
+ * D-028 (TASK-309, Phase 3 M14): raised only where the measured worst case (ci/dev/edit sets) passed
+ * the old budget, to measured + ~10 %: calls low 157 (E-meadow; T3 views see ~47 terrain chunks and
+ * the LOD0 groups of 3–4 islands of the 7-island layout) → 170, medium 232 → 255; gpuMemoryMB low
+ * 63 (E-panel at 1280×720) → 70. Programs stay 9 / 17 / 24 (= pre-Phase-3 baseline).
+ */
 export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
   low: {
-    drawCalls: 120,
+    drawCalls: 170,
     triangles: 350_000,
     instances: 6_000,
     groundCover: 3_000,
     agents: 25,
     particles: 2_000,
     programs: 12,
-    gpuMemoryMB: 64,
+    gpuMemoryMB: 70,
     jsHeapMB: 120,
     newSeedMs: 1500,
   },
   medium: {
-    drawCalls: 220,
+    drawCalls: 255,
     triangles: 800_000,
     instances: 15_000,
     groundCover: 12_000,
