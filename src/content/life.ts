@@ -1,5 +1,6 @@
 /** Life catalog numbers (ART_BIBLE §7 rows 3, 4, 8–15, 26, 28). Data only. */
 import { Zone } from '../world/types.ts';
+import type { WorkPose } from './offices.ts';
 
 /** Per-quality agent plan; totals stay ≤ QUALITY_PRESETS[q].agentCap (fish/dolphins only live at T3/T1+). */
 export interface LifePlan {
@@ -17,6 +18,8 @@ export interface LifePlan {
   villagers: number;
   /** Department workers (Phase 3, D-026): replace the villagers; allocated by island theme weight. */
   workers: number;
+  /** Near-focus ambient worker slots per island = round(ACTIVITY.slots[theme] × this) (TASK-383). */
+  ambientScale: number;
   cats: number;
   sheep: number;
   crabs: number;
@@ -29,13 +32,14 @@ export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
     rowboats: 1,
     parked: 0,
     flocks: 2,
-    gullsPerFlock: [3, 4],
+    gullsPerFlock: [3, 3],
     schools: 1,
-    fishPerSchool: [4, 5],
+    fishPerSchool: [4, 4],
     jumpers: 1,
     dolphins: 0,
     villagers: 0,
-    workers: 6,
+    workers: 8,
+    ambientScale: 0.5,
     cats: 1,
     sheep: 2,
     crabs: 1,
@@ -53,6 +57,7 @@ export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
     dolphins: 2,
     villagers: 0,
     workers: 16,
+    ambientScale: 0.75,
     cats: 2,
     sheep: 8,
     crabs: 3,
@@ -70,6 +75,7 @@ export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
     dolphins: 2,
     villagers: 0,
     workers: 30,
+    ambientScale: 1,
     cats: 4,
     sheep: 12,
     crabs: 5,
@@ -390,6 +396,138 @@ export const WORKERS = {
   pickHeight: 0.9,
 } as const;
 
+/**
+ * Living close-up (M14c, TASK-383): the near-focus activity sim of the department bots. Times in s,
+ * lengths in u. The awake bots never exceed `LIFE_PLAN.workers` (the agent cap is respected by
+ * construction): the island in camera focus wakes its ambient slots and the farthest islands'
+ * residents sleep to make room.
+ */
+export type GoalSpec =
+  | { kind: 'seat'; defs: readonly string[] }
+  | { kind: 'spot'; defs: readonly string[] }
+  | { kind: 'queue'; def: string }
+  | { kind: 'hub' }
+  | { kind: 'dock' };
+
+export interface ItineraryStep {
+  goal: GoalSpec;
+  /** Carried while travelling to the goal, using it and walking away (until the next step). */
+  item?: 'laptop' | 'clipboard' | 'crate' | 'paintPot';
+}
+
+export const ACTIVITY = {
+  /** Focus: nearest campus hub within `radius` u (3-D) of the camera at tier >= `minTier`, re-evaluated every `every` steps; a rival must be `switchRatio` times nearer. */
+  focus: { minTier: 2, radius: 190, every: 15, switchRatio: 0.8 },
+  /** Ambient slots per island at ambientScale 1 (seat count is the soft limit). */
+  slots: { hq: 12, coding: 12, marketing: 9, qa: 9, design: 9, devops: 10, research: 5 },
+  /** Outposts (no walk graph) host at most this many ambient bots. */
+  outpostSlots: 4,
+  /** Wake: scale-in is delayed by up to `stagger` s (hash) so a campus fills in, not all at once. */
+  wake: { stagger: 0.7 },
+  /** First wake mix by slot rank (cycled): Walking an errand, Busy at a stop, Seated at a desk. */
+  startMix: 'WBWWSWBWWS',
+  /** Seconds at a desk during an itinerary, a stop by pose, an order at the kiosk, and a hub chat-stop. */
+  desk: [7, 16] as const,
+  use: {
+    paint: [14, 26],
+    inspect: [8, 16],
+    look: [6, 12],
+    rack: [10, 18],
+    stand: [5, 9],
+  } as Record<string, readonly [number, number]>,
+  order: [2.6, 4.4] as const,
+  loiter: [5, 10] as const,
+  /** Spot-leg walking speed (u/s) and the micro step along a queue. */
+  legSpeed: 1.0,
+  queue: { gap: 1.0, length: 4, offset: 1.0, startMax: 2 },
+  /** Margins (u) around props / fixtures and lots for work spots and their approach lines (bots may stand close). */
+  stopMargin: { solid: 0.08, lot: 0.25 },
+  /** District kind -> stops at its edges (def is what an itinerary `spot` names). */
+  districtSpots: {
+    solar: { def: 'solarField', pose: 'inspect', gap: 1.1, count: 2 },
+  } as Record<string, { def: string; pose: WorkPose; gap: number; count: number }>,
+  /** Hub loiter ring radius (u). */
+  ring: 0.95,
+  /** Chat: pairs that pause within `range` u of each other face up (`gap` u apart) for `seconds`. */
+  chat: {
+    range: 4.5,
+    gap: 1.15,
+    chance: 0.7,
+    seconds: [4, 8] as const,
+    cooldown: [8, 16] as const,
+    approachSpeed: 0.9,
+    /** Speaker bounce (Hz, squash) and listener nod (Hz, rad), turn swaps every `swap` s. */
+    bob: { hz: 3.1, squash: 0.06 },
+    nod: { hz: 1.3, pitch: 0.07 },
+    swap: [1.3, 2.3] as const,
+    gesture: 0.32,
+  },
+  /** Look-around yaw (rad) while using a spot. */
+  scan: { yaw: 0.35, hz: 0.18 },
+  /** Per theme: the cycle each bot walks (start offset hashed per bot). */
+  itinerary: {
+    hq: [
+      { goal: { kind: 'seat', defs: ['hqOffice'] }, item: 'laptop' },
+      { goal: { kind: 'hub' } },
+      { goal: { kind: 'queue', def: 'coffeeKiosk' } },
+      { goal: { kind: 'seat', defs: ['meetingPavilion'] }, item: 'laptop' },
+      { goal: { kind: 'hub' } },
+      { goal: { kind: 'seat', defs: ['hqOffice', 'hqAnnex'] } },
+      { goal: { kind: 'queue', def: 'coffeeKiosk' } },
+      { goal: { kind: 'dock' } },
+    ],
+    coding: [
+      { goal: { kind: 'seat', defs: ['devOffice', 'devPod'] }, item: 'laptop' },
+      {
+        goal: { kind: 'spot', defs: ['solarRow', 'windTurbine', 'solarField'] },
+        item: 'clipboard',
+      },
+      { goal: { kind: 'seat', defs: ['serverShed'] } },
+      { goal: { kind: 'hub' } },
+      { goal: { kind: 'seat', defs: ['devOffice', 'devPod'] }, item: 'laptop' },
+      { goal: { kind: 'dock' } },
+    ],
+    marketing: [
+      { goal: { kind: 'seat', defs: ['broadcastStudio'] }, item: 'laptop' },
+      { goal: { kind: 'spot', defs: ['stage'] } },
+      { goal: { kind: 'hub' } },
+      { goal: { kind: 'seat', defs: ['billboard'] }, item: 'paintPot' },
+      { goal: { kind: 'spot', defs: ['stage'] } },
+      { goal: { kind: 'dock' } },
+    ],
+    qa: [
+      { goal: { kind: 'spot', defs: ['barrierGate'] }, item: 'clipboard' },
+      { goal: { kind: 'spot', defs: ['checklistBoard'] }, item: 'clipboard' },
+      { goal: { kind: 'seat', defs: ['testLab', 'testLabStilt'] }, item: 'clipboard' },
+      { goal: { kind: 'hub' } },
+      { goal: { kind: 'seat', defs: ['inspectionTower'] } },
+      { goal: { kind: 'spot', defs: ['barrierGate', 'checklistBoard'] }, item: 'clipboard' },
+    ],
+    design: [
+      { goal: { kind: 'spot', defs: ['easel'] }, item: 'paintPot' },
+      { goal: { kind: 'seat', defs: ['atelier'] }, item: 'paintPot' },
+      { goal: { kind: 'spot', defs: ['sculptureTorus', 'sculptureArch', 'sculptureStack'] } },
+      { goal: { kind: 'hub' } },
+      { goal: { kind: 'spot', defs: ['easel'] }, item: 'paintPot' },
+      { goal: { kind: 'seat', defs: ['galleryPavilion'] } },
+    ],
+    devops: [
+      { goal: { kind: 'seat', defs: ['dataCenter'] } },
+      { goal: { kind: 'spot', defs: ['rackRow'] }, item: 'crate' },
+      { goal: { kind: 'spot', defs: ['coolingTower'] }, item: 'clipboard' },
+      { goal: { kind: 'seat', defs: ['rackShed', 'antennaMast'] } },
+      { goal: { kind: 'dock' }, item: 'crate' },
+      { goal: { kind: 'hub' } },
+    ],
+    research: [
+      { goal: { kind: 'spot', defs: ['weatherMast'] }, item: 'clipboard' },
+      { goal: { kind: 'spot', defs: ['observatory'] } },
+      { goal: { kind: 'seat', defs: ['researchHut'] }, item: 'laptop' },
+      { goal: { kind: 'hub' } },
+    ],
+  } as Record<string, readonly ItineraryStep[]>,
+} as const;
+
 /** Ground workers may stand on outside the path graph (outpost loops). */
 export const WORKER_ZONES = [
   Zone.grass,
@@ -521,6 +659,22 @@ export const WORKER_COLORS = {
     strap: '#6B4A33',
     rim: '#C9A24B',
     lens: '#7DE8F2',
+  },
+  /** Carried items (CARRIED_ITEM_SLOT 7..10, TASK-383). None is pure white: the tint must not catch them. */
+  item: {
+    laptopBase: '#C4CAD8',
+    laptopLid: '#383C4C',
+    laptopLogo: '#7DE8F2',
+    board: '#A9714A',
+    paper: '#FBF3DC',
+    clip: '#C4CAD8',
+    ink: '#6E86B0',
+    crate: '#D49A58',
+    crateSlat: '#935F34',
+    parcel: '#7CD6A8',
+    pot: '#EFE9DC',
+    paint: '#FF6FA3',
+    brush: '#8A5A38',
   },
 } as const;
 

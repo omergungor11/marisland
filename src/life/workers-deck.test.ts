@@ -106,10 +106,10 @@ describe('workers: stilt lab deck spur (TASK-379)', () => {
           expect(w.y[i]).toBeGreaterThan(floor - 0.2);
         }
         console.info(
-          `seed ${seed} ${q}: ${inside} seated in the stilt lab (${w.capacity} workers)`,
+          `seed ${seed} ${q}: ${inside} seated in the stilt lab (${w.residents} workers)`,
         );
         expect(inside).toBeGreaterThanOrEqual(1);
-        expect(w.capacity).toBeLessThanOrEqual(LIFE_PLAN[q].workers);
+        expect(w.residents).toBeLessThanOrEqual(LIFE_PLAN[q].workers);
         expect(r.counters.agents).toBeLessThanOrEqual(CAPS[q]);
       }
     }

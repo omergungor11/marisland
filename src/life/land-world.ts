@@ -24,6 +24,8 @@ interface Shape {
   r: number;
   /** Rect (lot / dock): axis (cos, sin) along the facing and half extents; null = disc. */
   rect: { c: number; s: number; along: number; across: number } | null;
+  /** Owner tag (a fixture: index + 1) that `hit(.., skip)` can ignore; 0 = none. */
+  tag: number;
 }
 
 const CELL = 4;
@@ -52,8 +54,8 @@ export class Solids {
       }
   }
 
-  disc(x: number, z: number, r: number): void {
-    this.add({ x, z, r, rect: null });
+  disc(x: number, z: number, r: number, tag = 0): void {
+    this.add({ x, z, r, rect: null, tag });
   }
 
   /** Rect centred at (x, z); `rotY` = facing (cos, sin); `d` along the facing, `w` across. */
@@ -63,6 +65,7 @@ export class Solids {
       z,
       r: Math.hypot(d, w) / 2,
       rect: { c: Math.cos(rotY), s: Math.sin(rotY), along: d / 2, across: w / 2 },
+      tag: 0,
     });
   }
 
@@ -70,11 +73,12 @@ export class Solids {
     return this.shapes.length;
   }
 
-  hit(x: number, z: number): boolean {
+  hit(x: number, z: number, skip = 0): boolean {
     const l = this.grid.get(this.key(Math.floor(x / CELL), Math.floor(z / CELL)));
     if (!l) return false;
     for (const i of l) {
       const s = this.shapes[i];
+      if (skip > 0 && s.tag === skip) continue;
       const dx = x - s.x;
       const dz = z - s.z;
       if (!s.rect) {
@@ -90,7 +94,11 @@ export class Solids {
 }
 
 /** Props, lots, landmarks, fixtures and docks as blockers (with the content margins). */
-export function buildSolids(ctx: LifeCtx): Solids {
+export function buildSolids(
+  ctx: LifeCtx,
+  /** Margins (u) around props / fixtures and lots; default: the roaming critters' (LAND). */
+  margins: { solid: number; lot: number } = { solid: LAND.solidMargin, lot: LAND.lotMargin },
+): Solids {
   const sol = new Solids();
   const w = ctx.world;
   const P = w.props;
@@ -100,20 +108,20 @@ export function buildSolids(ctx: LifeCtx): Solids {
       if (!def || def.flags & PropFlag.groundCover) continue;
       const r = def.footprint * (P.scale[i] || 1);
       if (r < LAND.solidMinFootprint) continue;
-      sol.disc(P.x[i], P.z[i], r + LAND.solidMargin);
+      sol.disc(P.x[i], P.z[i], r + margins.solid);
     }
   }
   for (const l of w.lots ?? []) {
-    sol.rect(l.x, l.z, l.rotY, l.d + 2 * LAND.lotMargin, l.w + 2 * LAND.lotMargin);
+    sol.rect(l.x, l.z, l.rotY, l.d + 2 * margins.lot, l.w + 2 * margins.lot);
   }
   for (const m of w.landmarks ?? []) {
     const spec = LANDMARKS[m.kind];
     const r = spec?.radius ?? 0;
     if (r > 0) sol.disc(m.x, m.z, r + LAND.landmarkMargin);
   }
-  for (const f of w.fixtures ?? []) {
-    sol.disc(f.x, f.z, (FIXTURE_RADIUS[f.defId] ?? 0.6) + LAND.solidMargin);
-  }
+  (w.fixtures ?? []).forEach((f, k) => {
+    sol.disc(f.x, f.z, (FIXTURE_RADIUS[f.defId] ?? 0.6) + margins.solid, k + 1);
+  });
   for (const d of w.docks ?? []) {
     const len = d.segments * 2;
     sol.rect(
@@ -140,6 +148,22 @@ export function makeMask(
     if (!ok[ctx.zone(x, z)]) return false;
     if (maxDepth !== undefined && ctx.h(x, z) < -maxDepth) return false;
     return !solids.hit(x, z);
+  };
+}
+
+/** Like `makeMask`, but a fixture's own footprint (tag = fixture index + 1) does not block. */
+export function makeStopMask(
+  ctx: LifeCtx,
+  solids: Solids,
+  zones: readonly number[],
+  maxDepth?: number,
+): (x: number, z: number, skip: number) => boolean {
+  const ok = new Uint8Array(16);
+  for (const z of zones) ok[z] = 1;
+  return (x, z, skip) => {
+    if (!ok[ctx.zone(x, z)]) return false;
+    if (maxDepth !== undefined && ctx.h(x, z) < -maxDepth) return false;
+    return !solids.hit(x, z, skip);
   };
 }
 

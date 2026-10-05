@@ -168,12 +168,13 @@ export function buildWorker(): THREE.BufferGeometry {
   b.clearLimb();
 
   accessories(b);
+  items(b);
   return b.finish();
 }
 
 /**
- * The 7 department accessories (content/themes `accessory` = index), tagged mode 8. Slots 7.. are
- * reserved for carried items (content/themes CARRIED_ITEM_SLOT, M14c TASK-383).
+ * The 7 department accessories (content/themes `accessory` = index), tagged mode 8. Slots 7..10 are
+ * the carried items (`items`, content/themes CARRIED_ITEM_SLOT).
  */
 function accessories(b: TriBuilder): void {
   const A = W.acc;
@@ -238,5 +239,46 @@ function accessories(b: TriBuilder): void {
     b.setEmissive(0);
   }
   b.box(v3(-HEAD_HX - 0.01, HEAD_TOP - 0.06, 0), 0.012, 0.026, 0.262, hex(A.strap));
+  b.clearLimb();
+}
+
+/**
+ * Carried items (CARRIED_ITEM_SLOT, TASK-383), tagged mode 8 slots 7..10 and held in front of the
+ * body so they read from the side and the front: a closed laptop hugged to the chest, a clipboard
+ * in the right hand, a crate in both arms, a paint pot with a brush in the right hand. They show
+ * together with the department accessory (two-slot decode, life-material.ts).
+ */
+function items(b: TriBuilder): void {
+  const I = W.item;
+  const tag = (slot: number): void => b.setLimb(slot, HEAD_Y, 0, 8);
+
+  // 7 laptop
+  tag(7);
+  b.box(v3(0.2, 0.37, 0), 0.016, 0.1, 0.15, hex(I.laptopBase));
+  b.box(v3(0.218, 0.37, 0), 0.006, 0.09, 0.14, hex(I.laptopLid));
+  b.setEmissive(2);
+  b.box(v3(0.226, 0.38, 0), 0.004, 0.025, 0.03, hex(I.laptopLogo));
+  b.setEmissive(0);
+
+  // 8 clipboard
+  tag(8);
+  b.box(v3(0.2, 0.35, 0.13), 0.012, 0.125, 0.095, hex(I.board));
+  b.box(v3(0.214, 0.35, 0.13), 0.005, 0.105, 0.078, hex(I.paper));
+  b.box(v3(0.216, 0.455, 0.13), 0.012, 0.022, 0.04, hex(I.clip));
+  for (const dy of [-0.04, 0.04])
+    b.box(v3(0.221, 0.34 + dy, 0.13), 0.003, 0.006, 0.055, hex(I.ink));
+
+  // 9 crate
+  tag(9);
+  b.box(v3(0.28, 0.3, 0), 0.1, 0.085, 0.16, hex(I.crate), hex(I.parcel));
+  for (const dy of [-0.045, 0.045])
+    b.box(v3(0.28, 0.3 + dy, 0), 0.103, 0.014, 0.163, hex(I.crateSlat));
+
+  // 10 paint pot + brush
+  tag(10);
+  b.frustum(v3(0.22, 0.12, 0.2), 0.065, 0.075, 0.115, 8, hex(I.pot), hex(I.paint));
+  b.box(v3(0.2, 0.33, 0.2), 0.01, 0.12, 0.01, hex(I.brush));
+  b.box(v3(0.2, 0.465, 0.2), 0.016, 0.03, 0.016, hex(I.paint));
+
   b.clearLimb();
 }

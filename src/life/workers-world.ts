@@ -4,7 +4,7 @@
  * seats, quotas and spawn points. Seats come from `content/offices.ts` WORK_SPOTS through
  * `world/lot-frame.ts`, i.e. exactly where the interior geometry builds its desks.
  */
-import { STILT_SPUR, WORKERS } from '../content/life.ts';
+import { ACTIVITY, STILT_SPUR, WORKERS } from '../content/life.ts';
 import {
   INTERIOR_OF,
   OFFICE_DEFS,
@@ -211,6 +211,8 @@ export interface WorkerSpawn {
   seat: number;
   /** Outpost anchor index to start at. */
   anchor: number;
+  /** Near-focus ambient slot (M14c): asleep until the camera focuses its island. */
+  ambient?: boolean;
 }
 
 export interface WorkerPlan {
@@ -339,4 +341,38 @@ export function planWorkers(
       spawns.push({ island: it.id, theme: it.theme, comp: it.comp, node, seat: -1, anchor: -1 });
   });
   return { spawns, seats, anchors };
+}
+
+/**
+ * Near-focus ambient slots (TASK-383): `round(ACTIVITY.slots[theme] × scale)` per island that hosts
+ * workers (a walk graph, or an outpost with ≥ 2 anchors; outposts take at most
+ * `ACTIVITY.outpostSlots`). They carry no start position: a slot is placed when it wakes.
+ */
+export function planAmbient(
+  ctx: Pick<LifeCtx, 'world'>,
+  base: WorkerPlan,
+  comps: readonly number[],
+  scale: number,
+): WorkerSpawn[] {
+  const out: WorkerSpawn[] = [];
+  if (!(scale > 0)) return out;
+  ctx.world.islands.forEach((isl, id) => {
+    const comp = comps[id] ?? -1;
+    if (comp < 0 && (base.anchors[id]?.length ?? 0) < 2) return;
+    const want = ACTIVITY.slots[isl.theme] ?? 0;
+    const room = Math.min(want, comp < 0 ? ACTIVITY.outpostSlots : want);
+    // at least 3 where the island can host them: a thin campus is still a campus at low quality
+    const n = Math.max(Math.round(room * scale), Math.min(room, 3));
+    for (let k = 0; k < n; k++)
+      out.push({
+        island: id,
+        theme: isl.theme,
+        comp,
+        node: -1,
+        seat: -1,
+        anchor: -1,
+        ambient: true,
+      });
+  });
+  return out;
 }

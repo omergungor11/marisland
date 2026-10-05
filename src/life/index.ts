@@ -1,5 +1,14 @@
 import * as THREE from 'three';
-import { CATS, CRABS, GULLS, LIFE_PLAN, SHEEP, VILLAGERS, WORKER_ZONES } from '../content/life.ts';
+import {
+  ACTIVITY,
+  CATS,
+  CRABS,
+  GULLS,
+  LIFE_PLAN,
+  SHEEP,
+  VILLAGERS,
+  WORKER_ZONES,
+} from '../content/life.ts';
 import type { System } from '../core/loop.ts';
 import { AmbientScheduler } from './ambient.ts';
 import {
@@ -18,7 +27,7 @@ import { flockCentres, Gulls, type Perch } from './gulls.ts';
 import type { Cats, Crabs, Sheep, Villagers } from './land.ts';
 import { Fireflies, planSwarms } from './fireflies.ts';
 import { createLandKinds, type LandKind } from './land.ts';
-import { buildSolids, buildWalkGraph, makeMask } from './land-world.ts';
+import { buildSolids, buildWalkGraph, makeMask, makeStopMask } from './land-world.ts';
 import { createWorkers, type Workers } from './workers.ts';
 
 export type { LifeDeps } from './ctx.ts';
@@ -128,6 +137,7 @@ export function createLife(deps: LifeDeps): LifeSystem {
   }
 
   const solids = buildSolids(ctx);
+  const stopSolids = buildSolids(ctx, ACTIVITY.stopMargin);
   const graph = buildWalkGraph(ctx);
   const land = createLandKinds(base, ctx, plan, {
     graph,
@@ -141,6 +151,7 @@ export function createLife(deps: LifeDeps): LifeSystem {
   kinds.workers = createWorkers(base, ctx, plan, {
     graph,
     mask: makeMask(ctx, solids, WORKER_ZONES, -VILLAGERS.minWalkY),
+    stopMask: makeStopMask(ctx, stopSolids, WORKER_ZONES, -VILLAGERS.minWalkY),
   });
   const landKinds: LandKind[] = [
     land.villagers,
