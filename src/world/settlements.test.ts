@@ -2,6 +2,7 @@ import { perfLimit } from '../test/perf.ts';
 import { describe, expect, it } from 'vitest';
 import {
   DOCK,
+  FIXTURE_RADIUS,
   LANDMARKS,
   LOT_ROLE_BY_KIND,
   LOT_ROOFS,
@@ -389,6 +390,12 @@ describe('settlements — 20-seed sweep', () => {
     }
     console.info(`route samples checked: ${samples}; docks on a route: ${visited}/${docks}`);
     expect(visited / docks).toBeGreaterThan(0.75);
+  });
+
+  it('every fixture def has a FIXTURE_RADIUS (worldgen obstacle, life solid)', () => {
+    for (const seed of SEEDS.slice(0, 8))
+      for (const f of world(seed).fixtures)
+        expect(FIXTURE_RADIUS[f.defId], `seed ${seed} ${f.defId}`).toBeGreaterThan(0);
   });
 
   it('no lot overlaps another lot or a landmark', () => {

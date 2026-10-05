@@ -9,6 +9,7 @@
  * along (sin face, cos face), i.e. 0 = towards the door side.
  */
 import type { LotKind, ThemeId } from '../world/types.ts';
+import { COOLING_TOWER_HEIGHTS } from './props-themes/devops.ts';
 
 export interface OfficeDef {
   theme: ThemeId;
@@ -207,7 +208,8 @@ export interface EmitterSpot {
   x: number;
   y: number;
   z: number;
-  preset: 'chimney' | 'vent';
+  /** 'spring': the hot-spring puff (bigger, slower) for tall stacks (cooling towers). */
+  preset: 'chimney' | 'vent' | 'spring';
 }
 
 /** Smoke / steam emitters per lot def (generalises the hard-coded chimneys). */
@@ -221,4 +223,19 @@ export const EMITTERS: Readonly<Record<string, readonly EmitterSpot[]>> = {
     { x: 2.2, y: 3.35, z: -1.0, preset: 'vent' },
   ],
   rackShed: [{ x: 0.8, y: 3.05, z: -0.5, preset: 'vent' }],
+  // steam over the cup sign on the roof (geo/offices.ts coffeeKiosk)
+  coffeeKiosk: [{ x: 0, y: 2.75, z: -0.2, preset: 'vent' }],
+};
+
+/**
+ * Steam emitters of single props (settlement fixtures and scattered props), per variant, in the
+ * prop's local frame (rotated by its yaw, scaled by its scale; y above the prop's pivot). Mirrors
+ * the geometry hooks (`userData.hooks.emitter`, geo/themes/devops.ts).
+ */
+export const FIXTURE_EMITTERS: Readonly<Record<string, readonly (readonly EmitterSpot[])[]>> = {
+  coolingTower: COOLING_TOWER_HEIGHTS.map((h) => [{ x: 0, y: h + 0.2, z: 0, preset: 'spring' }]),
+  steamVent: [
+    [{ x: 0, y: 0.8, z: 0, preset: 'vent' }],
+    [{ x: -0.16, y: 0.75, z: 0.04, preset: 'vent' }],
+  ],
 };

@@ -28,6 +28,7 @@ export const QA_THEME: ThemeDef = {
     ['bench', 1],
   ],
   pathLanterns: 0.4,
+  plazaDecor: { posts: 'lanternPost', seats: 'checklistBoard', across: null },
   workers: { weight: 0.9, cap: 7, deskShare: 0.4 },
   accessory: 3,
   ground: {

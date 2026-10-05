@@ -400,9 +400,8 @@ export const planCoding: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   const T = P.turbine;
   const turbines: number[] = [];
   const addTurbine = (p: XZ, rotY: number): void => {
+    // obstacle + flatten pad from LANDMARKS.windTurbine (= T.radius / T.flatten)
     const li = pushLandmark(ctx, isl, 'windTurbine', p, rotY);
-    addShape(ctx, isl, discShape(p.x, p.z, T.radius), true);
-    addPad(ctx, isl, discShape(p.x, p.z, T.flatten), FLATTEN.discMargin);
     plan.landmarks.push(li);
     turbines.push(li);
   };
