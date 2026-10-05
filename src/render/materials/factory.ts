@@ -20,7 +20,8 @@ import { MIST_GLSL } from '../shaders/chunks/mist.glsl.ts';
  *
  * Geometry attributes read (all optional — `defaultAttributeValues` keeps the
  * neutral value when absent): `wind` (sway weight 0..1), `ao` (×vColor),
- * `aSeed` (hash), `aAppear` (bloom-in start time, s), `emissive` (night glow 0..1).
+ * `aSeed` (hash), `aAppear` (bloom-in start time, s), `emissive` (night glow 0..1; ≥ 1.5 = screen
+ * class, mask = emissive − 1, glows dimly by day too — TASK-305).
  */
 export interface LitFeatures {
   /** Informational: instancing is detected by three (USE_INSTANCING); not part of the key. */
@@ -126,6 +127,7 @@ const f = (v: number): string => v.toFixed(6);
 /** Gust adds up to this many radians of blade angle as a gust front passes. */
 const WINDMILL_GUST_BOOST = 1.5;
 const DEG = Math.PI / 180;
+const SCREEN = NIGHT.screenFlicker;
 
 /** Vertex pars shared by the colour and depth programs. Insert after `#include <common>`. */
 const VERTEX_PARS = /* glsl */ `
@@ -254,7 +256,15 @@ const VERTEX_CLOUD = /* glsl */ `
   // hover / click flash (TASK-162): the instance whose origin matches uHover.xyz
   vMarHover = (uHover.w > 0.0 && distance(marOrigin, uHover.xyz) < ${f(HOVER_RADIUS)}) ? uHover.w : 0.0;
   #ifdef MAR_EMISSIVE
-  if (vMarEmissive > 0.0) {
+  if (vMarEmissive >= 1.5) {
+    // screen class (TASK-305): mask = emissive − 1; dim by day, full with the lamps ramp (no
+    // stagger, never off late) + a slow flicker and a soft band scrolling down the screen.
+    // Phase: origin hash for static props (stagger mode), aSeed for movers (worker eyes).
+    float marSh = uLampMode.x > 0.5 ? marHash12(marOrigin.xz * 0.731 + 3.7) : fract(aSeed * 7.31 + 0.5);
+    float marSm = uMotionScale * (${f(SCREEN.amp)} * sin(uTime * ${f((2 * Math.PI) / SCREEN.period)} + marSh * 37.0)
+      + ${f(SCREEN.scrollAmp)} * sin((vMarWorldY + uTime * ${f(SCREEN.scrollSpeed)}) * ${f((2 * Math.PI) / SCREEN.scrollLength)} + marSh * 13.0));
+    vMarEmissive = (vMarEmissive - 1.0) * mix(${f(NIGHT.screenDay)}, 1.0, uLamps.x) * (1.0 + marSm);
+  } else if (vMarEmissive > 0.0) {
     float marLh = marHash12(marOrigin.xz * 0.731 + 3.7);
     // switch-on: one by one inside the lamps ramp (staggered) or all together
     float marOn = uLampMode.x > 0.5

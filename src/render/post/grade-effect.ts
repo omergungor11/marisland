@@ -10,7 +10,7 @@ import { POST } from '../../content/lighting.ts';
  *  - lifted blacks (darks only),
  *  - golden-hour warm overlay (6 % × uGolden toward #FFB866, luminance kept),
  *  - night: luminance-kept shift toward a moonlit blue (spares emissives and warm lamp-lit
- *    pixels — lantern pools, windows — by hue),
+ *    pixels — lantern pools, windows — and bright cyan/blue screens by hue),
  *  - coloured vignette (intensity 0.22, softness 0.6, colour #2A2350) — pmndrs'
  *    VignetteEffect can only darken to black, hence the custom effect.
  * Bypassed in debug-mask mode so mask colours stay exact.
@@ -28,6 +28,7 @@ uniform float uNight;
 uniform float uGoldenLift;
 uniform float uNightLift;
 uniform float uWSat;
+uniform vec4 uScreenSpare;
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
   vec3 c = max(inputColor.rgb, 0.0);
@@ -47,7 +48,11 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   float warm = max(
     (1.0 - smoothstep(0.12, 0.4, c.b / max(c.r, 1e-4))) * smoothstep(0.01, 0.06, c.r),
     smoothstep(0.04, 0.16, c.r - c.b));
-  spare *= 1.0 - warm;
+  // screens (TASK-305): bright, saturated cyan/blue pixels keep their hue too; the luminance gate
+  // sits above moonlit sky/water/halo so only emissive screens qualify
+  float cool = smoothstep(uScreenSpare.x, uScreenSpare.y, l)
+    * smoothstep(uScreenSpare.z, uScreenSpare.w, 1.0 - c.r / max(max(c.g, c.b), 1e-4));
+  spare *= (1.0 - warm) * (1.0 - cool);
   c = mix(c, uNightTint * l, uNight * spare);
   c += uNightTint * (uNightLift * (1.0 - smoothstep(0.0, 0.05, l)));
   vec2 p = (uv - 0.5) * vec2(aspect, 1.0);
@@ -84,6 +89,7 @@ export class MarGradeEffect extends Effect {
         ['uGoldenLift', new THREE.Uniform(0)],
         ['uNightLift', new THREE.Uniform(0)],
         ['uWSat', new THREE.Uniform(0)],
+        ['uScreenSpare', new THREE.Uniform(new THREE.Vector4(...POST.nightScreenSpare))],
       ]),
     });
   }

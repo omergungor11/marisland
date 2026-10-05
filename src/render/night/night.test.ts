@@ -10,7 +10,9 @@ import {
 import { createPropStore, PropFlag } from '../../world/prop-store.ts';
 import { PROP_DEF_INDEX } from '../../content/props.ts';
 import { buildBeamGeometry } from './beam.ts';
-import { BEAM, POOLS } from '../../content/lighting.ts';
+import * as THREE from 'three';
+import { BEAM, NIGHT, POOLS, POST } from '../../content/lighting.ts';
+import { makeLitMaterial } from '../materials/factory.ts';
 import { POOL_HEIGHT_RANGE } from '../shaders/chunks/night.glsl.ts';
 
 describe('lantern pools (TASK-171)', () => {
@@ -141,5 +143,70 @@ describe('lighthouse beam geometry (TASK-171)', () => {
     expect(maxX).toBeCloseTo(BEAM.length, 3);
     expect(g.boundingSphere?.radius).toBeGreaterThanOrEqual(BEAM.length);
     g.dispose();
+  });
+});
+
+describe('screen emissive class (TASK-305)', () => {
+  const litVertex = (): string => {
+    const shader = {
+      uniforms: {} as Record<string, THREE.IUniform>,
+      defines: {} as Record<string, unknown>,
+      vertexShader: THREE.ShaderLib.lambert.vertexShader,
+      fragmentShader: THREE.ShaderLib.lambert.fragmentShader,
+    };
+    makeLitMaterial({ emissive: true }).onBeforeCompile(shader as never, undefined as never);
+    return shader.vertexShader;
+  };
+
+  it('day glow of a white screen stays under the bloom threshold', () => {
+    expect(NIGHT.screenDay).toBeGreaterThan(0);
+    expect(NIGHT.screenDay * NIGHT.emissiveGain).toBeLessThan(POST.bloomThreshold);
+    const fl = NIGHT.screenFlicker;
+    expect(fl.amp + fl.scrollAmp).toBeLessThan(0.2);
+  });
+
+  it('screens branch off before the lamp switch and never go dark late', () => {
+    const vs = litVertex();
+    const a = vs.indexOf('if (vMarEmissive >= 1.5)');
+    const b = vs.indexOf('} else if (vMarEmissive > 0.0)');
+    expect(a).toBeGreaterThan(0);
+    expect(b).toBeGreaterThan(a);
+    const screen = vs.slice(a, b);
+    expect(screen).toContain('uLamps.x');
+    expect(screen).not.toContain('uLamps.y');
+    expect(screen).not.toContain('uLampMode.y');
+  });
+
+  // TS twin of the grade's screen spare (grade-effect.ts, linear HDR input)
+  const cool = (r: number, g: number, b: number): number => {
+    const ss = (e0: number, e1: number, x: number): number => {
+      const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
+      return t * t * (3 - 2 * t);
+    };
+    const [l0, l1, c0, c1] = POST.nightScreenSpare;
+    const l = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    return ss(l0, l1, l) * ss(c0, c1, 1 - r / Math.max(g, b, 1e-4));
+  };
+
+  it('night grade spares bright cyan/blue screens, not moonlit blues or warm lamps', () => {
+    const lin = (hex: string, k: number): [number, number, number] => {
+      const c = new THREE.Color(hex);
+      return [c.r * k, c.g * k, c.b * k];
+    };
+    // a lit screen: albedo × (1 + emissiveGain)
+    expect(cool(...lin('#4FD2FF', 1 + NIGHT.emissiveGain))).toBe(1);
+    expect(cool(...lin('#3C7BFF', 1 + NIGHT.emissiveGain))).toBeGreaterThan(0.5);
+    // moonlit teal roof / night water / moon-halo sky: too dark to qualify
+    expect(cool(...lin('#3FA7B0', 0.35))).toBe(0);
+    expect(cool(...lin('#1B3A6B', 1))).toBe(0);
+    // warm window / lantern: chroma test fails (red is the largest channel)
+    expect(cool(...lin('#FFB347', 3))).toBe(0);
+  });
+
+  it('pool sources for the Phase 3 lamps', () => {
+    for (const geo of ['stoneLantern', 'coffeeKiosk', 'broadcastStudio']) {
+      expect(POOLS.sources[geo]?.radius).toBeGreaterThan(0);
+    }
+    expect(NIGHT.alwaysOn).toContain('stoneLantern');
   });
 });
