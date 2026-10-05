@@ -354,7 +354,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
         const col = base.getAttribute('color') as THREE.BufferAttribute;
         const arr = Float32Array.from(col.array as Float32Array);
         for (let v = 0; v < col.count; v++) {
-          if (!isCanopy(arr[v * 3], arr[v * 3 + 1])) continue;
+          if (!isCanopy(arr[v * 3], arr[v * 3 + 1], arr[v * 3 + 2])) continue;
           for (let c = 0; c < 3; c++) arr[v * 3 + c] *= own[c] > 0 ? target[c] / own[c] : 1;
         }
         g = new THREE.BufferGeometry();

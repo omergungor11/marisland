@@ -144,8 +144,10 @@ export interface CanopyStats {
   rgb: Rgb;
 }
 
-/** Green vertices (g > r) are canopy; trunks and wood are not. */
-export const isCanopy = (r: number, g: number): boolean => g > r;
+/**
+ * Canopy = green (g > r) or blossom pink/lilac (b > g); trunks and wood are browns (r > g > b).
+ */
+export const isCanopy = (r: number, g: number, b: number): boolean => g > r || b > g;
 
 /**
  * Canopy stats of a non-indexed (or indexed) triangle soup: `position` / `color` xyz triplets,
@@ -177,7 +179,7 @@ export function canopyStats(
     for (const i of [i0, i1, i2]) {
       const cr = color[i * 3];
       const cg = color[i * 3 + 1];
-      if (canopyOnly && !isCanopy(cr, cg)) continue;
+      if (canopyOnly && !isCanopy(cr, cg, color[i * 3 + 2])) continue;
       const k = (ao ? ao[i] : 1) * (wy / 3);
       r += cr * k;
       g += cg * k;

@@ -405,8 +405,9 @@ describe('T0 blobs and grounding (TASK-373)', () => {
       const blobs = b.groups.filter((g) => g.def.id === 'treeBlob');
       expect(blobs.every((g) => g.bucket === ALL_ISLANDS)).toBe(true);
       const err = blobErrors(props, b);
-      // 3 pure kinds + a few blends; was one group per island × variant (~18)
-      expect(blobs.length).toBeLessThanOrEqual(10);
+      // 3 pure kinds + a few blends, plus theme palettes (Design blossom); was one group per
+      // island × variant (~18). Each class costs one T0 draw call.
+      expect(blobs.length).toBeLessThanOrEqual(14);
       expect(err.length).toBe([...b.clusters.cells.values()].filter((c) => c.n).length);
       expect(Math.max(...err), `seed ${seed}`).toBeLessThanOrEqual(4);
     }
