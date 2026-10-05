@@ -90,9 +90,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "d1121c38c86ab914",
-          "1001": "280861f1f77c138f",
-          "42": "67de7a8dc8fe8ce7",
+          "1": "757c0006fc252c56",
+          "1001": "8c7bdc0050f1e1fd",
+          "42": "c5c65a581fbeca45",
         }
       `);
     },
@@ -243,7 +243,8 @@ describe('archipelago — 30-seed full generation', () => {
           }
           case 'millbrook':
             expect(isl.peakY, ctx).toBeLessThanOrEqual(8.5);
-            expect(sum(zc, [Zone.field]), ctx).toBeGreaterThan(land * 0.2);
+            // 7-island rosters (D-024) reach a 19.8 % tail (seed 7312); median ≈ 35 %
+            expect(sum(zc, [Zone.field]), ctx).toBeGreaterThan(land * 0.18);
             expect(isl.anchors.knoll0 && isl.anchors.knoll1 && isl.anchors.pond, ctx).toBeTruthy();
             break;
           case 'mossgrove':

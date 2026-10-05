@@ -55,7 +55,8 @@ export const hashBytes = (arr: Uint8Array): string => new StageHash().bytes(arr)
 export function hashLayout(windDir: number, islands: IslandData[]): string {
   const h = new StageHash().float(windDir).u32(islands.length);
   for (const isl of islands) {
-    h.u32(isl.id).str(isl.archetype).str(isl.name).float(isl.cx).float(isl.cz).float(isl.radius);
+    h.u32(isl.id).str(isl.archetype).str(isl.theme).str(isl.name);
+    h.float(isl.cx).float(isl.cz).float(isl.radius);
     h.float(isl.minX).float(isl.minZ).float(isl.maxX).float(isl.maxZ);
   }
   return h.hex();

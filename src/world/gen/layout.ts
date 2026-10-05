@@ -102,7 +102,9 @@ function pickCount(rng: Rng): number {
 /**
  * Roster rules (ART_BIBLE §4): Hearthholm always, ≥ 1 tall landmark island,
  * no repeats, 2–3 mediums, ≥ 1 small/tiny, hero largest. Lonely Palm in
- * ~LAYOUT.lonelyPalmChance of seeds. Returns entries in ARCHETYPE_ORDER.
+ * ~LAYOUT.lonelyPalmChance of seeds, always at count 7. Phase 3 always rolls 7 (all
+ * archetypes, one per theme): the tall-landmark rule then holds trivially and the 4th
+ * medium (Palmlagoon) is demoted to its `demotedDiameter`. Returns entries in ARCHETYPE_ORDER.
  */
 export function pickRoster(rng: Rng): RosterEntry[] {
   const count = pickCount(rng.fork('count'));
