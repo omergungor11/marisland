@@ -74,7 +74,7 @@ import { ALWAYS_APPEAR, APPEAR_OUT_SECONDS, HIDDEN_APPEAR, encodeAppearOut } fro
  * office shells are tier 0 in content already; the flag adds stiltHut / hotSpring / sunkenShip
  * and, on legacy worlds, cottages / barns / cabins). TODO(content): move the flag to src/content.
  */
-export const STRUCTURES_FROM_T0 = false;
+export const STRUCTURES_FROM_T0 = true;
 /** A structure this large (height, or both plan extents, in u) exists from T0 (D-031). */
 export const STRUCTURE_MIN_SIZE = 3;
 /** Smooth-twin grounding threshold |smooth − bilinear| (u). */

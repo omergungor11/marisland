@@ -217,6 +217,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     castShadows: d.quality !== 'low',
     interiorShadows: d.quality === 'high',
     instantEdits: d.instantEdits ?? false,
+    world: { height: world.height, islands: world.islands },
   });
   group.add(props.group);
   const rebuild = createRebuilder({
