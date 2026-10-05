@@ -1,4 +1,5 @@
 import { createRng } from '../core/rng.ts';
+import { OFFICE_INTERIOR_SHELLS } from '../content/offices.ts';
 import { bush, cropRow, flower, grassTuft, haybale, lilyPad, reeds, rockCluster } from './small.ts';
 import {
   barn,
@@ -40,6 +41,29 @@ import {
   sunkenShip,
   volcanoCrater,
 } from './landmarks.ts';
+import { officeInterior } from './interiors.ts';
+import {
+  antennaMast,
+  atelier,
+  billboard,
+  broadcastStudio,
+  coffeeKiosk,
+  dataCenter,
+  devOffice,
+  devPod,
+  galleryPavilion,
+  hqAnnex,
+  hqOffice,
+  inspectionTower,
+  meetingPavilion,
+  officeLod1,
+  rackShed,
+  researchHut,
+  serverShed,
+  telescope,
+  testLab,
+  testLabStilt,
+} from './offices.ts';
 import { giantMushroom, palm, pine, roundTree, treeBlob } from './trees.ts';
 import type { Lod, PropGeoDef } from './types.ts';
 import type * as THREE from 'three';
@@ -140,12 +164,42 @@ defs.push(
   D('well', 2, well, 1.1, 1.8),
   D('steppingStone', 3, steppingStone, 0.3, 0.1),
   // landmarks
-  D('lighthouse', 2, lighthouse, 2.6, 13.2),
-  D('clocktower', 2, clocktower, 2.0, 11.2),
+  D('lighthouse', 3, lighthouse, 2.6, 13.2),
+  D('clocktower', 3, clocktower, 2.0, 11.2),
   D('giantTree', 2, giantTree, 4.5, 18.5, true),
   D('sunkenShip', 2, sunkenShip, 5.5, 6),
   D('hotSpring', 1, hotSpring, 3.5, 1),
   D('volcanoCrater', 1, volcanoCrater, 5.4, 0.34),
+  // phase-3 office shells (footprints from content/offices.ts), far proxy, interiors, fixtures
+  D('hqOffice', 2, hqOffice, 3.6, 5.4),
+  D('hqAnnex', 2, hqAnnex, 2.2, 7.9),
+  D('meetingPavilion', 2, meetingPavilion, 2.8, 4.1),
+  D('coffeeKiosk', 2, coffeeKiosk, 1.5, 2.75),
+  D('devOffice', 2, devOffice, 4.0, 3.9, false, [4.1, 3.7]),
+  D('devPod', 2, devPod, 2.2, 3.25, false, [3.1, 3.4]),
+  D('serverShed', 2, serverShed, 2.1, 3),
+  D('broadcastStudio', 2, broadcastStudio, 2.7, 4.7),
+  D('billboard', 2, billboard, 2.2, 4.6),
+  D('testLab', 2, testLab, 3.2, 5.1),
+  D('inspectionTower', 2, inspectionTower, 1.9, 6.35),
+  D('testLabStilt', 2, testLabStilt, 2.2, 4.4),
+  D('atelier', 2, atelier, 3.2, 3.55),
+  D('galleryPavilion', 2, galleryPavilion, 2.8, 3.6),
+  D('dataCenter', 2, dataCenter, 4.0, 3.25),
+  D('rackShed', 2, rackShed, 2.1, 3),
+  D('antennaMast', 2, antennaMast, 1.4, 9.2, false, [9.8, 8.6]),
+  D('researchHut', 2, researchHut, 2.3, 4.4),
+  D('telescope', 2, telescope, 0.6, 1.65),
+  D('officeLod1', 4, officeLod1, 4.0, 4, false, [3.5, 3.2, 2.9, 6.9]),
+  D(
+    'officeInterior',
+    OFFICE_INTERIOR_SHELLS.length,
+    officeInterior,
+    3.6,
+    1.6,
+    false,
+    [1.27, 1.08, 1.29, 1.18, 1.92, 1.29, 2.42, 1.6, 2.05, 1.66],
+  ),
 );
 
 export const PROP_GEO: Record<string, PropGeoDef> = Object.fromEntries(defs.map((d) => [d.id, d]));

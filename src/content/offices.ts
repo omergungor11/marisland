@@ -109,8 +109,8 @@ export const WORK_SPOTS: Readonly<Record<string, readonly WorkSpot[]>> = {
   ],
   inspectionTower: [{ x: 0, z: 0.5, face: 0, pose: 'look', sit: 0 }],
   testLabStilt: [
-    { x: -0.5, z: 0.6, face: 0, pose: 'inspect', sit: 0 },
-    { x: 0.6, z: 0.6, face: 0, pose: 'type', sit: S },
+    { x: -0.5, z: 0.2, face: 0, pose: 'inspect', sit: 0 },
+    { x: 0.6, z: 0.2, face: 0, pose: 'type', sit: S },
   ],
   // Design
   atelier: [
@@ -134,7 +134,7 @@ export const WORK_SPOTS: Readonly<Record<string, readonly WorkSpot[]>> = {
   // Research
   researchHut: [
     { x: -0.5, z: 0.6, face: 0, pose: 'type', sit: S },
-    { x: 0.7, z: 0.4, face: PI / 2, pose: 'inspect', sit: 0 },
+    { x: 0.6, z: 0.4, face: PI / 2, pose: 'inspect', sit: 0 },
   ],
   // legacy: a bench spot just outside the door
   cottage: [{ x: 0.9, z: 2.0, face: 0, pose: 'look', sit: S }],
@@ -175,10 +175,10 @@ export const EMITTERS: Readonly<Record<string, readonly EmitterSpot[]>> = {
   cottage: [{ x: -0.9, y: 3.6, z: 0.4, preset: 'chimney' }],
   logCabin: [{ x: -0.9, y: 3.6, z: 0.4, preset: 'chimney' }],
   towerHouse: [{ x: -0.9, y: 6, z: 0.4, preset: 'chimney' }],
-  serverShed: [{ x: 0.8, y: 2.6, z: -0.5, preset: 'vent' }],
+  serverShed: [{ x: 0.8, y: 3.05, z: -0.5, preset: 'vent' }],
   dataCenter: [
-    { x: -2.2, y: 3.0, z: -1.0, preset: 'vent' },
-    { x: 2.2, y: 3.0, z: -1.0, preset: 'vent' },
+    { x: -2.2, y: 3.35, z: -1.0, preset: 'vent' },
+    { x: 2.2, y: 3.35, z: -1.0, preset: 'vent' },
   ],
-  rackShed: [{ x: 0.8, y: 2.6, z: -0.5, preset: 'vent' }],
+  rackShed: [{ x: 0.8, y: 3.05, z: -0.5, preset: 'vent' }],
 };
