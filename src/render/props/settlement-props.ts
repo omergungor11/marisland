@@ -3,7 +3,7 @@ import { PROP_DEFS, PROP_DEF_INDEX } from '../../content/props.ts';
 import { THEMES } from '../../content/themes.ts';
 import { EMITTERS, INTERIOR_OF, OFFICE_DEFS, type EmitterSpot } from '../../content/offices.ts';
 import { createPropStore, PropFlag, type PropStore } from '../../world/prop-store.ts';
-import { heightAt, type ThemeId, type WorldData } from '../../world/types.ts';
+import { heightAt, type WorldData } from '../../world/types.ts';
 import { lotLocalToWorld, lotYaw } from '../../world/lot-frame.ts';
 import { chunkIdAt } from '../../world/gen/scatter.ts';
 
@@ -25,20 +25,6 @@ const LANDMARK_DEF: Record<string, { def: string; scale: number; underwater?: bo
   sunkenShip: { def: 'sunkenShip', scale: 1, underwater: true },
   giantTree: { def: 'giantTree', scale: 1 },
   lonelyPalm: { def: 'palm', scale: 1.35 },
-};
-
-/**
- * Path lanterns per theme: chance per sampled path node (every 5th). hq / coding keep the
- * pre-Phase-3 village density. TODO(content): belongs in ThemeDef (content/themes.ts).
- */
-const PATH_LANTERNS: Readonly<Record<ThemeId, number>> = {
-  hq: 0.6,
-  coding: 0.6,
-  devops: 0.5,
-  marketing: 0.4,
-  qa: 0.4,
-  design: 0.35,
-  research: 0,
 };
 
 export interface SettlementEmitters {
@@ -322,7 +308,7 @@ export function appendSettlementProps(world: WorldData): {
       ] - 1;
     if (isl < 0) continue;
     const theme = world.islands[isl]?.theme;
-    const p = theme ? PATH_LANTERNS[theme] : 0;
+    const p = theme ? THEMES[theme].pathLanterns : 0;
     if (!(p > 0) || !rng.chance(p)) continue;
     push(
       'lanternPost',

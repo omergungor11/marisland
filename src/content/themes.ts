@@ -31,6 +31,8 @@ export interface ThemeDef {
   landmarkVariant: Readonly<Record<string, number>>;
   /** Decor beside themed lots: [prop def id, weight]. */
   decor: readonly (readonly [string, number])[];
+  /** Chance of a lantern post per path junction on this island. */
+  pathLanterns: number;
   /** Worker allocation weight, cap per island, share seated at t = 0. */
   workers: { weight: number; cap: number; deskShare: number };
   /** Worker accessory index (creature shader mode 8). */
@@ -57,6 +59,7 @@ export const THEMES: Readonly<Record<ThemeId, ThemeDef>> = {
       ['flowerBed', 2],
       ['lanternPost', 1],
     ],
+    pathLanterns: 0.6,
     workers: { weight: 1.4, cap: 12, deskShare: 0.5 },
     accessory: 0,
   },
@@ -80,6 +83,7 @@ export const THEMES: Readonly<Record<ThemeId, ThemeDef>> = {
       ['crate', 1],
       ['lanternPost', 1],
     ],
+    pathLanterns: 0.6,
     workers: { weight: 1.6, cap: 12, deskShare: 0.6 },
     accessory: 1,
   },
@@ -101,6 +105,7 @@ export const THEMES: Readonly<Record<ThemeId, ThemeDef>> = {
       ['flowerBed', 2],
       ['bench', 1],
     ],
+    pathLanterns: 0.4,
     workers: { weight: 0.7, cap: 5, deskShare: 0.5 },
     accessory: 2,
   },
@@ -122,6 +127,7 @@ export const THEMES: Readonly<Record<ThemeId, ThemeDef>> = {
       ['crate', 1],
       ['bench', 1],
     ],
+    pathLanterns: 0.4,
     workers: { weight: 0.9, cap: 7, deskShare: 0.4 },
     accessory: 3,
   },
@@ -143,6 +149,7 @@ export const THEMES: Readonly<Record<ThemeId, ThemeDef>> = {
       ['flowerBed', 3],
       ['bench', 1],
     ],
+    pathLanterns: 0.35,
     workers: { weight: 0.9, cap: 7, deskShare: 0.5 },
     accessory: 4,
   },
@@ -165,6 +172,7 @@ export const THEMES: Readonly<Record<ThemeId, ThemeDef>> = {
       ['crate', 2],
       ['barrel', 1],
     ],
+    pathLanterns: 0.5,
     workers: { weight: 1.0, cap: 8, deskShare: 0.4 },
     accessory: 5,
   },
@@ -179,7 +187,9 @@ export const THEMES: Readonly<Record<ThemeId, ThemeDef>> = {
     crown: null,
     defSwap: {},
     landmarkVariant: {},
-    decor: [['telescope', 1]],
+    // the telescope is a worldgen fixture (RESEARCH_OUTPOST)
+    decor: [],
+    pathLanterns: 0,
     workers: { weight: 0.3, cap: 2, deskShare: 0.5 },
     accessory: 6,
   },
