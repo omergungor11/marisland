@@ -241,6 +241,36 @@ export function createCameraSystem(
           lookFromOrbit(controls, a.x, Math.max(0, y), a.z, dist, pitchForDistance(dist), az, t);
           break;
         }
+        case 'ladder': {
+          // `ladder:<island>:<dist>` (D-031): fixed pitch, the village frame's heading, the frame
+          // anchor as target; the tier is re-derived without hysteresis (a fresh view at `dist`).
+          const L = FRAMING.ladder;
+          const cut = arg.lastIndexOf(':');
+          const d = cut < 0 ? NaN : Number(arg.slice(cut + 1));
+          const isl = findIsland(world, cut < 0 ? arg : arg.slice(0, cut)) ?? world.islands[0];
+          const dist = Number.isFinite(d) && d > 0 ? d : L.dists[0];
+          const frame = isl?.frames?.village;
+          const x = frame?.x ?? isl?.cx ?? world.centerX;
+          const z = frame?.z ?? isl?.cz ?? world.centerZ;
+          const az = frame ? azimuthToward(frame.facing) : L.fallbackAzimuth;
+          controls.maxDistance = Math.max(CAMERA.maxDist, dist);
+          lookFromOrbit(
+            controls,
+            x,
+            Math.max(0, world.heightAt(x, z)),
+            z,
+            dist,
+            L.pitch,
+            az,
+            false,
+          );
+          endFly();
+          controls.update(0);
+          const prev = tier;
+          tier = tierForDistance(dist, -1);
+          if (tier !== prev) events.emit('tierChanged', { tier, prev });
+          return;
+        }
         case 'shore':
         case 'macro-beach': {
           const dist = kind === 'shore' ? 40 : 18;

@@ -5,6 +5,7 @@
  * 3003 Emberpeak; 4004 Palmlagoon; 1000 Millbrook; 6006 Mossgrove; 1002 has all seven.
  */
 import type { EditToolKind } from './edit-ui.ts';
+import { FRAMING } from './camera.ts';
 
 export type ShotSet = 'ci' | 'dev' | 'wow' | 'intro' | 'edit' | 'ladder';
 
@@ -56,6 +57,17 @@ export const EDIT_LOGS = {
   mixed:
     'AekHBQdjb3R0YWdlBHBhbG0EYnVzaAtyb2NrQ2x1c3RlcgdsaWx5UGFkEQDGO6Q0gAWADAAAAAAAAgAAvwKzBgIAAAAAAgAAAAADAADAAZcDBAAA3wEDBDIZfwEBpgWuAYABzA0BAAAAAAEAAAAANQAAjwZbiwmAAgA1AAHQAS6RD5kCADUAAbcCrQGFE5ACADUAAiIulQXvAQA1AAOMAh6ZBo4CADUABL0DxgHNAe8BAA',
 } as const;
+
+/** Department themes on seed 1001 (findIsland matches the theme id) with their display names. */
+const CAMPUS_THEMES = [
+  ['hq', 'HQ'],
+  ['coding', 'Coding'],
+  ['marketing', 'Marketing'],
+  ['qa', 'QA'],
+  ['design', 'Design'],
+  ['devops', 'DevOps'],
+  ['research', 'Research'],
+] as const;
 
 /** D-desk camera (raw `x,y,z,tx,ty,tz`), re-pin when the seed 1001 layout changes. */
 const DESK_CAM = '121,7.6,37.5,126.6,5.6,35.2';
@@ -353,17 +365,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   // ---- Phase 3 campuses (TASK-309): one village framing per department (findIsland matches the
   // theme id), a T3 desk close-up over the Coding dev office (front opening, typing bots) and a
   // night campus (screens and rack LEDs glow).
-  ...(
-    [
-      ['hq', 'HQ'],
-      ['coding', 'Coding'],
-      ['marketing', 'Marketing'],
-      ['qa', 'QA'],
-      ['design', 'Design'],
-      ['devops', 'DevOps'],
-      ['research', 'Research'],
-    ] as const
-  ).map(([theme, name]): ShotPreset => ({
+  ...CAMPUS_THEMES.map(([theme, name]): ShotPreset => ({
     id: `D-campus-${theme}`,
     title: `Campus · ${name}`,
     seed: 1001,
@@ -552,6 +554,28 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     introt: i * 0.5,
     sets: ['intro'],
   })),
+  // ---- zoom ladder (D-031, TASK-374): `pnpm shots ladder [--only=L-coding,L-pairs-coding]`.
+  // L-<theme>: the far → near ladder; L-pairs-<theme>: each tier / LOD boundary at 1.06 b and 0.94 b.
+  ...CAMPUS_THEMES.flatMap(([theme, name]): ShotPreset[] => {
+    const l = FRAMING.ladder;
+    const base = { seed: 1001, cam: `ladder:${theme}`, time: 14, simt: 2 };
+    return [
+      {
+        ...base,
+        id: `L-${theme}`,
+        title: `Ladder · ${name}`,
+        sets: ['ladder'],
+        ladder: { island: theme, dists: [...l.dists], pitch: l.pitch, pairs: [] },
+      },
+      {
+        ...base,
+        id: `L-pairs-${theme}`,
+        title: `Boundary pairs · ${name}`,
+        sets: ['ladder'],
+        ladder: { island: theme, dists: [], pitch: l.pitch, pairs: [...l.pairs] },
+      },
+    ];
+  }),
 ];
 
 export const SET_DEFAULTS: Record<
