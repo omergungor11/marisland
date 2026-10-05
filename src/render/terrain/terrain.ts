@@ -6,13 +6,10 @@ import type { WorldTextures } from '../world-textures.ts';
 import type { Quality } from '../../core/params.ts';
 import { TERRAIN_LOD } from '../../content/terrain.ts';
 import { SHARED } from '../uniforms.ts';
-import { buildColorGrid, fillColorGrid } from './terrain-colors.ts';
 import {
   addTerrainSurface,
   buildChunkGeometry,
-  createVertexColorCache,
   geometryBytes,
-  invalidateVertexColors,
   mergeChunkGeometries,
 } from './terrain-mesh.ts';
 import { createTerrainMaterial } from './terrain-material.ts';
@@ -77,11 +74,10 @@ export interface TerrainView {
   update(time: number, camera?: THREE.Vector3): void;
   /**
    * Remesh chunk (cx, cz) from the current world data, every cached level + its island merge
-   * (TASK-211). `colors`: grid samples whose colour inputs changed (refreshed before meshing,
-   * clipped to the chunk); omitted = the whole chunk, null = none (skirt-only rebuilds). Returns
-   * the ids of meshed neighbours whose skirt edges changed (the chunk's meshability flipped).
+   * (TASK-211). Returns the ids of meshed neighbours whose skirt edges changed (the chunk's
+   * meshability flipped).
    */
-  rebuildChunk(cx: number, cz: number, colors?: SampleRect | null): number[];
+  rebuildChunk(cx: number, cz: number): number[];
   /** Build every needed level synchronously (capture); set by the rebuilder in capture mode. */
   instant: boolean;
   /** Triangles drawn by the current selection. */
@@ -93,14 +89,6 @@ export interface TerrainView {
   chunks: TerrainChunk[];
   merges: IslandMerge[];
   material: THREE.MeshLambertMaterial;
-}
-
-/** Inclusive-origin sample rect (x = column, y = row), as `gl-subimage` TexRect. */
-export interface SampleRect {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
 }
 
 /** Chunk needs a mesh: has land / shallow water, or any sample above the deep cutoff. */
@@ -148,8 +136,6 @@ export function buildTerrain(
 ): TerrainView {
   const L = TERRAIN_LOD;
   const finest = L.finest[quality];
-  const grid = buildColorGrid(world);
-  const vcol = createVertexColorCache(world.height.n); // TODO(TASK-372)
   const { material } = createTerrainMaterial(world, textures, quality);
   addTerrainSurface(material, textures.height, world.height);
   scope.add(material);
@@ -244,15 +230,7 @@ export function buildTerrain(
   };
 
   const buildLevel = (c: TerrainChunk, level: number): void => {
-    const { geometry, stats } = buildChunkGeometry(
-      world,
-      grid,
-      c.cx,
-      c.cz,
-      level,
-      c.skirtEdges,
-      vcol,
-    );
+    const { geometry, stats } = buildChunkGeometry(world, c.cx, c.cz, level, c.skirtEdges);
     const m = c.levels[level];
     if (m) setGeometry(m, geometry);
     else c.levels[level] = newMesh(geometry, `terrain-${c.cx}-${c.cz}-l${level}`);
@@ -387,7 +365,7 @@ export function buildTerrain(
       }
       countBytes();
     },
-    rebuildChunk(cx, cz, colors) {
+    rebuildChunk(cx, cz) {
       const id = cz * N + cx;
       const need = chunkNeedsMesh(world, cx, cz);
       const flipped = (meshed[id] === 1) !== need;
@@ -409,24 +387,6 @@ export function buildTerrain(
         }
         countBytes();
         return neighbours;
-      }
-      const x0 = cx * CHUNK_CELLS;
-      const z0 = cz * CHUNK_CELLS;
-      const rect =
-        colors === undefined
-          ? [x0, x0 + CHUNK_CELLS, z0, z0 + CHUNK_CELLS]
-          : colors
-            ? [
-                Math.max(x0, colors.x),
-                Math.min(x0 + CHUNK_CELLS, colors.x + colors.w - 1),
-                Math.max(z0, colors.y),
-                Math.min(z0 + CHUNK_CELLS, colors.y + colors.h - 1),
-              ]
-            : null;
-      if (rect) {
-        fillColorGrid(world, grid, rect[0], rect[1], rect[2], rect[3]);
-        // TODO(TASK-372): the colour cache goes with the `color` attribute
-        invalidateVertexColors(vcol, h.n, rect[0], rect[1], rect[2], rect[3]);
       }
       if (!c) {
         refreshMerge(merges[makeChunk(cx, cz).island]);

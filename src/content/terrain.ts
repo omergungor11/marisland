@@ -60,13 +60,6 @@ export const TERRAIN_SHAPE = {
   crestScale: 1.2,
 } as const;
 
-export const TERRAIN_JITTER = {
-  /** ±HSL lightness (absolute, 0..1). */
-  lightness: 0.03,
-  /** ±hue in degrees. */
-  hueDeg: 4,
-} as const;
-
 export const TERRAIN_AO = {
   /** Max darkening (fraction of lightness). ART_BIBLE: −15…−25 %. */
   max: 0.25,

@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import type { WorldData, ZoneId } from '../../world/types.ts';
 import { Zone, ZONE_COUNT } from '../../world/types.ts';
 import { slopeAtCell } from '../../world/index.ts';
-import { hashInts } from '../../core/hash.ts';
 import { createRng } from '../../core/rng.ts';
 import { createNoise, type Noise } from '../../core/noise.ts';
 import { THEMES } from '../../content/themes/index.ts';
@@ -19,34 +18,7 @@ import {
   type DetailLayerId,
   type GroundSpec,
 } from '../../content/ground.ts';
-import {
-  TERRAIN_AO,
-  TERRAIN_COLORS,
-  TERRAIN_FX,
-  TERRAIN_JITTER,
-  TERRAIN_SHAPE,
-} from '../../content/terrain.ts';
-
-/**
- * Legacy (pre-M14b) per-sample colour + AO grids for the faceted vertex-colour mesher; the
- * terrain material no longer reads vertex colours (TASK-372 `buildAlbedoGrid` below). Kept
- * until the smooth mesh (TASK-371) drops its last caller, then `faceColor` & co. retire.
- *
- * Per-sample colour + AO grids for the terrain mesher (ART_BIBLE §1/§2).
- * Colours are linear RGB (THREE.Color(hex) with ColorManagement on). Cliff
- * samples are flagged: their strata colour depends on the FACE centre height,
- * so faces resolve them at build time (`faceColor`).
- */
-export interface TerrainColorGrid {
-  /** Linear RGB per sample, n·n·3. */
-  rgb: Float32Array;
-  /** AO lightness multiplier per sample (1 = none). */
-  ao: Float32Array;
-  /** 1 where the sample is cliff (strata resolved per face). */
-  cliff: Uint8Array;
-  /** Material class per sample (underwater / sand / vegetation / rock / cliff / path / crater). */
-  cls: Uint8Array;
-}
+import { TERRAIN_AO, TERRAIN_COLORS, TERRAIN_FX, TERRAIN_SHAPE } from '../../content/terrain.ts';
 
 /** Material classes for border blending: same class mixes fully, odd-one-out only lightly. */
 export const TerrainClass = {
@@ -150,52 +122,6 @@ function seabedColor(y: number, out: THREE.Color): THREE.Color {
   if (d <= S.seabedDepth)
     return out.copy(P.sandWet).lerp(P.seabed, smooth(S.wetDepth, S.seabedDepth, d));
   return out.copy(P.seabed).lerp(P.seabedDeep, smooth(S.seabedDepth, S.deepDepth, d));
-}
-
-export function buildColorGrid(world: WorldData): TerrainColorGrid {
-  const n = world.height.n;
-  const grid: TerrainColorGrid = {
-    rgb: new Float32Array(n * n * 3),
-    ao: new Float32Array(n * n),
-    cliff: new Uint8Array(n * n),
-    cls: new Uint8Array(n * n),
-  };
-  fillColorGrid(world, grid, 0, n - 1, 0, n - 1);
-  return grid;
-}
-
-/**
- * (Re)compute the colour / AO / class samples of the inclusive sample rect
- * [ix0, ix1] × [iz0, iz1] from the current world data (TASK-211: a dirty chunk refreshes its
- * own 33×33 samples before remeshing; same arithmetic as the full build, so a rebuilt chunk
- * matches a fresh boot of the edited world).
- */
-export function fillColorGrid(
-  world: WorldData,
-  grid: TerrainColorGrid,
-  ix0: number,
-  ix1: number,
-  iz0: number,
-  iz1: number,
-): void {
-  const n = world.height.n;
-  const d = world.height.data;
-  const { rgb, ao, cliff, cls } = grid;
-  for (let iz = Math.max(0, iz0); iz <= Math.min(n - 1, iz1); iz++) {
-    for (let ix = Math.max(0, ix0); ix <= Math.min(n - 1, ix1); ix++) {
-      const i = iz * n + ix;
-      const y = d[i];
-      const z = world.zone[i];
-      cls[i] = classOf(z, y);
-      shadeAt(world, ix, iz, cls[i]);
-      ao[i] = _shade.ao;
-      cliff[i] = y > 0 && z === Zone.cliff ? 1 : 0;
-      const col = zoneColor(world, i, ix, iz, _shade.concavity);
-      rgb[i * 3] = col.r;
-      rgb[i * 3 + 1] = col.g;
-      rgb[i * 3 + 2] = col.b;
-    }
-  }
 }
 
 const DIRS = [
@@ -511,20 +437,8 @@ export function buildGroundPalette(world: WorldData): Uint8Array {
   return out;
 }
 
-/** Cliff strata colour at a face centre (alternating horizontal bands). */
-export function strataAt(x: number, y: number, z: number, out: THREE.Color): THREE.Color {
-  const S = TERRAIN_SHAPE;
-  const w = S.strataWobble * Math.sin(x * 0.07 + z * 0.05) + 0.3 * Math.sin(z * 0.13 - x * 0.04);
-  const band = Math.floor((y + w) / S.strataBand);
-  return out.copy(pal().strata[band & 1]);
-}
-
-// sRGB transfer, HSL ↔ RGB: the exact arithmetic of three r186 (`ColorManagement`
-// SRGBToLinear / LinearToSRGB, `Color.getHSL` / `setHSL` / `hue2rgb`) on plain numbers — the
-// face colour runs ~2 600× per chunk and the Color-object round trips dominated an edit's
-// chunk rebuild (TASK-211). `terrain-colors.test.ts` checks bit-parity with the Color path.
-const srgbToLinear = (c: number): number =>
-  c < 0.04045 ? c * 0.0773993808 : Math.pow(c * 0.9478672986 + 0.0521327014, 2.4);
+// sRGB encode, HSL ↔ RGB: the exact arithmetic of three r186 (`ColorManagement` LinearToSRGB,
+// `Color.getHSL` / `setHSL` / `hue2rgb`) on plain numbers (per-sample albedo, TASK-211 speed).
 const linearToSrgb = (c: number): number =>
   c < 0.0031308 ? c * 12.92 : 1.055 * Math.pow(c, 0.41666) - 0.055;
 function hue2rgb(p: number, q: number, t: number): number {
@@ -583,116 +497,3 @@ function rgbOfHsl(h: number, s: number, l: number): void {
 
 const _hsl = { h: 0, s: 0, l: 0 };
 const _rgb = { r: 0, g: 0, b: 0 };
-const _tmp = new THREE.Color();
-
-/**
- * Face colour (linear RGB) into `out`: mean of the vertex base colours (cliff
- * vertices resolved to strata at the face centre), then seeded jitter (hue ±4°,
- * L ±3 %), AO as a lightness multiplier, and the land L floor.
- * `jitterHash` = 0 disables jitter (skirts).
- */
-export function faceColor(
-  grid: TerrainColorGrid,
-  i0: number,
-  i1: number,
-  i2: number,
-  cx: number,
-  cy: number,
-  cz: number,
-  jitterHash: number,
-  out: THREE.Color,
-): THREE.Color {
-  const { rgb, cliff, ao, cls } = grid;
-  let ar = 0;
-  let ag = 0;
-  let ab = 0;
-  const c0 = cls[i0];
-  const c1 = cls[i1];
-  const c2 = cls[i2];
-  let wsum = 0;
-  // Border blend: weight = (vertices sharing this class)^p. Soft grounds (sand ↔ grass)
-  // use p = 1 (lone vertex 20 %); rock / cliff use p = 2 (lone vertex 11 %) so outcrops
-  // stay crisp instead of smearing grey into the grass.
-  const hard =
-    c0 === TerrainClass.rock ||
-    c1 === TerrainClass.rock ||
-    c2 === TerrainClass.rock ||
-    c0 === TerrainClass.cliff ||
-    c1 === TerrainClass.cliff ||
-    c2 === TerrainClass.cliff;
-  for (let k = 0; k < 3; k++) {
-    const i = k === 0 ? i0 : k === 1 ? i1 : i2;
-    const ck = cls[i];
-    const same = (ck === c0 ? 1 : 0) + (ck === c1 ? 1 : 0) + (ck === c2 ? 1 : 0);
-    const w = hard ? same * same : same;
-    let tr: number;
-    let tg: number;
-    let tb: number;
-    if (cliff[i] && cy > 0) {
-      strataAt(cx, cy, cz, _tmp);
-      tr = _tmp.r;
-      tg = _tmp.g;
-      tb = _tmp.b;
-    } else {
-      tr = rgb[i * 3];
-      tg = rgb[i * 3 + 1];
-      tb = rgb[i * 3 + 2];
-    }
-    ar += tr * w;
-    ag += tg * w;
-    ab += tb * w;
-    wsum += w;
-  }
-  const inv = 1 / wsum;
-  ar *= inv;
-  ag *= inv;
-  ab *= inv;
-  const occ = (ao[i0] + ao[i1] + ao[i2]) / 3;
-  hslOf(linearToSrgb(ar), linearToSrgb(ag), linearToSrgb(ab));
-  let hue = _hsl.h;
-  let l = _hsl.l;
-  if (jitterHash !== 0) {
-    const a = (jitterHash & 0xffff) / 65535;
-    const b = (jitterHash >>> 16) / 65535;
-    hue += ((a * 2 - 1) * TERRAIN_JITTER.hueDeg) / 360;
-    l += (b * 2 - 1) * TERRAIN_JITTER.lightness;
-  }
-  hue = hue - Math.floor(hue);
-  rgbOfHsl(hue, _hsl.s, clamp01(l));
-  // setHSL(…, sRGB) stores linear; getRGB(…, sRGB) converts back (not an exact identity)
-  let r = linearToSrgb(srgbToLinear(_rgb.r));
-  let g = linearToSrgb(srgbToLinear(_rgb.g));
-  let b = linearToSrgb(srgbToLinear(_rgb.b));
-  // AO: scale the sRGB value (not HSL L, which would raise chroma and turn sand
-  // orange) and lean the shade slightly cool (ART_BIBLE P4).
-  const o = 1 - occ;
-  r *= occ * (1 - TERRAIN_AO.coolShift * o);
-  g *= occ;
-  b *= occ * (1 + TERRAIN_AO.coolShift * o);
-  r = clamp01(r);
-  g = clamp01(g);
-  b = clamp01(b);
-  let lr = srgbToLinear(r);
-  let lg = srgbToLinear(g);
-  let lb = srgbToLinear(b);
-  // The land L floor reads L after an sRGB → linear → sRGB round trip (error ~1e-15): only
-  // when the plain sRGB L is near the floor can the exact test differ — skip the 3 pows else.
-  if (cy > 0 && (Math.max(r, g, b) + Math.min(r, g, b)) / 2 < TERRAIN_FX.minLandL + 1e-6) {
-    hslOf(linearToSrgb(lr), linearToSrgb(lg), linearToSrgb(lb));
-    if (_hsl.l < TERRAIN_FX.minLandL) {
-      rgbOfHsl(_hsl.h, _hsl.s, TERRAIN_FX.minLandL);
-      lr = srgbToLinear(_rgb.r);
-      lg = srgbToLinear(_rgb.g);
-      lb = srgbToLinear(_rgb.b);
-    }
-  }
-  out.r = lr;
-  out.g = lg;
-  out.b = lb;
-  return out;
-}
-
-/** Per-face jitter hash: seed × global face index × LOD salt. */
-export function faceHash(seed: number, faceIndex: number, lod: number): number {
-  return hashInts(seed, faceIndex, lod) | 1;
-}

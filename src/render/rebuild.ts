@@ -8,12 +8,7 @@ import type { TerrainView } from './terrain/terrain.ts';
 import type { WorldTextures } from './world-textures.ts';
 import type { PropBatcher } from './props/batcher.ts';
 import type { PropMirror } from './props/prop-mirror.ts';
-import {
-  unionRect,
-  uploadTextureRect,
-  type SubImageRenderer,
-  type TexRect,
-} from './gl-subimage.ts';
+import { uploadTextureRect, type SubImageRenderer } from './gl-subimage.ts';
 
 /**
  * Dirty-region rebuild after an edit (TASK-211, ARCHITECTURE Phase 2). Per region:
@@ -21,10 +16,10 @@ import {
  * 2. props: touched world indices mirrored into the render store, ground-following settlement
  *    props re-grounded, `PropBatcher.rewrite` (matrices, removal fades, appends);
  * 3. terrain chunks: queued (region chunks ∪ chunks within `chunkPadCells` of the bounds ∪
- *    chunks under the samples whose colour inputs changed — `TextureUpdateStats.colorRect`) and
- *    remeshed ≤ `EDIT_RENDER.chunksPerFrame` per frame in `update` — or all at once in capture.
- *    A remesh covers every cached LOD level of the chunk and its island merge (TASK-371).
- *    Each chunk refreshes only its colour samples inside the accumulated colour rect.
+ *    chunks under changed height samples — `TextureUpdateStats.geometryRect`) and remeshed
+ *    ≤ `EDIT_RENDER.chunksPerFrame` per frame in `update` — or all at once in capture. A remesh
+ *    covers every cached LOD level of the chunk and its island merge (TASK-371); colours are
+ *    the albedo texture's (step 1), not the mesh's.
  * Results depend only on the world data (no clocks / randomness): a rebuilt chunk equals the same
  * chunk built at boot from the edited world.
  *
@@ -111,13 +106,10 @@ export function createRebuilder(d: RebuildDeps): Rebuilder {
   const N = CHUNKS_PER_SIDE;
   const queue: number[] = [];
   const queued = new Uint8Array(N * N);
-  /** Per queued chunk: colour samples to refresh (null = geometry / skirts only). */
-  const colors: (TexRect | null)[] = new Array(N * N).fill(null);
   const perFrame = d.chunksPerFrame ?? EDIT_RENDER.chunksPerFrame;
   // capture (`freeze=1`): terrain LOD levels are built synchronously too (TASK-371)
   if (d.instant) d.terrain.instant = true;
-  const enqueue = (id: number, color: TexRect | null): void => {
-    colors[id] = unionRect(colors[id], color);
+  const enqueue = (id: number): void => {
     if (queued[id]) return;
     queued[id] = 1;
     queue.push(id);
@@ -131,13 +123,11 @@ export function createRebuilder(d: RebuildDeps): Rebuilder {
     while (queue.length && n < max) {
       const id = queue.shift()!;
       queued[id] = 0;
-      const color = colors[id];
-      colors[id] = null;
       const t0 = d.now();
-      const neighbours = d.terrain.rebuildChunk(id % N, Math.floor(id / N), color);
+      const neighbours = d.terrain.rebuildChunk(id % N, Math.floor(id / N));
       const dt = d.now() - t0;
       // skirts of meshed neighbours follow a chunk that appeared / sank
-      for (const nb of neighbours) enqueue(nb, null);
+      for (const nb of neighbours) enqueue(nb);
       ms += dt;
       n++;
       d.timings.rebuildMaxMs = Math.max(d.timings.rebuildMaxMs ?? 0, dt);
@@ -171,14 +161,11 @@ export function createRebuilder(d: RebuildDeps): Rebuilder {
       d.timings.rebuildTexMs = t1 - t0;
       d.timings.rebuildUploadMs = tex.uploadMs;
       d.timings.rebuildPropsMs = t2 - t1;
-      const c = tex.colorRect;
-      for (const id of dirtyChunks(region)) enqueue(id, c);
+      // terrain geometry: colours live in the albedo texture (TASK-372), refreshed above
+      for (const id of dirtyChunks(region)) enqueue(id);
       const g = tex.geometryRect;
       if (g)
-        for (const id of chunksOverlapping(g.x, g.x + g.w - 1, g.y, g.y + g.h - 1, 1))
-          enqueue(id, c);
-      if (c)
-        for (const id of chunksOverlapping(c.x, c.x + c.w - 1, c.y, c.y + c.h - 1)) enqueue(id, c);
+        for (const id of chunksOverlapping(g.x, g.x + g.w - 1, g.y, g.y + g.h - 1, 1)) enqueue(id);
       if (d.instant) rb.flush();
     },
     update() {

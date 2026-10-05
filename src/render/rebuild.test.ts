@@ -74,7 +74,7 @@ function expectMatchesFreshBuild(world: WorldData, terrain: TerrainView): void {
     fresh.chunks.map((c) => c.cz * CHUNKS_PER_SIDE + c.cx).sort((a, b) => a - b),
   );
   const same = (got: THREE.BufferGeometry, want: THREE.BufferGeometry, what: string): void => {
-    for (const a of ['position', 'color', 'normal', 'ao', 'aMorph']) {
+    for (const a of ['position', 'normal', 'aMorph']) {
       const g = got.getAttribute(a).array;
       const w = want.getAttribute(a).array;
       if (g.length !== w.length || g.some((v, i) => v !== w[i]))

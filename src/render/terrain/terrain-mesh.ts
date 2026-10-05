@@ -3,19 +3,16 @@ import type { WorldData } from '../../world/types.ts';
 import { CHUNK_CELLS } from '../../world/types.ts';
 import { TERRAIN_FACETS, TERRAIN_LOD } from '../../content/terrain.ts';
 import { sampleSurface, type SurfaceSample } from '../../shared/terrain-sample.ts';
-import { faceColor, type TerrainColorGrid } from './terrain-colors.ts';
 
 /**
  * Smooth chunk mesher (M14b D-030, TASK-371). Indexed grid over one 64 u chunk at a level's
  * stride (4 / 2 / 1 / 0.5 u), every vertex ON the clamped Catmull-Rom surface with its analytic
  * normal. Attributes (contract with the terrain material, TASK-372):
  *  - `position`, `normal`;
- *  - `ao` (float): bilinear AO of the 2 u colour grid;
  *  - `aMorph` (vec4, fixed location `TERRAIN_MORPH_LOCATION`): x = Δy to the next-coarser level
  *    at this xz, yz = that level's normal (x, z; y = √(1 − x² − z²)), w = level index. Even
  *    vertices (shared with the coarser level) carry Δy = 0 and their own normal;
- *  - TODO(TASK-372) `color`: temporary per-vertex colour so the current vertex-colour material
- *    still renders. Remove with 372 (see `vertexColor` / `VertexColorCache`).
+ * No colour / AO attributes: the material reads the albedo world texture (AO baked in, TASK-372).
  * Every quad splits along the same diagonal (x0,z0)–(x1,z1), so level k nests in level k − 1:
  * odd vertices fully morphed lie exactly on the coarser level's triangles (no cracks, no pops).
  * Skirts: a row of vertices hanging `TERRAIN_LOD.skirt` u below each skirted edge (same normal /
@@ -134,116 +131,15 @@ export function addTerrainSurface(
   };
 }
 
-/**
- * TODO(TASK-372): per-sample vertex colours (`faceColor` of the sample with no jitter, AO
- * included), filled lazily per chunk. Delete together with the `color` attribute.
- */
-export interface VertexColorCache {
-  rgb: Float32Array;
-  valid: Uint8Array;
-}
-
-/** TODO(TASK-372): remove with the `color` attribute. */
-export function createVertexColorCache(n: number): VertexColorCache {
-  return { rgb: new Float32Array(n * n * 3), valid: new Uint8Array(n * n) };
-}
-
-/** TODO(TASK-372): drop the cached colours of the inclusive sample rect. */
-export function invalidateVertexColors(
-  cache: VertexColorCache,
-  n: number,
-  ix0: number,
-  ix1: number,
-  iz0: number,
-  iz1: number,
-): void {
-  for (let iz = Math.max(0, iz0); iz <= Math.min(n - 1, iz1); iz++)
-    cache.valid.fill(0, iz * n + Math.max(0, ix0), iz * n + Math.min(n - 1, ix1) + 1);
-}
-
-const _col = new THREE.Color();
-
-/**
- * TODO(TASK-372): colour of a vertex = bilinear blend of its 4 grid samples' colours; cliff
- * samples resolve their strata band at the vertex itself (as `faceColor` does per face).
- */
-function vertexColor(
-  world: WorldData,
-  grid: TerrainColorGrid,
-  cache: VertexColorCache,
-  x: number,
-  y: number,
-  z: number,
-  out: Float32Array,
-  o: number,
-): void {
-  const h = world.height;
-  const n = h.n;
-  const fx = Math.min(Math.max((x - h.originX) / h.cellSize, 0), n - 1);
-  const fz = Math.min(Math.max((z - h.originZ) / h.cellSize, 0), n - 1);
-  const ix = Math.min(Math.floor(fx), n - 2);
-  const iz = Math.min(Math.floor(fz), n - 2);
-  const tx = fx - ix;
-  const tz = fz - iz;
-  let r = 0;
-  let g = 0;
-  let b = 0;
-  for (let k = 0; k < 4; k++) {
-    const w = (k & 1 ? tx : 1 - tx) * (k & 2 ? tz : 1 - tz);
-    if (w === 0) continue;
-    const i = (iz + (k >> 1)) * n + ix + (k & 1);
-    if (grid.cliff[i] && y > 0) {
-      faceColor(grid, i, i, i, x, y, z, 0, _col);
-      r += w * _col.r;
-      g += w * _col.g;
-      b += w * _col.b;
-      continue;
-    }
-    if (!cache.valid[i]) {
-      const sx = h.originX + (i % n) * h.cellSize;
-      const sz = h.originZ + Math.floor(i / n) * h.cellSize;
-      faceColor(grid, i, i, i, sx, h.data[i], sz, 0, _col);
-      cache.rgb[i * 3] = _col.r;
-      cache.rgb[i * 3 + 1] = _col.g;
-      cache.rgb[i * 3 + 2] = _col.b;
-      cache.valid[i] = 1;
-    }
-    r += w * cache.rgb[i * 3];
-    g += w * cache.rgb[i * 3 + 1];
-    b += w * cache.rgb[i * 3 + 2];
-  }
-  out[o] = r;
-  out[o + 1] = g;
-  out[o + 2] = b;
-}
-
 const _s: SurfaceSample = { y: 0, dydx: 0, dydz: 0 };
-
-/** Bilinear grid AO at world (x, z). */
-function aoAt(world: WorldData, ao: Float32Array, x: number, z: number): number {
-  const h = world.height;
-  const n = h.n;
-  const fx = Math.min(Math.max((x - h.originX) / h.cellSize, 0), n - 1);
-  const fz = Math.min(Math.max((z - h.originZ) / h.cellSize, 0), n - 1);
-  const ix = Math.min(Math.floor(fx), n - 2);
-  const iz = Math.min(Math.floor(fz), n - 2);
-  const tx = fx - ix;
-  const tz = fz - iz;
-  const i = iz * n + ix;
-  const top = ao[i] + (ao[i + 1] - ao[i]) * tx;
-  const bot = ao[i + n] + (ao[i + n + 1] - ao[i + n]) * tx;
-  return top + (bot - top) * tz;
-}
 
 export function buildChunkGeometry(
   world: WorldData,
-  grid: TerrainColorGrid,
   cx: number,
   cz: number,
   level: number,
   /** Skirt edges as bits: 1 = north (−z), 2 = south (+z), 4 = west (−x), 8 = east (+x). */
   skirtEdges = 15,
-  colors: VertexColorCache = createVertexColorCache(world.height.n),
 ): { geometry: THREE.BufferGeometry; stats: ChunkGeometryStats } {
   const h = world.height;
   const s = TERRAIN_LOD.strides[level];
@@ -257,9 +153,7 @@ export function buildChunkGeometry(
   const nv = nSurf + edges.length * side;
   const pos = new Float32Array(nv * 3);
   const nor = new Float32Array(nv * 3);
-  const ao = new Float32Array(nv);
   const mor = new Float32Array(nv * 4);
-  const col = new Float32Array(nv * 3); // TODO(TASK-372)
 
   for (let j = 0; j < side; j++)
     for (let i = 0; i < side; i++) {
@@ -274,8 +168,6 @@ export function buildChunkGeometry(
       nor[v * 3] = -_s.dydx / l;
       nor[v * 3 + 1] = 1 / l;
       nor[v * 3 + 2] = -_s.dydz / l;
-      ao[v] = aoAt(world, grid.ao, x, z);
-      vertexColor(world, grid, colors, x, pos[v * 3 + 1], z, col, v * 3); // TODO(TASK-372)
     }
 
   // geomorph targets: the coarser level's (nested) triangles at each odd vertex
@@ -341,12 +233,8 @@ export function buildChunkGeometry(
       pos[sv * 3] = pos[v * 3];
       pos[sv * 3 + 1] = y - TERRAIN_LOD.skirt - 0.5 * step;
       pos[sv * 3 + 2] = pos[v * 3 + 2];
-      for (let q = 0; q < 3; q++) {
-        nor[sv * 3 + q] = nor[v * 3 + q];
-        col[sv * 3 + q] = col[v * 3 + q];
-      }
+      for (let q = 0; q < 3; q++) nor[sv * 3 + q] = nor[v * 3 + q];
       for (let q = 0; q < 4; q++) mor[sv * 4 + q] = mor[v * 4 + q];
-      ao[sv] = ao[v];
     }
     // north / east face −z / +x with (t0, t1, b0); south / west with (t0, b0, t1)
     const flip = bit === 2 || bit === 4;
@@ -385,9 +273,7 @@ export function buildChunkGeometry(
   geometry.setIndex(new THREE.BufferAttribute(index, 1));
   geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   geometry.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
-  geometry.setAttribute('ao', new THREE.BufferAttribute(ao, 1));
   geometry.setAttribute('aMorph', new THREE.BufferAttribute(mor, 4));
-  geometry.setAttribute('color', new THREE.BufferAttribute(col, 3)); // TODO(TASK-372)
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
   // morphed vertices move by up to maxDy

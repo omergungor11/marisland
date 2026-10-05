@@ -8,7 +8,6 @@ import { sampleSurface } from '../../shared/terrain-sample.ts';
 import { createWorldTextures } from '../world-textures.ts';
 import { buildTerrain, pickLevel, type TerrainView } from './terrain.ts';
 import { buildChunkGeometry, morphBands, morphWeight } from './terrain-mesh.ts';
-import { buildColorGrid } from './terrain-colors.ts';
 
 const world = generateWorld(1001, { islands: 1 });
 const isl = world.islands[0];
@@ -19,11 +18,7 @@ const textures = createWorldTextures(world, scope);
 const t0 = performance.now();
 const terrain = buildTerrain(world, textures, 'medium', scope);
 const buildMs = performance.now() - t0;
-const grid = buildColorGrid(world);
 
-/** Perceptual lightness of a linear colour: HSL L in sRGB. */
-const hsl = { h: 0, s: 0, l: 0 };
-const _c = new THREE.Color();
 const v3 = (x: number, y: number, z: number): THREE.Vector3 => new THREE.Vector3(x, y, z);
 const arr = (g: THREE.BufferGeometry, a: string): Float32Array =>
   g.getAttribute(a).array as Float32Array;
@@ -75,39 +70,25 @@ describe('terrain mesher (TASK-371)', () => {
     );
   });
 
-  it('geometry: indexed, finite, contract attributes, ao / colours in [0,1], land L >= 12 %', () => {
-    let minLandL = 1;
+  it('geometry: indexed, finite, contract attributes only (no colour / AO: albedo texture)', () => {
     for (let level = 0; level < L.strides.length; level++) {
-      const { geometry: g } = buildChunkGeometry(world, grid, home.cx, home.cz, level, 15);
+      const { geometry: g } = buildChunkGeometry(world, home.cx, home.cz, level, 15);
       expect(g.index).not.toBeNull();
-      expect(Object.keys(g.attributes).sort()).toEqual(
-        ['aMorph', 'ao', 'color', 'normal', 'position'].sort(), // TODO(TASK-372): no color
-      );
+      expect(Object.keys(g.attributes).sort()).toEqual(['aMorph', 'normal', 'position']);
       const pos = arr(g, 'position');
       const nor = arr(g, 'normal');
-      const col = arr(g, 'color');
-      const ao = arr(g, 'ao');
       for (let i = 0; i < pos.length; i++) {
         expect(Number.isFinite(pos[i])).toBe(true);
         expect(Number.isFinite(nor[i])).toBe(true);
       }
-      for (const v of ao) if (!(v > 0 && v <= 1)) throw new Error(`ao ${v}`);
-      for (let i = 0; i < col.length; i++)
-        if (!(col[i] >= 0 && col[i] <= 1)) throw new Error(`colour ${col[i]} out of range`);
-      for (let v = 0; v < pos.length / 3; v++) {
-        if (pos[v * 3 + 1] <= 0.05) continue;
-        _c.setRGB(col[v * 3], col[v * 3 + 1], col[v * 3 + 2]).getHSL(hsl, THREE.SRGBColorSpace);
-        minLandL = Math.min(minLandL, hsl.l);
-      }
       g.dispose();
     }
-    expect(minLandL).toBeGreaterThanOrEqual(0.12);
   });
 
   it('vertices lie on the Catmull-Rom surface with its analytic normals', () => {
     const s = { y: 0, dydx: 0, dydz: 0 };
     for (let level = 0; level < L.strides.length; level++) {
-      const { geometry: g } = buildChunkGeometry(world, grid, home.cx, home.cz, level, 0);
+      const { geometry: g } = buildChunkGeometry(world, home.cx, home.cz, level, 0);
       const pos = arr(g, 'position');
       const nor = arr(g, 'normal');
       for (let v = 0; v < pos.length / 3; v++) {
@@ -123,8 +104,8 @@ describe('terrain mesher (TASK-371)', () => {
 
   it('morph endpoints: fully morphed level k equals level k − 1 (positions and normals)', () => {
     for (let level = 1; level < L.strides.length; level++) {
-      const { geometry: fine } = buildChunkGeometry(world, grid, home.cx, home.cz, level, 0);
-      const { geometry: coarse } = buildChunkGeometry(world, grid, home.cx, home.cz, level - 1, 0);
+      const { geometry: fine } = buildChunkGeometry(world, home.cx, home.cz, level, 0);
+      const { geometry: coarse } = buildChunkGeometry(world, home.cx, home.cz, level - 1, 0);
       const pos = arr(fine, 'position');
       const mor = arr(fine, 'aMorph');
       const side = Math.round(SIZE / L.strides[level]) + 1;
@@ -160,8 +141,8 @@ describe('terrain mesher (TASK-371)', () => {
     expect(right).toBeDefined();
     const x = h.originX + right.cx * SIZE;
     for (let level = 0; level < L.strides.length; level++) {
-      const a = buildChunkGeometry(world, grid, home.cx, home.cz, level, 0).geometry;
-      const b = buildChunkGeometry(world, grid, right.cx, right.cz, level, 0).geometry;
+      const a = buildChunkGeometry(world, home.cx, home.cz, level, 0).geometry;
+      const b = buildChunkGeometry(world, right.cx, right.cz, level, 0).geometry;
       const side = Math.round(SIZE / L.strides[level]) + 1;
       const pa = arr(a, 'position');
       const pb = arr(b, 'position');
@@ -180,7 +161,7 @@ describe('terrain mesher (TASK-371)', () => {
         const b0 = L.bands[level - 1] * (1 - L.hysteresis);
         expect(morphWeight(level, b0)).toBe(1);
         expect(pickLevel(b0 - 1e-3, level - 1, 3)).toBeGreaterThanOrEqual(level);
-        const coarse = buildChunkGeometry(world, grid, right.cx, right.cz, level - 1, 0).geometry;
+        const coarse = buildChunkGeometry(world, right.cx, right.cz, level - 1, 0).geometry;
         for (let j = 0; j < side; j++) {
           const va = j * side + side - 1;
           const y = pa[va * 3 + 1] + ma[va * 4];
@@ -195,7 +176,7 @@ describe('terrain mesher (TASK-371)', () => {
 
   it('skirts hang >= 2 u below every skirted edge vertex', () => {
     for (let level = 0; level < L.strides.length; level++) {
-      const { geometry: g, stats } = buildChunkGeometry(world, grid, home.cx, home.cz, level, 15);
+      const { geometry: g, stats } = buildChunkGeometry(world, home.cx, home.cz, level, 15);
       const m = Math.round(SIZE / L.strides[level]);
       const side = m + 1;
       expect(stats.triangles).toBe(m * m * 2 + 4 * m * 2);
