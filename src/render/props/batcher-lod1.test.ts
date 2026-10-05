@@ -1,19 +1,20 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { ALL_ISLANDS, createPropBatcher, lodGeo } from './batcher.ts';
+import { ALL_ISLANDS, createPropBatcher, isLargeStructure, STRUCTURE_MIN_SIZE } from './batcher.ts';
 import { createPropStore, PropFlag } from '../../world/prop-store.ts';
-import { PROP_DEFS, PROP_DEF_INDEX, type PropDef } from '../../content/props.ts';
+import { PROP_DEFS, PROP_DEF_INDEX, TIER_FADE, type PropDef } from '../../content/props.ts';
 import { Scope } from '../../core/scope.ts';
-import { buildProp } from '../../geo/index.ts';
+import { PROP_GEO, buildProp } from '../../geo/index.ts';
 import { withFakeDefs } from './fake-defs.test-util.ts';
 
 /**
- * TASK-304: shared LOD1 proxies (`def.lod1`) and interiors, with fake defs over existing
- * geometry — the themed shells of TASK-303 may not exist yet.
+ * TASK-373 (D-031 / D-032): every def draws its own LOD1 (the shared `def.lod1` proxy is unused),
+ * LOD1 variants collapse when their geometry is identical, large structures show from T0.
+ * TASK-304: interiors. Fake defs over existing geometry (+ one fake variant-blind geometry).
  */
 const { grounded, clusterable } = PropFlag;
 const FAKES: PropDef[] = [
-  // three "shells" over two proxy classes (barrel:0, barrel:1)
+  // a "shell" that still names the retired shared proxy: must be ignored
   {
     id: 'fakeShellA',
     geo: 'cottage',
@@ -23,24 +24,10 @@ const FAKES: PropDef[] = [
     flags: grounded,
     lod1: { geo: 'barrel', variant: 0 },
   },
-  {
-    id: 'fakeShellB',
-    geo: 'barn',
-    tier: 1,
-    variants: 2,
-    footprint: 3,
-    flags: grounded,
-    lod1: { geo: 'barrel', variant: 0 },
-  },
-  {
-    id: 'fakeShellC',
-    geo: 'logCabin',
-    tier: 1,
-    variants: 2,
-    footprint: 2.5,
-    flags: grounded,
-    lod1: { geo: 'barrel', variant: 1, size: [2, 3, 4] },
-  },
+  // a variant-blind geometry: one LOD1 group for both variants
+  { id: 'fakeBlock', geo: 'fakeBlock', tier: 1, variants: 2, footprint: 2, flags: grounded },
+  // small: stays tier 1
+  { id: 'fakeSmall', geo: 'barrel', tier: 1, variants: 2, footprint: 0.5, flags: grounded },
   {
     id: 'fakeInterior',
     geo: 'bench',
@@ -51,6 +38,15 @@ const FAKES: PropDef[] = [
     interior: true,
   },
 ];
+
+/** 4 × 4 × 4 u coloured box, the same for every variant. */
+function fakeBlock(): THREE.BufferGeometry {
+  const g = new THREE.BoxGeometry(4, 4, 4).toNonIndexed();
+  g.translate(0, 2, 0);
+  const n = g.getAttribute('position').count;
+  g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3).fill(0.5), 3));
+  return g;
+}
 
 const counters = () => ({
   hardPops: 0,
@@ -64,8 +60,8 @@ const counters = () => ({
 
 function makeStore() {
   const s = createPropStore(200);
-  // 3 shells × 2 variants × 3 islands, 2 instances each
-  for (const id of ['fakeShellA', 'fakeShellB', 'fakeShellC'])
+  // 3 defs × 2 variants × 3 islands, 2 instances each
+  for (const id of ['fakeShellA', 'fakeBlock', 'fakeSmall'])
     for (let v = 0; v < 2; v++)
       for (let isl = 0; isl < 3; isl++)
         for (let k = 0; k < 2; k++)
@@ -75,74 +71,97 @@ function makeStore() {
   return s;
 }
 
-const build = (store = makeStore(), opts: { cast?: boolean; interior?: boolean } = {}) =>
+const build = (
+  store = makeStore(),
+  opts: { cast?: boolean; interior?: boolean; fromT0?: boolean } = {},
+  c = counters(),
+) =>
   createPropBatcher(store, {
     scope: new Scope('t'),
     seed: 1,
-    counters: counters(),
+    counters: c,
     materialFor: () => new THREE.MeshLambertMaterial(),
     softAppear: true,
     castShadows: opts.cast ?? false,
     interiorShadows: opts.interior,
+    structuresFromT0: opts.fromT0 ?? true,
   });
 
-describe('PropBatcher: shared LOD1 proxies + interiors (TASK-304)', () => {
+describe('PropBatcher: own LOD1, T0 structures, interiors (TASK-373 / TASK-304)', () => {
   const restore = { fn: (): void => {} };
-  beforeAll(() => (restore.fn = withFakeDefs(FAKES)));
+  beforeAll(() => {
+    const undo = withFakeDefs(FAKES);
+    (PROP_GEO as Record<string, (typeof PROP_GEO)[string]>).fakeBlock = {
+      ...PROP_GEO.barrel,
+      id: 'fakeBlock',
+      build: fakeBlock,
+    };
+    restore.fn = () => {
+      undo();
+      delete (PROP_GEO as Record<string, unknown>).fakeBlock;
+    };
+  });
   afterAll(() => restore.fn());
 
-  it('themed shells collapse to one LOD1 group per proxy class', () => {
+  it('shells draw their own LOD1 (no shared proxy), variant groups collapse when identical', () => {
     const b = build();
-    const shells = new Set(['fakeShellA', 'fakeShellB', 'fakeShellC']);
-    const lod1 = b.groups.filter((g) => g.lod === 1 && shells.has(g.def.id));
-    expect(lod1).toHaveLength(2); // barrel:0, barrel:1 — instead of 3 defs × 2 variants = 6
-    expect(lod1.every((g) => g.bucket === ALL_ISLANDS)).toBe(true);
-    expect(lod1.map((g) => g.variant).sort()).toEqual([0, 1]);
-    expect(lod1.every((g) => g.mesh.name.startsWith('@barrel:'))).toBe(true);
-    // every shell instance is in exactly one LOD1 group; A + B share barrel:0
-    expect(lod1.reduce((a, g) => a + g.members.length, 0)).toBe(36);
-    const g0 = lod1.find((g) => g.variant === 0)!;
-    expect(g0.members.length).toBe(24);
+    const lod1 = (id: string) => b.groups.filter((g) => g.lod === 1 && g.def.id === id);
+    expect(b.groups.some((g) => g.mesh.name.startsWith('@'))).toBe(false);
+    // cottage LOD1 differs per variant (roof colours) → 2 groups, own geometry
+    const shell = lod1('fakeShellA');
+    expect(shell).toHaveLength(2);
+    const own = buildProp('cottage', 1, 0, 1).getAttribute('position').count;
+    expect(shell.find((g) => g.variant === 0)!.mesh.geometry.getAttribute('position').count).toBe(
+      own,
+    );
+    // the variant-blind block: one LOD1 group (variant 0) holding both variants
+    const block = lod1('fakeBlock');
+    expect(block).toHaveLength(1);
+    expect(block[0].variant).toBe(0);
+    expect(block[0].members.length).toBe(12);
+    expect(block[0].bucket).toBe(ALL_ISLANDS);
+    // small props keep a group per variant (no collapse check for them)
+    expect(lod1('fakeSmall')).toHaveLength(2);
     // LOD0 stays per (def, variant, island)
-    expect(b.groups.filter((g) => g.lod === 0 && shells.has(g.def.id))).toHaveLength(18);
-    // the shared groups draw the proxy geometry (barrel, LOD1), not a shell's
-    const proxy = buildProp('barrel', 1, 0, 1).getAttribute('position').count;
-    expect(g0.mesh.geometry.getAttribute('position').count).toBe(proxy);
-    expect(lodGeo(FAKES[1], 1, 1)).toEqual({ geo: 'barrel', variant: 0 });
-    expect(lodGeo(FAKES[1], 1, 0)).toEqual({ geo: 'barn', variant: 1 });
+    expect(b.groups.filter((g) => g.lod === 0 && g.def.id === 'fakeBlock')).toHaveLength(6);
   });
 
-  it('shared groups follow the tiers like any LOD1 group, no hard pops', () => {
+  it('large structures show from T0 (tier-0 fade), small ones and the flag-off path do not', () => {
     const c = counters();
-    const b = createPropBatcher(makeStore(), {
-      scope: new Scope('t'),
-      seed: 1,
-      counters: c,
-      materialFor: () => new THREE.MeshLambertMaterial(),
-      softAppear: true,
-      castShadows: false,
-    });
-    const shared = b.groups.filter((g) => g.mesh.name.startsWith('@'));
-    b.setTier(1, 0);
+    const b = build(makeStore(), {}, c);
+    b.setTier(0, 0);
     b.update(0, 0, 0);
-    expect(shared.every((g) => g.mesh.visible)).toBe(true);
-    b.setTier(2, 1);
+    const vis = (id: string) => b.groups.filter((g) => g.def.id === id && g.mesh.visible);
+    expect(vis('fakeShellA').every((g) => g.lod === 1)).toBe(true);
+    expect(vis('fakeShellA')).toHaveLength(2);
+    expect(vis('fakeBlock')).toHaveLength(1);
+    expect(vis('fakeSmall')).toHaveLength(0);
+    // the group def is an effective tier-0 copy (its material fades like tier 0)
+    const shell = b.groups.find((g) => g.def.id === 'fakeShellA')!;
+    expect(shell.def.tier).toBe(0);
+    expect(TIER_FADE[shell.def.tier][1]).toBeGreaterThan(600);
+    // T0 → T1 → T2 → T1: no hard pops
+    b.setTier(1, 1);
     b.update(1, 0, 0);
-    expect(shared.some((g) => g.mesh.visible)).toBe(false);
-    b.setTier(1, 2);
+    b.setTier(2, 2);
     b.update(2, 0, 0);
+    b.setTier(1, 3);
+    b.update(3, 0, 0);
     expect(c.hardPops).toBe(0);
+    const off = build(makeStore(), { fromT0: false });
+    off.setTier(0, 0);
+    expect(off.groups.some((g) => g.def.id === 'fakeShellA' && g.mesh.visible)).toBe(false);
   });
 
-  it('an edit-added shell joins the existing shared LOD1 group', () => {
+  it('an edit-added variant joins the collapsed LOD1 group', () => {
     const store = makeStore();
     const b = build(store);
     b.setTier(1, 0);
     const before = b.groups.length;
-    const g0 = b.groups.find((g) => g.mesh.name.startsWith('@barrel:0'))!;
+    const g0 = b.groups.find((g) => g.lod === 1 && g.def.id === 'fakeBlock')!;
     const n = g0.members.length;
-    // a new variant on a new island: LOD0 group is created, LOD1 joins barrel:0
-    const i = store.push(PROP_DEF_INDEX.fakeShellB, 1, 300, 1, 0, 0, 1, 5, 0, grounded);
+    // variant 1 on a new island: LOD0 group is created, LOD1 joins the collapsed group
+    const i = store.push(PROP_DEF_INDEX.fakeBlock, 1, 300, 1, 0, 0, 1, 5, 0, grounded);
     const st = b.rewrite([i], 1);
     expect(st.appended).toBe(1);
     expect(st.created).toBe(1);
@@ -150,6 +169,8 @@ describe('PropBatcher: shared LOD1 proxies + interiors (TASK-304)', () => {
     expect(g0.members.length).toBe(n + 1);
     const far = b.slotsOf(i)!.find((x) => x.g.lod === 1)!;
     expect(far.g).toBe(g0);
+    const near = b.slotsOf(i)!.find((x) => x.g.lod === 0)!;
+    expect(near.g.def.tier).toBe(0);
   });
 
   it('interiors: no LOD1 group, never clustered, shadows only with interiorShadows', () => {
@@ -168,52 +189,35 @@ describe('PropBatcher: shared LOD1 proxies + interiors (TASK-304)', () => {
     lo.setTier(2, 0);
     expect(inner.every((g) => g.mesh.visible)).toBe(true);
   });
+});
 
-  it('a proxy instance is scaled from the proxy bounds to its shell size (lod1.size)', () => {
-    const store = makeStore();
-    const b = build(store);
-    const box = buildProp('barrel', 1, 1, 1);
-    box.computeBoundingBox();
-    const bs = box.boundingBox!.getSize(new THREE.Vector3());
-    const m = new THREE.Matrix4();
-    const p = new THREE.Vector3();
-    const q = new THREE.Quaternion();
-    const sc = new THREE.Vector3();
-    const g1 = b.groups.find((g) => g.mesh.name.startsWith('@barrel:1'))!;
-    g1.mesh.getMatrixAt(0, m);
-    m.decompose(p, q, sc);
-    expect(sc.x).toBeCloseTo(2 / bs.x, 5);
-    expect(sc.y).toBeCloseTo(3 / bs.y, 5);
-    expect(sc.z).toBeCloseTo(4 / bs.z, 5);
-    // no size → uniform (barrel:0), and LOD0 always keeps the store scale
-    const g0 = b.groups.find((g) => g.mesh.name.startsWith('@barrel:0'))!;
-    g0.mesh.getMatrixAt(0, m);
-    m.decompose(p, q, sc);
-    expect([sc.x, sc.y, sc.z]).toEqual([1, 1, 1].map((v) => expect.closeTo(v, 6)));
-    const near = b.groups.find((g) => g.lod === 0 && g.def.id === 'fakeShellC')!;
-    near.mesh.getMatrixAt(0, m);
-    m.decompose(p, q, sc);
-    expect(sc.y).toBeCloseTo(1, 6);
-    // an edit rewrite keeps the fit
-    const i = store.push(PROP_DEF_INDEX.fakeShellC, 0, 200, 1, 0, 0, 1, 1, 0, grounded);
-    b.rewrite([i], 1);
-    const far = b.slotsOf(i)!.find((x) => x.g.lod === 1)!;
-    far.g.mesh.getMatrixAt(far.k, m);
-    m.decompose(p, q, sc);
-    expect(sc.z).toBeCloseTo(4 / bs.z, 5);
-  });
-
-  it('content: defs sharing a LOD1 proxy agree on tier and flags', () => {
-    const byKey = new Map<string, PropDef>();
+describe('every structure ≥ 3 u is drawn at 600 u (D-031)', () => {
+  it('one instance of every def: at T0 each large structure has a visible group with no fade', () => {
+    const s = createPropStore(PROP_DEFS.length + 8);
+    PROP_DEFS.forEach((def, di) => {
+      if (!PROP_GEO[def.geo] || def.id === 'treeBlob') return;
+      s.push(di, 0, di * 20, 1, 0, 0, 1, 0, 0, def.flags);
+    });
+    const b = build(s);
+    b.setTier(0, 0);
+    const large: string[] = [];
     for (const def of PROP_DEFS) {
-      if (!def.lod1 || def.id.startsWith('fake')) continue;
-      const k = `${def.lod1.geo}:${def.lod1.variant}`;
-      const first = byKey.get(k);
-      if (!first) byKey.set(k, def);
-      else {
-        expect(def.tier, `${def.id} vs ${first.id}`).toBe(first.tier);
-        expect(def.flags, `${def.id} vs ${first.id}`).toBe(first.flags);
-      }
+      if (!PROP_GEO[def.geo] || def.id === 'treeBlob') continue;
+      const g = buildProp(def.geo, 1, 0, 0);
+      g.computeBoundingBox();
+      const size = g.boundingBox!.getSize(new THREE.Vector3());
+      if (!isLargeStructure(def, size)) continue;
+      large.push(def.id);
+      const shown = b.groups.filter((x) => x.def.id === def.id && x.mesh.visible);
+      expect(shown.length, def.id).toBeGreaterThan(0);
+      // drawn at 600 u: the dither fade of its tier reaches past it
+      const [, far] = shown[0].def.fade ?? TIER_FADE[shown[0].def.tier];
+      expect(far, def.id).toBeGreaterThan(600);
     }
+    // the sweep covers buildings, landmarks and office shells
+    expect(large).toEqual(
+      expect.arrayContaining(['cottage', 'windmill', 'lighthouse', 'hqOffice']),
+    );
+    expect(STRUCTURE_MIN_SIZE).toBe(3);
   });
 });

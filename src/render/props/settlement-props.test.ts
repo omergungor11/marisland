@@ -3,7 +3,8 @@ import { generateWorld } from '../../world/index.ts';
 import { PROP_DEFS, PROP_DEF_INDEX } from '../../content/props.ts';
 import { THEMES } from '../../content/themes.ts';
 import { EMITTERS, INTERIOR_OF, OFFICE_DEFS } from '../../content/offices.ts';
-import { PropFlag } from '../../world/prop-store.ts';
+import { PropFlag, type PropStore } from '../../world/prop-store.ts';
+import { heightAt } from '../../world/types.ts';
 import { lotLocalToWorld, lotYaw } from '../../world/lot-frame.ts';
 import { appendSettlementProps } from './settlement-props.ts';
 
@@ -140,5 +141,93 @@ describe('settlement props: office lots (TASK-304)', () => {
     } finally {
       (def as { variants: number }).variants = saved;
     }
+  });
+});
+
+describe('settlement props: districts and pipes (TASK-373)', () => {
+  /** A world with one solar district on solid ground and one pipe polyline. */
+  const make = () => {
+    const world = generateWorld(1001, { islands: 1 });
+    const lot = world.lots.find((l) => l.kind !== 'hut')!;
+    world.districts = [
+      { islandId: lot.islandId, kind: 'solar', x: lot.x, z: lot.z, rotY: 0.4, w: 10, d: 12 },
+    ];
+    world.fences = [
+      ...world.fences,
+      {
+        islandId: lot.islandId,
+        kind: 'pipe',
+        closed: false,
+        points: [
+          { x: lot.x, z: lot.z },
+          { x: lot.x + 10, z: lot.z },
+        ],
+      },
+    ];
+    return world;
+  };
+  const ofDef = (props: PropStore, id: string): number[] => {
+    const out: number[] = [];
+    for (let i = 0; i < props.count; i++) if (PROP_DEFS[props.defId[i]]?.id === id) out.push(i);
+    return out;
+  };
+
+  it('unknown defs push nothing and leave every earlier store index unchanged', () => {
+    const saved = { solarRow: PROP_DEF_INDEX.solarRow, pipe: PROP_DEF_INDEX.pipe };
+    delete PROP_DEF_INDEX.solarRow;
+    delete PROP_DEF_INDEX.pipe;
+    try {
+      const plain = generateWorld(1001, { islands: 1 });
+      const base = appendSettlementProps(plain).props;
+      const { props } = appendSettlementProps(make());
+      expect(props.count).toBe(base.count);
+      expect(Array.from(props.defId.subarray(0, base.count))).toEqual(
+        Array.from(base.defId.subarray(0, base.count)),
+      );
+    } finally {
+      Object.assign(PROP_DEF_INDEX, saved);
+    }
+  });
+
+  describe('with the defs present', () => {
+    it('solar rows on a lattice inside the district, rows along d, appended last', () => {
+      const world = make();
+      const before = appendSettlementProps(generateWorld(1001, { islands: 1 })).props.count;
+      const { props } = appendSettlementProps(world);
+      const rows = ofDef(props, 'solarRow');
+      // (10 − 3) / 3 + 1 = 3 rows × floor((12 − 3) / 5) = 1 segment, minus any over water
+      expect(rows.length).toBeGreaterThan(0);
+      expect(rows.length).toBeLessThanOrEqual(3);
+      const dist = world.districts[0];
+      const [ax, az] = [Math.cos(dist.rotY), Math.sin(dist.rotY)];
+      for (const i of rows) {
+        expect(i).toBeGreaterThanOrEqual(before);
+        const dx = props.x[i] - dist.x;
+        const dz = props.z[i] - dist.z;
+        const along = dx * ax + dz * az;
+        const across = -dx * az + dz * ax;
+        expect(Math.abs(along)).toBeLessThanOrEqual(dist.d / 2);
+        expect(Math.abs(across)).toBeLessThanOrEqual(dist.w / 2);
+        // lattice: across offsets are multiples of the row pitch (3 u) from the centre row
+        expect(Math.abs(across / 3 - Math.round(across / 3))).toBeLessThan(1e-4);
+        expect(props.rotY[i]).toBeCloseTo(Math.atan2(-az, ax), 5);
+        expect(props.y[i]).toBeCloseTo(heightAt(world.height, props.x[i], props.z[i]), 4);
+      }
+    });
+
+    it('pipe polylines draw pipe segments (2 u), fences stay fences', () => {
+      const world = make();
+      const { props } = appendSettlementProps(world);
+      const pipes = ofDef(props, 'pipe');
+      expect(pipes).toHaveLength(5);
+      const lot = world.fences[world.fences.length - 1].points[0];
+      expect(pipes.map((i) => props.x[i] - lot.x)).toEqual(
+        [1, 3, 5, 7, 9].map((v) => expect.closeTo(v, 4)),
+      );
+      // straight variants only (variant 1 is an elbow)
+      expect(pipes.map((i) => props.variant[i])).toEqual([0, 2, 0, 2, 0]);
+      const fenceRuns = world.fences.filter((f) => f.kind !== 'pipe').length;
+      if (fenceRuns) expect(ofDef(props, 'fence').length).toBeGreaterThan(0);
+    });
   });
 });

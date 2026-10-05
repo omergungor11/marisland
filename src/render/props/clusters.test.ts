@@ -2,7 +2,20 @@ import { describe, expect, it } from 'vitest';
 import { createPropStore, PropFlag } from '../../world/prop-store.ts';
 import { PROP_DEF_INDEX } from '../../content/props.ts';
 import { createRng } from '../../core/rng.ts';
-import { ClusterIndex, clusterKey, CLUSTER_CELL } from './clusters.ts';
+import * as THREE from 'three';
+import { FOLIAGE } from '../../content/palette.ts';
+import {
+  BLOB_MIX_STEPS,
+  ClusterIndex,
+  canopyKindOf,
+  canopyStats,
+  clusterKey,
+  CLUSTER_CELL,
+  deltaE,
+  hexToLinear,
+  mixLattice,
+  rampRatio,
+} from './clusters.ts';
 
 const TREE = PropFlag.grounded | PropFlag.clusterable;
 
@@ -106,5 +119,52 @@ describe('T0 cluster cells (TASK-213)', () => {
     const before = Array.from(c.cells.values()).map((x) => [x.x, x.y, x.z, ...x.members]);
     for (let i = 0; i < s.count; i++) c.update(s, [i]);
     expect(Array.from(c.cells.values()).map((x) => [x.x, x.y, x.z, ...x.members])).toEqual(before);
+  });
+});
+
+describe('blob colour helpers (TASK-373)', () => {
+  it('mixLattice: counts sum to the steps, nearest lattice point, deterministic ties', () => {
+    expect(mixLattice([1, 0, 0])).toEqual([BLOB_MIX_STEPS, 0, 0]);
+    expect(mixLattice([0, 0, 0])).toEqual([BLOB_MIX_STEPS, 0, 0]);
+    expect(mixLattice([3, 1, 0], 4)).toEqual([3, 1, 0]);
+    expect(mixLattice([1, 1, 0], 5)).toEqual([3, 2, 0]); // tie → lower kind index
+    for (const w of [
+      [0.2, 0.5, 0.3],
+      [5, 0.1, 0.01],
+      [1, 2, 3],
+    ])
+      expect(mixLattice(w).reduce((a, x) => a + x, 0)).toBe(BLOB_MIX_STEPS);
+  });
+
+  it('hexToLinear matches three, rampRatio is 1 for equal ramps', () => {
+    const c = new THREE.Color('#5DBB63');
+    const l = hexToLinear('#5DBB63');
+    expect(l[0]).toBeCloseTo(c.r, 6);
+    expect(l[1]).toBeCloseTo(c.g, 6);
+    expect(l[2]).toBeCloseTo(c.b, 6);
+    expect(rampRatio(FOLIAGE.pine, FOLIAGE.pine)).toEqual([1, 1, 1]);
+    expect(rampRatio(['#FFFFFF'], ['#808080'])[0]).toBeGreaterThan(1);
+  });
+
+  it('canopyStats: top-projected area, canopy-only colour, ao applied', () => {
+    // two upward triangles (0.5 u² each): green with ao 0.5, brown trunk top
+    const pos = [0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0];
+    const green = [0.1, 0.8, 0.1];
+    const brown = [0.6, 0.3, 0.1];
+    const col = [...green, ...green, ...green, ...brown, ...brown, ...brown];
+    const ao = [0.5, 0.5, 0.5, 1, 1, 1];
+    const st = canopyStats(pos, col, ao);
+    expect(st.area).toBeCloseTo(0.5, 6);
+    expect(st.rgb[1]).toBeCloseTo(0.4, 6);
+    expect(canopyStats(pos, col, null, null, false).area).toBeCloseTo(1, 6);
+    // a downward face does not count
+    expect(canopyStats([0, 0, 0, 1, 0, 0, 0, 0, 1], col, null).area).toBe(0);
+    expect(deltaE([0.2, 0.5, 0.1], [0.2, 0.5, 0.1])).toBe(0);
+  });
+
+  it('canopyKindOf maps the clusterable trees', () => {
+    expect(canopyKindOf('pine')).toBe('pine');
+    expect(canopyKindOf('palm')).toBe('palm');
+    expect(canopyKindOf('roundTree')).toBe('deciduous');
   });
 });
