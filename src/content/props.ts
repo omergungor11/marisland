@@ -18,8 +18,12 @@ export interface PropDef {
   flags: number;
   /** Distance fade (u) for the per-instance dither: [near, far]. Defaults by tier. */
   fade?: [number, number];
-  /** Shared LOD1 proxy: LOD1 instances group by this geometry key instead of the def's own (D-027). */
-  lod1?: { geo: string; variant: number };
+  /**
+   * Shared LOD1 proxy: LOD1 instances group by this geometry key instead of the def's own (D-027).
+   * `size`: the shell's bounds (w along local x, h, d along local z) — the batcher scales each
+   * proxy instance from the proxy's own bounds to it, so far buildings keep their size.
+   */
+  lod1?: { geo: string; variant: number; size?: readonly [w: number, h: number, d: number] };
   /** Tier-2 office interior shell: never placeable or clusterable, shadows on high only. */
   interior?: true;
 }

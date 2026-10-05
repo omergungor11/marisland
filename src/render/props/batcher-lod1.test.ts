@@ -39,7 +39,7 @@ const FAKES: PropDef[] = [
     variants: 2,
     footprint: 2.5,
     flags: grounded,
-    lod1: { geo: 'barrel', variant: 1 },
+    lod1: { geo: 'barrel', variant: 1, size: [2, 3, 4] },
   },
   {
     id: 'fakeInterior',
@@ -167,6 +167,40 @@ describe('PropBatcher: shared LOD1 proxies + interiors (TASK-304)', () => {
     // tier 2: the interiors bloom in with their LOD0 group
     lo.setTier(2, 0);
     expect(inner.every((g) => g.mesh.visible)).toBe(true);
+  });
+
+  it('a proxy instance is scaled from the proxy bounds to its shell size (lod1.size)', () => {
+    const store = makeStore();
+    const b = build(store);
+    const box = buildProp('barrel', 1, 1, 1);
+    box.computeBoundingBox();
+    const bs = box.boundingBox!.getSize(new THREE.Vector3());
+    const m = new THREE.Matrix4();
+    const p = new THREE.Vector3();
+    const q = new THREE.Quaternion();
+    const sc = new THREE.Vector3();
+    const g1 = b.groups.find((g) => g.mesh.name.startsWith('@barrel:1'))!;
+    g1.mesh.getMatrixAt(0, m);
+    m.decompose(p, q, sc);
+    expect(sc.x).toBeCloseTo(2 / bs.x, 5);
+    expect(sc.y).toBeCloseTo(3 / bs.y, 5);
+    expect(sc.z).toBeCloseTo(4 / bs.z, 5);
+    // no size → uniform (barrel:0), and LOD0 always keeps the store scale
+    const g0 = b.groups.find((g) => g.mesh.name.startsWith('@barrel:0'))!;
+    g0.mesh.getMatrixAt(0, m);
+    m.decompose(p, q, sc);
+    expect([sc.x, sc.y, sc.z]).toEqual([1, 1, 1].map((v) => expect.closeTo(v, 6)));
+    const near = b.groups.find((g) => g.lod === 0 && g.def.id === 'fakeShellC')!;
+    near.mesh.getMatrixAt(0, m);
+    m.decompose(p, q, sc);
+    expect(sc.y).toBeCloseTo(1, 6);
+    // an edit rewrite keeps the fit
+    const i = store.push(PROP_DEF_INDEX.fakeShellC, 0, 200, 1, 0, 0, 1, 1, 0, grounded);
+    b.rewrite([i], 1);
+    const far = b.slotsOf(i)!.find((x) => x.g.lod === 1)!;
+    far.g.mesh.getMatrixAt(far.k, m);
+    m.decompose(p, q, sc);
+    expect(sc.z).toBeCloseTo(4 / bs.z, 5);
   });
 
   it('content: defs sharing a LOD1 proxy agree on tier and flags', () => {

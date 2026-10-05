@@ -156,6 +156,32 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
     return g;
   };
 
+  /** Shared-proxy fit per def: shell bounds / proxy bounds (null = uniform scale). */
+  const fitCache = new Map<number, THREE.Vector3 | null>();
+  const fitOf = (defIndex: number, variant: number): THREE.Vector3 | null => {
+    let f = fitCache.get(defIndex);
+    if (f === undefined) {
+      const def = PROP_DEFS[defIndex];
+      const size = def.lod1?.size;
+      f = null;
+      if (size) {
+        const g = geometryFor(def, variant, 1);
+        if (!g.boundingBox) g.computeBoundingBox();
+        const b = (g.boundingBox as THREE.Box3).getSize(new THREE.Vector3());
+        f = new THREE.Vector3(size[0] / b.x, size[1] / b.y, size[2] / b.z);
+      }
+      fitCache.set(defIndex, f);
+    }
+    return f;
+  };
+  /** Instance scale of store index `i` at `lod` into `_s` (a shared LOD1 proxy is fitted to its shell). */
+  const scaleInto = (lod: Lod, i: number, scale: number): void => {
+    _s.setScalar(scale);
+    if (lod !== 1 || i < 0) return;
+    const f = fitOf(store.defId[i], store.variant[i]);
+    if (f) _s.multiply(f);
+  };
+
   // ---- bucket instances
   const buckets = new Map<string, number[]>();
   for (let i = 0; i < store.count; i++) {
@@ -214,10 +240,10 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
       place(k, tmp);
       _p.set(tmp.x, tmp.y, tmp.z);
       _q.setFromAxisAngle(_axis, tmp.rotY);
-      _s.setScalar(tmp.scale);
+      const i = members[k];
+      scaleInto(lod, i, tmp.scale);
       _m.compose(_p, _q, _s);
       mesh.setMatrixAt(k, _m);
-      const i = members[k];
       seeds[k] =
         i >= 0 ? unitHash(d.seed, i, store.defId[i]) : unitHash(d.seed, k + 100000, defIndex);
       cx += tmp.x;
@@ -461,7 +487,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
   const writeSlot = (g: Group, k: number, i: number, zero: boolean): void => {
     _p.set(store.x[i], store.y[i], store.z[i]);
     _q.setFromAxisAngle(_axis, store.rotY[i]);
-    _s.setScalar(zero ? 0 : store.scale[i]);
+    scaleInto(g.lod, i, zero ? 0 : store.scale[i]);
     _m.compose(_p, _q, _s);
     g.mesh.setMatrixAt(k, _m);
     // ranges, not a full upload: click reactions add their own ranges in the same frame
