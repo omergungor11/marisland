@@ -25,6 +25,12 @@ import { ALWAYS_APPEAR, APPEAR_OUT_SECONDS, HIDDEN_APPEAR, encodeAppearOut } fro
  * fade back in when restored, and edit-added indices are appended to their (def, variant,
  * bucket) group — growing the InstancedMesh with headroom (`EDIT_RENDER.batchHeadroom`) or
  * creating the group. Contact blobs mirror their props; ground cover is just another group.
+ *
+ * TASK-304: defs with a shared LOD1 proxy (`def.lod1`, D-027) group LOD1 by the proxy
+ * (`lod1.geo:lod1.variant`) instead of (def, variant), so themed shells cost one LOD1 group per
+ * proxy class. Defs sharing a proxy must agree on tier and flags (the group's `def` is its first
+ * member's). Interior defs (`def.interior`) have no LOD1 group (tier 2 never shows LOD1) and cast
+ * shadows only with `interiorShadows`.
  */
 export interface BatcherDeps {
   scope: Scope;
@@ -38,6 +44,8 @@ export interface BatcherDeps {
   /** Capture mode: edit removals / additions apply instantly (no fades). */
   instantEdits?: boolean;
   castShadows: boolean;
+  /** Interior defs cast shadows too (high quality only; default false). */
+  interiorShadows?: boolean;
   /** Ground-cover visibility radius around the focus (u). */
   groundCoverRadius?: number;
   /** Contact-shadow blobs under grounded props (default true). */
@@ -47,7 +55,9 @@ export interface BatcherDeps {
 export interface Group {
   mesh: THREE.InstancedMesh;
   defIndex: number;
+  /** The def (shared LOD1 group: its first member's def; members may be other defs). */
   def: PropDef;
+  /** Geometry variant (shared LOD1 group: the proxy's `lod1.variant`). */
   variant: number;
   lod: Lod;
   /** islandId (LOD0), chunkId (ground cover) or `ALL_ISLANDS` (LOD1). */
@@ -120,15 +130,26 @@ const _axis = new THREE.Vector3(0, 1, 0);
 /** `Group.bucket` of the LOD1 groups, which hold the instances of every island (D5). */
 export const ALL_ISLANDS = -1;
 
+/** Geometry source of a def at a LOD: a shared LOD1 proxy (`def.lod1`) or the def's own. */
+export function lodGeo(def: PropDef, variant: number, lod: Lod): { geo: string; variant: number } {
+  return lod === 1 && def.lod1 ? def.lod1 : { geo: def.geo, variant };
+}
+
+/** Group identity before the bucket: `${defIndex}:${variant}`, or `@geo:variant` for a shared proxy. */
+function shareKey(def: PropDef, defIndex: number, variant: number, lod: Lod): string {
+  return lod === 1 && def.lod1 ? `@${def.lod1.geo}:${def.lod1.variant}` : `${defIndex}:${variant}`;
+}
+
 export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher {
   const root = new THREE.Group();
   root.name = 'props';
   const geoCache = new Map<string, THREE.BufferGeometry>();
   const geometryFor = (def: PropDef, variant: number, lod: Lod): THREE.BufferGeometry => {
-    const key = `${def.geo}:${variant}:${lod}`;
+    const src = lodGeo(def, variant, lod);
+    const key = `${src.geo}:${src.variant}:${lod}`;
     let g = geoCache.get(key);
     if (!g) {
-      g = buildProp(def.geo, d.seed, variant, lod);
+      g = buildProp(src.geo, d.seed, src.variant, lod);
       d.scope.add(g);
       geoCache.set(key, g);
     }
@@ -183,7 +204,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
     mesh.count = n;
     const depth = d.depthMaterialFor?.(def, lod, gc);
     if (depth) mesh.customDepthMaterial = depth;
-    mesh.castShadow = d.castShadows && !gc;
+    mesh.castShadow = d.castShadows && !gc && (!def.interior || (d.interiorShadows ?? false));
     mesh.receiveShadow = true;
     mesh.frustumCulled = true;
     const tmp = { x: 0, y: 0, z: 0, rotY: 0, scale: 1 };
@@ -196,7 +217,9 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
       _s.setScalar(tmp.scale);
       _m.compose(_p, _q, _s);
       mesh.setMatrixAt(k, _m);
-      seeds[k] = unitHash(d.seed, members[k] >= 0 ? members[k] : k + 100000, defIndex);
+      const i = members[k];
+      seeds[k] =
+        i >= 0 ? unitHash(d.seed, i, store.defId[i]) : unitHash(d.seed, k + 100000, defIndex);
       cx += tmp.x;
       cz += tmp.z;
     }
@@ -208,14 +231,15 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
     geo.setAttribute('aAppear', aAppear);
     mesh.computeBoundingSphere();
     mesh.visible = false;
-    mesh.name = `${def.id}:${variant}:L${lod}:${gc ? 'c' : 'i'}${bucket}`;
+    const src = lodGeo(def, variant, lod);
+    mesh.name = `${src.geo === def.geo ? def.id : `@${src.geo}`}:${src.variant}:L${lod}:${gc ? 'c' : 'i'}${bucket}`;
     root.add(mesh);
     let blobs: THREE.InstancedMesh | null = null;
     if ((d.blobs ?? true) && !gc && (def.flags & PropFlag.grounded) !== 0) {
       const radii = new Float32Array(n);
       for (let k = 0; k < n; k++) {
         place(k, tmp);
-        radii[k] = blobRadius(def, tmp.scale);
+        radii[k] = blobRadius(members[k] >= 0 ? defOf(members[k]) : def, tmp.scale);
       }
       blobs = makeBlobs(mesh, radii, aAppear, capacity);
       blobs.visible = false;
@@ -225,7 +249,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
       mesh,
       defIndex,
       def,
-      variant,
+      variant: src.variant,
       lod,
       bucket,
       groundCover: gc,
@@ -261,8 +285,13 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
       o.rotY = store.rotY[i];
       o.scale = store.scale[i];
     };
-  /** `${defId}:${variant}` → store indices of every island, for the merged LOD1 group. */
-  const farMembers = new Map<string, number[]>();
+  /** Def of store index `i` (a shared LOD1 group holds several defs). */
+  const defOf = (i: number): PropDef => PROP_DEFS[store.defId[i]];
+  /** `shareKey` → store indices of every island, for the merged LOD1 group. */
+  const farMembers = new Map<
+    string,
+    { def: PropDef; defIndex: number; variant: number; arr: number[] }
+  >();
   for (const [key, arr] of buckets) {
     const [defIdStr, variantStr] = key.split(':');
     const defIndex = Number(defIdStr);
@@ -277,28 +306,19 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
       continue;
     }
     instances += members.length;
-    const fk = `${defIndex}:${variant}`;
+    if (def.interior) continue; // tier 2: LOD1 never shows
+    const fk = shareKey(def, defIndex, variant, 1);
     const far = farMembers.get(fk);
-    if (far) far.push(...arr);
-    else farMembers.set(fk, arr.slice());
+    if (far) far.arr.push(...arr);
+    else farMembers.set(fk, { def, defIndex, variant, arr: arr.slice() });
   }
   // LOD1 (tiers 0–1: overview and island views, most islands in frame) is one group per
   // (def, variant) across all islands — per-island groups cost a draw call (+ blobs, + depth)
-  // each for little culling (sweep D5). LOD0 (village / close views) stays per island.
-  for (const [fk, arr] of farMembers) {
-    const [defIdStr, variantStr] = fk.split(':');
-    const defIndex = Number(defIdStr);
+  // each for little culling (sweep D5) — or one group per shared proxy (`def.lod1`). LOD0
+  // (village / close views) stays per island.
+  for (const { def, defIndex, variant, arr } of farMembers.values()) {
     const members = Int32Array.from(arr);
-    makeGroup(
-      PROP_DEFS[defIndex],
-      defIndex,
-      Number(variantStr),
-      1,
-      ALL_ISLANDS,
-      false,
-      members,
-      placeFrom(members),
-    );
+    makeGroup(def, defIndex, variant, 1, ALL_ISLANDS, false, members, placeFrom(members));
   }
 
   // ---- T0 cluster proxies from clusterable trees: one blob per 8 u cell with ≥ 1 tree
@@ -409,12 +429,13 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
   let slotMap: Map<number, { g: Group; k: number }[]> | null = null;
   let keyMap: Map<string, Group> | null = null;
   const groupKey = (
+    def: PropDef,
     defIndex: number,
     variant: number,
     gc: boolean,
     bucket: number,
     lod: Lod,
-  ): string => `${defIndex}:${variant}:${gc ? 'c' : 'i'}${bucket}:L${lod}`;
+  ): string => `${shareKey(def, defIndex, variant, lod)}:${gc ? 'c' : 'i'}${bucket}:L${lod}`;
   const maps = (): {
     slots: Map<number, { g: Group; k: number }[]>;
     keys: Map<string, Group>;
@@ -424,7 +445,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
       keyMap = new Map();
       for (const g of groups) {
         if (g.members.length && g.members[0] < 0) continue; // T0 cluster proxies
-        keyMap.set(groupKey(g.defIndex, g.variant, g.groundCover, g.bucket, g.lod), g);
+        keyMap.set(groupKey(g.def, g.defIndex, g.variant, g.groundCover, g.bucket, g.lod), g);
         for (let k = 0; k < g.members.length; k++) {
           const i = g.members[k];
           let sl = slotMap.get(i);
@@ -454,7 +475,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
         store.y[i],
         store.z[i],
         store.rotY[i],
-        zero ? 0 : blobRadius(g.def, store.scale[i]),
+        zero ? 0 : blobRadius(defOf(i), store.scale[i]),
       );
     touched.add(g);
   };
@@ -545,7 +566,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
           store.y[i],
           store.z[i],
           store.rotY[i],
-          removedIdx.has(i) ? 0 : blobRadius(g.def, store.scale[i]),
+          removedIdx.has(i) ? 0 : blobRadius(defOf(i), store.scale[i]),
         );
       }
       blobs.visible = oldBlobs.visible;
@@ -565,10 +586,10 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
     const variant = store.variant[i];
     const gc = (store.flags[i] & PropFlag.groundCover) !== 0;
     const sl: { g: Group; k: number }[] = [];
-    for (const lod of (gc ? [0] : [0, 1]) as Lod[]) {
+    for (const lod of (gc || def.interior ? [0] : [0, 1]) as Lod[]) {
       // ground cover per chunk; LOD0 per island; LOD1 merged across islands
       const bucket = gc ? store.chunkId[i] : lod === 1 ? ALL_ISLANDS : store.islandId[i];
-      const key = groupKey(defIndex, variant, gc, bucket, lod);
+      const key = groupKey(def, defIndex, variant, gc, bucket, lod);
       const g = keys.get(key);
       if (!g) {
         const members = Int32Array.of(i);

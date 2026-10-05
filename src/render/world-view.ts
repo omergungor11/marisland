@@ -31,7 +31,7 @@ import { createPropMaterials } from './materials/prop-materials.ts';
 import type { PropDef } from '../content/props.ts';
 import { PropFlag, type PropStore } from '../world/prop-store.ts';
 import { appendSettlementProps } from './props/settlement-props.ts';
-import { PUFF_CHIMNEY } from './particles/puffs.ts';
+import { PUFF_CHIMNEY, PUFF_VENT } from './particles/puffs.ts';
 import type { Lod } from '../geo/index.ts';
 import { createLanternPools, type LanternPools } from './night/lantern-pools.ts';
 import { createBeam } from './night/beam.ts';
@@ -170,10 +170,15 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   if (beam.mesh) group.add(beam.mesh);
   const clouds = createClouds(world, d.quality, d.scope);
   group.add(clouds.group);
-  /** House render index → its chimney emitters (follow re-grounding, off while flooded). */
+  /** House render index → its chimney / vent emitters (follow re-grounding, off while flooded). */
   const chimneys = new Map<number, { e: number; x: number; z: number; dy: number }[]>();
   for (const c of settlement.emitters.chimneys) {
-    const e = clouds.puffs.addEmitter(c.x, c.y, c.z, PUFF_CHIMNEY);
+    const e = clouds.puffs.addEmitter(
+      c.x,
+      c.y,
+      c.z,
+      c.preset === 'vent' ? PUFF_VENT : PUFF_CHIMNEY,
+    );
     const house = settlement.groups.lots[c.lot]?.[0];
     if (house === undefined) continue;
     let list = chimneys.get(house);
@@ -210,6 +215,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     depthMaterialFor: d.propDepthMaterial ?? pm.depthMaterialFor,
     softAppear: d.softAppear ?? true,
     castShadows: d.quality !== 'low',
+    interiorShadows: d.quality === 'high',
     instantEdits: d.instantEdits ?? false,
   });
   group.add(props.group);

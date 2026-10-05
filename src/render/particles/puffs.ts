@@ -20,7 +20,13 @@ export const PUFF_STEAM = 1;
 export const PUFF_SPRING = 2;
 /** Internal: ring-puff burp slots added with every steam emitter. */
 export const PUFF_RING = 3;
-export type PuffKind = typeof PUFF_CHIMNEY | typeof PUFF_STEAM | typeof PUFF_SPRING;
+/**
+ * Office roof vent (TASK-304): a preset, not a shader kind — drawn as soft steam (shader kind
+ * `PUFF_SPRING`) with its own sizes (PUFFS.vent). 4 is the rain kind.
+ */
+export const PUFF_VENT = 5;
+export type PuffKind =
+  typeof PUFF_CHIMNEY | typeof PUFF_STEAM | typeof PUFF_SPRING | typeof PUFF_VENT;
 
 export interface Puffs {
   mesh: THREE.InstancedMesh;
@@ -47,7 +53,15 @@ const KIND_CFG = {
   [PUFF_CHIMNEY]: PUFFS.chimney,
   [PUFF_STEAM]: PUFFS.steam,
   [PUFF_SPRING]: PUFFS.spring,
+  [PUFF_VENT]: PUFFS.vent,
 } as const;
+/** Preset → `aKind` (the shader branch). */
+const SHADER_KIND: Record<PuffKind, number> = {
+  [PUFF_CHIMNEY]: PUFF_CHIMNEY,
+  [PUFF_STEAM]: PUFF_STEAM,
+  [PUFF_SPRING]: PUFF_SPRING,
+  [PUFF_VENT]: PUFF_SPRING,
+};
 
 export function createPuffs(
   scope: Scope,
@@ -143,7 +157,7 @@ export function createPuffs(
   let used = 0;
   let dropped = 0;
   let emitters = 0;
-  /** Per emitter: its slot range [start, end) (steam ring puffs included) and kind. */
+  /** Per emitter: its slot range [start, end) (steam ring puffs included) and preset. */
   const ranges: { start: number; end: number; kind: number }[] = [];
 
   const put = (
@@ -181,7 +195,7 @@ export function createPuffs(
           x,
           y,
           z,
-          kind,
+          SHADER_KIND[kind],
           (s / cfg.slots + phase) % 1,
           [cfg.size[0], cfg.size[1], cfg.rise, life],
           cfg.drift,
