@@ -6,6 +6,7 @@ import { PropFlag } from './prop-store.ts';
 import { heightAt, zoneAt, Zone } from './types.ts';
 import { PLACEMENT_RULES } from '../content/placement.ts';
 import { perfLimit } from '../test/perf.ts';
+import { THEMES, type ThemeDef } from '../content/themes/index.ts';
 
 describe('prop scatter', () => {
   const world = generateWorld(1001, { islands: 1 });
@@ -64,5 +65,24 @@ describe('prop scatter', () => {
 
   it('is fast enough', () => {
     expect(ms).toBeLessThan(perfLimit(600));
+  });
+
+  it('honours the theme scatterOff list and appends the theme scatter rules (M14b)', () => {
+    const theme = THEMES[world.islands[0].theme] as {
+      -readonly [K in keyof ThemeDef]: ThemeDef[K];
+    };
+    const saved = { off: theme.scatterOff, own: theme.scatter };
+    const palm = PLACEMENT_RULES.find((r) => r.def === 'palm');
+    expect(palm).toBeDefined();
+    try {
+      theme.scatterOff = ['palm'];
+      expect(scatterProps(world, createOccupancy()).counts.palm ?? 0).toBe(0);
+      // a theme rule ignores `archetypes` (the theme is implied)
+      theme.scatter = [{ ...palm!, archetypes: ['millbrook'] }];
+      expect(scatterProps(world, createOccupancy()).counts.palm).toBeGreaterThan(0);
+    } finally {
+      theme.scatterOff = saved.off;
+      theme.scatter = saved.own;
+    }
   });
 });

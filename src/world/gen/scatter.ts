@@ -10,6 +10,7 @@ import {
   type PlacementRule,
 } from '../../content/placement.ts';
 import { PROP_DEFS, PROP_DEF_INDEX } from '../../content/props.ts';
+import { THEMES } from '../../content/themes/index.ts';
 import { createPropStore, PropFlag, type PropStore } from '../prop-store.ts';
 import {
   heightAt,
@@ -136,7 +137,9 @@ export function chunkIdAt(x: number, z: number): number {
 }
 
 /**
- * Scatter every rule over every island. Deterministic: rng.fork('props', islandId, ruleIndex).
+ * Scatter every rule over every island: the global PLACEMENT_RULES (minus the theme's
+ * `scatterOff` defs), then the theme's own `scatter` rules (its island only; `archetypes`
+ * ignored). Deterministic: rng.fork('props', islandId, ruleIndex) over that combined list.
  * Pass the occupancy grid pre-marked by settlements (markSites) so props avoid
  * lots, docks, landmarks and paths; ground cover only avoids structures.
  */
@@ -152,9 +155,15 @@ export function scatterProps(
   let groundCoverTotal = 0;
 
   for (const island of world.islands) {
-    for (let r = 0; r < PLACEMENT_RULES.length; r++) {
-      const rule = PLACEMENT_RULES[r];
-      if (rule.archetypes && !rule.archetypes.includes(island.archetype)) continue;
+    const theme = THEMES[island.theme];
+    // global rules first (same indices as before M14b), then the theme's own rules
+    const rules = PLACEMENT_RULES.concat(theme.scatter);
+    for (let r = 0; r < rules.length; r++) {
+      const rule = rules[r];
+      if (r < PLACEMENT_RULES.length) {
+        if (rule.archetypes && !rule.archetypes.includes(island.archetype)) continue;
+        if (theme.scatterOff.includes(rule.def)) continue;
+      }
       const defIndex = PROP_DEF_INDEX[rule.def];
       const def = PROP_DEFS[defIndex];
       if (!def) continue;

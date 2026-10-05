@@ -9,7 +9,7 @@
  */
 import type { Rng } from '../../../core/rng.ts';
 import type { IslandData } from '../../types.ts';
-import type { SiteCtx, SitePlan } from '../settlements.ts';
+import type { SiteCtx, SitePlan } from '../sites.ts';
 
 export type { SiteCtx, SitePlan };
 

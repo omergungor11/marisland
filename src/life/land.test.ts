@@ -495,7 +495,8 @@ describe('land: click emote + readable sheep (TASK-192)', () => {
         ];
         if (anchors.some((a) => Math.hypot(a.x - s.x[i], a.z - s.z[i]) < 40)) near++;
       }
-      if (seed === 1001) expect(onMill).toBeGreaterThanOrEqual(5);
+      // M14b (TASK-379): flocks follow THEME_LIFE (Design's meadow), not the farm islands
+      if (seed === 1001) expect(s.capacity).toBeGreaterThanOrEqual(5);
       expect(near).toBe(onMill);
     }
   });
