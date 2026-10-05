@@ -4,7 +4,7 @@ import { THEMES } from '../../content/themes.ts';
 import { LANDMARK_RENDER } from '../../content/landmark-render.ts';
 import { EMITTERS, INTERIOR_OF, OFFICE_DEFS, type EmitterSpot } from '../../content/offices.ts';
 import { createPropStore, PropFlag, type PropStore } from '../../world/prop-store.ts';
-import { heightAt, type WorldData } from '../../world/types.ts';
+import { heightAt, type DistrictKind, type WorldData } from '../../world/types.ts';
 import { lotLocalToWorld, lotPivotY, lotYaw } from '../../world/lot-frame.ts';
 import { chunkIdAt } from '../../world/gen/scatter.ts';
 
@@ -16,6 +16,8 @@ import { chunkIdAt } from '../../world/gen/scatter.ts';
  * emitters (EMITTERS) and theme decor (THEMES[theme].decor); landmarks take the island theme's
  * `landmarkVariant`. Themed extras draw from their own RNG fork so the legacy decor stream
  * (and every pre-Phase-3 world) is unchanged.
+ * M14b (TASK-373): `world.districts` emit lattice props (solar rows) after everything else, and
+ * polylines of kind 'pipe' draw pipe segments through the fence loop.
  */
 
 export interface SettlementEmitters {
@@ -217,11 +219,13 @@ export function appendSettlementProps(world: WorldData): {
         ),
       );
   }
-  // fences along polylines
+  // fences (and M14b pipes, kind 'pipe') along polylines: segments span local +x
   for (const f of world.fences) {
+    const seg = LINE_SEGMENT[f.kind] ?? LINE_SEGMENT.fence;
     const pts = f.points;
     const n = f.closed ? pts.length : pts.length - 1;
     let carry = 0;
+    let made = 0;
     for (let i = 0; i < n; i++) {
       const a = pts[i];
       const b = pts[(i + 1) % pts.length];
@@ -230,11 +234,13 @@ export function appendSettlementProps(world: WorldData): {
       const len = Math.hypot(dx, dz);
       if (len < 1e-3) continue;
       const yaw = Math.atan2(-dz, dx); // fence rails span local +x
-      for (let t = carry; t + 1.5 <= len + 1e-3; t += 1.5) {
-        const x = a.x + (dx / len) * (t + 0.75);
-        const z = a.z + (dz / len) * (t + 0.75);
-        push('fence', x, z, yaw, 1, f.islandId);
-        carry = t + 1.5 - len;
+      for (let t = carry; t + seg.len <= len + 1e-3; t += seg.len) {
+        const x = a.x + (dx / len) * (t + seg.len / 2);
+        const z = a.z + (dz / len) * (t + seg.len / 2);
+        // fences roll their variant from the decor stream (unchanged); listed variants cycle
+        const v = seg.variants ? seg.variants[made++ % seg.variants.length] : undefined;
+        push(seg.def, x, z, yaw, 1, f.islandId, undefined, v);
+        carry = t + seg.len - len;
       }
       if (carry < 0) carry = 0;
     }
@@ -309,8 +315,53 @@ export function appendSettlementProps(world: WorldData): {
       isl,
     );
   }
+  // districts (M14b): lattice props over the district rectangle (e.g. solar rows). Last, from
+  // their own RNG fork, so every earlier store index and the decor stream stay unchanged.
+  const districtRng = createRng(world.seed).fork('settlement-districts');
+  for (const dist of world.districts) {
+    const lat = DISTRICT_LATTICE[dist.kind];
+    if (!lat) continue;
+    const [ax, az] = facing(dist.rotY); // rows run along `d`
+    const yaw = Math.atan2(-az, ax); // row segments span local +x (like fence rails)
+    const rows = Math.max(1, Math.floor((dist.w - 2 * lat.margin) / lat.pitch) + 1);
+    const segs = Math.max(1, Math.floor((dist.d - 2 * lat.margin) / lat.len));
+    for (let r = 0; r < rows; r++) {
+      const across = (r - (rows - 1) / 2) * lat.pitch;
+      for (let k = 0; k < segs; k++) {
+        const along = (k - (segs - 1) / 2) * lat.len;
+        const x = dist.x + ax * along - az * across;
+        const z = dist.z + az * along + ax * across;
+        if (heightAt(h, x, z) < 0.2) continue; // never on the water
+        push(lat.def, x, z, yaw, 1, dist.islandId, undefined, undefined, districtRng);
+      }
+    }
+  }
   return { props: s, emitters: { chimneys }, groups };
 }
+
+/**
+ * Polyline kind → segment def, length (u) and the variants to cycle (pipe: the straight ones,
+ * geo/themes/devops.ts spans x ∈ [−1, 1]). Unlisted kinds draw fences (pre-M14b behaviour).
+ * TODO(content): move to src/content.
+ */
+const LINE_SEGMENT: Readonly<
+  Record<string, { def: string; len: number; variants?: readonly number[] }>
+> = {
+  fence: { def: 'fence', len: 1.5 },
+  pipe: { def: 'pipe', len: 2, variants: [0, 2] },
+};
+
+/**
+ * District kind → lattice of row segments: `pitch` between rows (across `w`), `len` per segment
+ * (along `d`), `margin` kept free at the rectangle edges. Unknown defs push nothing (−1).
+ * solarRow (geo/themes/coding.ts) spans local x: 3 or 4 panels = 3.5 / 4.7 u, 1.25 u deep.
+ * TODO(content): move to src/content.
+ */
+const DISTRICT_LATTICE: Readonly<
+  Partial<Record<DistrictKind, { def: string; pitch: number; len: number; margin: number }>>
+> = {
+  solar: { def: 'solarRow', pitch: 3, len: 5, margin: 1.5 },
+};
 
 /** Weighted pick from `[id, weight]` pairs (null when empty). */
 function weighted(r: Rng, list: readonly (readonly [string, number])[]): string | null {

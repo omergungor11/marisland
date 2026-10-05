@@ -1,12 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { ALL_ISLANDS, createPropBatcher } from './batcher.ts';
-import { createPropStore, PropFlag } from '../../world/prop-store.ts';
-import { PROP_DEF_INDEX } from '../../content/props.ts';
+import { ALL_ISLANDS, createPropBatcher, geoStats, type BatcherWorld } from './batcher.ts';
+import { createPropStore, PropFlag, type PropStore } from '../../world/prop-store.ts';
+import { PROP_DEFS, PROP_DEF_INDEX } from '../../content/props.ts';
+import { THEMES } from '../../content/themes/index.ts';
+import { buildProp } from '../../geo/index.ts';
+import { generateWorld } from '../../world/index.ts';
+import { heightAt } from '../../world/types.ts';
+import { smoothHeightAt } from '../../shared/terrain-sample.ts';
+import { appendSettlementProps } from './settlement-props.ts';
 import { Scope } from '../../core/scope.ts';
 import { BLOOM_IN } from '../../content/anim.ts';
 import { APPEAR_OUT_BELOW, removeFade } from './appear.ts';
-import { clusterKey, clusterScale } from './clusters.ts';
+import { clusterKey, clusterScale, deltaE, type Rgb } from './clusters.ts';
 
 function makeStore() {
   const s = createPropStore(500);
@@ -283,9 +289,9 @@ describe('PropBatcher.rewrite (TASK-211)', () => {
     const groupsBefore = b.groups.length;
     const lone = tree(store, 1, 0, 2);
     expect(b.rewrite([lone], 8).appended).toBe(1);
-    // the island's LOD0 tree group + its first T0 cluster-blob group (TASK-213); LOD1 joins
-    // the existing all-islands group of the variant (D5)
-    expect(b.groups.length).toBe(groupsBefore + 2);
+    // the island's LOD0 tree group only: LOD1 joins the existing all-islands group of the
+    // variant (D5) and its T0 blob the all-islands group of its colour class (TASK-373)
+    expect(b.groups.length).toBe(groupsBefore + 1);
     expect(b.stats.groups).toBe(b.groups.length);
     const made = b.groups.slice(groupsBefore).filter((g) => g.def.id === 'roundTree');
     expect(made).toHaveLength(1);
@@ -343,5 +349,166 @@ describe('PropBatcher.rewrite (TASK-211)', () => {
     for (const i of members) store.flags[i] &= ~PropFlag.removed;
     b.rewrite(members, 5);
     expect(blobAt(cx, cz)!.scale).toBeCloseTo(clusterScale(members.length), 5);
+  });
+});
+
+describe('T0 blobs and grounding (TASK-373)', () => {
+  const m4 = new THREE.Matrix4();
+  const v3 = new THREE.Vector3();
+  const TREE = PropFlag.grounded | PropFlag.windy | PropFlag.clusterable;
+  type Store = PropStore;
+  const make = (store: Store, world?: BatcherWorld) =>
+    createPropBatcher(store, {
+      scope: new Scope('t'),
+      seed: 1,
+      counters: counters(),
+      materialFor: () => new THREE.MeshLambertMaterial(),
+      softAppear: true,
+      castShadows: false,
+      instantEdits: true,
+      world,
+    });
+  /** Canopy colour of the trees a cell stands for (area · scale² weighted, LOD0 geometry). */
+  const cellColor = (store: Store, members: readonly number[]): Rgb => {
+    const rgb: Rgb = [0, 0, 0];
+    let a = 0;
+    for (const i of members) {
+      const st = geoStats(buildProp(PROP_DEFS[store.defId[i]].geo, 1, store.variant[i], 0));
+      const w = st.area * store.scale[i] * store.scale[i];
+      for (let c = 0; c < 3; c++) rgb[c] += st.rgb[c] * w;
+      a += w;
+    }
+    return [rgb[0] / a, rgb[1] / a, rgb[2] / a];
+  };
+  /** Every live blob: ΔE of its geometry's canopy colour vs the trees of its cell. */
+  const blobErrors = (store: Store, b: ReturnType<typeof make>): number[] => {
+    const out: number[] = [];
+    for (const g of b.groups) {
+      if (g.def.id !== 'treeBlob') continue;
+      const own = geoStats(g.mesh.geometry).rgb;
+      for (let k = 0; k < g.mesh.count; k++) {
+        g.mesh.getMatrixAt(k, m4);
+        if (v3.setFromMatrixScale(m4).x === 0) continue;
+        v3.setFromMatrixPosition(m4);
+        const cell = b.clusters.cells.get(clusterKey(v3.x, v3.z))!;
+        out.push(deltaE(own, cellColor(store, cell.members)));
+      }
+    }
+    return out;
+  };
+
+  it('one blob group per colour class across islands; ΔE ≤ 4 vs the canopy (seeded worlds)', () => {
+    for (const seed of [1, 1001]) {
+      const world = generateWorld(seed);
+      const { props } = appendSettlementProps(world);
+      const b = make(props, world);
+      const blobs = b.groups.filter((g) => g.def.id === 'treeBlob');
+      expect(blobs.every((g) => g.bucket === ALL_ISLANDS)).toBe(true);
+      const err = blobErrors(props, b);
+      // 3 pure kinds + a few blends; was one group per island × variant (~18)
+      expect(blobs.length).toBeLessThanOrEqual(10);
+      expect(err.length).toBe([...b.clusters.cells.values()].filter((c) => c.n).length);
+      expect(Math.max(...err), `seed ${seed}`).toBeLessThanOrEqual(4);
+    }
+  });
+
+  it('a pine cell gets a pine-coloured blob; adding pines to a deciduous cell moves its class', () => {
+    const s = createPropStore(64);
+    for (let k = 0; k < 4; k++)
+      s.push(PROP_DEF_INDEX.roundTree, k % 3, 1 + k, 1, 1, 0, 1, 0, 0, TREE);
+    for (let k = 0; k < 4; k++) s.push(PROP_DEF_INDEX.pine, k % 3, 41 + k, 1, 1, 0, 1, 1, 0, TREE);
+    const b = make(s);
+    b.setTier(0, 0);
+    expect(b.groups.filter((g) => g.def.id === 'treeBlob')).toHaveLength(2);
+    expect(Math.max(...blobErrors(s, b))).toBeLessThanOrEqual(4);
+    const added: number[] = [];
+    for (let k = 0; k < 8; k++)
+      added.push(s.push(PROP_DEF_INDEX.pine, k % 3, 1.5 + k * 0.5, 1, 2, 0, 1, 0, 0, TREE));
+    b.rewrite(added, 1);
+    expect(Math.max(...blobErrors(s, b))).toBeLessThanOrEqual(4);
+    const blobs = b.groups.filter((g) => g.def.id === 'treeBlob');
+    expect(blobs.every((g) => g.mesh.visible)).toBe(true);
+    // the old slot stays, hidden: one live blob per cell
+    expect(blobErrors(s, b)).toHaveLength(2);
+  });
+
+  it('LOD1 contact blobs draw as one merged mesh mirroring the visible LOD1 groups', () => {
+    const s = createPropStore(64);
+    for (let k = 0; k < 6; k++)
+      s.push(PROP_DEF_INDEX.roundTree, k % 3, k * 10, 1, 0, 0, 1, k % 2, 0, TREE);
+    const b = make(s);
+    const l1 = b.groups.filter((g) => g.lod === 1 && g.blobs);
+    expect(l1.length).toBe(3);
+    expect(l1.every((g) => g.blobs!.parent === null)).toBe(true);
+    const far = () =>
+      b.group.children.find((o) => o.name === 'props:L1:blobs') as THREE.InstancedMesh | undefined;
+    b.setTier(1, 0);
+    b.update(0, 0, 0);
+    expect(far()!.visible).toBe(true);
+    expect(far()!.count).toBe(6);
+    // removal (instant): the merged copy follows the group's zero-scaled blob
+    s.flags[2] |= PropFlag.removed;
+    b.rewrite([2], 1);
+    const g = l1.find((x) => Array.from(x.members).includes(2))!;
+    const off = l1.slice(0, l1.indexOf(g)).reduce((a, x) => a + x.blobs!.count, 0);
+    far()!.getMatrixAt(off + Array.from(g.members).indexOf(2), m4);
+    expect(v3.setFromMatrixScale(m4).x).toBe(0);
+    // T2: no LOD1 group visible → hidden
+    b.setTier(2, 2);
+    b.update(2, 0, 0);
+    expect(far()!.visible).toBe(false);
+  });
+
+  it('island tree palettes pick the blob class (equal hexes → one group across islands)', () => {
+    const s = createPropStore(16);
+    s.push(PROP_DEF_INDEX.roundTree, 0, 1, 1, 1, 0, 1, 0, 0, TREE);
+    s.push(PROP_DEF_INDEX.roundTree, 0, 41, 1, 1, 0, 1, 1, 0, TREE);
+    const height = generateWorld(1).height;
+    const b = make(s, { height, islands: [{ theme: 'hq' }, { theme: 'coding' }] });
+    const sameHexes =
+      JSON.stringify(THEMES.hq.treePalette) === JSON.stringify(THEMES.coding.treePalette);
+    expect(b.groups.filter((g) => g.def.id === 'treeBlob')).toHaveLength(sameHexes ? 1 : 2);
+  });
+
+  it('smooth-twin grounding: drawn y = smoothHeightAt where it differs > 0.02 u; store y unchanged', () => {
+    const world = generateWorld(1);
+    const h = world.height;
+    let px = 0;
+    let pz = 0;
+    let found = false;
+    for (let x = -150; x < 150 && !found; x += 0.7)
+      for (let z = -150; z < 150 && !found; z += 0.7)
+        if (heightAt(h, x, z) > 1 && Math.abs(smoothHeightAt(h, x, z) - heightAt(h, x, z)) > 0.05) {
+          px = x;
+          pz = z;
+          found = true;
+        }
+    expect(found).toBe(true);
+    const s = createPropStore(8);
+    const yb = heightAt(h, px, pz);
+    const a = s.push(PROP_DEF_INDEX.bush, 0, px, yb, pz, 0, 1, 0, 0, PropFlag.grounded);
+    // not ground-following (a deck at a fixed height): left alone
+    const deck = s.push(PROP_DEF_INDEX.bush, 0, px, yb + 0.5, pz, 0, 1, 0, 0, PropFlag.grounded);
+    const b = make(s, { height: h, islands: world.islands });
+    const yOf = (i: number): number => {
+      const g = b.groups.find((x) => x.lod === 0 && Array.from(x.members).includes(i))!;
+      g.mesh.getMatrixAt(Array.from(g.members).indexOf(i), m4);
+      return v3.setFromMatrixPosition(m4).y;
+    };
+    expect(yOf(a)).toBeCloseTo(smoothHeightAt(h, px, pz), 5);
+    expect(yOf(deck)).toBeCloseTo(yb + 0.5, 5);
+    expect(s.y[a]).toBe(Math.fround(yb));
+    // edits re-ground through the same rule
+    s.y[a] = 0;
+    b.rewrite([a], 1);
+    expect(yOf(a)).toBeCloseTo(0, 5);
+    s.y[a] = heightAt(h, px, pz);
+    b.rewrite([a], 2);
+    expect(yOf(a)).toBeCloseTo(smoothHeightAt(h, px, pz), 5);
+    // without world context nothing moves
+    const plain = make(s);
+    const g = plain.groups.find((x) => x.lod === 0 && Array.from(x.members).includes(a))!;
+    g.mesh.getMatrixAt(Array.from(g.members).indexOf(a), m4);
+    expect(v3.setFromMatrixPosition(m4).y).toBeCloseTo(s.y[a], 5);
   });
 });
