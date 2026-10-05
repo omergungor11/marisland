@@ -171,6 +171,18 @@ export const WORK_SPOTS: Readonly<Record<string, readonly WorkSpot[]>> = {
     { x: 0, z: 3.6, face: PI, pose: 'inspect', sit: 0 },
     { x: 2.6, z: 2.6, face: -(3 * PI) / 4, pose: 'inspect', sit: 0 },
   ],
+  // TASK-383 decor spots (structure-local, same rules as above)
+  rackRow: [
+    { x: -0.4, z: 1.1, face: PI, pose: 'rack', sit: 0 },
+    { x: 0.6, z: 1.1, face: PI, pose: 'rack', sit: 0 },
+  ],
+  observatory: [
+    { x: 1.6, z: 2.3, face: -2.2, pose: 'look', sit: 0 },
+    { x: -1.6, z: 2.3, face: 2.2, pose: 'look', sit: 0 },
+  ],
+  sculptureTorus: [{ x: 0, z: 2.4, face: PI, pose: 'look', sit: 0 }],
+  sculptureArch: [{ x: 0, z: 2.8, face: PI, pose: 'look', sit: 0 }],
+  sculptureStack: [{ x: 0, z: 2.2, face: PI, pose: 'look', sit: 0 }],
   stage: [
     { x: -1, z: 2.8, face: PI, pose: 'look', sit: 0 },
     { x: 1, z: 2.8, face: PI, pose: 'look', sit: 0 },

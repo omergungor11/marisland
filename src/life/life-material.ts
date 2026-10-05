@@ -11,13 +11,21 @@ import { makeLitMaterial, marAttr, type LitMaterial } from '../render/materials/
  * Per-vertex `limb` (vec4, default w = -1 = gull wing) and per-instance `aGait` (vec3: x = move
  * amount 0..1, y = pose amount 0..1 — wave / graze, z = gait phase rad, integrated on the CPU so
  * feet never slide). Workers encode the pose kind in y: 0..1 = wave, 2..3 = typing amount (y - 2);
- * mode 7 = worker arm (swing / wave / typing), mode 8 = accessory variant floor(aSeed) (aSeed =
- * accessory + phase01; every existing `sin(.. aSeed * 2π)` term is unchanged for the integer part).
+ * mode 7 = worker arm (swing / wave / typing), mode 8 = accessory variants: floor(aSeed) = accessory +
+ * ITEM_STRIDE * carried item (aSeed = that + phase01; every existing `sin(.. aSeed * 2π)` term is
+ * unchanged for the integer part), the department accessory and the carried item show together.
  * Gulls read the same attribute as x = wing spread, z = flap phase 0..1 (the
  * vertex-attribute budget is 16: position, normal, color, 4 × instanceMatrix, instanceColor, the
  * factory's wind/ao/aSeed/aAppear/emissive, limb, aGait = 15). Instance tint: `uTintAll` 1 = every
  * vertex takes `instanceColor`, 0 = only pure-white vertices do (villager shirts).
  */
+
+/**
+ * Carried-item code is `aSeed += ITEM_STRIDE * (slot - 6)`: a multiple of 100 keeps every
+ * `sin(aSeed * 2π)` and `fract(aSeed * 7.31)` phase of the factory unchanged (731 and 200π are whole
+ * turns), so a bot picking up a laptop never twitches its eyes or antenna.
+ */
+export const ITEM_STRIDE = 100;
 
 const FLAP_CYCLE = GULLS.flaps * GULLS.flapPeriod + GULLS.glide;
 
@@ -113,8 +121,14 @@ const BODY = /* glsl */ `
           }
         }
       } else if (lM == 8) {
-        // worker accessory: only the one named by floor(aSeed) shows, the rest collapse to a point
-        if (abs(floor(aSeed) - limb.x) > 0.5) transformed = vec3(0.0, limb.y, 0.0);
+        // worker accessory, two-slot decode of floor(aSeed) = acc + ${ITEM_STRIDE} * item: variants below
+        // 6.5 are the department accessory (acc), slots 7.. the carried item (item + 6, 0 = none); the
+        // rest collapse to a point. Villagers / critters never carry an item (item = 0).
+        float lF = floor(aSeed);
+        float lItem = floor(lF / ${ITEM_STRIDE.toFixed(1)});
+        float lAcc = lF - lItem * ${ITEM_STRIDE.toFixed(1)};
+        float lWant = limb.x < 6.5 ? lAcc : (lItem > 0.5 ? lItem + 6.0 : -1.0);
+        if (abs(lWant - limb.x) > 0.5) transformed = vec3(0.0, limb.y, 0.0);
       } else if (lM == 6) {
         // click-burst glyphs (render/particles/bursts.ts): one geometry holds every glyph;
         // collapse all but the instance's own (aGait.y)

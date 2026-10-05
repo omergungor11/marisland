@@ -94,15 +94,15 @@ describe('land: spawning', () => {
         const k = r.life.kinds;
         expect(plan.villagers).toBe(0);
         expect(k.villagers).toBeUndefined();
-        expect(k.workers?.capacity ?? 0).toBeLessThanOrEqual(plan.workers);
+        expect(k.workers?.residents ?? 0).toBeLessThanOrEqual(plan.workers); // + near-focus ambient slots (TASK-383)
         expect(k.cats?.capacity ?? 0).toBeLessThanOrEqual(plan.cats);
         expect(k.sheep?.capacity ?? 0).toBeLessThanOrEqual(plan.sheep);
         expect(k.crabs?.capacity ?? 0).toBeLessThanOrEqual(plan.crabs);
         // every seed has a village and a beach: workers and crabs always exist
-        expect(k.workers?.capacity ?? 0).toBeGreaterThan(0);
+        expect(k.workers?.residents ?? 0).toBeGreaterThan(0);
         expect(k.crabs?.capacity ?? 0).toBeGreaterThan(0);
         console.info(
-          `seed ${seed} ${q}: workers ${k.workers?.capacity ?? 0}, cats ${k.cats?.capacity ?? 0}, sheep ${k.sheep?.capacity ?? 0}, crabs ${k.crabs?.capacity ?? 0}`,
+          `seed ${seed} ${q}: workers ${k.workers?.residents ?? 0}, cats ${k.cats?.capacity ?? 0}, sheep ${k.sheep?.capacity ?? 0}, crabs ${k.crabs?.capacity ?? 0}`,
         );
       }
     }

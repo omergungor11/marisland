@@ -15,9 +15,9 @@ describe('worker bot geometry (TASK-306)', () => {
   const limb = g.getAttribute('limb');
   const emi = g.getAttribute('emissive');
 
-  it('has the villager attribute set plus emissive, and stays within 1000 triangles', () => {
+  it('has the villager attribute set plus emissive, and stays within 1200 triangles (accessories + carried items)', () => {
     expect(attrNames(g)).toEqual([...attrNames(buildVillager()), 'emissive'].sort());
-    expect(pos.count / 3).toBeLessThanOrEqual(1000);
+    expect(pos.count / 3).toBeLessThanOrEqual(1200);
     expect(pos.count / 3).toBeGreaterThan(400);
   });
 
@@ -43,7 +43,8 @@ describe('worker bot geometry (TASK-306)', () => {
     for (const m of [0, 2, 7, 8]) expect(modes.has(m)).toBe(true);
     // no villager-only modes sneak in
     for (const m of [3, 4, 5, 6]) expect(modes.has(m)).toBe(false);
-    expect([...acc].sort()).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    // 0..6 department accessories, 7..10 carried items (laptop, clipboard, crate, paint pot)
+    expect([...acc].sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     for (const id of THEME_IDS) expect(acc.has(THEMES[id].accessory)).toBe(true);
   });
 
