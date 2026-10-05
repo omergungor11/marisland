@@ -232,12 +232,7 @@ export function createInteraction(d: InteractionDeps): Interaction {
 
   // ---- agents
   const sources: AgentSource[] = [];
-  // workers (Phase 3) are pickable like the villagers they replace; content/anim.ts may list them too
-  const agentPicks: [string, readonly [number, number] | null | undefined][] = Object.entries(
-    PICK.agents,
-  );
-  if (!('workers' in PICK.agents)) agentPicks.push(['workers', null]);
-  for (const [name, o] of agentPicks) {
+  for (const [name, o] of Object.entries(PICK.agents)) {
     const k = kinds[name];
     if (!k) continue;
     if (o) {
@@ -373,10 +368,7 @@ export function createInteraction(d: InteractionDeps): Interaction {
   };
 
   const specFor = (hit: PickHit): ReactionSpec => {
-    const key =
-      hit.kind === 'prop'
-        ? PROP_REACTIONS[hit.name]
-        : (AGENT_REACTIONS[hit.name] ?? (hit.name === 'workers' ? 'villager' : undefined));
+    const key = hit.kind === 'prop' ? PROP_REACTIONS[hit.name] : AGENT_REACTIONS[hit.name];
     return REACTION_PRESETS[key ?? 'generic'] ?? REACTION_PRESETS.generic;
   };
 

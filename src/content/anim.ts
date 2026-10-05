@@ -113,6 +113,8 @@ export const PICK = {
     'lilyPad',
     'grassTuft',
     'flower',
+    // tier-2 office furniture: a click on an office picks its shell
+    'officeInterior',
   ],
   /** Per-def override `[radius, height]` (u, before instance scale) where bounds mislead. */
   proxy: {} as Record<string, readonly [number, number]>,
@@ -120,6 +122,7 @@ export const PICK = {
    *  sphere overrides — `[radius, height of the centre]`; land kinds ship their own. */
   agents: {
     villagers: null,
+    workers: null,
     cats: null,
     sheep: null,
     crabs: null,
@@ -335,6 +338,7 @@ export const PROP_REACTIONS: Record<string, string> = {
 /** Agent kind (LifeSystem.kinds key) → preset. */
 export const AGENT_REACTIONS: Record<string, string> = {
   villagers: 'villager',
+  workers: 'villager',
   cats: 'villager',
   sheep: 'sheep',
   crabs: 'crab',
