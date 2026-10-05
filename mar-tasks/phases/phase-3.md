@@ -753,3 +753,531 @@ This also closes part of the MEMORY open item "villagers walk onto flooded groun
 21. **Lonely Palm W9.** Keep the hut and telescope out of the hero view line, or W9 loses its silhouette.
 22. **Flooded ground open item.** Workers inherit the build-time walk graph. TASK-333 hides flooded lots; paths over flooded ground remain a known gap.
 
+
+---
+
+# M14b: Theme-first redesign, smooth terrain, cross-tier consistency (replacement plan)
+
+I read HEAD 5b5161e, the M14 commits (a4cc6c3 … 5b5161e), D-028, the MEMORY handoff and your ladder image, plus the current code. No files were changed.
+
+## 0. Diagnosis: why M14 reads as "insufficient" (from the code, not just the picture)
+
+1. **Themes were bolted on after the archetype planners.**
+   - `buildSettlements` (src/world/gen/settlements.ts:2066) still dispatches `switch (isl.archetype)` (:2096) into `planMillbrook` (:1326), `planEmberpeak` (:1396) and the rest.
+   - `planCampus` (:935) is then added on top, and `defSwap` re-labels old lots.
+   - So the farm logic decides the island: windmills on knolls, a barn site, fences around fields.
+2. **Farm leftovers live in four other places.**
+   - Profile: `Tag.field` patchwork plus knolls and pond (profiles.ts:244–375).
+   - Patchwork colours: `fieldColor` (world/index.ts:137) and terrain-colors.ts:258.
+   - Scatter rules gated by archetype (placement.ts: cropRow :168 → `['millbrook','hearthholm']`, haybale :181; the filter is at scatter.ts:157).
+   - Sheep and crab weights by archetype (land-world.ts:482, :605).
+3. **Buildings change colour and silhouette across tiers.**
+   - Themed shells share one neutral `officeLod1` proxy at LOD1 (D-027; batcher.ts:133 `lod1 ? def.lod1 : …`). Blue roofs only appear at LOD0.
+   - Shells are tier 1, so at T0 the campus does not exist at all, while windmills (tier 0) do.
+4. **Terrain cannot gain detail.**
+   - Terrain is non-indexed 2 u facets with per-face colour jitter baked into vertex colours (terrain-mesh.ts, terrain-colors.ts `faceColor` :351).
+   - The LOD flips globally on tier (`onTier` terrain.ts:130: T0 → 4 u, else 2 u). That is a pop at 380 u and no gain below 2 u.
+5. **Housekeeping gaps.**
+   - D-024 … D-027 were never written into DECISIONS.md; they exist only in phase-3.md.
+   - The M14 rows in task-index.md are still PENDING.
+
+## 1. Principles (new decisions)
+
+- **D-029 Theme-first.** The archetype supplies only the shape: heightfield profile, coast, shelf and anchors (volcano, atoll, stack, plateau, dome, sandbar, crescent). The theme owns:
+  - ground palette per zone;
+  - zone-rule overrides;
+  - landmarks placed on archetype anchors;
+  - districts, structures, scatter and decor;
+  - creature weights.
+
+  No archetype-specific prop or colour survives unless the theme lists it.
+- **D-030 Terrain is smooth and material-based; props stay stylized.**
+  - Terrain gets smooth analytic normals from a Catmull-Rom (C1, interpolating) surface over the 2 u heightfield.
+  - Per-zone procedural ground materials: code-built `DataArrayTexture` detail layers, mean-preserving, fading out with distance.
+  - Mesh density rises near the focus (4 → 2 → 1 → 0.5 u, by distance, with geomorphing).
+  - The world grid stays at 2 u: no change to gen, edit codec or hashes for terrain.
+  - Props, buildings, trees and bots stay faceted toy (ART_BIBLE P1 gets a terrain exception).
+- **D-031 Cross-tier consistency is a hard requirement.**
+  - Every large element (structure ≥ 3 u, landmark, tree mass, district ground) exists from T0 with its final colour and silhouette (proxy or LOD1 built from LOD0 colours).
+  - Detail only adds zero-mean variation. Nothing large appears with a tier.
+  - Enforced by the zoom-ladder metric (§6).
+- **D-032 Amends D-027.** The shared neutral `officeLod1` proxy is retired.
+  - Every structure gets its own LOD1 with LOD0 colours, at tier 0, with one variant at LOD1 (variants differ only in LOD0 detail).
+  - Draw calls are paid for by merging far terrain chunks per island and merging the tree-blob groups (MEMORY open item, about 18 calls).
+- **D-033 Budgets.** No raise beyond D-028 for calls or programs. Programs stay **9/17/24**: the terrain material is replaced in place (still one program per quality), and structures use the lit program (turbine blades reuse the windmill `aSpin` branch). Triangle and memory deltas are in §7.
+
+## 2. Per-island art direction
+
+The archetype shape is kept for all seven islands. Ground hexes are base albedo; detail layers add zero-mean variation only. All accents come from `THEMES`.
+
+### 2.1 HQ / Orchestrator on Hearthholm (harbour crescent)
+
+| Aspect | Direction |
+|---|---|
+| Ground palette | grass "civic lawn" `#8FCB62`; meadow flowering lawn `#A9D86E` (coral/white speckle layer); forest park grove `#5E9E4A`; sand dry `#F3DDB0` / wet `#DDB884`; rock `#A3A7B2`; path sandstone pavers `#D9C7A4` (paver layer); plaza terracotta/cream paving `#D8B894` (tile layer); field → lawn |
+| Signature landmark | **Orchestrator Tower** (clocktower variant 2, kept). Plaza-centred, 13 u, coral crown, beacon ring spinning (`aSpin`), glowing at night. The single dominant vertical. |
+| Districts | Central Quad (plaza + tower + 2 coffee kiosks); Harbour Row (hqOffice lots along the harbour lane); Meeting Garden (meetingPavilion + flower beds); Ferry Terminal (stilt hut → `ferryOffice`, pier, moorings); hqAnnex crown on the highest lot |
+| Theme scatter | avenue round trees lining lanes (new `avenue` rule: trees at 6 u spacing, offset 3.5 u from lanes); harbour palms (kept); flower beds; benches; lantern posts; coral/cream banners (bunting recoloured) |
+| Removed / replaced | cottages, tower house, laundry lines, market stalls (→ kiosks), house-side barrels/crates (a few stay on the pier), chimney smoke (→ none; kiosk steam only) |
+
+### 2.2 Coding on Millbrook (flat plateau)
+
+| Aspect | Direction |
+|---|---|
+| Ground palette | grass "tech lawn" `#7CC85A` with mow stripes (±4 % L, 3 u, aligned to the district grid); meadow clover `#96D06A`; **field → solar gravel `#B9B4A8`** (pebble layer); forest tidy grove `#5DAE4B`; path light concrete `#D6D3CB`; plaza blue-grey pavers `#C9CED6` (grid layer); pond → reflecting pool |
+| Signature landmark | **Wind turbines** (new `windTurbine` def, tier 0) on the profile knolls: white tapered tower, 3 slim blades with blue tips, heights 15 / 12 / 10 u (P2: one dominant), spinning with wind through the `aSpin` branch. Replaces windmills. |
+| Districts | Tech Park (devOffice rows facing a central lawn quad + reflecting pool); **Solar Farm** (the profile patch rectangles become `solar` districts: gravel plus `solarRow` props on a lattice, the cropRow `fieldRows` code reused); Server Yard (serverShed cluster + cable-trench path); Hack Garden (outdoor desks: WORK_SPOTS 'type') |
+| Theme scatter | round trees in rows, clipped hedge boxes (new `hedge`), bike racks, low solar fences around plots |
+| Removed / replaced | patchwork hues (`fieldColor` = 0 on themed islands), cropRow, haybale, barn, windmills, farm fences, farm cottages, sheep (moved to Design) |
+
+### 2.3 DevOps on Emberpeak (volcano)
+
+| Aspect | Direction |
+|---|---|
+| Ground palette | black sand `#5B5566` (kept); lower-slope grass → dry scrub `#8FA05A`; rock → basalt `#4F4C57` (crack layer; night ember glints within crater radius only); forest → dark pine floor `#3F6B45`; path steel grating / dark gravel `#6E6A72`; plaza concrete pad `#9A979E` with yellow safety-line layer; crater glow kept |
+| Signature landmark | The volcano cone plus a **Geothermal Plant**: 2 cooling towers (hyperboloid lathe, 8 u, steam emitters) at the hot-spring anchor. The hot spring becomes the cooling pool. The cone stays dominant. |
+| Districts | Terraced Data Center (stepped pads on the lee slope, dataCenter rows); Rack Yard on the black-sand beach (rackShed); Antenna Ridge (antennaMast ×2–3 on rim shoulders, blinking emissive); Pipeline (polyline `pipe` from cooling plant to data center) |
+| Theme scatter | sparse dark pines low only, basalt boulders, small steam vents (puffs), cable spools, warning signs |
+| Removed / replaced | upper-slope forest, open "spa" look (spring → cooling pool; capybaras stay in M16 as a cute easter egg) |
+
+### 2.4 Marketing on Beacon Rock (sea stack)
+
+| Aspect | Direction |
+|---|---|
+| Ground palette | top meadow "brand lawn" `#9BD66A` with magenta/coral speckle; rock/cliff warm strata `#D9B48F` / `#C29A74`; path → red-painted stair decking `#C9675E`; plaza stage deck `#E9D3B3` |
+| Signature landmark | **Broadcast Tower** (lighthouse variant 2, kept: bands + dish + antenna, beam kept). Plus 2 billboards on ledges, facing the archipelago centre, 4–6 u boards on posts, visible from T0, always below the tower. |
+| Districts | Studio Ledge (broadcastStudio + billboard); Landing (dock + megaphone kiosk); Clifftop Stage (small quad with banner poles) |
+| Theme scatter | flower clumps, accent banner poles, striped "ad buoys" (buoy recolour) |
+| Removed / replaced | keeper hut cottage, rope fence (→ accent railing) |
+
+### 2.5 QA / Audit on Palmlagoon (atoll)
+
+| Aspect | Direction |
+|---|---|
+| Ground palette | sand dry pale coral `#F6E7C4`; grass seagrass lawn `#A8D670`; path white gravel / boardwalk `#E7E2D5`; plaza lab paving `#E4EFEA` with green grid layer |
+| Signature landmark | **Inspection Tower** (existing def promoted to landmark kind: stilted watchtower with magnifier lamp, 12 u, tier 0) on the ring opposite the channel. The sunken ship stays as "the bug wreck", ringed by red/white inspection buoys. |
+| Districts | The Loop (testLabs spaced along the ring path); Checkpoints (barrier gates every ~25 u on the ring path = test stages); Sandbox (lagoon with marker buoys); Stilt Lab (testLabStilt; the MEMORY open item on unreachable stilt seats is fixed here with a deck walk-graph spur) |
+| Theme scatter | palms (density ×0.6), checklist boards, traffic cones, buoys |
+| Removed / replaced | hammock / beach-hut leftovers; tide pools kept (nature) |
+
+### 2.6 Design / Art on Mossgrove (forest dome)
+
+| Aspect | Direction |
+|---|---|
+| Ground palette | grass wildflower meadow `#8FCF6A` (multi-colour flower speckle layer: pink/yellow/lilac/white); forest moss `#4E8E4A` (leaf-litter layer); path confetti gravel `#E8D6B8`; plaza mosaic tiles `#E6D3C0` (mosaic layer) |
+| Signature landmark | **Atelier Tree** (giantTree variant 2): painted treehouse, blossom clusters `#FF8FB1` in the canopy (part of the LOD1 and blob colours), bunting. Dominant vertical kept (W10). |
+| Districts | Atelier Glade (atelier + galleryPavilion around a mosaic quad); Sculpture Garden clearing (3–5 u abstract sculptures in primary colours: torus, stacked spheres, arch; tier 0 so they read from far); Easel Walk along the stream; Mushroom Grove (giant mushrooms kept as palette) |
+| Theme scatter | blossom round-tree variant, pines, dense flowers, easels, paint-pot planters; sheep moved here (meadow) |
+| Removed / replaced | log cabin |
+
+### 2.7 Research on Lonely Palm (sandbar)
+
+| Aspect | Direction |
+|---|---|
+| Ground palette | sand `#F7E1AE` / wet `#E3BE84` (kept); ripple layer |
+| Signature landmark | palm (kept, W9), plus researchHut with observatory dome (white `#F4F2EC`, teal slit) and a weather mast with anemometer (`aSpin`); telescope fixture |
+| Districts | single outpost + dock |
+| Theme scatter | instrument buoys, starfish, message bottle (kept) |
+| Removed / replaced | nothing |
+
+**Ground materials** (global ids, content/ground.ts): `lawn`, `grass`, `meadow`, `forest`, `sand`, `blackSand`, `rock`, `gravel`, `path`, `paving`.
+- Each theme maps zone → `{material, base hex, layer params}` (mow stripes, speckle colours, tile pattern).
+- The palette texture is 16 zones × 8 islands, so painted zones in edit mode recolour through the same table.
+
+## 3. Terrain redesign (smooth, detail with proximity, far = averaged colour)
+
+**Surface.**
+- `shared/terrain-sample.ts` (new, pure): Catmull-Rom bicubic over the 2 u grid, clamped to the 4 central samples' min/max (no overshoot at cliffs), with its analytic gradient.
+- It interpolates the samples exactly and is exact on planar pads, so buildings stay grounded.
+- Render-side grounding (settlement-props `push` y, batcher matrices) uses the smooth twin where |smooth − bilinear| > 0.02 u. World data, hashes and picking keep bilinear `heightAt`.
+
+**Mesh.**
+- Indexed chunk grids. Attributes: position, oct-free normal (from the analytic gradient), `ao`, `aMorph` (fixed `layout(location)` per D-016; no vertex colours).
+- LOD strides by camera distance per chunk, not by tier:
+
+| Stride | Distance band | Qualities |
+|---|---|---|
+| 4 u | ≥ 300 u | all |
+| 2 u | 120–300 u | all |
+| 1 u | 40–120 u | medium / high |
+| 0.5 u | < 40 u, ≤ 9 chunks | high only |
+
+- Bands come from content and have ±10 % hysteresis.
+- Geomorph: odd vertices blend toward the coarse-edge interpolation over the band's last 20 %, so silhouettes never pop.
+- The 4 u ring is merged into **one mesh per island** (about 7 calls instead of 40–50 chunk calls in far views). That pays for structures at T0.
+
+**Material** (terrain-material.ts, still one program per quality).
+- Base colour comes from a new **albedo world texture**: RGBA8, 385², linear filtering. It is built on the CPU from theme palette × zone × smooth height-band ramp × crest tint × strata (smooth versions of terrain-colors.ts) × low-frequency macro noise (8–32 u, seeded). It is identical at every distance.
+- Near the camera the shader does the following:
+  - (a) 4-tap zone lookup with noise-perturbed bilinear weights → crisp, organic material borders;
+  - (b) up to 2 material evaluations;
+  - (c) detail layers from a `DataArrayTexture` (10 layers × 256², RGBA = albedo delta, detail normal xy, cover mask). It is built in code with a fixed seed, tileable, with CPU-built box-filter mips so it is deterministic and mean-preserving. Low quality skips the define.
+  - (d) amplitude × (1 − smoothstep(fadeNear, fadeFar, dist)), and the mip average of each layer is 0. Far pixels therefore equal the albedo exactly.
+- Kept: wet-sand lap, caustics, crater glow, lantern pools, mist, brush ring, debug mask.
+- `marPoolFacet` (D14) switches to smooth normals.
+- The albedo texture is also what M18 water reflections need (TASK-353 shrinks).
+
+**Edits.** `rebuildChunk` remeshes only the cached LOD levels of dirty chunks. `world-textures.update` also refreshes albedo sub-rects (same `texSubImage2D` path, already prewarmed).
+
+## 4. What happens to M14 work
+
+| M14 item | Status |
+|---|---|
+| 301 roster (7 themes always), `IslandData.theme`, `THEME_BY_ARCHETYPE`, hashLayout | **Kept** |
+| 306/307 worker bots, modes 7/8, Workers kind, seats, outpost loop | **Kept**. 379 adds WORK_SPOTS for new structures (solar tech 'inspect', turbine base 'look', easel 'paint') |
+| 308 labels, icons, camera theme lookup | **Kept** |
+| 305 screen emissive class, night cool-hue spare, lamp pools | **Kept** |
+| 303 office shells + interiors (geo/offices.ts, geo/interiors.ts) | **Kept geometry**. **Changed** LOD1: per-def, coloured, tier 0 (TASK-378) |
+| 303 `officeLod1` shared proxy + batcher `lod1` grouping (D-027) | **Removed from use** (code path may stay, unused) |
+| 303 orchestrator tower / broadcast lighthouse variants | **Kept** |
+| 304 settlement-props wiring, interiors, emitters/vents | **Kept**. **Changed**: `LANDMARK_DEF` (settlement-props.ts:19) moves to content (`LANDMARK_RENDER`) so themes add kinds without editing render code |
+| 302 `layLanes` (:763), `planCampus` (:935), `tryLot` (:368), dock/stilt primitives | **Kept as primitives** (moved to world/gen/sites.ts) |
+| 302 `defSwap`, the archetype `switch` (:2096), `planMillbrook` farm logic | **Removed** (replaced by per-theme planners) |
+| `THEMES` single file (content/themes.ts) | **Changed**: split per theme, schema extended |
+| 309 campus shot presets, `--quality` override | **Kept**; presets re-pinned. **D-028** budgets kept as the ceiling |
+| Old M15 TASK-321 (faceted fine LOD) | **Removed**, superseded by 371 |
+| Old M17 341/342 | **Trimmed** to cross-theme nature decor; theme decor moves into M14b |
+| Old M18 353 | **Reduced**: reuses the albedo texture from 372 |
+
+## 5. Tasks: M14b, theme-first redesign + smooth terrain + consistency
+
+| ID | Task | Agent | Complexity | Status | Dependencies |
+|----|------|-------|-----------|--------|-------------|
+| TASK-360 | M14b contract: per-theme content split + schema, ground tables, `LANDMARK_RENDER`, per-theme prop/geo modules, districts type, terrain vertex/texture contract, ladder preset type | engine (orchestrator) | M | PENDING | M14 |
+| TASK-361 | Settlement refactor: `sites.ts` primitives + per-theme planner dispatch + theme-gated zones/scatter/patchwork, hash-identical | worldgen | L | PENDING | TASK-360 |
+| TASK-362 | HQ island plan + content | worldgen | M | PENDING | TASK-361 |
+| TASK-363 | Coding island plan + content (turbines on knolls, solar districts, tech park) | worldgen | M | PENDING | TASK-361 |
+| TASK-364 | DevOps island plan + content (terraces, rack yard, plant, pipeline) | worldgen | M | PENDING | TASK-361 |
+| TASK-365 | Marketing island plan + content (studio ledge, billboards, stage) | worldgen | S | PENDING | TASK-361 |
+| TASK-366 | QA island plan + content (loop labs, checkpoints, inspection tower, stilt deck spur) | worldgen | M | PENDING | TASK-361 |
+| TASK-367 | Design island plan + content (atelier glade, sculpture garden, easel walk) | worldgen | M | PENDING | TASK-361 |
+| TASK-368 | Research outpost plan + content | worldgen | S | PENDING | TASK-361 |
+| TASK-371 | Smooth terrain mesh: CR surface, distance LOD 4/2/1/0.5 u + geomorph, per-island far merge, rebuild path | shader | L | PENDING | TASK-360 |
+| TASK-372 | Ground materials: albedo + palette textures, detail `DataArrayTexture`, material shader, smooth colour grid | shader | L | PENDING | TASK-360 |
+| TASK-373 | Prop cross-tier consistency: structures from T0, blob colours from theme trees, blob group merge, smooth-twin grounding | engine | M | PENDING | TASK-360 |
+| TASK-374 | Zoom-ladder harness: `ladder` set, `cam=ladder:`, metrics + boundary pairs, `--assert` | engine | M | PENDING | TASK-360 |
+| TASK-375 | Structures I: HQ, Marketing, Research (ferryOffice, banners, billboard v2, stage, weather mast, observatory) | props | M | PENDING | TASK-360 |
+| TASK-376 | Structures II: Coding, DevOps (windTurbine, solarRow, hedge, cooling tower, pipe, cable spool, vent, rack yard) | props | M | PENDING | TASK-360 |
+| TASK-377 | Structures III: QA, Design (barrier gate, cones, checklist board, inspection buoy, sculptures, easel, blossom tree, atelier tree v2) | props | M | PENDING | TASK-360 |
+| TASK-378 | Faithful LOD1 for office shells + landmarks (LOD0 colours, 1 LOD1 variant, tier 0) | props | M | PENDING | TASK-360 |
+| TASK-379 | Life by theme: sheep/crab/cat weights, WORK_SPOTS for new structures, stilt-lab deck reachability | life | S | PENDING | TASK-360 |
+| TASK-380 | Integration: shot presets / W-shots re-themed, EDIT_LOGS re-record, budgets check | engine | S | PENDING | TASK-361…379 |
+| TASK-381 | M14b QA: ladder ×7 islands × 3 qualities, 10-seed sweep, contact + ladder sheets | qa | M | PENDING | TASK-380 |
+| TASK-382 | Docs: ART_BIBLE, DECISIONS backfill D-024…D-027 + D-029…D-033, ARCHITECTURE §3/§4/§10, MEMORY, task-index (mark M14 COMPLETED) | docs | S | PENDING | TASK-381 |
+
+### TASK-360: Contract (orchestrator commits it before wave B)
+
+**Create:**
+- `src/content/themes/index.ts`, which re-exports `THEMES` and `THEME_BY_ARCHETYPE`.
+- `src/content/themes/{hq,coding,marketing,qa,design,devops,research}.ts`, with current data moved verbatim. The `ThemeDef` schema (from content/themes.ts:13) is extended with:
+  - `ground: Partial<Record<ZoneId, GroundSpec>>`;
+  - `zoneRules?: Partial<ZoneRuleParams>`;
+  - `patchwork: 'off' | 'districts'`;
+  - `landmarks: Record<anchorKey, {kind, variant}>`;
+  - `scatter: PlacementRule[]` (with `themes` implied);
+  - `scatterOff: string[]` (global rules disabled on this island);
+  - `life: {sheep, crabs, cats}`;
+  - `treePalette` (canopy hexes for scatter and blobs).
+- `src/content/ground.ts`: `GroundMaterial` ids, `GroundSpec {material, base, layer params}`, `DETAIL_LAYERS` params.
+- `src/content/props-themes/{hq,…}.ts` (PropDefs, empty arrays). `content/props.ts` appends them after `PROP_DEFS_BUILDINGS`, in fixed theme order.
+- `src/geo/themes/index.ts` + 7 modules (empty `PropGeoDef[]`). `geo/registry.ts` concatenates them.
+- `src/content/landmark-render.ts` (`LANDMARK_RENDER`, moved from settlement-props.ts:19).
+- `src/shared/terrain-sample.ts` (signatures plus a reference implementation and test).
+- `src/world/gen/plans/{index,types}.ts` + 7 stubs.
+
+**Modify:**
+- `src/content/themes.ts` becomes a shim re-export.
+- `src/world/types.ts`: `DistrictData {islandId, kind: 'solar'|'quad'|'yard'|'garden'|…, x, z, rotY, w, d}`, `WorldData.districts`.
+- `src/render/props/settlement-props.ts`: read `LANDMARK_RENDER`.
+- `src/content/shots.ts`: `ShotSet` gains `'ladder'`; `ShotPreset.ladder?: {island: string, dists: number[], pitch: number, pairs: number[]}`.
+- `mar-tasks/phases/phase-3.md`: M14b section.
+
+**Contract notes:**
+- Terrain vertex attributes are `position`, `normal`, `ao`, `aMorph`, with no `color`.
+- The terrain material reads `textures.albedo`, `textures.palette` and `textures.zone`.
+
+**Acceptance:** all hashes identical, dev frames 0 px diff, programs 9/17/24.
+
+### TASK-361: Settlement refactor (worldgen, L; must be hash-identical)
+
+**Create:**
+- `world/gen/sites.ts`: move `tryLot` (:368), `findDock`, `dockWithLink`, `placeStiltHut` (:1195), `layLanes` (:763), `planCampus` (:935, as `campusQuad` + `campusLots`), `ring`, `bestSample`, `linkLot` (:698), `linkLandmark`, buoys, tide pools, stair corridor.
+- `world/gen/plans/<theme>.ts`: each initially calls the old archetype planner + `planCampus`, i.e. the current behaviour.
+
+**Modify:**
+- `world/gen/settlements.ts`: the switch at :2096 becomes `THEME_PLANNERS[isl.theme]`; `defSwap` stays only inside the stubs.
+- `world/gen/zones.ts:138`: rules = `{...ARCHETYPES[a].zones, ...THEMES[theme].zoneRules}`.
+- `world/gen/scatter.ts:157`: skip rules listed in `scatterOff`, append `THEMES[theme].scatter`.
+- `world/index.ts:137`: `fieldColor` = 0 when `patchwork === 'off'`; patch rectangles go to `world.districts` when `'districts'`.
+- `src/life/land-world.ts:482/:605`: weights from `THEMES[theme].life` with archetype fallback.
+
+All defaults reproduce today's output.
+
+**Acceptance:**
+- `world.test.ts` hashes unchanged (seeds 1, 42, 1001), settlement tests green, gen time unchanged ±10 %.
+- The 7 plan files are the only places island-specific logic lives (grep test: no `archetype ===` in settlements.ts).
+
+### TASK-362 … TASK-368: Island plans (worldgen; run in parallel, one agent may take 2)
+
+Each task owns exactly `world/gen/plans/<theme>.ts` and `content/themes/<theme>.ts`. It implements the §2 table for its island: districts, landmarks on anchors, lot mix, ground table, zoneRules, scatter / scatterOff, life weights. It re-pins its own hash expectations only through a per-theme snapshot. The global `world.test.ts` pins are re-done once in TASK-380.
+
+Common acceptance for each island, on 30 seeds:
+- (a) Landmark present at T0.
+- (b) Lot minimums met (≥ 90 % of seeds): HQ ≥ 8, Coding ≥ 6, DevOps ≥ 4, QA ≥ 4, Design ≥ 4, Marketing ≥ 2, Research = 1.
+- (c) Leftover audit test: zero instances of removed defs on the island, e.g. Coding: windmill, cropRow, haybale, barn, cottage, fence. `fieldColor` = 0 except on Coding solar districts.
+- (d) All lots and structures connected.
+- (e) Island ladder passes (TASK-374 metric) once 371 / 372 / 373 / 378 have landed.
+- (f) `D-campus-<theme>` shot reviewed against the §2 table.
+
+Island-specific acceptance:
+- **363 Coding:** turbines take the knoll anchors (profiles.ts:370), heights 15 / 12 / 10 u; solar rows on ≥ 60 % of district cells; the pond becomes a reflecting pool with a quad edge.
+- **364 DevOps:** ≥ 3 terrace pads with step ≤ `FLATTEN.maxStep`; pipeline polyline reaches the data center; cooling-tower steam emitters.
+- **366 QA:** ≥ 3 checkpoint gates on the ring path; the stilt lab gets a deck spur in the walk graph (with 379).
+- **367 Design:** sculpture clearing ≥ 12 u wide with ≥ 3 sculptures; ≥ 3 easels by the stream.
+
+### TASK-371: Smooth terrain mesh (shader, L)
+
+**Modify:**
+- `render/terrain/terrain-mesh.ts`: rewrite `buildChunkGeometry` (:20) as an indexed grid at a given stride with skirts, `aMorph` and analytic normals.
+- `render/terrain/terrain.ts`: `onTier` (:130) no longer picks the LOD; a new `update(camera)` picks per-chunk strides with hysteresis. Builds are ≤ 2 per frame interactively and synchronous in capture. Per-island merged 4 u mesh; LRU for 0.5 u; `rebuildChunk` covers cached levels; chunks stay 1-instance InstancedMesh for the shared depth program (D-016).
+- `render/rebuild.ts`: dirty → cached levels + island merge refresh.
+- `content/terrain.ts`: `TERRAIN_LOD` (:88) gains strides, bands, hysteresis, morph fraction, merge rule, quality caps.
+- `shared/terrain-sample.ts`: finalise.
+- `render/terrain/terrain.test.ts`.
+
+**Tests:**
+- Mesh vertices = CR samples.
+- Morph endpoints match the coarse level.
+- No cracks across stride borders.
+- Same URL gives byte-identical output.
+
+**Acceptance:**
+- Boundary pairs at every stride band pass the §6 pair metric.
+- `selftest=regen` / `selftest=edit` at baseline.
+- Calls at overview ≤ D-028 minus 25.
+- High village triangles ≤ 1.6M; terrain geometry memory ≤ 25 MB on high.
+- Gen + build within `newSeedMs`.
+
+### TASK-372: Ground materials (shader, L)
+
+**Create:** `render/terrain/ground-detail.ts`. It builds the app-scope `DataArrayTexture` (10 layers × 256², CPU mips, fixed-seed periodic noise; layers for blades, mow, speckle, litter, ripples, cracks, pebbles, packed earth, tiles, mosaic) and the matching zero-mean verifier.
+
+**Modify:**
+- `render/terrain/terrain-material.ts`: `createTerrainMaterial` (:42) drops `vertexColors`; the `color_fragment` patch at :139 now does albedo + 4-tap noisy zone → material + detail + distance fade, keeping laps / caustics / crater / pools / mist / brush / mask. Defines are per quality only: low = no detail.
+- `render/terrain/terrain-colors.ts`: `buildColorGrid` (:135) becomes `buildAlbedoGrid` (theme palette, smooth ramps, no `faceColor` jitter; strata kept as smooth bands). `faceColor` is retired.
+- `render/world-textures.ts`: `albedo` RGBA8 and `palette` 16 × 8 RGBA8; `update` writes albedo sub-rects; interface at :203.
+- `content/ground.ts`: layer tuning only. Theme hexes live in the theme files.
+- Tests: `terrain-colors.test.ts`, a new `ground-detail.test.ts` (|mean of every layer's top mip − 0.5| ≤ 1/255; byte-identical on rebuild).
+
+**Acceptance:**
+- Fragment samplers ≤ 10.
+- Programs 9/17/24.
+- Ladder metric passes on the HQ and Coding islands.
+- Night land L ≥ 12 %.
+- W4 cliff vs sky ΔL ≥ 0.1 with smooth rock (strata + crack normals).
+- `debug=mask` frames unchanged.
+- Clear-weather identity rules hold.
+
+### TASK-373: Prop consistency (engine)
+
+**Modify:**
+- `render/props/batcher.ts`: the `lod1` grouping at :133 is no longer used by shells. Structures with `tier 0` get LOD1 from T0. Tree-blob groups merge across islands per variant (MEMORY open item). Matrices are grounded with the smooth twin where needed.
+- `render/props/clusters.ts`: blob colours from `THEMES[theme].treePalette` (the same hexes scatter trees use).
+- `render/props/settlement-props.ts`: `districts` emission (solar rows on a lattice: reuse the fence/lattice loop), pipes from `world.fences` polylines of kind `pipe`.
+- Tests: `batcher.test.ts`, `clusters.test.ts`.
+
+**Acceptance:**
+- `hardPops = 0` on dolly-ins.
+- Every structure ≥ 3 u is drawn at 600 u (test against the batcher's tier tables).
+- Blob mean colour within ΔE ≤ 4 of the area-weighted canopy colour of the trees it stands for.
+- Calls ≤ D-028.
+
+### TASK-374: Zoom-ladder harness (engine)
+
+**Create:**
+- `scripts/ladder-metrics.ts` (pure): crop-and-scale, box downsample to 48 × 27 in linear RGB, CIE Lab, ΔE2000, connected components.
+- `scripts/ladder-metrics.test.ts`: synthetic identical images → 0; a shifted hue patch is flagged; an inserted blob is flagged.
+
+**Modify:**
+- `scripts/shots.ts`: `ladder` set captures N frames + mask frames per preset. It writes `ladder-<id>.jpg` (strip) and a metrics JSON, fails on `--assert`, and works with `--only` (:37).
+- `src/camera/controls.ts`: `cam=ladder:<island>:<dist>`, a fixed-pitch / fixed-azimuth pose aimed at the island hero target, numbers from `content/camera.ts`.
+- `src/content/shots.ts`: 7 `L-<theme>` presets on seed 1001 + `L-pairs-<theme>`; clear weather, 14:00, `freeze`.
+
+### TASK-375 / 376 / 377: Theme structures (props; parallel)
+
+Each owns its `geo/themes/<t>.ts` and `content/props-themes/<t>.ts`.
+
+**Acceptance:**
+- Every def builds at LOD0 and LOD1.
+- LOD1 is built from the same palette and silhouette and stays ≤ 30 % of LOD0 triangles.
+- LOD0 triangle ceilings: structures ≤ 3.5k, turbine ≤ 1.5k.
+- Same attribute set as `cottage` (programs-dump `MESHES=1`).
+- Spinning parts use `aSpin` (windmill branch).
+- Visible in `?gallery=1`.
+
+### TASK-378: Faithful LOD1 (props)
+
+**Modify:**
+- `geo/offices.ts`: every shell's `lod === 1` path emits a coloured block (roof colour, wall colour, window band) from the LOD0 palette. `officeLod1` (:1485) is left in place but unused.
+- `geo/landmarks.ts`: LOD1 of clocktower v2, lighthouse v2, giantTree v2 matches the LOD0 colours.
+- `content/props-buildings.ts`: shells `tier 0`, no `lod1`.
+- Tests: `geo.test.ts` (per-def LOD0 vs LOD1 area-weighted top-view mean colour ΔE ≤ 3).
+
+### TASK-379: Life by theme (life)
+
+**Modify:**
+- `content/life.ts`: weights by theme; sheep to Design meadows, 0 on Coding.
+- `content/offices.ts`: WORK_SPOTS for new structures.
+- `life/workers-world.ts`: deck spur for `testLabStilt` seats.
+- `life/workers.test.ts`.
+
+**Acceptance:** ≥ 1 seated worker inside the stilt lab on 3 seeds; agents within caps 25/60/110.
+
+### TASK-380: Integration (engine)
+
+**Modify:**
+- `content/shots.ts`:
+  - W5 → "Forge & Steam" (DevOps), W6 → QA lagoon, W7 → **"Turbine Morning"** (Coding: blade angle changes between frames, solar rows, mist band), W10 kept (Design);
+  - campus presets re-pinned;
+  - `EDIT_LOGS` re-recorded (def indices and spots move).
+- `world.test.ts` pins.
+- `content/budgets.ts` only if measured above D-028, with a decision note.
+
+### TASK-381: QA (qa)
+
+- Ladder ×7 islands × 3 qualities.
+- dev/edit/wow `--assert`.
+- 10-seed sweep with leftover audits.
+- Report in `mar-docs/qa/m14b-*.md`; sheets `mar-docs/shots/M14b.jpg` and `M14b-ladder.jpg`.
+
+### TASK-382: Docs (docs)
+
+**ART_BIBLE:**
+- §1: P1 terrain exception (smooth, material-based); props stay faceted.
+- §2: per-theme ground palettes (§2 tables above).
+- §4: roster rewritten as theme × archetype-shape.
+- §5: new structures.
+- §6: the consistency rule plus the ladder metric.
+- §11: W5 / W6 / W7 rewritten.
+
+**DECISIONS:** backfill D-024 … D-027; add D-029 … D-033.
+
+**ARCHITECTURE:** §3 terrain and materials, §4 distance LOD, §9 ladder set, §10 Phase 3.
+
+**MEMORY, task-index:** mark M14 COMPLETED, add M14b.
+
+## 6. Consistency metric (TASK-374)
+
+**Ladder.**
+- Fixed pitch 48°, fixed azimuth from the island frame, target = island hero target.
+- Distances: 700, 480, 340, 240, 170, 120, 85, 60, 42, 30, 21 u (ratio about 0.7).
+- Settings: `freeze=1`, clear weather, 14:00, same `simt`.
+- Each frame is captured together with its `debug=mask` frame.
+
+**Per step k → k+1.**
+1. Crop the centre of frame k by r = D[k+1]/D[k]. Keep pitch and azimuth fixed so the step is a near-pure zoom.
+2. Box-downsample both frames to 48 × 27 in linear RGB, then convert to Lab.
+3. Compare only cells that are ≥ 80 % land in both masks. Cloud and water pixels are excluded by the mask; at least 25 % of cells must be land.
+
+**Pass criteria:**
+
+| Check | Threshold |
+|---|---|
+| Ladder step, mean ΔE2000 | ≤ 5.0 |
+| Ladder step, p95 ΔE | ≤ 12 |
+| "No new large element": largest 8-connected component of cells with ΔE > 15 | ≤ 1.5 % of compared cells |
+| Island drift: land mean Lab of every frame vs the ladder median | ΔE ≤ 4 |
+| Boundary pairs at 1.06 b and 0.94 b, for b ∈ {380, 250, 140, 45, 300, 120, 40}: mean ΔE | ≤ 2.5 |
+| Boundary pairs: largest component | ≤ 0.5 % |
+| Silhouette proxy: per-pair land/structure mask IoU of the cropped masks | ≥ 0.92 |
+
+**Calibration.** Run on current main first. It must fail on Coding (the patchwork and appearing-buildings defects in your ladder.jpg) and pass on synthetic identity input. Thresholds are recorded in D-031.
+
+## 7. Budget and program impact
+
+| Item | Impact |
+|---|---|
+| Programs | **9/17/24, unchanged.** The terrain material is replaced in place, one program per quality (low = no detail define). Structures use the lit program; turbines use the existing spin branch. Workers are unchanged. The ladder adds no programs. |
+| Draw calls | Saved: far terrain merge (−25…−40 at T0/T1, ×2 with shadows on medium) and blob merge (−12). Spent: T0 structures (about +20 LOD1 defs, single variant). Target ≤ D-028 (170 / 255 / 350), asserted. |
+| Triangles (terrain) | high ≈ 0.45M (0.5 u near), medium ≈ 0.25M, low ≈ 0.1M. Within 350k / 800k / 1.6M. |
+| GPU memory | Indexed terrain is smaller than the old non-indexed meshes. Albedo +0.6 MB. Detail array +4.7 MB (medium/high only). Low stays ≤ 70; medium / high stay within 170 / 480. The M18 MSAA output-buffer fix later frees ~95 MB on high. |
+| CPU | CR evaluation for 1 u levels ≈ 250k samples; build ≤ 2 chunks per frame. `newSeedMs` stays within budget (headless factor). |
+
+## 8. Revised M15–M18
+
+| ID | Task | Agent | Complexity | Status | Dependencies |
+|----|------|-------|-----------|--------|-------------|
+| TASK-322 | Prop detail pass (rounder trees, mullions, eaves, steps, interior props); LOD1 colours untouched (378 test must keep passing) | props | L | PENDING | M14b |
+| TASK-323 | M15 QA: ladder + triangle/memory step | qa | S | PENDING | TASK-322 |
+| TASK-331 | Boat commute | life | M | PENDING | M14b |
+| TASK-332 | Creatures by theme: ducks (Coding pool), capybaras (DevOps cooling pool), butterflies + sheep (Design), puffins (Marketing) | life | M | PENDING | M14b |
+| TASK-333 | Flood-aware lots, life/index hooks | engine | S | PENDING | TASK-331, TASK-332 |
+| TASK-341 | Cross-theme nature decor geometry (flowerPatch, boulders, signpost, picnic table); theme decor already in M14b | props | S | PENDING | M14b |
+| TASK-342 | Placement: flower fields via theme `scatter`, boulders, signposts at junctions | worldgen | S | PENDING | TASK-341 (ids) |
+| TASK-343 | Emission + EDIT_PROPS placeables + thumbnails | engine | S | PENDING | TASK-341, TASK-342 |
+| TASK-351 | SSAO (high, seeded noise replacing pmndrs `NoiseTexture`, which uses `Math.random`), composer outputBuffer MSAA fix; programs high ≤ 28 (needs D-033 amendment) | shader | M | PENDING | M14b |
+| TASK-352 | Softer shadows; recheck normal bias on smooth terrain | shader | S | PENDING | M14b |
+| TASK-353 | Water reflections: heightfield march + **albedo texture from 372**, sun glint, lamp shimmer | shader | M (was L) | PENDING | TASK-372 |
+| TASK-354 / 355 | Exit QA (ladder included), docs | qa / docs | M / S | PENDING | TASK-351…353 |
+
+TASK-321 (faceted fine LOD) is removed.
+
+## 9. Parallel waves and exclusive file ownership
+
+The orchestrator merges `app.ts`, `package.json`, `world.test.ts` pins (TASK-380) and `content/budgets.ts`.
+
+| Wave | Task | Owns exclusively |
+|---|---|---|
+| A | 360 | content/themes/** (creates), content/ground.ts, content/props-themes/**, geo/themes/**, geo/registry.ts, content/props.ts, content/landmark-render.ts, render/props/settlement-props.ts (one hunk), world/types.ts, world/gen/plans/** stubs, shared/terrain-sample.ts, content/shots.ts (type) |
+| A2 | 361 | world/gen/settlements.ts, world/gen/sites.ts, world/gen/zones.ts, world/gen/scatter.ts, world/index.ts, life/land-world.ts, settlements/scatter tests |
+| B | 362–368 | each `world/gen/plans/<t>.ts` + `content/themes/<t>.ts` |
+| B | 371 | render/terrain/terrain-mesh.ts, render/terrain/terrain.ts, render/rebuild.ts, content/terrain.ts, shared/terrain-sample.ts, terrain.test.ts |
+| B | 372 | render/terrain/terrain-material.ts, render/terrain/terrain-colors.ts(+test), render/terrain/ground-detail.ts(+test), render/world-textures.ts(+test), content/ground.ts |
+| B | 373 | render/props/batcher.ts, render/props/clusters.ts, render/props/settlement-props.ts, their tests |
+| B | 374 | scripts/shots.ts, scripts/ladder-metrics.ts(+test), camera/controls.ts, content/camera.ts, content/shots.ts |
+| B | 375 / 376 / 377 | geo/themes/{hq,marketing,research} / {coding,devops} / {qa,design}.ts + matching content/props-themes files |
+| B | 378 | geo/offices.ts, geo/landmarks.ts, content/props-buildings.ts, geo.test.ts |
+| B | 379 | content/life.ts, content/offices.ts, life/workers-world.ts, life/workers.test.ts |
+| C | 380 → 381 → 382 | integration, then QA, then docs |
+
+**Safe-ordering notes:**
+- Unknown def ids render as nothing (`push` returns −1), so the island plans (B) and the structure tasks (B) can land in either order.
+- Ladder pass criteria are only enforced from TASK-381. Each wave-B task reports its island's ladder numbers.
+
+## 10. Risks and gotchas
+
+1. **Smooth shading on a 2 u grid makes cliffs blobby** (Beacon Rock stack, crater rim). Mitigations: clamped CR, rock crack/strata detail normals, W4 ΔL acceptance. Fallback: keep facet normals on `cliff` only (a material flag).
+2. **Hash churn.** 361 must be identity; island plans then change everything once. W-seeds, campus presets and `EDIT_LOGS` are re-pinned only in 380.
+3. **The ladder metric must not over-trigger.** Clouds are hidden below T1 (tiers.ts `clouds`) and must be masked out. Tilt-shift and DOF bands are avoided by the centre crop. Workers and boats are too small at 48 × 27, but use `freeze`.
+4. **Determinism.** Code-built detail textures need CPU mips (do not rely on `generateMipmap` differences). The pmndrs SSAO noise is `Math.random` (M18). LOD choice depends only on the camera; capture builds every needed chunk synchronously before `ready`.
+5. **16-attribute / program-key rules.** Terrain gains `aMorph` and drops `color`. Use a fixed `layout(location)` (D-016) and verify the shared depth program still matches (programs-dump `ATTRS=1`). Structures must carry the same attributes as cottage.
+6. **SwiftShader capture time** (R1): limit to ≤ 2 material evaluations and ≤ 3 array samples per fragment. The ladder set runs only at milestones and with `--only` per island.
+7. **Grounding.** Bilinear world y vs the CR render surface. Render-side smooth-twin grounding; test max deviation at prop origins ≤ 0.08 u.
+8. **Lantern pools / night grade / mask metrics assumed facets** (D14, "spare by hue"). Re-validate W3 and the mask frames.
+9. **Edits.** Paint swatches recolour through the palette. Rebuild must refresh albedo and cached LODs. Zones stay stale on terraces (D-020 addendum), now more visible with material borders; plan tasks write pad zones explicitly.
+10. **P2 one dominant vertical.** Turbine heights 15 / 12 / 10; billboards below the broadcast tower; inspection tower is the QA landmark.
+11. **Draw-call trade relies on the terrain merge landing.** If 371 slips, 373's T0 structures would breach D-028. Gate 373's tier-0 switch behind a content flag until 371 merges.
+12. **Process.** Parallel agents in one tree: unique `--tag` / `--port`, never `git stash` or `git add -A src`. Worktree agents must `fetch` + `reset --hard` to the orchestrator branch.
+13. **Docs debt.** D-024 … D-027 must be written (TASK-382); otherwise later ADRs reference missing records.
+
+
+## M14c: Living close-up (user request 2026-10-05: "yaklaştığında yaşayan bir sistem gibi görünmeli")
+
+Approach rule: detail *and activity* rise with proximity. At T0/T1 the campus reads by colour and
+silhouette (D-031); at T2/T3 it reads as a working organisation: bots moving with purpose, machines
+running, screens alive. Everything deterministic (seeded, sim-step driven), within agent caps and
+programs 9/17/24.
+
+| ID | Task | Agent | Complexity | Status | Dependencies |
+|----|------|-------|-----------|--------|-------------|
+| TASK-383 | Living close-up I — activity sim: near-focus ambient workers (pool within agentCap, spawned/retired by camera focus at T2/T3, deterministic by cell hash), purposeful trips (desk → coffee kiosk queue → meeting pavilion → server rack → dock), carried items (laptop / clipboard / crate / paint pot as mode-8 accessory slots), pairs chatting (face + talk bob), per-theme micro-activities (Design painters at easels, QA inspectors walking checkpoints with clipboards, DevOps techs at racks / pipeline, Marketing camera crew on stage, Research reading instruments), workers on ferries | life | L | PENDING | TASK-379 |
+| TASK-384 | Living close-up II — animated surfaces: monitor content (scrolling code lines / charts / design canvases per theme, procedural in the screen-class shader branch), server LED blink patterns, billboard slideshow, data pulses along pipes and cable trenches, turbine yaw to wind + solar trackers, lit-window occupancy flicker, drone couriers between islands (instanced, packet glow) | shader + props | L | PENDING | TASK-372, TASK-376 |
+
+Acceptance (both):
+- T3 campus shots (`D-campus-<theme>` close variants, new `L-live-<theme>` presets): in a 0.5 s
+  `deltaT` pair, ≥ 3 % of the campus-crop pixels change and ≥ 5 distinct moving clusters are visible;
+  same URL → byte-identical.
+- At simt = 2 on every themed island at T2: ≥ 6 visible bots on HQ/Coding, ≥ 3 elsewhere, ≥ 2 in
+  transit, ≥ 1 carrying an item.
+- No program increase; agents ≤ 25/60/110; CPU sim ≤ 0.5 ms/frame at high (headless measured).
+- Ladder metric (D-031) unaffected: activity elements are < 1 u and below the 48 × 27 cell scale.
