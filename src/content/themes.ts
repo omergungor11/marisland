@@ -117,10 +117,10 @@ export const THEMES: Readonly<Record<ThemeId, ThemeDef>> = {
     accent: '#3FBF8F',
     teamTints: ['#3FBF8F', '#7FD8B3', '#2E9E74'],
     lotMix: [
-      ['testLab', 2],
-      ['inspectionTower', 1],
+      ['testLab', 1],
+      ['inspectionTower', 0],
     ],
-    crown: 'inspectionTower',
+    crown: null,
     defSwap: { stiltHut: 'testLabStilt' },
     landmarkVariant: {},
     decor: [
