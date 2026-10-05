@@ -69,6 +69,7 @@ const TARGET: Record<string, number> = {
   telescope: 400,
   officeLod1: 150,
   officeInterior: 2500,
+  ...Object.fromEntries(THEME_GEO.map((d) => [d.id, 3500])),
 };
 
 /** Props from the buildings/coastal/decor/landmarks families: carry an `emissive` attribute. */
@@ -90,7 +91,7 @@ const GLOWS = new Set([
   'officeLod1',
 ]);
 /** Phase-3 props whose geometry carries `aSpin` (fans, beacon ring, pinwheel): z-axis spin about a hub. */
-const SPINNERS = new Set(['serverShed', 'dataCenter', 'rackShed', 'researchHut']);
+const SPINNERS = new Set(['serverShed', 'dataCenter', 'rackShed', 'researchHut', 'weatherMast']);
 /** Props with cloth/sail/flag wind weights baked in. */
 const WINDY_CLOTH = new Set(['laundryLine', 'bunting', 'sailboat', 'clocktower', 'giantTree']);
 const tris = (g: THREE.BufferGeometry): number => g.getAttribute('position').count / 3;

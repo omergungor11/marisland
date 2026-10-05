@@ -36,8 +36,9 @@ describe('PROP_DEFS_BUILDINGS', () => {
       // M14b theme structures are covered by content/props-themes (their own PropDefs)
       ...THEME_GEO.map((d) => d.id),
     ]);
+    const themed = new Set(THEME_GEO.map((d) => d.id));
     const want = Object.keys(PROP_GEO)
-      .filter((k) => !old.has(k))
+      .filter((k) => !old.has(k) && !themed.has(k))
       .sort();
     expect(PROP_DEFS_BUILDINGS.map((d) => d.geo).sort()).toEqual(want);
   });
