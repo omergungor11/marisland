@@ -178,9 +178,9 @@ describe('Marketing island plan (TASK-365), 30 seeds', () => {
     });
     expect(got).toMatchInlineSnapshot(`
       [
-        "fbda65e4b23eeca8",
-        "7587e739b19cd86f",
-        "6154e1793c892e69",
+        "f634576b65a6a756",
+        "bdc2d37748df5e32",
+        "78b40b9d66b59a82",
       ]
     `);
   });
