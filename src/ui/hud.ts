@@ -5,6 +5,9 @@ import { EDIT_PANEL } from '../content/edit-ui.ts';
 import { createEditPanel, type EditPanelBinding } from './edit-panel.ts';
 import { CAMERA } from '../content/tiers.ts';
 import type { CameraWorld } from '../camera/controls.ts';
+import { themeOf } from '../camera/poses.ts';
+import { THEMES } from '../content/themes.ts';
+import { themeIcon } from './theme-icons.ts';
 import type { HudPanel, Quality, WeatherName } from '../core/params.ts';
 import {
   compassDeg,
@@ -15,7 +18,10 @@ import {
   mixHex,
   nextTimeStop,
   nextWeather,
+  placeLabel,
   pointerToHour,
+  type LabelBox,
+  type LabelSpot,
 } from './hud-math.ts';
 
 /**
@@ -492,8 +498,17 @@ export function createHud(
       labels = world.islands.map((i, n) => {
         const l = document.createElement('button');
         l.className = 'mar-label';
-        l.setAttribute('aria-label', `Fly to ${i.name}`);
-        l.innerHTML = `<span class="mar-label-in" style="animation-delay:${n * INTRO.labelStaggerMs}ms"><span class="mar-dot" style="background:${accents[i.archetypeName ?? i.name] ?? accents[i.name] ?? UI.secondary}"></span>${i.name}</span>`;
+        const t = themeOf(i);
+        const theme = t ? THEMES[t] : null;
+        const accent =
+          accents[i.archetypeName ?? i.name] ?? accents[i.name] ?? theme?.accent ?? UI.secondary;
+        const text = theme ? `${theme.displayName} · ${i.name}` : i.name;
+        l.setAttribute('aria-label', `Fly to ${text}`);
+        l.title = text;
+        // [accent disc + white glyph] Theme name, then the muted island name (hidden < 600 px)
+        l.innerHTML = theme
+          ? `<span class="mar-label-in mar-label-theme" style="animation-delay:${n * INTRO.labelStaggerMs}ms"><span class="mar-label-disc" style="background:${accent}">${themeIcon(theme.icon, 12)}</span>${theme.displayName}<span class="mar-label-sub">${i.name}</span></span>`
+          : `<span class="mar-label-in" style="animation-delay:${n * INTRO.labelStaggerMs}ms"><span class="mar-dot" style="background:${accent}"></span>${i.name}</span>`;
         on(l, 'click', () => actions.onLabel(i.name));
         labelsEl.appendChild(l);
         return {
@@ -547,8 +562,7 @@ export function createHud(
       const showLabels = tier === 0 && !labelsHidden && !photo && visible;
       labelsEl.style.display = showLabels ? '' : 'none';
       if (!showLabels) return;
-      const placed: { x: number; y: number; w: number; h: number }[] = [];
-      const lh = 28;
+      const placed: LabelBox[] = [];
       // Keep labels off the dock (layout box: unaffected by the pop-in transform).
       const dockTop = dockEl.offsetTop - 8;
       const dockHalf = dockEl.offsetWidth / 2 + 6;
@@ -564,7 +578,7 @@ export function createHud(
           ? y + h / 2 > panel.t && x + w / 2 > panel.l && x - w / 2 < panel.r
           : y + h / 2 > dockTop && Math.abs(x - width / 2) < dockHalf + w / 2;
       /** Move a label off the panel / dock: above it, or left of a side sheet. */
-      const offDock = (x: number, w: number): { x: number; y?: number } =>
+      const offDock = (x: number, w: number, lh: number): { x: number; y?: number } =>
         panel?.side ? { x: panel.l - w / 2 } : { x, y: (panel ? panel.t : dockTop) - lh / 2 };
       for (const l of labels) {
         // Above the island's top shelf edge (D2): the highest projected point of the shelf ring
@@ -575,7 +589,7 @@ export function createHud(
           continue;
         }
         l.el.style.display = '';
-        let sx = (_v.x * 0.5 + 0.5) * width;
+        const sx = (_v.x * 0.5 + 0.5) * width;
         let top = Infinity;
         let bottom = -Infinity;
         for (let k = 0; k <= HUD.labelRingSamples; k++) {
@@ -590,42 +604,26 @@ export function createHud(
           top = Math.min(top, y);
           if (k < HUD.labelRingSamples) bottom = Math.max(bottom, y);
         }
+        // measured pill size: the theme labels are wider than the old name-only pills
         const w = l.el.offsetWidth || 90;
-        // Keep labels on screen (portrait phones: the wide archipelago overhangs the edges).
-        sx = Math.min(Math.max(sx, w / 2 + 8), width - w / 2 - 8);
+        const lh = l.el.offsetHeight || 28;
         const minY = lh / 2 + 8;
-        const hitAt = (x: number, y: number): (typeof placed)[number] | undefined =>
-          placed.find(
-            (p) => Math.abs(p.x - x) < (p.w + w) / 2 + 6 && Math.abs(p.y - y) < (p.h + lh) / 2 + 4,
-          );
-        const free = (y: number): boolean =>
-          y >= minY && !underDock(sx, y, w, lh) && hitAt(sx, y) === undefined;
-        // Off the land: above the shelf ring, else below it, else nudge upward from above.
-        const above = top - HUD.labelGapPx - lh / 2;
-        const below = bottom + HUD.labelGapPx + lh / 2;
-        let sy = Math.max(above, minY);
-        if (!free(sy) && free(below)) sy = below;
-        if (underDock(sx, sy, w, lh)) {
-          const o = offDock(sx, w);
-          sx = o.x;
-          if (o.y !== undefined) sy = o.y;
+        // Off the land: above the shelf ring (preferred), else below it; off the dock / panel when
+        // the dock covers the above spot. placeLabel nudges around placed labels (upward first).
+        const above = Math.max(top - HUD.labelGapPx - lh / 2, minY);
+        const spots: LabelSpot[] = [
+          { x: sx, y: above, cost: 0 },
+          { x: sx, y: bottom + HUD.labelGapPx + lh / 2, cost: lh * 1.5 },
+        ];
+        if (underDock(sx, above, w, lh)) {
+          const o = offDock(sx, w, lh);
+          spots.push({ x: o.x, y: o.y ?? above, cost: 0 });
         }
-        // screen-space collision nudge: push up (off the island) until free (bounded), down when
-        // that would leave the screen
-        for (let n = 0; n < 6; n++) {
-          const hit = hitAt(sx, sy);
-          if (!hit) break;
-          sy = hit.y - hit.h - 6;
-          if (sy < minY) sy = hit.y + hit.h + 6;
-          if (underDock(sx, sy, w, lh)) {
-            const o = offDock(sx, w);
-            sx = o.x;
-            sy = o.y ?? hit.y - hit.h - 6;
-          }
-          sx += 4;
-        }
-        placed.push({ x: sx, y: sy, w, h: lh });
-        l.el.style.transform = `translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px) translate(-50%, -50%)`;
+        const p = placeLabel(w, lh, spots, placed, { width, height }, (b) =>
+          underDock(b.x, b.y, b.w, b.h),
+        );
+        placed.push(p);
+        l.el.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) translate(-50%, -50%)`;
       }
     },
     show() {

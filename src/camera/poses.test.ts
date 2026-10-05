@@ -5,6 +5,7 @@ import { TIERS } from '../content/tiers.ts';
 import { islandFrames } from './frames.ts';
 import { fractionInFrame, projectNdc, ringPoints, type View } from './framing.ts';
 import {
+  findIsland,
   framePose,
   heroPose,
   isHeroIsland,
@@ -154,5 +155,23 @@ describe('camera presets on generated worlds', () => {
       expect(b[0]).toBeLessThan(b[1]);
       prev = b;
     }
+  });
+});
+
+describe('island lookup by theme (TASK-308)', () => {
+  it('cam=island:<theme> finds the department island, with or without CameraWorld.theme', () => {
+    const cw = cameraWorld(world(1001));
+    expect(findIsland(cw, 'qa')?.archetypeName).toBe('Palmlagoon');
+    expect(findIsland(cw, 'coding')?.archetypeName).toBe('Millbrook');
+    expect(findIsland(cw, 'Design')?.archetypeName).toBe('Mossgrove');
+    // world-view before the theme field: derived from the archetype display name
+    const bare: CameraWorld = {
+      ...cw,
+      islands: cw.islands.map((i) => ({ ...i, theme: undefined })),
+    };
+    expect(findIsland(bare, 'qa')?.archetypeName).toBe('Palmlagoon');
+    expect(findIsland(bare, 'Marketing')?.archetypeName).toBe('Beacon Rock');
+    expect(findIsland(cw, cw.islands[2].name)).toBe(cw.islands[2]);
+    expect(findIsland(cw, 'nope')).toBeUndefined();
   });
 });

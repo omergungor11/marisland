@@ -8,12 +8,15 @@ import {
   formatHour,
   hourToAngle,
   isDay,
+  labelsOverlap,
   mixHex,
   nearestNorth,
   nextTimeStop,
   nextWeather,
   photoFilename,
+  placeLabel,
   pointerToHour,
+  type LabelBox,
 } from './hud-math.ts';
 
 const DEG = Math.PI / 180;
@@ -120,5 +123,107 @@ describe('compass', () => {
   it('angleDelta picks the short way', () => {
     expect(angleDelta(0.1, -0.1)).toBeCloseTo(-0.2);
     expect(angleDelta(3, -3)).toBeCloseTo(2 * Math.PI - 6);
+  });
+});
+
+describe('label placement (width-aware collision)', () => {
+  /** Portrait pill widths (disc + theme name, no island name): HQ … Research. */
+  const PORTRAIT_W = [63, 91, 113, 63, 91, 97, 107];
+  const H = 28;
+  function layout(
+    anchors: readonly { x: number; above: number; below: number }[],
+    widths: readonly number[],
+    view: { width: number; height: number },
+    blocked?: (b: LabelBox) => boolean,
+  ): LabelBox[] {
+    const placed: LabelBox[] = [];
+    anchors.forEach((a, i) =>
+      placed.push(
+        placeLabel(
+          widths[i],
+          H,
+          [
+            { x: a.x, y: a.above, cost: 0 },
+            { x: a.x, y: a.below, cost: H * 1.5 },
+          ],
+          placed,
+          view,
+          blocked,
+        ),
+      ),
+    );
+    return placed;
+  }
+  function expectClean(boxes: LabelBox[], view: { width: number; height: number }): void {
+    for (let i = 0; i < boxes.length; i++) {
+      const b = boxes[i];
+      expect(b.x - b.w / 2).toBeGreaterThanOrEqual(8 - 1e-6);
+      expect(b.x + b.w / 2).toBeLessThanOrEqual(view.width - 8 + 1e-6);
+      expect(b.y - b.h / 2).toBeGreaterThanOrEqual(8 - 1e-6);
+      for (let j = 0; j < i; j++) expect(labelsOverlap(b, boxes[j])).toBe(false);
+    }
+  }
+
+  it('keeps a free label exactly at its wanted spot', () => {
+    const b = placeLabel(100, H, [{ x: 200, y: 300, cost: 0 }], [], { width: 800, height: 600 });
+    expect(b).toEqual({ x: 200, y: 300, w: 100, h: H });
+  });
+
+  it('nudges a colliding label upward first, measuring both widths', () => {
+    const view = { width: 800, height: 600 };
+    const first = placeLabel(160, H, [{ x: 400, y: 300, cost: 0 }], [], view);
+    // 120 px away: clear for narrow pills, colliding for these wide ones
+    const second = placeLabel(140, H, [{ x: 520, y: 300, cost: 0 }], [first], view);
+    expect(labelsOverlap(first, second)).toBe(false);
+    expect(second.y).toBeLessThan(300);
+  });
+
+  it('places 7 theme labels at 390×844 with no overlap (overview cluster)', () => {
+    const view = { width: 390, height: 844 };
+    // a portrait overview: the archipelago overhangs both edges, islands stacked closely
+    const anchors = [
+      { x: 190, above: 380, below: 470 },
+      { x: 60, above: 300, below: 360 },
+      { x: 330, above: 290, below: 350 },
+      { x: 210, above: 250, below: 300 },
+      { x: -40, above: 470, below: 540 },
+      { x: 430, above: 450, below: 520 },
+      { x: 180, above: 560, below: 600 },
+    ];
+    expectClean(layout(anchors, PORTRAIT_W, view), view);
+  });
+
+  it('never overlaps across a seeded sweep of crowded portrait layouts, dock kept clear', () => {
+    const view = { width: 390, height: 844 };
+    const dock = { top: 844 - 90, half: 150 };
+    const blocked = (b: LabelBox): boolean =>
+      b.y + b.h / 2 > dock.top && Math.abs(b.x - view.width / 2) < dock.half + b.w / 2;
+    let s = 12345;
+    const rnd = (): number => (s = (s * 1103515245 + 12345) >>> 0) / 2 ** 32;
+    for (let n = 0; n < 200; n++) {
+      const anchors = PORTRAIT_W.map(() => {
+        const x = -60 + rnd() * 510;
+        const above = 150 + rnd() * 500;
+        return { x, above, below: above + 30 + rnd() * 80 };
+      });
+      const boxes = layout(anchors, PORTRAIT_W, view, blocked);
+      expectClean(boxes, view);
+      for (const b of boxes) expect(blocked(b)).toBe(false);
+    }
+  });
+
+  it('places 7 wide labels (with island names) at 1920×1080 with no overlap', () => {
+    const view = { width: 1920, height: 1080 };
+    const wide = PORTRAIT_W.map((w) => w + 80);
+    const anchors = [
+      { x: 960, above: 420, below: 640 },
+      { x: 700, above: 380, below: 520 },
+      { x: 1210, above: 360, below: 500 },
+      { x: 880, above: 300, below: 380 },
+      { x: 520, above: 600, below: 720 },
+      { x: 1400, above: 580, below: 700 },
+      { x: 1010, above: 400, below: 470 },
+    ];
+    expectClean(layout(anchors, wide, view), view);
   });
 });

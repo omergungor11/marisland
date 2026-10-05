@@ -46,6 +46,17 @@ export const INTRO = {
   ] as readonly IntroKey[],
 } as const;
 
+/** Loading-screen captions, rotated in order (ART_BIBLE §8; Phase 3 adds the agent-org lines). */
+export const LOADER_CAPTIONS: readonly string[] = [
+  'Raising islands…',
+  'Booting agents…',
+  'Planting palms…',
+  'Spinning up servers…',
+  'Teaching crabs to walk sideways…',
+  'Filling the lagoon…',
+  'Hanging the laundry…',
+];
+
 /** HUD (ART_BIBLE §9). */
 export const HUD = {
   /** Time-dial click cycles these bible time stops (hours). */

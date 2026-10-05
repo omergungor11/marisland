@@ -12,6 +12,7 @@ import {
   islandPose,
   overviewPose as fitOverview,
   pitchBand,
+  findIsland,
   type CameraWorld,
   type Viewport,
 } from './poses.ts';
@@ -480,16 +481,6 @@ function splitPreset(preset: string): [string, string] {
   const i = preset.indexOf(':');
   if (i < 0) return [preset.trim(), ''];
   return [preset.slice(0, i).trim(), preset.slice(i + 1).trim()];
-}
-
-function findIsland(world: CameraWorld, name: string): CameraWorld['islands'][number] | undefined {
-  const norm = (v: string | undefined): string => (v ?? '').toLowerCase().replace(/\s+/g, '');
-  const n = norm(name);
-  return (
-    world.islands.find((i) => norm(i.name) === n) ??
-    world.islands.find((i) => norm(i.archetypeName) === n) ??
-    (n === '' ? world.islands[0] : undefined)
-  );
 }
 
 function findAnchor(
