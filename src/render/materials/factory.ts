@@ -9,6 +9,16 @@ import { CLOUD_SHADOW_GLSL } from '../shaders/chunks/cloud-shadow.glsl.ts';
 import { NIGHT_GLSL, POOL_GAIN } from '../shaders/chunks/night.glsl.ts';
 import { HOVER_RADIUS, HOVER_UNIFORMS } from './hover.ts';
 import { MIST_GLSL } from '../shaders/chunks/mist.glsl.ts';
+import {
+  ACTIVITY_DISPLACE,
+  ACTIVITY_FRAG_PARS,
+  ACTIVITY_GLOW,
+  ACTIVITY_OCCUPANCY,
+  ACTIVITY_SURFACE,
+  ACTIVITY_VARY,
+  ACTIVITY_VARYINGS,
+  ACTIVITY_VERTEX_PARS,
+} from './activity-glsl.ts';
 
 /**
  * Lit material factory (D-003, ARCHITECTURE §3 "Materials"): MeshLambertMaterial
@@ -22,6 +32,10 @@ import { MIST_GLSL } from '../shaders/chunks/mist.glsl.ts';
  * neutral value when absent): `wind` (sway weight 0..1), `ao` (×vColor),
  * `aSeed` (hash), `aAppear` (bloom-in start time, s), `emissive` (night glow 0..1; ≥ 1.5 = screen
  * class, mask = emissive − 1, glows dimly by day too — TASK-305).
+ *
+ * `aSpin.w` is also the living close-up tag channel (TASK-384, content/activity.ts): 1 spin,
+ * 2/3 turbine yaw (+ spin), 4 sun tracker, negative = animated surface kind (monitor content,
+ * LED blink, billboard slides, pipe pulses; materials/activity-glsl.ts). No new attribute.
  */
 export interface LitFeatures {
   /** Informational: instancing is detected by three (USE_INSTANCING); not part of the key. */
@@ -139,6 +153,7 @@ uniform vec3 uCameraPos;
 uniform float uFadeNear;
 uniform float uFadeFar;
 uniform float uMarBloomIn;
+${ACTIVITY_VERTEX_PARS}
 ${marAttr('float', 'wind')}
 ${marAttr('float', 'aSeed')}
 ${marAttr('float', 'aAppear')}
@@ -167,7 +182,8 @@ const VERTEX_DISPLACE = /* glsl */ `
   #endif
   vec3 marOrigin = marM[3].xyz;
   #ifdef MAR_SPIN
-  if (aSpin.w > 0.5) {
+  // spin tags: 1 (blades) and 3 (turbine rotor, then yawed below); 2 / 4 / negative do not spin
+  if ((aSpin.w > 0.5 && aSpin.w < 1.5) || (aSpin.w > 2.5 && aSpin.w < 3.5)) {
     // ART_BIBLE §7 #18: 6 s/rev × wind (0.5–1.5), extra turn on gusts
     float marSG = marGustAt(marOrigin.xz, uTime, uWind.xy, uGustSpeed, uWind.w, uWind.z);
     float marSA = (uTime * ${f((2 * Math.PI) / WINDMILL.secondsPerRev)} * clamp(uWind.z, 0.5, 1.5)
@@ -178,7 +194,7 @@ const VERTEX_DISPLACE = /* glsl */ `
     transformed.xy = aSpin.xy + vec2(marSc * marSp.x - marSs * marSp.y, marSs * marSp.x + marSc * marSp.y);
   }
   #endif
-  #ifdef MAR_BLOOM_IN
+${ACTIVITY_DISPLACE}  #ifdef MAR_BLOOM_IN
   // reduced motion (uMotionScale < 1): bloom-in becomes a dither fade, no scale spring
   float marBloomD = 1.0;
   if (marIsRemoved(aAppear)) {
@@ -238,6 +254,7 @@ varying float vMarEmissive;
 varying vec2 vMarCloudXZ;
 varying float vMarWorldY;
 varying float vMarHover;
+${ACTIVITY_VARYINGS}
 uniform vec4 uHover;
 uniform vec3 uLamps;
 uniform vec2 uLampMode;
@@ -276,12 +293,12 @@ const VERTEX_CLOUD = /* glsl */ `
       float marT = marLo / ${f(NIGHT.lateOffFraction)} * 0.8;
       marOn *= 1.0 - smoothstep(marT, marT + 0.2, uLamps.y);
     }
-    float marFw1 = ${f((2 * Math.PI) / NIGHT.flickerPeriod[1])} + ${f((2 * Math.PI) / NIGHT.flickerPeriod[0] - (2 * Math.PI) / NIGHT.flickerPeriod[1])} * marLh;
+${ACTIVITY_OCCUPANCY}    float marFw1 = ${f((2 * Math.PI) / NIGHT.flickerPeriod[1])} + ${f((2 * Math.PI) / NIGHT.flickerPeriod[0] - (2 * Math.PI) / NIGHT.flickerPeriod[1])} * marLh;
     float marFl = 1.0 + ${f(NIGHT.flickerAmp)} * (0.6 * sin(uTime * marFw1 + marLh * 37.0) + 0.4 * sin(uTime * marFw1 * 1.618 + marLh * 71.0));
     vMarEmissive *= marOn * marFl;
   }
   #endif
-`;
+${ACTIVITY_VARY}`;
 
 const VERTEX_COLOR_MAIN = /* glsl */ `
   #if defined( USE_COLOR ) || defined( USE_COLOR_ALPHA ) || defined( USE_INSTANCING_COLOR )
@@ -308,6 +325,7 @@ ${SHARED_LIT_GLSL.fragmentPars}
 ${CLOUD_SHADOW_GLSL}
 ${NIGHT_GLSL}
 ${MIST_GLSL}
+${ACTIVITY_FRAG_PARS}
 `;
 
 /**
@@ -344,8 +362,10 @@ const FRAG_OUTGOING = /* glsl */ `
   #endif
   #ifdef MAR_EMISSIVE
     // night glow: mask × lamps (staggered, flickering; vertex) × gain → crosses the bloom threshold
-    outgoingLight += diffuseColor.rgb * (vMarEmissive * ${f(NIGHT.emissiveGain)});
+    // TASK-384: animated surfaces weight their glow (dim backgrounds, bright ink)
+    outgoingLight += diffuseColor.rgb * (vMarEmissive * marSG * ${f(NIGHT.emissiveGain)});
   #endif
+${ACTIVITY_GLOW}
   {
     // lantern pools (TASK-171): warm light on walls/trunks near lanterns, fading with height
     vec2 marPl = marPool(vMarCloudXZ);
@@ -401,6 +421,7 @@ function sharedVertexUniforms(
     uWind: SHARED.uWind,
     uGustSpeed: SHARED.uGustSpeed,
     uMotionScale: SHARED.uMotionScale,
+    uSunSkyDir: SHARED.uSunSkyDir,
     uCameraPos: SHARED.uCameraPos,
     uFadeNear: fade.uFadeNear,
     uFadeFar: fade.uFadeFar,
@@ -465,6 +486,7 @@ export class LitMaterial extends THREE.MeshLambertMaterial {
       let fs = shader.fragmentShader;
       fs = replaceOnce(fs, '#include <common>', FRAG_PARS, 'after');
       fs = replaceOnce(fs, '#include <clipping_planes_fragment>', FRAG_DITHER, 'after');
+      fs = replaceOnce(fs, '#include <color_fragment>', ACTIVITY_SURFACE, 'after');
       fs = replaceOnce(fs, '#include <opaque_fragment>', FRAG_CLOUD, 'before');
       fs = replaceOnce(fs, '#include <opaque_fragment>', FRAG_OUTGOING, 'before');
       fs = replaceOnce(fs, '#include <fog_fragment>', FRAG_MIST, 'after');

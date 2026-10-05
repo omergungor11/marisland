@@ -15,6 +15,8 @@ import { glyph } from '../office-kit.ts';
 import { TAU, V, baseBox, cylB, gableRoof, jitterAcc, put } from '../parts.ts';
 import type { BuildOpts, PropGeoDef } from '../types.ts';
 import { addHook, cloth, lighten, pennant, stripedBuoy } from './hq.ts';
+import { accVerts } from './coding.ts';
+import { tagSlides } from './surface-tags.ts';
 
 const MK = THEMES.marketing.accent;
 const PAL = OFFICE_PAL.marketing;
@@ -76,11 +78,13 @@ function billboardV2({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   }
   // frame (cream trim), then the glowing face
   put(acc, baseBox(BB_W + 0.34, BB_H + 0.34, 0.2), [0, BB_Y - 0.17, -0.03], CREAM, { aoAmt: 0.1 });
+  const board0 = accVerts(acc);
   put(acc, new THREE.PlaneGeometry(BB_W, BB_H), [0, cy, 0.085], MK, {
     emissive: 2,
     aoAmt: 0,
     ao: () => 1,
   });
+  const art0 = accVerts(acc);
   // face art: megaphone mark + copy bars (emissive 2: they belong to the screen content)
   const art = (g: THREE.BufferGeometry, p: THREE.Vector3): void =>
     put(acc, g, p, '#FFFFFF', { emissive: 2, aoAmt: 0, ao: () => 1 });
@@ -105,6 +109,7 @@ function billboardV2({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   } else {
     art(new THREE.PlaneGeometry(1.7, 0.75), V(1.4, cy + 0.15, 0.095));
   }
+  const art1 = accVerts(acc);
   if (hi) {
     // catwalk behind the face with a rail, ladder, 4 lamps on arms, back braces
     put(acc, baseBox(BB_W, 0.07, 0.5), [0, BB_Y - 0.55, -0.4], C.steelLight, { aoAmt: 0.05 });
@@ -146,6 +151,8 @@ function billboardV2({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
     }
   }
   const g = acc.finish(rng, false, true);
+  // TASK-384: slideshow on the board; the art shows on the brand slide only
+  tagSlides(g, { first: board0, count: art0 - board0 }, { first: art0, count: art1 - art0 });
   return addHook(g, 'screen', {
     center: [0, cy, 0.085],
     size: [BB_W, BB_H],

@@ -15,6 +15,7 @@ import { glyph } from '../office-kit.ts';
 import { TAU, V, baseBox, cylB, jitterAcc, put } from '../parts.ts';
 import type { BuildOpts, PropGeoDef } from '../types.ts';
 import { addHook, stripedBuoy } from './hq.ts';
+import { tagScreens } from './surface-tags.ts';
 
 const QA = THEMES.qa.accent;
 const PAL = OFFICE_PAL.qa;
@@ -106,6 +107,7 @@ function barrierGate({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
     }
   }
   const g = acc.finish(rng, false, true);
+  tagScreens(g, 'checklist'); // TASK-384: control-box screen
   return addHook(g, 'gate', { center: [(x0 + x1) / 2, 0.9, 0], axis: [1, 0, 0] });
 }
 
