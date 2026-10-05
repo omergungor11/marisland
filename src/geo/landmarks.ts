@@ -11,6 +11,7 @@ import {
 } from '../content/palette.ts';
 import { Acc, blob, col, createNoise, frustum, mat, qEuler } from './kit.ts';
 import { house } from './buildings.ts';
+import { Spin, beaconRing, dish, finishSpin } from './office-kit.ts';
 import { gridSurface } from './coastal.ts';
 import {
   TAU,
@@ -36,7 +37,7 @@ export function lighthouse({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
   const seg = lod === 0 ? 12 : 6;
   const H = 9.4;
   const rOf = (y: number): number => 1.95 - 0.7 * (y / H);
-  const red = col(variant % 2 === 0 ? ROOFS[0] : ROOFS[5]);
+  const red = col(variant === 2 ? ROOFS[1] : variant % 2 === 0 ? ROOFS[0] : ROOFS[5]);
   const white = col(WALLS[1]);
   const pts: Array<[number, number]> = [];
   for (let i = 0; i <= 5; i++) pts.push([rOf((i * H) / 5), (i * H) / 5]);
@@ -96,11 +97,35 @@ export function lighthouse({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
     red,
     { aoAmt: 0 },
   );
-  put(acc, new THREE.IcosahedronGeometry(0.2, 0), [0, ceil + 1.15, 0], col(TINT.gold), {
-    aoAmt: 0,
-  });
+  if (variant === 2) {
+    // broadcast tower: antenna mast with crossbars + red lamp on the dome, dish on the gallery deck
+    put(acc, cylB(0.05, 0.035, 2.4, 4, true), [0, ceil + 1.0, 0], col(TINT.iron), { aoAmt: 0 });
+    put(acc, new THREE.IcosahedronGeometry(0.16, 0), [0, ceil + 3.5, 0], col('#FF5A5A'), {
+      emissive: 1,
+      ao: () => 1,
+    });
+    if (lod === 0) {
+      for (const y of [1.9, 2.5])
+        put(acc, baseBox(0.9 - (y - 1.9) * 0.6, 0.04, 0.04), [0, ceil + y, 0], col(TINT.iron), {
+          aoAmt: 0,
+        });
+    }
+    dish(acc, V(1.15, gy, 0.0), {
+      r: 0.62,
+      yaw: Math.PI / 2,
+      elev: 0.75,
+      color: '#FAFAF5',
+      mast: 0.45,
+      lod,
+    });
+  } else {
+    put(acc, new THREE.IcosahedronGeometry(0.2, 0), [0, ceil + 1.15, 0], col(TINT.gold), {
+      aoAmt: 0,
+    });
+  }
   if (lod === 0) {
-    put(acc, cylB(0.035, 0.012, 0.9, 3, true), [0, ceil + 1.2, 0], col(TINT.iron), { aoAmt: 0 });
+    if (variant !== 2)
+      put(acc, cylB(0.035, 0.012, 0.9, 3, true), [0, ceil + 1.2, 0], col(TINT.iron), { aoAmt: 0 });
     // railing
     for (let i = 0; i < 12; i++) {
       const a = (i / 12) * TAU;
@@ -165,18 +190,29 @@ export function clocktower({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
     put(acc, baseBox(2.4, shaftTop, 2.4), [0, 0, 0], wall, { aoAmt: 0.2 });
     put(acc, baseBox(2.9, stageTop - shaftTop, 2.9), [0, shaftTop, 0], wall, { aoAmt: 0.1 });
   }
-  put(
-    acc,
-    new THREE.ConeGeometry(2.35, 2.3, 4),
-    [0, stageTop + 1.15 - 0.05, 0],
-    (p) => col(roof).multiplyScalar(0.9 + 0.2 * clamp01((p.y - stageTop) / 2.2)),
-    {
-      q: qEuler(0, Math.PI / 4, 0),
-      aoAmt: 0.05,
-    },
-  );
-  put(acc, cylB(0.05, 0.04, 0.95, 4, true), [0, stageTop + 2.2, 0], col(WOOD.dark), { aoAmt: 0 });
-  const fy = stageTop + 2.2 + 0.95;
+  const spin = new Spin();
+  const finishClock = (): THREE.BufferGeometry =>
+    variant === 2
+      ? finishSpin(acc.finish(rng, false, true), acc, spin)
+      : acc.finish(rng, false, true);
+  let fy: number;
+  if (variant === 2) {
+    // Orchestrator Tower (phase-3 HQ): flat deck + mast, a spinning beacon ring (aSpin) around a lit hub
+    fy = beaconRing(acc, spin, { stageTop, wall, trim: ROOFS[0], lod });
+  } else {
+    put(
+      acc,
+      new THREE.ConeGeometry(2.35, 2.3, 4),
+      [0, stageTop + 1.15 - 0.05, 0],
+      (p) => col(roof).multiplyScalar(0.9 + 0.2 * clamp01((p.y - stageTop) / 2.2)),
+      {
+        q: qEuler(0, Math.PI / 4, 0),
+        aoAmt: 0.05,
+      },
+    );
+    put(acc, cylB(0.05, 0.04, 0.95, 4, true), [0, stageTop + 2.2, 0], col(WOOD.dark), { aoAmt: 0 });
+    fy = stageTop + 2.2 + 0.95;
+  }
   const flag = gridSurface(2, 1, (u, v) => V(0.0 + u * 0.7, fy - 0.38 + v * 0.34 - u * 0.04, 0));
   put(acc, flag, [0, 0, 0], col(ROOFS[0]), {
     double: true,
@@ -184,7 +220,7 @@ export function clocktower({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
     ao: () => 1,
     windAbs: (p) => clamp01(p.x / 0.7),
   });
-  if (lod === 1) return acc.finish(rng, false, true);
+  if (lod === 1) return finishClock();
   // door + windows + clock faces
   const glow = col(EMISSIVE.window);
   const dz = 1.2;
@@ -250,7 +286,7 @@ export function clocktower({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
     hand(0.6, 0.08, 0.6, 0.02);
     hand(0.42, 0.1, (hrs / 12) * TAU, 0.05);
   }
-  return acc.finish(rng, false, true);
+  return finishClock();
 }
 
 export function giantTree({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {

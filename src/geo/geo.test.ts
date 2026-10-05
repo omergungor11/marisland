@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
+import { OFFICE_DEFS, OFFICE_INTERIOR_SHELLS, WORK_SPOTS } from '../content/offices.ts';
 import { PROP_GEO, buildProp } from './index.ts';
 
 const TARGET: Record<string, number> = {
@@ -17,7 +18,7 @@ const TARGET: Record<string, number> = {
   stiltHut: 600,
   windmill: 900,
   lighthouse: 900,
-  clocktower: 700,
+  clocktower: 1100,
   giantTree: 1400,
   sunkenShip: 700,
   seaStack: 400,
@@ -45,6 +46,28 @@ const TARGET: Record<string, number> = {
   tidePool: 200,
   hotSpring: 300,
   volcanoCrater: 200,
+  // phase 3 (TASK-303): shell LOD0 <= 3.5k, interior <= 2.5k, proxy <= 150
+  hqOffice: 3500,
+  hqAnnex: 3500,
+  meetingPavilion: 3500,
+  coffeeKiosk: 3500,
+  devOffice: 3500,
+  devPod: 3500,
+  serverShed: 3500,
+  broadcastStudio: 3500,
+  billboard: 3500,
+  testLab: 3500,
+  inspectionTower: 3500,
+  testLabStilt: 3500,
+  atelier: 3500,
+  galleryPavilion: 3500,
+  dataCenter: 3500,
+  rackShed: 3500,
+  antennaMast: 3500,
+  researchHut: 3500,
+  telescope: 400,
+  officeLod1: 150,
+  officeInterior: 2500,
 };
 
 /** Props from the buildings/coastal/decor/landmarks families: carry an `emissive` attribute. */
@@ -62,7 +85,11 @@ const GLOWS = new Set([
   'clocktower',
   'giantTree',
   'volcanoCrater',
+  ...Object.keys(OFFICE_DEFS),
+  'officeLod1',
 ]);
+/** Phase-3 props whose geometry carries `aSpin` (fans, beacon ring, pinwheel): z-axis spin about a hub. */
+const SPINNERS = new Set(['serverShed', 'dataCenter', 'rackShed', 'researchHut']);
 /** Props with cloth/sail/flag wind weights baked in. */
 const WINDY_CLOTH = new Set(['laundryLine', 'bunting', 'sailboat', 'clocktower', 'giantTree']);
 const tris = (g: THREE.BufferGeometry): number => g.getAttribute('position').count / 3;
@@ -134,12 +161,38 @@ describe('prop geometry', () => {
           } else if (lod === 0 && WINDY_CLOTH.has(def.id)) {
             expect(wind.some((x) => x > 0)).toBe(true);
           }
+          if (lod === 0 && (SPINNERS.has(def.id) || (def.id === 'clocktower' && v === 2))) {
+            const spin = g.getAttribute('aSpin');
+            expect(spin.itemSize).toBe(4);
+            expect(spin.count).toBe(n);
+            const hubs = g.userData.hubs as number[][];
+            expect(hubs.length).toBeGreaterThan(0);
+            const sa = spin.array as Float32Array;
+            let spun = 0;
+            for (let i = 0; i < n; i++) {
+              const w4 = sa[i * 4 + 3];
+              expect(w4 === 0 || w4 === 1).toBe(true);
+              if (w4 === 1) {
+                spun++;
+                expect(
+                  hubs.some(
+                    (h) =>
+                      Math.abs(h[0] - sa[i * 4]) < 1e-5 && Math.abs(h[1] - sa[i * 4 + 1]) < 1e-5,
+                  ),
+                ).toBe(true);
+                expect(wind[i]).toBe(0);
+              }
+            }
+            expect(spun).toBeGreaterThan(0);
+            expect(spun).toBeLessThan(n);
+          }
           if (NEW_IDS.has(def.id)) {
             const em = g.getAttribute('emissive');
             expect(em.itemSize).toBe(1);
             expect(em.count).toBe(n);
             const ea = em.array as Float32Array;
-            expect(ea.every((x) => Number.isFinite(x) && x >= 0 && x <= 1)).toBe(true);
+            // 0..1 glow, 2 = screen / LED class (TASK-305)
+            expect(ea.every((x) => Number.isFinite(x) && x >= 0 && x <= 2)).toBe(true);
             if (lod === 0 && GLOWS.has(def.id)) expect(ea.some((x) => x === 1)).toBe(true);
             // emissive faces are whole triangles
             for (let f = 0; f < n; f += 3)
@@ -166,4 +219,61 @@ describe('prop geometry', () => {
       expect(Array.from(a)).not.toEqual(Array.from(c));
     });
   }
+});
+
+describe('office shells (TASK-303)', () => {
+  const bbox = (id: string, v: number): THREE.Box3 => buildProp(id, 7, v, 0).boundingBox!;
+
+  it('every OFFICE_DEFS id has a geo with its variant count', () => {
+    for (const [id, def] of Object.entries(OFFICE_DEFS)) {
+      expect(PROP_GEO[id], id).toBeDefined();
+      expect(PROP_GEO[id].variants, id).toBe(def.variants);
+    }
+  });
+
+  it('shells stay within their lot footprint (small decor may overhang the door side)', () => {
+    for (const [id, def] of Object.entries(OFFICE_DEFS)) {
+      for (let v = 0; v < def.variants; v++) {
+        const b = bbox(id, v);
+        const tol = 0.8;
+        expect(b.min.x, `${id} v${v}`).toBeGreaterThanOrEqual(-def.w / 2 - tol);
+        expect(b.max.x, `${id} v${v}`).toBeLessThanOrEqual(def.w / 2 + tol);
+        expect(b.min.z, `${id} v${v}`).toBeGreaterThanOrEqual(-def.d / 2 - tol);
+        expect(b.max.z, `${id} v${v}`).toBeLessThanOrEqual(def.d / 2 + tol);
+      }
+    }
+  });
+
+  it('officeLod1 has 4 size classes, LOD1 <= 45 tris', () => {
+    expect(PROP_GEO.officeLod1.variants).toBe(4);
+    for (let v = 0; v < 4; v++)
+      expect(tris(buildProp('officeLod1', 7, v, 1))).toBeLessThanOrEqual(45);
+  });
+
+  it('officeInterior: one variant per interior shell, furniture sits at the WORK_SPOTS', () => {
+    expect(PROP_GEO.officeInterior.variants).toBe(OFFICE_INTERIOR_SHELLS.length);
+    OFFICE_INTERIOR_SHELLS.forEach((shell, v) => {
+      const g = buildProp('officeInterior', 7, v, 0);
+      const pos = g.getAttribute('position');
+      const em = g.getAttribute('emissive');
+      const screens: THREE.Vector3[] = [];
+      for (let i = 0; i < pos.count; i++)
+        if (em.getX(i) === 2) screens.push(new THREE.Vector3().fromBufferAttribute(pos, i));
+      expect(screens.length, shell).toBeGreaterThan(0);
+      for (const s of WORK_SPOTS[shell]) {
+        if (s.pose !== 'type' && s.pose !== 'rack') continue;
+        const fx = Math.sin(s.face);
+        const fz = Math.cos(s.face);
+        // an emissive-2 screen / LED vertex 0.35..1.3 u ahead of the seat, within 0.7 u sideways
+        const ok = screens.some((p) => {
+          const dx = p.x - s.x;
+          const dz = p.z - s.z;
+          const ahead = dx * fx + dz * fz;
+          const side = Math.abs(dx * fz - dz * fx);
+          return ahead > 0.35 && ahead < 1.3 && side < 0.7;
+        });
+        expect(ok, `${shell} spot (${s.x}, ${s.z})`).toBe(true);
+      }
+    });
+  });
 });
