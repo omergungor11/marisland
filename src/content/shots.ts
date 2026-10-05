@@ -69,8 +69,7 @@ const CAMPUS_THEMES = [
   ['research', 'Research'],
 ] as const;
 
-/** W5 / W7 cameras (raw, seed 1001 DevOps / Coding; TASK-380), re-pin when that layout changes. */
-const W5_CAM = '-128,22,-104,-62,12,-76';
+/** W7 camera (raw, seed 1001 Coding; TASK-380), re-pin when that layout changes. */
 const W7_CAM = '45,20,20,95,13,40';
 
 /** D-desk camera (raw `x,y,z,tx,ty,tz`), re-pin when the seed 1001 layout changes. */
@@ -131,11 +130,12 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   {
     id: 'W5',
     title: 'Forge & Steam',
-    // DevOps (TASK-380): a low look from the west shore — a steaming cooling tower in front, the
-    // terraced data centers climbing the cone behind it, crater steam against the sky
+    // DevOps (TASK-380): campus framing — steaming cooling towers, the terraced data centers on
+    // the cone, crater steam, warm afternoon light. A low horizon look (raw cam over the west
+    // shore) measured 281–373 calls on medium (other islands at T2 + shadows) > D-028 255.
     seed: 1001,
-    cam: W5_CAM,
-    time: 10,
+    cam: 'village:devops',
+    time: 16.5,
     simt: 5,
     quality: 'medium',
     width: 1920,
