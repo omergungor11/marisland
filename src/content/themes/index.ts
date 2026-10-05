@@ -8,7 +8,7 @@
  *
  * One file per theme (content/themes/<theme>.ts); this module assembles `THEMES`.
  */
-import type { ArchetypeId, ThemeId, ZoneId } from '../../world/types.ts';
+import type { ArchetypeId, DistrictKind, ThemeId, ZoneId } from '../../world/types.ts';
 import type { ZoneRuleParams } from '../islands.ts';
 import type { PlacementRule } from '../placement.ts';
 import type { GroundSpec } from '../ground.ts';
@@ -91,6 +91,12 @@ export interface ThemeDef {
   /** Merged over the archetype's zone rules: `{ ...ARCHETYPES[a].zones, ...zoneRules }`. */
   zoneRules?: Readonly<Partial<ZoneRuleParams>>;
   patchwork: ThemePatchwork;
+  /**
+   * On a 'districts' patchwork theme: the kind every raw profile patch rectangle becomes in
+   * `world.districts` (world/index.ts). Unset = the theme planner emits its own districts from the
+   * patches (Coding trims them to clean ground around its campus).
+   */
+  patchDistrict?: DistrictKind;
   /** Anchor key → landmark. Empty = the archetype planner's landmarks (today). */
   landmarks: Readonly<Record<string, ThemeLandmark>>;
   /** Extra placement rules for this island only (`archetypes` is ignored: the theme is implied). */
