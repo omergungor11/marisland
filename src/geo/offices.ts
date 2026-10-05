@@ -34,6 +34,7 @@ import {
   win,
   winRow,
   type Opening,
+  type ShellOpts,
 } from './office-kit.ts';
 import { TAU, V, V2, baseBox, cylB, jitterAcc, prism, put } from './parts.ts';
 import type { BuildOpts, Lod } from './types.ts';
@@ -111,6 +112,74 @@ function beacon(acc: Acc, at: THREE.Vector3, h: number, lamp: string, lod: Lod):
   );
 }
 
+/* ---------------------- LOD1 helpers (TASK-378, D-031/D-032) ---------------------- */
+
+/** Frame width of a LOD0 opening (office-kit wallSlab `f`): the frame colour is part of the window's mean. */
+const FRAME_W = 0.07;
+
+/** LOD1 openings: one flat emissive-tinted quad per opening on the outer wall face (2 tris each). */
+function farWindows(acc: Acc, s: ShellOpts, inside?: string): void {
+  const t = s.t ?? 0.16;
+  const base = (s.y0 ?? 0) + (s.noFloor ? 0 : FLOOR_Y);
+  const hh = s.h - (s.noFloor ? 0 : FLOOR_Y);
+  const walls: Array<[readonly Opening[] | undefined, number, THREE.Vector3]> = [
+    [s.front, 0, V(0, base, s.d / 2 - t / 2)],
+    [s.back, Math.PI, V(0, base, -s.d / 2 + t / 2)],
+    [s.right, Math.PI / 2, V(s.w / 2 - t / 2, base, 0)],
+    [s.left, -Math.PI / 2, V(-s.w / 2 + t / 2, base, 0)],
+  ];
+  for (const [ops, yaw, at] of walls) {
+    const q = qEuler(0, yaw, 0);
+    for (const o of ops ?? []) {
+      const y1 = Math.min(o.y1, hh);
+      const h = y1 - o.y0;
+      if (h <= 0.05) continue;
+      const p = V((o.x0 + o.x1) / 2, o.y0 + h / 2, t / 2 + 0.02)
+        .applyQuaternion(q)
+        .add(at);
+      // what the hole shows at LOD0: the pale interior, framed by the roof-coloured jambs
+      const w = o.x1 - o.x0;
+      const frameA = (2 * (w + h) * FRAME_W) / (w * h + 2 * (w + h) * FRAME_W);
+      const c = col(s.inner);
+      if (s.glow !== false) {
+        // the lit band on the inner back wall (boxShell: 0.5 high, centred 1.25 above the floor line)
+        const ov = Math.max(0, Math.min(o.y1, 1.5) - Math.max(o.y0, 1.0)) / h;
+        c.lerp(col(s.glow ?? '#FFC870'), Math.min(1, ov * 1.6) * (s.noFloor ? 0 : 1));
+      }
+      if (s.frame) c.lerp(col(s.frame), frameA);
+      if (inside) c.lerp(col(inside), 0.5);
+      put(acc, new THREE.PlaneGeometry(w, h), p, `#${c.getHexString()}`, {
+        q,
+        emissive: 0.4,
+        aoAmt: 0,
+        ao: () => 1,
+      });
+    }
+  }
+}
+
+/** `boxShell`, plus (LOD1) the window quads so the far block keeps its window band. */
+function shell(acc: Acc, s: ShellOpts, lod: Lod, inside?: string): void {
+  boxShell(acc, s, lod);
+  if (lod === 1) farWindows(acc, s, inside);
+}
+
+/** `flatRoof`, plus (LOD1) the parapet's top face as flat quads: from above it is part of the roof colour mix. */
+function roofFlat(acc: Acc, o: Parameters<typeof flatRoof>[1]): void {
+  flatRoof(acc, o);
+  if (o.lod === 0 || !o.parapet) return;
+  const over = o.over ?? 0.12;
+  const wx = o.w + over * 2;
+  const wz = o.d + over * 2;
+  const y = o.y + (o.thick ?? 0.18) + o.parapet + 0.005;
+  const q = qEuler(-Math.PI / 2, 0, 0);
+  const flat = { q, aoAmt: 0, ao: () => 1 };
+  put(acc, new THREE.PlaneGeometry(wx, 0.1), [0, y, wz / 2 - 0.05], o.trim, flat);
+  put(acc, new THREE.PlaneGeometry(wx, 0.1), [0, y, -wz / 2 + 0.05], o.trim, flat);
+  put(acc, new THREE.PlaneGeometry(0.1, wz - 0.2), [wx / 2 - 0.05, y, 0], o.trim, flat);
+  put(acc, new THREE.PlaneGeometry(0.1, wz - 0.2), [-wx / 2 + 0.05, y, 0], o.trim, flat);
+}
+
 /* ----------------------------------- HQ ----------------------------------- */
 
 export function hqOffice({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
@@ -122,7 +191,7 @@ export function hqOffice({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry
   const D = 5;
   const H = 3.2;
   const t = 0.16;
-  boxShell(
+  shell(
     acc,
     {
       w: W,
@@ -138,7 +207,7 @@ export function hqOffice({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry
     },
     lod,
   );
-  flatRoof(acc, { w: W, d: D, y: H, roof: p.roof, trim: p.trim, parapet: 0.22, lod });
+  roofFlat(acc, { w: W, d: D, y: H, roof: p.roof, trim: p.trim, parapet: 0.22, lod });
   const ry = H + 0.18;
   if (hi) {
     mullions(acc, D / 2 - t / 2 + 0.02, [-0.75, 0, 0.75], FLOOR_Y, 2.4, p.roof);
@@ -180,9 +249,9 @@ export function hqAnnex({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry 
   const W = 3;
   const H = 5.4;
   const bw = 2.6;
-  if (hi) put(acc, baseBox(W, 0.2, W), [0, 0, 0], C.plinth, { aoAmt: 0.2 });
+  put(acc, baseBox(W, 0.2, W), [0, 0, 0], C.plinth, { aoAmt: 0.2 });
   const band2: Opening[] = [win(0, 1.6, 4.1, 5.0)];
-  boxShell(
+  shell(
     acc,
     {
       w: bw,
@@ -258,11 +327,23 @@ export function meetingPavilion({ rng, lod, variant }: BuildOpts): THREE.BufferG
     glyph(acc, 'hq', V(0, PH + 0.21, 1.87), 0, 0.3, acc1);
     // hanging lamp (emissive)
     put(acc, cylB(0.02, 0.02, 0.5, 3, true), [0, PH - 0.4, 0], C.steel, { aoAmt: 0 });
+  } else {
+    // low rails (back + sides) as double-sided quads: the open pavilion keeps its walls' colour mass
+    const rail = { double: true, aoAmt: 0, ao: () => 1 };
+    put(acc, new THREE.PlaneGeometry(3.6, 0.5), [0, 0.41, -1.8], p.wall, rail);
+    for (const x of [-1.8, 1.8])
+      put(acc, new THREE.PlaneGeometry(3.4, 0.5), [x, 0.41, 0], p.wall, {
+        ...rail,
+        q: qEuler(0, Math.PI / 2, 0),
+      });
   }
-  put(acc, new THREE.IcosahedronGeometry(0.22, hi ? 1 : 0), [0, PH - 0.6, 0], lighten(acc1, 0.4), {
-    emissive: 1,
-    ao: () => 1,
-  });
+  put(
+    acc,
+    hi ? new THREE.IcosahedronGeometry(0.22, 1) : new THREE.OctahedronGeometry(0.22, 0),
+    [0, PH - 0.6, 0],
+    lighten(acc1, 0.4),
+    { emissive: 1, ao: () => 1 },
+  );
   if (variant === 0) {
     put(acc, new THREE.ConeGeometry(2.95, 1.3, 4).translate(0, 0.65, 0), [0, PH + 0.2, 0], p.roof, {
       q: qEuler(0, Math.PI / 4, 0),
@@ -295,7 +376,7 @@ export function coffeeKiosk({ rng, lod, variant }: BuildOpts): THREE.BufferGeome
   if (hi) put(acc, baseBox(2.1, 0.1, 1.6), [0, 0, 0], C.floor, { aoAmt: 0.15 });
   // back + side walls, counter
   put(acc, baseBox(2.0, 1.9, 0.12), [0, 0.1, -0.62], p.wall, { aoAmt: 0.15 });
-  for (const x of hi ? [-0.94, 0.94] : [])
+  for (const x of [-0.94, 0.94])
     put(acc, baseBox(0.12, 1.9, 1.2), [x, 0.1, -0.06], p.wall, { aoAmt: 0.15 });
   put(acc, baseBox(1.9, 0.85, 0.5), [0, 0.1, 0.5], p.trim, { aoAmt: 0.2 });
   put(acc, baseBox(2.0, 0.07, 0.62), [0, 0.95, 0.5], C.desk, { aoAmt: 0 });
@@ -345,7 +426,7 @@ export function devOffice({ rng, lod, variant }: BuildOpts): THREE.BufferGeometr
   const W = 7;
   const D = 4;
   const H = 2.7;
-  boxShell(
+  shell(
     acc,
     {
       w: W,
@@ -364,10 +445,10 @@ export function devOffice({ rng, lod, variant }: BuildOpts): THREE.BufferGeometr
     lod,
   );
   if (variant === 0) {
-    flatRoof(acc, { w: W, d: D, y: H, roof: p.roof, trim: p.trim, parapet: 0.2, lod });
+    roofFlat(acc, { w: W, d: D, y: H, roof: p.roof, trim: p.trim, parapet: 0.2, lod });
     const ry = H + 0.18;
-    solarRow(acc, V(-1.4, ry, -0.9), hi ? 4 : 3, 1.2, 1.1, lod);
-    solarRow(acc, V(1.6, ry, -0.9), hi ? 3 : 2, 1.2, 1.1, lod);
+    solarRow(acc, V(-1.4, ry, -0.9), 4, 1.2, 1.1, lod);
+    solarRow(acc, V(1.6, ry, -0.9), 3, 1.2, 1.1, lod);
     // rooftop sign
     put(acc, baseBox(1.8, 0.8, 0.14), [-1.8, ry, 1.3], acc1, { aoAmt: 0.05 });
     if (hi) glyph(acc, 'coding', V(-1.8, ry + 0.4, 1.4), 0, 0.62, C.white);
@@ -384,7 +465,7 @@ export function devOffice({ rng, lod, variant }: BuildOpts): THREE.BufferGeometr
       { aoAmt: 0.05 },
     );
     const alpha = Math.atan2(rise, 2 * dd);
-    const n = hi ? 5 : 3;
+    const n = 5;
     for (let i = 0; i < n; i++) {
       const x = -((n - 1) * 1.28) / 2 + i * 1.28;
       put(acc, new THREE.BoxGeometry(1.15, 0.05, 1.5), [x, H + rise * 0.5 + 0.05, 0.0], C.solar, {
@@ -414,7 +495,7 @@ export function devPod({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const acc1 = accentOf('coding');
   const hi = lod === 0;
   const H = 2.4;
-  boxShell(
+  shell(
     acc,
     {
       w: 3,
@@ -431,8 +512,8 @@ export function devPod({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
     lod,
   );
   if (variant === 0) {
-    flatRoof(acc, { w: 3, d: 3, y: H, roof: p.roof, trim: p.trim, parapet: 0.16, lod });
-    solarRow(acc, V(0, H + 0.18, -0.4), hi ? 2 : 1, 1.2, 1.0, lod);
+    roofFlat(acc, { w: 3, d: 3, y: H, roof: p.roof, trim: p.trim, parapet: 0.16, lod });
+    solarRow(acc, V(0, H + 0.18, -0.4), 2, 1.2, 1.0, lod);
   } else {
     gabledRoof(acc, {
       top: H,
@@ -448,8 +529,8 @@ export function devPod({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   }
   if (hi) {
     glyph(acc, 'coding', V(-0.85, 2.05, 1.55), 0, 0.4, acc1);
-    put(acc, baseBox(0.95, 0.1, 0.4), [-0.85, 0, 1.7], C.plinth, { aoAmt: 0.2 });
   }
+  put(acc, baseBox(0.95, 0.1, 0.4), [-0.85, 0, 1.7], C.plinth, { aoAmt: 0.2 });
   band(acc, V(0.5, 2.15, 1.51), 0, 1.5, 0.1, lighten(acc1, 0.45), 1);
   return acc.finish(rng, false, true);
 }
@@ -463,7 +544,7 @@ export function serverShed({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
   const W = 3;
   const D = 2.5;
   const H = 2.4;
-  boxShell(
+  shell(
     acc,
     {
       w: W,
@@ -477,8 +558,9 @@ export function serverShed({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
       right: [win(0, 1.0, 0.8, 1.7)],
     },
     lod,
+    C.steelLight,
   );
-  flatRoof(acc, {
+  roofFlat(acc, {
     w: W,
     d: D,
     y: H,
@@ -489,6 +571,7 @@ export function serverShed({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
   });
   const ry = H + 0.18;
   vent(acc, V(0.8, ry, -0.5), 0.4, 0.15, C.steelLight, lod);
+  put(acc, baseBox(0.9, 0.08, 0.5), [0, 0, D / 2 + 0.25], C.plinth, { aoAmt: 0.2 });
   if (hi) {
     fan(acc, spin, V(-0.85, 2.12, D / 2 + 0.02), 0.2, p.trim, C.white, lod);
     for (const [x, s] of [
@@ -504,7 +587,6 @@ export function serverShed({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
         seed: s + variant,
         lod,
       });
-    put(acc, baseBox(0.9, 0.08, 0.5), [0, 0, D / 2 + 0.25], C.plinth, { aoAmt: 0.2 });
     band(acc, V(0, 2.12, D / 2 + 0.01), 0, 1.0, 0.1, lighten(acc1, 0.45), 1);
   } else {
     for (const x of [-0.62, 0.62])
@@ -529,7 +611,7 @@ export function broadcastStudio({ rng, lod, variant }: BuildOpts): THREE.BufferG
   const W = 4;
   const D = 3.5;
   const H = 2.8;
-  boxShell(
+  shell(
     acc,
     {
       w: W,
@@ -545,7 +627,7 @@ export function broadcastStudio({ rng, lod, variant }: BuildOpts): THREE.BufferG
     },
     lod,
   );
-  flatRoof(acc, { w: W, d: D, y: H, roof: p.roof, trim: p.trim, parapet: 0.2, lod });
+  roofFlat(acc, { w: W, d: D, y: H, roof: p.roof, trim: p.trim, parapet: 0.2, lod });
   const ry = H + 0.18;
   // big dish, ON AIR lamp, megaphones, mast
   dish(acc, V(variant === 0 ? -1.0 : 1.0, ry, -0.8), {
@@ -737,7 +819,7 @@ export function testLab({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry 
   const W = 5;
   const D = 4;
   const H = 2.8;
-  boxShell(
+  shell(
     acc,
     {
       w: W,
@@ -753,7 +835,7 @@ export function testLab({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry 
     },
     lod,
   );
-  flatRoof(acc, { w: W, d: D, y: H, roof: p.roof, trim: p.trim, parapet: 0.2, lod });
+  roofFlat(acc, { w: W, d: D, y: H, roof: p.roof, trim: p.trim, parapet: 0.2, lod });
   const ry = H + 0.18;
   checklistBoard(
     acc,
@@ -794,7 +876,7 @@ export function inspectionTower({ rng, lod, variant }: BuildOpts): THREE.BufferG
   const BW = 2.2;
   const BH = 3.5;
   put(acc, baseBox(2.5, 0.16, 2.5), [0, 0, 0], C.plinth, { aoAmt: 0.2 });
-  boxShell(
+  shell(
     acc,
     {
       w: BW,
@@ -822,7 +904,7 @@ export function inspectionTower({ rng, lod, variant }: BuildOpts): THREE.BufferG
   put(acc, baseBox(2.6, 0.2, 2.6), [0, cy, 0], p.trim, { aoAmt: 0.1 });
   const CH = 1.2;
   const ow: Opening[] = [win(0, 1.5, 0.25, 0.95)];
-  boxShell(
+  shell(
     acc,
     {
       w: 2.3,
@@ -884,7 +966,7 @@ export function testLabStilt({ rng, lod, variant }: BuildOpts): THREE.BufferGeom
   put(acc, baseBox(3.0, 0.24, 3.0), [0, deckTop - 0.22, 0], '#D2A679', { aoAmt: 0.1 });
   const y0 = STILT_FLOOR;
   const H = 2.1;
-  boxShell(
+  shell(
     acc,
     {
       w: 2.6,
@@ -963,7 +1045,7 @@ export function atelier({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry 
   const W = 5;
   const D = 4;
   const H = 2.6;
-  boxShell(
+  shell(
     acc,
     {
       w: W,
@@ -1121,7 +1203,7 @@ export function dataCenter({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
   const W = 7;
   const D = 4;
   const H = 2.6;
-  boxShell(
+  shell(
     acc,
     {
       w: W,
@@ -1137,7 +1219,7 @@ export function dataCenter({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
     },
     lod,
   );
-  flatRoof(acc, { w: W, d: D, y: H, roof: p.roof, trim: p.trim, parapet: 0.15, lod });
+  roofFlat(acc, { w: W, d: D, y: H, roof: p.roof, trim: p.trim, parapet: 0.15, lod });
   const ry = H + 0.18;
   for (const x of [-2.2, 2.2]) vent(acc, V(x, ry, -1.0), 0.5, 0.2, C.steelLight, lod);
   if (variant === 1) vent(acc, V(0, ry, -1.0), 0.4, 0.17, C.steelLight, lod);
@@ -1176,7 +1258,7 @@ export function rackShed({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry
   const W = 3;
   const D = 2.5;
   const H = 2.4;
-  boxShell(
+  shell(
     acc,
     {
       w: W,
@@ -1190,10 +1272,13 @@ export function rackShed({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry
       right: [win(0, 1.0, 0.8, 1.7)],
     },
     lod,
+    C.steel,
   );
-  flatRoof(acc, { w: W, d: D, y: H, roof: p.roof, trim: p.trim, parapet: 0.12, lod });
+  roofFlat(acc, { w: W, d: D, y: H, roof: p.roof, trim: p.trim, parapet: 0.12, lod });
   const ry = H + 0.18;
   vent(acc, V(0.8, ry, -0.5), 0.4, 0.15, C.steelLight, lod);
+  put(acc, baseBox(0.9, 0.08, 0.5), [0, 0, D / 2 + 0.25], C.plinth, { aoAmt: 0.2 });
+  pipe(acc, V(-1.5, 0.35, D / 2 + 0.2), V(1.5, 0.35, D / 2 + 0.2), 0.08, acc1, lod);
   const xs = variant === 0 ? [-0.85, 0, 0.85] : [-0.7, 0.7];
   for (const [i, x] of xs.entries())
     rack(acc, V(x, FLOOR_Y, -0.82), 0, {
@@ -1206,8 +1291,6 @@ export function rackShed({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry
     });
   if (hi) {
     fan(acc, spin, V(-0.8, 2.12, D / 2 + 0.02), 0.2, p.trim, C.white, lod);
-    pipe(acc, V(-1.5, 0.35, D / 2 + 0.2), V(1.5, 0.35, D / 2 + 0.2), 0.08, acc1, lod);
-    put(acc, baseBox(0.9, 0.08, 0.5), [0, 0, D / 2 + 0.25], C.plinth, { aoAmt: 0.2 });
     for (let i = 0; i < 6; i++)
       put(
         acc,
@@ -1249,13 +1332,32 @@ export function antennaMast({ rng, lod, variant }: BuildOpts): THREE.BufferGeome
         acc1,
       );
   // cross rings
-  const rings = hi ? [2.2, 4.0, 5.8] : [3.6];
+  const rings = [2.2, 4.0, 5.8];
+  const flatRing = { q: qEuler(-Math.PI / 2, 0, 0), aoAmt: 0, ao: () => 1 };
   for (const y of rings) {
     const k = 1 - (y / TOP) * 0.78;
     const half = bx * k + 0.02;
     for (const s of [-1, 1]) {
-      put(acc, baseBox(half * 2, 0.05, 0.05), [0, y, s * half - 0.2], p.trim, { aoAmt: 0 });
-      put(acc, baseBox(0.05, 0.05, half * 2), [s * half, y, -0.2], p.trim, { aoAmt: 0 });
+      if (hi) {
+        put(acc, baseBox(half * 2, 0.05, 0.05), [0, y, s * half - 0.2], p.trim, { aoAmt: 0 });
+        put(acc, baseBox(0.05, 0.05, half * 2), [s * half, y, -0.2], p.trim, { aoAmt: 0 });
+      } else {
+        // far: the frame's top face only (what shows from above), 2 tris per side
+        put(
+          acc,
+          new THREE.PlaneGeometry(half * 2, 0.05),
+          [0, y + 0.03, s * half - 0.2],
+          p.trim,
+          flatRing,
+        );
+        put(
+          acc,
+          new THREE.PlaneGeometry(0.05, half * 2),
+          [s * half, y + 0.03, -0.2],
+          p.trim,
+          flatRing,
+        );
+      }
     }
   }
   if (hi) {
@@ -1330,7 +1432,7 @@ export function researchHut({ rng, lod, variant }: BuildOpts): THREE.BufferGeome
   const W = 3;
   const D = 3;
   const H = 2.2;
-  boxShell(
+  shell(
     acc,
     {
       w: W,
@@ -1375,14 +1477,15 @@ export function researchHut({ rng, lod, variant }: BuildOpts): THREE.BufferGeome
     );
   }
   if (hi) put(acc, new THREE.IcosahedronGeometry(0.1, 0), hub, C.gold, { windAbs: tag, aoAmt: 0 });
+  // deck + solar panel are part of the far silhouette too
+  put(acc, baseBox(2.2, 0.1, 0.5), [0, 0, D / 2 + 0.25], C.desk, { aoAmt: 0.15 });
+  put(acc, baseBox(0.7, 0.04, 0.5), [-1.0, ry + 0.2, 0.9], C.solar, {
+    q: qEuler(-0.5, 0, 0),
+    aoAmt: 0,
+  });
   if (hi) {
-    // deck, rain gauge, solar panel, antenna
-    put(acc, baseBox(2.2, 0.1, 0.5), [0, 0, D / 2 + 0.25], C.desk, { aoAmt: 0.15 });
+    // rain gauge, antenna
     put(acc, cylB(0.08, 0.08, 0.3, 6), [-1.0, 0, D / 2 + 0.3], C.glass, { aoAmt: 0.1 });
-    put(acc, baseBox(0.7, 0.04, 0.5), [-1.0, ry + 0.2, 0.9], C.solar, {
-      q: qEuler(-0.5, 0, 0),
-      aoAmt: 0,
-    });
     put(acc, cylB(0.025, 0.02, 1.1, 3, true), [-1.2, ry, -1.0], C.steelLight, { aoAmt: 0 });
     glyph(acc, 'research', V(0, 1.95, D / 2 + 0.05), 0, 0.3, acc1);
   }

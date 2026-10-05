@@ -167,7 +167,7 @@ defs.push(
   // landmarks
   D('lighthouse', 3, lighthouse, 2.6, 13.2),
   D('clocktower', 3, clocktower, 2.0, 11.2),
-  D('giantTree', 2, giantTree, 4.5, 18.5, true),
+  D('giantTree', 3, giantTree, 4.5, 18.5, true),
   D('sunkenShip', 2, sunkenShip, 5.5, 6),
   D('hotSpring', 1, hotSpring, 3.5, 1),
   D('volcanoCrater', 1, volcanoCrater, 5.4, 0.34),
