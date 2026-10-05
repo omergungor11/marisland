@@ -92,6 +92,7 @@ export const DESIGN_THEME: ThemeDef = {
     ['bench', 1],
   ],
   pathLanterns: 0.35,
+  plazaDecor: { posts: 'lanternPost', seats: 'paintPotPlanter', across: 'bunting' },
   workers: { weight: 0.9, cap: 7, deskShare: 0.5 },
   accessory: 4,
   ground: {

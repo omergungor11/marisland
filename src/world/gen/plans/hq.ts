@@ -287,8 +287,7 @@ function placeFerryOffice(ctx: SiteCtx, isl: IslandData, root: XZ, dir: XZ): voi
       const sh = discShape(p.x, p.z, F.radius);
       if (!freeOfShapes(ctx, isl, sh, 0.3)) continue;
       const toPier = { x: -perp.x * side, z: -perp.z * side };
-      pushFixture(ctx, isl, 'ferryOffice', p, ang(toPier.x, toPier.z));
-      addShape(ctx, isl, sh, true);
+      pushFixture(ctx, isl, 'ferryOffice', p, ang(toPier.x, toPier.z)); // FIXTURE_RADIUS 2.2
       return;
     }
 }

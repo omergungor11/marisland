@@ -249,9 +249,9 @@ describe('QA island plan (TASK-366), 30 seeds', () => {
     });
     expect(got).toMatchInlineSnapshot(`
       [
-        "3be9f038ae28e27a",
-        "a162971c8a75b16a",
-        "09c29932b1ec1c79",
+        "90dadf38d818a3de",
+        "d3e50216ff553f30",
+        "0919a39347571761",
       ]
     `);
   });

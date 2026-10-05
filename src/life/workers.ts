@@ -621,7 +621,14 @@ export class Workers extends LandKind {
       const da = g.deckY[a];
       const db = g.deckY[b];
       if (Number.isNaN(da) && Number.isNaN(db)) this.y[i] = this.ground(this.x[i], this.z[i]);
-      else {
+      else if (Number.isNaN(da) || Number.isNaN(db)) {
+        // deck ↔ land edge: on the deck until the ground (sampled here, not lerped between the
+        // nodes) rises above it, so feet neither float over convex ground nor sink into a bank
+        this.y[i] = Math.max(
+          this.nodeY(Number.isNaN(da) ? b : a),
+          this.ground(this.x[i], this.z[i]),
+        );
+      } else {
         const ya = this.nodeY(a);
         const yb = this.nodeY(b);
         this.y[i] = ya + (yb - ya) * (this.elen[i] > 0 ? this.u[i] : 0);

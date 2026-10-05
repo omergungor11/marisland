@@ -7,6 +7,7 @@
 import type { ZonePaint } from '../world/edit-types.ts';
 import { Zone, type ZoneId } from '../world/types.ts';
 import { PLACEMENT_RULES } from './placement.ts';
+import { THEMES } from './themes/index.ts';
 
 export const EDIT_BRUSH = {
   /** Brush radius limits in u (UI slider is 4–40; commands outside are clamped). */
@@ -102,9 +103,10 @@ export const ZONE_PAINT: Readonly<Record<ZonePaint, ZoneId>> = {
 /** Codec order of zone paints (append only). */
 export const ZONE_PAINT_ORDER: readonly ZonePaint[] = ['grass', 'meadow', 'forest', 'sand', 'rock'];
 
-/** Max slope per def from the scatter rules (the most permissive rule wins). */
+/** Max slope per def from the scatter rules, theme rules included (the most permissive wins). */
 const ruleSlope: Record<string, number> = {};
-for (const r of PLACEMENT_RULES) ruleSlope[r.def] = Math.max(ruleSlope[r.def] ?? 0, r.slopeMax);
+for (const r of [...PLACEMENT_RULES, ...Object.values(THEMES).flatMap((t) => t.scatter)])
+  ruleSlope[r.def] = Math.max(ruleSlope[r.def] ?? 0, r.slopeMax);
 
 export const EDIT_PROPS = {
   /**

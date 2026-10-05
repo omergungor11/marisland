@@ -126,16 +126,64 @@ export const LANDMARKS: Readonly<Record<string, LandmarkSpec>> = {
   sunkenShip: { radius: 6, flatten: 0 },
   giantTree: { radius: 5, flatten: 5 }, // "flatten 10 u"
   lonelyPalm: { radius: 1, flatten: 0 },
+  // Coding (M14b): obstacle at the mast foot + flatten pad (CODING_PLAN.turbine radius / flatten)
+  windTurbine: { radius: 1.6, flatten: 2 },
 };
 
-/** Fixed single props (not lots): footprint radius in u. */
+/**
+ * Fixed single props (not lots): footprint radius in u. Worldgen blocks it (`pushFixture`) and
+ * life keeps wanderers out of it (`buildSolids`); unlisted defs use 0.5 / 0.6. M14b theme
+ * structures use their PropDef footprint.
+ */
 export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   well: 1,
   buoy: 0.5,
   tidePool: 1,
   messageBottle: 0.3,
   telescope: 0.8,
+  // HQ
+  ferryOffice: 2.2,
+  banner: 0.4,
+  flowerBed: 0.9,
+  roundTree: 0.7,
+  bench: 0.7,
+  lanternPost: 0.3,
+  // Coding
+  hedge: 1.1,
+  bikeRack: 0.8,
+  reflectingPoolEdge: 0.5,
+  // DevOps
+  coolingTower: 2.6,
+  rackRow: 1.6,
+  // Marketing
+  billboardV2: 2.6,
+  stage: 3.2,
+  bannerPole: 0.4,
+  megaphoneKiosk: 1.4,
+  adBuoy: 0.4,
+  // QA (the gate arm spans the path: only its posts are solid)
+  barrierGate: 0.6,
+  checklistBoard: 0.6,
+  trafficCone: 0.3,
+  inspectionBuoy: 0.45,
+  // Design
+  sculptureArch: 2.4,
+  sculptureStack: 1.3,
+  sculptureTorus: 1.6,
+  easel: 0.6,
+  giantMushroom: 0.8,
+  // Research
+  weatherMast: 0.8,
+  observatory: 1.9,
 };
+
+/** Fixtures that float at the waterline (render pivot y = 0, not the seabed). */
+export const FLOATING_FIXTURES: readonly string[] = [
+  'buoy',
+  'adBuoy',
+  'inspectionBuoy',
+  'instrumentBuoy',
+];
 
 /** Flatten pads (plateau with smooth falloff). */
 export const FLATTEN = {

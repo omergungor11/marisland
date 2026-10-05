@@ -34,8 +34,16 @@ describe('prop scatter', () => {
     for (let i = 0; i < p.count; i++) {
       const def = PROP_DEFS[p.defId[i]];
       const zone = zoneAt(world.height, world.zone, p.x[i], p.z[i]);
-      const ok = PLACEMENT_RULES.some((r) => r.def === def.id && r.zones.includes(zone));
-      expect(ok).toBe(true);
+      // the island's rule list as scatterProps builds it: global minus scatterOff, + theme rules
+      const isl = world.islands.find((x) => x.id === p.islandId[i]);
+      const theme = THEMES[isl?.theme ?? 'hq'];
+      const rules = PLACEMENT_RULES.filter(
+        (r) =>
+          !theme.scatterOff.includes(r.def) &&
+          (!r.archetypes || (isl !== undefined && r.archetypes.includes(isl.archetype))),
+      ).concat(theme.scatter);
+      const ok = rules.some((r) => r.def === def.id && r.zones.includes(zone));
+      expect(ok, `${def.id} on zone ${zone}`).toBe(true);
       expect(p.y[i]).toBeGreaterThan(-5);
       if (zone === Zone.lagoon) expect(p.y[i]).toBe(0);
       else {

@@ -199,6 +199,7 @@ export const CODING_THEME: ThemeDef = {
     ['bench', 1],
   ],
   pathLanterns: 0.5,
+  plazaDecor: { posts: 'lanternPost', seats: 'hedge', across: null },
   workers: { weight: 1.6, cap: 12, deskShare: 0.6 },
   accessory: 1,
   ground: GROUND,

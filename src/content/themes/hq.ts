@@ -29,6 +29,7 @@ export const HQ_THEME: ThemeDef = {
     ['lanternPost', 1],
   ],
   pathLanterns: 0.6,
+  plazaDecor: { posts: 'lanternPost', seats: 'bench', across: null },
   workers: { weight: 1.4, cap: 12, deskShare: 0.5 },
   accessory: 0,
   ground: {
