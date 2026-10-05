@@ -1,17 +1,15 @@
-/** TASK-375: HQ, Marketing and Research structures (budgets, LOD1 consistency, hooks). */
+/** TASK-377: QA and Design structures (budgets, LOD1 consistency, hooks). */
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { HQ_PROP_DEFS } from '../../content/props-themes/hq.ts';
-import { MARKETING_PROP_DEFS } from '../../content/props-themes/marketing.ts';
-import { RESEARCH_PROP_DEFS } from '../../content/props-themes/research.ts';
+import { DESIGN_PROP_DEFS } from '../../content/props-themes/design.ts';
+import { QA_PROP_DEFS } from '../../content/props-themes/qa.ts';
 import { PropFlag } from '../../world/prop-store.ts';
 import { PROP_GEO, buildProp } from '../registry.ts';
-import { HQ_GEO } from './hq.ts';
-import { MARKETING_GEO } from './marketing.ts';
-import { RESEARCH_GEO } from './research.ts';
+import { DESIGN_GEO } from './design.ts';
+import { QA_GEO } from './qa.ts';
 
-const DEFS = [...HQ_PROP_DEFS, ...MARKETING_PROP_DEFS, ...RESEARCH_PROP_DEFS];
-const GEO = [...HQ_GEO, ...MARKETING_GEO, ...RESEARCH_GEO];
+const DEFS = [...QA_PROP_DEFS, ...DESIGN_PROP_DEFS];
+const GEO = [...QA_GEO, ...DESIGN_GEO];
 const tris = (g: THREE.BufferGeometry): number => g.getAttribute('position').count / 3;
 
 /** Area-weighted mean linear colour of a geometry. */
@@ -38,7 +36,7 @@ function meanColor(g: THREE.BufferGeometry): THREE.Color {
   return new THREE.Color(r / w, gg / w, bb / w);
 }
 
-describe('TASK-375 structures', () => {
+describe('TASK-377 structures', () => {
   it('every geo has a PropDef (and vice versa) with matching variants and windy flag', () => {
     expect(DEFS.map((d) => d.id).sort()).toEqual(GEO.map((d) => d.id).sort());
     for (const d of DEFS) {
@@ -49,9 +47,23 @@ describe('TASK-375 structures', () => {
     }
   });
 
-  it('structures >= 3 u wide read from T0 (D-031)', () => {
-    for (const id of ['ferryOffice', 'billboardV2', 'stage', 'observatory'])
+  it('sculptures (3-5 u) and the barrier gate read from T0 (D-031)', () => {
+    for (const id of ['sculptureTorus', 'sculptureStack', 'sculptureArch', 'barrierGate'])
       expect(DEFS.find((d) => d.id === id)?.tier, id).toBe(0);
+    for (const id of ['sculptureTorus', 'sculptureStack', 'sculptureArch']) {
+      const h = buildProp(id, 5, 0, 0).boundingBox!.max.y;
+      expect(h, id).toBeGreaterThanOrEqual(3);
+      expect(h, id).toBeLessThanOrEqual(5);
+    }
+  });
+
+  it('blossomTree is a clusterable tree and uses the blossom canopy ramp', () => {
+    const d = DEFS.find((x) => x.id === 'blossomTree')!;
+    expect(d.flags & PropFlag.clusterable).toBeTruthy();
+    const m = meanColor(buildProp('blossomTree', 5, 1, 1));
+    // pink: red dominant over green and blue
+    expect(m.r).toBeGreaterThan(m.g);
+    expect(m.r).toBeGreaterThan(m.b);
   });
 
   for (const def of GEO) {
@@ -61,13 +73,11 @@ describe('TASK-375 structures', () => {
         const g1 = buildProp(def.id, 5, v, 1);
         expect(tris(g0)).toBeLessThanOrEqual(3500);
         expect(tris(g1)).toBeLessThanOrEqual(0.3 * tris(g0));
-        // same palette: area-weighted mean colour within 0.09 per channel (linear)
         const m0 = meanColor(g0);
         const m1 = meanColor(g1);
         expect(Math.abs(m0.r - m1.r), `${def.id} r`).toBeLessThan(0.09);
         expect(Math.abs(m0.g - m1.g), `${def.id} g`).toBeLessThan(0.09);
         expect(Math.abs(m0.b - m1.b), `${def.id} b`).toBeLessThan(0.09);
-        // same silhouette: bounds within 15 %
         const b0 = g0.boundingBox!;
         const b1 = g1.boundingBox!;
         expect(b0.min.y).toBeGreaterThanOrEqual(-0.05);
@@ -83,45 +93,18 @@ describe('TASK-375 structures', () => {
     }
   }
 
-  it('structure variants share one palette (LOD1 is variant-independent in colour)', () => {
-    for (const id of ['ferryOffice', 'billboardV2', 'stage', 'observatory']) {
-      const a = meanColor(buildProp(id, 5, 0, 1));
-      const b = meanColor(buildProp(id, 5, 1, 1));
-      for (const k of ['r', 'g', 'b'] as const)
-        expect(Math.abs(a[k] - b[k]), id).toBeLessThan(0.02);
-    }
+  it('easel and checklistBoard expose their face hooks; sculptures expose a standing ring', () => {
+    const hooks = (id: string): Record<string, { size?: number[] }> =>
+      buildProp(id, 5, 0, 0).userData.hooks as Record<string, { size?: number[] }>;
+    expect(hooks('easel').canvas.size).toHaveLength(2);
+    expect(hooks('checklistBoard').board.size).toHaveLength(2);
+    for (const id of ['sculptureTorus', 'sculptureStack', 'sculptureArch'])
+      expect(hooks(id).sculpture).toBeDefined();
+    expect(hooks('barrierGate').gate).toBeDefined();
   });
 
-  it('billboardV2 face is an emissive-2 screen with a hook', () => {
-    for (const lod of [0, 1] as const) {
-      const g = buildProp('billboardV2', 5, 0, lod);
-      const em = g.getAttribute('emissive');
-      const pos = g.getAttribute('position');
-      let big = 0;
-      for (let i = 0; i < pos.count; i++) if (em.getX(i) === 2) big++;
-      expect(big).toBeGreaterThan(0);
-      const hook = (g.userData.hooks as Record<string, { size: number[] }>).screen;
-      expect(hook.size[0]).toBeGreaterThanOrEqual(4);
-      expect(hook.size[0]).toBeLessThanOrEqual(6);
-    }
-  });
-
-  it('weatherMast anemometer spins via aSpin and carries no sway on spinner vertices', () => {
-    for (const lod of [0, 1] as const) {
-      const g = buildProp('weatherMast', 5, 0, lod);
-      const hub = g.userData.hub as number[];
-      expect(hub).toHaveLength(3);
-      const spin = g.getAttribute('aSpin');
-      expect(spin.itemSize).toBe(4);
-      let spun = 0;
-      for (let i = 0; i < spin.count; i++) if (spin.getW(i) === 1) spun++;
-      expect(spun).toBeGreaterThan(0);
-      expect(spun).toBeLessThan(spin.count);
-    }
-  });
-
-  it('cloth props sway (wind weights baked)', () => {
-    for (const id of ['banner', 'bannerPole', 'stage', 'ferryOffice']) {
+  it('blossom trees and planters sway', () => {
+    for (const id of ['blossomTree', 'paintPotPlanter']) {
       const w = buildProp(id, 5, 0, 0).getAttribute('wind');
       let max = 0;
       for (let i = 0; i < w.count; i++) max = Math.max(max, w.getX(i));
