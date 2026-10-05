@@ -2,17 +2,18 @@ import { perfLimit } from '../test/perf.ts';
 import { describe, expect, it } from 'vitest';
 import {
   DOCK,
+  FIXTURE_RADIUS,
   LANDMARKS,
   LOT_ROLE_BY_KIND,
   LOT_ROOFS,
-  OUTPOSTS,
   RESEARCH_OUTPOST,
   VILLAGE,
 } from '../content/settlements.ts';
 import { heroAzimuth } from '../camera/poses.ts';
 import { PROP_DEFS, PROP_DEF_INDEX } from '../content/props.ts';
 import { OFFICE_DEFS } from '../content/offices.ts';
-import { FIELDS } from '../content/palette.ts';
+import { THEMES } from '../content/themes/index.ts';
+import { HQ_PLAN } from '../content/themes/hq.ts';
 import {
   generateWorld,
   heightAt,
@@ -130,7 +131,7 @@ describe('settlements — 20-seed sweep', () => {
     }
   });
 
-  it('Hearthholm (HQ): plaza, themed lane lots, kiosks, well, annex, stilt huts, clocktower, dock with boats', () => {
+  it('Hearthholm (HQ): plaza, themed lane lots, kiosks, annex, ferry office, clocktower, dock with boats', () => {
     for (const seed of SEEDS) {
       const w = world(seed);
       const hh = w.islands.find((i) => i.archetype === 'hearthholm');
@@ -146,16 +147,24 @@ describe('settlements — 20-seed sweep', () => {
       expect(count('hqOffice') + count('meetingPavilion'), ctx).toBeGreaterThanOrEqual(3);
       expect(count('hqAnnex'), ctx).toBe(1);
       expect(count('coffeeKiosk'), ctx).toBeGreaterThanOrEqual(1);
-      expect(count('stiltHut'), ctx).toBeGreaterThanOrEqual(1);
-      expect(count('cottage') + count('towerHouse') + count('marketStall'), ctx).toBe(0);
-      expect(w.fixtures.filter((f) => f.defId === 'well' && f.islandId === hh.id).length).toBe(1);
+      // theme-first HQ (D-029): no cozy-village leftovers; the ferry office replaces the stilt huts
+      expect(
+        count('cottage') + count('towerHouse') + count('marketStall') + count('stiltHut'),
+        ctx,
+      ).toBe(0);
+      const fx = (def: string): number =>
+        w.fixtures.filter((f) => f.defId === def && f.islandId === hh.id).length;
+      expect(fx('well'), ctx).toBe(0);
+      expect(fx('ferryOffice'), ctx).toBe(1);
       expect(
         s.landmarks.map((i) => w.landmarks[i].kind),
         ctx,
       ).toContain('clocktower');
       expect(s.docks.length, ctx).toBe(1);
       const boats = w.moorings.filter((m) => m.dock === s.docks[0]);
-      expect(boats.filter((b) => b.defId === 'rowboat').length, ctx).toBeGreaterThanOrEqual(3);
+      expect(boats.filter((b) => b.defId === 'rowboat').length, ctx).toBeGreaterThanOrEqual(
+        HQ_PLAN.moorings.rowboats[0],
+      );
       expect(boats.filter((b) => b.defId === 'sailboat').length, ctx).toBeGreaterThanOrEqual(1);
       for (const b of boats)
         expect(heightAt(w.height, b.x, b.z), ctx).toBeLessThanOrEqual(
@@ -164,25 +173,25 @@ describe('settlements — 20-seed sweep', () => {
     }
   });
 
-  it('archetype landmarks are present', () => {
-    const want: Record<string, string[]> = {
-      hearthholm: ['clocktower'],
-      beaconrock: ['lighthouse'],
-      millbrook: ['windmill', 'windmill'],
-      emberpeak: ['volcanoCrater', 'hotSpring'],
-      palmlagoon: ['sunkenShip'],
-      mossgrove: ['giantTree'],
-      lonelypalm: ['lonelyPalm'],
+  it('theme landmarks are present (on their archetype anchors)', () => {
+    const want: Record<ThemeId, string[]> = {
+      hq: ['clocktower'],
+      marketing: ['lighthouse'],
+      coding: ['windTurbine', 'windTurbine', 'windTurbine'],
+      devops: ['volcanoCrater', 'hotSpring'],
+      qa: ['sunkenShip'],
+      design: ['giantTree'],
+      research: ['lonelyPalm'],
     };
     for (const seed of SEEDS) {
       const w = world(seed);
       for (const isl of w.islands) {
         const kinds = w.landmarks.filter((l) => l.islandId === isl.id).map((l) => l.kind);
-        for (const k of new Set(want[isl.archetype]))
+        for (const k of new Set(want[isl.theme]))
           expect(
             kinds.filter((x) => x === k).length,
-            `seed ${seed} ${isl.archetype} ${k}`,
-          ).toBeGreaterThanOrEqual(want[isl.archetype].filter((x) => x === k).length);
+            `seed ${seed} ${isl.theme} ${k}`,
+          ).toBeGreaterThanOrEqual(want[isl.theme].filter((x) => x === k).length);
       }
     }
   });
@@ -323,42 +332,26 @@ describe('settlements — 20-seed sweep', () => {
         }
       });
     }
-    expect(pairs).toBeGreaterThan(SEEDS.length * 5);
+    // theme structures without LOT_ROOFS (M14b) leave fewer roofed neighbour pairs (54 on 20 seeds)
+    expect(pairs).toBeGreaterThan(SEEDS.length * 2);
   });
 
-  it('D11: Millbrook fields show ≥ 4 colours; fences run along field-patch edges', () => {
-    let islands = 0;
+  it('D11 → D-029: patch hues only on fields-patchwork themes; Coding patches become solar districts', () => {
+    let solar = 0;
     for (const seed of SEEDS) {
       const w = world(seed);
-      const mb = w.islands.find((i) => i.archetype === 'millbrook');
-      if (!mb) continue;
-      islands++;
-      const hues = new Set<number>();
-      for (let i = 0; i < w.zone.length; i++) {
-        if (w.islandMap[i] !== mb.id + 1) continue;
-        if (w.zone[i] === Zone.field) {
-          expect(w.fieldColor[i], `seed ${seed}`).toBeGreaterThan(0);
-          expect(w.fieldColor[i]).toBeLessThanOrEqual(FIELDS.length);
-          hues.add(w.fieldColor[i]);
-        } else expect(w.fieldColor[i]).toBe(0);
+      for (const isl of w.islands) {
+        if (THEMES[isl.theme].patchwork === 'fields') continue;
+        for (let i = 0; i < w.zone.length; i++)
+          if (w.islandMap[i] === isl.id + 1)
+            expect(w.fieldColor[i], `seed ${seed} ${isl.theme}`).toBe(0);
       }
-      expect(hues.size, `seed ${seed} field hues`).toBeGreaterThanOrEqual(4);
-      const rects = w.fields
-        .filter((f) => f.islandId === mb.id)
-        .map((f) => rectShape(f.x, f.z, f.rotY, f.w, f.d));
-      const fences = w.fences.filter((f) => f.islandId === mb.id);
-      expect(fences.length, `seed ${seed}`).toBeGreaterThan(0);
-      for (const f of fences) {
-        expect(f.points.length, `seed ${seed} fence run`).toBeGreaterThanOrEqual(
-          OUTPOSTS.fenceMinRun,
-        );
-        for (const p of f.points) {
-          const edge = Math.min(...rects.map((r) => Math.abs(shapeDist(r, p.x, p.z))));
-          expect(edge, `seed ${seed} fence post off a patch edge`).toBeLessThan(0.05);
-        }
-      }
+      const coding = w.islands.find((i) => i.theme === 'coding');
+      if (w.districts.some((d) => d.islandId === coding?.id && d.kind === 'solar')) solar++;
+      // fences are farm-only: no theme plans field fences any more (pipes are their own kind)
+      expect(w.fences.filter((f) => f.kind !== 'pipe').length, `seed ${seed} fences`).toBe(0);
     }
-    expect(islands).toBeGreaterThan(5);
+    expect(solar / SEEDS.length).toBeGreaterThanOrEqual(0.9);
   });
 
   it('boat routes: 2–4 closed loops, every sample ≥ 1.5 u deep and ≥ 2 u from land, docks visited', () => {
@@ -397,6 +390,12 @@ describe('settlements — 20-seed sweep', () => {
     }
     console.info(`route samples checked: ${samples}; docks on a route: ${visited}/${docks}`);
     expect(visited / docks).toBeGreaterThan(0.75);
+  });
+
+  it('every fixture def has a FIXTURE_RADIUS (worldgen obstacle, life solid)', () => {
+    for (const seed of SEEDS.slice(0, 8))
+      for (const f of world(seed).fixtures)
+        expect(FIXTURE_RADIUS[f.defId], `seed ${seed} ${f.defId}`).toBeGreaterThan(0);
   });
 
   it('no lot overlaps another lot or a landmark', () => {
@@ -558,9 +557,16 @@ describe('campuses — 50-seed acceptance (TASK-302)', () => {
             if (st.islandId === l.islandId)
               for (const q of st.points)
                 expect(shapeDist(sh, q.x, q.z), `${ctx} × stream`).toBeGreaterThan(0);
-          for (const f of w.fields)
-            if (f.islandId === l.islandId)
-              expect(shapeDist(sh, f.x, f.z), `${ctx} × field centre`).toBeGreaterThan(0);
+          // field-patch centres only bind farm patchwork; 'districts' themes (Coding) build on
+          // the raw patches they leave and must keep off their solar districts instead
+          const theme = w.islands.find((i) => i.id === l.islandId)?.theme ?? 'hq';
+          if (THEMES[theme].patchwork === 'fields')
+            for (const f of w.fields)
+              if (f.islandId === l.islandId)
+                expect(shapeDist(sh, f.x, f.z), `${ctx} × field centre`).toBeGreaterThan(0);
+          for (const d of w.districts)
+            if (d.islandId === l.islandId && d.kind === 'solar')
+              expect(shapeDist(sh, d.x, d.z), `${ctx} × solar district`).toBeGreaterThan(0);
           for (const lm of w.landmarks) {
             const r = LANDMARKS[lm.kind]?.radius;
             if (r && lm.islandId === l.islandId)

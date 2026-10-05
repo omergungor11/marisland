@@ -90,9 +90,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "60598c145ab007f9",
-          "1001": "6008e85369f16115",
-          "42": "0b375fc65bc86d3a",
+          "1": "a58bce8ad57703c1",
+          "1001": "05919e804aa1d13b",
+          "42": "26a46b2099f7533b",
         }
       `);
     },
@@ -244,9 +244,9 @@ describe('archipelago — 30-seed full generation', () => {
           }
           case 'millbrook':
             expect(isl.peakY, ctx).toBeLessThanOrEqual(8.5);
-            // 7-island rosters (D-024) + the Coding campus lots (grass under them, TASK-302)
-            // reach an 18 % tail over 60 seeds; median ≈ 35 %
-            expect(sum(zc, [Zone.field]), ctx).toBeGreaterThan(land * 0.15);
+            // theme-first Coding (D-029): the patches are solar gravel (`field` zone) wherever the
+            // tech park left clean ground: 2.5 % … 19 %, median ≈ 13 % over these 30 seeds
+            expect(sum(zc, [Zone.field]), ctx).toBeGreaterThan(land * 0.02);
             expect(isl.anchors.knoll0 && isl.anchors.knoll1 && isl.anchors.pond, ctx).toBeTruthy();
             break;
           case 'mossgrove':

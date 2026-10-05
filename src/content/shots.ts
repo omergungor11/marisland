@@ -1,8 +1,8 @@
 /**
  * Capture presets (ART_BIBLE §11 + ARCHITECTURE §9). Pure data: the app resolves
- * `?shot=<id>` here, the shots harness picks sets from here. W-seeds pinned by TASK-113:
- * 1001 = Hearthholm, Beacon Rock, Millbrook, Palmlagoon, Mossgrove, Lonely Palm; 2024 Beacon Rock;
- * 3003 Emberpeak; 4004 Palmlagoon; 1000 Millbrook; 6006 Mossgrove; 1002 has all seven.
+ * `?shot=<id>` here, the shots harness picks sets from here. W-seeds pinned by TASK-113, re-themed
+ * by TASK-380 (every seed rolls all seven departments, D-024): W5 DevOps forge (1001), W6 QA lagoon
+ * (4004), W7 Coding turbines (1001), W10 Design Atelier Tree (6006); 2024 Beacon Rock (W4).
  */
 import type { EditToolKind } from './edit-ui.ts';
 import { FRAMING } from './camera.ts';
@@ -53,7 +53,7 @@ export const EDIT_LOGS = {
   flood:
     'AekHABAB5H6sOcADgAwBgAKAAgAAAYABvwIAAAH_AYAFAAABwAP_AQAAAb8IwAcAAAHAAkAAAAHAAr8BAAABf_8IAAABgAKAAgAAAYABvwIAAAH_AYAFAAABwAP_AQAAAb8IwAcAAAHAAkAAAAHAAr8BAAA',
   meadow:
-    'AekHBQRwaW5lC3JvY2tDbHVzdGVyBmZsb3dlcgRidXNoDWdpYW50TXVzaHJvb20WA_BupGmABLQCBAAAAAEEgAKgAb8BATUAAMUBlwGxEYoCATUAACuOAuEboQIANQAAkwGnA_UH9wEBNQAAbGWQAoYCATUAAKUCjgPeD54CADUAAY4EuwP9F-kBADUAAZkClASIHO0BATUAAXzxA-sO_AEBNQABK5YDrRnfAQE1AAIk3QHwBIwCADUAAoYBBMYQhgIANQACBzzPGvsBADUAAiJ35xfaAQE1AAJRYskQ9AEBNQADU2XdFfsBATUAA-oBkAGxEooCADUAA8UBTIkYkwIANQADrgHbAb0GjwIBNQAER-YB_hqOAgA',
+    'AekHBQRwaW5lC3JvY2tDbHVzdGVyBmZsb3dlcgRidXNoDWdpYW50TXVzaHJvb20VA_BupGmABLQCBAAAAAEEgAKgAb8BATUAAMUBlwGxEYoCATUCAL8BmQH1B_cBATUAAGxlkAKGAgE1AAClAo4D3g-eAgA1AAGOBLsD_RfpAQA1AAGZApQEiBztAQE1AAF88QPrDvwBATUAASuWA60Z3wEBNQACJN0B8ASMAgA1AAKGAQTGEIYCADUAAgc8zxr7AQA1AAIid-cX2gEBNQACUWLJEPQBATUAA1Nl3RX7AQE1AAPqAZABsRKKAgA1AAPFAUyJGJMCADUAA64B2wG9Bo8CATUABEfmAf4ajgIA',
   mixed:
     'AekHBQdjb3R0YWdlBHBhbG0EYnVzaAtyb2NrQ2x1c3RlcgdsaWx5UGFkEQDGO6Q0gAWADAAAAAAAAgAAvwKzBgIAAAAAAgAAAAADAADAAZcDBAAA3wEDBDIZfwEBpgWuAYABzA0BAAAAAAEAAAAANQAAjwZbiwmAAgA1AAHQAS6RD5kCADUAAbcCrQGFE5ACADUAAiIulQXvAQA1AAOMAh6ZBo4CADUABL0DxgHNAe8BAA',
 } as const;
@@ -69,8 +69,11 @@ const CAMPUS_THEMES = [
   ['research', 'Research'],
 ] as const;
 
+/** W7 camera (raw, seed 1001 Coding; TASK-380), re-pin when that layout changes. */
+const W7_CAM = '45,20,20,95,13,40';
+
 /** D-desk camera (raw `x,y,z,tx,ty,tz`), re-pin when the seed 1001 layout changes. */
-const DESK_CAM = '121,7.6,37.5,126.6,5.6,35.2';
+const DESK_CAM = '95.8,8.1,17.3,91.5,6.5,20';
 
 export const SHOT_PRESETS: readonly ShotPreset[] = [
   // ---- bible wow shots (1920×1080, medium quality)
@@ -126,10 +129,13 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   },
   {
     id: 'W5',
-    title: 'Steam & Spring',
-    seed: 3003,
-    cam: 'island:Emberpeak',
-    time: 10,
+    title: 'Forge & Steam',
+    // DevOps (TASK-380): campus framing — steaming cooling towers, the terraced data centers on
+    // the cone, crater steam, warm afternoon light. A low horizon look (raw cam over the west
+    // shore) measured 281–373 calls on medium (other islands at T2 + shadows) > D-028 255.
+    seed: 1001,
+    cam: 'village:devops',
+    time: 16.5,
     simt: 5,
     quality: 'medium',
     width: 1920,
@@ -138,9 +144,11 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   },
   {
     id: 'W6',
-    title: 'Lagoon',
+    title: 'QA Lagoon',
+    // QA (TASK-380): the bug wreck ringed by inspection buoys, labs on the ring, the stilt lab and
+    // its boardwalk, the inspection tower
     seed: 4004,
-    cam: 'island:Palmlagoon',
+    cam: 'village:qa',
     time: 12,
     simt: 5,
     quality: 'medium',
@@ -150,10 +158,11 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   },
   {
     id: 'W7',
-    title: 'Mill Morning',
-    // seed 5005 rolls no Millbrook and 'island:' frames at T1 (no sheep before T2) → seed 1001, village framing (T2, 80 u)
+    title: 'Turbine Morning',
+    // Coding (TASK-380): low over the tech park toward the wind turbines and solar rows, morning
+    // haze behind; the blades turn between the two frames
     seed: 1001,
-    cam: 'village:Millbrook',
+    cam: W7_CAM,
     time: 6.75,
     simt: 5,
     quality: 'medium',
@@ -190,8 +199,9 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   {
     id: 'W10',
     title: 'Rainy Grove',
+    // Design (TASK-380): the Atelier Tree over the atelier glade and sculpture garden, in the rain
     seed: 6006,
-    cam: 'island:Mossgrove',
+    cam: 'village:design',
     time: 13,
     weather: 'rain',
     simt: 5,
@@ -300,7 +310,8 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-sheep',
     title: 'Sheep at T2',
     seed: 1001,
-    cam: 'village:Millbrook',
+    // sheep graze the Design meadows since TASK-379 (none on Coding)
+    cam: 'village:design',
     time: 10,
     simt: 6,
     deltaT: 3,
@@ -378,7 +389,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-desk',
     title: 'Desk · Coding',
     seed: 1001,
-    // seed 1001 devOffice (lot 15, door facing −x): from outside its front windows, ~7 u (T3)
+    // seed 1001 devPod (lot 12, door facing SE, seated workers on low and medium): from outside its front, ~6 u (T3)
     cam: DESK_CAM,
     time: 14,
     simt: 2,
@@ -456,8 +467,9 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   },
   // ---- sandbox edits (TASK-221): `pnpm shots edit`. Logs on seed 1001 generated with
   // `encodeLog` (world/edit.ts); re-recorded for the Phase 3 layout (TASK-309: moved with their
-  // island, rejected placements dropped) — hill: 6 raises + smooth + meadow top behind the Hearthholm
-  // village; flood: 16 lowers on the harbour bay's east shore and south arm; meadow: smooth + meadow paint + 19 props on Millbrook
+  // island, rejected placements dropped) and the theme-first world (TASK-380: one pine that now
+  // collides with a Coding fixture dropped) — hill: 6 raises + smooth + meadow top behind the HQ
+  // village; flood: 16 lowers on the harbour bay's east shore and south arm; meadow: smooth + meadow paint + 19 props on the Coding island
   // (pines, rocks, flowers, bushes, a mushroom; macro view so the T3 flowers show); mixed: a
   // flattened islet in the Palmlagoon lagoon (sand + meadow, cottage, palms, bush, rock, lily pad)
   // and a channel lowered through the ring. The panel shots reuse them.

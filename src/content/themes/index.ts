@@ -80,6 +80,12 @@ export interface ThemeDef {
   decor: readonly (readonly [string, number])[];
   /** Chance of a lantern post per path junction on this island. */
   pathLanterns: number;
+  /**
+   * Campus quad decor (render, settlement-props): `posts` at 3 points of the rim, `seats` between
+   * them (70 %), `across` 2 items halfway in. Prop def ids; null = none (TASK-380: no cozy
+   * bunting / wooden benches on tech campuses).
+   */
+  plazaDecor: Readonly<{ posts: string | null; seats: string | null; across: string | null }>;
   /** Worker allocation weight, cap per island, share seated at t = 0. */
   workers: { weight: number; cap: number; deskShare: number };
   /** Worker accessory index (creature shader mode 8), 0..DEPT_ACCESSORY_COUNT − 1. */

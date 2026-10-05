@@ -4,7 +4,7 @@
  * seats, quotas and spawn points. Seats come from `content/offices.ts` WORK_SPOTS through
  * `world/lot-frame.ts`, i.e. exactly where the interior geometry builds its desks.
  */
-import { ACTIVITY, STILT_SPUR, WORKERS } from '../content/life.ts';
+import { ACTIVITY, STILT_SPUR, VILLAGERS, WORKERS } from '../content/life.ts';
 import {
   INTERIOR_OF,
   OFFICE_DEFS,
@@ -88,12 +88,13 @@ export function seatsOf(world: Pick<WorldData, 'lots' | 'height'>): Seat[] {
  * water nodes, so such a door is an isolated node (comp −1) and its seats were unreachable. For
  * each one this adds a chain of deck nodes (`STILT_SPUR.step` apart, feet on `STILT_SPUR.deckY`)
  * from the door to the nearest walkable node within `STILT_SPUR.maxReach`, and marks the door
- * walkable. The graph is extended IN PLACE (typed arrays are re-allocated; node ids of existing
+ * walkable. Spur nodes over walkable ground (≥ `VILLAGERS.minWalkY`) keep their feet on the terrain
+ * (deck NaN), only the ones over water stand on the deck. The graph is extended IN PLACE (typed arrays are re-allocated; node ids of existing
  * nodes never change), so every holder of `g` sees it. Doors that are already walkable (a real
  * worldgen spur) are left alone, so this is a fallback that never fights worldgen. Returns the
  * number of spurs added.
  */
-export function attachDeckSpurs(ctx: Pick<LifeCtx, 'world'>, g: WalkGraph): number {
+export function attachDeckSpurs(ctx: Pick<LifeCtx, 'world' | 'h'>, g: WalkGraph): number {
   const adds: { door: number; to: number; pts: { x: number; z: number }[] }[] = [];
   for (const l of ctx.world.lots ?? []) {
     if (!(RAISED_FLOOR[l.defId] > 0) || l.node < 0 || l.node >= g.n || g.comp[l.node] >= 0)
@@ -143,6 +144,7 @@ export function attachDeckSpurs(ctx: Pick<LifeCtx, 'world'>, g: WalkGraph): numb
     for (const p of a.pts) {
       g.x[id] = p.x;
       g.z[id] = p.z;
+      if (ctx.h(p.x, p.z) >= VILLAGERS.minWalkY) g.deckY[id] = NaN;
       g.comp[id] = c;
       g.adj.push([]);
       chain.push(id++);

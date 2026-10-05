@@ -31,6 +31,7 @@ export const MARKETING_THEME: ThemeDef = {
     ['bench', 1],
   ],
   pathLanterns: 0.4,
+  plazaDecor: { posts: 'lanternPost', seats: 'bannerPole', across: 'bunting' },
   workers: { weight: 0.7, cap: 5, deskShare: 0.5 },
   accessory: 2,
   ground: {

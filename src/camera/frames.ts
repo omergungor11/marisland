@@ -55,12 +55,20 @@ export function islandFrames(w: WorldData, id: number): IslandFrames {
   const lots = s.lots.map((i) => w.lots[i]).filter((l) => l !== undefined);
   const core = s.plaza ?? s.hub;
   const keep = Math.ceil(lots.length * FRAMING.village.keepFraction);
+  const tall = FRAMING.village.tall;
   const near = lots
     .map((l, k) => ({ l, k, d: Math.hypot(l.x - core.x, l.z - core.z) }))
     .sort((a, b) => a.d - b.d || a.k - b.k)
-    .slice(0, keep)
+    .filter((e, rank) => rank < keep || tall[e.l.defId] !== undefined)
     .map((e) => e.l);
-  const pts: Pt3[] = near.map((l) => ({ x: l.x, y: ground(w, l.x, l.z) + roof, z: l.z }));
+  const pts: Pt3[] = near.map((l) => ({
+    x: l.x,
+    y: ground(w, l.x, l.z) + (tall[l.defId] ?? roof),
+    z: l.z,
+  }));
+  // a tall lot is framed foot to top (it may stand on the near side of the frame)
+  for (const l of near)
+    if (tall[l.defId] !== undefined) pts.push({ x: l.x, y: ground(w, l.x, l.z), z: l.z });
   let cx = 0;
   let cz = 0;
   for (const p of pts) {
@@ -81,6 +89,16 @@ export function islandFrames(w: WorldData, id: number): IslandFrames {
     cz = s.hub.z;
     pts.push({ x: cx, y: ground(w, cx, cz) + roof, z: cz });
   }
+  // tall fixtures (cooling towers) foot to top
+  for (const f of w.fixtures)
+    if (
+      f.islandId === id &&
+      tall[f.defId] !== undefined &&
+      Math.hypot(f.x - cx, f.z - cz) <= FRAMING.village.landmarkRadius
+    ) {
+      const g = ground(w, f.x, f.z);
+      pts.push({ x: f.x, y: g + tall[f.defId], z: f.z }, { x: f.x, y: g, z: f.z });
+    }
   // landmarks (clocktower, windmills, lighthouse) up to their tops
   for (const li of s.landmarks) {
     const m = w.landmarks[li];

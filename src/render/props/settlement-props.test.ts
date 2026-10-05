@@ -2,7 +2,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { generateWorld } from '../../world/index.ts';
 import { PROP_DEFS, PROP_DEF_INDEX } from '../../content/props.ts';
 import { THEMES } from '../../content/themes.ts';
-import { EMITTERS, INTERIOR_OF, OFFICE_DEFS } from '../../content/offices.ts';
+import { EMITTERS, FIXTURE_EMITTERS, INTERIOR_OF, OFFICE_DEFS } from '../../content/offices.ts';
+import { FLOATING_FIXTURES } from '../../content/settlements.ts';
 import { PropFlag, type PropStore } from '../../world/prop-store.ts';
 import { heightAt } from '../../world/types.ts';
 import { lotLocalToWorld, lotYaw } from '../../world/lot-frame.ts';
@@ -42,11 +43,83 @@ describe('settlement props: flood units (sweep D1)', () => {
     }
   });
 
-  it('every chimney names its lot', () => {
+  it('every chimney names its lot (or its single prop)', () => {
     for (const c of emitters.chimneys) {
+      if (c.lot < 0) {
+        expect(c.prop).toBeGreaterThanOrEqual(0);
+        expect(FIXTURE_EMITTERS[defOf(c.prop ?? -1)]).toBeDefined();
+        continue;
+      }
       const lot = world.lots[c.lot];
-      expect(['cottage', 'logCabin', 'towerHouse']).toContain(lot.defId);
+      expect(EMITTERS[lot.defId]).toBeDefined();
       expect(Math.hypot(c.x - lot.x, c.z - lot.z)).toBeLessThan(2);
+    }
+    // HQ coffee kiosks steam (TASK-380)
+    const kiosks = world.lots.filter((l) => l.defId === 'coffeeKiosk').length;
+    expect(
+      emitters.chimneys.filter((c) => world.lots[c.lot]?.defId === 'coffeeKiosk'),
+    ).toHaveLength(kiosks);
+  });
+});
+
+describe('settlement props: theme-first world (TASK-380)', () => {
+  const world = generateWorld(1001);
+  const { props, emitters } = appendSettlementProps(world);
+  const defOf = (r: number): string => PROP_DEFS[props.defId[r]].id;
+
+  it('plaza decor comes from the theme: no bunting or benches on the tech campuses', () => {
+    for (const st of world.settlements) {
+      if (!st.plaza) continue;
+      const theme = world.islands[st.islandId].theme;
+      const pd = THEMES[theme].plazaDecor;
+      const near: string[] = [];
+      for (let i = world.props.count; i < props.count; i++)
+        if (
+          props.islandId[i] === st.islandId &&
+          Math.hypot(props.x[i] - st.plaza.x, props.z[i] - st.plaza.z) < st.plaza.r
+        )
+          near.push(defOf(i));
+      if (pd.posts) expect(near, theme).toContain(pd.posts);
+      if (theme === 'coding' || theme === 'devops' || theme === 'qa') {
+        expect(pd.across, theme).toBeNull();
+        expect(pd.seats, theme).not.toBe('bench');
+        expect(near, theme).not.toContain('bunting');
+      }
+    }
+  });
+
+  it('floating fixtures sit at the waterline', () => {
+    let n = 0;
+    for (let i = world.props.count; i < props.count; i++)
+      if (FLOATING_FIXTURES.includes(defOf(i))) {
+        n++;
+        expect(props.y[i]).toBe(0);
+      }
+    expect(n).toBeGreaterThan(0);
+  });
+
+  it('cooling towers and steam vents steam (FIXTURE_EMITTERS), above their prop', () => {
+    const owners = emitters.chimneys.filter((c) => c.lot < 0).map((c) => c.prop ?? -1);
+    const towers = owners.filter((r) => defOf(r) === 'coolingTower');
+    expect(towers.length).toBe(world.fixtures.filter((f) => f.defId === 'coolingTower').length);
+    expect(towers.length).toBeGreaterThan(0);
+    for (const c of emitters.chimneys.filter((e) => e.lot < 0)) {
+      const r = c.prop ?? -1;
+      expect(Math.hypot(c.x - props.x[r], c.z - props.z[r])).toBeLessThan(0.5);
+      expect(c.y).toBeGreaterThan(props.y[r]);
+    }
+  });
+
+  it('boardwalk paths draw dock planks at the waterline (QA stilt lab)', () => {
+    const walks = world.paths.filter((p) => p.kind === 'boardwalk');
+    expect(walks.length).toBeGreaterThan(0);
+    for (const w of walks) {
+      const mid = w.points[Math.floor(w.points.length / 2)];
+      let best = Infinity;
+      for (let i = world.props.count; i < props.count; i++)
+        if (defOf(i) === 'dock' && props.y[i] === 0)
+          best = Math.min(best, Math.hypot(props.x[i] - mid.x, props.z[i] - mid.z));
+      expect(best).toBeLessThan(1.5);
     }
   });
 });
@@ -228,6 +301,40 @@ describe('settlement props: districts and pipes (TASK-373)', () => {
       expect(pipes.map((i) => props.variant[i])).toEqual([0, 2, 0, 2, 0]);
       const fenceRuns = world.fences.filter((f) => f.kind !== 'pipe').length;
       if (fenceRuns) expect(ofDef(props, 'fence').length).toBeGreaterThan(0);
+    });
+
+    it('a right-angle pipe bend gets an elbow whose arms meet both legs', () => {
+      for (const turn of [1, -1]) {
+        const world = make();
+        const f = world.fences[world.fences.length - 1];
+        const p0 = f.points[0];
+        f.points = [p0, { x: p0.x + 6, z: p0.z }, { x: p0.x + 6, z: p0.z + turn * 6 }];
+        const { props } = appendSettlementProps(world);
+        const pipes = ofDef(props, 'pipe');
+        const elbows = pipes.filter((i) => props.variant[i] === 1);
+        expect(elbows).toHaveLength(1);
+        const e = elbows[0];
+        expect(props.x[e]).toBeCloseTo(p0.x + 6, 5);
+        // arm ends of the elbow (local (−1, 0, 0) and (0, 0, 1)) in world xz
+        const c = Math.cos(props.rotY[e]);
+        const sn = Math.sin(props.rotY[e]);
+        const arm = (x: number, z: number) => ({
+          x: props.x[e] + x * c + z * sn,
+          z: props.z[e] - x * sn + z * c,
+        });
+        const ends = [arm(-1, 0), arm(0, 1)];
+        const want = [
+          { x: p0.x + 5, z: p0.z },
+          { x: p0.x + 6, z: p0.z + turn },
+        ];
+        for (const w of want)
+          expect(Math.min(...ends.map((q) => Math.hypot(q.x - w.x, q.z - w.z)))).toBeLessThan(1e-4);
+        // straights stop 1 u short of the bend and start 1 u past it
+        for (const i of pipes.filter((k) => k !== e))
+          expect(Math.hypot(props.x[i] - (p0.x + 6), props.z[i] - p0.z)).toBeGreaterThanOrEqual(
+            2 - 1e-4,
+          );
+      }
     });
   });
 });

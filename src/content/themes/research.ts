@@ -17,6 +17,7 @@ export const RESEARCH_THEME: ThemeDef = {
   // the telescope is a worldgen fixture (RESEARCH_OUTPOST)
   decor: [],
   pathLanterns: 0,
+  plazaDecor: { posts: 'lanternPost', seats: null, across: null },
   workers: { weight: 0.3, cap: 2, deskShare: 0.5 },
   accessory: 6,
   // sand kept (ART_BIBLE Lonely Palm), ripple detail

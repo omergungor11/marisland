@@ -26,6 +26,7 @@ export const DEVOPS_THEME: ThemeDef = {
     ['crate', 1],
   ],
   pathLanterns: 0.5,
+  plazaDecor: { posts: 'lanternPost', seats: 'cableSpool', across: null },
   workers: { weight: 1.0, cap: 8, deskShare: 0.4 },
   accessory: 5,
   ground: {
