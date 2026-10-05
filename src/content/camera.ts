@@ -99,4 +99,25 @@ export const FRAMING = {
    * to the pitch curve by `blendTo` u (log-distance).
    */
   lowBand: { pitch: 8, fullAt: 50, blendTo: 90 },
+
+  /**
+   * Zoom ladder (D-031, M14b TASK-374, `cam=ladder:<island>:<dist>`): a near-pure dolly along one
+   * axis — fixed pitch, the heading of the island's village frame (camera over the water), target
+   * on the frame anchor (island centre + `fallbackAzimuth` without a settlement). The tier is taken
+   * without hysteresis so each frame shows what a fresh view at that distance shows.
+   */
+  ladder: {
+    pitch: 48,
+    fallbackAzimuth: 30,
+    /** Ladder distances (u), far → near, ratio ≈ 0.7. */
+    dists: [700, 480, 340, 240, 170, 120, 85, 60, 42, 30, 21],
+    /** Tier / LOD boundaries (u) checked as pairs at `pairSpread` × b. */
+    pairs: [380, 250, 140, 45, 300, 120, 40],
+    pairSpread: [1.06, 0.94],
+    /**
+     * Island drift is measured over this frame's footprint (u; about the whole island) in the
+     * farther frames, over the whole frame in the nearer ones.
+     */
+    driftRef: 170,
+  },
 } as const;

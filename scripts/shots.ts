@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 /**
- * Screenshot harness: `pnpm shots [ci|dev|wow|intro|edit] [--assert] [--gpu] [--no-build] [--only=ID,ID] [--base=URL]
+ * Screenshot harness: `pnpm shots [ci|dev|wow|intro|edit|ladder] [--assert] [--gpu] [--no-build] [--only=ID,ID] [--base=URL]
  *   [--tag=name] [--port=4173] [--no-selftest] [--quality=low|medium|high]` — `--quality` overrides every
  *   preset's quality (budget sweeps per tier); `--tag` builds into dist-<tag>/ and writes shots/<set>-<tag>/
  *   so parallel agents don't collide; pair it with a distinct `--port`. The ci and dev sets also run the
@@ -9,24 +9,40 @@
  *   with `cam=village`), plus the harness-side
  *   `editpick` check (picking follows `api.edit` / `api.undo` / `propMove`, TASK-213).
  * Writes shots/<set>/{<id>.png, <id>+dt.png, <id>.mask.png, manifest.json, contact.jpg}.
+ * `ladder` (D-031, TASK-374): per L-* preset every distance (+ its `debug=mask` frame) into
+ *   <id>/<dist>.png, the consistency metrics into ladder-<id>.json and a strip ladder-<id>.jpg
+ *   (frames / masks / ΔE heat); contact.jpg stacks the strips. Threshold misses are reported always
+ *   and fail the run only with `--assert`. One island: `--only=L-coding,L-pairs-coding`.
  */
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { chromium, type Browser, type Page } from 'playwright';
-import sharp from 'sharp';
+import sharp, { type OverlayOptions } from 'sharp';
 import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';
 import { SET_DEFAULTS, shotsForSet, type ShotPreset, type ShotSet } from '../src/content/shots.ts';
 import { BUDGETS, HEADLESS_TIME_FACTOR } from '../src/content/budgets.ts';
+import { CAMERA } from '../src/content/tiers.ts';
+import { FRAMING } from '../src/content/camera.ts';
 import { computeMetrics, isBlank, isMagenta, type ImageMetrics } from './shots-metrics.ts';
+import {
+  GRID,
+  compareFrames,
+  regionDrift,
+  planeMap,
+  stepFailures,
+  LADDER_THRESHOLDS,
+  type Img,
+  type StepMetrics,
+} from './ladder-metrics.ts';
 
 const args = process.argv.slice(2);
 const flag = (n: string): boolean => args.includes(`--${n}`);
 const opt = (n: string): string | undefined =>
   args.find((a) => a.startsWith(`--${n}=`))?.slice(n.length + 3);
 const set = (args.find((a) => !a.startsWith('--')) ?? 'ci') as ShotSet;
-if (!(set in SET_DEFAULTS)) throw new Error(`unknown set "${set}" (ci|dev|wow|intro|edit)`);
+if (!(set in SET_DEFAULTS)) throw new Error(`unknown set "${set}" (ci|dev|wow|intro|edit|ladder)`);
 const ASSERT = flag('assert');
 const GPU = flag('gpu');
 const ROOT = resolve(import.meta.dirname, '..');
@@ -65,6 +81,7 @@ interface ShotResult {
   readyMs: number;
   motion?: number;
   console: string[];
+  ladder?: LadderReport;
 }
 
 // ---------------------------------------------------------------- preview server
@@ -475,6 +492,315 @@ async function contactSheet(results: ShotResult[]): Promise<void> {
     .toFile(resolve(OUT, 'contact.jpg'));
 }
 
+// ---------------------------------------------------------------- zoom ladder (TASK-374)
+interface LadderFrame {
+  dist: number;
+  tier?: number;
+  calls?: number;
+  triangles?: number;
+  /** ΔE2000 of the frame's land mean vs the ladder median (ladder presets only). */
+  drift?: number | null;
+}
+type StepReport = Omit<StepMetrics, 'heat'> & { far: number; near: number; failures: string[] };
+interface LadderReport {
+  island: string;
+  kind: 'ladder' | 'pairs';
+  frames: LadderFrame[];
+  /** Ladder steps far → near, or boundary pairs 1.06 b → 0.94 b. */
+  steps: (StepReport & { boundary?: number })[];
+  failures: string[];
+}
+
+const round1 = (v: number): number => Math.round(v * 10) / 10;
+
+async function decode(png: Buffer): Promise<Img> {
+  const { data, info } = await sharp(png).raw().toBuffer({ resolveWithObject: true });
+  return { width: info.width, height: info.height, channels: info.channels, data };
+}
+
+/** ΔE per cell → 48 × 27 heat map (black 0 → yellow 10 → red ≥ 20; grey = not compared). */
+function heatPng(heat: Float64Array): Promise<Buffer> {
+  const px = Buffer.alloc(heat.length * 3);
+  heat.forEach((d, k) => {
+    const c = Number.isNaN(d)
+      ? [48, 48, 48]
+      : d <= 10
+        ? [255 * (d / 10), 230 * (d / 10), 0]
+        : [255, 230 * Math.max(0, 1 - (d - 10) / 10), 0];
+    px.set(c.map(Math.round), k * 3);
+  });
+  return sharp(px, { raw: { width: GRID.w, height: GRID.h, channels: 3 } })
+    .png()
+    .toBuffer();
+}
+
+/** Every ladder distance (or both sides of every boundary) captured with its mask frame. */
+async function runLadder(
+  browser: Browser,
+  base: string,
+  p: ShotPreset,
+  isFirst: boolean,
+): Promise<{ r: ShotResult; deterministic?: boolean }> {
+  const L = p.ladder as NonNullable<ShotPreset['ladder']>;
+  const [hi, lo] = FRAMING.ladder.pairSpread;
+  const dists = L.pairs.length ? L.pairs.flatMap((b) => [round1(b * hi), round1(b * lo)]) : L.dists;
+  const dir = resolve(OUT, p.id);
+  mkdirSync(dir, { recursive: true });
+  const r: ShotResult = {
+    id: p.id,
+    title: p.title,
+    url: shotUrl(base, { ...p, cam: `ladder:${L.island}:${dists[0]}` }),
+    ok: true,
+    failures: [],
+    readyMs: 0,
+    console: [],
+  };
+  const frames: LadderFrame[] = [];
+  const imgs: { frame: Img; mask: Img; png: Buffer; maskPng: Buffer }[] = [];
+  let deterministic: boolean | undefined;
+  for (const d of dists) {
+    const fp: ShotPreset = { ...p, cam: `ladder:${L.island}:${d}` };
+    // ~50 page loads per island: one retry when a screenshot times out on a loaded machine
+    const shoot = async (
+      extra: string,
+      retry = true,
+    ): Promise<{ png: Buffer; snap: ApiSnap | null }> => {
+      const o = await open(browser, shotUrl(base, fp, extra), fp);
+      try {
+        const png = await o.page.screenshot({ type: 'png', timeout: 240_000 });
+        r.readyMs = Math.max(r.readyMs, o.readyMs);
+        r.failures.push(...o.fatal.map((f) => `${d}: ${f}`));
+        if (r.console.length < 20) r.console.push(...o.logs.slice(0, 20 - r.console.length));
+        return { png, snap: o.snap };
+      } catch (e) {
+        if (!retry) throw e;
+        console.log(`  ${d}${extra}: ${(e as Error).message.split('\n')[0]} - retrying`);
+      } finally {
+        await o.page.close();
+      }
+      return shoot(extra, false);
+    };
+    const { png, snap } = await shoot('');
+    const { png: maskPng } = await shoot('&debug=mask');
+    writeFileSync(resolve(dir, `${d}.png`), png);
+    writeFileSync(resolve(dir, `${d}.mask.png`), maskPng);
+    if (isFirst && deterministic === undefined) {
+      deterministic = png.equals((await shoot('')).png);
+      if (!deterministic && ASSERT) r.failures.push('non-deterministic: two captures differ');
+    }
+    if (snap) {
+      r.info ??= snap.info;
+      r.counters ??= snap.counters;
+      r.timings ??= snap.timings;
+      r.worldHash ??= snap.worldHash;
+      r.renderer ??= snap.renderer;
+      if (snap.error) r.failures.push(`${d}: app error: ${snap.error}`);
+      if (snap.counters.hardPops > 0) r.failures.push(`${d}: hardPops ${snap.counters.hardPops}`);
+      if (ASSERT) {
+        const br: ShotResult = { ...r, failures: [] };
+        assertBudgets(br, snap, /swiftshader/i.test(snap.renderer));
+        r.failures.push(...br.failures.map((f) => `${d}: ${f}`));
+      }
+    }
+    const m = await metricsOf(png);
+    if (isBlank(m)) r.failures.push(`${d}: blank frame`);
+    if (isMagenta(m)) r.failures.push(`${d}: magenta`);
+    frames.push({
+      dist: d,
+      tier: snap?.tier,
+      calls: snap?.info.calls,
+      triangles: snap?.info.triangles,
+    });
+    imgs.push({ frame: await decode(png), mask: await decode(maskPng), png, maskPng });
+  }
+
+  // ---- metrics
+  const W = imgs[0].frame.width;
+  const H = imgs[0].frame.height;
+  const view = (
+    dist: number,
+  ): { fovDeg: number; aspect: number; pitchDeg: number; dist: number } => ({
+    fovDeg: CAMERA.fov,
+    aspect: W / H,
+    pitchDeg: L.pitch,
+    dist,
+  });
+  const report: LadderReport = {
+    island: L.island,
+    kind: L.pairs.length ? 'pairs' : 'ladder',
+    frames,
+    steps: [],
+    failures: [],
+  };
+  const heats: (Float64Array | undefined)[] = dists.map(() => undefined);
+  const pairs = report.kind === 'pairs';
+  for (let k = 0; k + 1 < dists.length; k += pairs ? 2 : 1) {
+    const far = imgs[k];
+    const near = imgs[k + 1];
+    const m = compareFrames(
+      near.frame,
+      near.mask,
+      far.frame,
+      far.mask,
+      planeMap(view(dists[k + 1]), view(dists[k])),
+    );
+    heats[k + 1] = m.heat;
+    const { heat: _heat, ...rest } = m;
+    const failures = stepFailures(m, pairs);
+    const label = pairs ? `pair ${L.pairs[k / 2]}` : `step ${dists[k]}→${dists[k + 1]}`;
+    report.failures.push(...failures.map((f) => `${label}: ${f}`));
+    report.steps.push({
+      ...rest,
+      far: dists[k],
+      near: dists[k + 1],
+      ...(pairs ? { boundary: L.pairs[k / 2] } : {}),
+      failures,
+    });
+  }
+  if (!pairs) {
+    // the ladder frame nearest the drift reference distance
+    const ri = dists.reduce(
+      (b, d, i) =>
+        Math.abs(d - FRAMING.ladder.driftRef) < Math.abs(dists[b] - FRAMING.ladder.driftRef)
+          ? i
+          : b,
+      0,
+    );
+    const R = imgs[ri];
+    const drift = imgs.map((im, k) =>
+      k === ri
+        ? 0
+        : dists[k] < dists[ri]
+          ? regionDrift(
+              im.frame,
+              im.mask,
+              R.frame,
+              R.mask,
+              planeMap(view(dists[k]), view(dists[ri])),
+            )
+          : regionDrift(
+              R.frame,
+              R.mask,
+              im.frame,
+              im.mask,
+              planeMap(view(dists[ri]), view(dists[k])),
+            ),
+    );
+    drift.forEach((v, k) => {
+      frames[k].drift = v;
+      if (v !== null && v > LADDER_THRESHOLDS.drift)
+        report.failures.push(`drift ${dists[k]}: ΔE ${v.toFixed(2)} > ${LADDER_THRESHOLDS.drift}`);
+    });
+  }
+  r.ladder = report;
+  if (ASSERT) r.failures.push(...report.failures);
+  writeFileSync(resolve(OUT, `ladder-${p.id}.json`), JSON.stringify(report, null, 2));
+  await ladderStrip(p, report, imgs, heats);
+  r.ok = r.failures.length === 0;
+  return { r, deterministic };
+}
+
+const TW = 240;
+const TH = 135;
+
+function labelSvg(text: string, w: number, bad = false): Buffer {
+  return Buffer.from(
+    `<svg width="${w}" height="18" xmlns="http://www.w3.org/2000/svg"><rect width="${w}" height="18" fill="${bad ? '#a00' : '#000'}" fill-opacity="0.7"/><text x="4" y="13" font-family="sans-serif" font-size="11" fill="#fff">${esc(text.slice(0, Math.floor(w / 6)))}</text></svg>`,
+  );
+}
+
+/** ladder-<id>.jpg: one column per distance — frame, mask, ΔE heat of the step ending there. */
+async function ladderStrip(
+  p: ShotPreset,
+  rep: LadderReport,
+  imgs: { png: Buffer; maskPng: Buffer }[],
+  heats: (Float64Array | undefined)[],
+): Promise<void> {
+  const pad = 4;
+  const comps: OverlayOptions[] = [];
+  const thumb = (b: Buffer, kernel: 'lanczos3' | 'nearest' = 'lanczos3'): Promise<Buffer> =>
+    sharp(b).resize(TW, TH, { kernel }).png().toBuffer();
+  const top = 22;
+  comps.push({
+    input: labelSvg(
+      `${p.id} · ${p.title} · ${rep.failures.length ? `${rep.failures.length} misses` : 'pass'}`,
+      600,
+      rep.failures.length > 0,
+    ),
+    left: pad,
+    top: 2,
+  });
+  for (const [k, im] of imgs.entries()) {
+    const f = rep.frames[k];
+    const left = pad + k * (TW + pad);
+    const step = rep.steps.find((s) => s.near === f.dist);
+    comps.push({ input: await thumb(im.png), left, top });
+    const drift = f.drift != null ? ` dr ${f.drift.toFixed(1)}` : '';
+    comps.push({
+      input: labelSvg(`${f.dist} u · T${f.tier ?? '?'} · ${f.calls ?? '?'}c${drift}`, TW),
+      left,
+      top: top + TH - 18,
+    });
+    comps.push({ input: await thumb(im.maskPng), left, top: top + TH + pad });
+    const heat = heats[k];
+    if (heat && step) {
+      comps.push({
+        input: await thumb(await heatPng(heat), 'nearest'),
+        left,
+        top: top + 2 * (TH + pad),
+      });
+      const txt = step.judged
+        ? `ΔE ${step.mean.toFixed(1)}/${step.p95.toFixed(0)} blob ${(step.blob * 100).toFixed(1)}% IoU ${step.iou.toFixed(2)}`
+        : `land ${(step.landFrac * 100).toFixed(0)}% (not judged)`;
+      comps.push({
+        input: labelSvg(txt, TW, step.failures.length > 0),
+        left,
+        top: top + 3 * TH + 2 * pad - 18,
+      });
+    }
+  }
+  await sharp({
+    create: {
+      width: pad + imgs.length * (TW + pad),
+      height: top + 3 * (TH + pad),
+      channels: 3,
+      background: '#202020',
+    },
+  })
+    .composite(comps)
+    .jpeg({ quality: 85 })
+    .toFile(resolve(OUT, `ladder-${p.id}.jpg`));
+}
+
+/** contact.jpg for the ladder set: the strips stacked. */
+async function ladderContact(results: ShotResult[]): Promise<void> {
+  const strips = await Promise.all(
+    results.map(async (r) => {
+      const b = await sharp(resolve(OUT, `ladder-${r.id}.jpg`))
+        .png()
+        .toBuffer();
+      return { b, meta: await sharp(b).metadata() };
+    }),
+  );
+  let y = 0;
+  const comps = strips.map(({ b, meta }) => {
+    const c = { input: b, left: 0, top: y };
+    y += meta.height ?? 0;
+    return c;
+  });
+  await sharp({
+    create: {
+      width: Math.max(...strips.map((s) => s.meta.width ?? 0)),
+      height: y,
+      channels: 3,
+      background: '#202020',
+    },
+  })
+    .composite(comps)
+    .jpeg({ quality: 80 })
+    .toFile(resolve(OUT, 'contact.jpg'));
+}
+
 // ---------------------------------------------------------------- main
 async function main(): Promise<void> {
   const t0 = Date.now();
@@ -495,7 +821,9 @@ async function main(): Promise<void> {
   try {
     for (const [i, p] of list.entries()) {
       console.log(`[${i + 1}/${list.length}] ${p.id} ${p.title}`);
-      const out = await runShot(browser, base, p, i === 0);
+      const out = p.ladder
+        ? await runLadder(browser, base, p, i === 0)
+        : await runShot(browser, base, p, i === 0);
       results.push(out.r);
       if (out.deterministic !== undefined) deterministic = out.deterministic;
       renderer = out.r.renderer ?? renderer;
@@ -531,7 +859,8 @@ async function main(): Promise<void> {
     summary: { total: results.length, failed, deterministic, selftestsFailed },
   };
   writeFileSync(resolve(OUT, 'manifest.json'), JSON.stringify(manifest, null, 2));
-  await contactSheet(results);
+  if (set === 'ladder') await ladderContact(results);
+  else await contactSheet(results);
   console.table(
     results.map((r) => ({
       id: r.id,
@@ -543,6 +872,17 @@ async function main(): Promise<void> {
       failures: r.failures.join('; '),
     })),
   );
+  for (const r of results)
+    if (r.ladder)
+      for (const st of r.ladder.steps)
+        console.log(
+          `${r.id} ${st.far}→${st.near}: ${st.judged ? `mean ${st.mean.toFixed(2)} p95 ${st.p95.toFixed(1)} blob ${(st.blob * 100).toFixed(1)}% IoU ${st.iou.toFixed(3)}` : `land ${(st.landFrac * 100).toFixed(0)}% not judged`}${st.failures.length ? '  MISS ' + st.failures.join('; ') : ''}`,
+        );
+  for (const r of results)
+    if (r.ladder?.failures.length)
+      console.log(
+        `${r.id}: ${r.ladder.failures.length} ladder misses${ASSERT ? '' : ' (not asserted)'}`,
+      );
   for (const t of selftests)
     console.log(
       `selftest ${t.name}: ${t.ok ? 'ok' : 'FAIL ' + t.failures.join('; ')} (${t.readyMs} ms)`,
