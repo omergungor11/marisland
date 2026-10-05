@@ -24,17 +24,16 @@ import {
 } from './index.ts';
 import { THEME_IDS, type ThemeId } from './types.ts';
 import { PropFlag } from './prop-store.ts';
+import { lotRoof, roofNeighbours } from './gen/settlements.ts';
 import {
   discShape,
   heroHeading,
-  lotRoof,
   lotShape,
   rectShape,
-  roofNeighbours,
   shapeCorners,
   shapeDist,
   shapesOverlap,
-} from './gen/settlements.ts';
+} from './gen/sites.ts';
 
 // Tests measure wall time; generation itself never reads a clock.
 // eslint-disable-next-line no-restricted-properties

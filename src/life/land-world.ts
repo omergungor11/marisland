@@ -8,7 +8,8 @@ import { PROP_DEFS } from '../content/props.ts';
 import { FIXTURE_RADIUS, LANDMARKS } from '../content/settlements.ts';
 import type { Rng } from '../core/rng.ts';
 import { PropFlag } from '../world/prop-store.ts';
-import { Zone } from '../world/types.ts';
+import { Zone, type SettlementData } from '../world/types.ts';
+import { THEMES } from '../content/themes/index.ts';
 import type { LifeCtx } from './ctx.ts';
 
 export type Mask = (x: number, z: number) => boolean;
@@ -479,7 +480,7 @@ export function planSheep(ctx: LifeCtx, mask: Mask, total: number, rng: Rng): Wa
     const n = cells[id].x.length;
     if (n < SHEEP.minMeadowCells) return { weight: 0, cap: 0 };
     return {
-      weight: (SHEEP.weights[it.archetype] ?? SHEEP.otherWeight) * n,
+      weight: (THEMES[it.theme].life.sheep ?? SHEEP.weights[it.archetype] ?? SHEEP.otherWeight) * n,
       cap: Math.floor(n / 12),
     };
   });
@@ -533,10 +534,13 @@ export function planSheep(ctx: LifeCtx, mask: Mask, total: number, rng: Rng): Wa
 }
 
 export function planCats(ctx: LifeCtx, mask: Mask, total: number, rng: Rng): WanderSpawn[] {
-  const sets = (ctx.world.settlements ?? []).filter((s) => (CATS.weights[s.kind] ?? 0) > 0);
+  // theme weight (M14b), else the settlement kind's
+  const weight = (s: SettlementData): number =>
+    THEMES[s.theme].life.cats ?? CATS.weights[s.kind] ?? 0;
+  const sets = (ctx.world.settlements ?? []).filter((s) => weight(s) > 0);
   const quota = allocate(
     total,
-    sets.map((s) => ({ weight: CATS.weights[s.kind] ?? 0, cap: s.kind === 'village' ? 3 : 1 })),
+    sets.map((s) => ({ weight: weight(s), cap: s.kind === 'village' ? 3 : 1 })),
   );
   const out: WanderSpawn[] = [];
   sets.forEach((s, k) => {
@@ -602,7 +606,10 @@ export function planCrabs(ctx: LifeCtx, mask: Mask, total: number, rng: Rng): Wa
     islandCells(ctx, id, [Zone.sandDry, Zone.sandWet, Zone.sandBlack], CRABS.homeSdf),
   );
   const entries = isl.map((it, id) => ({
-    weight: cells[id].x.length >= 6 ? (CRABS.weights[it.archetype] ?? 0) : 0,
+    weight:
+      cells[id].x.length >= 6
+        ? (THEMES[it.theme].life.crabs ?? CRABS.weights[it.archetype] ?? 0)
+        : 0,
     cap: Math.max(1, Math.floor(cells[id].x.length / 6)),
   }));
   const quota = allocate(total, entries);

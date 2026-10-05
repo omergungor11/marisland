@@ -4,7 +4,7 @@
  * (pads, paths, docks) → boat routes → chunks → occupancy + prop scatter → hashes.
  */
 import { createRng } from '../core/rng.ts';
-import type { WorldData } from './types.ts';
+import type { DistrictData, DistrictKind, FieldPatchData, IslandData, WorldData } from './types.ts';
 import { GRID_N, Zone } from './types.ts';
 import { buildChunkFlags } from './gen/chunks.ts';
 import { cleanCoast, dropIslets, shoreSdfOwners } from './gen/coast.ts';
@@ -27,6 +27,7 @@ import { createOccupancy, scatterProps } from './gen/scatter.ts';
 import { compactPropStore, createPropStore } from './prop-store.ts';
 import { hashPolylines, hashProps, hashSites } from './gen/hash.ts';
 import { EDIT_PROPS } from '../content/edit.ts';
+import { THEMES } from '../content/themes/index.ts';
 
 export * from './types.ts';
 export * from './edit-types.ts';
@@ -70,6 +71,27 @@ export const STAGE_HASH_KEYS = [
   'routes',
   'props',
 ] as const;
+
+/** District kind of a profile patch rectangle on a 'districts' patchwork theme (Coding solar farm). */
+const PATCH_DISTRICT: DistrictKind = 'solar';
+
+/** Profile patch rectangles of 'districts' patchwork themes, as districts (M14b). */
+function patchDistricts(
+  islands: readonly IslandData[],
+  fields: readonly FieldPatchData[],
+): DistrictData[] {
+  return fields
+    .filter((f) => THEMES[islands[f.islandId].theme].patchwork === 'districts')
+    .map((f) => ({
+      islandId: f.islandId,
+      kind: PATCH_DISTRICT,
+      x: f.x,
+      z: f.z,
+      rotY: f.rotY,
+      w: f.w,
+      d: f.d,
+    }));
+}
 
 export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldData {
   const now = opts.now ?? ((): number => 0);
@@ -131,8 +153,14 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
     },
     root.fork('sites'),
   );
-  // field hues only where the zone is still `field` (lots, paths and plaza took the rest)
+  // field hues only on 'fields' patchwork themes (M14b) and only where the zone is still
+  // `field` (lots, paths and plaza took the rest); edits restore hues from `fieldHue`
   const fieldColor = rawLand.fieldColor;
+  const hues = islands.map((isl) => THEMES[isl.theme].patchwork === 'fields');
+  for (let i = 0; i < fieldColor.length; i++) {
+    const id = rawLand.islandMap[i];
+    if (id > 0 && !hues[id - 1]) fieldColor[i] = 0;
+  }
   const fieldHue = fieldColor.slice();
   for (let i = 0; i < fieldColor.length; i++) if (zone[i] !== Zone.field) fieldColor[i] = 0;
   lap('sites');
@@ -167,7 +195,7 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
     fences: sites.fences,
     fields: rawLand.fields,
     fieldColor,
-    districts: [],
+    districts: [...patchDistricts(islands, rawLand.fields), ...sites.districts],
     props: createPropStore(0),
     chunkFlags,
     zonePainted: new Uint8Array(GRID_N * GRID_N),

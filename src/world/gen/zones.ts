@@ -7,7 +7,13 @@ import { Zone } from '../types.ts';
 import { cellX, cellZ } from './grid.ts';
 import { leewardness, windwardCliffness } from './heightfield.ts';
 import { Tag } from './profiles.ts';
-import { ARCHETYPES, WINDWARD_CLIFF, ZONE_RULES } from '../../content/islands.ts';
+import {
+  ARCHETYPES,
+  WINDWARD_CLIFF,
+  ZONE_RULES,
+  type ZoneRuleParams,
+} from '../../content/islands.ts';
+import { THEMES } from '../../content/themes/index.ts';
 
 /** Height gradient magnitude (u per u) at grid sample (ix, iz), central differences. */
 export function slopeAtCell(h: Heightfield, ix: number, iz: number): number {
@@ -53,8 +59,8 @@ export function zoneNoise(rng: Rng): Noise {
  * Zone map (ARCHITECTURE §2 steps 3–4). Water by shore-distance bands
  * (WATER_BANDS; lagoon/shallow widen leeward like the shelf, shrink on Beacon
  * Rock's windward face; enclosed atoll lagoons are all `lagoon`); land by
- * slope × height band × moisture / cluster noise with the archetype's rule
- * block (content/islands.ts) and profile tags.
+ * slope × height band × moisture / cluster noise with the island's rule block
+ * (`zoneRulesOf`: archetype rules + theme overrides) and profile tags.
  */
 export function buildZones(inp: ZoneInputs, rng: Rng): Uint8Array {
   const { h, sdf, islandMap, owner, tags, islands, windDir } = inp;
@@ -100,6 +106,25 @@ export function deriveZoneCell(
   return deriveNear(ctx, i, ix, iz, s, tag, owner);
 }
 
+const mergedRules = new Map<string, ZoneRuleParams>();
+
+/**
+ * Zone rules of an island (M14b): the archetype's rule block with the theme's `zoneRules`
+ * merged over it, `{ ...ARCHETYPES[a].zones, ...THEMES[t].zoneRules }` (memoised: per-cell path).
+ */
+function zoneRulesOf(isl: IslandData): ZoneRuleParams {
+  const base = ARCHETYPES[isl.archetype].zones;
+  const over = THEMES[isl.theme].zoneRules;
+  if (!over) return base;
+  const key = `${isl.archetype}:${isl.theme}`;
+  let rules = mergedRules.get(key);
+  if (!rules) {
+    rules = { ...base, ...over };
+    mergedRules.set(key, rules);
+  }
+  return rules;
+}
+
 const FOREST_FREQ = 1 / ZONE_RULES.forestScale;
 const MOIST_FREQ = 1 / ZONE_RULES.moistureScale;
 
@@ -135,7 +160,7 @@ function deriveNear(
           : Zone.deep;
   }
   const isl = islands[islandMap[i] - 1];
-  const rules = ARCHETYPES[isl.archetype].zones;
+  const rules = zoneRulesOf(isl);
   const y = h.data[i];
   if (rules.sandOnly) return s <= ZONE_RULES.wetSand ? Zone.sandWet : Zone.sandDry;
   const slope = slopeAtCell(h, ix, iz);
