@@ -11,6 +11,7 @@ import {
 } from '../content/palette.ts';
 import { Acc, blob, col, createNoise, frustum, mat, qEuler } from './kit.ts';
 import { house } from './buildings.ts';
+import { OFFICE_PAL } from '../content/palette-offices.ts';
 import { Spin, beaconRing, dish, finishSpin } from './office-kit.ts';
 import { gridSurface } from './coastal.ts';
 import {
@@ -45,7 +46,7 @@ export function lighthouse({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
   put(acc, body, [0, 0, 0], (p) => (Math.floor((p.y / H) * 5) % 2 === 0 ? red : white), {
     aoAmt: 0.2,
   });
-  if (lod === 0) put(acc, cylB(2.35, 2.2, 0.5, seg), [0, 0, 0], col(ROCK[1]), { aoAmt: 0.25 });
+  put(acc, cylB(2.35, 2.2, 0.5, seg), [0, 0, 0], col(ROCK[1]), { aoAmt: 0.25 });
   put(acc, cylB(2.0, 2.0, 0.24, seg), [0, H, 0], col(ROCK[2]), { aoAmt: 0.1 });
   const gy = H + 0.24;
   // lamp room: floor ring, mullions, glowing core, ceiling ring, dome
@@ -89,7 +90,7 @@ export function lighthouse({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
     });
   }
   const ceil = gy + lampH + 0.1;
-  put(acc, cylB(1.12, 1.12, 0.14, lod === 0 ? 8 : 6), [0, ceil - 0.14, 0], red, { aoAmt: 0 });
+  if (lod === 0) put(acc, cylB(1.12, 1.12, 0.14, 8), [0, ceil - 0.14, 0], red, { aoAmt: 0 });
   put(
     acc,
     new THREE.SphereGeometry(1.1, lod === 0 ? 8 : 6, lod === 0 ? 3 : 2, 0, TAU, 0, Math.PI / 2),
@@ -164,6 +165,26 @@ export function lighthouse({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
       });
     }
   }
+  if (lod === 1) {
+    // far read of the +z facet: door + two lit windows, colours as the LOD0 boxes (TASK-378)
+    const ap = (y: number): number => rOf(y) * Math.cos(Math.PI / seg);
+    const flat = { aoAmt: 0, ao: () => 1 };
+    put(
+      acc,
+      new THREE.PlaneGeometry(1.0, 1.7),
+      [0, 0.45 + 0.85, ap(0.5) + 0.03],
+      col(WOOD.planks).lerp(col(WOOD.dark), 0.5),
+      flat,
+    );
+    for (const y of [4.2, 6.9])
+      put(
+        acc,
+        new THREE.PlaneGeometry(0.64, 0.84),
+        [0, y, ap(y) + 0.03],
+        col(WALLS[1]).lerp(col(EMISSIVE.window), 0.45),
+        { ...flat, emissive: 0.5 },
+      );
+  }
   return acc.finish(rng, false, true);
 }
 
@@ -187,7 +208,9 @@ export function clocktower({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
       { aoAmt: 0.1 },
     );
   } else {
+    put(acc, baseBox(3.1, 0.5, 3.1), [0, 0, 0], col(ROCK[1]), { aoAmt: 0.25 });
     put(acc, baseBox(2.4, shaftTop, 2.4), [0, 0, 0], wall, { aoAmt: 0.2 });
+    put(acc, baseBox(3.1, 0.2, 3.1), [0, shaftTop - 0.1, 0], col(WOOD.planks), { aoAmt: 0 });
     put(acc, baseBox(2.9, stageTop - shaftTop, 2.9), [0, shaftTop, 0], wall, { aoAmt: 0.1 });
   }
   const spin = new Spin();
@@ -199,6 +222,18 @@ export function clocktower({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
   if (variant === 2) {
     // Orchestrator Tower (phase-3 HQ): flat deck + mast, a spinning beacon ring (aSpin) around a lit hub
     fy = beaconRing(acc, spin, { stageTop, wall, trim: ROOFS[0], lod });
+    if (lod === 1) {
+      // deck rails (LOD0 boxes) as flat top faces: from above they are part of the colour mix
+      const ry = stageTop + 0.14 + 0.3 + 0.005;
+      const flat = { q: qEuler(-Math.PI / 2, 0, 0), aoAmt: 0, ao: () => 1 };
+      for (const [x, z, w, d] of [
+        [0, 1.6, 3.3, 0.1],
+        [0, -1.6, 3.3, 0.1],
+        [1.6, 0, 0.1, 3.1],
+        [-1.6, 0, 0.1, 3.1],
+      ] as const)
+        put(acc, new THREE.PlaneGeometry(w, d), [x, ry, z], wall, flat);
+    }
   } else {
     put(
       acc,
@@ -220,7 +255,48 @@ export function clocktower({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
     ao: () => 1,
     windAbs: (p) => clamp01(p.x / 0.7),
   });
-  if (lod === 1) return finishClock();
+  if (lod === 1) {
+    // far read of the facets: door, lit slits, clock faces (LOD0 colours, flat quads; TASK-378)
+    const flat = { aoAmt: 0, ao: () => 1 };
+    const quad = (
+      w: number,
+      h: number,
+      c: THREE.Color,
+      x: number,
+      y: number,
+      z: number,
+      yaw: number,
+      e = 0,
+    ): void => {
+      const q = qEuler(0, yaw, 0);
+      const o = V(x, y, z + 0.02).applyQuaternion(q);
+      put(acc, new THREE.PlaneGeometry(w, h), [o.x, o.y, o.z], c, { ...flat, q, emissive: e });
+    };
+    const dz1 = 1.2 + 0.06;
+    quad(1.0, 1.7, col(WOOD.planks).lerp(col(WOOD.dark), 0.5), 0, 1.35, 1.2 + 0.1, 0);
+    const slitC = col(WOOD.planks).lerp(col(EMISSIVE.window), 0.55);
+    quad(0.54, 0.94, slitC, 0, 3.4, dz1, 0, 0.5);
+    quad(0.54, 0.94, slitC, 0, 5.2, dz1, 0, 0.5);
+    for (const yaw of [Math.PI / 2, -Math.PI / 2, Math.PI])
+      quad(0.54, 0.94, slitC, 0, 4.2, dz1, yaw, 0.5);
+    if (variant !== 2)
+      for (let k = 0; k < 4; k++) {
+        const q = qEuler(0, (k * Math.PI) / 2, 0);
+        const o = V(0, 0, 1.47).applyQuaternion(q);
+        put(
+          acc,
+          new THREE.CircleGeometry(0.85, 8),
+          [o.x, 7.5, o.z],
+          col(WALLS[1]).lerp(col(WOOD.dark), 0.2),
+          {
+            ...flat,
+            q,
+            emissive: 0.3,
+          },
+        );
+      }
+    return finishClock();
+  }
   // door + windows + clock faces
   const glow = col(EMISSIVE.window);
   const dz = 1.2;
@@ -289,6 +365,10 @@ export function clocktower({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
   return finishClock();
 }
 
+/** Atelier Tree (giantTree variant 2): painted treehouse, blossom clusters and bunting. */
+const ATELIER = { ...OFFICE_PAL.design[0], blossom: '#FF8FB1' } as const;
+const BUNTING = ['#FF8FB1', '#FFE45C', '#7FD8B3', '#B39DFF', '#5DA9E9'] as const;
+
 export function giantTree({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const r = rng.fork('giant');
   const acc = new Acc();
@@ -350,9 +430,10 @@ export function giantTree({ rng, lod, variant }: BuildOpts): THREE.BufferGeometr
     y0: 0,
     wallH: 1.9,
     rise: 1.0,
-    wall: cycle([WALLS[3], WALLS[2]], variant),
-    roof: cycle([ROOFS[0], ROOFS[2]], variant),
-    trim: WOOD.planks,
+    // variant 2 = Atelier Tree (Design island): painted in the design office palette
+    wall: variant === 2 ? ATELIER.wall : cycle([WALLS[3], WALLS[2]], variant),
+    roof: variant === 2 ? ATELIER.roof : cycle([ROOFS[0], ROOFS[2]], variant),
+    trim: variant === 2 ? ATELIER.trim : WOOD.planks,
     nWin: 2,
     chimney: false,
     foundation: false,
@@ -409,7 +490,7 @@ export function giantTree({ rng, lod, variant }: BuildOpts): THREE.BufferGeometr
     [0.4, 13.0, -3.3, 3.0],
     [1.0, 16.0, 0.6, 2.8],
   ];
-  const used = lod === 0 ? blobs : blobs.slice(0, 4);
+  const used = blobs;
   used.forEach(([x, y, z, rad], i) => {
     put(acc, blob(rad, lod === 0 ? 1 : 0, noise, 0.1, 1.1, i * 2.7), [x, y, z], fn, {
       windMul: 1,
@@ -417,6 +498,59 @@ export function giantTree({ rng, lod, variant }: BuildOpts): THREE.BufferGeometr
       ao: (p) => 0.78 + 0.22 * clamp01((p.y - (y - rad)) / (rad * 1.6)),
     });
   });
+  if (variant === 2) {
+    // pink blossom clusters sitting on the upper canopy surface (same at LOD1: they carry the colour)
+    const br = rng.fork('blossom');
+    const pink = col(ATELIER.blossom);
+    for (let i = 0; i < 9; i++) {
+      const [bx, by, bz, brad] = blobs[i % 4];
+      const a = br.range(0, TAU);
+      const el = br.range(0.3, 1.05);
+      const d = V(Math.cos(a) * Math.cos(el), Math.sin(el), Math.sin(a) * Math.cos(el));
+      const cr = br.range(0.8, 1.15);
+      const at = V(bx, by, bz).addScaledVector(d, brad * (lod === 0 ? 0.93 : 0.83));
+      put(
+        acc,
+        new THREE.IcosahedronGeometry(cr, 0),
+        at,
+        pink.clone().lerp(col('#FFFFFF'), br.range(0, 0.25)),
+        {
+          windMul: 1,
+          aoAmt: 0.1,
+          ao: () => 0.95,
+        },
+      );
+    }
+    if (lod === 0) {
+      // bunting: two sagging strings of pennants around the platform rim
+      const sw = (p: THREE.Vector3): number => clamp01((p.y - 5) / 10);
+      for (const [a0, a1] of [
+        [0.4, 2.2],
+        [3.4, 5.4],
+      ] as const) {
+        const n = 7;
+        for (let k = 0; k < n; k++) {
+          const t = (k + 0.5) / n;
+          const a = a0 + (a1 - a0) * t;
+          const sag = Math.sin(t * Math.PI) * 0.35;
+          const at = V(Math.cos(a) * 3.45, hy + 0.75 - sag, Math.sin(a) * 3.45);
+          put(
+            acc,
+            new THREE.CircleGeometry(0.17, 3).rotateZ(Math.PI),
+            at,
+            col(BUNTING[(k + (a0 > 1 ? 2 : 0)) % 5]),
+            {
+              q: qEuler(0, -a + Math.PI / 2, 0),
+              double: true,
+              aoAmt: 0,
+              ao: () => 1,
+              windAbs: (p) => sw(p) * 0.6,
+            },
+          );
+        }
+      }
+    }
+  }
   return acc.finish(rng, true, true);
 }
 
