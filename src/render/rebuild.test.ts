@@ -22,10 +22,17 @@ const counters = () => ({
   rebuilds: 0,
 });
 
+/** Camera near the first island: chunks there cache 2 u and 1 u levels too (TASK-371). */
+function camOf(world: WorldData): THREE.Vector3 {
+  const isl = world.islands[0];
+  return new THREE.Vector3(isl.cx, isl.peakY + 30, isl.cz + 40);
+}
+
 function setup(world: WorldData, instant: boolean) {
   const scope = new Scope('t');
   const textures = createWorldTextures(world, scope);
   const terrain = buildTerrain(world, textures, 'medium', scope);
+  terrain.update(0, camOf(world));
   const store = appendSettlementProps(world).props;
   const c = counters();
   const props = createPropBatcher(store, {
@@ -54,27 +61,44 @@ function setup(world: WorldData, instant: boolean) {
   return { scope, textures, terrain, store, props, rb, timings, c };
 }
 
-/** Every active chunk equals the same chunk of a fresh build of the (edited) world. */
+/**
+ * Every active chunk equals the same chunk of a fresh build of the (edited) world: every LOD
+ * level cached in both (TASK-371) and the island merges.
+ */
 function expectMatchesFreshBuild(world: WorldData, terrain: TerrainView): void {
   const s2 = new Scope('fresh');
   const fresh = buildTerrain(world, createWorldTextures(world, s2), 'medium', s2);
+  fresh.update(0, camOf(world));
   const active = terrain.chunks.filter((c) => c.active);
   expect(active.map((c) => c.cz * CHUNKS_PER_SIDE + c.cx).sort((a, b) => a - b)).toEqual(
     fresh.chunks.map((c) => c.cz * CHUNKS_PER_SIDE + c.cx).sort((a, b) => a - b),
   );
+  const same = (got: THREE.BufferGeometry, want: THREE.BufferGeometry, what: string): void => {
+    for (const a of ['position', 'color', 'normal', 'ao', 'aMorph']) {
+      const g = got.getAttribute(a).array;
+      const w = want.getAttribute(a).array;
+      if (g.length !== w.length || g.some((v, i) => v !== w[i]))
+        throw new Error(
+          `${what} ${a} differs from a fresh build ${g.length} ${w.length} ${g.findIndex((v, i) => v !== w[i])}`,
+        );
+    }
+    expect(Array.from(got.index!.array)).toEqual(Array.from(want.index!.array));
+  };
+  let compared = 0;
   for (const f of fresh.chunks) {
     const c = active.find((k) => k.cx === f.cx && k.cz === f.cz)!;
     expect(c.skirtEdges, `edges ${f.cx},${f.cz}`).toBe(f.skirtEdges);
-    for (let lod = 0; lod < 2; lod++)
-      for (const a of ['position', 'color', 'normal']) {
-        const got = c.lods[lod].geometry.getAttribute(a).array;
-        const want = f.lods[lod].geometry.getAttribute(a).array;
-        if (got.length !== want.length || got.some((v, i) => v !== want[i]))
-          throw new Error(`chunk ${f.cx},${f.cz} lod ${lod} ${a} differs from a fresh build`);
-      }
+    f.levels.forEach((m, lv) => {
+      const got = c.levels[lv];
+      if (!m || !got) return;
+      same(got.geometry, m.geometry, `chunk ${f.cx},${f.cz} level ${lv}`);
+      compared++;
+    });
   }
-  expect(terrain.triangles).toBe(fresh.triangles);
-  expect(terrain.trianglesLod1).toBe(fresh.trianglesLod1);
+  expect(compared).toBeGreaterThan(fresh.chunks.length);
+  fresh.merges.forEach((g, k) =>
+    same(terrain.merges[k].mesh.geometry, g.mesh.geometry, `merge ${k}`),
+  );
   s2.dispose();
 }
 
@@ -96,10 +120,13 @@ describe('dirty-chunk rebuild (TASK-211)', () => {
     const world = generateWorld(1001, { islands: 1 });
     const { terrain, rb, timings, c, textures } = setup(world, false);
     const isl = world.islands[0];
-    const meshesBefore = terrain.chunks.map((k) => k.lods[0]);
-    const old = terrain.chunks.flatMap((k) => k.lods.map((m) => m.geometry));
+    const meshesBefore = terrain.chunks.map((k) => k.levels.slice());
+    const old = new Map(
+      terrain.chunks.map((k) => [k, k.levels.flatMap((m) => (m ? [m.geometry] : []))]),
+    );
     const disposed = new Set<THREE.BufferGeometry>();
-    for (const g of old) g.addEventListener('dispose', () => disposed.add(g));
+    for (const gs of old.values())
+      for (const g of gs) g.addEventListener('dispose', () => disposed.add(g));
     // a hill on the island and a dent over its shore
     const e1 = testBrush(world, isl.cx, isl.cz, 24, 8);
     const e2 = testBrush(world, isl.cx + isl.radius, isl.cz, 18, -6);
@@ -113,11 +140,17 @@ describe('dirty-chunk rebuild (TASK-211)', () => {
     rb.flush();
     expect(rb.pending).toBe(0);
     expect(timings.rebuildMs).toBeGreaterThan(0);
-    // same mesh objects, old geometries disposed
-    expect(terrain.chunks.slice(0, meshesBefore.length).map((k) => k.lods[0])).toEqual(
-      meshesBefore,
-    );
-    expect(disposed.size).toBe(c.rebuilds * 2);
+    // same mesh objects, every cached level of a remeshed chunk got a new geometry
+    expect(terrain.chunks.slice(0, meshesBefore.length).map((k) => k.levels)).toEqual(meshesBefore);
+    const N = CHUNKS_PER_SIDE;
+    const touched = new Set([...dirtyChunks(e1.dirty), ...dirtyChunks(e2.dirty)]);
+    let remeshed = 0;
+    for (const [k, gs] of old) {
+      if (!touched.has(k.cz * N + k.cx)) continue;
+      for (const g of gs) expect(disposed.has(g)).toBe(true);
+      remeshed++;
+    }
+    expect(remeshed).toBeGreaterThan(0);
     expectMatchesFreshBuild(world, terrain);
     // textures: height + SDF channels equal a full recompute; ring scale (G) close to it
     const fresh = createWorldTextures(world, new Scope('f'));
@@ -175,18 +208,18 @@ describe('dirty-chunk rebuild (TASK-211)', () => {
     const made = terrain.chunks.find((c) => c.cx === cx && c.cz === cz)!;
     expect(made?.active).toBe(true);
     expect(terrain.chunks.length).toBeGreaterThan(n0);
-    expect(made.lods[0].visible).toBe(true);
+    terrain.update(0, camOf(world));
+    expect(made.levels[made.shown]?.visible || terrain.merges[made.island].shown).toBe(true);
     expectMatchesFreshBuild(world, terrain);
-    const geo = made.lods.map((m) => m.geometry);
+    const geo = made.levels.flatMap((m) => (m ? [m.geometry] : []));
     let disposed = 0;
     for (const g of geo) g.addEventListener('dispose', () => disposed++);
     rb.rebuildDirty(applyTestPatch(world, e.inverse).dirty);
     expect(made.active).toBe(false);
-    expect(made.lods.every((m) => !m.visible)).toBe(true);
-    expect(disposed).toBe(2);
-    terrain.onTier(0);
-    expect(made.lods.every((m) => !m.visible)).toBe(true);
-    terrain.onTier(3);
+    expect(made.levels.every((m) => m === null)).toBe(true);
+    expect(disposed).toBe(geo.length);
+    terrain.update(0, camOf(world));
+    expect(made.shown).toBe(-1);
     expectMatchesFreshBuild(world, terrain);
   });
 
