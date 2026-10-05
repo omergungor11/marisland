@@ -3,7 +3,7 @@
  * `Math.random` — every choice comes from a label-forked `Rng`, so a seed always yields the same
  * flocks, homes and spawn points.
  */
-import { CATS, CRABS, LAND, SHEEP, VILLAGERS } from '../content/life.ts';
+import { CATS, CRABS, LAND, SHEEP, VILLAGERS, lifeWeight } from '../content/life.ts';
 import { PROP_DEFS } from '../content/props.ts';
 import { FIXTURE_RADIUS, LANDMARKS } from '../content/settlements.ts';
 import type { Rng } from '../core/rng.ts';
@@ -480,7 +480,13 @@ export function planSheep(ctx: LifeCtx, mask: Mask, total: number, rng: Rng): Wa
     const n = cells[id].x.length;
     if (n < SHEEP.minMeadowCells) return { weight: 0, cap: 0 };
     return {
-      weight: (THEMES[it.theme].life.sheep ?? SHEEP.weights[it.archetype] ?? SHEEP.otherWeight) * n,
+      weight:
+        lifeWeight(
+          it.theme,
+          'sheep',
+          SHEEP.weights[it.archetype] ?? SHEEP.otherWeight,
+          THEMES[it.theme].life.sheep,
+        ) * n,
       cap: Math.floor(n / 12),
     };
   });
@@ -534,9 +540,9 @@ export function planSheep(ctx: LifeCtx, mask: Mask, total: number, rng: Rng): Wa
 }
 
 export function planCats(ctx: LifeCtx, mask: Mask, total: number, rng: Rng): WanderSpawn[] {
-  // theme weight (M14b), else the settlement kind's
+  // theme weight (M14b, content/life.ts THEME_LIFE), per settlement
   const weight = (s: SettlementData): number =>
-    THEMES[s.theme].life.cats ?? CATS.weights[s.kind] ?? 0;
+    lifeWeight(s.theme, 'cats', CATS.weights[s.kind] ?? 0, THEMES[s.theme].life.cats);
   const sets = (ctx.world.settlements ?? []).filter((s) => weight(s) > 0);
   const quota = allocate(
     total,
@@ -608,7 +614,12 @@ export function planCrabs(ctx: LifeCtx, mask: Mask, total: number, rng: Rng): Wa
   const entries = isl.map((it, id) => ({
     weight:
       cells[id].x.length >= 6
-        ? (THEMES[it.theme].life.crabs ?? CRABS.weights[it.archetype] ?? 0)
+        ? lifeWeight(
+            it.theme,
+            'crabs',
+            CRABS.weights[it.archetype] ?? 0,
+            THEMES[it.theme].life.crabs,
+          )
         : 0,
     cap: Math.max(1, Math.floor(cells[id].x.length / 6)),
   }));
