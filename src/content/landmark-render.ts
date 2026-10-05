@@ -19,4 +19,5 @@ export const LANDMARK_RENDER: Readonly<Record<string, LandmarkRender>> = {
   sunkenShip: { def: 'sunkenShip', scale: 1, underwater: true },
   giantTree: { def: 'giantTree', scale: 1 },
   lonelyPalm: { def: 'palm', scale: 1.35 },
+  windTurbine: { def: 'windTurbine', scale: 1 },
 };

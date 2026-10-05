@@ -1,0 +1,88 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Coding island plan (TASK-363) > per-theme snapshot: Coding site data for seeds 1, 42, 1001 1`] = `
+[
+  {
+    "districts": [
+      "quad@-68.24,-42.84 14x25",
+      "solar@-46.43,-30.97 7.5x18",
+      "solar@-51.58,-65.5 13.5x18",
+      "solar@-61.72,-74.43 10.5x18",
+      "yard@-77.8,-64.85 7x13",
+      "garden@-36.16,-63.22 7x10",
+    ],
+    "fixtures": 53,
+    "lots": [
+      "devOffice@-72.32,-58.01",
+      "devPod@-77.6,-51.72",
+      "devOffice@-83.6,-46.12",
+      "devPod@-53.24,-39.91",
+      "devOffice@-58.52,-33.62",
+      "devPod@-64.53,-28.01",
+      "serverShed@-75.48,-68.17",
+      "serverShed@-80.99,-62.37",
+    ],
+    "seed": 1,
+    "turbines": [
+      "0@-43.45,-54.85",
+      "1@-68.26,-63.67",
+      "2@-38,-76",
+    ],
+  },
+  {
+    "districts": [
+      "quad@-19.77,-27.32 14x25",
+      "solar@5.69,-23.02 13.5x13",
+      "solar@-50.87,-21.54 10.5x18",
+      "solar@-12.31,1.68 16.5x13",
+      "solar@-39.92,1.37 13.5x18",
+      "yard@-5.53,-46.64 7x13",
+      "garden@-26.94,-6.52 7x10",
+    ],
+    "fixtures": 53,
+    "lots": [
+      "devOffice@-33.87,-20.38",
+      "devPod@-26.67,-16.42",
+      "devOffice@-20.01,-11.61",
+      "devPod@-19.8,-42.61",
+      "devOffice@-12.61,-38.65",
+      "devPod@-5.94,-33.84",
+      "serverShed@-8.58,-49.28",
+      "serverShed@-1.82,-45",
+    ],
+    "seed": 42,
+    "turbines": [
+      "1@-39.04,-24.75",
+      "0@-3.76,-10.88",
+      "2@-56,-4",
+    ],
+  },
+  {
+    "districts": [
+      "quad@105.91,16.79 14x25",
+      "solar@94.79,39.25 13.5x13",
+      "solar@87.26,52.12 19.5x13",
+      "solar@80.44,28.2 7.5x18",
+      "yard@118.8,37.04 7x13",
+      "garden@127.27,31.62 7x10",
+    ],
+    "fixtures": 54,
+    "lots": [
+      "devPod@91.06,20.4",
+      "devOffice@96.61,26.45",
+      "devPod@102.87,31.77",
+      "devPod@108.96,1.82",
+      "devOffice@115.21,7.14",
+      "devPod@120.77,13.19",
+      "serverShed@115.5,34.7",
+      "serverShed@121.26,40.25",
+    ],
+    "seed": 1001,
+    "turbines": [
+      "0@102.25,46.56",
+      "2@89.27,25.14",
+      "1@73.6,37.27",
+    ],
+  },
+]
+`;

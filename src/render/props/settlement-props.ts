@@ -177,8 +177,12 @@ export function appendSettlementProps(world: WorldData): {
       m.scale,
       lm.islandId,
       m.underwater ? heightAt(h, lm.x, lm.z) : undefined,
-      // an override past the def's variants (geometry not landed yet) is ignored
-      ov !== undefined && ov < def.variants ? ov : rolled,
+      // a planner / theme override past the def's variants (geometry not landed yet) is ignored
+      lm.variant !== undefined && lm.variant < def.variants
+        ? lm.variant
+        : ov !== undefined && ov < def.variants
+          ? ov
+          : rolled,
     );
   }
   // docks: 2 u plank segments along the facing, planks at the waterline (pivot y = 0)
@@ -251,7 +255,10 @@ export function appendSettlementProps(world: WorldData): {
     const def = PROP_DEFS[PROP_DEF_INDEX[fx.defId]];
     if (!def) continue;
     const y = fx.defId === 'buoy' ? 0 : undefined;
-    push(fx.defId, fx.x, fx.z, yaw, 1, fx.islandId, y);
+    // rolled even when the planner chose one: keeps the decor stream of the world stable
+    const rolled = rng.int(0, def.variants - 1);
+    const v = fx.variant !== undefined && fx.variant < def.variants ? fx.variant : rolled;
+    push(fx.defId, fx.x, fx.z, yaw, 1, fx.islandId, y, v);
   }
   // plaza decor (every campus quad): bunting across + benches + lanterns at the plaza edge
   for (const st of world.settlements) {

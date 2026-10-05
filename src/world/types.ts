@@ -286,6 +286,8 @@ export interface LandmarkData {
   z: number;
   rotY: number;
   islandId: number;
+  /** Geometry variant chosen by the planner (e.g. Coding turbine heights); unset = theme / rolled. */
+  variant?: number;
 }
 
 /** Dock: starts on the shore at (x, z) and runs `segments` × 2 u along (cos rotY, sin rotY). */
@@ -315,6 +317,8 @@ export interface FixtureData {
   z: number;
   rotY: number;
   islandId: number;
+  /** Geometry variant chosen by the planner (e.g. straight vs corner kerb); unset = rolled. */
+  variant?: number;
 }
 
 export interface SettlementData {

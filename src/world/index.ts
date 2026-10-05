@@ -72,19 +72,23 @@ export const STAGE_HASH_KEYS = [
   'props',
 ] as const;
 
-/** District kind of a profile patch rectangle on a 'districts' patchwork theme (Coding solar farm). */
-const PATCH_DISTRICT: DistrictKind = 'solar';
-
-/** Profile patch rectangles of 'districts' patchwork themes, as districts (M14b). */
+/**
+ * Profile patch rectangles of 'districts' patchwork themes with a `patchDistrict` kind, as
+ * districts of that kind (M14b). Themes without one emit their districts from their planner.
+ */
 function patchDistricts(
   islands: readonly IslandData[],
   fields: readonly FieldPatchData[],
 ): DistrictData[] {
+  const kindOf = (f: FieldPatchData): DistrictKind | undefined => {
+    const t = THEMES[islands[f.islandId].theme];
+    return t.patchwork === 'districts' ? t.patchDistrict : undefined;
+  };
   return fields
-    .filter((f) => THEMES[islands[f.islandId].theme].patchwork === 'districts')
+    .filter((f) => kindOf(f) !== undefined)
     .map((f) => ({
       islandId: f.islandId,
-      kind: PATCH_DISTRICT,
+      kind: kindOf(f) as DistrictKind,
       x: f.x,
       z: f.z,
       rotY: f.rotY,
