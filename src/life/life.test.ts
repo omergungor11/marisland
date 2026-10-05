@@ -96,7 +96,10 @@ describe('life: framework + determinism', () => {
       r.life.onTier(3);
       run(r, 5);
       r.life.update(FIXED_STEP, 0.5);
-      expect(r.counters.agents).toBeLessThanOrEqual(QUALITY_PRESETS[q].agentCap);
+      // D-028 caps (phase-3 plan §6): QUALITY_PRESETS.agentCap is raised with the budgets (TASK-309)
+      const cap = { low: 25, medium: 60, high: 110 }[q];
+      expect(QUALITY_PRESETS[q].agentCap).toBeGreaterThan(0);
+      expect(r.counters.agents).toBeLessThanOrEqual(cap);
       expect(r.life.stats.agents).toBe(r.counters.agents);
     }
   });

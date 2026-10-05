@@ -142,7 +142,7 @@ export function buildWorker(): THREE.BufferGeometry {
   for (const side of [1, -1]) {
     b.setLimb(-1.3 * side, SHOULDER_Y, 0.26 * side, 7);
     b.box(v3(0, 0.37, 0.255 * side), 0.045, 0.13, 0.045, WHITE);
-    b.ellipsoid(v3(0, 0.25, 0.255 * side), 0.058, 0.055, 0.058, 5, 3, () => hex(W.hand));
+    b.box(v3(0, 0.25, 0.255 * side), 0.055, 0.045, 0.055, hex(W.hand));
   }
   b.clearLimb();
   // head: monitor with a dark face, glowing eyes, blush
@@ -150,9 +150,7 @@ export function buildWorker(): THREE.BufferGeometry {
   b.box(v3(HEAD_HX + 0.004, HEAD_Y - 0.005, 0), 0.01, 0.145, 0.2, dark);
   b.setEmissive(2);
   for (const side of [1, -1])
-    b.ellipsoid(v3(HEAD_HX + 0.018, HEAD_Y + 0.025, 0.085 * side), 0.012, 0.055, 0.04, 5, 3, () =>
-      hex(W.eye),
-    );
+    b.box(v3(HEAD_HX + 0.016, HEAD_Y + 0.025, 0.085 * side), 0.012, 0.05, 0.034, hex(W.eye));
   b.setEmissive(0);
   for (const side of [1, -1])
     b.ellipsoid(v3(HEAD_HX + 0.016, HEAD_Y - 0.055, 0.15 * side), 0.008, 0.025, 0.04, 4, 2, () =>
@@ -191,7 +189,7 @@ function accessories(b: TriBuilder): void {
 
   // 1 Coding: hood + chunky headphones
   tag(1);
-  b.ellipsoid(v3(-0.05, HEAD_Y + 0.07, 0), 0.215, 0.2, 0.285, 6, 3, () => hex(A.hood));
+  b.ellipsoid(v3(-0.06, HEAD_Y + 0.08, 0), 0.22, 0.25, 0.3, 7, 4, () => hex(A.hood));
   b.box(v3(-0.02, HEAD_TOP + 0.075, 0), 0.03, 0.012, 0.25, hex(A.phoneBand));
   for (const side of [1, -1])
     b.ellipsoid(v3(0, HEAD_Y, 0.31 * side), 0.085, 0.085, 0.035, 6, 3, () => hex(A.phoneCup));

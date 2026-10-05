@@ -4,7 +4,7 @@ import { FIXED_STEP } from '../core/clock.ts';
 import { Scope } from '../core/scope.ts';
 import { QUALITY_PRESETS } from '../core/quality.ts';
 import type { Quality } from '../core/params.ts';
-import { CATS, CRABS, LAND, LIFE_PLAN, SHEEP, VILLAGERS } from '../content/life.ts';
+import { CATS, CRABS, LAND, LIFE_PLAN, SHEEP, VILLAGERS, type LifePlan } from '../content/life.ts';
 import { generateWorld, heightAt, Zone, type WorldData } from '../world/index.ts';
 import { createLife, type LifeSystem } from './index.ts';
 import type { LandKind } from './land.ts';
@@ -31,7 +31,17 @@ interface Rig {
   counters: { agents: number };
 }
 
-function rig(seed: number, quality: Quality = 'medium', cam = new THREE.Vector3(0, 40, 0)): Rig {
+/** Phase 3 moved the villagers to 0 (workers replace them); the villager suite keeps the old counts. */
+const LEGACY_VILLAGERS = { low: 3, medium: 5, high: 9 } as const;
+/** D-028 agent caps (phase-3 plan §6); `QUALITY_PRESETS.agentCap` is raised with the budgets (TASK-309). */
+export const AGENT_CAP = { low: 25, medium: 60, high: 110 } as const;
+
+function rig(
+  seed: number,
+  quality: Quality = 'medium',
+  cam = new THREE.Vector3(0, 40, 0),
+  plan: Partial<LifePlan> = { villagers: LEGACY_VILLAGERS[quality] },
+): Rig {
   const tier = { v: 0 };
   const scope = new Scope('land-test');
   const counters = { agents: 0 };
@@ -44,6 +54,7 @@ function rig(seed: number, quality: Quality = 'medium', cam = new THREE.Vector3(
     counters: counters as never,
     getTier: () => tier.v,
     cameraPos: cam,
+    plan,
   });
   return { life, scope, cam, tier, counters };
 }
@@ -78,18 +89,20 @@ describe('land: spawning', () => {
   it('spawns per island from what it offers, within the per-quality plan', () => {
     for (const seed of SEEDS) {
       for (const q of ['low', 'medium', 'high'] as const) {
-        const r = rig(seed, q);
+        const r = rig(seed, q, undefined, {});
         const plan = LIFE_PLAN[q];
         const k = r.life.kinds;
-        expect(k.villagers?.capacity ?? 0).toBeLessThanOrEqual(plan.villagers);
+        expect(plan.villagers).toBe(0);
+        expect(k.villagers).toBeUndefined();
+        expect(k.workers?.capacity ?? 0).toBeLessThanOrEqual(plan.workers);
         expect(k.cats?.capacity ?? 0).toBeLessThanOrEqual(plan.cats);
         expect(k.sheep?.capacity ?? 0).toBeLessThanOrEqual(plan.sheep);
         expect(k.crabs?.capacity ?? 0).toBeLessThanOrEqual(plan.crabs);
-        // every seed has a village and a beach: villagers and crabs always exist
-        expect(k.villagers?.capacity ?? 0).toBeGreaterThan(0);
+        // every seed has a village and a beach: workers and crabs always exist
+        expect(k.workers?.capacity ?? 0).toBeGreaterThan(0);
         expect(k.crabs?.capacity ?? 0).toBeGreaterThan(0);
         console.info(
-          `seed ${seed} ${q}: villagers ${k.villagers?.capacity ?? 0}, cats ${k.cats?.capacity ?? 0}, sheep ${k.sheep?.capacity ?? 0}, crabs ${k.crabs?.capacity ?? 0}`,
+          `seed ${seed} ${q}: workers ${k.workers?.capacity ?? 0}, cats ${k.cats?.capacity ?? 0}, sheep ${k.sheep?.capacity ?? 0}, crabs ${k.crabs?.capacity ?? 0}`,
         );
       }
     }
@@ -334,15 +347,14 @@ describe('land: budgets, picking feed, geometry', () => {
   it('stays under the agent cap with everything alive at tier 3', () => {
     for (const seed of SEEDS) {
       for (const q of ['low', 'medium', 'high'] as const) {
-        const r = rig(seed, q);
+        const r = rig(seed, q, undefined, {});
         r.tier.v = 3;
         r.life.onTier(3);
         run(r, 5);
         r.life.update(FIXED_STEP, 0.5);
-        console.info(
-          `seed ${seed} ${q}: agents ${r.counters.agents} / ${QUALITY_PRESETS[q].agentCap}`,
-        );
-        expect(r.counters.agents).toBeLessThanOrEqual(QUALITY_PRESETS[q].agentCap);
+        console.info(`seed ${seed} ${q}: agents ${r.counters.agents} / ${AGENT_CAP[q]}`);
+        expect(r.counters.agents).toBeLessThanOrEqual(AGENT_CAP[q]);
+        expect(QUALITY_PRESETS[q].agentCap).toBeGreaterThan(0);
         const land = landOf(r.life).reduce((n, k) => n + k.liveCount, 0);
         expect(land).toBeGreaterThan(0);
       }

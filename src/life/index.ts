@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CATS, CRABS, GULLS, LIFE_PLAN, SHEEP } from '../content/life.ts';
+import { CATS, CRABS, GULLS, LIFE_PLAN, SHEEP, VILLAGERS, WORKER_ZONES } from '../content/life.ts';
 import type { System } from '../core/loop.ts';
 import { AmbientScheduler } from './ambient.ts';
 import {
@@ -19,6 +19,7 @@ import type { Cats, Crabs, Sheep, Villagers } from './land.ts';
 import { Fireflies, planSwarms } from './fireflies.ts';
 import { createLandKinds, type LandKind } from './land.ts';
 import { buildSolids, buildWalkGraph, makeMask } from './land-world.ts';
+import { createWorkers, type Workers } from './workers.ts';
 
 export type { LifeDeps } from './ctx.ts';
 export { AmbientScheduler } from './ambient.ts';
@@ -55,6 +56,8 @@ export interface LifeSystem extends System {
     cats?: Cats;
     sheep?: Sheep;
     crabs?: Crabs;
+    /** Department workers (Phase 3): replace the villagers; alive from tier 2, sit and type at desks. */
+    workers?: Workers;
     /** Night fireflies: render-rate particles (not an agent: excluded from `stats.agents`). */
     fireflies?: Fireflies;
   };
@@ -64,7 +67,7 @@ export interface LifeSystem extends System {
 
 export function createLife(deps: LifeDeps): LifeSystem {
   const ctx = makeCtx(deps);
-  const plan = LIFE_PLAN[deps.quality];
+  const plan = { ...LIFE_PLAN[deps.quality], ...deps.plan };
   const group = new THREE.Group();
   group.name = 'life';
   const base = { seed: deps.seed, scope: deps.scope, group, cameraPos: deps.cameraPos };
@@ -125,8 +128,9 @@ export function createLife(deps: LifeDeps): LifeSystem {
   }
 
   const solids = buildSolids(ctx);
+  const graph = buildWalkGraph(ctx);
   const land = createLandKinds(base, ctx, plan, {
-    graph: buildWalkGraph(ctx),
+    graph,
     masks: {
       sheep: makeMask(ctx, solids, SHEEP.zones),
       cats: makeMask(ctx, solids, CATS.zones),
@@ -134,9 +138,17 @@ export function createLife(deps: LifeDeps): LifeSystem {
     },
   });
   Object.assign(kinds, land);
-  const landKinds: LandKind[] = [land.villagers, land.cats, land.sheep, land.crabs].filter(
-    (k): k is NonNullable<typeof k> => k !== undefined,
-  );
+  kinds.workers = createWorkers(base, ctx, plan, {
+    graph,
+    mask: makeMask(ctx, solids, WORKER_ZONES, -VILLAGERS.minWalkY),
+  });
+  const landKinds: LandKind[] = [
+    land.villagers,
+    kinds.workers,
+    land.cats,
+    land.sheep,
+    land.crabs,
+  ].filter((k): k is NonNullable<typeof k> => k !== undefined);
   all.push(...landKinds);
 
   const swarms = planSwarms(ctx, plan.fireflies, ctx.rngFor('fireflies'));
@@ -208,6 +220,7 @@ export function createLife(deps: LifeDeps): LifeSystem {
     },
     setDocksHidden(docks) {
       kinds.villagers?.setDocksHidden(docks);
+      kinds.workers?.setDocksHidden(docks);
       // dock perches come first, one per dock (see `perches` above)
       const nDocks = (ctx.world.docks ?? []).length;
       for (let p = 0; p < nDocks; p++) kinds.gulls?.setPerchOff(p, docks.has(p));

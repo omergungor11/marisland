@@ -232,7 +232,12 @@ export function createInteraction(d: InteractionDeps): Interaction {
 
   // ---- agents
   const sources: AgentSource[] = [];
-  for (const [name, o] of Object.entries(PICK.agents)) {
+  // workers (Phase 3) are pickable like the villagers they replace; content/anim.ts may list them too
+  const agentPicks: [string, readonly [number, number] | null | undefined][] = Object.entries(
+    PICK.agents,
+  );
+  if (!('workers' in PICK.agents)) agentPicks.push(['workers', null]);
+  for (const [name, o] of agentPicks) {
     const k = kinds[name];
     if (!k) continue;
     if (o) {
@@ -368,7 +373,10 @@ export function createInteraction(d: InteractionDeps): Interaction {
   };
 
   const specFor = (hit: PickHit): ReactionSpec => {
-    const key = hit.kind === 'prop' ? PROP_REACTIONS[hit.name] : AGENT_REACTIONS[hit.name];
+    const key =
+      hit.kind === 'prop'
+        ? PROP_REACTIONS[hit.name]
+        : (AGENT_REACTIONS[hit.name] ?? (hit.name === 'workers' ? 'villager' : undefined));
     return REACTION_PRESETS[key ?? 'generic'] ?? REACTION_PRESETS.generic;
   };
 
@@ -450,9 +458,11 @@ export function createInteraction(d: InteractionDeps): Interaction {
     const key = `${hit.kind}:${hit.name}:${hit.instanceIndex}`;
     reactions.trigger(key, specFor(hit), target, anchorOf(hit), reduced);
     if (hit.kind === 'prop') reacting.add(hit.instanceIndex);
-    // the villager's `emote` reaction also drives its wave state (interaction → life API)
-    if (hit.kind === 'agent' && hit.name === 'villagers' && !reduced)
-      wv.life.kinds.villagers?.wave(hit.id);
+    // the villager's / worker's `emote` reaction also drives its wave state (interaction → life API)
+    if (hit.kind === 'agent' && !reduced) {
+      if (hit.name === 'villagers') wv.life.kinds.villagers?.wave(hit.id);
+      else if (hit.name === 'workers') wv.life.kinds.workers?.wave(hit.id);
+    }
     d.events.emit('picked', { kind: `${hit.kind}:${hit.name}`, id: hit.id });
     return hit;
   };
