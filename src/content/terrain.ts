@@ -85,13 +85,50 @@ export const TERRAIN_AO = {
   sandScale: 0.35,
 } as const;
 
+/**
+ * Cliff facets (M14b risk #1, TASK-371): on steep ground the shading normal blends to the flat
+ * normal of the 2 u grid triangle under the fragment (independent of the mesh level, so no LOD
+ * pop), keeping cliffs carved while hills stay smooth. `ny` = facet normal y: smooth above
+ * ny[1], fully faceted below ny[0].
+ */
+export const TERRAIN_FACETS = {
+  ny: [0.55, 0.75] as const,
+} as const;
+
+/**
+ * Distance LOD (M14b D-030, TASK-371). Chunks pick a mesh level by camera distance (u, to the
+ * chunk's bounding box), not by tier. The world grid stays 2 u; every level samples the smooth
+ * Catmull-Rom surface (shared/terrain-sample.ts).
+ */
 export const TERRAIN_LOD = {
-  /** Sample stride per LOD (×2 u). */
-  strides: [1, 2] as const,
-  /** Skirt depth below the lower edge vertex, u (+ half the edge height delta). */
+  /** Mesh stride per level in u, coarse → fine. */
+  strides: [4, 2, 1, 0.5] as const,
+  /** bands[k]: distance below which level k + 1 replaces level k (4 u ≥ 300, 2 u ≥ 120, 1 u ≥ 40). */
+  bands: [300, 120, 40] as const,
+  /** Switch finer below band × (1 − h), coarser above band × (1 + h). */
+  hysteresis: 0.1,
+  /**
+   * Geomorph: odd vertices of level k blend to level k − 1 over this fraction of the band's
+   * length, ending at band × (1 − h), so a level switch never moves a vertex.
+   */
+  morph: 0.2,
+  /** Finest level per quality: low 2 u, medium 1 u, high 0.5 u. */
+  finest: { low: 1, medium: 2, high: 3 } as const,
+  /** At most this many chunks at 0.5 u (the nearest win). */
+  finestMaxChunks: 9,
+  /** Interactive: a level is built ahead once the chunk is within band × (1 + prefetch). */
+  prefetch: 0.35,
+  /**
+   * Cached chunk meshes per level (LRU; levels 0–1 are never evicted, nor a level drawn or wanted
+   * this frame). 0.5 u: a 64 u chunk box within 36 u of the camera → at most 4 drawn.
+   */
+  cache: [Infinity, Infinity, 20, 6] as const,
+  /** Interactive level builds per frame (capture builds synchronously). */
+  buildsPerFrame: 2,
+  /** Merge rule: an island's chunks draw as ONE mesh of this level while all of them are at it. */
+  mergeLevel: 0,
+  /** Skirt depth below the edge vertex, u (+ half the larger height step along the edge). */
   skirt: 2,
-  /** Skirt top sits this far below the edge so it never z-fights the surface. */
-  skirtInset: 0.15,
   /** Chunks whose every sample is below this are skipped (deep sea). */
   skipBelow: -35,
 } as const;

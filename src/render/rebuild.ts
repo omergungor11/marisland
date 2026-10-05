@@ -23,6 +23,7 @@ import {
  * 3. terrain chunks: queued (region chunks ∪ chunks within `chunkPadCells` of the bounds ∪
  *    chunks under the samples whose colour inputs changed — `TextureUpdateStats.colorRect`) and
  *    remeshed ≤ `EDIT_RENDER.chunksPerFrame` per frame in `update` — or all at once in capture.
+ *    A remesh covers every cached LOD level of the chunk and its island merge (TASK-371).
  *    Each chunk refreshes only its colour samples inside the accumulated colour rect.
  * Results depend only on the world data (no clocks / randomness): a rebuilt chunk equals the same
  * chunk built at boot from the edited world.
@@ -113,6 +114,8 @@ export function createRebuilder(d: RebuildDeps): Rebuilder {
   /** Per queued chunk: colour samples to refresh (null = geometry / skirts only). */
   const colors: (TexRect | null)[] = new Array(N * N).fill(null);
   const perFrame = d.chunksPerFrame ?? EDIT_RENDER.chunksPerFrame;
+  // capture (`freeze=1`): terrain LOD levels are built synchronously too (TASK-371)
+  if (d.instant) d.terrain.instant = true;
   const enqueue = (id: number, color: TexRect | null): void => {
     colors[id] = unionRect(colors[id], color);
     if (queued[id]) return;
