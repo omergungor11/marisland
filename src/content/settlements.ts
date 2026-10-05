@@ -5,9 +5,15 @@
  * Def ids match content/props*.ts. rotY convention everywhere: facing
  * direction (cos rotY, sin rotY) in the xz plane (same as windDir / anchors).
  */
-import type { LotKind } from '../world/types.ts';
+import type { LotKind, LotRole, ThemeId } from '../world/types.ts';
+import { OFFICE_DEFS } from './offices.ts';
 
-/** Building footprints in u: [width (across the facing), depth (along the facing)]. */
+const OFFICE_IDS = Object.keys(OFFICE_DEFS);
+
+/**
+ * Building footprints in u: [width (across the facing), depth (along the facing)]. Themed
+ * office lots come from content/offices.ts OFFICE_DEFS (w, d).
+ */
 export const LOT_FOOTPRINT: Readonly<Record<string, readonly [number, number]>> = {
   cottage: [3, 3],
   stiltHut: [3, 3],
@@ -15,9 +21,15 @@ export const LOT_FOOTPRINT: Readonly<Record<string, readonly [number, number]>> 
   barn: [6, 4],
   logCabin: [4, 3],
   marketStall: [2, 1.5],
+  ...Object.fromEntries(
+    OFFICE_IDS.map((id): [string, readonly [number, number]] => [
+      id,
+      [OFFICE_DEFS[id].w, OFFICE_DEFS[id].d],
+    ]),
+  ),
 };
 
-/** Lot def → lot kind. */
+/** Lot def → lot kind (themed lots: OFFICE_DEFS kind). */
 export const LOT_KIND: Readonly<Record<string, LotKind>> = {
   cottage: 'house',
   stiltHut: 'hut',
@@ -25,6 +37,24 @@ export const LOT_KIND: Readonly<Record<string, LotKind>> = {
   barn: 'barn',
   logCabin: 'cabin',
   marketStall: 'stall',
+  ...Object.fromEntries(OFFICE_IDS.map((id): [string, LotKind] => [id, OFFICE_DEFS[id].kind])),
+};
+
+/**
+ * Campus role of a themed lot by kind (LotData.role). Legacy (non-OFFICE_DEFS) lots are
+ * 'legacy'; the first office-role lot of a settlement (its archetype building, or the office
+ * nearest the quad) becomes 'main'.
+ */
+export const LOT_ROLE_BY_KIND: Readonly<Partial<Record<LotKind, LotRole>>> = {
+  office: 'office',
+  studio: 'office',
+  lab: 'office',
+  outpost: 'office',
+  hut: 'office',
+  tower: 'annex',
+  shed: 'annex',
+  kiosk: 'kiosk',
+  pavilion: 'pavilion',
 };
 
 /**
@@ -40,10 +70,44 @@ export const LOT_ROOFS: Readonly<Record<string, readonly number[]>> = {
   barn: [5, 0],
   logCabin: [3, 6],
   marketStall: [0, 2, 3],
+  // themed lots: 2 variants each (OFFICE_DEFS.variants); the defs of one theme use different
+  // pairs so mixed neighbours have room to differ
+  hqOffice: [0, 3],
+  hqAnnex: [5, 1],
+  meetingPavilion: [2, 6],
+  coffeeKiosk: [0, 4],
+  devOffice: [5, 2],
+  devPod: [3, 6],
+  serverShed: [4, 0],
+  broadcastStudio: [1, 3],
+  billboard: [0, 4],
+  testLab: [6, 2],
+  inspectionTower: [1, 3],
+  testLabStilt: [2, 6],
+  atelier: [4, 1],
+  galleryPavilion: [3, 6],
+  dataCenter: [2, 5],
+  rackShed: [0, 3],
+  antennaMast: [1, 4],
+  researchHut: [2, 0],
 };
 
-/** Lot kinds that take part in the roof-colour rule (stall awnings are striped, not roofs). */
-export const ROOFED_KINDS: readonly LotKind[] = ['house', 'tower', 'hut', 'barn', 'cabin'];
+/**
+ * Lot kinds that take part in the roof-colour rule (stall awnings are striped, not roofs;
+ * kiosks and pavilions are open canopies).
+ */
+export const ROOFED_KINDS: readonly LotKind[] = [
+  'house',
+  'tower',
+  'hut',
+  'barn',
+  'cabin',
+  'office',
+  'studio',
+  'lab',
+  'shed',
+  'outpost',
+];
 
 export interface LandmarkSpec {
   /** Occupancy / overlap radius in u (null = no occupancy, e.g. the crater). */
@@ -70,6 +134,7 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   buoy: 0.5,
   tidePool: 1,
   messageBottle: 0.3,
+  telescope: 0.8,
 };
 
 /** Flatten pads (plateau with smooth falloff). */
@@ -93,20 +158,14 @@ export const VILLAGE = {
   plazaSearch: 25,
   searchGrow: 10,
   plazaMinShore: 6,
-  /** Cottage count range. */
-  cottages: [10, 16] as const,
   /** Gap between neighbouring lots (u). */
   lotGap: 1.5,
-  /** Lot centre distance from the lane centreline. */
-  laneOffset: 3.6,
+  /** Lane centreline → lot front edge (u): lot centre at laneClear + depth / 2. */
+  laneClear: 2.1,
   /** Spacing jitter along lanes (u). */
   laneJitter: 1.2,
-  /** Max lane length from the plaza centre. */
-  laneLength: 36,
   /** Lot centres need at least this shore distance (cores stay on land). */
   lotMinShore: 6,
-  /** Max height range over a lot footprint before flattening (u). */
-  lotMaxRelief: 1.6,
   stiltHuts: [2, 4] as const,
   /** Stilt-hut water: depth range and shore distance range (u). */
   /** (Task asked 0.8–2 u at 2–5 u; the 8–12 u shelf is only ≈ 0.6 u deep at 5 u, so 0.5–2 at 2–7.) */
@@ -119,8 +178,6 @@ export const VILLAGE = {
   /** Bay test: of 12 rays (length bayRay u) at least this many hit land; relaxed in order. */
   bayRay: 45,
   bayEnclosure: [7, 5, 3] as const,
-  /** Lane directions (degrees from the harbour lane), tried in order until the cottage target is met. */
-  lanes: [0, 75, -75, 140, -140, 35, -35, 108, -108, 160, -160, 55, -55] as const,
   stalls: [2, 3] as const,
   /**
    * Lots whose centres are closer than this (u) are neighbours for the roof-colour rule:
@@ -155,6 +212,143 @@ export const OUTPOSTS = {
   /** Palmlagoon tide pools. */
   tidePools: [2, 3] as const,
   tidePoolSpacing: 10,
+} as const;
+
+/** Campus planner tuning per department (Phase 3, TASK-302, plan §4.1). */
+export interface CampusSpec {
+  /** Lots the campus planner adds (lanes + ring fill), on top of the archetype's own lots. */
+  lots: readonly [number, number];
+  /** Quad (Zone.plaza disc) radius. HQ uses the Hearthholm plaza (VILLAGE.plazaRadius). */
+  quadR: number;
+  /** Quad search radius around the archetype hub (grows by VILLAGE.searchGrow, 5 steps). */
+  quadSearch: number;
+  quadMinShore: number;
+  /** Max height range over the quad disc before flattening (u). */
+  quadMaxRelief: number;
+  /** Quad score adds this × (1 − leewardness): prefer the lee side. */
+  quadLee: number;
+  /** Lot centres: min shore distance; max footprint relief before flattening (u). */
+  minShore: number;
+  maxRelief: number;
+  /** Lane directions (deg from the quad → hub / harbour heading), tried in order. */
+  lanes: readonly number[];
+  /** Max lane length from the quad centre (u). */
+  laneLength: number;
+  /** Ring fill around the quad once the lanes run out of room: [inner, outer] past quadR (u). */
+  ring: readonly [number, number];
+  /** Max footprint samples (centre + corners) on Zone.field (Millbrook farm logic). */
+  maxFieldSamples: number;
+}
+
+const LANES = [0, 75, -75, 140, -140, 35, -35, 108, -108, 160, -160];
+
+/**
+ * Per department (plan §4.1). HQ is the Hearthholm village (plaza, harbour lane, stalls,
+ * stilt huts) with themed lane lots; Research is the Lonely Palm outpost (RESEARCH_OUTPOST).
+ */
+export const CAMPUS: Readonly<Record<Exclude<ThemeId, 'research'>, CampusSpec>> = {
+  hq: {
+    lots: [10, 15],
+    quadR: 6,
+    quadSearch: 25,
+    quadMinShore: 6,
+    quadMaxRelief: 99,
+    quadLee: 0,
+    minShore: 6,
+    maxRelief: 1.6,
+    lanes: [...LANES, 55, -55],
+    laneLength: 36,
+    ring: [3, 14],
+    maxFieldSamples: 5,
+  },
+  coding: {
+    lots: [5, 8],
+    quadR: 5,
+    quadSearch: 20,
+    quadMinShore: 8,
+    quadMaxRelief: 1.5,
+    quadLee: 0,
+    minShore: 5,
+    maxRelief: 1.8,
+    lanes: LANES,
+    laneLength: 30,
+    ring: [3, 14],
+    maxFieldSamples: 1,
+  },
+  devops: {
+    lots: [5, 8],
+    quadR: 4,
+    quadSearch: 30,
+    quadMinShore: 6,
+    quadMaxRelief: 3,
+    quadLee: 6,
+    minShore: 4,
+    maxRelief: 4,
+    lanes: LANES,
+    laneLength: 26,
+    ring: [3, 22],
+    maxFieldSamples: 5,
+  },
+  qa: {
+    lots: [4, 6],
+    quadR: 3.5,
+    quadSearch: 40,
+    quadMinShore: 3.5,
+    quadMaxRelief: 2,
+    quadLee: 0,
+    minShore: 2,
+    maxRelief: 2,
+    lanes: LANES,
+    laneLength: 30,
+    ring: [3, 26],
+    maxFieldSamples: 5,
+  },
+  design: {
+    lots: [4, 6],
+    quadR: 4,
+    quadSearch: 25,
+    quadMinShore: 6,
+    quadMaxRelief: 2.5,
+    quadLee: 0,
+    minShore: 4,
+    maxRelief: 2.5,
+    lanes: LANES,
+    laneLength: 26,
+    ring: [3, 20],
+    maxFieldSamples: 5,
+  },
+  marketing: {
+    lots: [1, 3],
+    quadR: 3.5,
+    quadSearch: 18,
+    quadMinShore: 4.5,
+    quadMaxRelief: 4,
+    quadLee: 0,
+    minShore: 3,
+    maxRelief: 3.5,
+    lanes: [0, 90, -90, 180],
+    laneLength: 18,
+    ring: [2.5, 12],
+    maxFieldSamples: 5,
+  },
+};
+
+/** Lonely Palm research outpost (plan §4.1): one hut + telescope, a short carved dock. */
+export const RESEARCH_OUTPOST = {
+  def: 'researchHut',
+  /** Hut centre at least this far from the palm (u). */
+  palmClear: 4,
+  /**
+   * W9 view line through the palm along the hero heading (camera/poses.ts heroAzimuth, D-019).
+   * Hut and telescope stay outside ±viewClearDeg of it, in front of and behind the palm.
+   */
+  viewClearDeg: 25,
+  minShore: 0.6,
+  maxRelief: 0.6,
+  /** Telescope beside the hut: gap past the hut side (u). */
+  telescopeGap: 1.4,
+  dockSegments: 3,
+  rowboats: 1,
 } as const;
 
 /** Docks (ARCHITECTURE §2 step 5: water > 2 u deep within reach of the shore). */

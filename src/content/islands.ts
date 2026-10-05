@@ -199,13 +199,17 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
   },
   lonelypalm: {
     displayName: 'Lonely Palm',
-    diameter: [10, 16],
+    /**
+     * Phase 3 (TASK-302): 17–21 u (bible 10–16) so the Research hut fits ≥ 4 u from the palm on
+     * pad-safe sand; reachScale 1.6 → 1.3 keeps the W9 hero fit (ring = reach + 8 u ≤ maxDist 50).
+     */
+    diameter: [17, 21],
     sizeClass: 'tiny',
     peak: [0.55, 0.65],
     heightClass: 'flat',
     colorClass: 'sand',
     boundsScale: 2.2,
-    reachScale: 1.6,
+    reachScale: 1.3,
     shelfWidth: 5,
     beachWidth: 4,
     beachMax: 0.6,

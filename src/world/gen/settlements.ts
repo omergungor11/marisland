@@ -1,19 +1,26 @@
 import type { Rng } from '../../core/rng.ts';
 import { hashInts } from '../../core/hash.ts';
-import { smoothstep } from '../../core/math/index.ts';
+import { clamp, smoothstep } from '../../core/math/index.ts';
+import { FRAMING } from '../../content/camera.ts';
 import {
+  CAMPUS,
   DOCK,
   FIXTURE_RADIUS,
   FLATTEN,
   LANDMARKS,
   LOT_FOOTPRINT,
   LOT_KIND,
+  LOT_ROLE_BY_KIND,
   LOT_ROOFS,
   OUTPOSTS,
   PATHS,
+  RESEARCH_OUTPOST,
   ROOFED_KINDS,
   VILLAGE,
+  type CampusSpec,
 } from '../../content/settlements.ts';
+import { OFFICE_DEFS } from '../../content/offices.ts';
+import { THEMES } from '../../content/themes.ts';
 import type {
   WorldData,
   DockData,
@@ -178,10 +185,14 @@ interface Ctx {
   zone: Uint8Array;
   islandMap: Uint8Array;
   windDir: number;
+  islands: readonly IslandData[];
   streams: StreamData[];
+  fields: readonly FieldPatchData[];
   net: PathNetwork;
   blocked: Uint8Array;
   hasNet: boolean[];
+  /** Per island: walkable land component of the campus quad (campus lots must stand on it). */
+  reach: (Uint8Array | null)[];
   pads: Pad[];
   /** Obstacles per island (lots, landmarks, fixtures, docks, plaza). */
   shapes: Shape[][];
@@ -253,12 +264,34 @@ function relief(ctx: Ctx, sh: Shape): number {
 }
 
 /** Shape fully on this island's land with at least `minShore` u of shore distance at its centre. */
-function onLand(ctx: Ctx, isl: IslandData, sh: Shape, minShore: number): boolean {
+/** The 4 grid samples around (x, z) are this island's land, so a pad raises all of them. */
+function cellOnLand(ctx: Ctx, isl: IslandData, x: number, z: number): boolean {
+  const fx = Math.floor((x - ctx.h.originX) / ctx.h.cellSize);
+  const fz = Math.floor((z - ctx.h.originZ) / ctx.h.cellSize);
+  if (fx < 0 || fz < 0 || fx >= ctx.n - 1 || fz >= ctx.n - 1) return false;
+  for (const i of [
+    fz * ctx.n + fx,
+    fz * ctx.n + fx + 1,
+    (fz + 1) * ctx.n + fx,
+    (fz + 1) * ctx.n + fx + 1,
+  ])
+    if (ctx.islandMap[i] !== isl.id + 1 || ctx.sdf[i] <= 0 || ctx.h.data[i] <= 0) return false;
+  return true;
+}
+
+/**
+ * Shape on this island's land with at least `minShore` u of shore distance at its centre and
+ * every corner at least `cornerMin` u above sea; rect corners also sit in all-land grid cells
+ * (the flatten pad then levels them — a water sample would drag a corner down).
+ */
+function onLand(ctx: Ctx, isl: IslandData, sh: Shape, minShore: number, cornerMin = 0.3): boolean {
   if (!onIsland(ctx, isl, sh.x, sh.z) || sdfAt(ctx, sh.x, sh.z) < minShore) return false;
   const pts =
     sh.r > 0 ? [0, 1, 2, 3, 4, 5].map((k) => add(sh, dirOf(k * 1.047), sh.r)) : shapeCorners(sh);
-  for (const p of pts)
-    if (!onIsland(ctx, isl, p.x, p.z) || heightAt(ctx.h, p.x, p.z) < 0.3) return false;
+  for (const p of pts) {
+    if (!onIsland(ctx, isl, p.x, p.z) || heightAt(ctx.h, p.x, p.z) < cornerMin) return false;
+    if (sh.r === 0 && !cellOnLand(ctx, isl, p.x, p.z)) return false;
+  }
   return true;
 }
 
@@ -302,22 +335,75 @@ function pushFixture(ctx: Ctx, isl: IslandData, defId: string, p: XZ, rotY: numb
   addShape(ctx, isl, discShape(p.x, p.z, r), true);
 }
 
+/** Theme swap (THEMES[theme].defSwap): legacy archetype lot def → the department's def. */
+const themedDef = (isl: IslandData, defId: string): string =>
+  THEMES[isl.theme].defSwap[defId] ?? defId;
+
+/** Footprint of `defId` after the theme swap. */
+const footprintOf = (isl: IslandData, defId: string): readonly [number, number] =>
+  LOT_FOOTPRINT[themedDef(isl, defId)];
+
+/** Footprint samples (centre + corners) on Zone.field. */
+function fieldSamples(ctx: Ctx, sh: Shape): number {
+  let c = 0;
+  for (const p of [{ x: sh.x, z: sh.z }, ...shapeCorners(sh)]) {
+    const i = cellOf(ctx, p.x, p.z);
+    if (i >= 0 && ctx.zone[i] === Zone.field) c++;
+  }
+  return c;
+}
+
+/** Lots keep off streams and never cover a crop-field patch centre. */
+function siteFree(ctx: Ctx, isl: IslandData, sh: Shape): boolean {
+  for (const f of ctx.fields)
+    if (f.islandId === isl.id && shapeDist(sh, f.x, f.z) <= 0) return false;
+  for (const s of ctx.streams) {
+    if (s.islandId !== isl.id) continue;
+    for (const q of s.points) if (shapeDist(sh, q.x, q.z) < OUTPOSTS.cabinStreamClear) return false;
+  }
+  return true;
+}
+
+/** Place a lot (def after the theme swap); −1 when it does not fit. */
 function tryLot(
   ctx: Ctx,
   isl: IslandData,
-  defId: string,
+  def: string,
   p: XZ,
   rotY: number,
   settlement: number,
-  opts: { minShore: number; maxRelief: number; water?: boolean; inPlaza?: boolean },
+  opts: {
+    minShore: number;
+    maxRelief: number;
+    water?: boolean;
+    inPlaza?: boolean;
+    /** Corner height floor before flattening (default 0.3; the sandbar outpost uses 0). */
+    cornerMin?: number;
+  },
 ): number {
+  const defId = themedDef(isl, def);
   const [w, d] = LOT_FOOTPRINT[defId];
   const sh = rectShape(p.x, p.z, rotY, w, d);
   if (!opts.water) {
-    if (!onLand(ctx, isl, sh, opts.minShore)) return -1;
+    if (!onLand(ctx, isl, sh, opts.minShore, opts.cornerMin)) return -1;
     if (relief(ctx, sh) > opts.maxRelief) return -1;
+    if (!siteFree(ctx, isl, sh)) return -1;
+    const reach = ctx.reach[isl.id];
+    if (reach) {
+      const door = add(p, dirOf(rotY), d / 2 + 1);
+      if (!reach[cellOf(ctx, p.x, p.z)] || !reach[cellOf(ctx, door.x, door.z)]) return -1;
+    }
   }
   if (!clear(ctx, isl, sh, VILLAGE.lotGap, opts.inPlaza)) return -1;
+  // a 2-variant office def cannot alternate roofs around a triangle of itself (D12)
+  if (OFFICE_DEFS[defId]) {
+    const near = ctx.lots.filter(
+      (l) => l.islandId === isl.id && l.defId === defId && dist(l, p) < VILLAGE.roofNeighbour,
+    );
+    for (let a = 0; a < near.length; a++)
+      for (let b = a + 1; b < near.length; b++)
+        if (dist(near[a], near[b]) < VILLAGE.roofNeighbour) return -1;
+  }
   addShape(ctx, isl, sh, true);
   if (!opts.water) addPad(ctx, isl, sh, FLATTEN.lotMargin);
   ctx.lots.push({
@@ -622,6 +708,346 @@ function linkLot(ctx: Ctx, plan: Plan, li: number): void {
 }
 
 // ---------------------------------------------------------------------------
+// Campus lanes (Phase 3): shared by the HQ village and every department campus.
+
+/** Weighted picker over a theme's lot mix. */
+function mixPicker(mix: readonly (readonly [string, number])[], rng: Rng): () => string {
+  let total = 0;
+  for (const [, w] of mix) total += w;
+  return () => {
+    let t = rng.next() * total;
+    for (const [d, w] of mix) {
+      t -= w;
+      if (t < 0) return d;
+    }
+    return mix[mix.length - 1][0];
+  };
+}
+
+const lotArea = (def: string): number => LOT_FOOTPRINT[def][0] * LOT_FOOTPRINT[def][1];
+
+/**
+ * Lot defs to try for one slot: the drawn def, then the smaller defs of the mix (fill) — never
+ * the crown def as a filler (it would crowd out the buildings; crownLot places one).
+ */
+function slotDefs(
+  first: string,
+  mix: readonly (readonly [string, number])[],
+  crown: string | null,
+): string[] {
+  const smaller = mix
+    .map(([d]) => d)
+    .filter((d) => d !== crown && lotArea(d) < lotArea(first))
+    .sort((a, b) => lotArea(b) - lotArea(a) || (a < b ? -1 : 1));
+  return [first, ...smaller];
+}
+
+interface LaneOpts {
+  /** Quad / plaza centre and radius; lanes start at its hub cell. */
+  centre: XZ;
+  quadR: number;
+  hubCell: number;
+  /** Heading of lane 0 (rad); `laneEnd` pins lane 0's far end (harbour pier, archetype hub). */
+  a0: number;
+  laneEnd: XZ | null;
+  spec: CampusSpec;
+  rng: Rng;
+  sIdx: number;
+}
+
+/**
+ * Lanes radiating from the quad (A* on the grid, added to the network) with lots from the
+ * theme's `lotMix` along both sides, facing the lane, until `target` lots stand. Extracted from
+ * the Hearthholm village (TASK-302). Returns the new lot indices.
+ */
+function layLanes(ctx: Ctx, isl: IslandData, o: LaneOpts, target = -1): number[] {
+  const { spec, rng } = o;
+  const goal = target >= 0 ? target : rng.int(spec.lots[0], spec.lots[1]);
+  const mix = THEMES[isl.theme].lotMix;
+  const pick = mixPicker(mix, rng);
+  const step = pathStep({ ...stepCtx(ctx, isl), stair: false });
+  const lots: number[] = [];
+  for (const off of spec.lanes) {
+    if (lots.length >= goal) break;
+    const a = o.a0 + (off * Math.PI) / 180;
+    let endCell = -1;
+    if (off === 0 && o.laneEnd) endCell = nearestPathCell(ctx, isl, o.laneEnd);
+    else
+      for (let L = spec.laneLength; L >= o.quadR + 10; L -= 4) {
+        const p = add(o.centre, dirOf(a), L);
+        if (!onIsland(ctx, isl, p.x, p.z) || sdfAt(ctx, p.x, p.z) < 3) continue;
+        endCell = nearestPathCell(ctx, isl, p);
+        if (endCell >= 0) break;
+      }
+    if (endCell < 0 || endCell === o.hubCell) continue;
+    const cells = gridAStar({
+      ...islandWindow(ctx, isl),
+      start: o.hubCell,
+      goal: endCell,
+      step,
+      hScale: 2,
+    });
+    if (!cells || cells.length < 3) continue;
+    addCellPath(ctx.net, cells, isl.id, 'path');
+    const lane = resample(
+      cells.map((c) => cellPos(ctx, c)),
+      1,
+      false,
+    );
+    ctx.lanes[isl.id].push(lane);
+    // lots along both sides, facing the lane; slot spacing follows the drawn footprints
+    let s = o.quadR + 2.6;
+    const total = lane.length - 1;
+    let drawn = [pick(), pick()];
+    while (s < total - 1 && lots.length < goal) {
+      const k = Math.min(total - 1, Math.floor(s));
+      const p = lane[k];
+      const t = unit(p, lane[k + 1]);
+      const nrm = { x: -t.z, z: t.x };
+      let wMax = 0;
+      for (let si = 0; si < 2; si++) {
+        if (lots.length >= goal) break;
+        const side = si === 0 ? 1 : -1;
+        const rotY = ang(-nrm.x * side, -nrm.z * side);
+        for (const def of slotDefs(drawn[si], mix, THEMES[isl.theme].crown)) {
+          const [w, d] = LOT_FOOTPRINT[def];
+          const c = add(p, nrm, side * (VILLAGE.laneClear + d / 2));
+          if (fieldSamples(ctx, rectShape(c.x, c.z, rotY, w, d)) > spec.maxFieldSamples) continue;
+          const li = tryLot(ctx, isl, def, c, rotY, o.sIdx, {
+            minShore: spec.minShore,
+            maxRelief: spec.maxRelief,
+          });
+          if (li >= 0) {
+            lots.push(li);
+            wMax = Math.max(wMax, w);
+            break;
+          }
+        }
+      }
+      const next = [pick(), pick()];
+      const wNext = Math.max(LOT_FOOTPRINT[next[0]][0], LOT_FOOTPRINT[next[1]][0]);
+      s += (wMax || wNext) / 2 + wNext / 2 + VILLAGE.lotGap + rng.range(0, VILLAGE.laneJitter);
+      drawn = next;
+    }
+  }
+  return lots;
+}
+
+/** The highest of `lots` that can hold the theme's crown def becomes the crown (like the tower house). */
+function crownLot(ctx: Ctx, isl: IslandData, lots: readonly number[]): void {
+  const crown = THEMES[isl.theme].crown;
+  if (!crown) return;
+  const [w, d] = LOT_FOOTPRINT[crown];
+  const y = (li: number): number => heightAt(ctx.h, ctx.lots[li].x, ctx.lots[li].z);
+  let ti = -1;
+  for (const li of lots) {
+    const l = ctx.lots[li];
+    if (l.w < w || l.d < d || l.kind === 'hut') continue;
+    if (ti < 0 || y(li) > y(ti)) ti = li;
+  }
+  if (ti < 0) return;
+  const lot = ctx.lots[ti];
+  lot.defId = crown;
+  lot.kind = LOT_KIND[crown];
+  lot.w = w;
+  lot.d = d;
+  const pad = ctx.pads.find((p) => p.shape.x === lot.x && p.shape.z === lot.z);
+  if (pad) pad.shape = rectShape(lot.x, lot.z, lot.rotY, w, d);
+}
+
+/**
+ * Walkable land (shore distance ≥ PATHS.minShore, 8-connected) reachable from the sample
+ * nearest `from`: lots on the far piece of a broken atoll ring could never link up.
+ */
+function walkableFrom(ctx: Ctx, isl: IslandData, from: XZ): Uint8Array | null {
+  const start = cellOf(ctx, from.x, from.z);
+  if (start < 0) return null;
+  const n = ctx.n;
+  const ok = (i: number): boolean =>
+    ctx.islandMap[i] === isl.id + 1 && ctx.sdf[i] >= PATHS.minShore;
+  const seen = new Uint8Array(n * n);
+  const stack = [start];
+  seen[start] = 1;
+  while (stack.length > 0) {
+    const c = stack.pop() as number;
+    const cx = c % n;
+    for (let dz = -1; dz <= 1; dz++)
+      for (let dx = -1; dx <= 1; dx++) {
+        const x = cx + dx;
+        const j = c + dz * n + dx;
+        if (x < 0 || x >= n || j < 0 || j >= seen.length || seen[j] || !ok(j)) continue;
+        seen[j] = 1;
+        stack.push(j);
+      }
+  }
+  return seen;
+}
+
+/**
+ * Best spot for one lot of `def` within `inner + spec.ring` of `centre`: every land sample,
+ * facing the centre or sideways, scored by relief then distance. Returns the lot index or −1.
+ */
+function placeNear(
+  ctx: Ctx,
+  isl: IslandData,
+  def: string,
+  centre: XZ,
+  inner: number,
+  spec: CampusSpec,
+  sIdx: number,
+): number {
+  const [w, d] = LOT_FOOTPRINT[def];
+  const r0 = inner + spec.ring[0];
+  let rot = 0;
+  const rots = new Map<number, number>();
+  const p = bestSample(ctx, isl, centre, r0 + spec.ring[1], (q, i) => {
+    if (ctx.sdf[i] < spec.minShore || dist(q, centre) < r0) return Infinity;
+    const f = unit(q, centre);
+    const a = ang(f.x, f.z);
+    let best = Infinity;
+    for (const r of [a, a + Math.PI / 2, a - Math.PI / 2]) {
+      const sh = rectShape(q.x, q.z, r, w, d);
+      if (fieldSamples(ctx, sh) > spec.maxFieldSamples || !onLand(ctx, isl, sh, spec.minShore))
+        continue;
+      const rel = relief(ctx, sh);
+      if (rel > spec.maxRelief || rel >= best) continue;
+      if (!clear(ctx, isl, sh, VILLAGE.lotGap) || !siteFree(ctx, isl, sh)) continue;
+      best = rel;
+      rot = r;
+    }
+    if (best === Infinity) return Infinity;
+    rots.set(i, rot);
+    return best + 0.08 * dist(q, centre);
+  });
+  if (!p) return -1;
+  const ci = cellOf(ctx, p.x, p.z);
+  return tryLot(ctx, isl, def, p, rots.get(ci) ?? 0, sIdx, {
+    minShore: spec.minShore,
+    maxRelief: spec.maxRelief,
+  });
+}
+
+/**
+ * Department campus on a non-HQ island (plan §4.1), after its archetype plan: a quad near the
+ * archetype hub (flattened, Zone.plaza, the settlement hub), lanes with `lotMix` lots, a ring
+ * fill around the quad when the lanes run out of room, the theme crown, links to the network.
+ */
+function planCampus(
+  ctx: Ctx,
+  isl: IslandData,
+  plan: Plan,
+  spec: CampusSpec,
+  rng: Rng,
+  sIdx: number,
+): void {
+  const target = rng.int(spec.lots[0], spec.lots[1]);
+  const quadShape = (p: XZ): Shape => discShape(p.x, p.z, spec.quadR);
+  let quad: XZ | null = null;
+  // second pass relaxed (×2 relief, 0.7 × shore): a rough quad beats none
+  for (let pass = 0; pass < 2 && !quad; pass++)
+    for (
+      let R = spec.quadSearch;
+      R <= spec.quadSearch + 5 * VILLAGE.searchGrow && !quad;
+      R += VILLAGE.searchGrow
+    ) {
+      const minShore = Math.max(spec.quadMinShore, spec.quadR + 1) * (pass ? 0.7 : 1);
+      const maxRelief = spec.quadMaxRelief * (pass ? 2 : 1);
+      quad = bestSample(ctx, isl, plan.hub, R, (p, i) => {
+        if (ctx.sdf[i] < minShore) return Infinity;
+        const sh = quadShape(p);
+        const r = relief(ctx, sh);
+        if (r > maxRelief || !clear(ctx, isl, sh, 2) || !siteFree(ctx, isl, sh)) return Infinity;
+        return (
+          r +
+          0.02 * dist(p, plan.hub) +
+          spec.quadLee * (1 - leewardness(isl, ctx.windDir, p.x, p.z)) +
+          0.3 * fieldSamples(ctx, rectShape(p.x, p.z, 0, spec.quadR * 2, spec.quadR * 2))
+        );
+      });
+    }
+  const centre = quad ?? plan.hub;
+  ctx.reach[isl.id] = walkableFrom(ctx, isl, centre);
+  const lots: number[] = [];
+  if (quad) {
+    plan.plaza = { x: quad.x, z: quad.z, r: spec.quadR };
+    addShape(ctx, isl, { ...discShape(quad.x, quad.z, spec.quadR + 0.5), tag: 'plaza' }, false);
+    addPad(ctx, isl, quadShape(quad), FLATTEN.discMargin);
+  }
+  // signature building first (the biggest def of the mix), unless the archetype lot already
+  // became one: lanes on slopes / the atoll ring rarely hold a 7 × 4 pad
+  const mix = THEMES[isl.theme].lotMix;
+  const crown = THEMES[isl.theme].crown;
+  const main = mix
+    .map(([d]) => d)
+    .filter((d) => d !== crown)
+    .sort((a, b) => lotArea(b) - lotArea(a) || (a < b ? -1 : 1))[0];
+  if (main && !plan.lots.some((li) => ctx.lots[li].defId === main)) {
+    const li = placeNear(ctx, isl, main, centre, quad ? spec.quadR : 0, spec, sIdx);
+    if (li >= 0) lots.push(li);
+  }
+  if (quad) {
+    const hubCell = nearestPathCell(ctx, isl, quad);
+    if (hubCell >= 0) {
+      const hubKey = addVirtual(ctx.net, isl.id, quad);
+      addNode(ctx.net, hubCell, isl.id);
+      addEdge(ctx.net, hubKey, hubCell, 'path');
+      ctx.hasNet[isl.id] = true;
+      plan.hubKey = hubKey;
+      // lane 0 heads for the archetype hub (dock / landmark side) when it is not right here
+      const far = dist(quad, plan.hub) > spec.quadR + 10;
+      const h = far ? unit(quad, plan.hub) : unit({ x: isl.cx, z: isl.cz }, quad);
+      lots.push(
+        ...layLanes(
+          ctx,
+          isl,
+          {
+            centre: quad,
+            quadR: spec.quadR,
+            hubCell,
+            a0: ang(h.x, h.z),
+            laneEnd: far ? plan.hub : null,
+            spec,
+            rng: rng.fork('lanes'),
+            sIdx,
+          },
+          Math.max(0, target - lots.length),
+        ),
+      );
+    }
+  }
+  // ring fill around the quad (or the archetype hub when no quad fits), facing it
+  if (lots.length < target) {
+    const pick = mixPicker(mix, rng.fork('ring'));
+    const r0 = (quad ? spec.quadR : 0) + spec.ring[0];
+    const cand = ring(centre, r0, r0 + spec.ring[1], 1.5, 32, rng.range(0, 1));
+    for (const p of cand) {
+      if (lots.length >= target) break;
+      const drawn = pick(); // per candidate, so a too-big draw does not stall the fill
+      const f = unit(p, centre);
+      const a = ang(f.x, f.z);
+      // facing the quad, else sideways (narrow land: the atoll ring, ledges)
+      slot: for (const def of slotDefs(drawn, mix, crown))
+        for (const rotY of [a, a + Math.PI / 2, a - Math.PI / 2]) {
+          const [w, d] = LOT_FOOTPRINT[def];
+          if (fieldSamples(ctx, rectShape(p.x, p.z, rotY, w, d)) > spec.maxFieldSamples) continue;
+          const li = tryLot(ctx, isl, def, p, rotY, sIdx, {
+            minShore: spec.minShore,
+            maxRelief: spec.maxRelief,
+          });
+          if (li >= 0) {
+            lots.push(li);
+            break slot;
+          }
+        }
+    }
+  }
+  ctx.reach[isl.id] = null;
+  crownLot(ctx, isl, lots);
+  lots.sort((a, b) => dist(ctx.lots[a], centre) - dist(ctx.lots[b], centre));
+  for (const li of lots) linkLot(ctx, plan, li);
+}
+
+// ---------------------------------------------------------------------------
 // Archetype planners.
 
 function newPlan(kind: string, hub: XZ): Plan {
@@ -668,9 +1094,13 @@ function planHearthholm(ctx: Ctx, isl: IslandData, rng: Rng, sIdx: number): Plan
   const toSea = dockSite ? unit(plazaC, dockSite.root) : unit(plazaC, harbour);
   const a0 = ang(toSea.x, toSea.z);
   // clocktower: inland edge of the plaza, facing the harbour
-  const ct = add(plazaC, toSea, -(pr + 0.5));
-  if (onLand(ctx, isl, discShape(ct.x, ct.z, 2), 3))
+  // (sliding along the edge when that spot is off the land: the HQ's Orchestrator Tower)
+  for (const da of [0, 30, -30, 60, -60]) {
+    const ct = add(plazaC, dirOf(a0 + Math.PI + (da * Math.PI) / 180), pr + 0.5);
+    if (!onLand(ctx, isl, discShape(ct.x, ct.z, 2), 3)) continue;
     plan.landmarks.push(pushLandmark(ctx, isl, 'clocktower', ct, a0));
+    break;
+  }
 
   // well (towards the clocktower) and market stalls between the harbour lane and the side lanes
   pushFixture(ctx, isl, 'well', add(plazaC, toSea, -2.5), a0);
@@ -701,78 +1131,17 @@ function planHearthholm(ctx: Ctx, isl: IslandData, rng: Rng, sIdx: number): Plan
   ctx.hasNet[isl.id] = true;
   plan.hubKey = hubKey;
 
-  const lotRng = rng.fork('lots');
-  const target = lotRng.int(VILLAGE.cottages[0], VILLAGE.cottages[1]) + 1; // +1 → tower house
-  const offsets = VILLAGE.lanes;
-  const step = pathStep({ ...stepCtx(ctx, isl), stair: false });
-  const houses: number[] = [];
-  for (const off of offsets) {
-    if (houses.length >= target) break;
-    const a = a0 + (off * Math.PI) / 180;
-    let endCell = -1;
-    if (off === 0 && dockSite) endCell = nearestPathCell(ctx, isl, dockSite.root);
-    else
-      for (let L = VILLAGE.laneLength; L >= pr + 10; L -= 4) {
-        const p = add(plazaC, dirOf(a), L);
-        if (!onIsland(ctx, isl, p.x, p.z) || sdfAt(ctx, p.x, p.z) < 3) continue;
-        endCell = nearestPathCell(ctx, isl, p);
-        if (endCell >= 0) break;
-      }
-    if (endCell < 0 || endCell === hubCell) continue;
-    const cells = gridAStar({
-      ...islandWindow(ctx, isl),
-      start: hubCell,
-      goal: endCell,
-      step,
-      hScale: 2,
-    });
-    if (!cells || cells.length < 3) continue;
-    addCellPath(ctx.net, cells, isl.id, 'path');
-    const lane = resample(
-      cells.map((c) => cellPos(ctx, c)),
-      1,
-      false,
-    );
-    ctx.lanes[isl.id].push(lane);
-    // lots along both sides, facing the lane
-    let s = pr + 2.6;
-    const total = lane.length - 1;
-    while (s < total - 1 && houses.length < target) {
-      const k = Math.min(total - 1, Math.floor(s));
-      const p = lane[k];
-      const q = lane[k + 1];
-      const t = unit(p, q);
-      const nrm = { x: -t.z, z: t.x };
-      for (const side of [1, -1]) {
-        if (houses.length >= target) break;
-        const c = add(p, nrm, side * VILLAGE.laneOffset);
-        const li = tryLot(ctx, isl, 'cottage', c, ang(-nrm.x * side, -nrm.z * side), sIdx, {
-          minShore: VILLAGE.lotMinShore,
-          maxRelief: VILLAGE.lotMaxRelief,
-        });
-        if (li >= 0) houses.push(li);
-      }
-      s += LOT_FOOTPRINT.cottage[0] + VILLAGE.lotGap + lotRng.range(0, VILLAGE.laneJitter);
-    }
-  }
-  // tower house: the highest cottage becomes the tower
-  if (houses.length > 0) {
-    let ti = houses[0];
-    for (const li of houses)
-      if (
-        heightAt(ctx.h, ctx.lots[li].x, ctx.lots[li].z) >
-        heightAt(ctx.h, ctx.lots[ti].x, ctx.lots[ti].z)
-      )
-        ti = li;
-    const lot = ctx.lots[ti];
-    const [w, d] = LOT_FOOTPRINT.towerHouse;
-    lot.defId = 'towerHouse';
-    lot.kind = LOT_KIND.towerHouse;
-    lot.w = w;
-    lot.d = d;
-    const pad = ctx.pads.find((p) => p.shape.x === lot.x && p.shape.z === lot.z);
-    if (pad) pad.shape = rectShape(lot.x, lot.z, lot.rotY, w, d);
-  }
+  const houses = layLanes(ctx, isl, {
+    centre: plazaC,
+    quadR: pr,
+    hubCell,
+    a0,
+    laneEnd: dockSite ? dockSite.root : null,
+    spec: CAMPUS.hq,
+    rng: rng.fork('lots'),
+    sIdx,
+  });
+  crownLot(ctx, isl, houses);
 
   for (const li of stalls) linkLot(ctx, plan, li);
   // houses link after stalls (closest first so spurs attach to lanes)
@@ -894,12 +1263,13 @@ function planBeaconRock(ctx: Ctx, isl: IslandData, rng: Rng, sIdx: number): Plan
   // keeper hut
   const cand = ring(lh, OUTPOSTS.keeperRing[0], OUTPOSTS.keeperRing[1], 1.5, 16, rng.range(0, 1));
   let best = -1;
+  const [kw, kd] = footprintOf(isl, 'cottage');
   for (const maxRelief of [2, 3.5, 6]) {
     let bs = Infinity;
     let bp: XZ | null = null;
     for (const p of cand) {
       const face = unit(p, lh);
-      const sh = rectShape(p.x, p.z, ang(face.x, face.z), 3, 3);
+      const sh = rectShape(p.x, p.z, ang(face.x, face.z), kw, kd);
       if (!onLand(ctx, isl, sh, 3) || !clear(ctx, isl, sh, 1.5)) continue;
       const r = relief(ctx, sh);
       if (r > maxRelief) continue;
@@ -982,14 +1352,6 @@ function planMillbrook(ctx: Ctx, isl: IslandData, rng: Rng, sIdx: number): Plan 
   const cand = lotRng.shuffle(
     ring(hub, OUTPOSTS.farmRing[0], OUTPOSTS.farmRing[1], 2.5, 14, lotRng.range(0, 1)),
   );
-  const fieldCount = (sh: Shape): number => {
-    let c = 0;
-    for (const p of [{ x: sh.x, z: sh.z }, ...shapeCorners(sh)]) {
-      const i = cellOf(ctx, p.x, p.z);
-      if (i >= 0 && ctx.zone[i] === Zone.field) c++;
-    }
-    return c;
-  };
   const lots: number[] = [];
   for (const def of ['barn', ...Array.from({ length: nCot }, () => 'cottage')]) {
     for (const maxField of [0, 2, 5]) {
@@ -997,8 +1359,8 @@ function planMillbrook(ctx: Ctx, isl: IslandData, rng: Rng, sIdx: number): Plan 
       for (const p of cand) {
         const f = unit(p, hub);
         const rotY = ang(f.x, f.z);
-        const [w, d] = LOT_FOOTPRINT[def];
-        if (fieldCount(rectShape(p.x, p.z, rotY, w, d)) > maxField) continue;
+        const [w, d] = footprintOf(isl, def);
+        if (fieldSamples(ctx, rectShape(p.x, p.z, rotY, w, d)) > maxField) continue;
         if (pond && dist(pond, p) < 10) continue;
         placed = tryLot(ctx, isl, def, p, rotY, sIdx, {
           minShore: VILLAGE.lotMinShore,
@@ -1150,12 +1512,14 @@ function planMossgrove(ctx: Ctx, isl: IslandData, rng: Rng, sIdx: number): Plan 
     let bs = Infinity;
     let bp: XZ | null = null;
     let bRot = 0;
+    const [cw, cd] = footprintOf(isl, 'logCabin');
     for (const p of cand) {
       if (streamDist(p) < OUTPOSTS.cabinStreamClear + 2.5) continue;
       const f = unit(p, mouth);
       const rotY = ang(f.x, f.z);
-      const sh = rectShape(p.x, p.z, rotY, 4, 3);
-      if (!onLand(ctx, isl, sh, 4) || !clear(ctx, isl, sh, 1.5)) continue;
+      const sh = rectShape(p.x, p.z, rotY, cw, cd);
+      if (!onLand(ctx, isl, sh, 4) || !clear(ctx, isl, sh, 1.5) || !siteFree(ctx, isl, sh))
+        continue;
       const r = relief(ctx, sh);
       if (r > OUTPOSTS.cabinMaxRelief) continue;
       const s = r + 0.1 * Math.abs(dist(p, mouth) - 9);
@@ -1184,11 +1548,114 @@ function planMossgrove(ctx: Ctx, isl: IslandData, rng: Rng, sIdx: number): Plan 
   return plan;
 }
 
-function planLonelyPalm(ctx: Ctx, isl: IslandData): void {
+/**
+ * W9 hero heading (camera-controls azimuth, deg): the twin of camera/poses.ts `heroAzimuth`
+ * on layout data (the camera reads the same IslandData cx / cz / reach). settlements.test
+ * checks both agree, so the hut stays off the line the camera actually looks along.
+ */
+export function heroHeading(isl: IslandData, islands: readonly IslandData[]): number {
+  const h = FRAMING.hero;
+  const DEG = Math.PI / 180;
+  let best: number = h.azimuthDeg;
+  let bestScore = -Infinity;
+  for (let k = -h.searchSteps; k <= h.searchSteps; k++) {
+    const az = h.azimuthDeg + k * h.searchStepDeg;
+    const vx = -Math.sin(az * DEG);
+    const vz = -Math.cos(az * DEG);
+    let clearDeg = 180;
+    for (const o of islands) {
+      if (o.id === isl.id) continue;
+      const dx = o.cx - isl.cx;
+      const dz = o.cz - isl.cz;
+      const d = Math.hypot(dx, dz);
+      if (d < 1e-6) continue;
+      const sep = Math.acos(clamp((dx * vx + dz * vz) / d, -1, 1)) / DEG;
+      clearDeg = Math.min(clearDeg, sep - Math.atan(o.reach / d) / DEG);
+    }
+    const score = Math.min(clearDeg, h.clearDeg) - h.turnCost * Math.abs(k * h.searchStepDeg);
+    if (score > bestScore) {
+      bestScore = score;
+      best = az;
+    }
+  }
+  return best;
+}
+
+/**
+ * Lonely Palm = the Research outpost (plan §4.1): one hut ≥ palmClear from the palm and off
+ * the W9 view line (so the palm silhouette stays clean), a telescope beside it, a short carved
+ * dock with a rowboat. The hut door seeds the island's tiny path network.
+ */
+function planLonelyPalm(ctx: Ctx, isl: IslandData, rng: Rng, sIdx: number): Plan | null {
   const palm = isl.anchors.palm;
   if (palm) pushLandmark(ctx, isl, 'lonelyPalm', palm, palm.rotY);
   const bottle = isl.anchors.bottle;
   if (bottle) pushFixture(ctx, isl, 'messageBottle', bottle, bottle.rotY);
+  if (!palm) return null;
+  const O = RESEARCH_OUTPOST;
+  // camera-controls azimuth → view direction −(sin az, cos az)
+  const az = (heroHeading(isl, ctx.islands) * Math.PI) / 180;
+  const view = { x: -Math.sin(az), z: -Math.cos(az) };
+  const lineCos = Math.cos((O.viewClearDeg * Math.PI) / 180);
+  const offLine = (p: XZ): boolean => {
+    const u = unit(palm, p);
+    return Math.abs(u.x * view.x + u.z * view.z) < lineCos;
+  };
+  const [w, d] = LOT_FOOTPRINT[O.def];
+  let bp: XZ | null = null;
+  let bRot = 0;
+  let bs = Infinity;
+  for (let r = O.palmClear; r <= isl.reach; r += 0.5)
+    for (let k = 0; k < 32; k++) {
+      const u = dirOf((k / 32) * Math.PI * 2);
+      const p = add(palm, u, r);
+      if (!offLine(p)) continue;
+      const rotY = ang(u.x, u.z); // door away from the palm
+      const sh = rectShape(p.x, p.z, rotY, w, d);
+      if (!onLand(ctx, isl, sh, O.minShore, 0) || relief(ctx, sh) > O.maxRelief) continue;
+      if (!clear(ctx, isl, sh, VILLAGE.lotGap) || !siteFree(ctx, isl, sh)) continue;
+      // nearest to perpendicular to the view line, then nearest to the palm
+      const s = Math.abs(u.x * view.x + u.z * view.z) + 0.05 * r;
+      if (s < bs) {
+        bs = s;
+        bp = p;
+        bRot = rotY;
+      }
+    }
+  const hut = bp
+    ? tryLot(ctx, isl, O.def, bp, bRot, sIdx, {
+        minShore: O.minShore,
+        maxRelief: O.maxRelief,
+        cornerMin: 0,
+      })
+    : -1;
+  if (hut < 0) return null;
+  const lot = ctx.lots[hut];
+  const plan = newPlan('outpost', doorOf(lot));
+  linkLot(ctx, plan, hut);
+  // telescope beside the hut (either side), on land, off the view line
+  const fr = FIXTURE_RADIUS.telescope;
+  const f = dirOf(lot.rotY);
+  for (const side of [1, -1]) {
+    const p = add(lot, { x: -f.z, z: f.x }, side * (w / 2 + O.telescopeGap));
+    const sh = discShape(p.x, p.z, fr);
+    if (!offLine(p) || dist(p, palm) < O.palmClear) continue;
+    if (!onLand(ctx, isl, sh, 0.3) || !clear(ctx, isl, sh, 0.5)) continue;
+    pushFixture(ctx, isl, 'telescope', p, lot.rotY);
+    break;
+  }
+  const site = findDock(ctx, isl, {
+    near: lot,
+    maxDist: isl.reach + 6,
+    prefer: lot,
+    carve: true,
+    maxSegments: O.dockSegments,
+  });
+  dockWithLink(ctx, isl, plan, site, rng.fork('moorings'), {
+    rowboats: O.rowboats,
+    sailboats: 0,
+  });
+  return plan;
 }
 
 // ---------------------------------------------------------------------------
@@ -1495,10 +1962,11 @@ export function roofNeighbours(lots: readonly LotData[]): number[][] {
 }
 
 /**
- * Pick every lot's variant (in place). Lots are coloured in index order; each
- * tries its variants in an order fixed by its seeded hash and takes the first
- * whose roof differs from every already-coloured neighbour, backtracking when
- * stuck (bounded); on exhaustion the least-conflicting variant wins.
+ * Pick every lot's variant (in place). Each connected group of roof neighbours is coloured on
+ * its own, in index order; each lot tries its variants in an order fixed by its seeded hash and
+ * takes the first whose roof differs from every already-coloured neighbour, backtracking when
+ * stuck (bounded); on exhaustion that group falls back to the least-conflicting variants (an
+ * odd ring of 2-variant office defs cannot alternate — it must not spoil the other groups).
  */
 function assignLotVariants(lots: LotData[], seed: number): void {
   const nb = roofNeighbours(lots);
@@ -1515,36 +1983,50 @@ function assignLotVariants(lots: LotData[], seed: number): void {
     for (const j of nb[i]) if (set[j] && lotRoof(lots[j]) === r) return false;
     return true;
   };
-  let budget = 20000;
-  const solve = (i: number): boolean => {
-    if (i >= lots.length) return true;
-    for (const v of order[i]) {
-      if (budget-- <= 0) return false;
-      if (!ok(i, v)) continue;
-      lots[i].variant = v;
-      set[i] = 1;
-      if (solve(i + 1)) return true;
-      set[i] = 0;
-    }
-    return false;
-  };
-  if (solve(0)) return;
-  // fallback (not 3-colourable or over budget): greedy, fewest clashes
-  set.fill(0);
-  for (let i = 0; i < lots.length; i++) {
-    let best = order[i][0];
-    let bc = Infinity;
-    for (const v of order[i]) {
-      const r = lotRoof({ ...lots[i], variant: v });
-      let c = 0;
-      for (const j of nb[i]) if (set[j] && r >= 0 && lotRoof(lots[j]) === r) c++;
-      if (c < bc) {
-        bc = c;
-        best = v;
+  const seen = new Uint8Array(lots.length);
+  for (let i0 = 0; i0 < lots.length; i0++) {
+    if (seen[i0]) continue;
+    const group = [i0];
+    seen[i0] = 1;
+    for (let k = 0; k < group.length; k++)
+      for (const j of nb[group[k]])
+        if (!seen[j]) {
+          seen[j] = 1;
+          group.push(j);
+        }
+    group.sort((a, b) => a - b);
+    let budget = 20000;
+    const solve = (k: number): boolean => {
+      if (k >= group.length) return true;
+      const i = group[k];
+      for (const v of order[i]) {
+        if (budget-- <= 0) return false;
+        if (!ok(i, v)) continue;
+        lots[i].variant = v;
+        set[i] = 1;
+        if (solve(k + 1)) return true;
+        set[i] = 0;
       }
+      return false;
+    };
+    if (solve(0)) continue;
+    // fallback (not colourable or over budget): greedy, fewest clashes
+    for (const i of group) set[i] = 0;
+    for (const i of group) {
+      let best = order[i][0];
+      let bc = Infinity;
+      for (const v of order[i]) {
+        const r = lotRoof({ ...lots[i], variant: v });
+        let c = 0;
+        for (const j of nb[i]) if (set[j] && r >= 0 && lotRoof(lots[j]) === r) c++;
+        if (c < bc) {
+          bc = c;
+          best = v;
+        }
+      }
+      lots[i].variant = best;
+      set[i] = 1;
     }
-    lots[i].variant = best;
-    set[i] = 1;
   }
 }
 
@@ -1590,10 +2072,13 @@ export function buildSettlements(input: SettlementInput, rng: Rng): SettlementRe
     zone: input.zone,
     islandMap: input.islandMap,
     windDir: input.windDir,
+    islands: input.islands,
     streams: input.streams,
+    fields: input.fields,
     net: createNetwork(n),
     blocked: new Uint8Array(n * n),
     hasNet: input.islands.map(() => false),
+    reach: input.islands.map(() => null),
     pads: [],
     shapes: input.islands.map(() => []),
     lanes: input.islands.map(() => []),
@@ -1628,9 +2113,12 @@ export function buildSettlements(input: SettlementInput, rng: Rng): SettlementRe
         plan = planMossgrove(ctx, isl, r, sIdx);
         break;
       case 'lonelypalm':
-        planLonelyPalm(ctx, isl);
+        plan = planLonelyPalm(ctx, isl, r, sIdx);
         break;
     }
+    // department campus on top of the archetype plan (HQ is the village itself)
+    if (plan && isl.theme !== 'hq' && isl.theme !== 'research')
+      planCampus(ctx, isl, plan, CAMPUS[isl.theme], r.fork('campus'), sIdx);
     if (plan) plans.push({ ...plan, islandId: isl.id });
   }
 
@@ -1677,7 +2165,7 @@ export function buildSettlements(input: SettlementInput, rng: Rng): SettlementRe
       d: l.d,
       node,
       variant: 0,
-      role: l.role,
+      role: OFFICE_DEFS[l.defId] ? (LOT_ROLE_BY_KIND[l.kind] ?? 'office') : 'legacy',
     });
   });
   assignLotVariants(lots, rng.fork('roofs').nextU32());
@@ -1703,9 +2191,13 @@ export function buildSettlements(input: SettlementInput, rng: Rng): SettlementRe
   for (const l of lots) {
     if (l.kind === 'hut') continue;
     const sh = lotShape(l);
-    forSamplesNearSegment(ctx.h, l, l, Math.hypot(sh.hw, sh.hd) + 1, (i) => {
-      if (ctx.zone[i] === Zone.field && shapeDist(sh, cellX(i % n), cellZ(Math.floor(i / n))) < 1)
-        ctx.zone[i] = Zone.grass;
+    const R = Math.hypot(sh.hw, sh.hd) + FLATTEN.lotMargin;
+    forSamplesNearSegment(ctx.h, l, l, R, (i) => {
+      const z = ctx.zone[i];
+      if (z !== Zone.field && z !== Zone.rock && z !== Zone.cliff) return;
+      const d = shapeDist(sh, cellX(i % n), cellZ(Math.floor(i / n)));
+      // fields under the footprint; slope zones left stale on a terraced pad core (plan risk #11)
+      if (d < (z === Zone.field ? 1 : FLATTEN.lotMargin)) ctx.zone[i] = Zone.grass;
     });
   }
   writePaths(ctx.h, ctx.zone, ctx.sdf, built.paths, protect);
@@ -1743,6 +2235,14 @@ export function buildSettlements(input: SettlementInput, rng: Rng): SettlementRe
       docks: p.docks,
     };
   });
+  // the first office of each settlement (archetype building / office nearest the quad) leads;
+  // without an office, its first themed lot
+  for (const s of settlements) {
+    const li =
+      s.lots.find((i) => lots[i].role === 'office') ??
+      s.lots.find((i) => lots[i].role !== 'legacy');
+    if (li !== undefined) lots[li].role = 'main';
+  }
 
   return {
     settlements,
