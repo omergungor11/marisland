@@ -1339,12 +1339,12 @@ export class Workers extends LandKind {
 
   private islDist: Float32Array = new Float32Array(0);
 
-  /** Island hosting workers nearest the camera (hysteresis), re-evaluated every few steps. */
+  /** Island hosting workers nearest the orbit target (hysteresis), re-evaluated every few steps. */
   private updateFocus(): void {
     const F = ACTIVITY.focus;
     if (this.tier < F.minTier) return;
     if (this.step !== 1 && this.step % F.every !== 0) return;
-    const c = this.ctx.cameraPos;
+    const c = this.ctx.focusPos;
     const ni = this.hubX.length;
     const dist = new Float32Array(ni).fill(Infinity);
     for (let i = 0; i < this.capacity; i++) {

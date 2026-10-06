@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 /**
- * Screenshot harness: `pnpm shots [ci|dev|wow|intro|edit|ladder] [--assert] [--gpu] [--no-build] [--only=ID,ID] [--base=URL]
+ * Screenshot harness: `pnpm shots [ci|dev|wow|intro|edit|ladder|live] [--assert] [--gpu] [--no-build] [--only=ID,ID] [--base=URL]
  *   [--tag=name] [--port=4173] [--no-selftest] [--quality=low|medium|high]` — `--quality` overrides every
  *   preset's quality (budget sweeps per tier); `--tag` builds into dist-<tag>/ and writes shots/<set>-<tag>/
  *   so parallel agents don't collide; pair it with a distinct `--port`. The ci and dev sets also run the
@@ -13,6 +13,9 @@
  *   <id>/<dist>.png, the consistency metrics into ladder-<id>.json and a strip ladder-<id>.jpg
  *   (frames / masks / ΔE heat); contact.jpg stacks the strips. Threshold misses are reported always
  *   and fail the run only with `--assert`. One island: `--only=L-coding,L-pairs-coding`.
+ * `live` (M14c): L-live-<theme> 0.5 s pairs + mask frame; `motionMetric` over the preset's campus crop
+ *   (solid pixels only: water / sky masked out) is written to the manifest (`live`) and checked against
+ *   LIVE_THRESHOLDS (≥ 3 % changed, ≥ 5 clusters; `--assert`).
  */
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
@@ -33,7 +36,10 @@ import {
   planeMap,
   stepFailures,
   LADDER_THRESHOLDS,
+  liveFailures,
+  motionMetric,
   type Img,
+  type MotionMetrics,
   type StepMetrics,
 } from './ladder-metrics.ts';
 
@@ -42,7 +48,8 @@ const flag = (n: string): boolean => args.includes(`--${n}`);
 const opt = (n: string): string | undefined =>
   args.find((a) => a.startsWith(`--${n}=`))?.slice(n.length + 3);
 const set = (args.find((a) => !a.startsWith('--')) ?? 'ci') as ShotSet;
-if (!(set in SET_DEFAULTS)) throw new Error(`unknown set "${set}" (ci|dev|wow|intro|edit|ladder)`);
+if (!(set in SET_DEFAULTS))
+  throw new Error(`unknown set "${set}" (ci|dev|wow|intro|edit|ladder|live)`);
 const ASSERT = flag('assert');
 const GPU = flag('gpu');
 const ROOT = resolve(import.meta.dirname, '..');
@@ -80,6 +87,8 @@ interface ShotResult {
   renderer?: string;
   readyMs: number;
   motion?: number;
+  /** Live pair (M14c): motion inside the campus crop + threshold misses. */
+  live?: MotionMetrics & { failures: string[] };
   console: string[];
   ladder?: LadderReport;
 }
@@ -266,6 +275,8 @@ async function runShot(
   r.console = o.logs.slice(0, 20);
   r.failures.push(...o.fatal);
   let png: Buffer | undefined;
+  let pair: Buffer | undefined;
+  let maskPng: Buffer | undefined;
   try {
     const snap = o.snap;
     if (snap) {
@@ -290,20 +301,35 @@ async function runShot(
       const png2 = await o.page.screenshot({ type: 'png', timeout: 240_000 });
       writeFileSync(resolve(OUT, `${p.id}+dt.png`), png2);
       r.motion = changedFraction(png, png2);
+      pair = png2;
     }
   } finally {
     await o.page.close();
   }
   if (p.mask) {
-    const mo = await open(browser, shotUrl(base, p, '&debug=mask'), p);
+    // live pairs: the mask at low quality (medium's depth of field blurs the flat mask colours)
+    const mp: ShotPreset = p.live ? { ...p, quality: 'low' } : p;
+    const mo = await open(browser, shotUrl(base, mp, '&debug=mask'), mp);
     try {
-      writeFileSync(
-        resolve(OUT, `${p.id}.mask.png`),
-        await mo.page.screenshot({ type: 'png', timeout: 240_000 }),
-      );
+      maskPng = await mo.page.screenshot({ type: 'png', timeout: 240_000 });
+      writeFileSync(resolve(OUT, `${p.id}.mask.png`), maskPng);
     } finally {
       await mo.page.close();
     }
+  }
+  if (p.live && png && pair) {
+    // M14c: motion over the campus crop, water / sky masked out when the mask frame exists
+    const m = motionMetric(
+      await decode(png),
+      await decode(pair),
+      p.live.crop,
+      undefined,
+      undefined,
+      maskPng && (await decode(maskPng)),
+    );
+    const failures = liveFailures(m);
+    r.live = { ...m, failures };
+    if (ASSERT) r.failures.push(...failures);
   }
   let deterministic: boolean | undefined;
   if (isFirst && png) {
@@ -460,7 +486,8 @@ async function contactSheet(results: ShotResult[]): Promise<void> {
     const w = Math.min(480, meta.width ?? 480);
     const buf = await raw.resize({ width: w }).png().toBuffer();
     const h = (await sharp(buf).metadata()).height ?? 270;
-    const label = `${r.id} · ${r.title} · ${r.info?.calls ?? '?'}c/${r.info?.triangles ?? '?'}t${r.ok ? '' : ' · FAIL ' + r.failures[0]}`;
+    const live = r.live ? ` · ${(r.live.changedFrac * 100).toFixed(1)}%/${r.live.clusters}cl` : '';
+    const label = `${r.id} · ${r.title} · ${r.info?.calls ?? '?'}c/${r.info?.triangles ?? '?'}t${live}${r.ok ? '' : ' · FAIL ' + r.failures[0]}`;
     const svg = `<svg width="${w}" height="22" xmlns="http://www.w3.org/2000/svg"><rect width="${w}" height="22" fill="${r.ok ? '#000' : '#a00'}" fill-opacity="0.7"/><text x="6" y="15" font-family="sans-serif" font-size="12" fill="#fff">${esc(label.slice(0, Math.floor(w / 6.5)))}</text></svg>`;
     const input = await sharp(buf)
       .composite([{ input: Buffer.from(svg), top: h - 22, left: 0 }])
@@ -878,6 +905,11 @@ async function main(): Promise<void> {
         console.log(
           `${r.id} ${st.far}→${st.near}: ${st.judged ? `mean ${st.mean.toFixed(2)} p95 ${st.p95.toFixed(1)} blob ${(st.blob * 100).toFixed(1)}% IoU ${st.iou.toFixed(3)}` : `land ${(st.landFrac * 100).toFixed(0)}% not judged`}${st.failures.length ? '  MISS ' + st.failures.join('; ') : ''}`,
         );
+  for (const r of results)
+    if (r.live)
+      console.log(
+        `${r.id} live: changed ${(r.live.changedFrac * 100).toFixed(2)}% clusters ${r.live.clusters} largest ${r.live.largest}${r.live.failures.length ? `  MISS ${r.live.failures.join('; ')}${ASSERT ? '' : ' (not asserted)'}` : ''}`,
+      );
   for (const r of results)
     if (r.ladder?.failures.length)
       console.log(

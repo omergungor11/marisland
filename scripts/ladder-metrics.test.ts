@@ -9,6 +9,7 @@ import {
   identityMap,
   linearToLab,
   maskClass,
+  liveFailures,
   motionMetric,
   planeMap,
   regionDrift,
@@ -194,5 +195,16 @@ describe('motion metric', () => {
     expect(motionMetric(a, a)).toEqual({ changedFrac: 0, clusters: 0, largest: 0 });
     // the crop keeps only the left half: 3 dots
     expect(motionMetric(a, b, [0, 0, 0.5, 1]).clusters).toBe(3);
+    // mask: the left half is water → its dots and pixels do not count; the land half's 2 dots do
+    const mask = img((u) => (u < 0.5 ? rgb(WATER.mid) : rgb(TERRAIN_MASK.land)));
+    const masked = motionMetric(a, b, undefined, undefined, undefined, mask);
+    expect(masked.clusters).toBe(2);
+    const right = motionMetric(a, b, [0.5, 0, 1, 1]);
+    expect(masked.changedFrac).toBeCloseTo(right.changedFrac, 3);
+  });
+
+  it('liveFailures: M14c thresholds', () => {
+    expect(liveFailures({ changedFrac: 0.04, clusters: 5, largest: 10 })).toEqual([]);
+    expect(liveFailures({ changedFrac: 0.02, clusters: 4, largest: 10 })).toHaveLength(2);
   });
 });

@@ -481,10 +481,25 @@ export interface MotionMetrics {
   largest: number;
 }
 
+/** M14c acceptance of a T3 campus `deltaT` = 0.5 s pair (phase-3.md M14c). */
+export const LIVE_THRESHOLDS = { changedFrac: 0.03, clusters: 5 } as const;
+
+/** Misses of a live pair against `LIVE_THRESHOLDS` (empty = pass). */
+export function liveFailures(m: MotionMetrics): string[] {
+  const f: string[] = [];
+  if (m.changedFrac < LIVE_THRESHOLDS.changedFrac)
+    f.push(`motion ${(m.changedFrac * 100).toFixed(1)}% < ${LIVE_THRESHOLDS.changedFrac * 100}%`);
+  if (m.clusters < LIVE_THRESHOLDS.clusters)
+    f.push(`clusters ${m.clusters} < ${LIVE_THRESHOLDS.clusters}`);
+  return f;
+}
+
 /**
  * Motion between a frame and its `deltaT` pair inside a crop (normalised x0, y0, x1, y1): a pixel
  * changed when any channel differs by more than `threshold`; clusters smaller than `minCluster`
- * pixels (noise, sparkle) are not counted. TASK-383 / 384 acceptance: ≥ 3 % changed, ≥ 5 clusters.
+ * pixels (noise, sparkle) are not counted. With a `debug=mask` frame of the first view, only solid
+ * pixels (land, structures — not water / sky / clouds) count, so foam and swell do not pass for
+ * campus life. TASK-383 / 384 acceptance: ≥ 3 % changed, ≥ 5 clusters (`LIVE_THRESHOLDS`).
  */
 export function motionMetric(
   a: Img,
@@ -492,18 +507,28 @@ export function motionMetric(
   crop: [number, number, number, number] = [0, 0, 1, 1],
   threshold = 24,
   minCluster = 6,
+  mask?: Img,
 ): MotionMetrics {
   if (a.width !== b.width || a.height !== b.height) throw new Error('motion: size mismatch');
+  if (mask && (mask.width !== a.width || mask.height !== a.height))
+    throw new Error('motion: mask size mismatch');
   const x0 = Math.round(crop[0] * a.width);
   const y0 = Math.round(crop[1] * a.height);
   const w = Math.round(crop[2] * a.width) - x0;
   const h = Math.round(crop[3] * a.height) - y0;
   const on = new Array<boolean>(w * h).fill(false);
   let changed = 0;
+  let counted = 0;
   for (let y = 0; y < h; y++)
     for (let x = 0; x < w; x++) {
-      const oa = ((y0 + y) * a.width + x0 + x) * a.channels;
-      const ob = ((y0 + y) * b.width + x0 + x) * b.channels;
+      const k = (y0 + y) * a.width + x0 + x;
+      if (mask) {
+        const om = k * mask.channels;
+        if (maskClass(mask.data[om], mask.data[om + 1], mask.data[om + 2]) === 0) continue;
+      }
+      counted++;
+      const oa = k * a.channels;
+      const ob = k * b.channels;
       let d = 0;
       for (let c = 0; c < 3; c++) d = Math.max(d, Math.abs(a.data[oa + c] - b.data[ob + c]));
       if (d > threshold) {
@@ -513,7 +538,7 @@ export function motionMetric(
     }
   const sizes = components(on, w, h).filter((s) => s >= minCluster);
   return {
-    changedFrac: w * h ? changed / (w * h) : 0,
+    changedFrac: counted ? changed / counted : 0,
     clusters: sizes.length,
     largest: sizes[0] ?? 0,
   };

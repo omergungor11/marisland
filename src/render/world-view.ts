@@ -123,10 +123,13 @@ export interface WorldViewDeps {
   instantEdits?: boolean;
   /** Right after `generateWorld`, before anything is built: the `?edit=` log replay. */
   beforeBuild?: (world: WorldData) => void;
+  /** Orbit target (writes `out`): life wakes the campus being looked at (M14c). */
+  getCameraTarget?: (out: THREE.Vector3) => void;
 }
 
 const _focus = new THREE.Vector3();
 const _camPos = new THREE.Vector3();
+const _camTarget = new THREE.Vector3();
 const _camDir = new THREE.Vector3();
 
 export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
@@ -201,6 +204,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     counters: d.counters,
     getTier: d.getTier,
     cameraPos: _camPos,
+    cameraTarget: d.getCameraTarget ? _camTarget : undefined,
   });
   group.add(life.group);
   d.scope.add(life);
@@ -302,6 +306,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     blendFx(fsm.update(time), fx);
     applyWeather(env, fx);
     d.camera.getWorldPosition(_camPos);
+    d.getCameraTarget?.(_camTarget);
     // focus = point on the sea plane the camera looks at (approximate: project forward)
     _focus.set(0, 0, -1).applyQuaternion(d.camera.quaternion);
     const t = _focus.y < -1e-3 ? -_camPos.y / _focus.y : 300;
@@ -403,6 +408,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
       fixedUpdate: (dt) => {
         // Warm-up runs fixed steps before the first render: keep the life camera current.
         d.camera.getWorldPosition(_camPos);
+        d.getCameraTarget?.(_camTarget);
         life.fixedUpdate(dt);
       },
     },

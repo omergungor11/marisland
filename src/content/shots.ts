@@ -7,7 +7,7 @@
 import type { EditToolKind } from './edit-ui.ts';
 import { FRAMING } from './camera.ts';
 
-export type ShotSet = 'ci' | 'dev' | 'wow' | 'intro' | 'edit' | 'ladder';
+export type ShotSet = 'ci' | 'dev' | 'wow' | 'intro' | 'edit' | 'ladder' | 'live';
 
 export interface ShotPreset {
   id: string;
@@ -44,6 +44,11 @@ export interface ShotPreset {
    * tier-boundary distances b captured at 1.06 b and 0.94 b. Pitch in degrees.
    */
   ladder?: { island: string; dists: number[]; pitch: number; pairs: number[] };
+  /**
+   * Living close-up check (M14c, set 'live'): the `deltaT` pair's motion inside this crop
+   * (normalised x0, y0, x1, y1 of the frame) is measured with `motionMetric` (scripts/ladder-metrics.ts).
+   */
+  live?: { crop: [number, number, number, number] };
   sets: ShotSet[];
 }
 
@@ -68,6 +73,27 @@ const CAMPUS_THEMES = [
   ['devops', 'DevOps'],
   ['research', 'Research'],
 ] as const;
+
+/**
+ * L-live-<theme> cameras (M14c, seed 1001, raw `eye → target`): T3 close-ups on each campus' busiest
+ * spot (life agent's TASK-383 picks; Coding, DevOps, Design re-aimed at the bot clusters in the
+ * M14c verification), clear of canopies. Re-pin when the layout changes.
+ */
+const LIVE_CAMS: Record<(typeof CAMPUS_THEMES)[number][0], string> = {
+  hq: '66,14,-168,86,1.4,-171',
+  qa: '-165,13,-176,-183,2.5,-188',
+  design: '-150,30,80,-157,17,98',
+  coding: '114,17,32,97,5.5,25',
+  research: '-115,12,236,-131,0.5,221',
+  devops: '-56,30,-110,-58,16,-90',
+  marketing: '8,37,196,-6,25,182',
+};
+
+/** Warm-up per live campus (s; default 6): picked for the most bots in motion near the target. */
+const LIVE_SIMT: Partial<Record<(typeof CAMPUS_THEMES)[number][0], number>> = { coding: 5, qa: 4 };
+
+/** The campus crop of the live pairs: the target sits at the frame centre (normalised x0, y0, x1, y1). */
+const LIVE_CROP: [number, number, number, number] = [0.15, 0.1, 0.85, 0.9];
 
 /** W7 camera (raw, seed 1001 Coding; TASK-380), re-pin when that layout changes. */
 const W7_CAM = '45,20,20,95,13,40';
@@ -465,6 +491,24 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     panel: 'photo',
     sets: ['dev'],
   },
+  // ---- living close-up (M14c, TASK-383/384): `pnpm shots live [--assert]`. A 0.5 s `deltaT` pair per
+  // campus at T3 on medium (16 workers + drones + animated surfaces); the harness measures the motion
+  // inside LIVE_CROP over solid pixels (the mask frame drops water / sky: foam and swell are not campus
+  // life) and asserts ≥ 3 % changed pixels and ≥ 5 moving clusters (LIVE_THRESHOLDS).
+  // Own set (not 'dev'): seven medium-quality pairs would double the dev run under SwiftShader.
+  ...CAMPUS_THEMES.map(([theme, name]): ShotPreset => ({
+    id: `L-live-${theme}`,
+    title: `Live · ${name}`,
+    seed: 1001,
+    cam: LIVE_CAMS[theme],
+    time: 14,
+    simt: LIVE_SIMT[theme] ?? 6,
+    quality: 'medium',
+    deltaT: 0.5,
+    mask: true,
+    live: { crop: LIVE_CROP },
+    sets: ['live'],
+  })),
   // ---- sandbox edits (TASK-221): `pnpm shots edit`. Logs on seed 1001 generated with
   // `encodeLog` (world/edit.ts); re-recorded for the Phase 3 layout (TASK-309: moved with their
   // island, rejected placements dropped) and the theme-first world (TASK-380: one pine that now
@@ -601,6 +645,8 @@ export const SET_DEFAULTS: Record<
   edit: { width: 960, height: 540, quality: 'low' },
   // zoom-ladder metric frames (TASK-374 adds the L-* presets)
   ladder: { width: 960, height: 540, quality: 'low' },
+  // living close-up pairs (M14c): medium = 16 workers, drones, animated surfaces
+  live: { width: 960, height: 540, quality: 'medium' },
 };
 
 export function shotsForSet(set: ShotSet): ShotPreset[] {
