@@ -125,5 +125,12 @@ export const FRAMING = {
      * farther frames, over the whole frame in the nearer ones.
      */
     driftRef: 170,
+    /**
+     * Tall landmarks (island anchor key → min horizontal distance, u) the ladder target keeps
+     * clear of: the Atelier Tree (giantTree, ~30 u tall, canopy ~12 u) stands 9 u from the Design
+     * village anchor — the near frames dollied into its canopy and its parallax failed 42 → 21 u.
+     * The target slides toward the camera along the ladder heading until it is this far away.
+     */
+    avoid: { giantTree: 22 } as Readonly<Record<string, number>>,
   },
 } as const;

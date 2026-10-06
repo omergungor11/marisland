@@ -250,9 +250,25 @@ export function createCameraSystem(
           const isl = findIsland(world, cut < 0 ? arg : arg.slice(0, cut)) ?? world.islands[0];
           const dist = Number.isFinite(d) && d > 0 ? d : L.dists[0];
           const frame = isl?.frames?.village;
-          const x = frame?.x ?? isl?.cx ?? world.centerX;
-          const z = frame?.z ?? isl?.cz ?? world.centerZ;
+          let x = frame?.x ?? isl?.cx ?? world.centerX;
+          let z = frame?.z ?? isl?.cz ?? world.centerZ;
           const az = frame ? azimuthToward(frame.facing) : L.fallbackAzimuth;
+          // keep the target clear of tall landmarks (the near frames would dolly into them): slide
+          // it toward the camera along the heading, so the dolly axis keeps its direction
+          const ux = Math.sin(az * DEG);
+          const uz = Math.cos(az * DEG);
+          for (const [key, r] of Object.entries(L.avoid)) {
+            const a = isl?.anchors[key];
+            if (!a) continue;
+            const dx = x - a.x;
+            const dz = z - a.z;
+            const c = dx * dx + dz * dz - r * r;
+            if (c >= 0) continue;
+            const b = dx * ux + dz * uz;
+            const s = -b + Math.sqrt(b * b - c);
+            x += ux * s;
+            z += uz * s;
+          }
           controls.maxDistance = Math.max(CAMERA.maxDist, dist);
           lookFromOrbit(
             controls,
