@@ -136,16 +136,16 @@ export const THEME_BY_ARCHETYPE: Readonly<Record<ArchetypeId, ThemeId>> = {
 
 /**
  * Worker accessory slots (creature shader mode 8, life/life-material.ts). A worker's instance
- * `aSeed` = slot + phase01 with phase01 < 1; the vertex shader shows only the accessory geometry
- * whose `limb.x` equals `floor(aSeed)` (`abs(floor(aSeed) - limb.x) > 0.5` collapses the rest).
- * The test is a plain float compare, so any integer slot works (float32 keeps the phase fraction
- * to ~1e-6 for slots < 16); the integer part does not change the `sin(.. aSeed * 2π)` gait terms.
+ * `aSeed` = accessory + 100 · (slot − 6) + phase01 (phase01 < 1; 100 = `ITEM_STRIDE`, 0 = nothing
+ * carried). Mode 8 decodes `floor(aSeed)` in two slots: the department accessory (`acc`, variants
+ * ≤ 6) and the carried item (`slot` = item code + 6, variants ≥ 7); accessory geometry whose `limb.x`
+ * matches neither collapses to a point. A multiple of 100 leaves every `sin(aSeed · 2π)` /
+ * `fract(aSeed · 7.31)` phase unchanged, so carrying does not shift the gait.
  *
- * Slots 0..6 are the department accessories (`ThemeDef.accessory`). Slots 7.. are reserved for
- * carried items (M14c TASK-383): life/geo/workers.ts adds their geometry tagged `setLimb(slot, …, 8)`
- * and life/workers.ts writes `aSeed = CARRIED_ITEM_SLOT[item] + phase01` while a bot carries it.
- * Limitation of the unchanged decode: one slot is visible at a time, so a carrying bot shows the
- * item instead of its department accessory (showing both needs a two-slot decode in the shader).
+ * Slots 0..6 are the department accessories (`ThemeDef.accessory`). Slots 7.. are the carried items
+ * (M14c TASK-383): life/geo/workers.ts adds their geometry tagged `setLimb(slot, …, 8)` and
+ * life/workers.ts adds `100 · (CARRIED_ITEM_SLOT[item] − 6)` to `aSeed` while a bot carries it — the
+ * department accessory and the item show together.
  */
 export const DEPT_ACCESSORY_COUNT = 7;
 export const CARRIED_ITEM_SLOT = {
