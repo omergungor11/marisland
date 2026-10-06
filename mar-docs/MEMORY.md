@@ -10,6 +10,33 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-06 (session close, orchestrator)**: Phase 3 M14 + M14b (theme-first redesign) + M14c (living
+  close-up) are merged on `main` and pushed (Pages deployed). 1208 tests green; shots ci/dev/edit/wow
+  green with `--assert`; new `live` set (`pnpm shots live --assert`): all 7 `L-live-<theme>` pass
+  (3.2–7.2 % changed, 17–76 clusters; Coding/QA close to the 3 % line). Programs 9/17/24, D-028 budgets.
+  What landed after TASK-380: TASK-383 activity sim (ambient workers by camera *target* focus, kiosk
+  queues, chat pairs, carried items via two-slot mode-8 decode `aSeed = acc + 100·(slot−6) + phase`,
+  theme micro-activities at fixture WORK_SPOTS; low plan workers 8), TASK-384 living surfaces (`aSpin.w`
+  tag channel: 1 spin, 2/3 turbine yaw, 4+ solar tracker, negative = screen kinds; per-theme monitor
+  content, rack LEDs, billboard slides, pipe pulses, window occupancy, drones in `render/drones.ts`),
+  monitors angled to the windows + wall dashboards, ground polish (relief/zone-gated cliff facets,
+  class-crisp borders, carved cliffs, `GroundSpec.ramp`), Design ladder target avoids the Atelier Tree.
+  **Next**: TASK-381 QA (ladder ×7 × 3 qualities, 10-seed sweep, live set), TASK-382 docs (ART_BIBLE §1/2/4/5/6/11,
+  DECISIONS backfill D-024…D-027 + D-029…D-033 + aSpin.w tag channel + ladder metric changes: plane
+  mapping, ±1 cell slack, minLandFrac 0.05, regional drift vs 170 u; Lonely Palm 17–21 u; muted label
+  colour; DevOps basalt #7A7584; blossom canopy kind; blob p95 4.5), then M15–M18 (phase-3 §8).
+  **Open**: ladder misses — DevOps drift 30 u ≈ 4.9 / 21 u 4.06 (parallax on the 35 u cone, not the
+  material: unlit-albedo test still 3.87), Design drift 30 u 5.34 and far 700/480 u ≈ 5.9/5.1,
+  Marketing pair 250 blob 0.7 %, Research tiny-land pairs; QA inner-shore saw-tooth silhouette
+  (heightfield); pipes step on steep climbs; steam vents added in edit mode don't steam; inspection
+  tower is a lot, not a landmark kind; front-row bots partly hide their angled screens; Design live
+  frame has a foreground pine; Research live has only 1–2 bots.
+  **Git**: history rewritten 2026-10-06 so every commit is `omergungor11 <omergungor99@gmail.com>`
+  (user asked to remove Claude from GitHub contributors). The cloud session's parallel 24-commit line
+  (app.ts → boot/ split, QA sweep) was dropped from `main`; it is kept LOCALLY only as
+  `archive/cloud-phase3` (+ `archive/claude-inspiring-pascal`, `backup/main-before-rewrite`) — never
+  push those. Before any push: `git fetch` and check divergence + `%an <%ae>` of origin/main.
+  Stale agent worktrees live under `.claude/worktrees/` (all merged; safe to `git worktree remove`).
 - 2026-10-05 (TASK-380 M14b integration, engine): tests green on the theme-first world (hash pins
   re-done, layout hash unchanged); shots ci/dev/edit/wow green with `--assert`. W5 = Forge & Steam
   (village:devops, seed 1001), W6 = QA Lagoon (village:qa, 4004), W7 = Turbine Morning (raw cam over
