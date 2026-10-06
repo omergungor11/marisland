@@ -35,6 +35,7 @@ import { PUFF_CHIMNEY, PUFF_SPRING, PUFF_VENT } from './particles/puffs.ts';
 import type { Lod } from '../geo/index.ts';
 import { createLanternPools, type LanternPools } from './night/lantern-pools.ts';
 import { createBeam } from './night/beam.ts';
+import { createDrones } from './drones.ts';
 import type { DirtyRegion } from '../world/edit-types.ts';
 import type { SubImageRenderer } from './gl-subimage.ts';
 import { createPropMirror, type PropMirror } from './props/prop-mirror.ts';
@@ -168,6 +169,9 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   const pools = createLanternPools(settlement.props, d.scope, d.renderer ?? null);
   const beam = createBeam(settlement.props, d.scope);
   if (beam.mesh) group.add(beam.mesh);
+  // drone couriers between HQ and the docks (TASK-384)
+  const drones = createDrones(world, d.quality, d.scope, seed);
+  if (drones.mesh) group.add(drones.mesh);
   const clouds = createClouds(world, d.quality, d.scope);
   group.add(clouds.group);
   /** Owner render index (house or single prop) → its chimney / vent emitters (follow re-grounding, off while flooded / removed). */
@@ -315,6 +319,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     lights.update(env, d.camera, _focus);
     sky.update(env, _camPos);
     beam.update();
+    drones.update(time);
     water.update(_camPos, d.getTime());
     terrain.update(d.getTime());
     clouds.update(d.getTime(), env, _camPos, tier, fx);

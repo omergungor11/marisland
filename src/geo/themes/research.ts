@@ -15,6 +15,7 @@ import { Spin, domeCap, dish, finishSpin } from '../office-kit.ts';
 import { TAU, V, baseBox, cylB, jitterAcc, put } from '../parts.ts';
 import type { BuildOpts, PropGeoDef } from '../types.ts';
 import { addHook, stripedBuoy } from './hq.ts';
+import { tagScreens } from './surface-tags.ts';
 
 const RS = THEMES.research.accent;
 const DOME = '#F4F2EC';
@@ -151,6 +152,7 @@ function weatherMast({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
     });
   }
   const g = finishSpin(acc.finish(rng, false, true), acc, spin);
+  tagScreens(g, 'spectrum'); // TASK-384: cabinet door readout
   return addHook(g, 'anemometer', { hub: [hub.x, hub.y, hub.z], axis: [0, 0, 1] });
 }
 

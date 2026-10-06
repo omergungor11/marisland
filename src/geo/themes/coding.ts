@@ -18,6 +18,7 @@ import { Acc, col, createNoise, qEuler } from '../kit.ts';
 import { Spin, finishSpin } from '../office-kit.ts';
 import { TAU, V, V2, baseBox, bevBox, cylB, jitterAcc, lathe, prism, put } from '../parts.ts';
 import type { BuildOpts, PropGeoDef } from '../types.ts';
+import { tagTracker, tagYawHead } from './surface-tags.ts';
 
 /** Vertices emitted so far (Acc keeps its buffers private; ranges are exact, degenerate tris never land). */
 export const accVerts = (acc: Acc): number => (acc as unknown as { pos: number[] }).pos.length / 3;
@@ -184,6 +185,8 @@ export function windTurbine({ rng, lod, variant }: BuildOpts): THREE.BufferGeome
   g.userData.hooks = {
     yaw: { first: headFirst, count: headCount, pivot: [0, towerTop, 0] },
   };
+  // TASK-384: the head yaws into the wind (rotor keeps spinning) — aSpin.w tags
+  tagYawHead(g, { first: headFirst, count: headCount });
   return g;
 }
 
@@ -269,6 +272,12 @@ export function solarRow({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry
     put(acc, baseBox(n * (PANEL_W + gap), 0.05, 0.08), [0, 0.18, 0.05], col(K.rack), { aoAmt: 0 });
   const g = finish(acc, rng);
   g.userData.hooks = { tilt };
+  // TASK-384: every panel tracks the sun about its x axis (pivot through the jitter transform)
+  for (const t of tilt) {
+    const p = new THREE.Vector3(t.pivot[0], t.pivot[1], t.pivot[2]);
+    if (acc.xf) p.applyMatrix4(acc.xf);
+    tagTracker(g, t, p, PANEL_TILT);
+  }
   return g;
 }
 

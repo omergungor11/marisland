@@ -18,6 +18,9 @@ import { THEMES } from '../content/themes.ts';
 import { qEuler, type Acc } from './kit.ts';
 import { easel, monitor, plant, rack, sculpture } from './office-kit.ts';
 import { V, baseBox, cylB, jitterAcc, put } from './parts.ts';
+import { accVerts } from './themes/coding.ts';
+import { tagScreens, type VertexRange } from './themes/surface-tags.ts';
+import { THEME_SCREEN } from '../content/activity.ts';
 import type { BuildOpts, Lod } from './types.ts';
 
 /** Desk / bench centre ahead of the spot, and its depth. */
@@ -32,6 +35,15 @@ interface Ctx {
   /** Floor line (y). */
   fy: number;
   accent: string;
+  /** Rack vertex ranges (TASK-384: their screen-class patches are LED strips, not monitors). */
+  leds: VertexRange[];
+}
+
+/** `rack` recording its vertex range for the LED tag. */
+function rackAt(c: Ctx, at: THREE.Vector3, yaw: number, o: Parameters<typeof rack>[3]): void {
+  const first = accVerts(c.acc);
+  rack(c.acc, at, yaw, o);
+  c.leds.push({ first, count: accVerts(c.acc) - first });
 }
 
 /** Spot-local placer: local +z = the worker's facing, +x = their left-hand side mirror (x right). */
@@ -391,7 +403,7 @@ function dataCenterInterior(c: Ctx): void {
   for (const s of spots('dataCenter')) {
     if (s.pose === 'rack') {
       const { at } = frame(c, s);
-      rack(c.acc, at(0, 0, 0.75), s.face + Math.PI, {
+      rackAt(c, at(0, 0, 0.75), s.face + Math.PI, {
         body: C.steel,
         seed: Math.round(s.x * 2) + 3,
         lod: c.lod,
@@ -405,7 +417,7 @@ function dataCenterInterior(c: Ctx): void {
   const n = hi ? 9 : 5;
   for (let i = 0; i < n; i++) {
     const x = -2.8 + i * (5.6 / (n - 1));
-    rack(c.acc, V(x, c.fy, -1.45), 0, {
+    rackAt(c, V(x, c.fy, -1.45), 0, {
       w: 0.6,
       h: 1.7,
       d: 0.55,
@@ -416,7 +428,7 @@ function dataCenterInterior(c: Ctx): void {
   }
   if (hi) {
     for (const z of [-0.4, 0.5])
-      rack(c.acc, V(3.0, c.fy, z), -Math.PI / 2, {
+      rackAt(c, V(3.0, c.fy, z), -Math.PI / 2, {
         w: 0.6,
         h: 1.7,
         d: 0.55,
@@ -495,7 +507,12 @@ export function officeInterior({ rng, lod, variant }: BuildOpts): THREE.BufferGe
     lod,
     fy: floorOf(shell),
     accent: THEMES[theme].accent,
+    leds: [],
   };
   BUILDERS[shell](c);
-  return acc.finish(rng, false, true);
+  const g = acc.finish(rng, false, true);
+  // TASK-384: monitors show the department's content; rack LED strips blink
+  tagScreens(g, THEME_SCREEN[theme]);
+  for (const r of c.leds) tagScreens(g, 'led', r);
+  return g;
 }

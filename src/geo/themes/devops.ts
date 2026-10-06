@@ -20,6 +20,8 @@ import type { Rng } from '../../core/rng.ts';
 import { Acc, blob, col, createNoise, qEuler } from '../kit.ts';
 import { TAU, V, V2, baseBox, cylB, jitterAcc, lathe, prism, put, tubeAlong } from '../parts.ts';
 import type { BuildOpts, PropGeoDef } from '../types.ts';
+import { accVerts } from './coding.ts';
+import { tagPulse, tagScreens, type VertexRange } from './surface-tags.ts';
 
 const finish = (acc: Acc, rng: Rng): THREE.BufferGeometry => acc.finish(rng, false, true);
 
@@ -170,9 +172,16 @@ export function pipe({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
         [0, 0.5, 0, 0, 0.5, 1],
       ]
     : [[-1, 0.5, 0, 1, 0.5, 0]];
+  // TASK-384: the pipe-colour tube bodies carry the data-pulse tag (axis in object space)
+  const pulses: Array<[VertexRange, 'x' | 'z']> = [];
+  const body = (axis: 'x' | 'z', draw: () => void): void => {
+    const first = accVerts(acc);
+    draw();
+    pulses.push([{ first, count: accVerts(acc) - first }, axis]);
+  };
   if (elbow) {
-    tubeX(acc, -1, 0, 0, rad, seg, K.pipe);
-    tubeZ(acc, 0, 0, 1, rad, seg, K.pipe);
+    body('x', () => tubeX(acc, -1, 0, 0, rad, seg, K.pipe));
+    body('z', () => tubeZ(acc, 0, 0, 1, rad, seg, K.pipe));
     put(acc, new THREE.IcosahedronGeometry(rad * 1.25, 0), [0, 0.5, 0], K.pipe, { aoAmt: 0 });
     tubeX(acc, -0.62, -0.38, 0, rad * 1.14, seg, K.accent);
     tubeZ(acc, 0, 0.5, 0.74, rad * 1.14, seg, K.accent);
@@ -193,7 +202,7 @@ export function pipe({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
       );
     }
   } else {
-    tubeX(acc, -1, 1, 0, rad, seg, K.pipe);
+    body('x', () => tubeX(acc, -1, 1, 0, rad, seg, K.pipe));
     tubeX(acc, -0.62, -0.38, 0, rad * 1.14, seg, K.accent);
     if (variant !== 2) tubeX(acc, 0.38, 0.62, 0, rad * 1.14, seg, K.accent);
   }
@@ -265,6 +274,7 @@ export function pipe({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   }
   const g = finish(acc, rng);
   g.userData.hooks = { pulse: { r: rad, segments } };
+  for (const [r, axis] of pulses) tagPulse(g, r, axis);
   return g;
 }
 
@@ -553,7 +563,10 @@ export function rackRow({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry 
       put(acc, new THREE.PlaneGeometry(0.5, 0.5), [cx, 0.6, 0.42], K.dark, { aoAmt: 0 });
     }
   }
-  return finish(acc, rng);
+  // TASK-384: LED strips blink (screen-class patches → LED dot grids)
+  const g = finish(acc, rng);
+  tagScreens(g, 'led');
+  return g;
 }
 
 export const DEVOPS_GEO: readonly PropGeoDef[] = [
