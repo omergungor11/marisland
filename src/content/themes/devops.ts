@@ -45,6 +45,8 @@ export const DEVOPS_THEME: ThemeDef = {
     [rock]: {
       material: 'rock',
       base: '#7A7584',
+      // an even basalt: the stock slope ramp (±25 %) read as large grey blotches over the cone
+      ramp: 0.3,
       // crack accents in basalt greys (the stock lichen reads as pale blotches on dark rock)
       layer: { layers: ['cracks'], speckle: ['#958FA0', '#5A5664'] },
     },

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { Quality } from '../../core/params.ts';
 import type { WorldData } from '../../world/types.ts';
-import { heightAt, Zone } from '../../world/types.ts';
+import { heightAt, Zone, ZONE_COUNT } from '../../world/types.ts';
 import {
   CRATER_GLOW,
   TERRAIN_COLORS,
@@ -15,7 +15,7 @@ import {
   GROUND_DETAIL,
   GROUND_STRATA,
 } from '../../content/ground.ts';
-import { PALETTE_SCALE, PALETTE_TEXELS, PATTERN_LAYERS } from './terrain-colors.ts';
+import { PALETTE_SCALE, PALETTE_TEXELS, PATTERN_LAYERS, zoneClass } from './terrain-colors.ts';
 import { groundDetailData } from './ground-detail.ts';
 import { SHARED } from '../uniforms.ts';
 import type { WorldTextures } from '../world-textures.ts';
@@ -206,6 +206,10 @@ ${GROUND_COLOR_GLSL}
     // detail normals: world tilt (tangent part only) → view space
     vec3 marT = marNP - marWN * dot(marNP, marWN);
     normal = normalize(normal + (viewMatrix * vec4(marT, 0.0)).xyz);
+    // mean-preserving tilt: renormalising n + t scales n·l by 1 / |n + t| on average (a zero-mean
+    // tilt darkens), so the albedo takes |n + t| back (exact for the direct term, slightly over for
+    // the hemisphere's constant part, hence ${f(F.tiltCompensation)})
+    diffuseColor.rgb *= 1.0 + ${f(F.tiltCompensation)} * (sqrt(1.0 + dot(marT, marT)) - 1.0);
   }`,
       )
       .replace(
@@ -292,6 +296,7 @@ ${GROUND_COLOR_GLSL}
 
 const g = (v: number): string => v.toFixed(5);
 const GD = GROUND_DETAIL;
+const GS = GROUND_STRATA;
 const LAYERS = DETAIL_LAYER_IDS.length;
 
 /**
@@ -325,6 +330,11 @@ ivec2 marTexel(ivec2 t) {
   int m = int(uTerrainGrid.w) - 1;
   return clamp(t, ivec2(0), ivec2(m));
 }
+/** Material class of a zone texel (the albedo smoothing classes of terrain-colors.ts). */
+int marZoneClass(float z) {
+  int i = int(z * 255.0 + 0.5);
+  ${zoneClassGlsl()}
+}
 vec4 marPal(float zone, float isl, int c) {
   return texelFetch(uPalette, ivec2(int(zone) * ${PALETTE_TEXELS} + c, int(isl)), 0);
 }
@@ -353,9 +363,11 @@ vec2 marTilt(int l, vec4 s) {
 }
 void marApply(int l, vec4 s, float amp, vec3 acc, inout vec3 col) {
   vec4 a = uGLayer[l];
+  vec3 c0 = col;
   col *= 1.0 + a.y * amp * (s.r * 2.0 - 1.0);
-  // accent: mean-compensated pull toward the accent colour (flowers, grout, leaves, lichen)
-  col += a.w * amp * (s.a - uGLayer2[l].x) * (acc - col);
+  // accent: mean-compensated pull toward the accent colour (flowers, grout, leaves, lichen); taken
+  // from the pre-delta colour so a lightness / mask correlation cannot bias the mean
+  col += a.w * amp * (s.a - uGLayer2[l].x) * (acc - c0);
 }
 /**
  * One ground material on top of col: p0 / p1 = palette texels 0 / 1, acc = accent colour,
@@ -424,6 +436,13 @@ vec3 marMaterial(vec4 p0, vec4 p1, vec3 acc, vec3 col, vec3 wp, vec3 wn, vec3 dp
 `;
 }
 
+/** GLSL body of `marZoneClass`: the CPU `zoneClass` table as range checks. */
+function zoneClassGlsl(): string {
+  const out: string[] = [];
+  for (let z = 0; z < ZONE_COUNT; z++) out.push(`if (i == ${z}) return ${zoneClass(z)};`);
+  return `${out.join(' ')}\n  return 0;`;
+}
+
 /** Ground colour (TASK-372): albedo → (near) crisp noisy zone borders + detail → strata. */
 const GROUND_COLOR_GLSL = /* glsl */ `
   vec3 marDPx = dFdx(vMarWorld);
@@ -435,21 +454,56 @@ const GROUND_COLOR_GLSL = /* glsl */ `
   vec3 marWN = normalize((vec4(vNormal, 0.0) * viewMatrix).xyz);
   vec3 marNP = vec3(0.0);
   float marFade = 0.0;
-#ifdef MAR_DETAIL
-  // far colour: the albedo texture, identical at every distance
-  diffuseColor.rgb = texture2D(uAlbedo, marUv).rgb;
-#else
   {
-    // low (no detail): one albedo tap at warped, sharpened texel coordinates — organic, crisper
-    // zone edges than plain bilinear (fades to plain bilinear once a cell is under ~1 px)
+    // far / low colour (every quality, identical at every distance): Catmull-Rom albedo (5
+    // bilinear taps, corners dropped) at noise-warped grid coordinates — rounded, organic zone
+    // contours instead of the 2 u staircase while 1-cell paths keep their full colour; the warp
+    // fades out once a cell is under ~1 px (no far shimmer)
     vec2 marQ = vMarWorld.xz / ${g(GD.borderWarpScale)};
-    vec2 marGp = marG + (vec2(marVNoise(marQ), marVNoise(marQ + 37.0)) * 2.0 - 1.0) * ${g(GD.borderWarp)};
-    vec2 marF = fract(marGp);
-    float marK = 1.0 - smoothstep(0.3, 1.0, marGw);
-    marF = mix(marF, smoothstep(0.2, 0.8, marF), marK);
-    diffuseColor.rgb = texture2D(uAlbedo, (floor(marGp) + marF + 0.5) / uTerrainGrid.w).rgb;
+    vec2 marGp = marG + (vec2(marVNoise(marQ), marVNoise(marQ + 37.0)) * 2.0 - 1.0)
+               * ${g(GD.borderWarp)} * (1.0 - smoothstep(0.5, 1.5, marGw));
+    vec2 marT1 = floor(marGp) + 0.5;
+    vec2 marF = marGp + 0.5 - marT1;
+    vec2 marW0 = marF * (-0.5 + marF * (1.0 - 0.5 * marF));
+    vec2 marW1 = 1.0 + marF * marF * (-2.5 + 1.5 * marF);
+    vec2 marW2 = marF * (0.5 + marF * (2.0 - 1.5 * marF));
+    vec2 marW3 = marF * marF * (-0.5 + 0.5 * marF);
+    vec2 marW12 = marW1 + marW2;
+    vec2 marT0 = (marT1 - 1.0) / uTerrainGrid.w;
+    vec2 marT3 = (marT1 + 2.0) / uTerrainGrid.w;
+    vec2 marT12 = (marT1 + marW2 / marW12) / uTerrainGrid.w;
+    float marWs = marW12.x * marW0.y + marW0.x * marW12.y + marW12.x * marW12.y + marW3.x * marW12.y + marW12.x * marW3.y;
+    diffuseColor.rgb = max((texture2D(uAlbedo, vec2(marT12.x, marT0.y)).rgb * (marW12.x * marW0.y)
+                          + texture2D(uAlbedo, vec2(marT0.x, marT12.y)).rgb * (marW0.x * marW12.y)
+                          + texture2D(uAlbedo, marT12).rgb * (marW12.x * marW12.y)
+                          + texture2D(uAlbedo, vec2(marT3.x, marT12.y)).rgb * (marW3.x * marW12.y)
+                          + texture2D(uAlbedo, vec2(marT12.x, marT3.y)).rgb * (marW12.x * marW3.y)) / marWs, 0.0);
+    // crisp edges with round contours: between the nearest corner colour A and the most different
+    // corner B of another material class (sand / vegetation / rock / cliff / paved / crater),
+    // threshold the smooth colour's position at 0.5 (keeping its off-axis part); only where A and
+    // B clearly differ and while a cell spans > 1 px. Same-class patches (forest floor in grass)
+    // stay smooth, so no small patch thresholds away up close (mean-preserving across the ladder).
+    float marK = ${g(GD.borderSharpen)} * (1.0 - smoothstep(0.3, 1.0, marGw));
+    if (marK > 0.0) {
+      ivec2 marI = ivec2(floor(marGp));
+      ivec2 marTa = marTexel(marI + ivec2(step(0.5, marF)));
+      vec3 marCa = texelFetch(uAlbedo, marTa, 0).rgb;
+      int marKa = marZoneClass(texelFetch(uTerrainZone, marTa, 0).r);
+      vec3 marCb = marCa;
+      float marDb = 0.0;
+      for (int k = 0; k < 4; k++) {
+        ivec2 t = marTexel(marI + ivec2(k - 2 * (k / 2), k / 2));
+        vec3 c = texelFetch(uAlbedo, t, 0).rgb;
+        float d = dot(c - marCa, c - marCa);
+        if (d > marDb && marZoneClass(texelFetch(uTerrainZone, t, 0).r) != marKa) { marDb = d; marCb = c; }
+      }
+      vec3 marAb = marCb - marCa;
+      float marT = clamp(dot(diffuseColor.rgb - marCa, marAb) / max(marDb, 1e-6), 0.0, 1.0);
+      float marE = clamp(0.75 * marGw, ${g(GD.borderSoft)}, 0.5);
+      vec3 marCrisp = diffuseColor.rgb + marAb * (smoothstep(0.5 - marE, 0.5 + marE, marT) - marT);
+      diffuseColor.rgb = mix(diffuseColor.rgb, marCrisp, marK * smoothstep(${g(GD.borderContrast[0])}, ${g(GD.borderContrast[1])}, sqrt(marDb)));
+    }
   }
-#endif
 #ifdef MAR_DETAIL
   marFade = 1.0 - smoothstep(${g(GD.fadeNear)}, ${g(GD.fadeFar)}, length(vMarWorld - cameraPosition));
   if (marFade > 0.0) {
@@ -535,7 +589,21 @@ const GROUND_COLOR_GLSL = /* glsl */ `
       float marBand = marStrata(vMarWorld, marH, 1.0, 3.14159265 / marH * marYw * 1.5);
       float marFine = marStrata(vMarWorld + vec3(0.0, 0.37, 0.0), marH * 0.31, 0.6, 3.14159265 / (marH * 0.31) * marYw * 1.5);
       float marC = marP1.a * ${g(255 / PALETTE_SCALE.contrast)};
-      diffuseColor.rgb *= 1.0 + marAmt * marC * (marBand + ${g(GROUND_STRATA.fine)} * marFade * marFine);
+      // carving (every quality): vertical cracks (ridged noise along the wall, stretched in y,
+      // mean-compensated so the far colour is unchanged) and ledge relief (the main band tilts
+      // the normal up / down) so walls read as carved rock, not flat planks
+      vec2 marWd = normalize(vec2(-marWN.z, marWN.x) + vec2(1e-4, 0.0));
+      float marU = dot(vMarWorld.xz, marWd);
+      float marCr = 1.0 - abs(2.0 * marVNoise(vec2(marU * ${g(GS.crackFreq)}, vMarWorld.y * ${g(GS.crackFreq * GS.crackStretch)})) - 1.0);
+      // cracks on walls only (not on the even slopes of a cone)
+      float marCrAa = (1.0 - smoothstep(${g(GS.crackAa[0])}, ${g(GS.crackAa[1])}, marGw))
+                    * (1.0 - smoothstep(${g(GS.crackSteep[0])}, ${g(GS.crackSteep[1])}, marWN.y));
+      float marCk = (smoothstep(${g(GS.crackEdge[0])}, ${g(GS.crackEdge[1])}, marCr) - ${g(GS.crackMean)}) * marCrAa;
+      diffuseColor.rgb *= 1.0 + marAmt * marC * (marBand + ${g(GROUND_STRATA.fine)} * marFade * marFine)
+                        - marAmt * ${g(GS.crack)} * marCk;
+      float marLedge = cos(3.14159265 * (vMarWorld.y + 0.3 * sin(vMarWorld.x * 0.07 + vMarWorld.z * 0.05)) / marH)
+                     * (1.0 - smoothstep(0.6, 1.6, 3.14159265 / marH * marYw * 1.5));
+      marNP += vec3(0.0, marAmt * ${g(GS.ledge)} * marLedge, 0.0) - vec3(marWd.x, 0.0, marWd.y) * marAmt * ${g(GS.crackNormal)} * marCk;
     }
   }
 `;

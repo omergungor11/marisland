@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { WorldData } from '../../world/types.ts';
-import { CHUNK_CELLS } from '../../world/types.ts';
+import { CHUNK_CELLS, Zone } from '../../world/types.ts';
 import { TERRAIN_FACETS, TERRAIN_LOD } from '../../content/terrain.ts';
 import { sampleSurface, type SurfaceSample } from '../../shared/terrain-sample.ts';
 
@@ -77,6 +77,7 @@ uniform vec4 uMarHeightGrid;
 // Flat normal of the 2 u grid triangle under the fragment (diagonal (x0,z0)–(x1,z1), as the mesh)
 const FACET_NORMAL = /* glsl */ `
   {
+    // uTerrainZone: declared by the terrain material (same program)
     vec2 marG = clamp((vMarSurf.xz - uMarHeightGrid.xy) * uMarHeightGrid.z, vec2(0.0), vec2(uMarHeightGrid.w - 1.001));
     ivec2 marC = ivec2(floor(marG));
     vec2 marF = marG - vec2(marC);
@@ -87,6 +88,22 @@ const FACET_NORMAL = /* glsl */ `
     vec2 marD = marF.x >= marF.y ? vec2(marHb - marHa, marHe - marHb) : vec2(marHe - marHc, marHc - marHa);
     vec3 marFn = normalize(vec3(-marD.x, 1.0 / uMarHeightGrid.z, -marD.y));
     float marFw = 1.0 - smoothstep(${f4(TERRAIN_FACETS.ny[0])}, ${f4(TERRAIN_FACETS.ny[1])}, marFn.y);
+    if (marFw > 0.0) {
+      // relief gate: only tall walls facet (a low ridge stays smooth however steep it is)
+      float marR0 = texelFetch(uMarHeight, clamp(marC - ivec2(2), ivec2(0), ivec2(int(uMarHeightGrid.w) - 1)), 0).r;
+      float marR1 = texelFetch(uMarHeight, clamp(marC + ivec2(3), ivec2(0), ivec2(int(uMarHeightGrid.w) - 1)), 0).r;
+      float marR2 = texelFetch(uMarHeight, clamp(marC + ivec2(3, -2), ivec2(0), ivec2(int(uMarHeightGrid.w) - 1)), 0).r;
+      float marR3 = texelFetch(uMarHeight, clamp(marC + ivec2(-2, 3), ivec2(0), ivec2(int(uMarHeightGrid.w) - 1)), 0).r;
+      float marRel = max(max(max(marR0, marR1), max(marR2, marR3)), max(max(marHa, marHb), max(marHc, marHe)))
+                   - min(min(min(marR0, marR1), min(marR2, marR3)), min(min(marHa, marHb), min(marHc, marHe)));
+      marFw *= smoothstep(${f4(TERRAIN_FACETS.relief[0])}, ${f4(TERRAIN_FACETS.relief[1])}, marRel) * ${f4(TERRAIN_FACETS.strength)};
+      // rock / cliff / crater ground only (bilinear over the 4 corners: no blocky on / off)
+      vec4 marZq = vec4(texelFetch(uTerrainZone, marC, 0).r, texelFetch(uTerrainZone, marC + ivec2(1, 0), 0).r,
+                        texelFetch(uTerrainZone, marC + ivec2(0, 1), 0).r, texelFetch(uTerrainZone, marC + ivec2(1, 1), 0).r) * 255.0;
+      vec4 marRk = step(abs(marZq - ${Zone.rock}.0), vec4(0.5)) + step(abs(marZq - ${Zone.cliff}.0), vec4(0.5))
+                 + step(abs(marZq - ${Zone.crater}.0), vec4(0.5));
+      marFw *= mix(mix(marRk.x, marRk.y, marF.x), mix(marRk.z, marRk.w, marF.x), marF.y);
+    }
     if (marFw > 0.0) normal = normalize(mix(normal, normalize((viewMatrix * vec4(marFn, 0.0)).xyz), marFw));
   }
 `;
@@ -101,8 +118,8 @@ function insertAfter(src: string, find: string, insert: string): string {
  * Chain the smooth-surface terms onto the terrain material's own `onBeforeCompile` (same program
  * key: the patch is constant, so the program count is unchanged):
  *  - geomorph (vertex): `aMorph` blend by camera distance, `uMorphBand` per level;
- *  - cliff facets (fragment, `TERRAIN_FACETS`): steep ground shades with the 2 u grid's flat
- *    triangle normals from the height texture (1 sampler, 4 texel fetches).
+ *  - cliff facets (fragment, `TERRAIN_FACETS`): tall steep walls shade with the 2 u grid's flat
+ *    triangle normals from the height texture (1 sampler, 4 texel fetches + 4 for the relief gate).
  * Chunks / merges have identity model and instance matrices, so `position` is world space.
  */
 export function addTerrainSurface(
