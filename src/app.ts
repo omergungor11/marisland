@@ -412,6 +412,7 @@ export async function boot(): Promise<void> {
         renderer: backend.renderer,
         instantEdits: params.freeze,
         beforeBuild: (w) => edits.beforeBuild(w),
+        getCameraTarget: (o) => void cam.controls.getTarget(o),
       });
       liveWorld = wv;
       edits.attach({ world: wv.world, rebuildDirty: (r) => wv.rebuildDirty(r) });

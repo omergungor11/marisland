@@ -39,6 +39,8 @@ export interface LifeDeps {
   getTier(): number;
   /** Live reference, read every step. */
   cameraPos: THREE.Vector3;
+  /** Live orbit target (M14c): the worker focus is the campus looked at; falls back to `cameraPos`. */
+  cameraTarget?: THREE.Vector3;
   /** Overrides of `LIFE_PLAN[quality]` (tests; e.g. `villagers` for a later "visitors" option). */
   plan?: Partial<LifePlan>;
 }
@@ -49,6 +51,8 @@ export interface LifeCtx {
   seed: number;
   water: WaterSplat;
   cameraPos: THREE.Vector3;
+  /** Point the worker focus measures from: the orbit target, else the camera. */
+  focusPos: THREE.Vector3;
   getTier(): number;
   gust: GustParams;
   /** Mutable: amplitude follows the reduced-motion scale so boats track the water surface. */
@@ -73,6 +77,7 @@ export function makeCtx(deps: LifeDeps): LifeCtx {
     seed: deps.seed,
     water: deps.water,
     cameraPos: deps.cameraPos,
+    focusPos: deps.cameraTarget ?? deps.cameraPos,
     getTier: deps.getTier,
     gust: {
       dir: world.windDir,
