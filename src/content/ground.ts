@@ -106,6 +106,13 @@ export const GROUND_DETAIL = {
   /** Zone-border warp: amplitude in grid cells and wavelength in u (organic material edges). */
   borderWarp: 0.42,
   borderWarpScale: 2.6,
+  /**
+   * Far / low colour: crispness of material borders (0 = the smooth Catmull-Rom colour, 1 = a
+   * thresholded edge), applied where two corner colours differ by more than `borderContrast`
+   * (linear RGB distance, ramp → full) so smooth ramps stay smooth.
+   */
+  borderSharpen: 0.85,
+  borderContrast: [0.04, 0.12] as const,
   /** Half-width of the border blend (fraction of the cell weight; crisp ≈ 0.06). */
   borderSoft: 0.07,
   /** Accent pick (accent 1 vs 2) changes over patches of about this size in u. */
@@ -156,6 +163,23 @@ export const GROUND_STRATA = {
   rock: 0.45,
   /** Fine sub-bands (near only) as a fraction of the main contrast. */
   fine: 0.35,
+  /**
+   * Carving (every quality, M14b polish): vertical cracks = ridged value noise along the wall
+   * (`crackFreq` per u, × `crackStretch` in y), lines where it exceeds `crackEdge`; darkening
+   * `crack` × strata amount, mean-compensated by `crackMean` (the mask's average) so the far
+   * colour stays the albedo; faded out once a 2 u cell is under `crackAa` px⁻¹. `ledge` = normal
+   * tilt of the strata bands (ledges), `crackNormal` = crack groove tilt.
+   */
+  crackFreq: 0.55,
+  crackStretch: 0.35,
+  crackEdge: [0.88, 0.97] as const,
+  crackMean: 0.12,
+  crackAa: [0.25, 0.7] as const,
+  /** Cracks show where the normal y is below crackSteep[0], none above crackSteep[1] (walls). */
+  crackSteep: [0.25, 0.45] as const,
+  crack: 0.45,
+  ledge: 0.35,
+  crackNormal: 0.25,
 } as const;
 
 /**
@@ -167,6 +191,16 @@ export const GROUND_MACRO = {
   weights: [0.65, 0.35] as const,
   lightness: { veg: 0.07, sand: 0.035, rock: 0.05, paved: 0.025, under: 0.03 },
   vegHue: 0.05,
+} as const;
+
+/**
+ * Albedo smoothing (M14b polish): binomial blur of `radius` samples over same-class neighbours
+ * (vegetation, sand, rock, …) baked into the albedo, so zone patches inside one material family
+ * read as soft rounded shapes instead of 2 u blocks. Class borders are kept.
+ */
+export const GROUND_SMOOTH = {
+  radius: 2,
+  kernel: [1, 4, 6, 4, 1] as const,
 } as const;
 
 /** Per-zone overrides of the layer look (all optional; unset = DETAIL_LAYERS / MATERIAL_LAYERS). */
@@ -188,6 +222,11 @@ export interface GroundSpec {
   material: GroundMaterial;
   /** Base albedo hex (the far / averaged colour; detail only adds zero-mean variation). */
   base: string;
+  /**
+   * Ramp zones (grass bands, rock slope, wet-sand drying): fraction of the default ramp contrast
+   * kept around the base (1 / unset = full; low values = an even material, e.g. basalt).
+   */
+  ramp?: number;
   layer?: GroundLayerParams;
 }
 

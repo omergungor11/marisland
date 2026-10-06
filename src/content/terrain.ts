@@ -82,10 +82,18 @@ export const TERRAIN_AO = {
  * Cliff facets (M14b risk #1, TASK-371): on steep ground the shading normal blends to the flat
  * normal of the 2 u grid triangle under the fragment (independent of the mesh level, so no LOD
  * pop), keeping cliffs carved while hills stay smooth. `ny` = facet normal y: smooth above
- * ny[1], fully faceted below ny[0].
+ * ny[1], fully faceted below ny[0] (M14b polish: only near-vertical, tall walls).
  */
 export const TERRAIN_FACETS = {
-  ny: [0.55, 0.75] as const,
+  ny: [0.3, 0.5] as const,
+  /**
+   * Relief gate (u): height range of the 6 u neighbourhood (corners ±2–3 cells) below which no
+   * facets show, so low ridges (atoll ring, 3 u) and terrace walls stay smooth; the sea stack's
+   * walls (18–30 u) keep a carved facet. Facets show on rock / cliff / crater ground only.
+   */
+  relief: [9, 15] as const,
+  /** Max blend toward the flat facet normal (strata / cracks carry the rest of the carving). */
+  strength: 0.65,
 } as const;
 
 /**
@@ -138,6 +146,12 @@ export const TERRAIN_FX = {
   lapAdvance: 0.8,
   lapBand: 1.2,
   lapWetMix: 0.75,
+  /**
+   * Detail / carving normal tilts: fraction of |n + t| given back to the albedo so a zero-mean
+   * tilt does not darken the mean (1 = exact for the sun term; the hemisphere's constant part
+   * does not need it).
+   */
+  tiltCompensation: 0.8,
   /** Land never darker than this HSL lightness (ART_BIBLE §2, plus margin). */
   minLandL: 0.14,
 } as const;

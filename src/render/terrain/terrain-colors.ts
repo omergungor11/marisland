@@ -12,6 +12,7 @@ import {
   GROUND_DETAIL,
   GROUND_MACRO,
   GROUND_MATERIALS,
+  GROUND_SMOOTH,
   GROUND_STRATA,
   MATERIAL_ACCENTS,
   MATERIAL_LAYERS,
@@ -32,7 +33,14 @@ export const TerrainClass = {
 } as const;
 
 function classOf(zone: number, y: number): number {
-  if (y <= 0) return TerrainClass.under;
+  return y <= 0 ? TerrainClass.under : zoneClass(zone);
+}
+
+/**
+ * Material class of a sample above water (shared with the shader's crisp class borders); stray
+ * water zones on land count as vegetation.
+ */
+export function zoneClass(zone: number): number {
   switch (zone) {
     case Zone.sandWet:
     case Zone.sandDry:
@@ -282,77 +290,136 @@ export function fillAlbedoGrid(
   iz0: number,
   iz1: number,
 ): void {
-  const h = world.height;
-  const n = h.n;
-  const d = h.data;
-  const noise = macroNoise(world);
-  const M = GROUND_MACRO;
+  const n = world.height.n;
+  const R = GROUND_SMOOTH.radius;
   const out = grid.rgba;
-  for (let iz = Math.max(0, iz0); iz <= Math.min(n - 1, iz1); iz++) {
-    for (let ix = Math.max(0, ix0); ix <= Math.min(n - 1, ix1); ix++) {
+  const x0 = Math.max(0, ix0);
+  const x1 = Math.min(n - 1, ix1);
+  const z0 = Math.max(0, iz0);
+  const z1 = Math.min(n - 1, iz1);
+  if (x1 < x0 || z1 < z0) return;
+  // raw colours of the rect + the smoothing margin (sRGB 0..1) and their blend class
+  const ex0 = Math.max(0, x0 - R);
+  const ex1 = Math.min(n - 1, x1 + R);
+  const ez0 = Math.max(0, z0 - R);
+  const ez1 = Math.min(n - 1, z1 + R);
+  const w = ex1 - ex0 + 1;
+  const raw = new Float32Array(w * (ez1 - ez0 + 1) * 3);
+  const cls = new Uint8Array(w * (ez1 - ez0 + 1));
+  for (let iz = ez0; iz <= ez1; iz++)
+    for (let ix = ex0; ix <= ex1; ix++) {
+      const k = (iz - ez0) * w + (ix - ex0);
+      cls[k] = rawAlbedo(world, ix, iz);
+      raw[k * 3] = _px.r;
+      raw[k * 3 + 1] = _px.g;
+      raw[k * 3 + 2] = _px.b;
+    }
+  // smoothing (M14b polish): a binomial blur over same-class neighbours only, so zone patches of
+  // one material family (forest floor in grass, slope ramps on rock) read as soft rounded
+  // shapes instead of 2 u blocks; class borders stay where they are.
+  const K = GROUND_SMOOTH.kernel;
+  for (let iz = z0; iz <= z1; iz++)
+    for (let ix = x0; ix <= x1; ix++) {
+      const kc = (iz - ez0) * w + (ix - ex0);
+      const c = cls[kc];
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      let ws = 0;
+      for (let dz = -R; dz <= R; dz++) {
+        const jz = iz + dz;
+        if (jz < ez0 || jz > ez1) continue;
+        for (let dx = -R; dx <= R; dx++) {
+          const jx = ix + dx;
+          if (jx < ex0 || jx > ex1) continue;
+          const k = (jz - ez0) * w + (jx - ex0);
+          if (cls[k] !== c) continue;
+          const wt = K[dz + R] * K[dx + R];
+          r += raw[k * 3] * wt;
+          g += raw[k * 3 + 1] * wt;
+          b += raw[k * 3 + 2] * wt;
+          ws += wt;
+        }
+      }
       const i = iz * n + ix;
-      const y = d[i];
-      const z = world.zone[i];
-      const cls = classOf(z, y);
-      shadeAt(world, ix, iz, cls);
-      const col = zoneColor(world, i, ix, iz, _shade.concavity);
-      const spec = y > 0 ? themeSpec(world, i, z) : null;
-      if (spec) {
-        const base = linOf(spec.base);
-        if (RAMP_ZONES.has(z)) {
-          const ref = linOf(DEFAULT_GROUND[z as ZoneId].base);
-          col.r *= base.r / Math.max(ref.r, 1e-4);
-          col.g *= base.g / Math.max(ref.g, 1e-4);
-          col.b *= base.b / Math.max(ref.b, 1e-4);
-        } else col.copy(base);
-      }
-      let r = linearToSrgb(clamp01(col.r));
-      let g = linearToSrgb(clamp01(col.g));
-      let b = linearToSrgb(clamp01(col.b));
-      // macro variation: two seeded octaves (identical at every distance)
-      const x = h.originX + ix * h.cellSize;
-      const zw = h.originZ + iz * h.cellSize;
-      const m =
-        M.weights[0] * noise.n2(x / M.wavelengths[0], zw / M.wavelengths[0]) +
-        M.weights[1] * noise.n2(x / M.wavelengths[1] + 31.7, zw / M.wavelengths[1] - 12.3);
-      const amt =
-        cls === TerrainClass.veg
-          ? M.lightness.veg
-          : cls === TerrainClass.sand
-            ? M.lightness.sand
-            : cls === TerrainClass.path
-              ? M.lightness.paved
-              : cls === TerrainClass.under
-                ? M.lightness.under
-                : M.lightness.rock;
-      r *= 1 + amt * m;
-      g *= 1 + amt * m;
-      b *= 1 + amt * m;
-      if (cls === TerrainClass.veg) {
-        // green ↔ yellow lean on its own field
-        const hue = noise.n2(x / 21 - 7.1, zw / 21 + 4.4) * M.vegHue;
-        r *= 1 + hue;
-        b *= 1 - hue;
-      }
-      // AO: scale the sRGB value and lean the shade slightly cool (ART_BIBLE P4), as faceColor
-      const occ = _shade.ao;
-      const o = 1 - occ;
-      r = clamp01(r * occ * (1 - TERRAIN_AO.coolShift * o));
-      g = clamp01(g * occ);
-      b = clamp01(b * occ * (1 + TERRAIN_AO.coolShift * o));
-      if (y > 0 && (Math.max(r, g, b) + Math.min(r, g, b)) / 2 < TERRAIN_FX.minLandL) {
-        hslOf(r, g, b);
-        rgbOfHsl(_hsl.h, _hsl.s, TERRAIN_FX.minLandL);
-        r = _rgb.r;
-        g = _rgb.g;
-        b = _rgb.b;
-      }
-      out[i * 4] = Math.round(r * 255);
-      out[i * 4 + 1] = Math.round(g * 255);
-      out[i * 4 + 2] = Math.round(b * 255);
+      out[i * 4] = Math.round((r / ws) * 255);
+      out[i * 4 + 1] = Math.round((g / ws) * 255);
+      out[i * 4 + 2] = Math.round((b / ws) * 255);
       out[i * 4 + 3] = world.islandMap[i];
     }
+}
+
+const _px = { r: 0, g: 0, b: 0 };
+
+/** Unsmoothed sRGB colour of sample (ix, iz) into `_px`; returns its blend class. */
+function rawAlbedo(world: WorldData, ix: number, iz: number): number {
+  const h = world.height;
+  const n = h.n;
+  const noise = macroNoise(world);
+  const M = GROUND_MACRO;
+  const i = iz * n + ix;
+  const y = h.data[i];
+  const z = world.zone[i];
+  const cls = classOf(z, y);
+  shadeAt(world, ix, iz, cls);
+  const col = zoneColor(world, i, ix, iz, _shade.concavity);
+  const spec = y > 0 ? themeSpec(world, i, z) : null;
+  if (spec) {
+    const base = linOf(spec.base);
+    if (RAMP_ZONES.has(z)) {
+      const ref = linOf(DEFAULT_GROUND[z as ZoneId].base);
+      // ramp contrast kept relative to the reference (1 = full slope / height ramp)
+      const k = spec.ramp ?? 1;
+      col.r = (ref.r + (col.r - ref.r) * k) * (base.r / Math.max(ref.r, 1e-4));
+      col.g = (ref.g + (col.g - ref.g) * k) * (base.g / Math.max(ref.g, 1e-4));
+      col.b = (ref.b + (col.b - ref.b) * k) * (base.b / Math.max(ref.b, 1e-4));
+    } else col.copy(base);
   }
+  let r = linearToSrgb(clamp01(col.r));
+  let g = linearToSrgb(clamp01(col.g));
+  let b = linearToSrgb(clamp01(col.b));
+  // macro variation: two seeded octaves (identical at every distance)
+  const x = h.originX + ix * h.cellSize;
+  const zw = h.originZ + iz * h.cellSize;
+  const m =
+    M.weights[0] * noise.n2(x / M.wavelengths[0], zw / M.wavelengths[0]) +
+    M.weights[1] * noise.n2(x / M.wavelengths[1] + 31.7, zw / M.wavelengths[1] - 12.3);
+  const amt =
+    cls === TerrainClass.veg
+      ? M.lightness.veg
+      : cls === TerrainClass.sand
+        ? M.lightness.sand
+        : cls === TerrainClass.path
+          ? M.lightness.paved
+          : cls === TerrainClass.under
+            ? M.lightness.under
+            : M.lightness.rock;
+  r *= 1 + amt * m;
+  g *= 1 + amt * m;
+  b *= 1 + amt * m;
+  if (cls === TerrainClass.veg) {
+    // green ↔ yellow lean on its own field
+    const hue = noise.n2(x / 21 - 7.1, zw / 21 + 4.4) * M.vegHue;
+    r *= 1 + hue;
+    b *= 1 - hue;
+  }
+  // AO: scale the sRGB value and lean the shade slightly cool (ART_BIBLE P4), as faceColor
+  const occ = _shade.ao;
+  const o = 1 - occ;
+  r = clamp01(r * occ * (1 - TERRAIN_AO.coolShift * o));
+  g = clamp01(g * occ);
+  b = clamp01(b * occ * (1 + TERRAIN_AO.coolShift * o));
+  if (y > 0 && (Math.max(r, g, b) + Math.min(r, g, b)) / 2 < TERRAIN_FX.minLandL) {
+    hslOf(r, g, b);
+    rgbOfHsl(_hsl.h, _hsl.s, TERRAIN_FX.minLandL);
+    r = _rgb.r;
+    g = _rgb.g;
+    b = _rgb.b;
+  }
+  _px.r = r;
+  _px.g = g;
+  _px.b = b;
+  return cls;
 }
 
 /** Palette texture: `PALETTE_TEXELS` texels per zone, `PALETTE_ROWS` rows (row = island id). */

@@ -9,6 +9,7 @@ import { WATER_BANDS } from '../content/palette.ts';
 import { WATER_SHADER } from '../content/water.ts';
 import { EDIT_RENDER } from '../content/edit.ts';
 import { TERRAIN_AO } from '../content/terrain.ts';
+import { GROUND_SMOOTH } from '../content/ground.ts';
 import { ZONE_COUNT } from '../world/types.ts';
 import {
   PALETTE_ROWS,
@@ -436,7 +437,11 @@ export function createWorldTextures(
         cRect.mark(r.x, r.y);
         cRect.mark(r.x + r.w - 1, r.y + r.h - 1);
       }
-      const colorRect = cRect.rect;
+      // albedo smoothing spreads a changed sample over its blur radius
+      const cr = cRect.rect;
+      const colorRect = cr
+        ? rectFromBounds(cr.x, cr.x + cr.w - 1, cr.y, cr.y + cr.h - 1, n, GROUND_SMOOTH.radius)
+        : null;
       if (colorRect) {
         const c = colorRect;
         fillAlbedoGrid(world, albedoGrid, c.x, c.x + c.w - 1, c.y, c.y + c.h - 1);
