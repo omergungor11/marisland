@@ -323,5 +323,5 @@ describe('distance LOD (TASK-371)', () => {
     }
     a.s.dispose();
     b.s.dispose();
-  });
+  }, 90_000); // two full high-quality builds: ~23 s on 2-core CI runners
 });
