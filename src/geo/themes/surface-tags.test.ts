@@ -25,7 +25,7 @@ describe('animated-surface tags (TASK-384)', () => {
       expect(s.getY(i)).toBeLessThanOrEqual(1 + 1e-4);
       expect(s.getZ(i)).toBeGreaterThan(1); // aspect of a landscape monitor
     }
-    expect(code).toBe(12 * 6); // 6 desks × 2 screens × 2 triangles
+    expect(code).toBe(12 * 7); // 6 desks × 2 screens + 2 back-wall dashboards (M14c), 2 triangles each
     const w = tags('officeInterior', dc);
     expect(w).toContain(-SURFACE.terminal);
     expect(w).toContain(-SURFACE.led);

@@ -83,11 +83,13 @@ const PI = Math.PI;
 export const WORK_SPOTS: Readonly<Record<string, readonly WorkSpot[]>> = {
   // HQ
   hqOffice: [
-    { x: -1.6, z: 1.2, face: 0, pose: 'type', sit: S },
-    { x: 0, z: 1.2, face: 0, pose: 'type', sit: S },
-    { x: 1.6, z: 1.2, face: 0, pose: 'type', sit: S },
-    { x: -1.2, z: -1.0, face: PI / 2, pose: 'type', sit: S },
-    { x: 1.2, z: -1.0, face: -PI / 2, pose: 'type', sit: S },
+    // M14c: front row turned half-back (screens angle out through the open front, the bot does not
+    // hide its own screen), back row looks out
+    { x: -1.6, z: 1.2, face: PI + 0.7, pose: 'type', sit: S },
+    { x: 0, z: 1.2, face: PI - 0.7, pose: 'type', sit: S },
+    { x: 1.6, z: 1.2, face: PI - 0.7, pose: 'type', sit: S },
+    { x: -1.2, z: -0.9, face: 0.35, pose: 'type', sit: S },
+    { x: 1.2, z: -0.9, face: -0.35, pose: 'type', sit: S },
   ],
   hqAnnex: [{ x: 0, z: 0.6, face: 0, pose: 'look', sit: 0 }],
   meetingPavilion: [
@@ -99,16 +101,18 @@ export const WORK_SPOTS: Readonly<Record<string, readonly WorkSpot[]>> = {
   coffeeKiosk: [{ x: 0, z: -0.2, face: 0, pose: 'stand', sit: 0 }],
   // Coding
   devOffice: [
-    { x: -2.2, z: 0.9, face: 0, pose: 'type', sit: S },
-    { x: 0, z: 0.9, face: 0, pose: 'type', sit: S },
-    { x: 2.2, z: 0.9, face: 0, pose: 'type', sit: S },
+    // M14c: front row turned half-back (screens angle out through the windows), back row looks out
+    { x: -2.2, z: 0.9, face: PI + 0.9, pose: 'type', sit: S },
+    { x: 0, z: 0.9, face: PI - 0.9, pose: 'type', sit: S },
+    { x: 2.2, z: 0.9, face: PI + 0.9, pose: 'type', sit: S },
     { x: -2.2, z: -0.8, face: 0, pose: 'type', sit: S },
     { x: 0, z: -0.8, face: 0, pose: 'type', sit: S },
     { x: 2.2, z: -0.8, face: 0, pose: 'type', sit: S },
   ],
   devPod: [
-    { x: -0.6, z: 0.5, face: 0, pose: 'type', sit: S },
-    { x: 0.6, z: 0.5, face: 0, pose: 'type', sit: S },
+    // M14c: turned half-back so each screen angles out through the open front
+    { x: -0.95, z: 0.5, face: PI - 0.9, pose: 'type', sit: S },
+    { x: 0.95, z: 0.5, face: PI + 0.9, pose: 'type', sit: S },
   ],
   serverShed: [{ x: 0, z: 0.6, face: PI, pose: 'rack', sit: 0 }],
   // Marketing
@@ -121,7 +125,7 @@ export const WORK_SPOTS: Readonly<Record<string, readonly WorkSpot[]>> = {
   // QA
   testLab: [
     { x: -1.4, z: 1.0, face: 0, pose: 'inspect', sit: 0 },
-    { x: 0.4, z: 1.0, face: 0, pose: 'type', sit: S },
+    { x: 0.4, z: 1.0, face: PI - 0.8, pose: 'type', sit: S },
     { x: 1.5, z: -0.8, face: -PI / 2, pose: 'inspect', sit: 0 },
   ],
   inspectionTower: [{ x: 0, z: 0.5, face: 0, pose: 'look', sit: 0 }],
@@ -141,10 +145,10 @@ export const WORK_SPOTS: Readonly<Record<string, readonly WorkSpot[]>> = {
   ],
   // DevOps
   dataCenter: [
-    { x: -2.0, z: 1.1, face: 0, pose: 'type', sit: S },
+    { x: -2.0, z: 1.3, face: PI - 0.8, pose: 'type', sit: S },
     { x: -0.5, z: 0, face: PI / 2, pose: 'rack', sit: 0 },
     { x: 1.5, z: 0, face: PI / 2, pose: 'rack', sit: 0 },
-    { x: 2.2, z: 1.1, face: 0, pose: 'type', sit: S },
+    { x: 2.2, z: 1.3, face: PI + 0.8, pose: 'type', sit: S },
   ],
   rackShed: [{ x: 0, z: 0.5, face: PI, pose: 'rack', sit: 0 }],
   antennaMast: [{ x: 0.5, z: 0.5, face: 0, pose: 'inspect', sit: 0 }],

@@ -192,6 +192,11 @@ function rug(c: Ctx, x: number, z: number, w: number, d: number, color: string):
   put(c.acc, new THREE.BoxGeometry(w, 0.02, d), V(x, c.fy + 0.01, z), color, { aoAmt: 0 });
 }
 
+/** Wall dashboard (screen class) on a back wall, facing +z (the windows). */
+function dashboard(c: Ctx, x: number, y: number, z: number, w: number, h: number): void {
+  monitor(c.acc, V(x, c.fy + y, z), 0, w, h, C.screen, c.lod);
+}
+
 const spots = (shell: string): readonly WorkSpot[] => WORK_SPOTS[shell] ?? [];
 
 /* ---------------------------- per-shell compositions ---------------------------- */
@@ -205,6 +210,7 @@ function hqOfficeInterior(c: Ctx): void {
   shelf(c, 0, -2.2, 0, 3.0, 5);
   plant(c.acc, V(-2.6, c.fy, -1.9), 1.5, c.lod);
   plant(c.acc, V(2.6, c.fy, -1.9), 1.5, c.lod);
+  dashboard(c, 0, 1.8, -2.3, 1.8, 0.9);
 }
 
 function meetingInterior(c: Ctx): void {
@@ -229,6 +235,8 @@ function devOfficeInterior(c: Ctx): void {
   }
   rug(c, 0, 0.1, 6.2, 0.7, '#CFE0F5');
   shelf(c, -3.2, -1.5, Math.PI / 2, 1.8, 4);
+  dashboard(c, -1.1, 1.6, -1.76, 1.5, 0.8);
+  dashboard(c, 1.1, 1.6, -1.76, 1.5, 0.8);
   plant(c.acc, V(3.0, c.fy, -1.5), 1.5, c.lod);
   // sofa corner
   put(c.acc, new THREE.BoxGeometry(1.4, 0.3, 0.6), V(3.0, c.fy + 0.15, 0.3), c.accent, {
@@ -318,6 +326,7 @@ function testLabInterior(c: Ctx): void {
     }
   }
   shelf(c, -1.4, -1.8, 0, 2.2, 4);
+  dashboard(c, 0.7, 1.7, -1.76, 1.5, 0.7);
   if (hi) {
     // device test rack: phones in a row
     for (let i = 0; i < 5; i++)
@@ -439,6 +448,9 @@ function dataCenterInterior(c: Ctx): void {
     // cable tray along the ceiling line of the back row
     put(c.acc, baseBox(6.2, 0.06, 0.3), V(0, c.fy + 1.9, -1.45), C.dark, { aoAmt: 0 });
   }
+  // wall dashboards above the rack row
+  dashboard(c, -1.4, 2.2, -1.76, 2.0, 0.4);
+  dashboard(c, 1.4, 2.2, -1.76, 2.0, 0.4);
 }
 
 function researchInterior(c: Ctx): void {
