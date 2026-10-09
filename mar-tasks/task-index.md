@@ -180,7 +180,7 @@ Details in `phases/phase-3.md`.
 | TASK-378 | Faithful LOD1 for office shells + landmarks (LOD0 colours, 1 LOD1 variant, tier 0) | props | M | COMPLETED | TASK-360 |
 | TASK-379 | Life by theme: sheep/crab/cat weights, WORK_SPOTS for new structures, stilt-lab deck reachability | life | S | COMPLETED | TASK-360 |
 | TASK-380 | Integration: shot presets / W-shots re-themed, EDIT_LOGS re-record, budgets check | engine | S | COMPLETED | TASK-361…379 |
-| TASK-381 | M14b QA: ladder ×7 islands × 3 qualities, 10-seed sweep, contact + ladder sheets | qa | M | IN_PROGRESS (ladder ×3 + live + D-037 done; 10-seed sweep left, see qa/ladder-2026-10-09.md) | TASK-380 |
+| TASK-381 | M14b QA: ladder ×7 islands × 3 qualities, 10-seed sweep, contact + ladder sheets | qa | M | IN_PROGRESS (ladder ×3, live, D-037, 10-seed sweep done; dev/wow --assert left) | TASK-380 |
 | TASK-382 | Docs: ART_BIBLE, DECISIONS backfill D-024…D-027 + D-029…D-033, ARCHITECTURE §3/§4/§10, MEMORY, task-index (mark M14 COMPLETED) | docs | S | COMPLETED | TASK-381 |
 
 ### M14c — Living close-up

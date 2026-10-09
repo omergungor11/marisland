@@ -26,7 +26,8 @@
   Pipes stepping on climbs needs a pitch channel / sloped variant (PropStore has rotY only).
   High after D-037: 12 misses (was 21); the remaining Marketing/DevOps/HQ step blobs are tall near-camera
   props sliding by parallax (lattice mast, cone), not pops — fix in the ladder camera or registration.
-  **Next**: TASK-381 10-seed sweep (then close it), then M15–M18.
+  10-seed sweep done 2026-10-10 (`--seed=N` added to shots; 30/30 ok, qa/sweep-2026-10-10.md).
+  **Next**: TASK-381 dev/wow `--assert` and the M14b contact sheet (then close it), then M15–M18.
 - **2026-10-06 (session close, orchestrator)**: Phase 3 M14 + M14b (theme-first redesign) + M14c (living
   close-up) are merged on `main` and pushed (Pages deployed). 1208 tests green; shots ci/dev/edit/wow
   green with `--assert`; new `live` set (`pnpm shots live --assert`): all 7 `L-live-<theme>` pass

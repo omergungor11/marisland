@@ -1,8 +1,9 @@
 /* eslint-disable no-console */
 /**
  * Screenshot harness: `pnpm shots [ci|dev|wow|intro|edit|ladder|live] [--assert] [--gpu] [--no-build] [--only=ID,ID] [--base=URL]
- *   [--tag=name] [--port=4173] [--no-selftest] [--quality=low|medium|high]` — `--quality` overrides every
- *   preset's quality (budget sweeps per tier); `--tag` builds into dist-<tag>/ and writes shots/<set>-<tag>/
+ *   [--tag=name] [--port=4173] [--no-selftest] [--quality=low|medium|high] [--seed=N]` — `--quality` overrides every
+ *   preset's quality (budget sweeps per tier), `--seed=N` every preset's seed (seed sweeps; named
+ *   `island:<name>` cams only exist on their own seed); `--tag` builds into dist-<tag>/ and writes shots/<set>-<tag>/
  *   so parallel agents don't collide; pair it with a distinct `--port`. The ci and dev sets also run the
  *   app self-tests (`selftest=regen` leak check, `selftest=ctxloss` context loss + restore,
  *   `selftest=edit` 50 brush edits + undo with a leak check) on the first shot (regen and edit again
@@ -61,6 +62,7 @@ const only = opt('only')?.split(',');
 const QUALITY = opt('quality') as 'low' | 'medium' | 'high' | undefined;
 if (QUALITY && !['low', 'medium', 'high'].includes(QUALITY))
   throw new Error(`unknown quality "${QUALITY}" (low|medium|high)`);
+const SEED = opt('seed');
 
 type Json = Record<string, number>;
 interface ApiSnap {
@@ -161,7 +163,7 @@ const snapExpr = `(() => { const m = window.__marisland; return {
 function shotUrl(base: string, p: ShotPreset, extra = ''): string {
   const q = new URLSearchParams({
     shot: p.id,
-    seed: String(p.seed),
+    seed: SEED ?? String(p.seed),
     cam: p.cam,
     time: String(p.time),
     weather: p.weather ?? 'clear',
