@@ -82,7 +82,7 @@ const CAMPUS_THEMES = [
 const LIVE_CAMS: Record<(typeof CAMPUS_THEMES)[number][0], string> = {
   hq: '66,14,-168,86,1.4,-171',
   qa: '-165,13,-176,-183,2.5,-188',
-  design: '-150,30,80,-157,17,98',
+  design: '-144,30,82,-151,17,100',
   coding: '114,17,32,97,5.5,25',
   research: '-152,12,232,-133,0.5,222',
   devops: '-56,30,-110,-58,16,-90',
