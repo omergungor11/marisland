@@ -22,7 +22,7 @@
   Moved fixtures still steam at their old x/z (emitters only follow re-grounding). Full `pnpm test`
   can flake the two world/ timing tests under parallel load; they pass alone.
   TASK-381 started: ladder ×3 qualities + live set run, numbers in `mar-docs/qa/ladder-2026-10-09.md`
-  (live 7/7 pass; Marketing/Design 5–6 misses on medium/high vs 0–1 on low — look first).
+  (live 7/7 pass; Marketing/Design medium misses are mostly region drift > 4 at far + close frames — shadow hypothesis in the note).
   Pipes stepping on climbs needs a pitch channel / sloped variant (PropStore has rotY only).
   **Next**: finish TASK-381 (itemise medium/high misses, 10-seed sweep), then M15–M18.
 - **2026-10-06 (session close, orchestrator)**: Phase 3 M14 + M14b (theme-first redesign) + M14c (living
