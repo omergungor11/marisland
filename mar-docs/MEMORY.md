@@ -24,7 +24,9 @@
   TASK-381 started: ladder ×3 qualities + live set run, numbers in `mar-docs/qa/ladder-2026-10-09.md`
   (live 7/7 pass; Marketing/Design medium misses are mostly region drift > 4; drift fixed by D-037 (shadow cells out of regionDrift); medium HQ 0, Marketing 3, Design 1 step misses left).
   Pipes stepping on climbs needs a pitch channel / sloped variant (PropStore has rotY only).
-  **Next**: finish TASK-381 (itemise medium/high misses, 10-seed sweep), then M15–M18.
+  High after D-037: 12 misses (was 21); the remaining Marketing/DevOps/HQ step blobs are tall near-camera
+  props sliding by parallax (lattice mast, cone), not pops — fix in the ladder camera or registration.
+  **Next**: TASK-381 10-seed sweep (then close it), then M15–M18.
 - **2026-10-06 (session close, orchestrator)**: Phase 3 M14 + M14b (theme-first redesign) + M14c (living
   close-up) are merged on `main` and pushed (Pages deployed). 1208 tests green; shots ci/dev/edit/wow
   green with `--assert`; new `live` set (`pnpm shots live --assert`): all 7 `L-live-<theme>` pass
