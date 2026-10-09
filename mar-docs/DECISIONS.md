@@ -2,6 +2,19 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-037: Ladder region drift leaves cast-shadow cells out — 2026-10-09
+
+**Decision** (TASK-381): `regionDrift` (`scripts/ladder-metrics.ts`) skips cells whose L* differs by more
+than `shadowL` = 15 between the frame and the 170 u reference, as long as they are at most
+`shadowMaxFrac` = 35 % of the region. Above that, all cells count, so a region-wide shift is still judged.
+**Rationale**: on medium/high, prop and tree shadows move with the shadow camera's range, which made
+close frames fail drift when nothing had changed. A shadows-off check on L-marketing (medium) dropped the
+close-frame drift from 4.17–4.45 to about 3.55. With the new rule, medium HQ/Marketing/Design drift is
+1.2–3.7 everywhere (was up to 5.2), and the far 700 u frames drop from 4.0–4.4 to 3.0–3.6.
+**Impact**: ladder drift misses are gone on medium; the step misses are unchanged (Marketing 60→42 /
+42→30, Design 240→170). New unit test covers both cases: a shadow patch is ignored, a region-wide
+darkening is still flagged.
+
 ## D-036: Carried items are a second decode term of the worker accessory slot — 2026-10-06
 
 **Decision** (TASK-383): a carrying worker keeps its department accessory and shows its item too.

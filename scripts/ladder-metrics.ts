@@ -33,6 +33,10 @@ export const LADDER_THRESHOLDS = {
   /** … form at most this fraction of the compared cells as one 8-connected component. */
   stepBlob: 0.015,
   drift: 4,
+  /** Drift skips cells whose L* differs by more than this (cast shadows; 2026-10-09 QA) … */
+  shadowL: 15,
+  /** … while they are at most this fraction of the region. */
+  shadowMaxFrac: 0.35,
   pairMean: 2.5,
   pairBlob: 0.005,
   pairIou: 0.92,
@@ -435,18 +439,24 @@ export function regionDrift(
   const b = downsample(far, map);
   const mA = maskCells(nearMask);
   const mB = maskCells(farMask, map);
+  const T = LADDER_THRESHOLDS;
+  const both: number[] = [];
+  for (let k = 0; k < mA.solid.length; k++)
+    if (mA.solid[k] >= T.cellSolid && mB.solid[k] >= T.cellSolid) both.push(k);
+  // cast shadows come and go with the shadow camera's range: cells whose lightness differs by
+  // more than `shadowL` are left out, unless that is most of the region (a real shift stays judged)
+  const L = (m: ArrayLike<number>, k: number): number =>
+    linearToLab(m[k * 3], m[k * 3 + 1], m[k * 3 + 2])[0];
+  const lit = both.filter((k) => Math.abs(L(a, k) - L(b, k)) <= T.shadowL);
+  const cells = lit.length >= both.length * (1 - T.shadowMaxFrac) ? lit : both;
   const sa = [0, 0, 0];
   const sb = [0, 0, 0];
-  let c = 0;
-  for (let k = 0; k < mA.solid.length; k++) {
-    if (mA.solid[k] < LADDER_THRESHOLDS.cellSolid || mB.solid[k] < LADDER_THRESHOLDS.cellSolid)
-      continue;
+  for (const k of cells)
     for (let i = 0; i < 3; i++) {
       sa[i] += a[k * 3 + i];
       sb[i] += b[k * 3 + i];
     }
-    c++;
-  }
+  const c = cells.length;
   if (c < 4) return null;
   return deltaE2000(
     linearToLab(sa[0] / c, sa[1] / c, sa[2] / c),

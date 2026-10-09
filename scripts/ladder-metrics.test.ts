@@ -137,6 +137,19 @@ describe('ladder metrics: steps', () => {
     const water = img(() => rgb(WATER.deep));
     expect(regionDrift(far, water, far, water, identityMap)).toBeNull();
   });
+
+  it('island drift leaves a cast-shadow patch out, but not a region-wide darkening', () => {
+    const far = img(meadow);
+    const shade = (u: number, v: number): [number, number, number] =>
+      u < 0.4 && v < 0.4
+        ? (meadow(u, v).map((c) => c * 0.3) as [number, number, number])
+        : meadow(u, v);
+    expect(regionDrift(img(shade), landMask, far, landMask, identityMap)).toBeLessThan(0.5);
+    const dark = img((u, v) => meadow(u, v).map((c) => c * 0.3) as [number, number, number]);
+    expect(regionDrift(dark, landMask, far, landMask, identityMap)).toBeGreaterThan(
+      LADDER_THRESHOLDS.drift,
+    );
+  });
 });
 
 describe('ladder metrics: mapping', () => {
