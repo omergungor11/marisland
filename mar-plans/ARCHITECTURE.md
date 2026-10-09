@@ -94,12 +94,16 @@ Rendering derives everything **per chunk** (32×32 cells = 64 u). Only chunks wi
 **Materials.**
 - One factory extends `MeshLambertMaterial` via `onBeforeCompile` (D-003), keeping three's lights, shadows, fog and instancing.
 - Bible §3 lighting comes from light colours first (warm sun, blue-violet hemisphere → cool shade), plus injected fresnel rim and emissive mask; an explicit shadow-tint patch only if the mask metric fails. Dedicated `ShaderMaterial`s only for water, sky, clouds, particles, blobs.
-- One lit program (`mar-lit`, `:s` for smooth normals) + one instanced depth program shared by props and terrain (D-016): `WIND, DITHER, EMISSIVE`, windmill spin are always compiled (no-ops without their attribute); look switches `BLOOM_IN` / `RIM` are per-material uniforms. Optional attributes sit on fixed `layout(location)`s. Prewarmed with `compileAsync`; tier changes touch uniforms only.
+- One lit program (`mar-lit`, `:s` for smooth normals) + one instanced depth program shared by props (incl. structures and drones) (D-017): `WIND, DITHER, EMISSIVE`, windmill spin are always compiled (no-ops without their attribute); look switches `BLOOM_IN` / `RIM` are per-material uniforms. Optional attributes sit on fixed `layout(location)`s. Prewarmed with `compileAsync`; tier changes touch uniforms only.
+- `aSpin.w` is a tag channel on the lit program, not a new attribute (D-034): 0 static, 1 spin about the hub, 2 yaw (turbine nacelle), 3 yaw + spin (turbine rotor), 4+ sun tracker, negative = animated surface kind (monitor content, LED strips, billboard slides, pipe pulses).
+- Workers ride the creature program: pose in `aGait.y` (mode 7), accessory and carried item in `aSeed` (mode 8, D-026 / D-036).
 
-**Terrain.**
-- Non-indexed faceted triangles. Each face gets its palette colour plus seeded jitter and AO. No splat textures.
-- LOD0 = 2 u, LOD1 = 4 u (T0 / low tier). Skirts hide seams.
-- Shader adds: wet sand that trails the shore lap, caustics under water, a cloud-shadow mask, T3 colour jitter.
+**Terrain** (M14b, D-030 / D-033; supersedes the M1 faceted-triangle terrain).
+- Indexed chunk grids (64 u, 2 u world grid) on a Catmull-Rom surface (`shared/terrain-sample.ts`) with analytic normals. Attributes: `position`, `normal`, `aMorph`; no vertex colours. Facets show only on steep rock and cliff walls (`TERRAIN_FACETS`, relief-gated), so hills stay smooth.
+- Distance LOD per chunk, not per tier (4 / 2 / 1 / 0.5 u, §4). An island's coarsest level is merged into one mesh.
+- Colour comes from textures: an albedo texture (sRGB, built on the CPU from theme palette × zone × height band × macro noise, island id in alpha), a palette texture (16 zones × 8 islands) and the zone map.
+- Near the camera, a `DataArrayTexture` of 10 mean-preserving detail layers (256², `DETAIL_LAYER_IDS`) adds up to 2 layers per material, fading out between 30 and 110 u (`content/ground.ts`), so far pixels equal the albedo. The M1 per-face jitter is gone.
+- Still `MeshLambertMaterial` + `onBeforeCompile`, one program per quality. Shader keeps wet sand that trails the shore lap, caustics under water (`MAR_CAUSTICS`, off on low), the cloud-shadow mask, the crater glow, lantern pools, mist and the brush ring. Detail (`MAR_DETAIL`) is off on low.
 
 **Water.**
 - One smooth radial grid, centred on the camera and snapped to its step, radius ≈3 km.
@@ -122,7 +126,10 @@ Rendering derives everything **per chunk** (32×32 cells = 64 u). Only chunks wi
 - `InstancedMesh` per *(variant, LOD, island group)*, plus per-chunk ground cover.
 - Per-instance attributes: `aSeed`, `aAppear`, `aTint`.
 - Not BatchedMesh: no custom per-instance attributes, and without `WEBGL_multi_draw` (uncertain on iOS) it degrades to one draw per instance. Swappable behind the same interface.
-- At T0, forests become per-island **cluster-proxy** blobs that cross-dither with the real trees.
+- At T0, tree masses are **blobs**, one group per canopy colour class across all islands (recoloured from each island's `treePalette`), that cross-dither with the real trees.
+- Structures ≥ 3 u and landmarks show from T0 with their own LOD1 built from LOD0 colours (D-032, `STRUCTURE_MIN_SIZE`, `STRUCTURES_FROM_T0`). LOD1 groups are per (def, variant); variants with identical LOD1 geometry fold into variant 0.
+
+**Living surfaces and drones (M14c).** Drone couriers are one `InstancedMesh` on the lit program (6 on medium, 10 on high, none on low), dither-faded by camera distance and posed in closed form from sim time (`render/drones.ts`, `content/activity.ts`). Monitors, LEDs, billboards and pipes use the `aSpin.w` surface tags (§3).
 
 **Post** (pmndrs, a single `EffectPass`)
 
@@ -140,13 +147,15 @@ Tiers mirror bible §6 and are evaluated on orbit distance *d*, with **±10% hys
 
 | Tier | d (u) | Turned on | Budget focus |
 |---|---|---|---|
-| T0 | 380–800 | terrain, water, landmarks, cluster proxies, clouds, boat dots, labels | ≤1.5k prop instances |
+| T0 | 380–800 | terrain (smooth, 4 u merged per island), water, landmarks, structures ≥ 3 u (own LOD1), tree blobs, clouds, boat dots, labels | ≤1.5k prop instances |
 | T1 | 140–380 | real trees, houses, docks, rocks (LOD1 beyond 250 u), smoke, boat bob | ≤10k instances |
-| T2 | 45–140 | bushes, fences, lanterns, villagers, sheep, fish jumps; clouds off | ≤40 agents |
-| T3 | 12–45 | ground cover within 60 u of focus, shells, crabs, reeds, underwater fish | §8 cap |
+| T2 | 45–140 | bushes, fences, lanterns, department workers, sheep, fish jumps, drones; clouds off | ≤40 agents |
+| T3 | 12–45 | ground cover within 60 u of focus, near detail layers, shells, crabs, reeds, underwater fish, ambient worker activity | §8 cap |
 
 **Mechanics.**
-- **Tier FSM.** Gates CPU-side work: spawning, ground-cover chunks, LOD buffer swaps (once per transition), labels, post params.
+- **Tier FSM.** Gates CPU-side work: spawning (ambient workers at T2/T3 follow the camera target), ground-cover chunks, LOD buffer swaps (once per transition), labels, post params.
+- **Terrain LOD is by distance, not tier** (TASK-371, `content/terrain.ts`): per-chunk bands 300 / 120 / 40 u with ±10 % hysteresis and a 20 % geomorph band. The finest level per quality is low 2 u, medium 1 u, high 0.5 u (at most 9 chunks). It does not follow the FSM.
+- **Cross-tier consistency** (D-031, D-032, D-035): every large element (structure ≥ 3 u, landmark, tree mass, district ground) exists from T0 with its final colour and silhouette, and detail adds only zero-mean variation. `pnpm shots ladder` checks this over 11 distances (700 → 21 u) with step and boundary-pair metrics (`scripts/ladder-metrics.ts`).
 - **Per-instance fade.** Each category has `fadeNear`/`fadeFar`, evaluated in the vertex shader from the instance origin, and fades by Bayer-dither `discard`. Everything stays opaque.
 - **Bloom-in.** The spring (k=180, c=12) is solved **in closed form in the shader** from `aAppear`. The CPU only queues start times: 0–220 ms stagger, ≤40 per frame. Grass and flowers dither in instead.
 - **`counters.hardPops`.** Counts instances that appear with neither bloom-in nor dither. Must stay 0 (W8).
@@ -233,7 +242,7 @@ These are worst case across tiers. CI enforces them **as counts**, because fps u
 | CPU agents | ≤25 | ≤50 | ≤90 |
 | Particles | ≤2k | ≤6k | ≤12k |
 | Shadow map | blobs | 1024² | 2048² |
-| Shader programs | ≤12 | ≤16 | ≤20 |
+| Shader programs | ≤12 | ≤20 | ≤24 |
 | GPU memory (geometry + textures + allocated RTs × samples + shadow + canvas, `render/gpu-memory.ts`, DPR 1 — D-022) | ≤64 MB | ≤170 MB | ≤480 MB |
 | JS heap | ≤120 MB | ≤180 MB | ≤250 MB |
 | Main thread per frame | ≤8 ms | ≤6 ms | ≤5 ms |
@@ -316,7 +325,7 @@ These replace the template's TASK-001..007 placeholders.
 | TASK-006 | Stats overlay, `debug=` views | engine | S | 003 | Calls, tris and programs show in the overlay and the manifest |
 | TASK-007 | Verify D-001 in the container (renderer string, HalfFloat+MSAA through pmndrs); write VISUAL_QA.md; refresh tech-stack/conventions | docs | S | 003 | Smoke result in MEMORY; VISUAL_QA.md exists |
 
-### Phase 1 — Living diorama
+### Phase 1 — Living diorama (built: M1–M10)
 
 | ID | Task | Role | Size | Deps | Acceptance |
 |---|---|---|---|---|---|
@@ -395,6 +404,13 @@ validation, ghost previews, seed + versioned edit log in localStorage / the URL 
   untouched. Lazy: shortly after the first panel open (at once when the place tool is picked).
 - **Capture**: `panel=edit[:tool]` shows a static panel (no edit mode under `freeze=1`); the `edit` shot
   set (`content/shots.ts` `EDIT_LOGS`) replays encoded logs on seed 1001.
+
+### Phase 3 — Agent Islands (built: M14, M14b, M14c; D-024…D-036)
+Task rows, acceptance and the M14b / M14c plans live in `mar-tasks/phases/phase-3.md`. This section records only the architectural changes.
+- **M14 (D-024…D-028):** one department theme per archetype (`content/themes/`), a guaranteed seven-island roster, a campus on every island, department workers replacing villagers, the M14 budget raise (D-028).
+- **M14b (D-029…D-033):** theme-first islands (`world/gen/plans/`, `THEME_PLANNERS`); smooth material terrain (§3, §4); per-structure LOD1 and the cross-tier rule (D-031, D-032), checked by the ladder metric (D-035). No budget raise beyond D-028; programs stay 9 / 17 / 24.
+- **M14c (D-034, D-036):** activity sim (`life/activity-world.ts`, `content/activity.ts`) with focus-driven ambient workers and carried items; animated surfaces through the `aSpin.w` tag channel; drone couriers (`render/drones.ts`).
+- **Open:** TASK-381 (M14b QA: ladder × 7 islands × 3 qualities, 10-seed sweep) is still PENDING. M15–M18 (detail pass, living campus, decor, SSAO and water reflections, phase exit QA) are planned, not built. The known ladder misses are listed in MEMORY "Where I left off".
 
 ## 11. Risks & mitigations
 
