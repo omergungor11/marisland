@@ -17,7 +17,11 @@
   §3/§4/§10 — DONE in a follow-up (TASK-382 COMPLETED; §8 program row synced to budgets.ts 12/20/24).
   Still stale: ART_BIBLE §4 roster/W5–W7 archetype-era, ARCHITECTURE §5 "villagers", §6/§8 cite
   D-017 where D-019 is meant, §9 ladder text pre-M14b; "blob p95 4.5" not written (no source).
-  D-034…D-036 dates approximate. **Next**: TASK-381 QA, then M15–M18.
+  D-034…D-036 dates approximate. Fixed: fixtures added live in edit mode now get their steam
+  (`fixtureEmitters` + `addChimney` in world-view `after`; not covered by a shot — check by hand).
+  Moved fixtures still steam at their old x/z (emitters only follow re-grounding). Full `pnpm test`
+  can flake the two world/ timing tests under parallel load; they pass alone.
+  **Next**: TASK-381 QA, then M15–M18.
 - **2026-10-06 (session close, orchestrator)**: Phase 3 M14 + M14b (theme-first redesign) + M14c (living
   close-up) are merged on `main` and pushed (Pages deployed). 1208 tests green; shots ci/dev/edit/wow
   green with `--assert`; new `live` set (`pnpm shots live --assert`): all 7 `L-live-<theme>` pass
@@ -36,7 +40,7 @@
   **Open**: ladder misses — DevOps drift 30 u ≈ 4.9 / 21 u 4.06 (parallax on the 35 u cone, not the
   material: unlit-albedo test still 3.87), Design drift 30 u 5.34 and far 700/480 u ≈ 5.9/5.1,
   Marketing pair 250 blob 0.7 %, Research tiny-land pairs; QA inner-shore saw-tooth silhouette
-  (heightfield); pipes step on steep climbs; steam vents added in edit mode don't steam; inspection
+  (heightfield); pipes step on steep climbs; inspection
   tower is a lot, not a landmark kind; front-row bots partly hide their angled screens; Design live
   frame has a foreground pine; Research live has only 1–2 bots.
   **Git**: history rewritten 2026-10-06 so every commit is `omergungor11 <omergungor99@gmail.com>`

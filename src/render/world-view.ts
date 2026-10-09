@@ -28,9 +28,9 @@ import { islandFrames } from '../camera/frames.ts';
 import type { Counters } from '../capture/api.ts';
 import { createPropBatcher, type PropBatcher } from './props/batcher.ts';
 import { createPropMaterials } from './materials/prop-materials.ts';
-import type { PropDef } from '../content/props.ts';
+import { PROP_DEFS, type PropDef } from '../content/props.ts';
 import { PropFlag, type PropStore } from '../world/prop-store.ts';
-import { appendSettlementProps } from './props/settlement-props.ts';
+import { appendSettlementProps, fixtureEmitters } from './props/settlement-props.ts';
 import { PUFF_CHIMNEY, PUFF_SPRING, PUFF_VENT } from './particles/puffs.ts';
 import type { Lod } from '../geo/index.ts';
 import { createLanternPools, type LanternPools } from './night/lantern-pools.ts';
@@ -179,21 +179,25 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   group.add(clouds.group);
   /** Owner render index (house or single prop) → its chimney / vent emitters (follow re-grounding, off while flooded / removed). */
   const chimneys = new Map<number, { e: number; x: number; z: number; dy: number }[]>();
-  for (const c of settlement.emitters.chimneys) {
+  const addChimney = (
+    c: { x: number; y: number; z: number; preset: 'chimney' | 'vent' | 'spring' },
+    house: number | undefined,
+  ): void => {
     const e = clouds.puffs.addEmitter(
       c.x,
       c.y,
       c.z,
       c.preset === 'vent' ? PUFF_VENT : c.preset === 'spring' ? PUFF_SPRING : PUFF_CHIMNEY,
     );
-    const house = c.prop ?? settlement.groups.lots[c.lot]?.[0];
-    if (house === undefined) continue;
+    if (house === undefined) return;
     let list = chimneys.get(house);
     if (!list) chimneys.set(house, (list = []));
     list.push({ e, x: c.x, z: c.z, dy: c.y - settlement.props.y[house] });
     if (settlement.props.flags[house] & PropFlag.removed)
       clouds.puffs.setEmitter(e, c.x, c.y, c.z, false);
-  }
+  };
+  for (const c of settlement.emitters.chimneys)
+    addChimney(c, c.prop ?? settlement.groups.lots[c.lot]?.[0]);
   clouds.puffs.finalize();
   const life = createLife({
     world,
@@ -252,13 +256,23 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
         pools.update(ids);
         const store = settlement.props;
         let docks = false;
+        let added = false;
         for (const i of ids) {
           if (dockMembers.has(i)) docks = true;
           const list = chimneys.get(i);
-          if (!list) continue;
+          if (!list) {
+            // a fixture added in edit mode (steam vent …) gets its emitters now
+            if (store.flags[i] & PropFlag.removed) continue;
+            for (const c of fixtureEmitters(store, i, PROP_DEFS[store.defId[i]]?.id ?? '')) {
+              addChimney(c, i);
+              added = true;
+            }
+            continue;
+          }
           const on = (store.flags[i] & PropFlag.removed) === 0;
           for (const c of list) clouds.puffs.setEmitter(c.e, c.x, store.y[i] + c.dy, c.z, on);
         }
+        if (added) clouds.puffs.finalize();
         if (docks) life.setDocksHidden(mirror.floodedDocks);
       },
     }),

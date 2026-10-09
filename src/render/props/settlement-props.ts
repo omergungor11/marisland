@@ -56,6 +56,29 @@ export interface SettlementGroups {
   docks: number[][];
 }
 
+/**
+ * Steam of a single prop (FIXTURE_EMITTERS) at render index `r`: local spot × yaw × scale.
+ * Also used for props added in edit mode after the build.
+ */
+export function fixtureEmitters(
+  s: PropStore,
+  r: number,
+  defName: string,
+): { x: number; y: number; z: number; preset: EmitterSpot['preset'] }[] {
+  const spots = FIXTURE_EMITTERS[defName];
+  if (!spots) return [];
+  const sc = s.scale[r];
+  const c = Math.cos(s.rotY[r]);
+  const sn = Math.sin(s.rotY[r]);
+  return spots[s.variant[r] % spots.length].map((e) => ({
+    // three's yaw about +y: local (x, z) → (x cos + z sin, −x sin + z cos)
+    x: s.x[r] + (e.x * c + e.z * sn) * sc,
+    y: s.y[r] + e.y * sc,
+    z: s.z[r] + (-e.x * sn + e.z * c) * sc,
+    preset: e.preset,
+  }));
+}
+
 export function appendSettlementProps(world: WorldData): {
   props: PropStore;
   emitters: SettlementEmitters;
@@ -84,19 +107,9 @@ export function appendSettlementProps(world: WorldData): {
   const h = world.height;
   const chimneys: SettlementEmitters['chimneys'] = [];
   const groups: SettlementGroups = { lots: [], docks: [] };
-  /** Steam of a single prop (FIXTURE_EMITTERS) at render index `r`: local spot × yaw × scale. */
   const propEmitters = (r: number, defName: string): void => {
-    const spots = r >= 0 ? FIXTURE_EMITTERS[defName] : undefined;
-    if (!spots) return;
-    const sc = s.scale[r];
-    const c = Math.cos(s.rotY[r]);
-    const sn = Math.sin(s.rotY[r]);
-    for (const e of spots[s.variant[r] % spots.length]) {
-      // three's yaw about +y: local (x, z) → (x cos + z sin, −x sin + z cos)
-      const x = s.x[r] + (e.x * c + e.z * sn) * sc;
-      const z = s.z[r] + (-e.x * sn + e.z * c) * sc;
-      chimneys.push({ x, y: s.y[r] + e.y * sc, z, lot: -1, prop: r, preset: e.preset });
-    }
+    if (r < 0) return;
+    for (const e of fixtureEmitters(s, r, defName)) chimneys.push({ ...e, lot: -1, prop: r });
   };
   /** Push into a group (`push` returns −1 when the def is unknown or the store is full). */
   const into = (g: number[], r: number): void => {
