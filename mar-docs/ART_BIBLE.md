@@ -21,7 +21,7 @@
 - Toon shading needs outlines, which shimmer at distance and cost an extra pass.
 - Per-face vertex colour enforces the palette with no textures.
 - Cuteness up close comes from segment counts: cylinders 8–12 radial segments, icospheres detail 1–2, terrain facets 1.5–3 u, prop facets ≈ 5–8 % of prop size.
-- **Smooth-shaded exceptions:** water, clouds, smoke/steam, eyes (black sphere + 0.3× white highlight).
+- **Smooth-shaded exceptions:** water, clouds, smoke/steam, eyes (black sphere + 0.3× white highlight), terrain (Catmull-Rom smooth normals with material detail, D-030). Props, buildings, trees and bots stay faceted: the terrain is the only P1 exception.
 - Seeded per-face jitter: L ±3 %, hue ±4°.
 - Baked vertex AO: −15 to −25 % L at prop bases and terrain creases.
 - Contact-shadow blob under every grounded prop: radius 0.6× footprint, opacity 0.25.
@@ -46,11 +46,13 @@
 | Grass (tips → shade) | `#C9E86F` `#A6DB5E` `#7BC950` `#5FAE45` |
 | Flowers | `#FF8FB1` `#FFE45C` `#FFFFFF` `#B39DFF` `#FF7A5C` |
 | Rock / warm cliff strata | `#A9AEB8` `#8A909C` `#666C7A` / `#D9B48F` `#C29A74` |
+| DevOps basalt (rock base; cracks `#958FA0` / `#5A5664`) | `#7A7584` (lifted from `#4F4C57`, D-030 theme) |
 | Foliage: deciduous / pine / palm | `#8FD16A` `#5DBB63` `#3E9A52` / `#3C8F68` `#2F7D5B` / `#7FD34E` `#5DB33C` |
 | Wood: planks / logs / dark / dock | `#D2A679` / `#A8754F` / `#8A5A3B` / `#B59B7E` |
 | Walls | `#FFF4E0` `#FAFAF5` `#FFD9D2` `#FFF0B8` |
 | Roofs | `#E8735A` `#E35D6A` `#3FB8AF` `#F5C84C` `#9C8CE0` `#5DA9E9` `#7FD8B3` |
 | Emissive: window / lantern / lava / firefly | `#FFC870` / `#FFB347` / `#FF6A3D` / `#E8FF8A` |
+| UI muted (secondary labels, island name under the theme pill) | `#B8B3C9` |
 
 **Time of day** (lerp between keys; 1 game day = 600 s real, 1 game hour = 25 s)
 
@@ -119,7 +121,7 @@ The seed picks 5–7 islands.
 | **Emberpeak** | Volcano · 90–120 u | 35 u notched cone + steam plume | Glowing crater; hot spring | Black sand, basalt columns, vents | Capybaras in spring | `#FF7A5C` |
 | **Palmlagoon** | Atoll · 70–100 u | 8–15 u land ring around a lagoon | Sunken ship in the lagoon | Palms, hammock, beach hut, tide pools | Turtles, crabs, fish, dolphins | `#7FD8B3` |
 | **Mossgrove** | Forest · 80–110 u | 20 u green dome + 18 u giant tree | Treehouse with rope ladder | Pines, giant mushrooms, log cabin, stream | Foxes, squirrels, owl, fireflies | `#3E9A52` |
-| **Lonely Palm** | Sandbar · 10–16 u | Flat sand oval, 0.6 u high | Single leaning palm | Message bottle, starfish, 1 rock | 1 crab, 1 gull | `#F7E1AE` |
+| **Lonely Palm** | Sandbar · 17–21 u (Phase 3, TASK-302; bible 10–16) | Flat sand oval, 0.6 u high | Single leaning palm | Message bottle, starfish, 1 rock | 1 crab, 1 gull | `#F7E1AE` |
 
 ## 5. Prop catalog
 
@@ -131,6 +133,7 @@ Tier = the first tier at which the prop appears.
 |---|---|---|---|
 | Palm | Curved trunk of 6 tapered cylinder rings (alternating `#A8754F`/`#8A5A3B`); 7 drooping 3-segment leaf fans; 2–3 coconuts | 5–7 u | T1 |
 | Round tree | Trunk + 3–5 overlapping icospheres, ±15 % scale jitter | 4–6 u | T1 |
+| Blossom tree | Round tree with `#FF8FB1` blossom clusters on the canopy shell; its own canopy kind, so far blobs stay pink (D-031) | as round tree | T1 |
 | Pine | Trunk + 3 stacked cones, each 70 % of the one below | 5–9 u | T1 |
 | Giant mushroom | Lathe stem + squashed dome `#E35D6A` with 5–7 white disc spots | 2 u | T1 |
 | Bush | 2–3 merged icospheres, optional flower dots | 1 u | T2 |
@@ -205,12 +208,18 @@ The camera pitch flattens as you zoom in. FOV is a constant 35°. Use ±10 % dis
 | **T3 Macro** | 12–45 u | 20–35° | Grass, flowers, shells, crabs, reeds, footprints, fish under water, ripples | Crabs, grass wiggle, fish schools, close-up fireflies |
 
 **Bloom-in:**
-- Scale 0 → 1 on spring `k=180, c=12` (≈ 8 % overshoot, ~300 ms).
+- Scale 0 → 1 on spring `k=180, c=17` (≈ 8 % overshoot, ~300 ms; D-008).
 - Stagger 0–220 ms by hashed position, radiating outward from the screen centre.
 - Grass and flowers use a 250 ms dither instead.
 - At most 40 pops start per frame.
 
 **Bloom-out:** 140 ms ease-in scale to 0, or a 200 ms dither.
+
+**Cross-tier consistency (D-031, D-032):** every structure ≥ 3 u, landmark, tree mass and district ground
+exists from T0 with its final colour and silhouette (its own LOD1 built from the LOD0 colours). Detail adds
+only zero-mean variation; nothing large appears with a tier. Checked by the zoom ladder (`pnpm shots ladder`):
+11 distances 700 → 21 u at a fixed 48° pitch, step mean ΔE2000 ≤ 5, p95 ≤ 12, drift vs the 170 u reference
+≤ 4, and boundary pairs at 1.06 b / 0.94 b (D-035 for the mapping, slack and land floor).
 
 ## 7. Life & animation catalog
 
@@ -336,7 +345,7 @@ Any click or key jumps to the final pose with a 400 ms ease.
 | W6 | **Lagoon** | 4004 · T1 110 u, pitch 70° over Palmlagoon · 12:00 | Sunken hull readable through water; lagoon lighter than the outer ring; ≥ 1 turtle; land ring has ≤ 2 channel breaks |
 | W7 | **Mill Morning** | 5005 · T2 90 u Millbrook · 06:45 | Blade angle differs between frames 0.5 s apart; ≥ 4 field colours; mist band below 6 u; ≥ 5 sheep |
 | W8 | **Macro Shore** | 1001 · T3 18 u, Hearthholm beach · 14:00 | Foam line moves between frames 2 s apart; crab + ≥ 3 shells + grass tufts visible; during a 3 s dolly-in from 60 u, nothing appears without a bloom-in |
-| W9 | **Lonely Palm** | any seed with it · T3 ≈ 40 u, look-down ≈ 9° toward the evening sun (D-017: 22° hides the horizon at FOV 35°) · 18:45 | Whole sandbar + ring in frame; palm silhouetted against the sky gradient; sun glint bloom on water; horizon blends into fog (no hard line) |
+| W9 | **Lonely Palm** | any seed with it · T3 ≈ 40 u, look-down ≈ 9° toward the evening sun (D-019: 22° hides the horizon at FOV 35°) · 18:45 | Whole sandbar (17–21 u) + ring in frame; palm silhouetted against the sky gradient; sun glint bloom on water; horizon blends into fog (no hard line) |
 | W10 | **Rainy Grove** | 6006 · T1 120 u Mossgrove, rain · 13:00 | Ripples on water; treehouse windows lit; foliage saturation ≥ 40 %; sky not neutral grey |
 
 **Global fail (any shot):**
@@ -344,3 +353,4 @@ Any click or key jumps to the final pose with a 400 ms ease.
 - Foam-line z-fighting.
 - Any island without a visible shallow ring.
 - Two same-type creatures animating in perfect sync.
+- A zoom-ladder step or boundary pair over its threshold (§6, D-031 / D-035), for a judged step.

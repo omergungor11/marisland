@@ -2,6 +2,121 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-036: Carried items are a second decode term of the worker accessory slot — 2026-10-06
+
+**Decision** (TASK-383): a carrying worker keeps its department accessory and shows its item too.
+`life/workers.ts` adds `100 · (CARRIED_ITEM_SLOT[item] − 6)` to `aSeed` (laptop 7, clipboard 8, crate 9,
+paintPot 10 → item codes 1…4) while it carries. The mode-8 branch of `life-material.ts` decodes
+`floor(aSeed) = acc + 100 · item`: variants below 6.5 are the department accessory, slots 7.. the item,
+the rest collapse to a point. Item geometry is tagged `setLimb(slot, …, 8)`; no attribute is added.
+**Rationale**: a stride of 100 keeps every `sin(aSeed · 2π)` and `fract(aSeed · 7.31)` term unchanged
+(whole turns), so a pickup never twitches the eyes or the antenna. Both slots show together. This
+supersedes phase-3.md §3 ("only one slot shows; a carrying bot hides its department accessory"), which
+the TASK-383 code no longer follows.
+**Impact**: `content/themes/index.ts` (`DEPT_ACCESSORY_COUNT = 7`, `CARRIED_ITEM_SLOT`); no new program
+or attribute.
+
+## D-035: Ladder metric calibration: plane mapping, ±1 cell slack, 5 % land floor, regional drift vs 170 u (amends D-031) — 2026-10-06
+
+**Decision** (TASK-374 calibration, `scripts/ladder-metrics.ts`, `content/camera.ts` `ladder`):
+- **Mapping**: the near frame is mapped into the far frame through the ground plane at the target
+  (`planeMap`: exact dolly at the fixed 48° pitch and 35° FOV), not a centre crop. The crop
+  misregistered the top and bottom rows by about 2 cells per 0.7 step.
+- **Slack**: each near cell matches its best far-frame neighbour within ±1 cell (`slack: 1`). Tall props
+  and relief parallax by one or two cells between steps (Marketing pines 30 → 21 u: p95 29.9 without
+  slack, 7.7 with). An element absent in the far frame still has no matching neighbour.
+- **Land floor**: `minLandFrac` 0.25 → 0.05. From 170 u the island fills 8–18 % of the grid, so the
+  plan's 25 % skipped every far step and with it the T0 → T1 campus pop. Those steps are stable at 5 %.
+  Below the floor a step is reported, not judged.
+- **Drift**: island drift compares a frame's footprint with the reference frame `driftRef = 170 u` (the
+  whole island at T1), not with the ladder median. Far frames use the island footprint, near frames the
+  whole frame.
+Other thresholds stay as in D-031.
+**Rationale**: the crop misregistered rows, the tall props parallax off the target plane, and the 25 % floor
+skipped every frame from 170 u up, so the plan's metric judged registration and sampling rather than the
+art (TASK-374 calibration; MEMORY 2026-10-05).
+**Impact**: `LADDER_THRESHOLDS` in `scripts/ladder-metrics.ts`; `FRAMING.ladder` in `content/camera.ts`.
+
+## D-034: `aSpin.w` is a motion and surface tag channel on the lit program — 2026-10-06
+
+**Decision** (TASK-384, `content/activity.ts`, `render/materials/activity-glsl.ts`): the lit program's
+existing `aSpin.w` (no new attribute) carries a tag:
+- `0` static (default);
+- `1` spin about the hub `aSpin.xyz` (windmill blades, anemometer; unchanged);
+- `2` yaw head about the object y axis, into the wind (turbine nacelle);
+- `3` yaw + spin (turbine rotor: spin about the hub first, then yaw);
+- `4` and above: sun tracker, rotating about the x axis through the pivot `aSpin.xyz` (solar panels);
+- negative `−k` (k ≥ 1): animated surface of `SURFACE` kind k (monitor content, LED strips, billboard
+  slides, pipe pulses). Screens carry `(u, v, aspect, −k)`, LED strips `cols + seed` in z, pipes the tube
+  axis in xyz. Billboard glyphs use a negative aspect and show the brand slide only.
+**Rationale**: the creature program is at 15 of 16 attributes (D-013), and a new attribute would be the
+17th that fails to link under SwiftShader. Every lit program already carries the `aSpin` branch, so the
+channel adds no program key and no draw call.
+**Impact**: `factory.ts` and `activity-glsl.ts` read the same vec4; theme geometry writes the tags
+(`geo/themes/surface-tags.test.ts`).
+
+## D-033: M14b budgets: programs stay 9 / 17 / 24 — 2026-10-05
+
+**Decision** (phase-3.md M14b §1 D-033, §7): no raise beyond D-028 for draw calls or programs. The
+terrain material is replaced in place (one program per quality; low has no detail define); structures
+use the lit program; turbine blades reuse the windmill spin branch; workers stay on the creature program.
+The one planned increase, SSAO (TASK-351, high ≤ 28), needs its own amendment of this decision.
+**Rationale**: high has no program headroom (24 / 24 before M14b). Far-terrain merge saves 25–40 calls at
+T0 / T1 (about 2× with shadows on medium); LOD1 structures add about 20 single-variant groups at T0.
+**Impact**: triangle and memory targets per plan §7 (high ≈ 0.45 M terrain triangles, low ≈ 0.1 M); the
+calls ceiling is D-028's 170 / 255 / 350.
+
+## D-032: Every structure has its own LOD1; the shared office proxy is retired (amends D-027) — 2026-10-05
+
+**Decision**: structures ≥ 3 u (and landmarks) draw their own LOD1 at tier 0, built from the LOD0 colours,
+with one LOD1 variant (variants differ only in LOD0 detail). Themed shells no longer share the neutral
+`officeLod1` proxy; its geometry stays in code, unused (`content/props-buildings.ts`). The batcher groups
+LOD1 by (def, variant) and folds variants with identical LOD1 geometry into variant 0 (`batcher.ts`).
+**Rationale**: with a shared neutral proxy, blue roofs existed only at LOD0 and the shells were tier 1, so
+the campus was absent at T0 while the windmills (tier 0) were there. The draw-call cost is paid by merging
+far terrain chunks per island and the tree-blob groups (D-033).
+**Impact**: enforced by `props-buildings.test.ts` ("own LOD1, no shared proxy") and the ladder (D-035).
+
+## D-031: Cross-tier consistency is a hard rule, checked by a zoom-ladder metric — 2026-10-05
+
+**Decision**: every large element (structure ≥ 3 u, landmark, tree mass, district ground) exists from T0
+with its final colour and silhouette. Detail adds only zero-mean variation; nothing large appears with a
+tier. The rule is enforced by `pnpm shots ladder`: 11 distances 700 → 21 u at a fixed 48° pitch, clear
+14:00, `freeze=1`. Each step compares solid cells (land or structure, 48 × 27 grid, ΔE2000 on Lab) of frame
+k with frame k+1, and a boundary pair compares both sides of 1.06 b and 0.94 b for b ∈ {380, 250, 140,
+45, 300, 120, 40}. Thresholds: step mean ≤ 5, p95 ≤ 12, blob (ΔE > 15 component) ≤ 1.5 %; drift ≤ 4;
+pair mean ≤ 2.5, blob ≤ 0.5 %, IoU ≥ 0.92. Calibration: it must fail on the M14 main (Coding) and pass on
+identity input. Mapping, slack and land floor were changed after calibration (D-035).
+**Rationale**: the M14 zoom ladder showed a patchwork and buildings that appeared with the tier, which an
+absolute per-shot check could not catch.
+**Impact**: `scripts/ladder-metrics.ts`, `scripts/shots.ts` (`ladder` set), `cam=ladder:<island>:<dist>`
+(`camera/controls.ts`), `FRAMING.ladder`.
+
+## D-030: Terrain is smooth and material-based; props stay faceted — 2026-10-05
+
+**Decision** (M14b TASK-371 / 372): the terrain surface is a Catmull-Rom (C1, interpolating) surface over the
+unchanged 2 u heightfield (`shared/terrain-sample.ts`), giving smooth normals. Chunks are indexed meshes
+(`render/terrain/terrain-mesh.ts`) with distance LOD 4 → 2 → 1 → 0.5 u (`content/terrain.ts`). Each zone has
+a procedural ground material: one tileable 256² RGBA8 layer per material in a `DataArrayTexture`
+(`render/terrain/ground-detail.ts`), mean-preserving and fading with distance. Props, buildings, trees and
+bots stay faceted; the terrain is the only exception to ART_BIBLE P1.
+**Rationale**: the terrain was non-indexed 2 u facets with per-face colour jitter baked into vertex colours,
+and the LOD flipped globally on tier (T0 4 u, else 2 u): a pop at 380 u and no gain below 2 u.
+**Impact**: the world grid stays at 2 u, so generation, the edit codec and the terrain hashes do not change.
+Albedo +0.6 MB; detail array +4.7 MB on medium / high.
+
+## D-029: Theme-first islands: the archetype gives the shape, the theme owns the rest — 2026-10-05
+
+**Decision** (M14b, `world/gen/plans/`, `world/gen/sites.ts`): the archetype supplies only the shape
+(heightfield profile, coast, shelf, anchors: volcano, atoll, stack, plateau, dome, sandbar, crescent). The
+theme owns the ground palette per zone, zone-rule overrides, the landmarks on the archetype anchors,
+districts, structures, scatter and decor, and creature weights. Settlements are planned by
+`THEME_PLANNERS[isl.theme]`; no archetype-specific prop or colour survives unless the theme lists it.
+**Rationale**: M14 bolted the themes onto the archetype planners, so farm logic (windmills on knolls, a
+barn, field fences) still decided the island.
+**Alternatives**: keep the archetype switch and re-skin the result (rejected).
+**Impact**: `content/themes/` tables, `world/gen/plans/*`, hash re-pins.
+
 ## D-028: Phase 3 M14 budgets = measured worst case + ~10 % — 2026-10-05
 
 **Decision** (TASK-309): raise only what the ci/dev/edit sets (all three qualities, `pnpm shots <set>
@@ -14,6 +129,61 @@ gpuMemoryMB low 64 → **70** (63 at E-panel 1280×720). Agents 25/60/110 (set e
 **Programs stay 9 / 17 / 24**, equal to the pre-Phase-3 baseline (measured at 7b35622^).
 **Rationale**: the plan's 135 low estimate assumed the old macro framing; the new layout, not the
 campuses, moved the T3 shots. Shrinking far terrain chunk calls is a shader/terrain follow-up.
+
+## D-027: Shared LOD1 proxies and tier-2 interiors (partly superseded by D-032) — 2026-10-05
+
+**Decision** (M14 TASK-303 / 309): (a) LOD1 instances group by the def's shared `lod1` key (`PropDef.lod1 {geo,
+variant}`), so about 20 themed building defs do not add about 40 LOD1 groups at T1; the themed shells share
+one neutral `officeLod1` proxy. (b) Interiors are a separate tier-2 def (`interior: true`): never placeable,
+never clusterable, never shadow-casting on low; `INTERIOR_OF[defId]` maps a shell to its interior. (c) New
+tier-2 interior and decor defs bloom in or dither in; no hard pops.
+**Status**: (a) is retired by D-032 (every structure has its own LOD1). (b) and (c) stand.
+**Rationale**: the draw-call budget (D-028) was the tight one; the interiors must not add calls at T0 / T1.
+**Impact**: `content/props.ts`, `content/props-buildings.ts`, `render/props/batcher.ts`,
+`render/props/settlement-props.ts`.
+
+## D-026: Department workers replace villagers; pose and accessory ride existing attributes — 2026-10-05
+
+**Decision** (M14 TASK-306, user-approved 2026-10-05 with D-024): workers replace the villagers on every
+island, allocated by island theme weight (`content/life.ts`, `THEMES.workers`). All workers and boat
+passengers share one `InstancedMesh` (1 draw call, 0 programs). The creature material keeps 15 of 16
+attributes: the pose kind is in `aGait.y` (0..1 wave, 2..3 typing amount = y − 2, mode 7 arm pose) and the
+accessory in `aSeed` (mode 8: the integer part is the accessory, the fraction is the phase). Accessories:
+HQ headset with mic, Coding hood with headphones, Marketing megaphone badge / cap, QA visor with monocle,
+Design beret, DevOps hard hat, Research goggles. Villager hats (mode 5) are untouched. Code says "workers"
+because `AgentKind` already names the base class.
+**Rationale**: a 17th attribute fails to link under SwiftShader (D-013), so the worker needs its pose and
+accessory from existing channels.
+**Impact**: `life/life-material.ts` (modes 7 and 8), `life/workers.ts`, `life/geo/workers.ts`. Carried items
+extend mode 8 (D-036).
+
+## D-025: Every island gets a campus; the seven-island roster is guaranteed (hash re-pin) — 2026-10-05
+
+**Decision** (M14 TASK-300 / 302, user-approved 2026-10-05): `LAYOUT.countWeights` → `[[7, 1]]`, so every
+seed has all seven department islands once each. Lonely Palm is forced at count 7 (`lonelyPalmChance` is
+unused). A generic campus planner, `planCampus` with `CAMPUS[theme]`, runs after each archetype plan: a quad
+on the plaza, lanes and lots from `lotMix`, `defSwap` re-labels the old lots, links to the hub and dock.
+Emberpeak and Lonely Palm, which had no lots before, get campuses (Research: one `researchHut` and a
+telescope in outpost mode, see D-024). Every seed's layout, hashes and shots change; `EDIT_LOGS` is
+re-recorded (TASK-309).
+**Rationale**: an org chart with a missing department breaks the fiction. The count-7 rule was already
+feasible for about a quarter of seeds.
+**Impact**: `content/islands.ts` (`countWeights`; Lonely Palm 17–21 u, TASK-302), `world/gen/settlements.ts`,
+the 500-seed layout test (contrast fallback rate), re-pinned hashes.
+
+## D-024: Department themes per archetype; the theme set is a data table — 2026-10-05
+
+**Decision** (M14 TASK-300, user-approved 2026-10-05): each archetype maps to one department, as a data table
+(`THEME_BY_ARCHETYPE`): hearthholm → HQ / Orchestrator; millbrook → Coding; emberpeak → DevOps / Infra;
+beaconrock → Marketing; palmlagoon → QA / Audit; mossgrove → Design / Art; lonelypalm → Research. The
+`ThemeId` contract is in `src/world/types.ts` (`THEME_IDS` order is fixed; the index is the variant /
+accessory index). `IslandData.theme` is set in `islandAt` and `hashLayout` adds it.
+**Rationale**: the archetype's terrain suggests the department (flat plateau → coding campus, volcano →
+data centre, lighthouse → broadcast tower, atoll ring → closed test loop). A swap of two themes is a
+one-line change plus re-pinned hashes.
+**Alternatives**: Marketing and QA may swap (lighthouse as QA watchtower, atoll as beach resort).
+**Impact**: `content/themes/index.ts`, `content/islands-ui.ts` (accent and name), `cam=island:<theme>` in
+`camera/controls.ts`. The roster guarantee is D-025.
 
 ## D-023: The session-2 branch supersedes main's parallel M7–M10 line — 2026-10-04
 

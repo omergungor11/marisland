@@ -10,6 +10,12 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-09 (short session, weekly limit ~4 %)**: TASK-382 partly done (haiku docs agent):
+  DECISIONS backfill D-024…D-027, D-029…D-033 + new D-034 (aSpin.w tag channel), D-035 (ladder
+  metric calibration), D-036 (carried-item two-slot decode — code wins over phase-3 §3); ART_BIBLE
+  §1/2/4/5/6/11 touched (also fixed bloom-in c=12→17, W9 D-017→D-019). **Left**: ARCHITECTURE
+  §3/§4/§10, ART_BIBLE §4 roster/W5–W7 still archetype-era, "blob p95 4.5" not written (no source).
+  D-034…D-036 dates approximate. **Next**: TASK-381 QA, finish TASK-382, then M15–M18.
 - **2026-10-06 (session close, orchestrator)**: Phase 3 M14 + M14b (theme-first redesign) + M14c (living
   close-up) are merged on `main` and pushed (Pages deployed). 1208 tests green; shots ci/dev/edit/wow
   green with `--assert`; new `live` set (`pnpm shots live --assert`): all 7 `L-live-<theme>` pass
