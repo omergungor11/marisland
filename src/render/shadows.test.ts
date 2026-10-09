@@ -60,6 +60,22 @@ describe('fitted shadows', () => {
     expect(light.shadow.camera.far).toBeGreaterThan(light.shadow.camera.near);
   });
 
+  it('penumbra is about 0.3 u at T2 on medium and high (TASK-352)', () => {
+    const sun = new THREE.Vector3(-0.4, 0.8, 0.3).normalize();
+    for (const [map, max] of [
+      [1024, 760],
+      [2048, 900],
+    ])
+      for (const d of [85, 120]) {
+        const light = new THREE.DirectionalLight();
+        const fit: ShadowFit = { size: 0, texel: 0, points: 0 };
+        fitShadow(light, cam(0, d * 0.74, d * 0.67), sun, new THREE.Vector3(), map, max, fit);
+        const penumbra = light.shadow.radius * fit.texel;
+        expect(penumbra).toBeGreaterThan(0.25);
+        expect(penumbra).toBeLessThan(0.36);
+      }
+  });
+
   it('fog fit follows the bible curve within tolerance', () => {
     const d = fitFogExp2(LIGHTING.fogAt);
     const f = (x: number): number => 1 - Math.exp(-((d * x) ** 2));

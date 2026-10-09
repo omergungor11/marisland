@@ -87,7 +87,7 @@ export const SHADOW = {
   casterReach: 46,
   /** PCF radius in texels = penumbra / texel, clamped. */
   pcfMin: 1,
-  pcfMax: 3,
+  pcfMax: 5,
 } as const;
 
 /** Sky dome (TASK-171): gradient + sun disc + moon + hashed stars, one draw call. */

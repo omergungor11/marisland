@@ -29,6 +29,11 @@
   10-seed sweep done 2026-10-10 (`--seed=N` added to shots; 30/30 ok, qa/sweep-2026-10-10.md).
   TASK-381 COMPLETED 2026-10-10 (dev 32/32 + 6 self-tests, wow 10/10). **Next**: M15–M18 (phase-3 §8);
   ladder follow-up: keep tall props out of the T3 ladder foreground or depth-aware registration.
+  TASK-352 done: `SHADOW.pcfMax` 3 → 5 (r186 PCF = 5 Vogel taps + IGN, so a wider radius dithers, no
+  banding). Penumbra 0.3 u now holds from 85 u (high) / 42 u (medium) outward; closer it is
+  0.12–0.24 u. The T2/T3 box is already frustum-tight (48–96 u), so `maxSize` per tier was not needed;
+  contact blobs untouched. Full `pnpm test` flakes up to 4 timing tests under load (archipelago,
+  plans-marketing/qa, ground-detail); they pass alone.
 - **2026-10-06 (session close, orchestrator)**: Phase 3 M14 + M14b (theme-first redesign) + M14c (living
   close-up) are merged on `main` and pushed (Pages deployed). 1208 tests green; shots ci/dev/edit/wow
   green with `--assert`; new `live` set (`pnpm shots live --assert`): all 7 `L-live-<theme>` pass
