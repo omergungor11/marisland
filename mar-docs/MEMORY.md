@@ -42,7 +42,7 @@
   Marketing pair 250 blob 0.7 %, Research tiny-land pairs; QA inner-shore saw-tooth silhouette
   (heightfield); pipes step on steep climbs; inspection
   tower is a lot, not a landmark kind; front-row bots partly hide their angled screens; Design live
-  frame has a foreground pine; Research live has only 1–2 bots.
+  frame has a foreground pine; Research live re-aimed from the west 2026-10-09 (3 of its 4 outpost bots in frame; the hut dome hid them).
   **Git**: history rewritten 2026-10-06 so every commit is `omergungor11 <omergungor99@gmail.com>`
   (user asked to remove Claude from GitHub contributors). The cloud session's parallel 24-commit line
   (app.ts → boot/ split, QA sweep) was dropped from `main`; it is kept LOCALLY only as
