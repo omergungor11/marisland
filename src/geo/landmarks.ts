@@ -33,17 +33,24 @@ import type { BuildOpts } from './types.ts';
 
 const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
 
+/** Lighthouse shaft height (u); TASK-393 raised it 9.4 → 15.5 so it reads from the T0 postcard
+ *  (content/lighting.ts BEAM.lampY = LIGHTHOUSE_H + 0.24 + 0.75). Footprint unchanged. */
+export const LIGHTHOUSE_H = 15.5;
+/** Window / door-light heights along the shaft (LOD0 boxes, LOD1 quads). */
+const LIGHTHOUSE_WINDOWS = [5.0, 8.7, 12.4] as const;
+
 export function lighthouse({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const acc = jitterAcc(rng);
   const seg = lod === 0 ? 12 : 6;
-  const H = 9.4;
+  const H = LIGHTHOUSE_H;
+  const BANDS = 7;
   const rOf = (y: number): number => 1.95 - 0.7 * (y / H);
   const red = col(variant === 2 ? ROOFS[1] : variant % 2 === 0 ? ROOFS[0] : ROOFS[5]);
   const white = col(WALLS[1]);
   const pts: Array<[number, number]> = [];
-  for (let i = 0; i <= 5; i++) pts.push([rOf((i * H) / 5), (i * H) / 5]);
+  for (let i = 0; i <= BANDS; i++) pts.push([rOf((i * H) / BANDS), (i * H) / BANDS]);
   const body = lathe(pts, seg).rotateY(-Math.PI / seg);
-  put(acc, body, [0, 0, 0], (p) => (Math.floor((p.y / H) * 5) % 2 === 0 ? red : white), {
+  put(acc, body, [0, 0, 0], (p) => (Math.floor((p.y / H) * BANDS) % 2 === 0 ? red : white), {
     aoAmt: 0.2,
   });
   put(acc, cylB(2.35, 2.2, 0.5, seg), [0, 0, 0], col(ROCK[1]), { aoAmt: 0.25 });
@@ -154,7 +161,7 @@ export function lighthouse({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
       col(WOOD.dark),
       { aoAmt: 0 },
     );
-    for (const y of [4.2, 6.9]) {
+    for (const y of LIGHTHOUSE_WINDOWS) {
       const w = ap(y);
       put(acc, new THREE.BoxGeometry(0.64, 0.84, 0.1), [0, y, w - 0.02], col(WALLS[1]), {
         aoAmt: 0,
@@ -176,7 +183,7 @@ export function lighthouse({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
       col(WOOD.planks).lerp(col(WOOD.dark), 0.5),
       flat,
     );
-    for (const y of [4.2, 6.9])
+    for (const y of LIGHTHOUSE_WINDOWS)
       put(
         acc,
         new THREE.PlaneGeometry(0.64, 0.84),
@@ -188,12 +195,19 @@ export function lighthouse({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
   return acc.finish(rng, false, true);
 }
 
+const CLOCK_RISE = 6.5;
+/** Slit heights on the shaft: front facade / the three other faces. */
+const CLOCK_SLITS_FRONT = [3.4, 5.2, 7.0, 8.8] as const;
+const CLOCK_SLITS_SIDE = [4.2, 7.9] as const;
+
 export function clocktower({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const acc = jitterAcc(rng);
   const roof = cycle([ROOFS[1], ROOFS[5]], variant);
   const wall = cycle([WALLS[0], WALLS[3]], variant);
-  const shaftTop = 6.5;
-  const stageTop = 8.5;
+  // TASK-393: the shaft grew by CLOCK_RISE (a taller body with extra slits and a ledge), the
+  // stage / clock / roof keep their size and sit on top. Footprint unchanged.
+  const shaftTop = 6.5 + CLOCK_RISE;
+  const stageTop = 8.5 + CLOCK_RISE;
   if (lod === 0) {
     put(acc, baseBox(3.1, 0.5, 3.1), [0, 0, 0], col(ROCK[1]), { aoAmt: 0.25 });
     put(acc, bevBox(2.4, shaftTop - 0.5, 2.4, 0.12), [0, 0.5 + (shaftTop - 0.5) / 2, 0], wall, {
@@ -213,6 +227,10 @@ export function clocktower({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
     put(acc, baseBox(3.1, 0.2, 3.1), [0, shaftTop - 0.1, 0], col(WOOD.planks), { aoAmt: 0 });
     put(acc, baseBox(2.9, stageTop - shaftTop, 2.9), [0, shaftTop, 0], wall, { aoAmt: 0.1 });
   }
+  // mid-shaft ledge: breaks the tall wall and keeps the far silhouette banded
+  put(acc, baseBox(2.75, 0.16, 2.75), [0, 0.5 + CLOCK_RISE * 0.9, 0], col(WOOD.planks), {
+    aoAmt: 0,
+  });
   const spin = new Spin();
   const finishClock = (): THREE.BufferGeometry =>
     variant === 2
@@ -275,10 +293,9 @@ export function clocktower({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
     const dz1 = 1.2 + 0.06;
     quad(1.0, 1.7, col(WOOD.planks).lerp(col(WOOD.dark), 0.5), 0, 1.35, 1.2 + 0.1, 0);
     const slitC = col(WOOD.planks).lerp(col(EMISSIVE.window), 0.55);
-    quad(0.54, 0.94, slitC, 0, 3.4, dz1, 0, 0.5);
-    quad(0.54, 0.94, slitC, 0, 5.2, dz1, 0, 0.5);
+    for (const y of CLOCK_SLITS_FRONT) quad(0.54, 0.94, slitC, 0, y, dz1, 0, 0.5);
     for (const yaw of [Math.PI / 2, -Math.PI / 2, Math.PI])
-      quad(0.54, 0.94, slitC, 0, 4.2, dz1, yaw, 0.5);
+      for (const y of CLOCK_SLITS_SIDE) quad(0.54, 0.94, slitC, 0, y, dz1, yaw, 0.5);
     if (variant !== 2)
       for (let k = 0; k < 4; k++) {
         const q = qEuler(0, (k * Math.PI) / 2, 0);
@@ -286,7 +303,7 @@ export function clocktower({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
         put(
           acc,
           new THREE.CircleGeometry(0.85, 8),
-          [o.x, 7.5, o.z],
+          [o.x, 7.5 + CLOCK_RISE, o.z],
           col(WALLS[1]).lerp(col(WOOD.dark), 0.2),
           {
             ...flat,
@@ -324,12 +341,13 @@ export function clocktower({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
       ao: () => 1,
     });
   };
-  slit(0, 3.4, dz, 0);
-  slit(0, 5.2, dz, 0);
-  slit(dz, 4.2, 0, Math.PI / 2);
-  slit(-dz, 4.2, 0, -Math.PI / 2);
-  slit(0, 4.2, -dz, Math.PI);
-  const cy = 7.5;
+  for (const y of CLOCK_SLITS_FRONT) slit(0, y, dz, 0);
+  for (const y of CLOCK_SLITS_SIDE) {
+    slit(dz, y, 0, Math.PI / 2);
+    slit(-dz, y, 0, -Math.PI / 2);
+    slit(0, y, -dz, Math.PI);
+  }
+  const cy = 7.5 + CLOCK_RISE;
   const hrs = [10.1, 1.6, 4.4][variant % 3];
   for (let k = 0; k < 4; k++) {
     const yaw = (k * Math.PI) / 2;

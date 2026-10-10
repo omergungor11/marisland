@@ -39,8 +39,10 @@ export const CODING_COLORS = {
   tyre: '#3A3F4D',
 } as const;
 
+/** TASK-393: hero landmark height gain over the original 15 / 12 / 10 u turbines. */
+export const TURBINE_RISE = 1.6;
 /** Turbine nominal heights per variant (tip-top at rest, u). */
-export const TURBINE_HEIGHTS = [15, 12, 10] as const;
+export const TURBINE_HEIGHTS = [24, 19, 16] as const;
 
 export const CODING_PROP_DEFS: readonly PropDef[] = [
   // T0 signature: white tapered tower, slim blades with blue tips; blades turn via aSpin

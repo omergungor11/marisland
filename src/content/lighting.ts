@@ -245,7 +245,7 @@ export const POOLS = {
 
 /**
  * Lighthouse beam (TASK-171, ART_BIBLE §7 #19: 18:30–06:30, 8 s/rev, 40 u cone, opacity 0.35).
- * `lampY` = lamp-room centre above the lighthouse pivot (geo/landmarks.ts: H 9.4 + 0.24 + 0.75).
+ * `lampY` = lamp-room centre above the lighthouse pivot (geo/landmarks.ts: LIGHTHOUSE_H 15.5 + 0.24 + 0.75).
  */
 export const BEAM = {
   color: '#FFE3A6',
@@ -270,7 +270,7 @@ export const BEAM = {
   flareFacing: 6,
   /** The flare quad is pulled this far toward the camera so the lamp-room glass doesn't clip it. */
   flarePull: 1.6,
-  lampY: 10.39,
+  lampY: 16.49,
   /** Visible hours: fades in over [on0, on1], out over [off0, off1]. */
   on: [18.5, 18.9] as const,
   off: [6.1, 6.5] as const,
