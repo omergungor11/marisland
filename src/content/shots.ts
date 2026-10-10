@@ -423,6 +423,18 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     sets: ['dev'],
   },
   {
+    id: 'D-pool-ducks',
+    title: 'Pool · duck family (Coding)',
+    seed: 1001,
+    // seed 1001: the family paddles on the pool centred (110.4, 21.1), not its twin at (101.5, 12.5); steep T3 look down
+    cam: '110.4,15,25.5,110.4,5.4,21.1',
+    time: 11,
+    simt: 3,
+    // low has no ducks (LIFE_PLAN.low.ducks = 0), the dev set defaults to low
+    quality: 'high',
+    sets: ['dev'],
+  },
+  {
     id: 'D-campus-night',
     title: 'Campus night · Coding',
     seed: 1001,
