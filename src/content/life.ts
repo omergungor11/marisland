@@ -198,7 +198,7 @@ export const GULLS = {
     takeoff: 2.5,
     perchY: 1.2,
     /** Perch height above terrain at landmark tops. */
-    landmarkTop: { lighthouse: 14, clocktower: 11 } as Record<string, number>,
+    landmarkTop: { lighthouse: 20, clocktower: 17.6 } as Record<string, number>,
     pulse: 1.08,
   },
 } as const;
