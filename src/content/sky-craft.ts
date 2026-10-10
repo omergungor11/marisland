@@ -25,11 +25,11 @@ export const SKY_CRAFT = {
   /** Jitter on each balloon's start angle (fraction of its even slot). */
   phaseJitter: 0.35,
   /**
-   * Model scale (models are 10 u / 26 u across): chunky on purpose so they read as shapes from the
-   * T0 postcard distance (~500 u). Balloons get a per-instance jitter inside the range.
+   * Model scale (models are 10 u / 26 u across): readable from the T0 overview (~500 u) without
+   * dwarfing islands in the low postcard view. Balloons get a per-instance jitter inside the range.
    */
-  scale: [1.6, 2.1],
-  airshipScale: 1.5,
+  scale: [1.1, 1.4],
+  airshipScale: 1.2,
   /** Vertical bob (u, period s) and swing (rad, period s). */
   bob: { amp: 0.6, period: 7 },
   sway: { amp: 0.035, period: 9 },
