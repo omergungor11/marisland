@@ -25,6 +25,14 @@ export function fitFogExp2(points: readonly (readonly [number, number])[]): numb
   return num / den;
 }
 
+/**
+ * Aerial perspective (M17b TASK-392): by day (not at golden hour or night) the fog colour leans
+ * toward a deeper sky blue, so the far islands of the low postcard fade into blue haze rather than
+ * pale white and the layers separate in depth. Mixed into EnvState.fog (sky band, background,
+ * water and land fog stay one colour).
+ */
+export const AERIAL = { color: '#B4D5EE', mix: 0.45 } as const;
+
 /** Fog density multiplier at T0 map distance (≥ 650 u), lerped from 1 at 300 u (D-009). */
 export const FOG_T0_SCALE = 0.45;
 
@@ -288,6 +296,12 @@ export const POST = {
   goldenLift: 0.18,
   /** Linear lift added to blacks (lifted blacks, bible §3 "Grade"). */
   lift: 0.004,
+  /**
+   * Day grade (M17b TASK-392): midtone saturation added to the bible's +4 %, and a warm overlay
+   * toward `goldenColor` (luminance kept) that is on all day and fades out with the night grade.
+   */
+  saturation: 0.06,
+  dayWarm: 0.04,
   /** Kawase SMALL kernel at half res ≈ this many full-res px of blur per unit scale. */
   tiltPxPerScale: 4.4,
   /** Feather (in the effect's −1..1 vertical units) between sharp centre and blurred band. */

@@ -11,6 +11,7 @@ import {
   framePose,
   islandPose,
   overviewPose as fitOverview,
+  postcardPose as fitPostcard,
   pitchBand,
   findIsland,
   type CameraWorld,
@@ -48,8 +49,10 @@ export interface CameraSystem extends System {
   setIdleOrbit(on: boolean, immediate?: boolean): void;
   /** Reduced motion: no orbit, cuts instead of fly-tos. */
   setReducedMotion(on: boolean): void;
-  /** The T0 default pose — `applyPreset('overview')` and the intro's last key use it. */
+  /** The T0 default pose — `applyPreset('overview')`. */
   overviewPose(): OrbitPose;
+  /** The low 3/4 postcard look (TASK-392) — `applyPreset('postcard')`, the intro's last key. */
+  postcardPose(): OrbitPose;
   /** Fly to an island (fit its sphere, keep the heading). A cut under reduced motion. */
   flyToIsland(name: string): boolean;
   /** Island under a CSS-pixel point of the canvas (terrain ray-march), or null. */
@@ -188,6 +191,13 @@ export function createCameraSystem(
     return { tx: p.tx, ty: p.ty, tz: p.tz, dist: p.dist, pitch: p.pitch, az: p.az };
   };
 
+  /** The postcard (TASK-392); the zoom-out limit follows it like the overview's. */
+  const postcardPose = (): OrbitPose => {
+    const p = fitPostcard(world, view(), viewport());
+    controls.maxDistance = Math.max(CAMERA.maxDist, p.dist * 1.02);
+    return { tx: p.tx, ty: p.ty, tz: p.tz, dist: p.dist, pitch: p.pitch, az: p.az };
+  };
+
   const sys: CameraSystem = {
     name: 'camera',
     controls,
@@ -212,6 +222,10 @@ export function createCameraSystem(
         case 'overview': {
           const p = overviewPose();
           lookFromOrbit(controls, p.tx, p.ty, p.tz, p.dist, p.pitch, p.az, t);
+          break;
+        }
+        case 'postcard': {
+          apply(postcardPose(), t);
           break;
         }
         case 'island': {
@@ -340,6 +354,7 @@ export function createCameraSystem(
       orbitSpeed = 0;
     },
     overviewPose,
+    postcardPose,
     flyToIsland(name) {
       const isl = findIsland(world, name);
       if (!isl) return false;

@@ -1053,7 +1053,7 @@ export async function boot(): Promise<void> {
         if (t >= INTRO.duration) {
           it.dispose();
           intro = null;
-          cam.applyPreset('overview', false);
+          cam.applyPreset('postcard', false);
         }
         loop.step(1 / 30, 1);
       } else {

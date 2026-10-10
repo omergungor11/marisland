@@ -100,6 +100,52 @@ export const FRAMING = {
   },
 
   /**
+   * Postcard (M17b TASK-392, the end of the intro): a low 3/4 look over the whole archipelago
+   * where island walls and landmarks overlap in depth and the horizon (with the cloud banks) sits
+   * in the top third. The look-down follows from the horizon height: a horizon at NDC `horizon`
+   * means look-down = atan(horizon · tan(fov / 2)) — 13.1° at FOV 35°, so the nearest islands are
+   * seen at ≈ 30° and the far ones at ≈ 15°. Fitted to land outlines (not the shallow rings), the
+   * terrain under them, peaks and landmark tops, so taller islands push the camera up by
+   * themselves.
+   */
+  postcard: {
+    /** Horizon height on screen, NDC (0 = centre, 1 = top edge): 0.74 → 13 % below the top. */
+    horizon: 0.74,
+    /** Content stays this far (NDC) under the horizon line: far peaks never touch the sky band. */
+    horizonGap: 0.08,
+    /**
+     * Heading (camera-controls azimuth, deg). The 15:00 sun stands toward +x (≈ 54° high), so
+     * from −10° it lights the islands from the right side: lit east faces, rimmed right edges,
+     * shade on the camera-left faces.
+     */
+    azimuthDeg: -10,
+    /** Land outline points per island (at land reach, sea level). */
+    ringSamples: 16,
+    /** Inner ring (fraction of the land reach) sampled at the terrain height: cliffs and bluffs. */
+    innerRing: 0.7,
+    /** Landmark kind → top above its ground (u): lighthouse lamp room, turbine tip, tree crown. */
+    landmarkTop: { lighthouse: 11, windTurbine: 19, giantTree: 30 } as Readonly<
+      Record<string, number>
+    >,
+    /** Extra margin per side, fraction of the viewport. */
+    pad: 0.02,
+    /** Narrower screens (portrait phones) use the overview instead (width / height). */
+    minAspect: 1,
+    /** Camera height search range (u). */
+    minHeight: 30,
+    maxHeight: 2400,
+    /** Orbit target on the view ray, near the archipelago centre but no higher than this (the
+     *  camera-controls boundary box ends at 60 u). */
+    maxTargetY: 50,
+    /**
+     * The pitch band reaches down to `pitch` at and beyond `fullAt` u (blending back to the curve
+     * by `blendTo` u, log-distance), so the postcard is a reachable pose: the first drag after the
+     * intro does not snap the camera back up to the 58° overview band.
+     */
+    band: { pitch: 10, fullAt: 260, blendTo: 150 },
+  },
+
+  /**
    * Low-pitch allowance at macro distances (so the hero pose is reachable and the first drag
    * never snaps): the lower pitch bound drops to `pitch` at or below `fullAt` u and blends back
    * to the pitch curve by `blendTo` u (log-distance).

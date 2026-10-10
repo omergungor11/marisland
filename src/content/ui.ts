@@ -6,11 +6,11 @@ import type { WeatherName } from '../core/params.ts';
 
 export interface IntroKey {
   t: number;
-  /** Orbit distance (u); `null` = the overview preset's distance. */
+  /** Orbit distance (u); `null` = the final (postcard) preset's distance. */
   dist: number | null;
-  /** Pitch (deg from horizontal); `null` = the overview preset's pitch. */
+  /** Pitch (deg from horizontal); `null` = the final (postcard) preset's pitch. */
   pitch: number | null;
-  /** Azimuth relative to the overview azimuth (deg). */
+  /** Azimuth relative to the final (postcard) azimuth (deg). */
   azOffset: number;
   /** Target: fraction of the way from the archipelago centre to the hero island. */
   hero: number;
@@ -39,8 +39,11 @@ export const INTRO = {
     { t: 0, dist: 980, pitch: 80, azOffset: -44, hero: 0 },
     { t: 1.5, dist: 930, pitch: 80, azOffset: -42, hero: 0 },
     { t: 3.0, dist: 900, pitch: 80, azOffset: -40, hero: 0 },
-    { t: 6.5, dist: 420, pitch: 58, azOffset: 0, hero: 0 },
-    { t: 8.5, dist: 300, pitch: 55, azOffset: 6, hero: 0.6 },
+    // 3–6.5 s swoop down and tilt; 6.5–8.5 s push low toward the hero island; 8.5–10 s pull
+    // back and tilt up onto the postcard (TASK-392), the horizon and cloud banks rising into frame.
+    // The push stays above 342 u (T0 → T1 with hysteresis): labels and LODs don't pop mid-move.
+    { t: 6.5, dist: 440, pitch: 50, azOffset: -6, hero: 0 },
+    { t: 8.5, dist: 365, pitch: 31, azOffset: 4, hero: 0.55 },
     { t: 9.7, dist: null, pitch: null, azOffset: 0, hero: 0, settle: true },
     { t: 10, dist: null, pitch: null, azOffset: 0, hero: 0 },
   ] as readonly IntroKey[],
