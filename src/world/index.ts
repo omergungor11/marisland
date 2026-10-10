@@ -24,6 +24,7 @@ import { buildZones } from './gen/zones.ts';
 import { buildSettlements, markSites } from './gen/settlements.ts';
 import { buildRoutes } from './gen/routes.ts';
 import { generateBridges, markBridges } from './gen/bridges.ts';
+import { placeWaterfalls } from './gen/waterfalls.ts';
 import { createOccupancy, scatterProps } from './gen/scatter.ts';
 import { compactPropStore, createPropStore } from './prop-store.ts';
 import { hashPolylines, hashProps, hashSites } from './gen/hash.ts';
@@ -202,6 +203,7 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
     fieldColor,
     bridges: [],
     districts: [...patchDistricts(islands, rawLand.fields), ...sites.districts],
+    waterfalls: [],
     props: createPropStore(0),
     chunkFlags,
     zonePainted: new Uint8Array(GRID_N * GRID_N),
@@ -228,6 +230,7 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
   world.props = compactPropStore(scatterProps(world, occupancy).props, EDIT_PROPS.propHeadroom);
   world.props.editBase = world.props.count;
   lap('props');
+  world.waterfalls = placeWaterfalls(world, root.fork('waterfalls'));
 
   hashes.layout = hashLayout(windDir, islands);
   hashes.height = hashFloats(height.data);
