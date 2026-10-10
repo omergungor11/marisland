@@ -64,7 +64,8 @@ export const PLACEMENT_RULES: readonly PlacementRule[] = [
     minDist: 5,
     density: 0.8,
     slopeMax: 0.5,
-    heights: [0.3, 6],
+    // up to the bluff rim (TASK-390: Hearthholm's plateau stands 6–7.5 u above its walls)
+    heights: [0.3, 10],
     shore: [1, 14],
     cluster: { scale: 22, threshold: -0.02 },
     scale: [0.85, 1.2],

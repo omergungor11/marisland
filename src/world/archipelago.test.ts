@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { adjacentPairs } from './gen/layout.ts';
+import { coveness } from './gen/heightfield.ts';
+import { ARCHETYPES } from '../content/islands.ts';
 import { generateWorld, heightAt, Zone, type IslandData, type WorldData } from './index.ts';
 import { perfLimit } from '../test/perf.ts';
 
@@ -90,9 +92,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "a58bce8ad57703c1",
-          "1001": "05919e804aa1d13b",
-          "42": "26a46b2099f7533b",
+          "1": "df32d83898346d37",
+          "1001": "d06cb01398871b93",
+          "42": "20a12314725377e4",
         }
       `);
     },
@@ -243,23 +245,27 @@ describe('archipelago — 30-seed full generation', () => {
             break;
           }
           case 'millbrook':
-            expect(isl.peakY, ctx).toBeLessThanOrEqual(8.5);
+            // bluff plateau (TASK-390): 10–12 u peak; 6.5–8 u without the bluff
+            expect(isl.peakY, ctx).toBeLessThanOrEqual(ARCHETYPES.millbrook.bluff?.on ? 12.5 : 8.5);
             // theme-first Coding (D-029): the patches are solar gravel (`field` zone) wherever the
             // tech park left clean ground: 2.5 % … 19 %, median ≈ 13 % over these 30 seeds
             expect(sum(zc, [Zone.field]), ctx).toBeGreaterThan(land * 0.02);
             expect(isl.anchors.knoll0 && isl.anchors.knoll1 && isl.anchors.pond, ctx).toBeTruthy();
             break;
-          case 'mossgrove':
-            // forest is the dominant zone
+          case 'mossgrove': {
+            // forest is the dominant zone of the walkable land (the bluff walls are cliff)
+            const top = land - sum(zc, [Zone.cliff]);
             for (const [z, c] of zc)
-              if (z !== Zone.forest) expect(zc.get(Zone.forest) ?? 0, ctx).toBeGreaterThan(c);
-            expect(sum(zc, [Zone.forest]), ctx).toBeGreaterThan(land * 0.35);
+              if (z !== Zone.forest && z !== Zone.cliff)
+                expect(zc.get(Zone.forest) ?? 0, ctx).toBeGreaterThan(c);
+            expect(sum(zc, [Zone.forest]), ctx).toBeGreaterThan(top * 0.35);
             expect(isl.anchors.giantTree, ctx).toBeDefined();
             expect(
               w.streams?.some((s) => s.islandId === isl.id),
               ctx,
             ).toBe(true);
             break;
+          }
           case 'lonelypalm':
             expect(isl.peakY, ctx).toBeLessThanOrEqual(0.7);
             expect(isl.anchors.palm, ctx).toBeDefined();
@@ -287,5 +293,108 @@ describe('archipelago — 30-seed full generation', () => {
       `stages seed 1001: ${JSON.stringify(Object.fromEntries(Object.entries(t).map(([k, v]) => [k, Math.round(v)])))}`,
     );
     for (const m of ms) expect(m).toBeLessThan(perfLimit(600));
+  });
+});
+
+describe('bluff coasts (TASK-390), 30 seeds', () => {
+  const BLUFFED = (Object.keys(ARCHETYPES) as (keyof typeof ARCHETYPES)[]).filter(
+    (a) => ARCHETYPES[a].bluff?.on,
+  );
+
+  /** Coast samples (shore SDF ≤ 1 u) with ground ≥ 4 u within 2 samples and 5 u of the shore. */
+  function bluffShare(w: WorldData, isl: IslandData): number {
+    const n = w.height.n;
+    let coast = 0;
+    let bluff = 0;
+    for (let i = 2 * n; i < n * n - 2 * n; i++) {
+      if (w.islandMap[i] !== isl.id + 1 || w.shoreSdf[i] > 1.01) continue;
+      coast++;
+      let top = 0;
+      for (let dz = -2; dz <= 2; dz++)
+        for (let dx = -2; dx <= 2; dx++) {
+          const j = i + dz * n + dx;
+          if (w.shoreSdf[j] <= 5) top = Math.max(top, w.height.data[j]);
+        }
+      if (top >= 4) bluff++;
+    }
+    return bluff / coast;
+  }
+
+  it('hero and medium plateaus: ≥ 60 % bluff coast on average, faces ≤ ~65°, Zone.cliff', () => {
+    expect(BLUFFED).toEqual(['hearthholm', 'millbrook', 'emberpeak', 'mossgrove']);
+    const share: Record<string, number[]> = {};
+    for (const seed of SEEDS) {
+      const w = world(seed);
+      const n = w.height.n;
+      for (const isl of w.islands) {
+        if (!ARCHETYPES[isl.archetype].bluff?.on) continue;
+        const ctx = `seed ${seed} ${isl.archetype}`;
+        const s = bluffShare(w, isl);
+        (share[isl.archetype] ??= []).push(s);
+        expect(s, ctx).toBeGreaterThanOrEqual(0.5);
+        // the face: grid slope of the first 6 u inland (central differences over 4 u)
+        const slopes: number[] = [];
+        let steep = 0;
+        let cliff = 0;
+        const d = w.height.data;
+        for (let i = n; i < n * n - n; i++) {
+          if (w.islandMap[i] !== isl.id + 1 || w.shoreSdf[i] > 6) continue;
+          const g = Math.hypot(d[i + 1] - d[i - 1], d[i + n] - d[i - n]) / 4;
+          slopes.push(g);
+          const x = w.height.originX + (i % n) * w.height.cellSize;
+          const z = w.height.originZ + Math.floor(i / n) * w.height.cellSize;
+          if (g > 0.6 && d[i] > 1.5 && coveness(isl, w.windDir, x, z) < 0.5) {
+            steep++;
+            if (w.zone[i] === Zone.cliff) cliff++;
+          }
+        }
+        slopes.sort((a, b) => a - b);
+        const deg = (q: number): number =>
+          Math.atan(slopes[Math.floor(slopes.length * q)]) * (180 / Math.PI);
+        // the wall itself stays ≤ ~65°; the steepest 1 % are rim pads (lots, turbines) that the
+        // planners flatten right up to the edge
+        expect(deg(0.95), `${ctx} face p95 °`).toBeLessThanOrEqual(67);
+        expect(deg(0.99), `${ctx} face p99 °`).toBeLessThanOrEqual(78);
+        expect(cliff / steep, `${ctx} steep bluff faces that are Zone.cliff`).toBeGreaterThan(0.85);
+        // docks stand on the cove's low ground, never on a wall top
+        for (const dk of w.docks.filter((x) => x.islandId === isl.id))
+          expect(heightAt(w.height, dk.x, dk.z), `${ctx} dock root`).toBeLessThanOrEqual(2.5);
+      }
+    }
+    for (const [a, v] of Object.entries(share)) {
+      const mean = v.reduce((x, y) => x + y, 0) / v.length;
+      console.info(
+        `bluff coast ${a}: mean ${(mean * 100).toFixed(0)} %, min ${(Math.min(...v) * 100).toFixed(0)} %`,
+      );
+      expect(mean, a).toBeGreaterThanOrEqual(0.6);
+    }
+  });
+
+  it('peaks: Hearthholm 18–20 u, Millbrook 10–12 u, Mossgrove ≥ 21.5 u (was 19–21); atoll and sandbar stay low', () => {
+    for (const seed of SEEDS) {
+      for (const isl of world(seed).islands) {
+        const ctx = `seed ${seed} ${isl.archetype}`;
+        if (isl.archetype === 'hearthholm') {
+          expect(isl.peakY, ctx).toBeGreaterThanOrEqual(17);
+          expect(isl.peakY, ctx).toBeLessThanOrEqual(20.5);
+        }
+        if (isl.archetype === 'millbrook') expect(isl.peakY, ctx).toBeGreaterThanOrEqual(9.5);
+        if (isl.archetype === 'mossgrove') expect(isl.peakY, ctx).toBeGreaterThanOrEqual(21.5);
+        if (isl.archetype === 'palmlagoon') expect(isl.peakY, ctx).toBeLessThanOrEqual(4);
+        if (isl.archetype === 'lonelypalm') expect(isl.peakY, ctx).toBeLessThanOrEqual(0.7);
+      }
+    }
+  });
+
+  it('the content flag switches an island back: all bluffs off = the pre-M17b world', () => {
+    const saved = BLUFFED.map((a) => ARCHETYPES[a].bluff as { on: boolean });
+    try {
+      for (const b of saved) b.on = false;
+      // hashes.world pinned before TASK-390
+      expect(generateWorld(1001).hashes.world).toBe('05919e804aa1d13b');
+      expect(generateWorld(1).hashes.world).toBe('a58bce8ad57703c1');
+    } finally {
+      for (const b of saved) b.on = true;
+    }
   });
 });

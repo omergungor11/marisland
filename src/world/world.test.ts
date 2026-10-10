@@ -41,41 +41,41 @@ describe('generateWorld — determinism', () => {
         "1": {
           "chunks": "87a628cc5d3a2131",
           "fields": "fde62d37a0223454",
-          "height": "4327426b623241b2",
+          "height": "eeecbc47b47d1ca1",
           "islandMap": "a655e399542d6130",
           "layout": "18af5e7de418fea8",
-          "props": "cd42e56a03d7ca6b",
+          "props": "55b4bfd3ed486695",
           "routes": "7c3fb900a1631df7",
           "sdf": "f25821e68b9fc27b",
-          "sites": "812ebc904e4eca5f",
-          "world": "b23653150e750843",
-          "zone": "e5746d5d8b488af9",
+          "sites": "f1349f70bd585b70",
+          "world": "1c4639dfc362818e",
+          "zone": "d882198c8fe850a6",
         },
         "1001": {
           "chunks": "2308622b7f481c60",
           "fields": "fde62d37a0223454",
-          "height": "da4abb69dd1bf075",
+          "height": "90206cd35b3396ba",
           "islandMap": "2108575841e697b4",
           "layout": "5e6b01953012c5e9",
-          "props": "6af8439b185650a3",
+          "props": "882422895ec36270",
           "routes": "ad9143a5f0133361",
           "sdf": "cc52d61ebf22894e",
-          "sites": "779f36a6b599491f",
-          "world": "7e4412b9f2b233db",
-          "zone": "f319752a32e23a3f",
+          "sites": "65a61813110018de",
+          "world": "caa576a2ab8c75ac",
+          "zone": "e6292b2b6e1c36da",
         },
         "42": {
           "chunks": "4a2f6ca6294e6b92",
           "fields": "fde62d37a0223454",
-          "height": "933e8049ceecd690",
+          "height": "678e641c3bde738a",
           "islandMap": "2b8b157174488c2e",
           "layout": "674dffe16a0cab5b",
-          "props": "1020fbc142065c8f",
+          "props": "17ec6c20c99ee101",
           "routes": "96c6c80ad3e5b6b0",
           "sdf": "e18b47a56ddfcd47",
-          "sites": "3df23ecf5c8ef04b",
-          "world": "ba5c7f4091efd64a",
-          "zone": "99f04de36bb5f66e",
+          "sites": "d27fad2dbff69cb0",
+          "world": "830b6f31e1ba6642",
+          "zone": "8f820ed6a2bff5bc",
         },
       }
     `);
@@ -243,7 +243,7 @@ describe('islands and zones', () => {
   });
 
   it(
-    'property: 50 seeds — no NaN, hearthholm peak 8–16 u, land area ±30 % of πr²',
+    'property: 50 seeds — no NaN, hearthholm peak 8–22 u, land area ±30 % of πr²',
     { timeout: 30_000 },
     () => {
       const ratios: number[] = [];
@@ -259,7 +259,8 @@ describe('islands and zones', () => {
         const isl = w.islands[0];
         expect(isl.archetype).toBe('hearthholm');
         expect(isl.peakY).toBeGreaterThanOrEqual(8);
-        expect(isl.peakY).toBeLessThanOrEqual(16);
+        // the bluff plateau (TASK-390) lifts the hero to 18–20 u; 11–13 u without it
+        expect(isl.peakY).toBeLessThanOrEqual(22);
         const ratio = (land * w.height.cellSize ** 2) / (Math.PI * isl.radius ** 2);
         ratios.push(ratio);
         expect(ratio).toBeGreaterThan(0.7);

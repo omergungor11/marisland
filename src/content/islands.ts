@@ -42,6 +42,40 @@ export interface ZoneRuleParams {
 
 export type SizeClass = 'hero' | 'medium' | 'small' | 'tiny';
 
+/**
+ * Bluff coast (M17b "Concept Archipelago", TASK-390): the island stands on a raised plateau
+ * whose rim drops to the sea as an earthy wall; a beach cove survives only in the leeward
+ * sector, where the harbour and dock planners put their piers. `on: false` restores the
+ * pre-M17b low disc (beach ring + `ArchetypeParams.peak`).
+ */
+export interface BluffParams {
+  on: boolean;
+  /** Wall (plateau lift) height range in u; one value per island from its own rng fork. */
+  wall: readonly [number, number];
+  /** Total peak range in u while the bluff is on (replaces `ArchetypeParams.peak`). */
+  peak: readonly [number, number];
+  /** Cove half-angle around the leeward direction, in degrees (0 = no cove). */
+  coveHalfDeg: number;
+  /**
+   * Cove = disc around this profile anchor instead of the leeward sector (Hearthholm: the
+   * harbour bay); `radius` = full cove → bluff, in island radii.
+   */
+  coveAnchor?: {
+    key: string;
+    radius: readonly [number, number];
+    /**
+     * Centre the cove on the flattest `r` u disc within `search` u of the anchor (grown by
+     * `grow`; ≥ `minShore` u inland) instead: the HQ planner's quad rule (HQ_PLAN.quad,
+     * VILLAGE.searchGrow), so the whole campus stays on cove ground.
+     */
+    flattest?: { search: number; grow: number; minShore: number; r: number };
+  };
+  /** Inside the cove the ground stays low (beach + profile) this many u inland of the beach. */
+  coveFlat: number;
+  /** …then the plateau lift ramps up over this many u. */
+  coveRamp: number;
+}
+
 export interface ArchetypeParams {
   displayName: string;
   /** Bible diameter range in u; radius = diameter / 2. */
@@ -73,6 +107,8 @@ export interface ArchetypeParams {
   terrace: { step: number; strength: number };
   /** Windward face meets deep water with no shelf (WINDWARD_CLIFF; Beacon Rock only). */
   windwardCliff?: boolean;
+  /** Bluff coast + raised plateau (BLUFF); unset = the low beach-ringed disc. */
+  bluff?: BluffParams;
   zones: ZoneRuleParams;
 }
 
@@ -98,6 +134,19 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
     shelfWidth: 8,
     beachWidth: 7,
     terrace: { step: 3, strength: 0.2 },
+    bluff: {
+      on: true,
+      wall: [6, 7],
+      peak: [18, 20],
+      coveHalfDeg: 45,
+      coveAnchor: {
+        key: 'harbour',
+        radius: [0.7, 0.9],
+        flattest: { search: 25, grow: 10, minShore: 8, r: 7 },
+      },
+      coveFlat: 0,
+      coveRamp: 400,
+    },
     zones: DEFAULT_ZONES,
   },
   beaconrock: {
@@ -133,6 +182,7 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
     shelfWidth: 9,
     beachWidth: 6,
     terrace: { step: 2, strength: 0.3 },
+    bluff: { on: true, wall: [5, 6], peak: [10, 12], coveHalfDeg: 35, coveFlat: 0, coveRamp: 28 },
     zones: { ...DEFAULT_ZONES, forestThreshold: 0.5, patchwork: true, rockMinFrac: 2 },
   },
   emberpeak: {
@@ -147,6 +197,7 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
     shelfWidth: 7,
     beachWidth: 5,
     terrace: { step: 4, strength: 0.2 },
+    bluff: { on: true, wall: [5, 6], peak: [34, 36], coveHalfDeg: 60, coveFlat: 0, coveRamp: 8 },
     zones: {
       ...DEFAULT_ZONES,
       forestThreshold: 0.45,
@@ -187,6 +238,14 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
     shelfWidth: 8,
     beachWidth: 5,
     terrace: { step: 0, strength: 0 },
+    bluff: {
+      on: true,
+      wall: [5, 6.5],
+      peak: [22.5, 24.5],
+      coveHalfDeg: 55,
+      coveFlat: 0,
+      coveRamp: 14,
+    },
     zones: {
       ...DEFAULT_ZONES,
       forestThreshold: -0.6,
@@ -363,6 +422,28 @@ export const COAST = {
    * Hearthholm's bay (sweep D9). Atoll ring segments are ≥ 145 samples (60-seed survey).
    */
   minIsletCells: 100,
+} as const;
+
+/** Bluff wall shape shared by every `bluff` archetype (TASK-390). */
+export const BLUFF = {
+  /** Steepest wall slope in degrees (the straight mid-face). */
+  maxSlopeDeg: 62,
+  /** Fraction of the wall run rounded off at the foot and at the rim. */
+  knee: 0.2,
+  /** The archetype profile fades in over the wall run + this many u (keeps the face ≤ ~65°). */
+  rimEase: 6,
+  /** Cove sector edge softness (cos units, like WINDWARD_CLIFF.soft). */
+  coveSoft: 0.12,
+  /**
+   * Wall band = cove factor < cliffTagCove and shore distance < wall run + cliffTagPad u; its
+   * cells steeper than cliffTagSlope get Tag.cliff, so the faces are Zone.cliff on every
+   * bluff archetype (also the `cliff: 'tagged'` ones).
+   */
+  cliffTagCove: 0.85,
+  cliffTagPad: 2,
+  cliffTagSlope: 0.5,
+  /** Box-blur radius (cells) of the shore distance that drives the wall, so the rim is not a staircase. */
+  sdfBlur: 1,
 } as const;
 
 /** Beach band (ART_BIBLE §1/§2: 0–1.2 u above sea level, gentle). */

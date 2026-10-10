@@ -159,7 +159,7 @@ describe('HQ island plan (TASK-362)', () => {
 
   it('per-theme snapshot: HQ settlement data is pinned and deterministic', () => {
     const got = [1, 42, 1001].map((seed) => hqHash(world(seed)));
-    expect(got).toEqual(['8d26fb3d236dd405', '5e9d256fb1facc1d', '5d67541dec9db97f']);
+    expect(got).toEqual(['1f0642823b33f846', 'ed371cf1253bea2d', '7ba1835f5fbe21cd']);
     expect(hqHash(generateWorld(1001))).toBe(got[2]);
   });
 });

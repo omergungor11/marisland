@@ -3,15 +3,17 @@ import type { Rng } from '../../core/rng.ts';
 import { clamp01, lerp, smax, smoothstep } from '../../core/math/index.ts';
 import { WATER_BANDS } from '../../content/palette.ts';
 import type { FieldPatchData, Heightfield, IslandData, StreamData } from '../types.ts';
-import { CELL_SIZE, GRID_N, SEABED_Y } from '../types.ts';
+import { CELL_SIZE, GRID_N, heightAt, SEABED_Y } from '../types.ts';
 import { cellX, cellZ, GRID_ORIGIN, gridRange } from './grid.ts';
 import {
   ARCHETYPES,
   BEACH,
+  BLUFF,
   LAGOON,
   RAW_FLOOR,
   SHELF,
   WINDWARD_CLIFF,
+  type BluffParams,
 } from '../../content/islands.ts';
 import { PROFILES, Tag } from './profiles.ts';
 
@@ -38,6 +40,53 @@ export interface RawLand {
   fields: FieldPatchData[];
   /** Field colour per sample (1 + FIELDS index, 0 = none); masked to Zone.field later. */
   fieldColor: Uint8Array;
+  /** Bluff wall height per island id (u; 0 = no bluff). */
+  bluffWall: Float32Array;
+}
+
+/** The island's bluff block when it is switched on, else null. */
+export function bluffOf(isl: IslandData): BluffParams | null {
+  const b = ARCHETYPES[isl.archetype].bluff;
+  return b && b.on ? b : null;
+}
+
+/** Horizontal run (u) of a bluff wall of height `wall`: `wallShape` max slope = wall/(run·(1 − knee)). */
+export function bluffRun(wall: number): number {
+  return wall / ((1 - BLUFF.knee) * Math.tan((BLUFF.maxSlopeDeg * Math.PI) / 180));
+}
+
+/**
+ * Bluff wall profile 0 → 1 over t ∈ [0, 1]: a straight face with parabolic blends over the
+ * first / last `knee` fraction (a crisp rim, max slope 1/(1 − knee) instead of smoothstep's 1.5).
+ */
+export function wallShape(t: number): number {
+  const k = BLUFF.knee;
+  if (t <= 0) return 0;
+  if (t >= 1) return 1;
+  const m = 1 / (1 - k);
+  if (t < k) return (0.5 * m * t * t) / k;
+  if (t > 1 - k) return 1 - (0.5 * m * (1 - t) * (1 - t)) / k;
+  return m * (t - 0.5 * k);
+}
+
+/**
+ * 1 inside the bluff island's cove, 0 on the bluff coast, smooth at the edges. The cove is the
+ * disc around `coveAnchor` when the island has that anchor, else the leeward sector.
+ */
+export function coveness(isl: IslandData, windDir: number, x: number, z: number): number {
+  const b = bluffOf(isl);
+  if (!b) return 1;
+  const a = b.coveAnchor ? (isl.anchors.cove ?? isl.anchors[b.coveAnchor.key]) : undefined;
+  if (b.coveAnchor && a) {
+    const d = Math.hypot(x - a.x, z - a.z) / isl.radius;
+    return 1 - smoothstep(b.coveAnchor.radius[0], b.coveAnchor.radius[1], d);
+  }
+  const dx = x - isl.cx;
+  const dz = z - isl.cz;
+  const len = Math.hypot(dx, dz) || 1;
+  const dot = (dx * Math.cos(windDir) + dz * Math.sin(windDir)) / len;
+  const ch = Math.cos((b.coveHalfDeg * Math.PI) / 180);
+  return smoothstep(ch - BLUFF.coveSoft, ch + BLUFF.coveSoft, dot);
 }
 
 /** Soft terrace: floor(h/step)·step blended with a smoothstep riser. */
@@ -62,6 +111,7 @@ export function buildRawLand(islands: IslandData[], windDir: number, rng: Rng): 
   const streams: StreamData[] = [];
   const fields: FieldPatchData[] = [];
   const fieldColor = new Uint8Array(n * n);
+  const bluffWall = new Float32Array(islands.length);
   for (const isl of islands) {
     const p = ARCHETYPES[isl.archetype];
     const shapeRng = rng.fork('island:shape', isl.id);
@@ -92,8 +142,13 @@ export function buildRawLand(islands: IslandData[], windDir: number, rng: Rng): 
         }
       }
     }
-    const target = rng.fork('island:peak', isl.id).range(p.peak[0], p.peak[1]);
-    const scale = max > 0 ? target / max : 1;
+    const bluff = bluffOf(isl);
+    const peak = bluff ? bluff.peak : p.peak;
+    const target = rng.fork('island:peak', isl.id).range(peak[0], peak[1]);
+    // the bluff lifts the whole plateau by `wall`; the profile keeps the rest of the peak
+    const wall = bluff ? rng.fork('island:bluff', isl.id).range(bluff.wall[0], bluff.wall[1]) : 0;
+    bluffWall[isl.id] = wall;
+    const scale = max > 0 ? (target - wall) / max : 1;
     for (let iz = z0; iz <= z1; iz++) {
       for (let ix = x0; ix <= x1; ix++) {
         let v = local[(iz - z0) * w + ix - x0];
@@ -105,7 +160,7 @@ export function buildRawLand(islands: IslandData[], windDir: number, rng: Rng): 
       }
     }
   }
-  return { raw, islandMap, tags, streams, fields, fieldColor };
+  return { raw, islandMap, tags, streams, fields, fieldColor, bluffWall };
 }
 
 /** Nearest island by radius-normalised centre distance. */
@@ -193,10 +248,11 @@ export function finalizeHeight(
         const bw = p.beachWidth;
         const bMax = p.beachMax ?? BEACH.max;
         const beach = BEACH.min + (bMax - BEACH.min) * clamp01(s / bw);
-        data[i] =
+        const low =
           tags[i] & Tag.cliff
             ? Math.max(raw[i], BEACH.min)
             : lerp(beach, Math.max(raw[i], beach), smoothstep(0, bw, s));
+        data[i] = low;
       } else if (-s > OPEN_SEA) {
         data[i] = SEABED_Y;
       } else {
@@ -225,8 +281,156 @@ export function finalizeHeight(
       }
     }
   }
+  const hf: Heightfield = {
+    data,
+    n,
+    cellSize: CELL_SIZE,
+    originX: GRID_ORIGIN,
+    originZ: GRID_ORIGIN,
+  };
+  applyBluffs(hf, rawLand, sdf, islands, windDir);
   smoothShelfSeams(data, sdf, owner, n);
-  return { data, n, cellSize: CELL_SIZE, originX: GRID_ORIGIN, originZ: GRID_ORIGIN };
+  return hf;
+}
+
+/**
+ * Bluff pass (TASK-390), on top of the low (beach-ringed) land heights already in `h`: every
+ * bluff island's plateau is lifted by its wall height, rising as a wall right at the shore;
+ * inside the cove the low ground stays and the lift ramps up gently behind it. Wall cells
+ * get Tag.cliff. A `coveAnchor.flattest` cove is centred on the flattest disc near the
+ * anchor, measured on the low heights — where the theme planner will put its quad — and
+ * stored as the island's `cove` anchor.
+ */
+function applyBluffs(
+  h: Heightfield,
+  rawLand: RawLand,
+  sdf: Float32Array,
+  islands: IslandData[],
+  windDir: number,
+): void {
+  const { raw, islandMap, tags, bluffWall } = rawLand;
+  const n = h.n;
+  const data = h.data;
+  const wallSdf = bluffSdf(sdf, islandMap, bluffWall, n);
+  for (const isl of islands) {
+    const ca = bluffOf(isl)?.coveAnchor;
+    const a = ca ? isl.anchors[ca.key] : undefined;
+    if (!ca || !a) continue;
+    const c = ca.flattest ? flattestDisc(h, sdf, islandMap, isl, a, ca.flattest) : a;
+    isl.anchors.cove = { x: c.x, z: c.z, rotY: 0 };
+  }
+  const low = data.slice();
+  const wallBand = new Uint8Array(n * n);
+  for (let iz = 0; iz < n; iz++) {
+    const z = cellZ(iz);
+    for (let ix = 0; ix < n; ix++) {
+      const i = iz * n + ix;
+      if (sdf[i] <= 0 || bluffWall[islandMap[i] - 1] <= 0) continue;
+      const isl = islands[islandMap[i] - 1];
+      const bluff = bluffOf(isl);
+      if (!bluff) continue;
+      const wall = bluffWall[isl.id];
+      const x = cellX(ix);
+      const cove = coveness(isl, windDir, x, z);
+      const run = bluffRun(wall);
+      const ws = wallSdf[i];
+      const c0 = ARCHETYPES[isl.archetype].beachWidth + bluff.coveFlat;
+      // the profile eases in behind the rim so it does not steepen the face itself
+      const ground = lerp(
+        BEACH.min,
+        Math.max(raw[i], BEACH.min),
+        smoothstep(0, run + BLUFF.rimEase, ws),
+      );
+      const high = ground + wall * wallShape(ws / run);
+      const cv = low[i] + wall * smoothstep(c0, c0 + bluff.coveRamp, ws);
+      data[i] = lerp(high, cv, cove);
+      if (cove < BLUFF.cliffTagCove && ws < run + BLUFF.cliffTagPad) wallBand[i] = 1;
+    }
+  }
+  // steep wall-band cells are Tag.cliff → Zone.cliff (the shader's earth-wall look); the
+  // gentle foot / rim cells stay untagged so they never turn into a rock strip
+  const k = BLUFF.cliffTagSlope * 2 * CELL_SIZE;
+  for (let i = n; i < n * n - n; i++) {
+    if (!wallBand[i]) continue;
+    if (Math.hypot(data[i + 1] - data[i - 1], data[i + n] - data[i - n]) > k) tags[i] |= Tag.cliff;
+  }
+}
+
+/**
+ * Centre of the flattest `r` u disc (height spread over its centre, rim and half-rim) within
+ * `search` u of `c` (grown by `grow` u up to 5 times while nothing qualifies) with at least
+ * `minShore` u of shore distance, + 0.02 / u of distance to `c` — the HQ quad rule
+ * (plans/hq.ts). Falls back to `c`.
+ */
+function flattestDisc(
+  h: Heightfield,
+  sdf: Float32Array,
+  islandMap: Uint8Array,
+  isl: IslandData,
+  c: { x: number; z: number },
+  f: { search: number; grow: number; minShore: number; r: number },
+): { x: number; z: number } {
+  const spread = (x: number, z: number): number => {
+    let lo = heightAt(h, x, z);
+    let hi = lo;
+    for (let k = 0; k < 8; k++) {
+      const ax = Math.cos((k / 8) * Math.PI * 2);
+      const az = Math.sin((k / 8) * Math.PI * 2);
+      for (const rr of [f.r, f.r / 2]) {
+        const y = heightAt(h, x + ax * rr, z + az * rr);
+        lo = Math.min(lo, y);
+        hi = Math.max(hi, y);
+      }
+    }
+    return hi - lo;
+  };
+  for (let search = f.search; search <= f.search + 5 * f.grow; search += f.grow) {
+    const [x0, x1] = gridRange(c.x - search, c.x + search);
+    const [z0, z1] = gridRange(c.z - search, c.z + search);
+    let best: { x: number; z: number } | null = null;
+    let bs = Infinity;
+    for (let iz = z0; iz <= z1; iz++)
+      for (let ix = x0; ix <= x1; ix++) {
+        const i = iz * h.n + ix;
+        if (islandMap[i] !== isl.id + 1 || sdf[i] < f.minShore) continue;
+        const x = cellX(ix);
+        const z = cellZ(iz);
+        const d = Math.hypot(x - c.x, z - c.z);
+        if (d > search) continue;
+        const score = spread(x, z) + 0.02 * d;
+        if (score < bs) {
+          bs = score;
+          best = { x, z };
+        }
+      }
+    if (best) return best;
+  }
+  return c;
+}
+
+/**
+ * Shore distance that drives the bluff walls: the exact SDF box-blurred over BLUFF.sdfBlur
+ * cells on bluff-island land (water and other land keep the raw value), so the wall rim
+ * follows the coast smoothly instead of the 2 u staircase of the binary land mask.
+ */
+function bluffSdf(
+  sdf: Float32Array,
+  islandMap: Uint8Array,
+  bluffWall: Float32Array,
+  n: number,
+): Float32Array {
+  const r = BLUFF.sdfBlur;
+  const out = sdf.slice();
+  for (let iz = r; iz < n - r; iz++)
+    for (let ix = r; ix < n - r; ix++) {
+      const i = iz * n + ix;
+      const id = islandMap[i];
+      if (id === 0 || sdf[i] <= 0 || bluffWall[id - 1] <= 0) continue;
+      let sum = 0;
+      for (let dz = -r; dz <= r; dz++) for (let dx = -r; dx <= r; dx++) sum += sdf[i + dz * n + dx];
+      out[i] = Math.max(0, sum / ((2 * r + 1) * (2 * r + 1)));
+    }
+  return out;
 }
 
 /**

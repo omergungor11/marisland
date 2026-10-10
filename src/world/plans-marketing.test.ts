@@ -179,7 +179,7 @@ describe('Marketing island plan (TASK-365), 30 seeds', () => {
     expect(got).toMatchInlineSnapshot(`
       [
         "f634576b65a6a756",
-        "bdc2d37748df5e32",
+        "7587e739b19cd86f",
         "78b40b9d66b59a82",
       ]
     `);
