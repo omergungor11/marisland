@@ -36,8 +36,10 @@ export const DEVOPS_COLORS = {
   lamp: '#FF5A4A',
 } as const;
 
+/** TASK-393: the tower is built at its old size (8 / 7 u) and stretched in y by this factor. */
+export const COOLING_TOWER_RISE = 1.6;
 /** Cooling tower nominal heights per variant (u). */
-export const COOLING_TOWER_HEIGHTS = [8, 7] as const;
+export const COOLING_TOWER_HEIGHTS = [13, 11.5] as const;
 
 export const DEVOPS_PROP_DEFS: readonly PropDef[] = [
   // T0 geothermal plant landmark: hyperboloid tower, steam emitter above the lip

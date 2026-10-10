@@ -19,7 +19,7 @@ const TARGET: Record<string, number> = {
   stiltHut: 600,
   windmill: 900,
   lighthouse: 900,
-  clocktower: 1100,
+  clocktower: 1200,
   giantTree: 1400,
   sunkenShip: 700,
   seaStack: 400,

@@ -42,8 +42,8 @@ describe('coding + devops structures (TASK-376)', () => {
       });
     }
   }
-  it('windTurbine: tip-top follows the 15 / 12 / 10 u heights, blades spin, head range is the tail', () => {
-    for (const [v, h] of [15, 12, 10].entries()) {
+  it('windTurbine: tip-top follows the 24 / 19 / 16 u heights (TASK-393), blades spin, head range is the tail', () => {
+    for (const [v, h] of [24, 19, 16].entries()) {
       for (const lod of [0, 1] as const) {
         const g = buildProp('windTurbine', 7, v, lod);
         expect(g.boundingBox!.max.y).toBeGreaterThan(h * 0.8);
