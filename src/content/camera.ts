@@ -125,7 +125,7 @@ export const FRAMING = {
     /** Inner ring (fraction of the land reach) sampled at the terrain height: cliffs and bluffs. */
     innerRing: 0.7,
     /** Landmark kind → top above its ground (u): lighthouse lamp room, turbine tip, tree crown. */
-    landmarkTop: { lighthouse: 11, windTurbine: 19, giantTree: 30 } as Readonly<
+    landmarkTop: { lighthouse: 17, windTurbine: 22, giantTree: 30 } as Readonly<
       Record<string, number>
     >,
     /** Extra margin per side, fraction of the viewport. */

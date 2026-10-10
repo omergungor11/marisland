@@ -13,7 +13,11 @@
  * - solarRow: `tilt` = one range per panel (panel + cells), rotation about the x axis through `pivot`.
  */
 import * as THREE from 'three';
-import { CODING_COLORS as K, TURBINE_HEIGHTS } from '../../content/props-themes/coding.ts';
+import {
+  CODING_COLORS as K,
+  TURBINE_HEIGHTS,
+  TURBINE_RISE,
+} from '../../content/props-themes/coding.ts';
 import { Acc, col, createNoise, qEuler } from '../kit.ts';
 import { Spin, finishSpin } from '../office-kit.ts';
 import { TAU, V, V2, baseBox, bevBox, cylB, jitterAcc, lathe, prism, put } from '../parts.ts';
@@ -66,10 +70,12 @@ function bladeParts(r0: number, len: number, chord: number, thick: number, lod: 
 
 export function windTurbine({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const r = rng.fork('turbine');
-  const H = TURBINE_HEIGHTS[variant % TURBINE_HEIGHTS.length];
-  const hubY = H * 0.73;
-  const bladeLen = H * 0.27;
-  const k = 0.6 + 0.4 * (H / 15);
+  // H = the original (pre TASK-393) height: rotor and nacelle keep their old proportions, only the
+  // tower stretches (hub 0.73 H → 1.27 H) and the rotor grows 20 % so it still reads on top.
+  const H = TURBINE_HEIGHTS[variant % TURBINE_HEIGHTS.length] / TURBINE_RISE;
+  const hubY = H * 1.27;
+  const bladeLen = H * 0.27 * 1.2;
+  const k = (0.6 + 0.4 * (H / 15)) * 1.1;
   const towerTop = hubY - 0.34 * k;
   const r0 = 0.5 * k;
   const r1 = 0.22 * k;

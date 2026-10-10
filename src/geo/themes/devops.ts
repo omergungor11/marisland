@@ -15,7 +15,11 @@
  * - rackRow: LED faces carry emissive 2 (screen / LED class), so the blink pattern can key on it.
  */
 import * as THREE from 'three';
-import { COOLING_TOWER_HEIGHTS, DEVOPS_COLORS as K } from '../../content/props-themes/devops.ts';
+import {
+  COOLING_TOWER_HEIGHTS,
+  COOLING_TOWER_RISE,
+  DEVOPS_COLORS as K,
+} from '../../content/props-themes/devops.ts';
 import type { Rng } from '../../core/rng.ts';
 import { Acc, blob, col, createNoise, qEuler } from '../kit.ts';
 import { TAU, V, V2, baseBox, cylB, jitterAcc, lathe, prism, put, tubeAlong } from '../parts.ts';
@@ -27,7 +31,8 @@ const finish = (acc: Acc, rng: Rng): THREE.BufferGeometry => acc.finish(rng, fal
 
 export function coolingTower({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const r = rng.fork('cooling');
-  const H = COOLING_TOWER_HEIGHTS[variant % COOLING_TOWER_HEIGHTS.length];
+  // built at the old size, stretched taller at the end (same footprint, steeper hyperboloid)
+  const H = COOLING_TOWER_HEIGHTS[variant % COOLING_TOWER_HEIGHTS.length] / COOLING_TOWER_RISE;
   const s = H / 8;
   const yw = 0.68 * H;
   const Rw = 1.6 * s * (variant === 1 ? 0.95 : 1);
@@ -117,8 +122,8 @@ export function coolingTower({ rng, lod, variant }: BuildOpts): THREE.BufferGeom
       { aoAmt: 0 },
     );
   }
-  const g = finish(acc, rng);
-  g.userData.hooks = { emitter: [0, H + 0.2, 0] };
+  const g = finish(acc, rng).scale(1, COOLING_TOWER_RISE, 1);
+  g.userData.hooks = { emitter: [0, (H + 0.2) * COOLING_TOWER_RISE, 0] };
   return g;
 }
 

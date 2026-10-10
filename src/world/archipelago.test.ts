@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { adjacentPairs } from './gen/layout.ts';
 import { coveness } from './gen/heightfield.ts';
 import { ARCHETYPES } from '../content/islands.ts';
+import { BRIDGES } from '../content/bridges.ts';
 import { generateWorld, heightAt, Zone, type IslandData, type WorldData } from './index.ts';
 import { perfLimit } from '../test/perf.ts';
 
@@ -92,9 +93,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "df32d83898346d37",
-          "1001": "d06cb01398871b93",
-          "42": "20a12314725377e4",
+          "1": "a0487cf158e6666d",
+          "1001": "4a29a2cdc9124389",
+          "42": "3d0ea3a625fe7638",
         }
       `);
     },
@@ -388,13 +389,17 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
 
   it('the content flag switches an island back: all bluffs off = the pre-M17b world', () => {
     const saved = BLUFFED.map((a) => ARCHETYPES[a].bluff as { on: boolean });
+    const bridgeCount = BRIDGES.count;
     try {
       for (const b of saved) b.on = false;
+      // viaducts (TASK-394) are the only other thing that moved hashes.world since; off = the old pins
+      (BRIDGES as { count: readonly number[] }).count = [0, 0];
       // hashes.world pinned before TASK-390
       expect(generateWorld(1001).hashes.world).toBe('05919e804aa1d13b');
       expect(generateWorld(1).hashes.world).toBe('a58bce8ad57703c1');
     } finally {
       for (const b of saved) b.on = true;
+      (BRIDGES as { count: readonly number[] }).count = bridgeCount;
     }
   });
 });

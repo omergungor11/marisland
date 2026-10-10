@@ -55,6 +55,8 @@ export const PUFFS = {
   spring: { spawn: 0.8, slots: 5, size: [0.6, 2.4], rise: 5, drift: 1.5, jitter: 0.4 },
   /** Office roof vents (DevOps / server sheds, TASK-304): small soft steam, no burp. */
   vent: { spawn: 0.7, slots: 4, size: [0.25, 1.1], rise: 3.5, drift: 1.5, jitter: 0.12 },
+  /** Waterfall spray at the plunge (TASK-395): low, wide, slow soft puffs. */
+  mist: { spawn: 0.8, slots: 4, size: [0.9, 2.6], rise: 2.2, drift: 2, jitter: 0.9 },
   /** Ring-puff burp on steam emitters every `period` s. */
   burp: { period: 40, ring: 7, life: 3.5, radius: 7, rise: 6, size: [3, 6.5], pulse: 1.5 },
   /** Fraction of a puff's life spent fading (dither) at the end. */

@@ -147,8 +147,12 @@ export interface WorldData {
    * `field`, else 0. Terrain colours read it so the patchwork shows ≥ 4 hues (sweep D11).
    */
   fieldColor: Uint8Array;
+  /** Stone viaducts between near islands (M17b, TASK-394); empty when no pair qualifies. */
+  bridges: BridgeData[];
   /** Theme districts (M14b): solar fields, quads, yards, gardens… Filled by the theme plans. */
   districts: DistrictData[];
+  /** Waterfalls off the bluff lips (M17b TASK-395; gen/waterfalls.ts). Not hashed. */
+  waterfalls: WaterfallData[];
   /** Scattered props (scatter runs inside generateWorld, after settlements). */
   props: PropStore;
   /** Per-chunk flags: bit0 = has land, bit1 = has shallow water (needs a mesh). */
@@ -290,6 +294,26 @@ export interface LandmarkData {
   variant?: number;
 }
 
+/**
+ * Viaduct between two islands (TASK-394). (ax, az, ay) / (bx, bz, by) = deck-top centre at the
+ * two bluff-top ends; the deck tilts evenly between them. `bays` span pieces of `length / bays` u.
+ */
+export interface BridgeData {
+  islandA: number;
+  islandB: number;
+  ax: number;
+  az: number;
+  ay: number;
+  bx: number;
+  bz: number;
+  by: number;
+  length: number;
+  /** Heading A → B: atan2(dx, dz). */
+  yaw: number;
+  bays: number;
+  width: number;
+}
+
 /** Dock: starts on the shore at (x, z) and runs `segments` × 2 u along (cos rotY, sin rotY). */
 export interface DockData {
   x: number;
@@ -301,6 +325,22 @@ export interface DockData {
   node: number;
 }
 
+/**
+ * A waterfall (TASK-395): lip on the bluff rim at (x, y, z), falling along (cos rotY, sin rotY)
+ * into the sea at (baseX, baseZ). `stream` = a carved stream feeds it; `seed` ∈ [0, 1).
+ */
+export interface WaterfallData {
+  islandId: number;
+  x: number;
+  y: number;
+  z: number;
+  rotY: number;
+  baseX: number;
+  baseZ: number;
+  width: number;
+  stream: boolean;
+  seed: number;
+}
 export interface MooringData {
   defId: 'rowboat' | 'sailboat';
   x: number;

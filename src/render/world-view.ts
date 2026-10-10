@@ -38,6 +38,8 @@ import { createBeam } from './night/beam.ts';
 import { createDrones } from './drones.ts';
 import { createMovers } from './movers.ts';
 import { createSkyCraft } from './sky-craft.ts';
+import { createBridges } from './bridges.ts';
+import { createWaterfalls } from './waterfalls.ts';
 import type { DirtyRegion } from '../world/edit-types.ts';
 import type { SubImageRenderer } from './gl-subimage.ts';
 import { createPropMirror, type PropMirror } from './props/prop-mirror.ts';
@@ -184,6 +186,9 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   // hot-air balloons + airship over the archipelago (TASK-335)
   const skyCraft = createSkyCraft(world, d.quality, d.scope, seed);
   for (const m of skyCraft.meshes) group.add(m);
+  // stone viaducts between near islands (TASK-394)
+  const bridges = createBridges(world, d.quality, d.scope);
+  if (bridges.mesh) group.add(bridges.mesh);
   const clouds = createClouds(world, d.quality, d.scope);
   group.add(clouds.group);
   /** Owner render index (house or single prop) → its chimney / vent emitters (follow re-grounding, off while flooded / removed). */
@@ -207,6 +212,9 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   };
   for (const c of settlement.emitters.chimneys)
     addChimney(c, c.prop ?? settlement.groups.lots[c.lot]?.[0]);
+  // waterfalls off the bluff lips + mist puffs at their feet, after the chimneys (TASK-395)
+  const falls = createWaterfalls(world, d.quality, d.scope, clouds.puffs);
+  if (falls.mesh) group.add(falls.mesh);
   clouds.puffs.finalize();
   const life = createLife({
     world,

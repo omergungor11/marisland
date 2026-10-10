@@ -11,6 +11,7 @@ import {
   TRACKER,
   TURBINE_YAW,
 } from '../../content/activity.ts';
+import { WATERFALL_LOOK as WF } from '../../content/waterfalls.ts';
 
 /**
  * GLSL for the living close-up surfaces (M14c TASK-384), spliced into the ONE lit program by
@@ -68,6 +69,51 @@ export const ACTIVITY_DISPLACE = /* glsl */ `
   #endif
 `;
 
+/**
+ * TASK-395: the pipe-pulse vertex branch stops below the flow kind, so flow vertices keep their
+ * (u, v, mode) in `vMarSurf`. Untagged and kinds 1–9 take the same path as before.
+ */
+export const PULSE_ONLY = ` && -aSpin.w < ${f(SURFACE.pulse + 0.5)}`;
+
+const FL = WF.flow;
+const RG = WF.ring;
+/**
+ * Flow kind (TASK-395), spliced in front of the surface chain (`… else` + the pre-TASK-395
+ * chain, which kinds 1–9 still run unchanged). Waterfall sheet (`vMarSurf.z` 0): x = across
+ * [0, 1], y = arc length from the top (u) — lanes of teal / light water with white streaks
+ * scrolling down, lacy edges that wobble with the flow (discard). Foam disc (z 1): x = radius
+ * fraction, y = radius (u) — a solid core and outward-running broken rings. uTime only.
+ */
+export const FLOW_SURFACE = /* glsl */ `if (marK > ${f(SURFACE.flow - 0.5)}) {
+      if (vMarSurf.z < 0.5) {
+        float marLu = vMarSurf.x * ${f(FL.lanes)} + 0.3 * sin(vMarSurf.y * 1.3 + vMarSurfSeed * 6.2831853);
+        float marLh = marHf(vec2(floor(marLu), vMarSurfSeed * 71.0 + 3.0));
+        float marFs = vMarSurf.y - marSt * ${f(FL.speed)} * (0.8 + 0.4 * marLh);
+        // lacy edges wobbling down with the flow; the channel head is rounded off
+        float marFe = abs(vMarSurf.x * 2.0 - 1.0);
+        float marFw = (1.0 - ${f(FL.edge)} * (0.5 + 0.5 * sin(vMarSurf.y * 2.3 - marSt * ${f(FL.speed * 1.7)} + vMarSurfSeed * 6.2831853)))
+          * sqrt(clamp(vMarSurf.y / ${f(FL.cap)}, 0.0, 1.0));
+        if (marFe > marFw) discard;
+        // white streaks: long teardrops inside each lane, round head leading down, thin tail
+        float marFl = ${f(FL.white)} * (0.6 + 0.8 * marLh);
+        float marFb = fract(marFs / ${f(FL.spacing)} + marLh);
+        float marFy = (marFb - 0.5 * marFl) / (0.5 * marFl);
+        float marFx = (fract(marLu) * 2.0 - 1.0) / ((0.3 + 0.35 * marLh) * (0.25 + 0.75 * clamp(0.5 + 0.5 * marFy, 0.0, 1.0)));
+        float marFwh = step(marFx * marFx + marFy * marFy, 1.0);
+        vec3 marFc = mix(${v3(WF.colors.water)}, ${v3(WF.colors.light)}, 0.45 + 0.25 * sin(marLu * 3.14159265 + marLh * 6.0) - 0.3 * marFe);
+        // far away the streaks (sub-pixel, they would shimmer) average into a lighter sheet
+        float marFa = smoothstep(0.15, 0.6, fwidth(vMarSurf.y) / ${f(FL.spacing)});
+        marFwh = mix(marFwh, ${f(FL.farWhite)}, marFa);
+        marC.rgb = mix(marFc, ${v3(WF.colors.foam)}, max(marFwh, smoothstep(marFw - 0.18, marFw, marFe)));
+      } else {
+        float marRn = vMarSurf.x;
+        float marRp = fract((vMarSurf.y - marSt * ${f(RG.speed)}) / ${f(RG.spacing)});
+        float marRh = marHf(floor(vMarCloudXZ * 1.5) + vMarSurfSeed * 13.0);
+        if (marRn > ${f(RG.core)} && (marRp > (1.0 - marRn) * (0.55 + 0.6 * marRh) || marRn > 0.97)) discard;
+        marC.rgb = mix(${v3(WF.colors.foam)}, ${v3(WF.colors.light)}, smoothstep(0.5, 1.0, marRn) * 0.5);
+      }
+    } else `;
+
 export const ACTIVITY_VARYINGS = /* glsl */ `
 varying vec4 vMarSurf;
 varying float vMarSurfSeed;
@@ -82,7 +128,7 @@ export const ACTIVITY_VARY = /* glsl */ `
     vMarSurf = vec4(aSpin.xyz, -aSpin.w);
     // static props: hash of the instance origin; movers: their seed
     vMarSurfSeed = uLampMode.x > 0.5 ? marHash12(marOrigin.xz * 0.37 + 1.9) : fract(aSeed * 3.17 + 0.25);
-    if (-aSpin.w > ${f(SURFACE.pulse - 0.5)}) {
+    if (-aSpin.w > ${f(SURFACE.pulse - 0.5)}${PULSE_ONLY}) {
       // pipe pulse: coordinate along the world tube axis (sign canonical so collinear pieces agree)
       vec3 marAx = normalize(mat3(marM) * aSpin.xyz);
       marAx *= (marAx.x < -1e-3 || (abs(marAx.x) <= 1e-3 && marAx.z < 0.0)) ? -1.0 : 1.0;
@@ -302,7 +348,7 @@ export const ACTIVITY_SURFACE = /* glsl */ `
     vec2 marUv = clamp(vMarSurf.xy, 0.0, 1.0);
     float marAsp = vMarSurf.z;
     vec4 marC = vec4(diffuseColor.rgb, 1.0);
-    if (marK > ${f(SURFACE.pulse - 0.5)}) {
+    ${FLOW_SURFACE}if (marK > ${f(SURFACE.pulse - 0.5)}) {
       float marPs = fract((vMarSurf.x - marSt * ${f(PULSE.speed)}) / ${f(PULSE.spacing)});
       float marPw = ${f(PULSE.width / PULSE.spacing)};
       float marPb = smoothstep(0.0, marPw * 0.5, marPs) * (1.0 - smoothstep(marPw * 0.5, marPw, marPs));
