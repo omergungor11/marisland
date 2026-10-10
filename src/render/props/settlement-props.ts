@@ -102,8 +102,19 @@ export function appendSettlementProps(world: WorldData): {
       base.flags[i],
     );
   }
-  const rng = createRng(world.seed).fork('settlement-decor');
-  const themeRng = createRng(world.seed).fork('settlement-theme');
+  // one decor stream per island (forked by island id), so a plan change on one island never
+  // reshuffles the decor rolls of the others
+  const perIsland = (label: string): ((islandId: number) => Rng) => {
+    const root = createRng(world.seed);
+    const cache = new Map<number, Rng>();
+    return (id) => {
+      let r = cache.get(id);
+      if (!r) cache.set(id, (r = root.fork(label, id)));
+      return r;
+    };
+  };
+  const decorOf = perIsland('settlement-decor');
+  const themeOf = perIsland('settlement-theme');
   const h = world.height;
   const chimneys: SettlementEmitters['chimneys'] = [];
   const groups: SettlementGroups = { lots: [], docks: [] };
@@ -124,7 +135,7 @@ export function appendSettlementProps(world: WorldData): {
     islandId: number,
     y?: number,
     variant?: number,
-    r: Rng = rng,
+    r: Rng = decorOf(islandId),
   ): number => {
     const defIndex = PROP_DEF_INDEX[defName];
     if (defIndex === undefined) return -1;
@@ -155,6 +166,8 @@ export function appendSettlementProps(world: WorldData): {
     // geometry has its door on local +z → rotate so the door faces rotY (world/lot-frame.ts)
     const yaw = lotYaw(lot);
     const y0 = lotPivotY(lot, h);
+    const rng = decorOf(lot.islandId);
+    const themeRng = themeOf(lot.islandId);
     // variant = worldgen's roof-colour pick (neighbours never share a roof colour)
     const house = push(lot.defId, lot.x, lot.z, yaw, 1, lot.islandId, y0, lot.variant);
     into(group, house);
@@ -211,8 +224,8 @@ export function appendSettlementProps(world: WorldData): {
     const def = m && PROP_DEFS[PROP_DEF_INDEX[m.def]];
     if (!m || !def) continue;
     const yaw = Math.atan2(Math.cos(lm.rotY), Math.sin(lm.rotY));
-    // rolled even when the theme overrides it: keeps the decor stream of the world stable
-    const rolled = rng.int(0, def.variants - 1);
+    // rolled even when the theme overrides it: keeps the island's decor stream stable
+    const rolled = decorOf(lm.islandId).int(0, def.variants - 1);
     const ov = THEMES[world.islands[lm.islandId].theme].landmarkVariant[lm.kind];
     push(
       m.def,
@@ -237,6 +250,7 @@ export function appendSettlementProps(world: WorldData): {
     const [fx, fz] = facing(d.rotY);
     // dock planks span local +x → rotate so +x points seaward
     const yaw = Math.atan2(-fz, fx);
+    const rng = decorOf(d.islandId);
     for (let k = 0; k < d.segments; k++) {
       const x = d.x + fx * (k * 2 + 1);
       const z = d.z + fz * (k * 2 + 1);
@@ -321,8 +335,8 @@ export function appendSettlementProps(world: WorldData): {
     const def = PROP_DEFS[PROP_DEF_INDEX[fx.defId]];
     if (!def) continue;
     const y = FLOATING_FIXTURES.includes(fx.defId) ? 0 : undefined;
-    // rolled even when the planner chose one: keeps the decor stream of the world stable
-    const rolled = rng.int(0, def.variants - 1);
+    // rolled even when the planner chose one: keeps the island's decor stream stable
+    const rolled = decorOf(fx.islandId).int(0, def.variants - 1);
     const v = fx.variant !== undefined && fx.variant < def.variants ? fx.variant : rolled;
     propEmitters(push(fx.defId, fx.x, fx.z, yaw, 1, fx.islandId, y, v), fx.defId);
   }
@@ -332,6 +346,7 @@ export function appendSettlementProps(world: WorldData): {
     if (!st.plaza) continue;
     const { x, z, r } = st.plaza;
     const pd = THEMES[world.islands[st.islandId].theme].plazaDecor;
+    const rng = decorOf(st.islandId);
     const n = 3;
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2 + rng.range(0, 0.6);
@@ -375,6 +390,7 @@ export function appendSettlementProps(world: WorldData): {
     if (isl < 0) continue;
     const theme = world.islands[isl]?.theme;
     const p = theme ? THEMES[theme].pathLanterns : 0;
+    const rng = decorOf(isl);
     if (!(p > 0) || !rng.chance(p)) continue;
     push(
       'lanternPost',
@@ -387,7 +403,7 @@ export function appendSettlementProps(world: WorldData): {
   }
   // districts (M14b): lattice props over the district rectangle (e.g. solar rows). Last, from
   // their own RNG fork, so every earlier store index and the decor stream stay unchanged.
-  const districtRng = createRng(world.seed).fork('settlement-districts');
+  const districtOf = perIsland('settlement-districts');
   for (const dist of world.districts) {
     const lat = DISTRICT_LATTICE[dist.kind];
     if (!lat) continue;
@@ -402,7 +418,7 @@ export function appendSettlementProps(world: WorldData): {
         const x = dist.x + ax * along - az * across;
         const z = dist.z + az * along + ax * across;
         if (heightAt(h, x, z) < 0.2) continue; // never on the water
-        push(lat.def, x, z, yaw, 1, dist.islandId, undefined, undefined, districtRng);
+        push(lat.def, x, z, yaw, 1, dist.islandId, undefined, undefined, districtOf(dist.islandId));
       }
     }
   }
