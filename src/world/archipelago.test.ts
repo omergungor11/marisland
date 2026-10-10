@@ -93,9 +93,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "f7be8b04fcc61e8d",
-          "1001": "6dab8b1b17a2a5cb",
-          "42": "b6c7629903770480",
+          "1": "6989456b4a3a1fa1",
+          "1001": "ecc9f8598437ca22",
+          "42": "1899b0eba68091f1",
         }
       `);
     },
@@ -228,16 +228,13 @@ describe('archipelago — 30-seed full generation', () => {
             expect(isl.anchors.hotspring, ctx).toBeDefined();
             break;
           case 'palmlagoon': {
-            expect(isl.peakY, ctx).toBeLessThanOrEqual(4);
-            // ring with 1–2 channel breaks → 1–2 land pieces (W6: ≤ 2 breaks)
-            const pieces = components(w, isl);
-            expect(pieces, ctx).toBeGreaterThanOrEqual(1);
-            expect(pieces, ctx).toBeLessThanOrEqual(2);
-            const wreck = isl.anchors.wreck;
-            expect(wreck, ctx).toBeDefined();
-            const y = heightAt(w.height, wreck.x, wreck.z);
-            expect(y, ctx).toBeLessThanOrEqual(-1.8);
-            expect(y, ctx).toBeGreaterThanOrEqual(-4.2);
+            // TASK-401 Test Factory: one solid plateau on the bluff (8.6–9.6 u), the yard /
+            // tower / harbour anchors, no lagoon or wreck any more
+            expect(isl.peakY, ctx).toBeGreaterThanOrEqual(8);
+            expect(isl.peakY, ctx).toBeLessThanOrEqual(10);
+            expect(components(w, isl), ctx).toBe(1);
+            expect(isl.anchors.yard && isl.anchors.tower && isl.anchors.harbour, ctx).toBeTruthy();
+            expect(isl.anchors.wreck, ctx).toBeUndefined();
             break;
           }
           case 'millbrook':
@@ -321,7 +318,14 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
   }
 
   it('hero and medium plateaus: ≥ 60 % bluff coast on average, faces ≤ ~65°, Zone.cliff', () => {
-    expect(BLUFFED).toEqual(['hearthholm', 'millbrook', 'emberpeak', 'mossgrove', 'lonelypalm']);
+    expect(BLUFFED).toEqual([
+      'hearthholm',
+      'millbrook',
+      'emberpeak',
+      'palmlagoon',
+      'mossgrove',
+      'lonelypalm',
+    ]);
     const share: Record<string, number[]> = {};
     for (const seed of SEEDS) {
       const w = world(seed);
@@ -370,7 +374,7 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
     }
   });
 
-  it('peaks: Hearthholm 18–20 u, Millbrook 10–12 u, Mossgrove ≥ 21.5 u (was 19–21); atoll stays low; Research crater rim ≥ 5 u', () => {
+  it('peaks: Hearthholm 18–20 u, Millbrook 10–12 u, Mossgrove ≥ 21.5 u (was 19–21); QA plateau ≤ 10 u; Research crater rim ≥ 5 u', () => {
     for (const seed of SEEDS) {
       for (const isl of world(seed).islands) {
         const ctx = `seed ${seed} ${isl.archetype}`;
@@ -380,7 +384,7 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
         }
         if (isl.archetype === 'millbrook') expect(isl.peakY, ctx).toBeGreaterThanOrEqual(9.5);
         if (isl.archetype === 'mossgrove') expect(isl.peakY, ctx).toBeGreaterThanOrEqual(21.5);
-        if (isl.archetype === 'palmlagoon') expect(isl.peakY, ctx).toBeLessThanOrEqual(4);
+        if (isl.archetype === 'palmlagoon') expect(isl.peakY, ctx).toBeLessThanOrEqual(10);
         // TASK-400: the Research crater rim (bluff 3–3.4 u + crest)
         if (isl.archetype === 'lonelypalm') expect(isl.peakY, ctx).toBeGreaterThanOrEqual(5);
       }
@@ -397,9 +401,10 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       for (const b of saved) b.on = false;
       // viaducts (TASK-394) off too, so only the TASK-400 Research crater differs from the old world
       (BRIDGES as { count: readonly number[] }).count = [0, 0];
-      // hashes.world: the pre-TASK-390 world with the TASK-400 Research crater (re-pinned TASK-400)
-      expect(generateWorld(1001).hashes.world).toBe('ca8b7d7e1e83a9c2');
-      expect(generateWorld(1).hashes.world).toBe('1cf96894c9377abe');
+      // hashes.world: the pre-TASK-390 world with the TASK-400 Research crater and the TASK-401
+      // QA plateau profile (the atoll profile is gone), re-pinned for both
+      expect(generateWorld(1001).hashes.world).toBe('1a33a7f3e7c49687');
+      expect(generateWorld(1).hashes.world).toBe('aee307e357f1a77f');
     } finally {
       for (const b of saved) b.on = true;
       (BRIDGES as { count: readonly number[] }).count = bridgeCount;

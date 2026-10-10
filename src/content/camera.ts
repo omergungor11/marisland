@@ -50,8 +50,9 @@ export const FRAMING = {
      * Landmark-like lots / fixtures (def → top above the ground, u): lots are always in the frame
      * (never dropped by `keepFraction`), fixtures within `landmarkRadius`; both fitted foot to top.
      * QA's inspection tower stands on the far ring; DevOps' cooling towers beside the campus.
+     * Landmark kinds listed here (QA's check tower, TASK-401) are fitted to this top, not `landmarkY`.
      */
-    tall: { inspectionTower: 12, coolingTower: 8 } as Readonly<Record<string, number>>,
+    tall: { inspectionTower: 12, coolingTower: 8, qaTower: 21 } as Readonly<Record<string, number>>,
   },
 
   /** `dock`: fit the pier, its moorings and the waterfront lots near the pier root. */

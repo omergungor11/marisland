@@ -128,6 +128,8 @@ export const LANDMARKS: Readonly<Record<string, LandmarkSpec>> = {
   lonelyPalm: { radius: 1, flatten: 0 },
   // Coding (M14b): obstacle at the mast foot + flatten pad (CODING_PLAN.turbine radius / flatten)
   windTurbine: { radius: 1.6, flatten: 2 },
+  // QA (M17b TASK-401): the check tower's plinth + a level pad
+  qaTower: { radius: 2.6, flatten: 3 },
 };
 
 /**
@@ -166,6 +168,10 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   checklistBoard: 0.6,
   trafficCone: 0.3,
   inspectionBuoy: 0.45,
+  // QA Test Factory (TASK-401): hangar body, belt legs (bots walk under the bridge), track slab
+  testHangar: 4.4,
+  conveyor: 0.3,
+  testTrack: 5.5,
   // Design
   sculptureArch: 2.4,
   sculptureStack: 1.3,

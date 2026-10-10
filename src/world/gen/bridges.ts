@@ -7,6 +7,7 @@
  */
 import type { Rng } from '../../core/rng.ts';
 import { BRIDGES as B } from '../../content/bridges.ts';
+import { ARCHETYPES } from '../../content/islands.ts';
 import type {
   BridgeData,
   DockData,
@@ -203,8 +204,12 @@ export function generateBridges(w: BridgeInputs, rng: Rng): BridgeData[] {
   const best: Candidate[] = [];
   const isl = w.islands;
   const rims = rimPoints(w);
+  // the Research crater (TASK-400) is too small for a viaduct landing beside its domes
+  const crater = (k: number): boolean => !!ARCHETYPES[isl[k].archetype].crater;
   for (let i = 0; i < isl.length; i++) {
+    if (crater(i)) continue;
     for (let j = i + 1; j < isl.length; j++) {
+      if (crater(j)) continue;
       const dist = Math.hypot(isl[i].cx - isl[j].cx, isl[i].cz - isl[j].cz);
       if (dist - isl[i].reach - isl[j].reach > B.gap.max) continue;
       // closest rim pair → search lines around it (rotated and shifted)

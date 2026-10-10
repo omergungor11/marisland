@@ -178,7 +178,7 @@ describe('settlements — 20-seed sweep', () => {
       marketing: ['lighthouse'],
       coding: ['windTurbine', 'windTurbine', 'windTurbine'],
       devops: ['volcanoCrater', 'hotSpring'],
-      qa: ['sunkenShip'],
+      qa: ['qaTower'],
       design: ['giantTree'],
       // TASK-400: the Biodome Lab's hero is a fixture (biodomeHero), not a landmark
       research: [],

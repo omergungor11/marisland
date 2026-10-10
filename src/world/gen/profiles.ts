@@ -448,59 +448,46 @@ const emberpeak: ProfileFactory = ({ island, rng, noise, windDir }) => {
 };
 
 /**
- * Palmlagoon: an atoll — a low sandy land ring 8–15 u wide with 1–2 channel
- * breaks around a −2…−4 u lagoon. The lagoon and channels are protected from
- * coast cleanup; the wreck anchor is placed later at the deepest lagoon cell.
+ * Palmlagoon → the QA Test Factory (M17b TASK-401; was the atoll ring + lagoon): a chunky
+ * rounded-square plateau (superellipse, mildly warped, turned off the wind axis) whose top is
+ * nearly level for the factory yard, with a gentle knoll on the windward half for the QA tower.
+ * The bluff pass (islands.ts `bluff`) lifts it on earth walls and keeps a leeward harbour cove.
+ * Anchors: `yard` (factory yard centre), `tower` (knoll top), `harbour` (lee coast).
  */
 const palmlagoon: ProfileFactory = ({ island, rng, noise, windDir }) => {
   const fr = frame(island, windDir);
-  const r = island.radius;
-  const ringW = rng.range(11, 16) / r;
-  const rc = 0.96 - ringW / 2;
-  const channels: number[] = [rng.range(-0.9, 0.9)]; // first break faces leeward (sheltered entry)
-  if (rng.chance(0.55)) channels.push(channels[0] + rng.range(2.1, 4.2));
-  const chanHalf = rng.range(4, 5.5) / r;
+  const rot = rng.range(-0.5, 0.5);
+  const c = Math.cos(rot);
+  const s = Math.sin(rot);
+  const yard = { x: rng.range(0.08, 0.22), z: rng.range(-0.15, 0.15) };
+  const towerA = Math.PI + rng.range(-0.55, 0.55);
+  const tower = { x: Math.cos(towerA) * 0.42, z: Math.sin(towerA) * 0.42 };
   const q: [number, number] = [0, 0];
   const w: [number, number] = [0, 0];
-  const ringD = (lx: number, lz: number): number => {
-    warpAt(noise, lx, lz, w);
-    return Math.hypot(lx / 1.06 + w[0] * 0.06, lz + w[1] * 0.06);
-  };
-  const chanDist = (lx: number, lz: number, d: number): number => {
-    const a = angleOf(lx, lz);
-    let best = Infinity;
-    for (const c of channels) best = Math.min(best, angDiff(a, c) * d);
-    return best;
-  };
   const sample = (x: number, z: number): number => {
     fr.toLocal(x, z, q);
     const lx = q[0];
     const lz = q[1];
-    const d = ringD(lx, lz);
-    const t = 1 - Math.abs(d - rc) / (ringW / 2);
-    const cut = smoothstep(chanHalf * 0.7, chanHalf * 1.2, chanDist(lx, lz, d));
-    const bumps = 0.35 * noise.fbm(lx * 4 + 1.3, lz * 4 - 7.7, 2);
-    const h = (3.4 + bumps) * smoothstep(0, 0.6, t) * cut;
-    return Math.max(RAW_FLOOR, h - COAST_LEVEL);
+    warpAt(noise, lx, lz, w);
+    const u = Math.abs(lx * c + lz * s + w[0] * 0.07);
+    const v = Math.abs((-lx * s + lz * c + w[1] * 0.07) / 0.9);
+    const d = Math.cbrt(u * u * u + v * v * v);
+    const body = smoothstep(1.0, 0.8, d);
+    const knoll = gauss2(lx - tower.x, lz - tower.z, 0.3);
+    const e = 2.2 + 0.3 * noise.fbm(lx * 2.2 + 5.1, lz * 2.2 - 3.3, 2) + 1.3 * knoll;
+    return Math.max(RAW_FLOOR, body * e - COAST_LEVEL);
   };
-  const tag = (x: number, z: number): number => {
-    fr.toLocal(x, z, q);
-    const lx = q[0];
-    const lz = q[1];
-    const d = ringD(lx, lz);
-    let t = 0;
-    if (d < rc) t |= Tag.lagoon | Tag.noFill;
-    if (d < rc + ringW && chanDist(lx, lz, d) < chanHalf * 2.2) t |= Tag.noFill;
-    return t;
+  const yw = fr.toWorld(yard.x, yard.z);
+  const tw = fr.toWorld(tower.x, tower.z);
+  const hw = fr.toWorld(0.9, 0);
+  return {
+    sample,
+    anchors: {
+      yard: { x: yw.x, z: yw.z, rotY: windDir },
+      tower: { x: tw.x, z: tw.z, rotY: windDir + towerA },
+      harbour: { x: hw.x, z: hw.z, rotY: windDir },
+    },
   };
-  const anchors: IslandData['anchors'] = {};
-  channels.forEach((c, i) => {
-    const cw = fr.toWorld(Math.cos(c) * rc, Math.sin(c) * rc);
-    anchors[`channel${i}`] = { x: cw.x, z: cw.z, rotY: windDir + c };
-  });
-  const lw = fr.toWorld(0, 0);
-  anchors.lagoon = { x: lw.x, z: lw.z, rotY: 0 };
-  return { sample, tag, anchors };
 };
 
 /**

@@ -20,4 +20,5 @@ export const LANDMARK_RENDER: Readonly<Record<string, LandmarkRender>> = {
   giantTree: { def: 'giantTree', scale: 1 },
   lonelyPalm: { def: 'palm', scale: 1.35 },
   windTurbine: { def: 'windTurbine', scale: 1 },
+  qaTower: { def: 'qaTower', scale: 1 },
 };

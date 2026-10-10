@@ -1,6 +1,7 @@
 /**
  * qa theme structure geometry (M14b TASK-377): barrierGate, trafficCone, checklistBoard,
- * inspectionBuoy. Defs: content/props-themes/qa.ts.
+ * inspectionBuoy; the M17b Test Factory structures (testHangar, conveyor, testTrack, qaTower)
+ * live in qa-factory.ts. Defs: content/props-themes/qa.ts.
  *
  * Hooks (userData.hooks):
  *  - checklistBoard.board: the board face `{ center, normal, size }` (M14c inspectors stand in
@@ -15,6 +16,7 @@ import { glyph } from '../office-kit.ts';
 import { TAU, V, baseBox, cylB, jitterAcc, put } from '../parts.ts';
 import type { BuildOpts, PropGeoDef } from '../types.ts';
 import { addHook, stripedBuoy } from './hq.ts';
+import { conveyor, qaTower, testHangar, testTrack } from './qa-factory.ts';
 import { tagScreens } from './surface-tags.ts';
 
 const QA = THEMES.qa.accent;
@@ -333,4 +335,9 @@ export const QA_GEO: readonly PropGeoDef[] = [
     height: 1.8,
     windy: false,
   },
+  // M17b TASK-401: the Test Factory
+  { id: 'testHangar', variants: 1, build: testHangar, footprint: 5.6, height: 6.9, windy: false },
+  { id: 'conveyor', variants: 1, build: conveyor, footprint: 1.0, height: 2.8, windy: false },
+  { id: 'testTrack', variants: 1, build: testTrack, footprint: 7, height: 3.6, windy: false },
+  { id: 'qaTower', variants: 1, build: qaTower, footprint: 3, height: 20, windy: false },
 ];

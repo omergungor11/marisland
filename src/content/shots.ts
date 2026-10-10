@@ -81,7 +81,7 @@ const CAMPUS_THEMES = [
  */
 const LIVE_CAMS: Record<(typeof CAMPUS_THEMES)[number][0], string> = {
   hq: '66,14,-168,86,1.4,-171',
-  qa: '-165,13,-176,-183,2.5,-188',
+  qa: '-167.7,23,-189.3,-156,9,-177',
   design: '-144,30,82,-151,17,100',
   coding: '114,17,32,97,5.5,25',
   research: '-152,12,232,-133,0.5,222',
@@ -173,9 +173,9 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   },
   {
     id: 'W6',
-    title: 'QA Lagoon',
-    // QA (TASK-380): the bug wreck ringed by inspection buoys, labs on the ring, the stilt lab and
-    // its boardwalk, the inspection tower
+    title: 'QA Test Factory',
+    // QA (TASK-401, was the TASK-380 lagoon): the raised factory plateau on its earth walls, the
+    // yard with sawtooth hangars, conveyor bridges and the loop track, the check tower
     seed: 4004,
     cam: 'village:qa',
     time: 12,
@@ -256,13 +256,13 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   {
     id: 'W12',
     title: 'Viaduct',
-    // M17b (TASK-394): the stone viaduct Hearthholm → Tamnis (seed 1001), seen low and obliquely from
-    // the open sea west of it (≈ 130 u), morning light on its west face (the sun rises in −x). A
-    // look from the +x side crosses both campuses (300–490 calls on medium), so this one stays on
-    // the sea side. Raw cam; re-pin when the seed 1001 layout changes.
+    // M17b (TASK-394): the stone viaduct DevOps → QA Test Factory (seed 1001, since TASK-401 made
+    // QA a plateau), seen broadside from ≈ 170 u out at sea north-west of it: factory tower left,
+    // volcano right. Closer looks pull both campuses to T2 (310–530 calls on medium), so it stays
+    // this far out. Raw cam; re-pin when the seed 1001 layout changes.
     seed: 1001,
-    cam: '36,17,-108,106,6,-40',
-    time: 9,
+    cam: '-227,22,-3,-104,6,-122',
+    time: 16,
     simt: 5,
     quality: 'medium',
     width: 1920,
@@ -483,6 +483,16 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     simt: 3,
     // low has no ducks (LIFE_PLAN.low.ducks = 0), the dev set defaults to low
     quality: 'high',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-qa-night',
+    title: 'Test Factory night · QA',
+    // TASK-401: hangar windows, sawtooth glazing and the check sign lit
+    seed: 1001,
+    cam: 'village:qa',
+    time: 22,
+    simt: 2,
     sets: ['dev'],
   },
   {
