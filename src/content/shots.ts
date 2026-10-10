@@ -250,6 +250,22 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     height: 1080,
     sets: ['wow'],
   },
+  {
+    id: 'W12',
+    title: 'Viaduct',
+    // M17b (TASK-394): the stone viaduct Hearthholm → Tamnis (seed 1001), seen low and obliquely from
+    // the open sea west of it (≈ 130 u), morning light on its west face (the sun rises in −x). A
+    // look from the +x side crosses both campuses (300–490 calls on medium), so this one stays on
+    // the sea side. Raw cam; re-pin when the seed 1001 layout changes.
+    seed: 1001,
+    cam: '36,17,-108,106,6,-40',
+    time: 9,
+    simt: 5,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
 
   // ---- dev set (960×540) + ci subset (640×360)
   {
