@@ -529,9 +529,12 @@ export const ACTIVITY = {
       { goal: { kind: 'dock' }, item: 'crate' },
       { goal: { kind: 'hub' } },
     ],
+    // TASK-400 Biodome Lab: tend the domes, carry samples to the research vessel's pier
     research: [
-      { goal: { kind: 'spot', defs: ['weatherMast'] }, item: 'clipboard' },
-      { goal: { kind: 'spot', defs: ['observatory'] } },
+      { goal: { kind: 'spot', defs: ['biodomeHero'] }, item: 'clipboard' },
+      { goal: { kind: 'spot', defs: ['biodome'] } },
+      { goal: { kind: 'dock' }, item: 'crate' },
+      { goal: { kind: 'spot', defs: ['weatherMast', 'observatory'] } },
       { goal: { kind: 'seat', defs: ['researchHut'] }, item: 'laptop' },
       { goal: { kind: 'hub' } },
     ],

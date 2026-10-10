@@ -170,7 +170,8 @@ function deriveNear(
   const sandZone = rules.sand === 'sandBlack' ? Zone.sandBlack : Zone.sandDry;
   if (cliff) return Zone.cliff;
   if (tag & Tag.crater) return Zone.crater;
-  if (s <= ZONE_RULES.wetSand && !pond) return rules.sandRing ? sandZone : Zone.sandWet;
+  if (s <= ZONE_RULES.wetSand && !pond && !(y >= (rules.wetSandMaxY ?? Infinity)))
+    return rules.sandRing ? sandZone : Zone.sandWet;
   if (y < ZONE_RULES.sandMaxY && !pond) return sandZone;
   if (
     (tag & Tag.cliff) !== 0 ||

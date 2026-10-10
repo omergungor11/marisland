@@ -1,123 +1,134 @@
 /**
- * Research island plan (Lonely Palm sandbar; M14b §2.7, TASK-368). The legacy outpost stays as
- * it is (palm landmark, message bottle, researchHut off the W9 hero line, telescope, short dock
- * with a rowboat); the theme adds an observatory dome and a weather mast beside the hut, under
- * the same W9 rules so the palm silhouette stays clean. Instrument buoys and starfish come from
- * the theme scatter (content/themes/research.ts).
+ * Research island plan — "Biodome Lab" (TASK-400, M17b) on the Lonely Palm breached crater:
+ * - the hero biodome on the profile's `dome` anchor in the bowl, its door toward the breach;
+ * - 2 smaller biodomes around it (bowl edge / crater slope, levelled by their pads), clear of
+ *   the hero's door sector;
+ * - a short pier in the leeward cove with the research vessel moored alongside;
+ * - paths: hero door (hub) ↔ small dome doors ↔ pier root, down the breach.
+ * Crystal outcrops on the rim, instrument buoys and starfish come from the theme scatter
+ * (content/themes/research.ts). Numbers: RESEARCH_SITE.
  */
-import { FLATTEN, PATHS, RESEARCH_OUTPOST } from '../../../content/settlements.ts';
-import { RESEARCH_SITE } from '../../../content/themes/research.ts';
-import type { IslandData, XZ } from '../../types.ts';
-import { gridRange } from '../grid.ts';
+import { DOCK } from '../../../content/settlements.ts';
+import { RESEARCH_SITE as S } from '../../../content/themes/research.ts';
+import { heightAt, type IslandData, type XZ } from '../../types.ts';
 import {
+  add,
   addPad,
   addShape,
   ang,
+  bestSample,
   clear,
+  dirOf,
   discShape,
   dist,
-  dirOf,
-  doorOf,
-  heroHeading,
+  dockWithLink,
+  findDock,
+  newPlan,
   onLand,
-  islandWindow,
-  nearestPathCell,
+  pushFixture,
+  rectShape,
+  relief,
   ring,
   unit,
   type SiteCtx,
 } from '../sites.ts';
 import type { ThemePlanner } from './types.ts';
 
-export const planResearch: ThemePlanner = (a) => {
-  const plan = a.legacy();
-  const { ctx, isl } = a;
-  const palm = isl.anchors.palm;
-  const hut = plan && plan.lots.length > 0 ? ctx.lots[plan.lots[0]] : null;
-  if (!plan || !hut || !palm) return plan;
-  const S = RESEARCH_SITE;
-  // camera-controls azimuth → view direction −(sin az, cos az) (as the legacy outpost)
-  const az = (heroHeading(isl, ctx.islands) * Math.PI) / 180;
-  const view = { x: -Math.sin(az), z: -Math.cos(az) };
-  const lineCos = Math.cos((RESEARCH_OUTPOST.viewClearDeg * Math.PI) / 180);
-  const door = dirOf(hut.rotY);
-  // fixtures block the path grid: each one must leave the door → pier walk open
-  const ends = [doorOf(hut), ...plan.docks.map((di) => ctx.docks[di])];
-  const walkable = (): boolean => connected(ctx, isl, ends);
-  const ok = (p: XZ, r: number): boolean => {
-    const u = unit(palm, p);
-    if (Math.abs(u.x * view.x + u.z * view.z) >= lineCos) return false;
-    if (dist(p, palm) < RESEARCH_OUTPOST.palmClear) return false;
-    const h = unit(hut, p);
-    if (h.x * door.x + h.z * door.z > S.doorCos) return false;
+export const planResearch: ThemePlanner = ({ ctx, isl, rng }) => {
+  const anchor = isl.anchors.dome;
+  if (!anchor) return null;
+  const lee = dirOf(ctx.windDir);
+  const H = S.hero;
+  const fits = (p: XZ, r: number, minShore: number): boolean => {
     const sh = discShape(p.x, p.z, r);
-    return onLand(ctx, isl, sh, S.minShore, S.cornerMin) && clear(ctx, isl, sh, S.gap);
+    return onLand(ctx, isl, sh, minShore, 0.3) && clear(ctx, isl, sh, S.gap);
   };
-  const obs = place(ctx, isl, hut, S.observatory, 'observatory', ok, walkable);
-  if (obs) addPad(ctx, isl, discShape(obs.x, obs.z, S.observatory.radius), FLATTEN.discMargin);
-  place(ctx, isl, hut, S.weatherMast, 'weatherMast', ok, walkable);
+  const hero = fits(anchor, H.radius, H.minShore)
+    ? anchor
+    : bestSample(ctx, isl, anchor, H.search, (p) =>
+        fits(p, H.radius, H.minShore) ? dist(p, anchor) : Infinity,
+      );
+  if (!hero || !fits(hero, H.radius, H.minShore)) return null;
+  // the door faces leeward (the breach and the cove pier)
+  const doorRot = ang(lee.x, lee.z);
+  pushFixture(ctx, isl, H.def, hero, doorRot);
+  addPad(ctx, isl, discShape(hero.x, hero.z, H.pad), 0);
+  const heroDoor = add(hero, lee, H.radius + S.doorGap);
+  const plan = newPlan('biodomes', heroDoor);
+  plan.links.push({ pin: heroDoor, kind: 'path', done: () => undefined });
+
+  // small domes: ring spots off the door sector, flattest and nearest first
+  const doorKeep = (p: XZ): boolean => {
+    const u = unit(hero, p);
+    return u.x * lee.x + u.z * lee.z < S.doorCos;
+  };
+  const cands = ring(hero, S.small.ring[0], S.small.ring[1], 0.5, 24, rng.range(0, 1))
+    .filter((p) => doorKeep(p) && fits(p, S.small.radius, S.small.minShore))
+    .map((p) => ({ p, relief: relief(ctx, discShape(p.x, p.z, S.small.radius)) }))
+    .filter((c) => c.relief <= S.maxRelief)
+    .map((c) => ({ ...c, s: c.relief + 0.15 * dist(c.p, hero) }))
+    .sort((a, b) => a.s - b.s);
+  for (let k = 0; k < S.small.count; k++) {
+    const c = cands.find((q) => fits(q.p, S.small.radius, S.small.minShore));
+    if (!c) break;
+    const face = unit(c.p, hero);
+    // door toward the hero's front path: halfway between "at the hero" and leeward
+    const d = unit({ x: 0, z: 0 }, { x: face.x + lee.x, z: face.z + lee.z });
+    const rot = ang(d.x, d.z);
+    pushFixture(ctx, isl, S.small.def, c.p, rot);
+    addPad(ctx, isl, discShape(c.p.x, c.p.z, S.small.pad), 0);
+    plan.links.push({
+      pin: add(c.p, dirOf(rot), S.small.radius + S.doorGap),
+      kind: 'path',
+      done: () => undefined,
+    });
+  }
+
+  // cove pier on the leeward shore + the vessel alongside it
+  const prefer = add({ x: isl.cx, z: isl.cz }, lee, isl.radius * 1.3);
+  const site = findDock(ctx, isl, {
+    near: prefer,
+    maxDist: isl.reach,
+    prefer,
+    lee: 6,
+    carve: true,
+    maxSegments: S.dock.maxSegments,
+  });
+  const di = dockWithLink(ctx, isl, plan, site, rng.fork('moorings'), {
+    rowboats: 0,
+    sailboats: 0,
+  });
+  if (di >= 0) moorVessel(ctx, isl, ctx.docks[di]);
   return plan;
 };
 
-/**
- * Nearest spot to the hut on the ring that passes `ok` and keeps `walkable`; pushes the fixture
- * (a spot that would cut the walk is rolled back: shape, blocked cells, fixture).
- */
-function place(
+/** The research vessel alongside the pier (either side), bow seaward; off the end as a fallback. */
+function moorVessel(
   ctx: SiteCtx,
   isl: IslandData,
-  hut: XZ,
-  spec: { ring: readonly [number, number]; radius: number },
-  defId: string,
-  ok: (p: XZ, r: number) => boolean,
-  walkable: () => boolean,
-): XZ | null {
-  const r = spec.radius;
-  for (const p of ring(hut, spec.ring[0], spec.ring[1], 0.4, 32, 0)) {
-    if (!ok(p, r)) continue;
-    const [x0, x1] = gridRange(p.x - r - 2, p.x + r + 2);
-    const [z0, z1] = gridRange(p.z - r - 2, p.z + r + 2);
-    const before: number[] = [];
-    for (let iz = z0; iz <= z1; iz++)
-      for (let ix = x0; ix <= x1; ix++) before.push(ctx.blocked[iz * ctx.n + ix]);
-    addShape(ctx, isl, discShape(p.x, p.z, r), true);
-    if (!walkable()) {
-      ctx.shapes[isl.id].pop();
-      let k = 0;
-      for (let iz = z0; iz <= z1; iz++)
-        for (let ix = x0; ix <= x1; ix++) ctx.blocked[iz * ctx.n + ix] = before[k++];
-      continue;
-    }
-    const face = unit(p, hut);
-    ctx.fixtures.push({ defId, x: p.x, z: p.z, rotY: ang(face.x, face.z), islandId: isl.id });
-    return p;
-  }
-  return null;
-}
-
-/** All `pts` lie on one walkable, unblocked component of the island (8-connected flood). */
-function connected(ctx: SiteCtx, isl: IslandData, pts: readonly XZ[]): boolean {
-  const cells = pts.map((p) => nearestPathCell(ctx, isl, p));
-  if (cells.some((c) => c < 0)) return false;
-  const { x0, x1, z0, z1 } = islandWindow(ctx, isl);
-  const n = ctx.n;
-  const ok = (i: number): boolean =>
-    ctx.islandMap[i] === isl.id + 1 && ctx.sdf[i] >= PATHS.minShore && !ctx.blocked[i];
-  const seen = new Set<number>([cells[0]]);
-  const stack = [cells[0]];
-  while (stack.length > 0) {
-    const c = stack.pop() as number;
-    const cx = c % n;
-    const cz = (c - cx) / n;
-    for (let dz = -1; dz <= 1; dz++)
-      for (let dx = -1; dx <= 1; dx++) {
-        const x = cx + dx;
-        const z = cz + dz;
-        if (x < x0 || x > x1 || z < z0 || z > z1) continue;
-        const j = z * n + x;
-        if (seen.has(j) || !ok(j)) continue;
-        seen.add(j);
-        stack.push(j);
+  dock: { x: number; z: number; rotY: number; segments: number },
+): void {
+  const V = S.vessel;
+  const dir = dirOf(dock.rotY);
+  const perp = { x: -dir.z, z: dir.x };
+  const L = dock.segments * DOCK.segment;
+  const along = Math.max(V.halfLength * 0.6, L - V.halfLength * 0.7);
+  const spots: { p: XZ; rot: number }[] = [];
+  for (const side of [1, -1])
+    spots.push({ p: add(add(dock, dir, along), perp, side * V.side), rot: dock.rotY });
+  spots.push({ p: add(dock, dir, L + V.halfBeam + 1.2), rot: ang(perp.x, perp.z) });
+  for (const { p, rot } of spots) {
+    const f = dirOf(rot);
+    const s = { x: -f.z, z: f.x };
+    let ok = true;
+    for (const a of [-1, 0, 1])
+      for (const b of [-1, 1]) {
+        const q = add(add(p, f, a * V.halfLength), s, b * V.halfBeam);
+        if (heightAt(ctx.h, q.x, q.z) > -V.minDepth) ok = false;
       }
+    if (!ok) continue;
+    ctx.fixtures.push({ defId: V.def, x: p.x, z: p.z, rotY: rot, islandId: isl.id });
+    addShape(ctx, isl, rectShape(p.x, p.z, rot, V.halfBeam * 2, V.halfLength * 2), false);
+    return;
   }
-  return cells.every((c) => seen.has(c));
 }

@@ -175,6 +175,9 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   // Research
   weatherMast: 0.8,
   observatory: 1.9,
+  biodomeHero: 3.2,
+  biodome: 1.8,
+  researchVessel: 1.2,
 };
 
 /** Fixtures that float at the waterline (render pivot y = 0, not the seabed). */
@@ -183,6 +186,7 @@ export const FLOATING_FIXTURES: readonly string[] = [
   'adBuoy',
   'inspectionBuoy',
   'instrumentBuoy',
+  'researchVessel',
 ];
 
 /** Flatten pads (plateau with smooth falloff). */
