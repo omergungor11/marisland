@@ -10,6 +10,14 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-10**: TASK-352 softer shadows (pcfMax 5). TASK-335 sky craft done (balloons + airship,
+  D-038). TASK-332 first wave: ducks on ONE Coding reflecting pool (rng picks; seed 1001 → pool B
+  at 110.4, 21.1; the twin pool is empty on purpose) + day butterflies over Design flowers. Ducks
+  are 0 on low and the dev set defaults to low → only `D-pool-ducks` (quality high) shows them.
+  Medium agent cap: crabs 3→2, gulls [3,5] to fit ducks; seed 3 medium T3 peak still 61 > 60 (test
+  seeds green). Pool water is a terrain-painted blob that does not fill its kerb rectangle
+  (pre-existing). **Next**: TASK-332 capybaras + puffins, then ART reference items (thick island
+  rims, viaduct).
 - **2026-10-09 (short session, weekly limit ~4 %)**: TASK-382 partly done (haiku docs agent):
   DECISIONS backfill D-024…D-027, D-029…D-033 + new D-034 (aSpin.w tag channel), D-035 (ladder
   metric calibration), D-036 (carried-item two-slot decode — code wins over phase-3 §3); ART_BIBLE
