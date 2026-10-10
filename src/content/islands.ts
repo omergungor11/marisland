@@ -212,6 +212,11 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
     },
   },
   palmlagoon: {
+    /**
+     * M17b TASK-401: the QA "Test Factory" — a solid rounded-square plateau on a bluff (was the
+     * atoll ring + lagoon). Id, size range and height/colour classes are kept so the layout and
+     * every other island are unchanged; only the profile (profiles.ts) and the bluff are new.
+     */
     displayName: 'Palmlagoon',
     diameter: [78, 100],
     demotedDiameter: [70, 76],
@@ -224,6 +229,14 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
     shelfWidth: 10,
     beachWidth: 5,
     terrace: { step: 0, strength: 0 },
+    bluff: {
+      on: true,
+      wall: [6, 6.8],
+      peak: [8.6, 9.6],
+      coveHalfDeg: 32,
+      coveFlat: 0,
+      coveRamp: 22,
+    },
     zones: { ...DEFAULT_ZONES, forestThreshold: 2, meadowThreshold: 0.1, rockMinFrac: 2 },
   },
   mossgrove: {

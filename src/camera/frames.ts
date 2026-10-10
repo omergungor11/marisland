@@ -103,7 +103,11 @@ export function islandFrames(w: WorldData, id: number): IslandFrames {
   for (const li of s.landmarks) {
     const m = w.landmarks[li];
     if (m && Math.hypot(m.x - cx, m.z - cz) <= FRAMING.village.landmarkRadius)
-      pts.push({ x: m.x, y: ground(w, m.x, m.z) + FRAMING.village.landmarkY, z: m.z });
+      pts.push({
+        x: m.x,
+        y: ground(w, m.x, m.z) + (tall[m.kind] ?? FRAMING.village.landmarkY),
+        z: m.z,
+      });
   }
   // the harbour piers belong to the village frame; an outpost's lone jetty would only add sea
   const harbour = isl.anchors.harbour;

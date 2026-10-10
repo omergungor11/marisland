@@ -36,6 +36,7 @@ import type { Lod } from '../geo/index.ts';
 import { createLanternPools, type LanternPools } from './night/lantern-pools.ts';
 import { createBeam } from './night/beam.ts';
 import { createDrones } from './drones.ts';
+import { createMovers } from './movers.ts';
 import { createSkyCraft } from './sky-craft.ts';
 import type { DirtyRegion } from '../world/edit-types.ts';
 import type { SubImageRenderer } from './gl-subimage.ts';
@@ -177,6 +178,9 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   // drone couriers between HQ and the docks (TASK-384)
   const drones = createDrones(world, d.quality, d.scope, seed);
   if (drones.mesh) group.add(drones.mesh);
+  // QA Test Factory crates on the conveyor bridges + the loop-track test cart (TASK-401)
+  const movers = createMovers(settlement.props, d.quality, d.scope);
+  if (movers.mesh) group.add(movers.mesh);
   // hot-air balloons + airship over the archipelago (TASK-335)
   const skyCraft = createSkyCraft(world, d.quality, d.scope, seed);
   for (const m of skyCraft.meshes) group.add(m);
@@ -349,6 +353,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     sky.update(env, _camPos);
     beam.update();
     drones.update(time);
+    movers.update(time, _camPos);
     skyCraft.update(time);
     water.update(_camPos, d.getTime());
     terrain.update(d.getTime());

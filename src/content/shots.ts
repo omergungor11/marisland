@@ -170,9 +170,9 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   },
   {
     id: 'W6',
-    title: 'QA Lagoon',
-    // QA (TASK-380): the bug wreck ringed by inspection buoys, labs on the ring, the stilt lab and
-    // its boardwalk, the inspection tower
+    title: 'QA Test Factory',
+    // QA (TASK-401, was the TASK-380 lagoon): the raised factory plateau on its earth walls, the
+    // yard with sawtooth hangars, conveyor bridges and the loop track, the check tower
     seed: 4004,
     cam: 'village:qa',
     time: 12,
@@ -446,6 +446,16 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     simt: 3,
     // low has no ducks (LIFE_PLAN.low.ducks = 0), the dev set defaults to low
     quality: 'high',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-qa-night',
+    title: 'Test Factory night · QA',
+    // TASK-401: hangar windows, sawtooth glazing and the check sign lit
+    seed: 1001,
+    cam: 'village:qa',
+    time: 22,
+    simt: 2,
     sets: ['dev'],
   },
   {
