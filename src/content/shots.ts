@@ -236,6 +236,20 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     height: 1080,
     sets: ['wow'],
   },
+  {
+    id: 'W11',
+    title: 'Concept',
+    // M17b (TASK-390…392): the low 3/4 "concept art" look over the whole archipelago, where island
+    // walls and landmarks overlap in depth. Raw cam until TASK-392 lands the fitted `postcard` pose.
+    seed: 1001,
+    cam: '-60,170,420,0,0,40',
+    time: 15.5,
+    simt: 5,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
 
   // ---- dev set (960×540) + ci subset (640×360)
   {
