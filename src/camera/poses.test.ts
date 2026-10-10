@@ -11,6 +11,8 @@ import {
   isHeroIsland,
   overviewPose,
   pitchBand,
+  postcardPoints,
+  postcardPose,
   reachOf,
   type CameraWorld,
 } from './poses.ts';
@@ -41,6 +43,7 @@ const PORTRAIT: View = { fov: 35, aspect: 390 / 844 };
 const vpLand = { width: 960, height: 540, insets: FRAMING.hudInsets };
 const vpPortrait = { width: 390, height: 844, insets: FRAMING.hudInsets };
 const o = { x: 0, y: 0, depth: 0 };
+const DEG = Math.PI / 180;
 
 // The TASK-192 sweep seeds where `village` cropped the settlement (D1) + two that were fine.
 const SEEDS = [1001, 1002, 2024, 3003, 4004];
@@ -145,6 +148,81 @@ describe('camera presets on generated worlds', () => {
       }
     }
     expect(seen).toBeGreaterThan(0);
+  });
+
+  for (const seed of SEEDS) {
+    it(`seed ${seed}: postcard is a low 3/4 look with every island in frame and the horizon in the top third (TASK-392)`, () => {
+      const cw = cameraWorld(world(seed));
+      for (const [view, vp] of [
+        [LAND, vpLand],
+        [LAND, { ...vpLand, insets: FRAMING.bareInsets }],
+      ] as const) {
+        const pose = postcardPose(cw, view, vp);
+        // horizon: NDC y = tan(pitch) / tan(fov / 2), in the top third and on screen
+        const horizon = Math.tan(pose.pitch * DEG) / Math.tan((view.fov / 2) * DEG);
+        expect(horizon).toBeGreaterThan(1 / 3);
+        expect(horizon).toBeLessThan(1);
+        // every island's land, cliffs, peak and landmark tops inside the safe area, under the horizon
+        const top = Math.min(
+          1 - (2 * vp.insets.top) / vp.height,
+          FRAMING.postcard.horizon - FRAMING.postcard.horizonGap,
+        );
+        const bottom = -1 + (2 * vp.insets.bottom) / vp.height;
+        const left = -1 + (2 * vp.insets.left) / vp.width;
+        for (const p of postcardPoints(cw)) {
+          projectNdc(pose, view, p, o);
+          expect(o.depth).toBeGreaterThan(0);
+          expect(o.x).toBeGreaterThanOrEqual(left - 1e-3);
+          expect(o.x).toBeLessThanOrEqual(-left + 1e-3);
+          expect(o.y).toBeGreaterThanOrEqual(bottom - 1e-3);
+          expect(o.y).toBeLessThanOrEqual(top + 1e-3);
+        }
+        expect(cw.islands.length).toBeGreaterThanOrEqual(5);
+        // the nearest islands are seen at a 3/4 angle: the bottom edge looks down 26–34°
+        const bottomLook = pose.pitch + (view.fov / 2) * (1 - 0.02);
+        expect(bottomLook).toBeGreaterThan(26);
+        expect(bottomLook).toBeLessThan(34);
+        // reachable (no snap on the first drag) and inside the camera-controls target box
+        const [lo, hi] = pitchBand(pose.dist);
+        expect(pose.pitch).toBeGreaterThanOrEqual(lo - 1e-9);
+        expect(pose.pitch).toBeLessThanOrEqual(hi + 1e-9);
+        expect(pose.ty).toBeGreaterThanOrEqual(0);
+        expect(pose.ty).toBeLessThanOrEqual(60);
+        expect(Math.abs(pose.tx - cw.centerX)).toBeLessThanOrEqual(cw.radius);
+        expect(Math.abs(pose.tz - cw.centerZ)).toBeLessThanOrEqual(cw.radius);
+        // the camera clears the terrain
+        const cy = pose.ty + pose.dist * Math.sin(pose.pitch * DEG);
+        const cx = pose.tx + pose.dist * Math.cos(pose.pitch * DEG) * Math.sin(pose.az * DEG);
+        const cz = pose.tz + pose.dist * Math.cos(pose.pitch * DEG) * Math.cos(pose.az * DEG);
+        expect(cy).toBeGreaterThan(cw.heightAt(cx, cz) + 10);
+      }
+    });
+  }
+
+  it('postcard falls back to the overview on portrait screens', () => {
+    const cw = cameraWorld(world(1001));
+    expect(postcardPose(cw, PORTRAIT, vpPortrait)).toEqual(overviewPose(cw, PORTRAIT, vpPortrait));
+  });
+
+  it('postcard follows island height: raised islands lift the camera, nothing is cropped', () => {
+    const cw = cameraWorld(world(1001));
+    const base = postcardPose(cw, LAND, vpLand);
+    const tall: CameraWorld = {
+      ...cw,
+      islands: cw.islands.map((i) => ({ ...i, peakY: i.peakY * 2.5 })),
+      heightAt: (x, z) => cw.heightAt(x, z) * 2.5,
+    };
+    const raised = postcardPose(tall, LAND, vpLand);
+    const camY = (p: typeof base): number => p.ty + p.dist * Math.sin(p.pitch * DEG);
+    expect(camY(raised)).toBeGreaterThanOrEqual(camY(base) - 1e-6);
+    for (const p of postcardPoints(tall)) {
+      projectNdc(raised, LAND, p, o);
+      expect(Math.abs(o.x)).toBeLessThanOrEqual(1.001);
+      expect(o.y).toBeLessThanOrEqual(
+        FRAMING.postcard.horizon - FRAMING.postcard.horizonGap + 1e-3,
+      );
+      expect(o.y).toBeGreaterThanOrEqual(-1.001);
+    }
   });
 
   it('pitch band is continuous across the low-pitch blend and the tier boundaries', () => {

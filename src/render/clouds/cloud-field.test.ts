@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { CLOUDS, PUFFS } from '../../content/anim.ts';
+import { CLOUD_BANKS } from '../../content/weather.ts';
 import { Scope } from '../../core/scope.ts';
 import { createRng } from '../../core/rng.ts';
 import {
   MEAN_ALT,
+  cloudBanks,
   cloudField,
   cloudShadowMask,
   cloudsAt,
@@ -374,5 +376,31 @@ describe('puffs', () => {
     expect(puffs.mesh.count).toBe(PUFFS.capacity.low);
     expect(puffs.stats().dropped).toBeGreaterThan(0);
     scope.dispose();
+  });
+});
+
+describe('horizon cloud banks (TASK-392)', () => {
+  it('ring the archipelago far out, deterministic per seed, every variant in range', () => {
+    const a = cloudBanks(1001, 10, -20);
+    expect(cloudBanks(1001, 10, -20)).toEqual(a);
+    expect(cloudBanks(1002, 10, -20)).not.toEqual(a);
+    const B = CLOUD_BANKS;
+    expect(a.length).toBeGreaterThanOrEqual(B.count * B.clouds[0]);
+    expect(a.length).toBeLessThanOrEqual(B.count * B.clouds[1]);
+    const sectors = new Set<number>();
+    for (const c of a) {
+      const d = Math.hypot(c.x - 10, c.z + 20);
+      // never over the islands or the moving cloud field (tile 720 u around the centre)
+      expect(d).toBeGreaterThan(CLOUDS.tile / 2 + 100);
+      expect(d).toBeLessThan(B.distance[1] + B.width[1] * 2);
+      expect(c.width).toBeGreaterThanOrEqual(B.width[0]);
+      expect(c.width).toBeLessThanOrEqual(B.width[1]);
+      expect(c.alt).toBeGreaterThanOrEqual(B.altitude[0]);
+      expect(c.alt).toBeLessThanOrEqual(B.altitude[1]);
+      expect([0, 1, 2]).toContain(c.variant);
+      sectors.add(Math.floor(((Math.atan2(c.z + 20, c.x - 10) + Math.PI) / (2 * Math.PI)) * 6));
+    }
+    // all round the horizon, not bunched on one side
+    expect(sectors.size).toBe(6);
   });
 });

@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { introPose, monotoneCubic } from './intro.ts';
 import { INTRO } from '../content/ui.ts';
 
-const ov = { tx: 10, ty: 0, tz: -20, dist: 450, pitch: 58, az: 25 };
+// a postcard-like final pose (TASK-392): low look-down, target on the view ray
+const ov = { tx: 10, ty: 20, tz: -20, dist: 450, pitch: 13, az: -10 };
 
 describe('intro spline', () => {
   it('monotone cubic hits keys, keeps holds flat and never overshoots', () => {
@@ -16,7 +17,7 @@ describe('intro spline', () => {
       expect(y).toBeLessThanOrEqual(10 + 1e-9);
     }
   });
-  it('lands exactly on the overview pose at the end', () => {
+  it('lands exactly on the final (postcard) pose at the end', () => {
     const p = introPose(INTRO.duration, ov, 100, 100);
     expect(p).toEqual(ov);
   });
@@ -27,16 +28,33 @@ describe('intro spline', () => {
     const p3 = introPose(3, ov, 100, 100);
     expect(p3.dist).toBeCloseTo(900);
     expect(p3.pitch).toBeCloseTo(80);
-    // 6.5 s: 420 u, pitch 58, overview heading.
+    // 6.5 s: swooped down to 440 u, tilted to 50°, near the final heading.
     const p65 = introPose(6.5, ov, 100, 100);
-    expect(p65.dist).toBeCloseTo(420);
-    expect(p65.pitch).toBeCloseTo(58);
-    // 8.5 s: pushed toward the hero island.
+    expect(p65.dist).toBeCloseTo(440);
+    expect(p65.pitch).toBeCloseTo(50);
+    // 8.5 s: pushed low toward the hero island.
     const p85 = introPose(8.5, ov, 100, 100);
-    expect(p85.dist).toBeCloseTo(300);
+    expect(p85.dist).toBeCloseTo(365);
     expect(p85.tx).toBeGreaterThan(ov.tx);
     // 9.7 s: 2 % past the final distance (the settle overshoot).
     expect(introPose(9.7, ov, 100, 100).dist).toBeCloseTo(ov.dist * (1 - INTRO.settleOvershoot));
+  });
+  it('tilts onto the postcard without a jerk (pitch speed and acceleration bounded)', () => {
+    const dt = 1 / 60;
+    let prev = introPose(0, ov, 100, 100).pitch;
+    let prevV = 0;
+    let maxV = 0;
+    for (let t = dt; t <= INTRO.duration; t += dt) {
+      const p = introPose(t, ov, 100, 100).pitch;
+      const v = (p - prev) / dt;
+      maxV = Math.max(maxV, Math.abs(v));
+      // ≤ 1.5°/s change of angular speed per frame (≈ 90°/s²)
+      expect(Math.abs(v - prevV)).toBeLessThan(1.5);
+      prev = p;
+      prevV = v;
+    }
+    // never faster than a calm tilt
+    expect(maxV).toBeLessThan(30);
   });
   it('is smooth (no velocity jumps between frames)', () => {
     let prev = introPose(0, ov, 100, 100).dist;

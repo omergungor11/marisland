@@ -240,9 +240,9 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'W11',
     title: 'Concept',
     // M17b (TASK-390…392): the low 3/4 "concept art" look over the whole archipelago, where island
-    // walls and landmarks overlap in depth. Raw cam until TASK-392 lands the fitted `postcard` pose.
+    // walls and landmarks overlap in depth: the fitted `postcard` pose the intro ends on (TASK-392).
     seed: 1001,
-    cam: '-60,170,420,0,0,40',
+    cam: 'postcard',
     time: 15.5,
     simt: 5,
     quality: 'medium',

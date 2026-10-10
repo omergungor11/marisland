@@ -1,4 +1,5 @@
 import { CLOUDS } from '../../content/anim.ts';
+import { CLOUD_BANKS } from '../../content/weather.ts';
 import { createRng } from '../../core/rng.ts';
 
 /**
@@ -146,6 +147,58 @@ export function fieldForSeed(seed: number, centreX: number, centreZ: number): Cl
   const count = r.int(CLOUDS.count[0], CLOUDS.count[1]);
   const salt = r.int(0, 65535);
   return makeFieldParams(salt, count, centreX, centreZ);
+}
+
+/** One cloud of a horizon bank (TASK-392): fixed world placement, drawn on the cloud meshes. */
+export interface BankCloud {
+  x: number;
+  z: number;
+  alt: number;
+  width: number;
+  yaw: number;
+  variant: number;
+}
+
+/**
+ * Horizon cloud banks (content `CLOUD_BANKS`): `count` banks evenly spaced (jittered) on a ring
+ * around the archipelago centre, each a row of overlapping big cumulus laid along the ring. From
+ * `rng.fork('clouds:banks')` only, so the cloud field and every other stream stay unchanged.
+ */
+export function cloudBanks(seed: number, centreX: number, centreZ: number): BankCloud[] {
+  const B = CLOUD_BANKS;
+  const r = createRng(seed).fork('clouds:banks');
+  const out: BankCloud[] = [];
+  const slot = (Math.PI * 2) / B.count;
+  const turn = r.next() * Math.PI * 2;
+  for (let b = 0; b < B.count; b++) {
+    const ang = turn + (b + r.range(-B.angleJitter, B.angleJitter)) * slot;
+    const dist = r.range(B.distance[0], B.distance[1]);
+    const n = r.int(B.clouds[0], B.clouds[1]);
+    const widths: number[] = [];
+    for (let k = 0; k < n; k++) widths.push(r.range(B.width[0], B.width[1]));
+    // lay the row along the tangent, centred on the bank's angle
+    let len = 0;
+    for (let k = 0; k < n; k++) len += widths[k] * (k === 0 ? 1 : 1 - B.overlap);
+    let s = -len / 2;
+    const tx = -Math.sin(ang);
+    const tz = Math.cos(ang);
+    for (let k = 0; k < n; k++) {
+      const w = widths[k];
+      s += (k === 0 ? w : w * (1 - B.overlap)) / 2;
+      const d = dist + r.range(-0.15, 0.15) * w;
+      out.push({
+        x: centreX + Math.cos(ang) * d + tx * s,
+        z: centreZ + Math.sin(ang) * d + tz * s,
+        alt: r.range(B.altitude[0], B.altitude[1]),
+        width: w,
+        // long axis along the ring (the footprint's x), a little wobble
+        yaw: -Math.atan2(tz, tx) + r.range(-0.25, 0.25),
+        variant: r.int(0, 2),
+      });
+      s += (k === 0 ? w : w * (1 - B.overlap)) / 2;
+    }
+  }
+  return out;
 }
 
 /** Window-edge fade on a position relative to the window centre (0 outside the window). */

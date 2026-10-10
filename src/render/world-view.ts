@@ -12,7 +12,7 @@ import { createClouds, type CloudsView } from './clouds/clouds.ts';
 import { createLife, type LifeSystem } from '../life/index.ts';
 import { createEnvState, sampleEnv, type EnvState } from '../env/env-state.ts';
 import { SHARED, setWind, writeEnvUniforms, writeWeatherUniforms } from './uniforms.ts';
-import { FOG, FOG_T0_SCALE } from '../content/lighting.ts';
+import { AERIAL, FOG, FOG_T0_SCALE } from '../content/lighting.ts';
 import {
   WeatherFsm,
   applyWeather,
@@ -132,6 +132,7 @@ const _focus = new THREE.Vector3();
 const _camPos = new THREE.Vector3();
 const _camTarget = new THREE.Vector3();
 const _camDir = new THREE.Vector3();
+const _aerial = new THREE.Color(AERIAL.color);
 
 export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   const timings: Record<string, number> = {};
@@ -323,6 +324,11 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     const time = d.getTime();
     blendFx(fsm.update(time), fx);
     applyWeather(env, fx);
+    // aerial perspective (TASK-392): the day fog leans toward a deeper blue (off at golden hour / night)
+    const ak = AERIAL.mix * (1 - env.night) * (1 - env.golden);
+    env.fog.r += (_aerial.r - env.fog.r) * ak;
+    env.fog.g += (_aerial.g - env.fog.g) * ak;
+    env.fog.b += (_aerial.b - env.fog.b) * ak;
     d.camera.getWorldPosition(_camPos);
     d.getCameraTarget?.(_camTarget);
     // focus = point on the sea plane the camera looks at (approximate: project forward)

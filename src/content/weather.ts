@@ -181,6 +181,27 @@ export const WEATHER_LOOKS: Record<WeatherName, WeatherLook> = {
   },
 };
 
+/**
+ * Horizon cloud banks (M17b TASK-392): rows of big cumulus far out on the sea all around the
+ * archipelago, so the low postcard horizon reads as a sky with weather instead of a bare line.
+ * Extra instances on the cloud InstancedMeshes (0 draw calls, 0 programs); static apart from the
+ * shared breathing, no ground shadow (they are not in the shadow field), hidden with the clouds
+ * at T2+. Their tops stand above the postcard camera (≈ 90–170 u), so they rise over the horizon.
+ */
+export const CLOUD_BANKS = {
+  /** Banks around the ring (evenly spaced, jittered by this fraction of a slot). */
+  count: 9,
+  angleJitter: 0.3,
+  /** Distance of a bank from the archipelago centre (u). */
+  distance: [780, 1050] as const,
+  /** Clouds per bank, side by side along the ring, overlapping by this fraction of a width. */
+  clouds: [3, 5] as const,
+  overlap: 0.35,
+  /** Cloud width (u) and base altitude (u above sea level). */
+  width: [150, 260] as const,
+  altitude: [30, 70] as const,
+} as const;
+
 /** FSM timing (seconds of render time, `clock.time`). */
 export const WEATHER_FSM = {
   /** Auto cycle starts here unless `?weather=` forces a state. */

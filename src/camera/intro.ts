@@ -7,8 +7,8 @@ import { INTRO, type IntroKey } from '../content/ui.ts';
 /**
  * Opening sequence (ART_BIBLE §8), 10 s. A keyframed spline (monotone cubic per channel: smooth
  * through the keys, no overshoot except the scripted 2 % settle) drives the camera while the
- * camera system is suspended; it lands exactly on the overview preset and hands back to
- * camera-controls. Any input eases to the final pose over 400 ms.
+ * camera system is suspended; it lands exactly on the postcard preset (TASK-392: the low 3/4
+ * look with the horizon in the top third) and hands back to camera-controls. Any input eases to the final pose over 400 ms.
  */
 export interface IntroOptions {
   cam: CameraSystem;
@@ -65,7 +65,7 @@ export function monotoneCubic(xs: readonly number[], ys: readonly number[], x: n
   );
 }
 
-/** Intro camera pose at time `t` for a given overview pose and hero island. */
+/** Intro camera pose at time `t` for a given final (postcard) pose `ov` and hero island. */
 export function introPose(
   t: number,
   ov: OrbitPose,
@@ -93,7 +93,7 @@ export function introPose(
 
 export function createIntro(o: IntroOptions): Intro {
   const controls = o.cam.controls;
-  let ov = o.cam.overviewPose();
+  let ov = o.cam.postcardPose();
   let t = 0;
   let active = true;
   let curtainOpened = false;
@@ -133,7 +133,7 @@ export function createIntro(o: IntroOptions): Intro {
     o.cam.setSuspended(false);
     controls.enabled = wasEnabled;
     // Land on the preset itself, not an approximation of it: no jump when the user takes over.
-    o.cam.applyPreset('overview', false);
+    o.cam.applyPreset('postcard', false);
     if (!curtainOpened) {
       curtainOpened = true;
       o.onCurtainOpen();
@@ -169,7 +169,7 @@ export function createIntro(o: IntroOptions): Intro {
     seek(time) {
       if (!active) return;
       t = Math.max(0, time);
-      ov = o.cam.overviewPose();
+      ov = o.cam.postcardPose();
       fire();
       cur = introPose(Math.min(t, INTRO.duration), ov, o.heroX, o.heroZ);
       apply(cur);
@@ -193,7 +193,7 @@ export function createIntro(o: IntroOptions): Intro {
         return;
       }
       t += dt;
-      ov = o.cam.overviewPose();
+      ov = o.cam.postcardPose();
       fire();
       cur = introPose(Math.min(t, INTRO.duration), ov, o.heroX, o.heroZ);
       apply(cur);

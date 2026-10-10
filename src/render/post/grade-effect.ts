@@ -6,9 +6,10 @@ import { POST } from '../../content/lighting.ts';
 /**
  * One merged grade effect (ART_BIBLE §3 "Grade", "Vignette"), applied in linear
  * HDR before tone mapping:
- *  - +4 % saturation weighted to midtones,
+ *  - +4 % saturation weighted to midtones (+ POST.saturation, TASK-392),
  *  - lifted blacks (darks only),
- *  - golden-hour warm overlay (6 % × uGolden toward #FFB866, luminance kept),
+ *  - warm overlay toward #FFB866, luminance kept: POST.dayWarm by day (fading out with the
+ *    night grade) + 6 % × golden hour,
  *  - night: luminance-kept shift toward a moonlit blue (spares emissives and warm lamp-lit
  *    pixels — lantern pools, windows — and bright cyan/blue screens by hue),
  *  - coloured vignette (intensity 0.22, softness 0.6, colour #2A2350) — pmndrs'
@@ -72,10 +73,10 @@ export class MarGradeEffect extends Effect {
     const ntL = 0.2126 * nt.r + 0.7152 * nt.g + 0.0722 * nt.b;
     super('MarGradeEffect', FRAG, {
       uniforms: new Map<string, THREE.Uniform>([
-        ['uSat', new THREE.Uniform(LIGHTING.grade.saturation)],
+        ['uSat', new THREE.Uniform(LIGHTING.grade.saturation + POST.saturation)],
         ['uLift', new THREE.Uniform(POST.lift)],
         ['uWarm', new THREE.Uniform(new THREE.Vector3(warm.r, warm.g, warm.b).divideScalar(warmL))],
-        ['uGolden', new THREE.Uniform(0)],
+        ['uGolden', new THREE.Uniform(POST.dayWarm)],
         ['uVigColor', new THREE.Uniform(new THREE.Vector3(vig.r, vig.g, vig.b))],
         [
           'uVig',
@@ -94,15 +95,27 @@ export class MarGradeEffect extends Effect {
     });
   }
 
+  private golden = 0;
+  private nightK = 0;
+
+  /** Warm overlay: the day warmth (off with the night grade) + golden hour. */
+  private updateWarm(): void {
+    (this.uniforms.get('uGolden') as THREE.Uniform<number>).value =
+      POST.dayWarm * (1 - this.nightK) + this.golden * LIGHTING.grade.goldenWarm;
+  }
+
   /** 0..1 golden-hour factor (EnvState.golden) → 6 % overlay at the peak. */
   setGolden(g: number): void {
-    (this.uniforms.get('uGolden') as THREE.Uniform<number>).value = g * LIGHTING.grade.goldenWarm;
+    this.golden = g;
+    this.updateWarm();
     (this.uniforms.get('uGoldenLift') as THREE.Uniform<number>).value = g * POST.goldenLift;
   }
 
   /** EnvState.night 0..1 → night grade strength. */
   setNight(n: number): void {
     const t = Math.min(1, Math.max(0, (n - POST.nightFrom) / (1 - POST.nightFrom)));
+    this.nightK = t * t * (3 - 2 * t);
+    this.updateWarm();
     (this.uniforms.get('uNight') as THREE.Uniform<number>).value =
       t * t * (3 - 2 * t) * POST.nightMix;
     (this.uniforms.get('uNightLift') as THREE.Uniform<number>).value =

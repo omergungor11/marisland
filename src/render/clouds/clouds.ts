@@ -11,6 +11,7 @@ import { SHARED } from '../uniforms.ts';
 import {
   cellBlob,
   cellU,
+  cloudBanks,
   coverThresholds,
   edgeFade,
   fieldForSeed,
@@ -28,8 +29,8 @@ import { createPuffs, PUFF_SPRING, PUFF_STEAM, type Puffs } from '../particles/p
  * so the soft shadows line up without a shadow map. Also owns the puff system
  * (volcano steam, hot spring; chimneys are added by the caller via `puffs`).
  *
- * Cost: 3 InstancedMeshes (one per variant, ≤ 10 instances total, 0.9–1.6k tris each
- * variant) + 1 puff InstancedMesh → ≤ 4 draw calls, 2 programs.
+ * Cost: 3 InstancedMeshes (one per variant: ≤ 16 field cells + the horizon banks (TASK-392,
+ * ≈ 27–45 instances), 0.9–1.6k tris each) + 1 puff InstancedMesh → ≤ 4 draw calls, 2 programs.
  */
 export interface CloudsView {
   group: THREE.Group;
@@ -73,6 +74,8 @@ interface Slot {
   phase: number;
   /** Hash rank of the cell (0 = first to appear as the cover rises). */
   rank: number;
+  /** Horizon bank cloud (TASK-392): fixed position, always drawn (first in its mesh). */
+  bank?: { x: number; z: number };
 }
 
 const _m = new THREE.Matrix4();
@@ -146,6 +149,23 @@ export function createClouds(world: WorldData, quality: Quality, scope: Scope): 
       ranked.push({ ix, iz, u: cellU(ix, iz, field.salt, 0) });
   ranked.sort((a, b) => a.u - b.u);
   const byVariant: Slot[][] = [[], [], []];
+  // horizon banks first in each mesh, so the weather cover still draws a prefix after them
+  const bankRng = rng.fork('banks');
+  for (const b of cloudBanks(world.seed, cx, cz))
+    byVariant[b.variant].push({
+      mesh: null as unknown as THREE.InstancedMesh,
+      index: byVariant[b.variant].length,
+      ix: 0,
+      iz: 0,
+      jx: 0,
+      jz: 0,
+      width: b.width,
+      yaw: b.yaw,
+      alt: b.alt,
+      phase: bankRng.next() * Math.PI * 2,
+      rank: -1,
+      bank: { x: b.x, z: b.z },
+    });
   const extraRng = rng.fork('weather-extra');
   const addSlot = (ix: number, iz: number, rank: number, phase: number): void => {
     const b = cellBlob(field, ix, iz);
@@ -180,7 +200,7 @@ export function createClouds(world: WorldData, quality: Quality, scope: Scope): 
     const geo = scope.add(buildCloudGeometry(rng.fork('geo', v)));
     const mesh = new THREE.InstancedMesh(geo, mat, list.length);
     mesh.name = `clouds:${v}`;
-    mesh.frustumCulled = false; // ≤ 16 instances moving every frame
+    mesh.frustumCulled = false; // field clouds move every frame; banks ring the whole sea
     mesh.castShadow = false;
     mesh.receiveShadow = false;
     for (const sl of list) {
@@ -240,6 +260,16 @@ export function createClouds(world: WorldData, quality: Quality, scope: Scope): 
     windOffset(field, wind.x, wind.y, time, _off);
     const eased = vis * vis * (3 - 2 * vis);
     for (const s of slots) {
+      if (s.bank) {
+        const breathe = 1 + B.amp * Math.sin((time * 2 * Math.PI) / B.period + s.phase);
+        const k = s.width * eased * wScale;
+        _p.set(s.bank.x, s.alt, s.bank.z);
+        _q.setFromAxisAngle(_up, s.yaw);
+        _s.set(k * breathe, k * (2 - breathe), k * breathe);
+        _m.compose(_p, _q, _s);
+        s.mesh.setMatrixAt(s.index, _m);
+        continue;
+      }
       const rx =
         wrap(tile, (s.ix + s.jx - field.cells / 2) * field.cellSize + _off.x + tile / 2) - tile / 2;
       const rz =
@@ -256,7 +286,11 @@ export function createClouds(world: WorldData, quality: Quality, scope: Scope): 
     }
     for (const { mesh, list } of meshes) {
       let n = 0;
-      while (n < list.length && (list[n].rank < full || (list[n].rank === full && part > 0))) n++;
+      while (
+        n < list.length &&
+        (list[n].bank !== undefined || list[n].rank < full || (list[n].rank === full && part > 0))
+      )
+        n++;
       mesh.count = n;
       mesh.visible = n > 0;
       mesh.instanceMatrix.needsUpdate = true;
