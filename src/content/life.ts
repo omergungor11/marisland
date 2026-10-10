@@ -25,6 +25,10 @@ export interface LifePlan {
   crabs: number;
   /** Night fireflies (particles, not agents: one draw call, excluded from `agents`). */
   fireflies: number;
+  /** Ducks on the Coding reflecting pool (TASK-332): agents; 0 on low (its cap is already full). */
+  ducks: number;
+  /** Day butterflies over the Design flowers (TASK-332): particles like fireflies, not agents. */
+  butterflies: number;
 }
 export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
   low: {
@@ -44,6 +48,8 @@ export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
     sheep: 2,
     crabs: 1,
     fireflies: 12,
+    ducks: 0,
+    butterflies: 6,
   },
   medium: {
     sailboats: 3,
@@ -62,6 +68,8 @@ export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
     sheep: 8,
     crabs: 3,
     fireflies: 18,
+    ducks: 4,
+    butterflies: 10,
   },
   high: {
     sailboats: 4,
@@ -80,6 +88,8 @@ export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
     sheep: 12,
     crabs: 5,
     fireflies: 24,
+    ducks: 5,
+    butterflies: 16,
   },
 };
 
