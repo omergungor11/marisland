@@ -10,6 +10,13 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-10 later**: M17b wave 1 merged + pushed (TASK-390/391/392, balloons scaled 1.1–1.4).
+  W11 "Concept" is the reference frame. Parallel agents MUST pass distinct `--port=` to
+  `pnpm shots`: it reuses any server already on 4173 ("not ours") and can shoot another
+  worktree's build. Postcard: FOV 35° means horizon only when look-down < 17.5°, so the pose
+  sets the horizon at 0.74 and fits height (bottom edge ≈30°). Walls only 5–7 u (HQ office mins,
+  W10 call budget, DevOps terraces limited them). D-macro is now blocked by a building wall.
+  Wave 2 next: TASK-393 landmarks, 394 viaducts, 395 waterfalls.
 - **2026-10-10**: TASK-352 softer shadows (pcfMax 5). TASK-335 sky craft done (balloons + airship,
   D-038). TASK-332 first wave: ducks on ONE Coding reflecting pool (rng picks; seed 1001 → pool B
   at 110.4, 21.1; the twin pool is empty on purpose) + day butterflies over Design flowers. Ducks
