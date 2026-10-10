@@ -25,8 +25,14 @@ export const PUFF_RING = 3;
  * `PUFF_SPRING`) with its own sizes (PUFFS.vent). 4 is the rain kind.
  */
 export const PUFF_VENT = 5;
+/** Waterfall mist (TASK-395): a preset drawn as soft steam (shader kind `PUFF_SPRING`), PUFFS.mist sizes. */
+export const PUFF_MIST = 6;
 export type PuffKind =
-  typeof PUFF_CHIMNEY | typeof PUFF_STEAM | typeof PUFF_SPRING | typeof PUFF_VENT;
+  | typeof PUFF_CHIMNEY
+  | typeof PUFF_STEAM
+  | typeof PUFF_SPRING
+  | typeof PUFF_VENT
+  | typeof PUFF_MIST;
 
 export interface Puffs {
   mesh: THREE.InstancedMesh;
@@ -54,6 +60,7 @@ const KIND_CFG = {
   [PUFF_STEAM]: PUFFS.steam,
   [PUFF_SPRING]: PUFFS.spring,
   [PUFF_VENT]: PUFFS.vent,
+  [PUFF_MIST]: PUFFS.mist,
 } as const;
 /** Preset → `aKind` (the shader branch). */
 const SHADER_KIND: Record<PuffKind, number> = {
@@ -61,6 +68,7 @@ const SHADER_KIND: Record<PuffKind, number> = {
   [PUFF_STEAM]: PUFF_STEAM,
   [PUFF_SPRING]: PUFF_SPRING,
   [PUFF_VENT]: PUFF_SPRING,
+  [PUFF_MIST]: PUFF_SPRING,
 };
 
 export function createPuffs(

@@ -250,6 +250,22 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     height: 1080,
     sets: ['wow'],
   },
+  {
+    id: 'W13',
+    title: 'Falls',
+    // M17b (TASK-395): from the sea, a Mossgrove waterfall off the bluff lip into its foam disc
+    // and mist (seed 1001, raw `eye → target`; re-pin when the layout changes); the flow scrolls
+    // between the two frames
+    seed: 1001,
+    cam: '-82.2,13,113.1,-114,4.1,91',
+    time: 10.5,
+    simt: 5,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    deltaT: 0.5,
+    sets: ['wow'],
+  },
 
   // ---- dev set (960×540) + ci subset (640×360)
   {

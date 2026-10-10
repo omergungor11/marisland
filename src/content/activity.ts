@@ -32,6 +32,8 @@ export const SURFACE = {
   led: 7,
   slides: 8,
   pulse: 9,
+  /** Waterfall sheet / foam disc (TASK-395): (u, v, mode, −10), content/waterfalls.ts. */
+  flow: 10,
 } as const;
 export type SurfaceKind = keyof typeof SURFACE;
 
