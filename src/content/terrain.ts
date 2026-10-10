@@ -52,9 +52,6 @@ export const TERRAIN_SHAPE = {
   deepDepth: 20,
   /** Rock colour slope range (gradient magnitude). */
   rockSlope: [0.55, 1.4] as const,
-  /** Cliff strata band thickness in u and band wobble amplitude. */
-  strataBand: 2.5,
-  strataWobble: 0.6,
   /** Crest lightening toward grass tip (0..1) at full convexity. */
   crestTip: 0.2,
   crestScale: 1.2,

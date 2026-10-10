@@ -2,18 +2,12 @@ import * as THREE from 'three';
 import type { Quality } from '../../core/params.ts';
 import type { WorldData } from '../../world/types.ts';
 import { heightAt, Zone, ZONE_COUNT } from '../../world/types.ts';
-import {
-  CRATER_GLOW,
-  TERRAIN_COLORS,
-  TERRAIN_FX,
-  TERRAIN_MASK,
-  TERRAIN_SHAPE,
-} from '../../content/terrain.ts';
+import { CRATER_GLOW, TERRAIN_COLORS, TERRAIN_FX, TERRAIN_MASK } from '../../content/terrain.ts';
 import {
   DETAIL_LAYER_IDS,
   DETAIL_LAYERS,
   GROUND_DETAIL,
-  GROUND_STRATA,
+  GROUND_WALL,
 } from '../../content/ground.ts';
 import { PALETTE_SCALE, PALETTE_TEXELS, PATTERN_LAYERS, zoneClass } from './terrain-colors.ts';
 import { groundDetailData } from './ground-detail.ts';
@@ -89,6 +83,7 @@ export function createTerrainMaterial(
     uMistMax: SHARED.uMistMax,
     uTerrainSdf: { value: textures.sdf },
     uTerrainZone: { value: textures.zone },
+    uTerrainHeight: { value: textures.height },
     uAlbedo: { value: textures.albedo },
     uPalette: { value: textures.palette },
     // xy = origin, z = 1 / cellSize, w = samples per side (texel-centre mapping)
@@ -155,6 +150,7 @@ uniform vec3 uCraterColor;
 uniform vec3 uMaskLand, uMaskWet, uMaskRock, uMaskSeabed;
 uniform sampler2D uTerrainSdf;
 uniform sampler2D uTerrainZone;
+uniform sampler2D uTerrainHeight;
 uniform vec4 uTerrainGrid;
 ${groundGlsl()}
 uniform vec4 uBrush;
@@ -296,7 +292,7 @@ ${GROUND_COLOR_GLSL}
 
 const g = (v: number): string => v.toFixed(5);
 const GD = GROUND_DETAIL;
-const GS = GROUND_STRATA;
+const GW = GROUND_WALL;
 const LAYERS = DETAIL_LAYER_IDS.length;
 
 /**
@@ -338,11 +334,9 @@ int marZoneClass(float z) {
 vec4 marPal(float zone, float isl, int c) {
   return texelFetch(uPalette, ivec2(int(zone) * ${PALETTE_TEXELS} + c, int(isl)), 0);
 }
-/** Strata band in [−1, 1]; aa = band-function change per pixel (bands fade to 0 when dense). */
-float marStrata(vec3 p, float halfPeriod, float wob, float aa) {
-  float w = wob * (${g(TERRAIN_SHAPE.strataWobble)} * sin(p.x * 0.07 + p.z * 0.05) + 0.3 * sin(p.z * 0.13 - p.x * 0.04));
-  float s = sin(3.14159265 * (p.y + w) / halfPeriod);
-  return clamp(s / max(aa, 0.3), -1.0, 1.0) * (1.0 - smoothstep(0.6, 1.6, aa));
+/** Earth-wall strata tone of band b (hashed; × wall colour, tones normalised to mean 1). */
+vec3 marWallTone(float b) {
+  ${wallTonesGlsl()}
 }
 #ifdef MAR_DETAIL
 uniform sampler2DArray uDetail;
@@ -443,6 +437,30 @@ function zoneClassGlsl(): string {
   return `${out.join(' ')}\n  return 0;`;
 }
 
+/**
+ * Earth-wall probes along the fall line (unrolled): the highest uphill sample is the wall top
+ * (and where the lip colour comes from), the lowest downhill one its foot.
+ */
+const WALL_PROBES_GLSL = GROUND_WALL.probe
+  .map(
+    (d) => `      {
+        vec2 q = vMarWorld.xz + marIn * ${g(d)};
+        float hq = texture2D(uTerrainHeight, marTerrainUv(q)).r;
+        if (hq > marTop) { marTop = hq; marTopXz = q; }
+        marFoot = min(marFoot, texture2D(uTerrainHeight, marTerrainUv(vMarWorld.xz - marIn * ${g(d)})).r);
+      }`,
+  )
+  .join('\n');
+
+/** GLSL body of `marWallTone`: GROUND_WALL.tones normalised to mean 1, picked by a band hash. */
+function wallTonesGlsl(): string {
+  const T = GROUND_WALL.tones;
+  const mean = [0, 1, 2].map((c) => T.reduce((a, t) => a + t[c], 0) / T.length);
+  const v = T.map((t) => `vec3(${t.map((x, c) => g(x / mean[c])).join(', ')})`);
+  return `int i = int(min(marHash12(vec2(b, 7.31)) * ${T.length}.0, ${T.length - 1}.0));
+  ${v.map((x, k) => (k < v.length - 1 ? `if (i == ${k}) return ${x};` : `return ${x};`)).join('\n  ')}`;
+}
+
 /** Ground colour (TASK-372): albedo → (near) crisp noisy zone borders + detail → strata. */
 const GROUND_COLOR_GLSL = /* glsl */ `
   vec3 marDPx = dFdx(vMarWorld);
@@ -504,6 +522,7 @@ const GROUND_COLOR_GLSL = /* glsl */ `
       diffuseColor.rgb = mix(diffuseColor.rgb, marCrisp, marK * smoothstep(${g(GD.borderContrast[0])}, ${g(GD.borderContrast[1])}, sqrt(marDb)));
     }
   }
+  vec3 marBase = diffuseColor.rgb;
 #ifdef MAR_DETAIL
   marFade = 1.0 - smoothstep(${g(GD.fadeNear)}, ${g(GD.fadeFar)}, length(vMarWorld - cameraPosition));
   if (marFade > 0.0) {
@@ -579,31 +598,100 @@ const GROUND_COLOR_GLSL = /* glsl */ `
   }
 #endif
   {
-    // cliff strata on steep rock / cliff faces (nearest sample's palette; every distance)
+    // (k) earth walls (TASK-391, GROUND_WALL): every steep land face reads as layered soil —
+    // strata in tones of the island's wall colour, a grass lip with drips over the top edge, a
+    // dark line under it, a darker foot and a wet line above the water (every quality)
     float marIsl = floor(texelFetch(uAlbedo, marTexel(ivec2(floor(marG + 0.5))), 0).a * 255.0 + 0.5);
-    vec4 marP1 = marPal(marZone, marIsl, 1);
-    float marAmt = marP1.b * ${g(255 / PALETTE_SCALE.strata)} * (1.0 - smoothstep(0.5, 0.85, marWN.y))
-                 * step(0.0, vMarWorld.y);
-    if (marAmt > 0.0) {
-      float marH = ${g(TERRAIN_SHAPE.strataBand)};
-      float marBand = marStrata(vMarWorld, marH, 1.0, 3.14159265 / marH * marYw * 1.5);
-      float marFine = marStrata(vMarWorld + vec3(0.0, 0.37, 0.0), marH * 0.31, 0.6, 3.14159265 / (marH * 0.31) * marYw * 1.5);
-      float marC = marP1.a * ${g(255 / PALETTE_SCALE.contrast)};
-      // carving (every quality): vertical cracks (ridged noise along the wall, stretched in y,
-      // mean-compensated so the far colour is unchanged) and ledge relief (the main band tilts
-      // the normal up / down) so walls read as carved rock, not flat planks
-      vec2 marWd = normalize(vec2(-marWN.z, marWN.x) + vec2(1e-4, 0.0));
+    // wall kind per zone (palette texel 1: B weight, A kind 0 coastal soil / 0.5 cliff / 1 rock),
+    // bilinear over the 4 grid corners so wall edges follow the surface, not the 2 u cells: cliff
+    // and rock zones are walls on their own band, other zones only when very steep near the coast
+    float marWallSoil = 0.0;
+    float marWallCliff = 0.0;
+    float marOwn = 0.0;
+    float marSteepCliff = 1.0 - smoothstep(${g(GW.ny.cliff[0])}, ${g(GW.ny.cliff[1])}, marWN.y);
+    if (marSteepCliff > 0.0 && vMarWorld.y > -1.2) {
+      float marSteepSoil = 1.0 - smoothstep(${g(GW.ny.soil[0])}, ${g(GW.ny.soil[1])}, marWN.y);
+      float marCoast = 1.0 - smoothstep(${g(GW.coast[0])}, ${g(GW.coast[1])}, texture2D(uTerrainSdf, marUv).r);
+      ivec2 marC0 = ivec2(floor(marG));
+      vec2 marCf = marG - floor(marG);
+      for (int k = 0; k < 4; k++) {
+        ivec2 o = ivec2(k - 2 * (k / 2), k / 2);
+        float bw = (o.x == 1 ? marCf.x : 1.0 - marCf.x) * (o.y == 1 ? marCf.y : 1.0 - marCf.y);
+        vec4 wp = marPal(floor(texelFetch(uTerrainZone, marTexel(marC0 + o), 0).r * 255.0 + 0.5), marIsl, 1);
+        float inl = step(0.25, wp.a);
+        float own = step(0.75, wp.a);
+        float wk = bw * wp.b * ${g(255 / PALETTE_SCALE.wall)};
+        marWallSoil += wk * (1.0 - inl) * marSteepSoil * marCoast;
+        // rock: only its near-vertical faces (a cone of rock stays plain, no contour rings)
+        marWallCliff += wk * inl * mix(marSteepCliff, marSteepSoil, own);
+        marOwn += bw * own;
+      }
+    }
+    float marWall = (marWallSoil + marWallCliff) * smoothstep(-1.2, 0.0, vMarWorld.y);
+    if (marWall > 0.0) {
+      // wall top / foot along the fall line (height texture probes)
+      vec2 marIn = -normalize(marWN.xz + vec2(1e-5, 0.0));
+      float marTop = vMarWorld.y;
+      vec2 marTopXz = vMarWorld.xz;
+      float marFoot = vMarWorld.y;
+${WALL_PROBES_GLSL}
+      marFoot = max(marFoot, 0.0);
+      // soil walls stand on the beach / sea (a steep hillside further up stays green)
+      marWall = (marWallSoil * (1.0 - smoothstep(${g(GW.footMax[0])}, ${g(GW.footMax[1])}, marFoot)) + marWallCliff)
+              * smoothstep(-1.2, 0.0, vMarWorld.y);
+      marWall *= smoothstep(${g(GW.minHeight[0])}, ${g(GW.minHeight[1])}, marTop - marFoot);
+      float marD = marTop - vMarWorld.y;
+      // strata: hashed tones per band, wobbling bands of uneven thickness; band detail fades to
+      // its mean (the wall colour) once a band is a few pixels tall
+      float marBw = ${g(GW.bandWobble)} * (sin(vMarWorld.x * 0.09 + vMarWorld.z * 0.06) + 0.5 * sin(vMarWorld.z * 0.21 - vMarWorld.x * 0.13));
+      float marBt = (vMarWorld.y + marBw) / ${g(GW.band)};
+      marBt += 0.32 * sin(marBt * 2.1 + marIsl);
+      float marBi = floor(marBt);
+      float marBf = marBt - marBi;
+      float marBpx = marYw / ${g(GW.band)};
+      float marBfade = 1.0 - smoothstep(0.12, 0.3, marBpx);
+      vec3 marTone = mix(marWallTone(marBi + 17.0 * marIsl), marWallTone(marBi + 1.0 + 17.0 * marIsl),
+                         smoothstep(1.0 - clamp(marBpx * 1.5, 0.04, 0.5), 1.0, marBf));
+      marTone = mix(vec3(1.0), marTone, marBfade * (1.0 - ${g(1 - GW.rockContrast)} * marOwn));
+      float marGroove = 1.0 - ${g(GW.groove)} * (1.0 - smoothstep(0.035, 0.07, marBpx)) * (1.0 - smoothstep(0.0, max(0.08, 1.5 * marBpx), marBf));
+      // grain: the near detail layer's lightness change, partly kept on the soil
+      float marGrain = mix(1.0, clamp(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722))
+                         / max(dot(marBase, vec3(0.2126, 0.7152, 0.0722)), 1e-4), 0.6, 1.5), ${g(GW.grain)});
+      float marFootT = 1.0 - smoothstep(0.0, ${g(GW.footHeight)}, vMarWorld.y - marFoot);
+      vec3 marSoil = mix(marSrgbDecode(marPal(marZone, marIsl, 4).rgb), marBase, marOwn) * marTone * marGroove * marGrain
+                   * (1.0 - ${g(GW.footDark)} * marFootT * marFootT);
+      // grass lip: the top's albedo hanging over the edge, drips along the wall (along-wall axis
+      // picked by the wall's facing; drips settle to their mean while a cell is under ~2 px)
+      vec2 marSw = pow(abs(marWN.xz) + 1e-4, vec2(4.0));
+      marSw /= marSw.x + marSw.y;
+      vec2 marAl = vec2(vMarWorld.z, vMarWorld.x) * ${g(GW.dripFreq)};
+      float marDn = marSw.x * (marVNoise(vec2(marAl.x, 3.7)) + 0.5 * marVNoise(vec2(marAl.x * 2.7, 8.3)))
+                  + marSw.y * (marVNoise(vec2(marAl.y, 9.1)) + 0.5 * marVNoise(vec2(marAl.y * 2.7, 1.9)));
+      float marDrip = mix(0.3, smoothstep(0.55, 1.25, marDn), 1.0 - smoothstep(0.3, 0.8, marGw));
+      float marLipY = ${g(GW.lip)} + ${g(GW.drip)} * marDrip;
+      float marEw = max(0.05, marYw);
+      float marLip = 1.0 - smoothstep(marLipY - marEw, marLipY + marEw, marD);
+      vec3 marLipCol = texture2D(uAlbedo, marTerrainUv(marTopXz + marIn * ${g(GW.lipInset)})).rgb * ${g(GW.lipShade)};
+      float marLine = (1.0 - smoothstep(0.0, ${g(GW.lipLine)} + marEw, marD - marLipY)) * (1.0 - marLip)
+                    * (1.0 - smoothstep(0.5, 1.5, marYw / ${g(GW.lipLine)}));
+      vec3 marWc = mix(marSoil * (1.0 - ${g(GW.lipLineDark)} * marLine), marLipCol, marLip);
+      // wet line just above the water: darker and cooler
+      float marWetY = ${g(GW.wetHeight)} + ${g(GW.wetWobble)} * sin(vMarWorld.x * 0.37 + vMarWorld.z * 0.29 + 1.7 * sin(vMarWorld.z * 0.11));
+      float marWet = 1.0 - smoothstep(marWetY - marEw, marWetY + marEw, vMarWorld.y);
+      marWc *= mix(vec3(1.0), ${g(1 - GW.wetDark)} * vec3(${g(1 - GW.wetCool)}, ${g(1 - 0.4 * GW.wetCool)}, 1.0), marWet);
+      // carving: vertical cracks (ridged noise along the wall, stretched in y, mean-compensated)
+      // and a ledge roll per strata band, below the lip only
+      float marRock = marWall * (1.0 - marLip);
+      vec2 marWd = vec2(-marIn.y, marIn.x);
       float marU = dot(vMarWorld.xz, marWd);
-      float marCr = 1.0 - abs(2.0 * marVNoise(vec2(marU * ${g(GS.crackFreq)}, vMarWorld.y * ${g(GS.crackFreq * GS.crackStretch)})) - 1.0);
-      // cracks on walls only (not on the even slopes of a cone)
-      float marCrAa = (1.0 - smoothstep(${g(GS.crackAa[0])}, ${g(GS.crackAa[1])}, marGw))
-                    * (1.0 - smoothstep(${g(GS.crackSteep[0])}, ${g(GS.crackSteep[1])}, marWN.y));
-      float marCk = (smoothstep(${g(GS.crackEdge[0])}, ${g(GS.crackEdge[1])}, marCr) - ${g(GS.crackMean)}) * marCrAa;
-      diffuseColor.rgb *= 1.0 + marAmt * marC * (marBand + ${g(GROUND_STRATA.fine)} * marFade * marFine)
-                        - marAmt * ${g(GS.crack)} * marCk;
-      float marLedge = cos(3.14159265 * (vMarWorld.y + 0.3 * sin(vMarWorld.x * 0.07 + vMarWorld.z * 0.05)) / marH)
-                     * (1.0 - smoothstep(0.6, 1.6, 3.14159265 / marH * marYw * 1.5));
-      marNP += vec3(0.0, marAmt * ${g(GS.ledge)} * marLedge, 0.0) - vec3(marWd.x, 0.0, marWd.y) * marAmt * ${g(GS.crackNormal)} * marCk;
+      float marCr = 1.0 - abs(2.0 * marVNoise(vec2(marU * ${g(GW.crackFreq)}, vMarWorld.y * ${g(GW.crackFreq * GW.crackStretch)})) - 1.0);
+      float marCrAa = (1.0 - smoothstep(${g(GW.crackAa[0])}, ${g(GW.crackAa[1])}, marGw))
+                    * (1.0 - smoothstep(${g(GW.crackSteep[0])}, ${g(GW.crackSteep[1])}, marWN.y));
+      float marCk = (smoothstep(${g(GW.crackEdge[0])}, ${g(GW.crackEdge[1])}, marCr) - ${g(GW.crackMean)}) * marCrAa;
+      marWc *= 1.0 - ${g(GW.crack)} * marCk * (1.0 - marLip);
+      diffuseColor.rgb = mix(diffuseColor.rgb, marWc, marWall);
+      float marLedge = -cos(6.28318531 * marBf) * marBfade;
+      marNP += vec3(0.0, marRock * ${g(GW.ledge)} * marLedge, 0.0) - vec3(marWd.x, 0.0, marWd.y) * marRock * ${g(GW.crackNormal)} * marCk;
     }
   }
 `;

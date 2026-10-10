@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { generateWorld } from '../../world/index.ts';
 import { Zone } from '../../world/types.ts';
 import { THEMES } from '../../content/themes/index.ts';
-import { DEFAULT_GROUND, DETAIL_LAYER_IDS, MATERIAL_LAYERS } from '../../content/ground.ts';
+import {
+  DEFAULT_GROUND,
+  DETAIL_LAYER_IDS,
+  GROUND_WALL,
+  MATERIAL_LAYERS,
+} from '../../content/ground.ts';
 import type { GroundSpec } from '../../content/ground.ts';
 import {
   PALETTE_TEXELS,
@@ -24,6 +29,25 @@ describe('albedo grid + ground palette (TASK-372)', () => {
   it('is deterministic and stores the island id in alpha', () => {
     expect(buildAlbedoGrid(world).rgba).toEqual(albedo.rgba);
     for (let i = 0; i < n * n; i += 97) expect(albedo.rgba[i * 4 + 3]).toBe(world.islandMap[i]);
+  });
+
+  it('earth walls (TASK-391): per-zone weight / kind and the island wall colour', () => {
+    const pal = buildGroundPalette(world);
+    const srgb = (hex: string): number[] => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+    // kinds: cliff = soil wall anywhere, rock = own colour, sand = coastal soil, grass = no wall
+    expect(texel(pal, 0, Zone.cliff, 1).slice(2)).toEqual([255, 128]);
+    expect(texel(pal, 0, Zone.rock, 1).slice(2)).toEqual([255, 255]);
+    expect(texel(pal, 0, Zone.sandDry, 1).slice(2)).toEqual([255, 0]);
+    expect(texel(pal, 0, Zone.grass, 1)[2]).toBe(0);
+    expect(texel(pal, 0, Zone.crater, 1)[2]).toBe(0);
+    // wall colour: the default soil, or the theme's cliff base (Marketing's Beacon Rock)
+    expect(texel(pal, 0, Zone.cliff, 4).slice(0, 3)).toEqual(srgb(GROUND_WALL.soil));
+    const mk = world.islands.findIndex((i) => i.theme === 'marketing');
+    const cliff = THEMES.marketing.ground?.[Zone.cliff]?.base;
+    expect(mk).toBeGreaterThanOrEqual(0);
+    expect(cliff).toBeDefined();
+    for (const z of [Zone.cliff, Zone.sandWet])
+      expect(texel(pal, mk + 1, z, 4).slice(0, 3)).toEqual(srgb(cliff!));
   });
 
   it('a sub-rect refill equals the full build (edit path)', () => {

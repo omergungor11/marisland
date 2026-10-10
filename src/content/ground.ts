@@ -5,7 +5,7 @@
  * layers below near the camera. A zone a theme does not list keeps today's palette colour
  * (`DEFAULT_GROUND`).
  */
-import { CLIFF_STRATA, GRASS, HAY, ROCK, SAND } from './palette.ts';
+import { GRASS, HAY, ROCK, SAND } from './palette.ts';
 import { Zone, type ZoneId } from '../world/types.ts';
 
 /** Global material ids. Order is stable: index = material id in the palette texture. */
@@ -153,20 +153,86 @@ export const MATERIAL_ACCENTS: Readonly<Record<GroundMaterial, readonly [string,
 };
 
 /**
- * Cliff strata: smooth horizontal bands drawn by the shader at every distance (a 2-D albedo
- * cannot hold them on vertical faces). Band colour = zone colour × (1 ± contrast), the luminance
- * contrast of the two strata colours below; a theme recolours cliffs through the zone base.
+ * Earth walls (TASK-391, M17b concept look): every steep land face above the water — sea bluffs,
+ * low banks, Beacon Rock, terrace walls — is drawn by the shader (a 2-D albedo cannot hold
+ * vertical detail) as layered soil: horizontal strata in warm tones of the island's wall colour,
+ * a grass lip hanging over the top edge with drips, a dark line under the lip, a darker wall foot
+ * and a wet line just above the water. Identical at every distance except the band detail, which
+ * fades to its mean once a band is a few pixels tall.
  */
-export const GROUND_STRATA = {
-  colors: CLIFF_STRATA,
-  /** Strata strength on the rock zone relative to cliffs (steep rock shows faint bands). */
-  rock: 0.45,
-  /** Fine sub-bands (near only) as a fraction of the main contrast. */
-  fine: 0.35,
+export const GROUND_WALL = {
+  /** Wall colour of islands whose theme lists no cliff ground (a theme's cliff base replaces it). */
+  soil: '#B9845A',
+  /**
+   * Wall weight by smooth normal y (full below [0], none above [1]): cliff / rock zones are walls
+   * by worldgen (slope > ZONE_RULES.cliffSlope ≈ ny 0.74 per 2 u cell), so a loose band; other
+   * zones only on near-vertical faces.
+   */
+  ny: { cliff: [0.62, 0.86] as const, soil: [0.38, 0.55] as const },
+  /**
+   * Wall weight per zone (0..1; unset = 1). Vegetation is never a wall by itself: steep green
+   * slopes worldgen left green (the Design dome) stay green; bluffs it marks cliff are walls.
+   */
+  zoneWeight: {
+    [Zone.grass]: 0,
+    [Zone.meadow]: 0,
+    [Zone.forest]: 0,
+    [Zone.field]: 0,
+    [Zone.path]: 0.5,
+    [Zone.plaza]: 0.5,
+    [Zone.crater]: 0,
+  } as Partial<Record<ZoneId, number>>,
+  /**
+   * Soil walls (sand, path / plaza) are coastal: they fade out between coast[0] and
+   * coast[1] u inland and where the wall foot stands footMax[0] → [1] u above the sea, so a steep
+   * hillside stays green. Cliff zones are walls anywhere, in the wall colour; rock zones only on
+   * the soil band (near-vertical faces, so a rock cone gets no contour rings), stratified in their
+   * own albedo colour with `rockContrast` of the band tones.
+   */
+  coast: [8, 13] as const,
+  footMax: [1.5, 3.5] as const,
+  rockContrast: 0.5,
+  /** Walls lower than this (u, top − foot) fade out over minHeight[0] → [1]. */
+  minHeight: [0.4, 1.0] as const,
+  /** Slope probes (u) up / down the fall line for the wall top and foot. */
+  probe: [1.2, 2.6, 4.5, 7] as const,
+  /** Strata: mean band height (u), thickness wobble, and the band tones (× wall colour, linear). */
+  band: 1.6,
+  bandWobble: 0.45,
+  /** Tones cycle by a per-band hash; their mean is normalised to 1 (far colour = wall colour). */
+  tones: [
+    [1.2, 1.12, 0.98],
+    [1.0, 0.98, 0.96],
+    [0.8, 0.68, 0.6],
+    [1.08, 1.0, 0.88],
+    [0.9, 0.82, 0.78],
+  ] as const,
+  /** Grass lip: hangs `lip` u below the top edge plus drips up to `drip` u, `dripFreq` per u. */
+  lip: 0.3,
+  drip: 1.1,
+  dripFreq: 0.85,
+  /** The lip is the top's albedo `lipInset` u in from the edge, × `lipShade` (its overhang). */
+  lipInset: 2.5,
+  lipShade: 0.9,
+  /** Dark line under the lip: width (u) and darkening. */
+  lipLine: 0.35,
+  lipLineDark: 0.42,
+  /** Wall foot: darkening over the lowest `footHeight` u of the wall (above its foot). */
+  footHeight: 2.6,
+  footDark: 0.3,
+  /** Wet line above the water: height (u), wobble (u), darkening and cool lean (b − r share). */
+  wetHeight: 0.6,
+  wetWobble: 0.18,
+  wetDark: 0.42,
+  wetCool: 0.25,
+  /** Dark groove at each strata boundary (near only: while a band is over ~15 px). */
+  groove: 0.1,
+  /** Grain: share of the near detail layer's lightness kept on the wall. */
+  grain: 0.6,
   /**
    * Carving (every quality, M14b polish): vertical cracks = ridged value noise along the wall
    * (`crackFreq` per u, × `crackStretch` in y), lines where it exceeds `crackEdge`; darkening
-   * `crack` × strata amount, mean-compensated by `crackMean` (the mask's average) so the far
+   * `crack` × wall weight, mean-compensated by `crackMean` (the mask's average) so the far
    * colour stays the albedo; faded out once a 2 u cell is under `crackAa` px⁻¹. `ledge` = normal
    * tilt of the strata bands (ledges), `crackNormal` = crack groove tilt.
    */
@@ -174,10 +240,10 @@ export const GROUND_STRATA = {
   crackStretch: 0.35,
   crackEdge: [0.88, 0.97] as const,
   crackMean: 0.12,
-  crackAa: [0.25, 0.7] as const,
+  crackAa: [0.08, 0.2] as const,
   /** Cracks show where the normal y is below crackSteep[0], none above crackSteep[1] (walls). */
   crackSteep: [0.25, 0.45] as const,
-  crack: 0.45,
+  crack: 0.32,
   ledge: 0.35,
   crackNormal: 0.25,
 } as const;

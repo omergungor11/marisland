@@ -13,7 +13,7 @@ import {
   GROUND_MACRO,
   GROUND_MATERIALS,
   GROUND_SMOOTH,
-  GROUND_STRATA,
+  GROUND_WALL,
   MATERIAL_ACCENTS,
   MATERIAL_LAYERS,
   type DetailLayerId,
@@ -423,10 +423,10 @@ function rawAlbedo(world: WorldData, ix: number, iz: number): number {
 }
 
 /** Palette texture: `PALETTE_TEXELS` texels per zone, `PALETTE_ROWS` rows (row = island id). */
-export const PALETTE_TEXELS = 4;
+export const PALETTE_TEXELS = 5;
 export const PALETTE_ROWS = 8;
 /** Byte scales of the palette fields (decoded by the terrain shader). */
-export const PALETTE_SCALE = { amp: 100, pattern: 64, strata: 255, contrast: 510 } as const;
+export const PALETTE_SCALE = { amp: 100, pattern: 64, wall: 255 } as const;
 
 /** Pattern layers: a spec's tile size / mow period rescales them (others keep their tile). */
 export const PATTERN_LAYERS: readonly DetailLayerId[] = ['mow', 'tiles', 'mosaic'];
@@ -434,22 +434,19 @@ export const PATTERN_LAYERS: readonly DetailLayerId[] = ['mow', 'tiles', 'mosaic
 const NO_LAYER = 255;
 
 /**
- * Ground palette (16 zones × 4 texels) × 8 rows: row 0 = no island (defaults), row k = island
+ * Ground palette (16 zones × 5 texels) × 8 rows: row 0 = no island (defaults), row k = island
  * id k with its theme's `ground` over `DEFAULT_GROUND`. Per (zone, row):
  * - texel 0: R layer 0, G layer 1 (255 = none), B amplitude × 100, A material id
  *   (texel 0 is also the shader's material-group key: equal texels blend smoothly);
- * - texel 1: R pattern scale × 64, G layer-1 amplitude × 100, B strata amount × 255,
- *   A strata contrast × 510;
- * - texels 2 / 3: accent 1 / 2 (sRGB bytes).
+ * - texel 1: R pattern scale × 64, G layer-1 amplitude × 100, B earth-wall weight × 255
+ *   (`GROUND_WALL.zoneWeight`; the shader gates it to land above the water), A wall kind
+ *   (0 coastal soil, 128 cliff: soil inland too, 255 rock: own albedo, softer bands);
+ * - texels 2 / 3: accent 1 / 2 (sRGB bytes);
+ * - texel 4: the island's wall colour (sRGB bytes; theme cliff base, else `GROUND_WALL.soil`).
  */
 export function buildGroundPalette(world: WorldData): Uint8Array {
   const out = new Uint8Array(ZONE_COUNT * PALETTE_TEXELS * PALETTE_ROWS * 4);
   const w = ZONE_COUNT * PALETTE_TEXELS;
-  const S0 = linOf(GROUND_STRATA.colors[0]);
-  const S1 = linOf(GROUND_STRATA.colors[1]);
-  const l0 = 0.2126 * S0.r + 0.7152 * S0.g + 0.0722 * S0.b;
-  const l1 = 0.2126 * S1.r + 0.7152 * S1.g + 0.0722 * S1.b;
-  const contrast = Math.abs(l0 - l1) / (l0 + l1);
   const put = (row: number, zone: number, t: number, v: readonly number[]): void => {
     const o = (row * w + zone * PALETTE_TEXELS + t) * 4;
     for (let c = 0; c < 4; c++) out[o + c] = Math.max(0, Math.min(255, Math.round(v[c])));
@@ -461,6 +458,7 @@ export function buildGroundPalette(world: WorldData): Uint8Array {
   for (let row = 0; row < PALETTE_ROWS; row++) {
     const isl = row > 0 ? world.islands[row - 1] : undefined;
     const ground = isl ? THEMES[isl.theme]?.ground : undefined;
+    const wallColor = srgb(ground?.[Zone.cliff]?.base ?? GROUND_WALL.soil);
     for (let zone = 0; zone < ZONE_COUNT; zone++) {
       const spec = ground?.[zone as ZoneId] ?? DEFAULT_GROUND[zone as ZoneId];
       const p = spec.layer ?? {};
@@ -479,7 +477,7 @@ export function buildGroundPalette(world: WorldData): Uint8Array {
         pattern = p.tile.size / (DETAIL_LAYERS.tiles.tile / 4);
       else if (p.tile && layers.includes('mosaic'))
         pattern = p.tile.size / (DETAIL_LAYERS.mosaic.tile / 16);
-      const strata = zone === Zone.cliff ? 1 : zone === Zone.rock ? GROUND_STRATA.rock : 0;
+      const wall = GROUND_WALL.zoneWeight[zone as ZoneId] ?? 1;
       const accents = p.speckle?.length
         ? [p.speckle[0], p.speckle[1] ?? p.speckle[0]]
         : p.tile
@@ -494,11 +492,12 @@ export function buildGroundPalette(world: WorldData): Uint8Array {
       put(row, zone, 1, [
         pattern * PALETTE_SCALE.pattern,
         amp1 * PALETTE_SCALE.amp,
-        strata * PALETTE_SCALE.strata,
-        contrast * PALETTE_SCALE.contrast,
+        wall * PALETTE_SCALE.wall,
+        zone === Zone.rock ? 255 : zone === Zone.cliff ? 128 : 0,
       ]);
       put(row, zone, 2, srgb(accents[0]));
       put(row, zone, 3, srgb(accents[1]));
+      put(row, zone, 4, wallColor);
     }
   }
   return out;
