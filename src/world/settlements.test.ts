@@ -179,7 +179,7 @@ describe('settlements — 20-seed sweep', () => {
       marketing: ['lighthouse'],
       coding: ['windTurbine', 'windTurbine', 'windTurbine'],
       devops: ['volcanoCrater', 'hotSpring'],
-      qa: ['sunkenShip'],
+      qa: ['qaTower'],
       design: ['giantTree'],
       research: ['lonelyPalm'],
     };

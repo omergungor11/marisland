@@ -105,7 +105,9 @@ describe('settlement props: theme-first world (TASK-380)', () => {
     expect(towers.length).toBeGreaterThan(0);
     for (const c of emitters.chimneys.filter((e) => e.lot < 0)) {
       const r = c.prop ?? -1;
-      expect(Math.hypot(c.x - props.x[r], c.z - props.z[r])).toBeLessThan(0.5);
+      // on the stack (QA hangar chimneys stand off-centre on the roof, within its footprint)
+      const reach = defOf(r) === 'testHangar' ? 4.5 : 0.5;
+      expect(Math.hypot(c.x - props.x[r], c.z - props.z[r])).toBeLessThan(reach);
       expect(c.y).toBeGreaterThan(props.y[r]);
     }
   });

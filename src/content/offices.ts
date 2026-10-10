@@ -256,12 +256,12 @@ export const FIXTURE_EMITTERS: Readonly<Record<string, readonly (readonly Emitte
     [{ x: -0.16, y: 0.75, z: 0.04, preset: 'vent' }],
   ],
   // QA test hangars (TASK-401): the short chimney tops (geo/themes/qa-factory.ts)
-  testHangar: QA_FACTORY.hangar.chimneys.map((v) =>
-    v.map((c) => ({
+  testHangar: [
+    QA_FACTORY.hangar.chimneys.map((c) => ({
       x: c.x,
       y: 0.25 + QA_FACTORY.hangar.h + QA_FACTORY.hangar.chimneyH + 0.25,
       z: c.z,
       preset: 'chimney' as const,
     })),
-  ),
+  ],
 };

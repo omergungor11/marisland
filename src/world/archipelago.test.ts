@@ -93,9 +93,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "a0487cf158e6666d",
-          "1001": "4a29a2cdc9124389",
-          "42": "3d0ea3a625fe7638",
+          "1": "149453422e580634",
+          "1001": "454b822bf8cbdcca",
+          "42": "e95b0efb9aee1e2b",
         }
       `);
     },
@@ -233,16 +233,13 @@ describe('archipelago — 30-seed full generation', () => {
             expect(isl.anchors.hotspring, ctx).toBeDefined();
             break;
           case 'palmlagoon': {
-            expect(isl.peakY, ctx).toBeLessThanOrEqual(4);
-            // ring with 1–2 channel breaks → 1–2 land pieces (W6: ≤ 2 breaks)
-            const pieces = components(w, isl);
-            expect(pieces, ctx).toBeGreaterThanOrEqual(1);
-            expect(pieces, ctx).toBeLessThanOrEqual(2);
-            const wreck = isl.anchors.wreck;
-            expect(wreck, ctx).toBeDefined();
-            const y = heightAt(w.height, wreck.x, wreck.z);
-            expect(y, ctx).toBeLessThanOrEqual(-1.8);
-            expect(y, ctx).toBeGreaterThanOrEqual(-4.2);
+            // TASK-401 Test Factory: one solid plateau on the bluff (8.6–9.6 u), the yard /
+            // tower / harbour anchors, no lagoon or wreck any more
+            expect(isl.peakY, ctx).toBeGreaterThanOrEqual(8);
+            expect(isl.peakY, ctx).toBeLessThanOrEqual(10);
+            expect(components(w, isl), ctx).toBe(1);
+            expect(isl.anchors.yard && isl.anchors.tower && isl.anchors.harbour, ctx).toBeTruthy();
+            expect(isl.anchors.wreck, ctx).toBeUndefined();
             break;
           }
           case 'millbrook':
@@ -322,7 +319,7 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
   }
 
   it('hero and medium plateaus: ≥ 60 % bluff coast on average, faces ≤ ~65°, Zone.cliff', () => {
-    expect(BLUFFED).toEqual(['hearthholm', 'millbrook', 'emberpeak', 'mossgrove']);
+    expect(BLUFFED).toEqual(['hearthholm', 'millbrook', 'emberpeak', 'palmlagoon', 'mossgrove']);
     const share: Record<string, number[]> = {};
     for (const seed of SEEDS) {
       const w = world(seed);
@@ -371,7 +368,7 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
     }
   });
 
-  it('peaks: Hearthholm 18–20 u, Millbrook 10–12 u, Mossgrove ≥ 21.5 u (was 19–21); atoll and sandbar stay low', () => {
+  it('peaks: Hearthholm 18–20 u, Millbrook 10–12 u, Mossgrove ≥ 21.5 u (was 19–21); QA plateau ≤ 10 u, sandbar low', () => {
     for (const seed of SEEDS) {
       for (const isl of world(seed).islands) {
         const ctx = `seed ${seed} ${isl.archetype}`;
@@ -381,7 +378,7 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
         }
         if (isl.archetype === 'millbrook') expect(isl.peakY, ctx).toBeGreaterThanOrEqual(9.5);
         if (isl.archetype === 'mossgrove') expect(isl.peakY, ctx).toBeGreaterThanOrEqual(21.5);
-        if (isl.archetype === 'palmlagoon') expect(isl.peakY, ctx).toBeLessThanOrEqual(4);
+        if (isl.archetype === 'palmlagoon') expect(isl.peakY, ctx).toBeLessThanOrEqual(10);
         if (isl.archetype === 'lonelypalm') expect(isl.peakY, ctx).toBeLessThanOrEqual(0.7);
       }
     }
@@ -394,9 +391,10 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       for (const b of saved) b.on = false;
       // viaducts (TASK-394) are the only other thing that moved hashes.world since; off = the old pins
       (BRIDGES as { count: readonly number[] }).count = [0, 0];
-      // hashes.world pinned before TASK-390
-      expect(generateWorld(1001).hashes.world).toBe('05919e804aa1d13b');
-      expect(generateWorld(1).hashes.world).toBe('a58bce8ad57703c1');
+      // hashes.world pinned before TASK-390, re-pinned for TASK-401 (the QA island's profile is
+      // the factory plateau now, the atoll profile is gone: flags off = pre-M17b + that profile)
+      expect(generateWorld(1001).hashes.world).toBe('a7aaddf8c3a2d683');
+      expect(generateWorld(1).hashes.world).toBe('4f4ebda008840fa8');
     } finally {
       for (const b of saved) b.on = true;
       (BRIDGES as { count: readonly number[] }).count = bridgeCount;

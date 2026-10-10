@@ -14,11 +14,12 @@
  *   checklist boards and cones on those lanes.
  * Every random decision draws from labelled forks of `rng`; tuning lives in QA_PLAN.
  */
-import { FLATTEN, LANDMARKS } from '../../../content/settlements.ts';
+import { FLATTEN, LANDMARKS, VILLAGE } from '../../../content/settlements.ts';
 import { QA_PLAN as P } from '../../../content/themes/qa.ts';
 import { THEMES } from '../../../content/themes/index.ts';
 import type { IslandData, XZ } from '../../types.ts';
 import { heightAt } from '../../types.ts';
+import { gridRange } from '../grid.ts';
 import {
   add,
   addPad,
@@ -26,6 +27,7 @@ import {
   ang,
   bestSample,
   campusLots,
+  cellPos,
   clear,
   dirOf,
   discShape,
@@ -35,6 +37,7 @@ import {
   linkLandmark,
   newPlan,
   onLand,
+  placeStiltHut,
   pushLandmark,
   rectShape,
   relief,
@@ -43,6 +46,7 @@ import {
   unit,
   type Shape,
   type SiteCtx,
+  type SitePlan,
 } from '../sites.ts';
 import type { ThemePlanner } from './types.ts';
 
@@ -60,10 +64,9 @@ function fixture(
   p: XZ,
   rotY: number,
   sh: Shape,
-  o: { block: boolean; pad?: number; variant?: number },
+  o: { block: boolean; pad?: number },
 ): void {
   ctx.fixtures.push({ defId, x: p.x, z: p.z, rotY, islandId: isl.id });
-  if (o.variant !== undefined) ctx.fixtures[ctx.fixtures.length - 1].variant = o.variant;
   addShape(ctx, isl, sh, o.block);
   if (o.pad !== undefined) addPad(ctx, isl, sh, o.pad);
 }
@@ -148,7 +151,6 @@ function placeHangars(ctx: SiteCtx, isl: IslandData, yard: XZ, dockA: number, n:
     fixture(ctx, isl, 'testHangar', best.p, best.a + Math.PI, best.sh, {
       block: true,
       pad: FLATTEN.lotMargin,
-      variant: out.length % 2,
     });
     out.push(best);
   }
@@ -213,6 +215,36 @@ function placeTrack(ctx: SiteCtx, isl: IslandData, yard: XZ): void {
   if (b) fixture(ctx, isl, 'testTrack', b.p, b.rot, b.sh, { block: true, pad: FLATTEN.discMargin });
 }
 
+/**
+ * The dockside lab: the stilt lab (THEMES.qa.defSwap stiltHut → testLabStilt) on the harbour cove
+ * water nearest the pier root, its boardwalk landing on the cove beach. After the campus lots,
+ * so the settlement's lead office stays a land test lab.
+ */
+function placeStiltLab(
+  ctx: SiteCtx,
+  isl: IslandData,
+  plan: SitePlan,
+  near: XZ,
+  sIdx: number,
+): void {
+  const spots: XZ[] = [];
+  const Rs = P.stiltSearch;
+  const [x0, x1] = gridRange(near.x - Rs, near.x + Rs);
+  const [z0, z1] = gridRange(near.z - Rs, near.z + Rs);
+  for (let iz = z0; iz <= z1; iz++)
+    for (let ix = x0; ix <= x1; ix++) {
+      const i = iz * ctx.n + ix;
+      const y = ctx.h.data[i];
+      const sd = -ctx.sdf[i];
+      if (y > -VILLAGE.stiltDepth[0] || y < -VILLAGE.stiltDepth[1]) continue;
+      if (sd < VILLAGE.stiltShore[0] || sd > VILLAGE.stiltShore[1]) continue;
+      const p = cellPos(ctx, i);
+      if (dist(p, near) <= Rs) spots.push(p);
+    }
+  spots.sort((a, b) => dist(a, near) - dist(b, near));
+  for (const p of spots) if (placeStiltHut(ctx, isl, plan, p, sIdx) >= 0) return;
+}
+
 /** Checkpoints: barrier gates across the campus lanes, a checklist board right, cones left. */
 function placeGates(ctx: SiteCtx, isl: IslandData, yard: XZ): void {
   const loose = (defId: string, p: XZ, rotY: number, r: number): void =>
@@ -273,7 +305,12 @@ export const planQa: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
     carve: true,
   });
   dockWithLink(ctx, isl, plan, site, rng.fork('moorings'), { rowboats: 1, sailboats: 0 });
-  if (site) plan.hub = site.root;
+  if (site) {
+    plan.hub = site.root;
+    // keep lot pads (and their falloff) off the pier root: a raised beach cell would lift the
+    // first planks' bilinear ground above the water
+    addShape(ctx, isl, discShape(site.root.x, site.root.z, P.dockClear), false);
+  }
 
   // Factory yard (plaza + network hub)
   const yard = placeYard(ctx, isl, yardA);
@@ -316,6 +353,7 @@ export const planQa: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
 
   // test labs on lanes from the yard (lane 0 runs down to the pier), then the checkpoints
   campusLots(ctx, isl, plan, { ...P.campus, quadR: R }, rng.fork('campus'), sIdx, yard);
+  placeStiltLab(ctx, isl, plan, site ? site.root : harbour, sIdx);
   placeGates(ctx, isl, yard);
   return plan;
 };

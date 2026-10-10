@@ -21,7 +21,8 @@ export const QA_THEME: ThemeDef = {
   teamTints: ['#3FBF8F', '#7FD8B3', '#2E9E74'],
   lotMix: [['testLab', 1]],
   crown: null,
-  defSwap: {},
+  // placeStiltHut places the archetype's 'stiltHut' def: the dockside lab on stilts
+  defSwap: { stiltHut: 'testLabStilt' },
   landmarkVariant: {},
   decor: [
     ['checklistBoard', 2],
@@ -77,6 +78,8 @@ export const QA_PLAN = {
   /** Harbour pier in the lee cove (carved when shallow). */
   dockMaxDist: 24,
   dockLee: 30,
+  /** Lots keep this far (u, obstacle disc) from the pier root. */
+  dockClear: 5,
   /** QA tower (landmark 'qaTower'): highest clear spot near the knoll, inland, off the yard. */
   towerSearch: 14,
   towerMinShore: 5,
@@ -94,6 +97,8 @@ export const QA_PLAN = {
   /** Conveyor bridge: segment length (= geo), bridge only hangar pairs this far apart (centres). */
   beltSeg: 2,
   beltSpan: [9, 24] as const,
+  /** Dockside stilt lab: cove water within this of the pier root. */
+  stiltSearch: 22,
   /** Crash-test loop track: footprint (= geo QA_TRACK bounds + margin), search, ground. */
   track: [7, 14] as const,
   trackSearch: 30,
@@ -137,23 +142,28 @@ export const QA_FACTORY = {
     h: 4,
     teeth: 3,
     rise: 1.45,
-    walls: ['#FFE6C4', '#DDF0FF'] as const,
-    roofs: ['#3FBF8F', '#6FB7F0'] as const,
-    /** Pastel band along the wall foot (per variant). */
-    bands: ['#7FD8B3', '#F7B7C8'] as const,
+    /**
+     * One colourway, one variant: a second variant cost a draw call per tier (+ its shadow) on
+     * every frame that shows the factory.
+     */
+    wall: '#FFDDB0',
+    roof: '#3FBF8F',
+    /** Pastel band along the wall foot, fan blades. */
+    band: '#7FD8B3',
+    blade: '#CDEBFF',
     trim: '#2E9E74',
     plinth: '#A9AEB8',
     door: '#F5C84C',
     stripe: '#4F4A5E',
     window: '#FFE9B8',
-    glass: '#CFEFFF',
-    /** Short chimneys per variant: roof-local (x, z), height above the wall top, radius. */
+    /** Sawtooth north-light glazing (sky glass by day, lit at night). */
+    glass: '#A8DDF5',
+    /** Extractor fans on the front wall (spin with the wind, like the windmill): radius. */
+    fanR: 0.42,
+    /** Short chimneys (every variant): roof-local (x, z), height above the wall top, radius. */
     chimneys: [
-      [{ x: -3, z: -1.7 }],
-      [
-        { x: 3, z: -1.9 },
-        { x: 1.5, z: -1.9 },
-      ],
+      { x: -3, z: -1.7 },
+      { x: 2.6, z: -1.9 },
     ] as const,
     chimneyH: 2.4,
     chimneyR: 0.45,
@@ -225,7 +235,7 @@ export const QA_FACTORY = {
  */
 export const QA_MOVERS = {
   /** Belt speed (u/s); one crate per segment, so they follow at `beltSeg` spacing. */
-  beltSpeed: 0.75,
+  beltSpeed: 1.1,
   /** Cart: speed on the flat (u/s), fraction of it left at the loop top, instance scale. */
   cartSpeed: 3,
   cartTop: 0.5,

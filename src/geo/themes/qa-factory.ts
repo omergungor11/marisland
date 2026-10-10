@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import { QA_FACTORY as F } from '../../content/themes/qa.ts';
 import { Acc, qEuler, qFromTo, type ColorFn } from '../kit.ts';
-import { glyph, sawtoothRoof } from '../office-kit.ts';
+import { Spin, fan, finishSpin, glyph, sawtoothRoof } from '../office-kit.ts';
 import { V, baseBox, cylB, jitterAcc, put, windowAt } from '../parts.ts';
 import type { BuildOpts } from '../types.ts';
 import { addHook } from './hq.ts';
@@ -32,16 +32,15 @@ function beam(acc: Acc, a: THREE.Vector3, b: THREE.Vector3, th: number, color: s
  * with warm north-light glazing, big yellow door with a hazard band, window rows, short candy
  * chimneys (FIXTURE_EMITTERS steam), a QA check over the door.
  */
-export function testHangar({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
+export function testHangar({ rng, lod }: BuildOpts): THREE.BufferGeometry {
   const H = F.hangar;
   const acc = jitterAcc(rng, 0.012);
   const hi = lod === 0;
-  const v = variant % 2;
   const { w, d, h } = H;
   const y0 = 0.25;
   put(acc, baseBox(w + 0.4, y0, d + 0.4), [0, 0, 0], H.plinth, { aoAmt: 0.2 });
-  put(acc, baseBox(w, h, d), [0, y0, 0], H.walls[v], { aoAmt: 0.18 });
-  put(acc, baseBox(w + 0.08, 0.7, d + 0.08), [0, y0, 0], H.bands[v], { aoAmt: 0.1 });
+  put(acc, baseBox(w, h, d), [0, y0, 0], H.wall, { aoAmt: 0.18 });
+  put(acc, baseBox(w + 0.08, 0.7, d + 0.08), [0, y0, 0], H.band, { aoAmt: 0.1 });
   // trim band at the wall top
   put(acc, baseBox(w + 0.12, 0.22, d + 0.12), [0, y0 + h - 0.22, 0], H.trim, { aoAmt: 0 });
   sawtoothRoof(acc, {
@@ -50,10 +49,15 @@ export function testHangar({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
     y: y0 + h,
     teeth: H.teeth,
     rise: H.rise,
-    roof: H.roofs[v],
-    glass: H.window,
+    roof: H.roof,
+    glass: H.glass,
     lod,
   });
+  // two extractor fans high on the front wall, either side of the door
+  const spin = new Spin();
+  if (hi)
+    for (const sx of [-1, 1])
+      fan(acc, spin, V(sx * 3.2, y0 + h - 0.75, d / 2 + 0.06), H.fanR, H.trim, H.blade, lod);
   // big door (yellow) with a hazard band and a check over it
   const dw = 3.2;
   const dh = 2.9;
@@ -137,10 +141,11 @@ export function testHangar({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
   // short chimneys: white stack, red band, dark cap (steam: FIXTURE_EMITTERS)
   const seg = hi ? 10 : 6;
   const top = y0 + h;
-  for (const c of H.chimneys[v]) {
+  for (const c of H.chimneys) {
     put(acc, cylB(H.chimneyR, H.chimneyR * 0.85, H.chimneyH, seg), [c.x, top, c.z], H.chimneyBody, {
       aoAmt: 0.1,
     });
+    if (!hi) continue;
     put(
       acc,
       cylB(H.chimneyR * 0.9, H.chimneyR * 0.9, 0.34, seg),
@@ -158,18 +163,8 @@ export function testHangar({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
       },
     );
   }
-  const g = acc.finish(rng, false, true);
+  const g = finishSpin(acc.finish(rng, false, true), acc, spin);
   return addHook(g, 'door', { center: [0, y0, d / 2 + 0.2], normal: [0, 0, 1] });
-}
-
-/** Steam spots of a hangar variant (local, above the pivot): the chimney tops. */
-export function hangarChimneyTops(variant: number): { x: number; y: number; z: number }[] {
-  const H = F.hangar;
-  return H.chimneys[variant % 2].map((c) => ({
-    x: c.x,
-    y: 0.25 + H.h + H.chimneyH + 0.25,
-    z: c.z,
-  }));
 }
 
 /* ---------------------------------- conveyor ---------------------------------- */
@@ -181,7 +176,7 @@ export function hangarChimneyTops(variant: number): { x: number; y: number; z: n
  */
 export function conveyor({ rng, lod }: BuildOpts): THREE.BufferGeometry {
   const B = F.belt;
-  const acc = jitterAcc(rng, 0.0);
+  const acc = jitterAcc(rng, 0.01);
   const hi = lod === 0;
   const L = B.seg;
   const W = B.width;
@@ -272,7 +267,7 @@ function railTube(
  */
 export function testTrack({ rng, lod }: BuildOpts): THREE.BufferGeometry {
   const T = F.track;
-  const acc = new Acc();
+  const acc = jitterAcc(rng, 0.01);
   const hi = lod === 0;
   const path = trackPath(hi ? 0.4 : 1.1);
   const hx = path.halfX + 0.6;
@@ -298,7 +293,7 @@ export function testTrack({ rng, lod }: BuildOpts): THREE.BufferGeometry {
     });
   } else {
     // LOD1: one fat rail (same colour split) on the same line
-    railTube(acc, path, 0, T.railY, T.gauge / 2, railCol);
+    railTube(acc, path, 0, T.railY, T.railY - 0.02, railCol);
   }
   // the loop's A-frame: posts either side of the loop top, a beam over it
   const R = T.loopR;
@@ -362,7 +357,7 @@ export function testTrack({ rng, lod }: BuildOpts): THREE.BufferGeometry {
  */
 export function qaTower({ rng, lod }: BuildOpts): THREE.BufferGeometry {
   const T = F.tower;
-  const acc = jitterAcc(rng, 0.0);
+  const acc = jitterAcc(rng, 0.01);
   const hi = lod === 0;
   const y0 = 0.45;
   put(acc, cylB(T.base + 0.9, T.base + 0.7, y0, hi ? 10 : 6), [0, 0, 0], T.plinth, { aoAmt: 0.2 });
@@ -392,6 +387,14 @@ export function qaTower({ rng, lod }: BuildOpts): THREE.BufferGeometry {
       }
     }
   }
+  // LOD1: one full-height X per face carries the braces' colour mass
+  if (!hi)
+    for (let e = 0; e < 4; e++) {
+      const [ax, az] = cs[e];
+      const [bx, bz] = cs[(e + 1) % 4];
+      beam(acc, legAt(ax, az, y0), legAt(bx, bz, yt), 0.42, T.brace);
+      beam(acc, legAt(bx, bz, y0), legAt(ax, az, yt), 0.42, T.brace);
+    }
   // platform under the sign
   put(acc, baseBox(T.top * 2 + 0.8, 0.22, T.top * 2 + 0.8), [0, yt, 0], T.rim, { aoAmt: 0 });
   // the sign: white disc (faces ±z), green rim, a check on both faces

@@ -182,14 +182,19 @@ describe('QA Test Factory plan (TASK-401), 30 seeds', () => {
     console.info(`barrier gates per seed: ${counts.join(' ')}`);
   });
 
-  it('leftover audit: no atoll leftovers (wreck, stilt lab, inspection buoys, tide pools)', () => {
+  it('leftover audit: no atoll leftovers (wreck, inspection buoys, tide pools); one dockside stilt lab', () => {
+    let stilt = 0;
     for (const seed of SEEDS) {
       const w = world(seed);
       const { isl } = qaOf(w);
       const ctx = `seed ${seed}`;
       const defs = w.lots.filter((l) => l.islandId === isl.id).map((l) => l.defId);
-      for (const d of ['cottage', 'stiltHut', 'testLabStilt', 'inspectionTower', 'logCabin'])
+      for (const d of ['cottage', 'stiltHut', 'inspectionTower', 'logCabin'])
         expect(defs, ctx).not.toContain(d);
+      const labs = w.lots.filter((l) => l.islandId === isl.id && l.defId === 'testLabStilt');
+      expect(labs.length, ctx).toBeLessThanOrEqual(1);
+      for (const l of labs) expect(heightAt(w.height, l.x, l.z), ctx).toBeLessThan(-0.3);
+      stilt += labs.length;
       const fx = w.fixtures.filter((f) => f.islandId === isl.id).map((f) => f.defId);
       for (const d of ['buoy', 'inspectionBuoy', 'tidePool', 'well'])
         expect(fx, ctx).not.toContain(d);
@@ -198,6 +203,7 @@ describe('QA Test Factory plan (TASK-401), 30 seeds', () => {
         ctx,
       ).not.toContain('sunkenShip');
     }
+    expect(stilt).toBeGreaterThanOrEqual(24);
   });
 
   it('deterministic: per-island snapshot', () => {
@@ -209,9 +215,9 @@ describe('QA Test Factory plan (TASK-401), 30 seeds', () => {
     });
     expect(got).toMatchInlineSnapshot(`
       [
-        "b6bbb56a11e3ffc5",
-        "ca678d1f0e0b09d5",
-        "bbd0a5c30176f5e9",
+        "0d6eb4f708e3c0df",
+        "66e1cb20b0808662",
+        "b050a5f651194303",
       ]
     `);
   });
