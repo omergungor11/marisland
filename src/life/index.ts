@@ -25,6 +25,8 @@ import { makeCtx, setMotion, type LifeDeps } from './ctx.ts';
 import { FishSchools } from './fish.ts';
 import { flockCentres, Gulls, type Perch } from './gulls.ts';
 import type { Cats, Crabs, Sheep, Villagers } from './land.ts';
+import type { Butterflies } from './critters.ts';
+import { createCritterKinds, type Ducks } from './critters.ts';
 import { Fireflies, planSwarms } from './fireflies.ts';
 import { createLandKinds, type LandKind } from './land.ts';
 import { buildSolids, buildWalkGraph, makeMask, makeStopMask } from './land-world.ts';
@@ -69,6 +71,9 @@ export interface LifeSystem extends System {
     workers?: Workers;
     /** Night fireflies: render-rate particles (not an agent: excluded from `stats.agents`). */
     fireflies?: Fireflies;
+    /** Theme creatures (TASK-332): ducks on the Coding pool (agents), day butterflies over Design (particles). */
+    ducks?: Ducks;
+    butterflies?: Butterflies;
   };
   /** Seaward dock-end / mooring perches used by landing gulls. */
   readonly counts: { coconutDrops: number };
@@ -153,12 +158,15 @@ export function createLife(deps: LifeDeps): LifeSystem {
     mask: makeMask(ctx, solids, WORKER_ZONES, -VILLAGERS.minWalkY),
     stopMask: makeStopMask(ctx, stopSolids, WORKER_ZONES, -VILLAGERS.minWalkY),
   });
+  const critters = createCritterKinds(base, ctx, plan);
+  Object.assign(kinds, critters);
   const landKinds: LandKind[] = [
     land.villagers,
     kinds.workers,
     land.cats,
     land.sheep,
     land.crabs,
+    critters.ducks,
   ].filter((k): k is NonNullable<typeof k> => k !== undefined);
   all.push(...landKinds);
 
@@ -215,6 +223,7 @@ export function createLife(deps: LifeDeps): LifeSystem {
     update(_dt, alpha) {
       for (const k of all) k.update(alpha);
       kinds.fireflies?.update(alpha);
+      kinds.butterflies?.update(alpha);
       recount();
     },
     onTier(tier) {
@@ -225,6 +234,7 @@ export function createLife(deps: LifeDeps): LifeSystem {
       setMotion(ctx, s);
       for (const k of all) k.motionScale = s;
       if (kinds.fireflies) kinds.fireflies.motionScale = s;
+      if (kinds.butterflies) kinds.butterflies.motionScale = s;
     },
     setCursorWorld(x, z = null) {
       kinds.fish?.setRepel(x, z);
