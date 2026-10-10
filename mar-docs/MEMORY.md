@@ -10,6 +10,15 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-10 evening**: M17b wave 2 + island redesigns merged (TASK-393/394/395/400/401).
+  Research = crater + biodomes (`ARCHETYPES.lonelypalm.crater`), QA = factory plateau (palmlagoon
+  bluff). Crater islands get no waterfalls and no viaduct ends (too small). Seed 1001's only viaduct
+  is now DevOps → QA; W12 looks at it from ≈ 170 u NW (closer = both campuses at T2, 310–530 calls).
+  Settlement decor/theme/district streams fork per island id (`settlement-props.ts`): one island's
+  plan change no longer reshuffles the others' decor. Movers (crates, test cart) in
+  `render/movers.ts`, time-driven, hidden > 230 u. Under load the 30-seed plan tests time out at
+  20 s; run them alone. Open: ART_BIBLE §4/§11 (W9 palm, W6 atoll), VISUAL_QA W6, DECISIONS →
+  TASK-398; E-mixed edit log targets the old lagoon; W4 cuts the tall lighthouse; D-macro faces a wall.
 - **2026-10-10 later**: M17b wave 1 merged + pushed (TASK-390/391/392, balloons scaled 1.1–1.4).
   W11 "Concept" is the reference frame. Parallel agents MUST pass distinct `--port=` to
   `pnpm shots`: it reuses any server already on 4173 ("not ours") and can shoot another

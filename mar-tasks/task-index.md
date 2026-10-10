@@ -218,9 +218,11 @@ Details in `phases/phase-3.md`.
 | TASK-390 | Bluff coasts + hero heights: per-archetype `bluff` flag, 5–7 u walls tagged Zone.cliff, harbour/dock coves | worldgen | L | COMPLETED (73d9ac2) | — |
 | TASK-391 | Earth walls: soil strata, grass lip + drips, dark foot, wet line in the terrain material | shader | M | COMPLETED (7736849) | — |
 | TASK-392 | Postcard pose (intro ends on it), horizon cloud banks, warmer grade, aerial fog tint | engine | M | COMPLETED (7431bdc) | — |
-| TASK-393 | Hero landmark per theme ×1.6–2 height, LOD1 faithful | props | M | PENDING | TASK-390 |
-| TASK-394 | Stone-arch viaducts between near islands (pair picker + geo + InstancedMesh), preset W12 | worldgen → props | M | PENDING | TASK-390 |
-| TASK-395 | Waterfalls off bluff lips: lit flow tag, foam, mist puffs | shader | M | PENDING | TASK-390 |
+| TASK-393 | Hero landmark per theme ×1.6–2 height, LOD1 faithful | props | M | COMPLETED | TASK-390 |
+| TASK-394 | Stone-arch viaducts between near islands (pair picker + geo + InstancedMesh), preset W12 | worldgen → props | M | COMPLETED | TASK-390 |
+| TASK-395 | Waterfalls off bluff lips: lit flow tag, foam, mist puffs | shader | M | COMPLETED | TASK-390 |
+| TASK-400 | Research → "Biodome Lab": breached crater, glass biodomes, rim crystals, research vessel | worldgen | L | COMPLETED | TASK-390 |
+| TASK-401 | QA → "Test Factory": plateau, sawtooth hangars, conveyor bridges, loop track, check tower, movers | worldgen | L | COMPLETED | TASK-390 |
 | TASK-396 | Re-pin cams (D-macro blocked by a wall), DESK_CAM, live cams; `--assert` ×3 qualities | engine | S | PENDING | 393–395 |
 | TASK-397 | QA: wow before/after sheet, ladder ×3, 10-seed sweep | qa | M | PENDING | TASK-396 |
 | TASK-398 | Docs: ART_BIBLE §2/§4/§6/§8/§11 (soil #B9845A, postcard pitch band), DECISIONS D-039…, MEMORY | docs | S | PENDING | TASK-397 |
