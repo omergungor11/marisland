@@ -339,7 +339,7 @@ function applyBluffs(
       const ground = lerp(
         BEACH.min,
         Math.max(raw[i], BEACH.min),
-        smoothstep(0, run + BLUFF.rimEase, ws),
+        smoothstep(0, run + (bluff.rimEase ?? BLUFF.rimEase), ws),
       );
       const high = ground + wall * wallShape(ws / run);
       const cv = low[i] + wall * smoothstep(c0, c0 + bluff.coveRamp, ws);

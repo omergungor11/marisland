@@ -93,9 +93,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "a0487cf158e6666d",
-          "1001": "4a29a2cdc9124389",
-          "42": "3d0ea3a625fe7638",
+          "1": "f7be8b04fcc61e8d",
+          "1001": "6dab8b1b17a2a5cb",
+          "42": "b6c7629903770480",
         }
       `);
     },
@@ -109,43 +109,38 @@ describe('archipelago — 30-seed full generation', () => {
     expect(a.streams).toEqual(b.streams);
   });
 
-  it(
-    'every island: beach + green (Lonely Palm: sand only), land inside its disc, no NaN',
-    { timeout: 30_000 },
-    () => {
-      for (const seed of SEEDS) {
-        const w = world(seed);
-        let nonFinite = 0;
-        for (let i = 0; i < w.height.data.length; i++)
-          if (!Number.isFinite(w.height.data[i]) || !Number.isFinite(w.shoreSdf[i])) nonFinite++;
-        expect(nonFinite).toBe(0);
-        for (const isl of w.islands) {
-          const ctx = `seed ${seed} ${isl.archetypeName}`;
-          const zc = zoneCounts(w, isl);
-          const land = [...zc.values()].reduce((a, b) => a + b, 0);
-          expect(land, ctx).toBeGreaterThan(0);
-          expect(sum(zc, SAND), ctx).toBeGreaterThan(0);
-          // Lonely Palm: sand only, plus the Research outpost's short trail to its pier
-          if (isl.archetype === 'lonelypalm') expect(sum(zc, [...SAND, Zone.path]), ctx).toBe(land);
-          else expect(sum(zc, GREEN), ctx).toBeGreaterThan(0);
-        }
-        const reachFrac = w.islands.map(() => 0);
-        for (let i = 0; i < w.islandMap.length; i++) {
-          const id = w.islandMap[i];
-          if (id === 0) continue;
-          const isl = w.islands[id - 1];
-          const [x, z] = coord(w, i);
-          const f = Math.hypot(x - isl.cx, z - isl.cz) / isl.reach;
-          if (f > reachFrac[id - 1]) reachFrac[id - 1] = f;
-        }
-        w.islands.forEach((isl, k) =>
-          expect(reachFrac[k], `seed ${seed} ${isl.archetypeName} land outside reach`).toBeLessThan(
-            1,
-          ),
-        );
+  it('every island: beach + green, land inside its disc, no NaN', { timeout: 30_000 }, () => {
+    for (const seed of SEEDS) {
+      const w = world(seed);
+      let nonFinite = 0;
+      for (let i = 0; i < w.height.data.length; i++)
+        if (!Number.isFinite(w.height.data[i]) || !Number.isFinite(w.shoreSdf[i])) nonFinite++;
+      expect(nonFinite).toBe(0);
+      for (const isl of w.islands) {
+        const ctx = `seed ${seed} ${isl.archetypeName}`;
+        const zc = zoneCounts(w, isl);
+        const land = [...zc.values()].reduce((a, b) => a + b, 0);
+        expect(land, ctx).toBeGreaterThan(0);
+        expect(sum(zc, SAND), ctx).toBeGreaterThan(0);
+        // Lonely Palm is the Research crater since TASK-400: a green bowl and a cove beach too
+        expect(sum(zc, GREEN), ctx).toBeGreaterThan(0);
       }
-    },
-  );
+      const reachFrac = w.islands.map(() => 0);
+      for (let i = 0; i < w.islandMap.length; i++) {
+        const id = w.islandMap[i];
+        if (id === 0) continue;
+        const isl = w.islands[id - 1];
+        const [x, z] = coord(w, i);
+        const f = Math.hypot(x - isl.cx, z - isl.cz) / isl.reach;
+        if (f > reachFrac[id - 1]) reachFrac[id - 1] = f;
+      }
+      w.islands.forEach((isl, k) =>
+        expect(reachFrac[k], `seed ${seed} ${isl.archetypeName} land outside reach`).toBeLessThan(
+          1,
+        ),
+      );
+    }
+  });
 
   it('no land bridges and deep channels between neighbouring islands', () => {
     let worst = -Infinity;
@@ -267,10 +262,14 @@ describe('archipelago — 30-seed full generation', () => {
             ).toBe(true);
             break;
           }
-          case 'lonelypalm':
-            expect(isl.peakY, ctx).toBeLessThanOrEqual(0.7);
-            expect(isl.anchors.palm, ctx).toBeDefined();
+          case 'lonelypalm': {
+            // TASK-400 breached crater: rim above the bowl, the hero-dome and breach anchors
+            const b = ARCHETYPES.lonelypalm.bluff;
+            expect(isl.peakY, ctx).toBeGreaterThanOrEqual((b?.peak[0] ?? 0) - 0.5);
+            expect(isl.peakY, ctx).toBeLessThanOrEqual((b?.peak[1] ?? 0) + 0.5);
+            expect(isl.anchors.dome && isl.anchors.breach, ctx).toBeTruthy();
             break;
+          }
           case 'hearthholm':
             expect(isl.anchors.harbour, ctx).toBeDefined();
             break;
@@ -322,7 +321,7 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
   }
 
   it('hero and medium plateaus: ≥ 60 % bluff coast on average, faces ≤ ~65°, Zone.cliff', () => {
-    expect(BLUFFED).toEqual(['hearthholm', 'millbrook', 'emberpeak', 'mossgrove']);
+    expect(BLUFFED).toEqual(['hearthholm', 'millbrook', 'emberpeak', 'mossgrove', 'lonelypalm']);
     const share: Record<string, number[]> = {};
     for (const seed of SEEDS) {
       const w = world(seed);
@@ -371,7 +370,7 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
     }
   });
 
-  it('peaks: Hearthholm 18–20 u, Millbrook 10–12 u, Mossgrove ≥ 21.5 u (was 19–21); atoll and sandbar stay low', () => {
+  it('peaks: Hearthholm 18–20 u, Millbrook 10–12 u, Mossgrove ≥ 21.5 u (was 19–21); atoll stays low; Research crater rim ≥ 5 u', () => {
     for (const seed of SEEDS) {
       for (const isl of world(seed).islands) {
         const ctx = `seed ${seed} ${isl.archetype}`;
@@ -382,21 +381,25 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
         if (isl.archetype === 'millbrook') expect(isl.peakY, ctx).toBeGreaterThanOrEqual(9.5);
         if (isl.archetype === 'mossgrove') expect(isl.peakY, ctx).toBeGreaterThanOrEqual(21.5);
         if (isl.archetype === 'palmlagoon') expect(isl.peakY, ctx).toBeLessThanOrEqual(4);
-        if (isl.archetype === 'lonelypalm') expect(isl.peakY, ctx).toBeLessThanOrEqual(0.7);
+        // TASK-400: the Research crater rim (bluff 3–3.4 u + crest)
+        if (isl.archetype === 'lonelypalm') expect(isl.peakY, ctx).toBeGreaterThanOrEqual(5);
       }
     }
   });
 
-  it('the content flag switches an island back: all bluffs off = the pre-M17b world', () => {
-    const saved = BLUFFED.map((a) => ARCHETYPES[a].bluff as { on: boolean });
+  it('the content flag switches an island back: the TASK-390 bluffs off = the pre-M17b world', () => {
+    // the Research crater (TASK-400) keeps its bluff: it is the island's shape, not a coast option
+    const saved = BLUFFED.filter((a) => a !== 'lonelypalm').map(
+      (a) => ARCHETYPES[a].bluff as { on: boolean },
+    );
     const bridgeCount = BRIDGES.count;
     try {
       for (const b of saved) b.on = false;
-      // viaducts (TASK-394) are the only other thing that moved hashes.world since; off = the old pins
+      // viaducts (TASK-394) off too, so only the TASK-400 Research crater differs from the old world
       (BRIDGES as { count: readonly number[] }).count = [0, 0];
-      // hashes.world pinned before TASK-390
-      expect(generateWorld(1001).hashes.world).toBe('05919e804aa1d13b');
-      expect(generateWorld(1).hashes.world).toBe('a58bce8ad57703c1');
+      // hashes.world: the pre-TASK-390 world with the TASK-400 Research crater (re-pinned TASK-400)
+      expect(generateWorld(1001).hashes.world).toBe('ca8b7d7e1e83a9c2');
+      expect(generateWorld(1).hashes.world).toBe('1cf96894c9377abe');
     } finally {
       for (const b of saved) b.on = true;
       (BRIDGES as { count: readonly number[] }).count = bridgeCount;

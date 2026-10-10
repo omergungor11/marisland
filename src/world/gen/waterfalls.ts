@@ -4,6 +4,7 @@
  * Pure data (no three), deterministic: one rng fork per island.
  */
 import type { Rng } from '../../core/rng.ts';
+import { ARCHETYPES } from '../../content/islands.ts';
 import { WATERFALLS as W } from '../../content/waterfalls.ts';
 import { heightAt, Zone, type WaterfallData, type WorldData } from '../types.ts';
 import { bluffOf, coveness } from './heightfield.ts';
@@ -72,7 +73,8 @@ export function placeWaterfalls(world: PlaceInput, rng: Rng): WaterfallData[] {
   ]);
   const at = (x: number, z: number): number => heightAt(h, x, z);
   for (const isl of world.islands) {
-    if (!bluffOf(isl)) continue;
+    // the Research crater (TASK-400) is a bluff ring too, but too small for a fall
+    if (!bluffOf(isl) || ARCHETYPES[isl.archetype].crater) continue;
     const r = rng.fork('island', isl.id);
     const id = isl.id + 1;
     const lots = world.lots.filter((l) => l.islandId === isl.id);

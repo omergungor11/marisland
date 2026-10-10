@@ -319,20 +319,22 @@ describe('workers: behaviour', () => {
 });
 
 describe('workers: outposts', () => {
-  /** A copy of the world with a Research-style hut on the Lonely Palm sand (the real one lands with TASK-302). */
+  /**
+   * A copy of the world where the Research island is an outpost again (TASK-400: the Biodome Lab
+   * has a walk graph): its settlement and fixtures dropped, two field huts on the crater bowl
+   * floor either side of the dome anchor, doors leeward.
+   */
   function withOutpost(seed: number): WorldData | null {
     const wd = world(seed);
-    const id = wd.islands.findIndex((i) => i.archetype === 'lonelypalm');
-    if (id < 0) return null;
-    const palm = wd.landmarks.find((m) => m.islandId === id && m.kind === 'lonelyPalm');
-    if (!palm) return null;
-    const isl = wd.islands[id];
-    const a = Math.atan2(isl.cz - palm.z, isl.cx - palm.x) + 1.2;
-    const lot = {
+    const id = wd.islands.findIndex((i) => i.theme === 'research');
+    const c = id >= 0 ? wd.islands[id].anchors.dome : undefined;
+    if (!c) return null;
+    const a = wd.windDir + Math.PI / 2;
+    const hut = (s: number) => ({
       defId: 'researchHut',
-      x: palm.x + Math.cos(a) * 5,
-      z: palm.z + Math.sin(a) * 5,
-      rotY: a + Math.PI,
+      x: c.x + Math.cos(a) * 2.6 * s,
+      z: c.z + Math.sin(a) * 2.6 * s,
+      rotY: wd.windDir,
       islandId: id,
       kind: 'outpost' as const,
       w: 3,
@@ -340,11 +342,16 @@ describe('workers: outposts', () => {
       node: -1,
       variant: 0,
       role: 'main' as const,
+    });
+    return {
+      ...wd,
+      lots: [...wd.lots, hut(1), hut(-1)],
+      fixtures: wd.fixtures.filter((f) => f.islandId !== id),
+      settlements: wd.settlements.filter((s) => s.islandId !== id),
     };
-    return { ...wd, lots: [...wd.lots, lot] };
   }
 
-  it('Lonely Palm research workers loop between anchors and stay on land', () => {
+  it('outpost research workers loop between anchors and stay on land', () => {
     let tested = 0;
     for (const seed of [1001, 42, 7, 2024, 5005, 9]) {
       const wd = withOutpost(seed);

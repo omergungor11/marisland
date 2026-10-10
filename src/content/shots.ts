@@ -98,6 +98,9 @@ const LIVE_CROP: [number, number, number, number] = [0.15, 0.1, 0.85, 0.9];
 /** W7 camera (raw, seed 1001 Coding; TASK-380), re-pin when that layout changes. */
 const W7_CAM = '45,20,20,95,13,40';
 
+/** D-campus-research close-up (raw, seed 1001 Biodome Lab; TASK-400), re-pin when that layout changes. */
+const RESEARCH_CLOSE_CAM = '-143,13,246,-138.5,3,222.5';
+
 /** D-desk camera (raw `x,y,z,tx,ty,tz`), re-pin when the seed 1001 layout changes. */
 const DESK_CAM = '95.8,8.1,17.3,91.5,6.5,20';
 
@@ -452,7 +455,9 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: `D-campus-${theme}`,
     title: `Campus · ${name}`,
     seed: 1001,
-    cam: `village:${theme}`,
+    // Research (TASK-400): the village fit looks straight down on the tiny crater, so a raw
+    // T2/T3 close-up from the cove side (seed 1001: domes in the bowl, vessel at the pier)
+    cam: theme === 'research' ? RESEARCH_CLOSE_CAM : `village:${theme}`,
     time: 14,
     simt: 2,
     sets: ['dev'],

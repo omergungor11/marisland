@@ -38,6 +38,8 @@ export interface ZoneRuleParams {
   patchwork?: boolean;
   /** Every land cell is sand (Lonely Palm). */
   sandOnly?: boolean;
+  /** Wet sand only below this height (TASK-400: the crater rim tops near the shore stay dry land). */
+  wetSandMaxY?: number;
 }
 
 export type SizeClass = 'hero' | 'medium' | 'small' | 'tiny';
@@ -74,6 +76,38 @@ export interface BluffParams {
   coveFlat: number;
   /** …then the plateau lift ramps up over this many u. */
   coveRamp: number;
+  /** Per-archetype BLUFF.rimEase (u); unset = the shared value (TASK-400: the crater rim). */
+  rimEase?: number;
+}
+
+/**
+ * Breached crater (TASK-400, Lonely Palm → Research "Biodome Lab"), in island-local units
+ * (radius-normalised, +x leeward): a mesa whose land ends at `coast`, a raised crest ring at
+ * `crestD` around a sunken bowl, broken open over the leeward `breachHalfDeg` sector where the
+ * bluff cove ramps down to the beach. Raw profile values (the heightfield rescales the total
+ * to `bluff.peak − wall`): bowl = floor / 2, crest = floor / 2 + crest.
+ */
+export interface CraterParams {
+  /** Land ends at this warped radius (keep < reachScale − 0.1: land inside the reach disc). */
+  coast: number;
+  /** Half-width of the coast smoothstep. */
+  coastSoft: number;
+  /** Minor/major axis ratio of the oval (major axis rolled ± `turn` rad around the wind axis). */
+  oval: number;
+  turn: number;
+  /** Coast warp amplitude (fbm, radius units). */
+  warp: number;
+  floor: number;
+  crest: number;
+  crestD: number;
+  crestWidth: number;
+  /** Crest height jitter (fbm amplitude, fraction of `crest`). */
+  crestJitter: number;
+  breachHalfDeg: number;
+  /** Breach sector edge softness (cos units). */
+  breachSoft: number;
+  /** Hero dome anchor: this far windward of the centre (radius units). */
+  domeShift: number;
 }
 
 export interface ArchetypeParams {
@@ -109,6 +143,8 @@ export interface ArchetypeParams {
   windwardCliff?: boolean;
   /** Bluff coast + raised plateau (BLUFF); unset = the low beach-ringed disc. */
   bluff?: BluffParams;
+  /** Breached-crater profile (Lonely Palm only, TASK-400). */
+  crater?: CraterParams;
   zones: ZoneRuleParams;
 }
 
@@ -259,8 +295,9 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
   lonelypalm: {
     displayName: 'Lonely Palm',
     /**
-     * Phase 3 (TASK-302): 17–21 u (bible 10–16) so the Research hut fits ≥ 4 u from the palm on
-     * pad-safe sand; reachScale 1.6 → 1.3 keeps the W9 hero fit (ring = reach + 8 u ≤ maxDist 50).
+     * Phase 3 (TASK-302): 17–21 u (bible 10–16); reachScale 1.3 keeps the W9 hero fit (ring =
+     * reach + 8 u ≤ maxDist 50). TASK-400 (Research "Biodome Lab"): the same roll and reach (the
+     * layout is unchanged), but the land now fills the reach disc as a breached crater.
      */
     diameter: [17, 21],
     sizeClass: 'tiny',
@@ -270,10 +307,35 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
     boundsScale: 2.2,
     reachScale: 1.3,
     shelfWidth: 5,
-    beachWidth: 4,
-    beachMax: 0.6,
+    beachWidth: 3,
+    beachMax: 0.9,
     terrace: { step: 0, strength: 0 },
-    zones: { ...DEFAULT_ZONES, forestThreshold: 2, meadowThreshold: 2, sandOnly: true },
+    // crater walls: a bluff ring with the leeward cove as the breach, crest kept sharp (rimEase)
+    bluff: {
+      on: true,
+      wall: [3, 3.4],
+      peak: [5.6, 6],
+      coveHalfDeg: 30,
+      coveFlat: 0,
+      coveRamp: 5,
+      rimEase: 0.5,
+    },
+    crater: {
+      coast: 1.2,
+      coastSoft: 0.1,
+      oval: 0.9,
+      turn: 0.5,
+      warp: 0.05,
+      floor: 0.3,
+      crest: 0.6,
+      crestD: 0.9,
+      crestWidth: 0.12,
+      crestJitter: 0.25,
+      breachHalfDeg: 40,
+      breachSoft: 0.2,
+      domeShift: 0.12,
+    },
+    zones: { ...DEFAULT_ZONES, forestThreshold: 2, meadowThreshold: 0.15, wetSandMaxY: 1.5 },
   },
 };
 

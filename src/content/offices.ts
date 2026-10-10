@@ -192,6 +192,12 @@ export const WORK_SPOTS: Readonly<Record<string, readonly WorkSpot[]>> = {
     { x: 1, z: 2.8, face: PI, pose: 'look', sit: 0 },
   ],
   weatherMast: [{ x: 0.7, z: 0.7, face: -(3 * PI) / 4, pose: 'inspect', sit: 0 }],
+  // Research Biodome Lab (TASK-400): tend the glass beside the door porch (domes ≈ 3.2 / 1.8 u)
+  biodomeHero: [
+    { x: 2.2, z: 3.4, face: Math.atan2(-2.2, -3.4), pose: 'inspect', sit: 0 },
+    { x: -2.2, z: 3.4, face: Math.atan2(2.2, -3.4), pose: 'look', sit: 0 },
+  ],
+  biodome: [{ x: 1.4, z: 2.2, face: Math.atan2(-1.4, -2.2), pose: 'inspect', sit: 0 }],
   barrierGate: [{ x: 0, z: 0.9, face: PI, pose: 'inspect', sit: 0 }],
   // legacy: a bench spot just outside the door
   cottage: [{ x: 0.9, z: 2.0, face: 0, pose: 'look', sit: BENCH }],

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createRng } from '../../core/rng.ts';
 import { WATERFALLS as W } from '../../content/waterfalls.ts';
 import { generateWorld, heightAt, sampleGrid, Zone, type WorldData } from '../index.ts';
+import { ARCHETYPES } from '../../content/islands.ts';
 import { bluffOf, coveness } from './heightfield.ts';
 import { placeWaterfalls } from './waterfalls.ts';
 
@@ -31,7 +32,7 @@ describe('waterfall placement (TASK-395)', () => {
     for (const w of worlds.values()) {
       for (const isl of w.islands) {
         const n = w.waterfalls.filter((f) => f.islandId === isl.id).length;
-        if (bluffOf(isl)) {
+        if (bluffOf(isl) && !ARCHETYPES[isl.archetype].crater) {
           expect(n).toBeGreaterThanOrEqual(W.count[0]);
           expect(n).toBeLessThanOrEqual(W.count[1]);
         } else expect(n).toBe(0);

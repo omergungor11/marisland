@@ -3,7 +3,13 @@ import type { Rng } from '../../core/rng.ts';
 import { hashInts } from '../../core/hash.ts';
 import { clamp01, lerp, smax, smoothstep } from '../../core/math/index.ts';
 import type { ArchetypeId, FieldPatchData, IslandData } from '../types.ts';
-import { PATCHWORK, RAW_FLOOR, WINDWARD_CLIFF } from '../../content/islands.ts';
+import {
+  ARCHETYPES,
+  PATCHWORK,
+  RAW_FLOOR,
+  WINDWARD_CLIFF,
+  type CraterParams,
+} from '../../content/islands.ts';
 
 /**
  * Per-cell profile tags (bit flags, OR-combined into a Uint8 grid inside the
@@ -569,27 +575,40 @@ const mossgrove: ProfileFactory = ({ island, rng, noise, windDir }) => {
   };
 };
 
-/** Lonely Palm: a flat sand oval 0.6 u high with a single leaning palm. */
+/**
+ * Lonely Palm → Research "Biodome Lab" (TASK-400): a breached crater (CraterParams). A mesa
+ * with a raised crest ring around a sunken bowl, open to leeward where the bluff cove ramps
+ * down to the beach; the bluff pass adds the outer earth walls. Anchors: `dome` (hero biodome,
+ * bowl centre nudged windward) and `breach` (the gap in the crest, toward the cove).
+ */
 const lonelypalm: ProfileFactory = ({ island, rng, noise, windDir }) => {
+  const C = ARCHETYPES.lonelypalm.crater as CraterParams;
   const fr = frame(island, windDir);
-  const rot = rng.range(0, Math.PI);
+  const rot = rng.range(-C.turn, C.turn);
   const c = Math.cos(rot);
   const s = Math.sin(rot);
+  const bc = Math.cos((C.breachHalfDeg * Math.PI) / 180);
   const q: [number, number] = [0, 0];
   const sample = (x: number, z: number): number => {
     fr.toLocal(x, z, q);
     const u = q[0] * c + q[1] * s;
     const v = -q[0] * s + q[1] * c;
-    const d = Math.hypot(u, v / 0.8) + 0.06 * noise.fbm(q[0] * 2, q[1] * 2, 2);
-    return Math.max(RAW_FLOOR, 0.9 * smoothstep(1.05, 0.5, d) - 0.15);
+    const d = Math.hypot(u, v / C.oval) + C.warp * noise.fbm(q[0] * 1.8, q[1] * 1.8, 2);
+    const mesa = smoothstep(C.coast + C.coastSoft, C.coast - C.coastSoft, d);
+    const len = Math.hypot(q[0], q[1]) || 1;
+    const breach = smoothstep(bc - C.breachSoft, bc + C.breachSoft, q[0] / len);
+    const k = (d - C.crestD) / C.crestWidth;
+    const jit = 1 + C.crestJitter * noise.fbm(q[0] * 3.1 + 7.7, q[1] * 3.1 - 2.3, 2);
+    const crest = C.crest * Math.exp(-k * k) * (1 - breach) * jit;
+    return Math.max(RAW_FLOOR, mesa * (C.floor + crest) - 0.5 * C.floor);
   };
-  const pw = fr.toWorld(0, 0);
-  const bw = fr.toWorld(0.55 * c, 0.55 * s);
+  const dw = fr.toWorld(-C.domeShift, 0);
+  const bw = fr.toWorld(C.crestD, 0);
   return {
     sample,
     anchors: {
-      palm: { x: pw.x, z: pw.z, rotY: windDir },
-      bottle: { x: bw.x, z: bw.z, rotY: rot },
+      dome: { x: dw.x, z: dw.z, rotY: windDir },
+      breach: { x: bw.x, z: bw.z, rotY: windDir },
     },
   };
 };

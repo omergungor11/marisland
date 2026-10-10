@@ -1,5 +1,7 @@
 /**
- * research theme structure geometry (M14b TASK-375): weatherMast, observatory, instrumentBuoy.
+ * research theme structure geometry (M14b TASK-375): weatherMast, observatory, instrumentBuoy;
+ * TASK-400 "Biodome Lab": biodomeHero, biodome, crystalCluster, researchVessel (the weather
+ * mast and observatory stay in the catalogue for edit mode but are no longer planned).
  * Defs: content/props-themes/research.ts.
  *
  * Hooks (userData.hooks):
@@ -10,9 +12,11 @@
 import * as THREE from 'three';
 import { OFFICE_COLORS as C, OFFICE_PAL } from '../../content/palette-offices.ts';
 import { THEMES } from '../../content/themes.ts';
-import { col, qEuler } from '../kit.ts';
+import { BIODOME_PALETTE } from '../../content/themes/research.ts';
+import { hashInts } from '../../core/hash.ts';
+import { col, qEuler, type Acc } from '../kit.ts';
 import { Spin, domeCap, dish, finishSpin } from '../office-kit.ts';
-import { TAU, V, baseBox, cylB, jitterAcc, put } from '../parts.ts';
+import { TAU, V, baseBox, cylB, jitterAcc, lathe, put } from '../parts.ts';
 import type { BuildOpts, PropGeoDef } from '../types.ts';
 import { addHook, stripedBuoy } from './hq.ts';
 import { tagScreens } from './surface-tags.ts';
@@ -304,6 +308,375 @@ function instrumentBuoy({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry 
   return acc.finish(rng, false, true);
 }
 
+/* --------------------------------- biodomes --------------------------------- */
+
+const P = BIODOME_PALETTE;
+
+/** Stable pick from a list by a point (per-face tint without consuming the rng). */
+const pickAt = <T>(list: readonly T[], p: THREE.Vector3, salt: number): T =>
+  list[
+    hashInts(Math.round(p.x * 97), Math.round(p.y * 97), Math.round(p.z * 97), salt) % list.length
+  ];
+
+/**
+ * Geodesic glass dome on `at` (icosahedron upper half, flat-bottomed): every face is a tinted
+ * opaque pane (low band = plants behind glass, upper band = aqua / lilac glass, both glowing at
+ * night) inside a white frame (LOD0; LOD1 blends the frame into the pane colour). Faces above
+ * `oculus` (fraction of R) are left open.
+ */
+function geodesic(
+  acc: Acc,
+  at: THREE.Vector3,
+  R: number,
+  o: { detail: number; lod: 0 | 1; squash?: number; oculus?: number; salt: number },
+): void {
+  const ico = new THREE.IcosahedronGeometry(R, o.detail);
+  const src = ico.getAttribute('position');
+  const sq = o.squash ?? 1;
+  const frames: number[] = [];
+  const panes: number[] = [];
+  const v = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+  const cen = new THREE.Vector3();
+  const k = 0.84;
+  for (let i = 0; i < src.count; i += 3) {
+    for (let j = 0; j < 3; j++) v[j].fromBufferAttribute(src, i + j);
+    cen
+      .copy(v[0])
+      .add(v[1])
+      .add(v[2])
+      .multiplyScalar(1 / 3);
+    if (cen.y < -0.02 * R) continue;
+    if (o.oculus !== undefined && cen.y > o.oculus * R) continue;
+    for (const p of v) p.set(p.x, Math.max(0, p.y) * sq, p.z).add(at);
+    cen
+      .copy(v[0])
+      .add(v[1])
+      .add(v[2])
+      .multiplyScalar(1 / 3);
+    if (o.lod === 1) {
+      for (const p of v) panes.push(p.x, p.y, p.z);
+      continue;
+    }
+    const w = v.map((p) => cen.clone().lerp(p, k));
+    panes.push(...w.flatMap((p) => [p.x, p.y, p.z]));
+    for (let j = 0; j < 3; j++) {
+      const a = v[j];
+      const b = v[(j + 1) % 3];
+      const a2 = w[j];
+      const b2 = w[(j + 1) % 3];
+      frames.push(a.x, a.y, a.z, b.x, b.y, b.z, b2.x, b2.y, b2.z);
+      frames.push(a.x, a.y, a.z, b2.x, b2.y, b2.z, a2.x, a2.y, a2.z);
+    }
+  }
+  const split = at.y + P.paneSplit * R * sq;
+  const paneColor = (p: THREE.Vector3): THREE.Color => {
+    const c = col(pickAt(p.y < split ? P.paneLow : P.paneHigh, p, o.salt));
+    // LOD1 has no frame: carry its share (1 − k² ≈ 0.3) in the pane colour, so far domes keep the palette
+    return o.lod === 1 ? c.lerp(col(P.frame), 0.28) : c;
+  };
+  const geo = (arr: number[]): THREE.BufferGeometry =>
+    new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
+  acc.add(geo(panes), { color: paneColor, emissive: P.paneGlow, aoAmt: 0.05, windMul: 0 });
+  if (frames.length > 0) acc.add(geo(frames), { color: col(P.frame), aoAmt: 0.05, windMul: 0 });
+}
+
+/** Stone plinth with the teal band. */
+function domePlinth(acc: Acc, R: number, h: number, seg: number): void {
+  put(acc, cylB(R + 0.3, R + 0.18, h, seg), [0, 0, 0], P.plinth, { aoAmt: 0.25 });
+  put(acc, cylB(R + 0.22, R + 0.22, 0.12, seg), [0, h - 0.18, 0], P.band, { aoAmt: 0 });
+}
+
+/** Door porch on the +z face at radius `r`: arch tunnel stub, teal door, warm lamp above. */
+function domeDoor(acc: Acc, r: number, y: number, s: number, lod: 0 | 1): void {
+  const hi = lod === 0;
+  const d = 1.1 * s;
+  const z = r + d / 2 - 0.2;
+  // short tunnel: white walls, glass barrel roof (half cylinder along z, arch up)
+  put(acc, baseBox(1.0 * s, 0.85 * s, d), [0, y, z], P.frame, { aoAmt: 0.15 });
+  put(
+    acc,
+    new THREE.CylinderGeometry(0.5 * s, 0.5 * s, d, hi ? 8 : 4, 1, false, -Math.PI / 2, Math.PI),
+    [0, y + 0.85 * s, z],
+    P.paneHigh[1],
+    { q: qEuler(-Math.PI / 2, 0, 0), emissive: P.paneGlow, aoAmt: 0.05 },
+  );
+  put(acc, baseBox(0.6 * s, 0.8 * s, 0.06), [0, y, z + d / 2], P.door, { aoAmt: 0 });
+  put(
+    acc,
+    new THREE.IcosahedronGeometry(0.1 * s, hi ? 1 : 0),
+    [0, y + 1.0 * s, z + d / 2 + 0.06],
+    P.lamp,
+    {
+      emissive: 1,
+      aoAmt: 0,
+      ao: () => 1,
+    },
+  );
+}
+
+/** Pinwheel vent on a short mast (3 blades spin about +z through `hub`). */
+function pinwheel(
+  acc: Acc,
+  spin: Spin,
+  hub: THREE.Vector3,
+  r: number,
+  mast: number,
+  lod: 0 | 1,
+): void {
+  const hi = lod === 0;
+  put(acc, cylB(0.05, 0.04, mast, hi ? 5 : 3, true), [hub.x, hub.y - mast, hub.z - 0.08], P.frame, {
+    aoAmt: 0,
+  });
+  const tag = spin.tag(hub);
+  for (let k = 0; k < 3; k++) {
+    const a = (k / 3) * TAU + 0.3;
+    put(
+      acc,
+      new THREE.BoxGeometry(r, 0.22 * (r / 0.6), 0.04),
+      hub.clone().add(V(Math.cos(a) * r * 0.5, Math.sin(a) * r * 0.5, 0)),
+      P.blades[k],
+      {
+        q: qEuler(0, 0.35, a),
+        windAbs: tag,
+        aoAmt: 0,
+        ao: () => 1,
+      },
+    );
+  }
+  put(acc, new THREE.IcosahedronGeometry(0.09, 0), hub, P.frame, { windAbs: tag, aoAmt: 0 });
+}
+
+/**
+ * Hero biodome (T0 landmark of the Research island): a tall geodesic glass dome whose garden
+ * bursts out of an open oculus, an annex dome with a pinwheel vent, a door porch on +z.
+ */
+function biodomeHero({ rng, lod }: BuildOpts): THREE.BufferGeometry {
+  const acc = jitterAcc(rng, 0.01);
+  const spin = new Spin();
+  const hi = lod === 0;
+  const R = 2.95;
+  const base = 0.45;
+  const sq = 1.28;
+  domePlinth(acc, R, base, hi ? 20 : 10);
+  geodesic(acc, V(0, base, 0), R, { detail: hi ? 3 : 1, lod, squash: sq, oculus: 0.86, salt: 1 });
+  // the garden canopy fills the oculus and bulges out of the top
+  const top = base + R * sq;
+  const blobs: [number, number, number, number][] = hi
+    ? [
+        [0, top - 0.75, 0, 1.45],
+        [0.75, top - 0.35, 0.35, 0.95],
+        [-0.65, top - 0.25, -0.4, 1.0],
+        [0.1, top + 0.3, -0.05, 0.85],
+        [-0.3, top - 0.3, 0.75, 0.75],
+      ]
+    : [
+        [0, top - 0.7, 0, 1.5],
+        [0.1, top + 0.2, -0.05, 1.0],
+      ];
+  blobs.forEach(([x, y, z, r], k) =>
+    put(
+      acc,
+      new THREE.IcosahedronGeometry(r, hi ? 1 : 0),
+      [x, y, z],
+      P.canopy[k % P.canopy.length],
+      {
+        aoAmt: 0.12,
+      },
+    ),
+  );
+  // oculus ring
+  put(
+    acc,
+    new THREE.TorusGeometry(R * 0.5, 0.09, hi ? 4 : 3, hi ? 14 : 6),
+    [0, base + R * 0.86 * sq + 0.02, 0],
+    P.frame,
+    {
+      q: qEuler(Math.PI / 2, 0, 0),
+      aoAmt: 0,
+    },
+  );
+  // annex dome on the side (−x, a little behind), with the pinwheel vent on top
+  const AR = 1.35;
+  const ax = V(-R * 0.98, 0, -R * 0.3);
+  put(acc, cylB(AR + 0.2, AR + 0.12, base, hi ? 12 : 6), [ax.x, 0, ax.z], P.plinth, {
+    aoAmt: 0.25,
+  });
+  geodesic(acc, V(ax.x, base, ax.z), AR, { detail: hi ? 2 : 0, lod, squash: 1.05, salt: 2 });
+  pinwheel(acc, spin, V(ax.x, base + AR * 1.05 + 0.75, ax.z + 0.1), 0.62, 0.75, lod);
+  domeDoor(acc, R - 0.15, 0, 1, lod);
+  if (hi) {
+    // planters and a crate by the porch, a sign post with the theme flask colour
+    for (const [x, z] of [
+      [1.1, R + 0.5],
+      [-1.1, R + 0.5],
+    ]) {
+      put(acc, baseBox(0.6, 0.35, 0.4), [x, 0, z], C.deskDark, { aoAmt: 0.2 });
+      put(acc, new THREE.IcosahedronGeometry(0.3, 0), [x, 0.5, z], P.canopy[1], { aoAmt: 0.1 });
+    }
+  }
+  return finishSpin(acc.finish(rng, false, true), acc, spin);
+}
+
+/** Small biodome: geodesic glass on a plinth, a door porch and a pinwheel vent on top. */
+function biodome({ rng, lod }: BuildOpts): THREE.BufferGeometry {
+  const acc = jitterAcc(rng, 0.015);
+  const spin = new Spin();
+  const hi = lod === 0;
+  const R = 1.6;
+  const base = 0.35;
+  domePlinth(acc, R, base, hi ? 14 : 7);
+  geodesic(acc, V(0, base, 0), R, { detail: hi ? 2 : 0, lod, squash: 1.05, salt: 3 });
+  pinwheel(acc, spin, V(0, base + R * 1.05 + 0.6, 0.1), 0.5, 0.65, lod);
+  domeDoor(acc, R - 0.12, 0, 0.75, lod);
+  return finishSpin(acc.finish(rng, false, true), acc, spin);
+}
+
+/* -------------------------------- crystalCluster -------------------------------- */
+
+/** Pastel crystal outcrop: faceted hex shards (teal / lilac, glowing a little at night) on a rock. */
+function crystalCluster({ rng, lod }: BuildOpts): THREE.BufferGeometry {
+  const acc = jitterAcc(rng, 0.05);
+  const hi = lod === 0;
+  put(acc, new THREE.IcosahedronGeometry(0.62, hi ? 1 : 0), [0, 0.32, 0], P.rock[0], {
+    s: [1, 0.55, 0.9],
+    aoAmt: 0.25,
+  });
+  // [x, z, height, radius, tilt x, tilt z, colour]
+  const shards: [number, number, number, number, number, number, number][] = [
+    [0, 0, 1.7, 0.24, 0, 0, 0],
+    [0.32, 0.12, 1.15, 0.19, 0.1, -0.42, 2],
+    [-0.3, 0.05, 1.25, 0.2, -0.05, 0.4, 1],
+    [0.05, -0.3, 0.95, 0.17, -0.45, 0.05, 3],
+    [-0.12, 0.34, 0.8, 0.15, 0.5, 0.15, 2],
+    [0.38, -0.25, 0.6, 0.13, -0.35, -0.4, 0],
+    [-0.42, -0.28, 0.55, 0.12, -0.3, 0.45, 3],
+  ];
+  const n = hi ? shards.length : 3;
+  for (let k = 0; k < n; k++) {
+    const [x, z, h, r, tx, tz, c] = shards[k];
+    const g = lathe(
+      [
+        [0, 0],
+        [r, 0],
+        [r * 0.92, h * 0.72],
+        [0, h],
+      ],
+      hi ? 6 : 4,
+    );
+    put(acc, g, [x, 0.16, z], P.crystal[c], {
+      q: qEuler(tx, k * 0.9, tz),
+      emissive: P.crystalGlow,
+      aoAmt: 0.1,
+    });
+  }
+  return acc.finish(rng, false, true);
+}
+
+/* -------------------------------- researchVessel -------------------------------- */
+
+/**
+ * Research vessel (bow +z, pivot = waterline): white hull with a teal band, wooden deck, bridge
+ * with glowing windows, funnel, radar mast with a pinwheel anemometer, stern A-frame crane over a
+ * yellow mini-sub.
+ */
+function researchVessel({ rng, lod }: BuildOpts): THREE.BufferGeometry {
+  const acc = jitterAcc(rng, 0.01);
+  const spin = new Spin();
+  const hi = lod === 0;
+  const L = 3.3;
+  const B = 1.15;
+  // deck outline: square-ish stern, pointed bow (xz), as an extruded shape
+  const outline = (s: number): THREE.Shape => {
+    const pts: [number, number][] = [
+      [-B * 0.85, -L],
+      [B * 0.85, -L],
+      [B, -L * 0.6],
+      [B, L * 0.25],
+      [B * 0.7, L * 0.7],
+      [0, L * 1.02],
+      [-B * 0.7, L * 0.7],
+      [-B, L * 0.25],
+      [-B, -L * 0.6],
+    ];
+    // shape y = −z so that rotateX(−π/2) maps it back onto +z
+    return new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x * s, -z * s)));
+  };
+  const slab = (s: number, h: number): THREE.BufferGeometry =>
+    new THREE.ExtrudeGeometry(outline(s), { depth: h, bevelEnabled: false, steps: 1 }).rotateX(
+      -Math.PI / 2,
+    );
+  put(acc, slab(1, 0.85), [0, 0, 0], P.hull, { aoAmt: 0.1 });
+  put(acc, slab(1.02, 0.2), [0, 0, 0], P.door, { aoAmt: 0 });
+  if (hi) put(acc, slab(1.025, 0.12), [0, 0.52, 0], P.hullBand, { aoAmt: 0 });
+  put(acc, slab(0.9, 0.06), [0, 0.85, 0], P.deck, { aoAmt: 0.05 });
+  // bridge
+  put(acc, baseBox(1.6, 1.05, 1.6), [0, 0.89, 0.5], P.hull, { aoAmt: 0.15 });
+  put(acc, baseBox(1.8, 0.12, 1.85), [0, 1.94, 0.45], P.hullBand, { aoAmt: 0 });
+  put(acc, baseBox(1.3, 0.38, 0.05), [0, 1.42, 1.31], P.bridgeGlass, {
+    emissive: 1,
+    aoAmt: 0,
+    ao: () => 1,
+  });
+  for (const sx of hi ? [-1, 1] : [])
+    put(acc, baseBox(0.05, 0.34, 1.0), [sx * 0.81, 1.44, 0.5], C.screenWarm, {
+      emissive: 1,
+      aoAmt: 0,
+      ao: () => 1,
+    });
+  // funnel
+  put(acc, cylB(0.3, 0.25, 0.75, hi ? 8 : 5), [0, 0.89, -0.65], P.hullBand, { aoAmt: 0.1 });
+  put(acc, cylB(0.26, 0.26, 0.14, hi ? 8 : 5), [0, 1.52, -0.65], P.hull, { aoAmt: 0 });
+  // radar mast + pinwheel anemometer + top lamp
+  put(acc, cylB(0.06, 0.05, 1.4, hi ? 5 : 3, true), [0, 2.02, 0.3], C.steelLight, { aoAmt: 0 });
+  if (hi)
+    dish(acc, V(0.45, 2.02, 0.2), { r: 0.3, yaw: 0.6, elev: 0.6, color: P.hull, mast: 0.35, lod });
+  if (hi) pinwheel(acc, spin, V(0, 3.12, 0.42), 0.48, 0.2, lod);
+  put(acc, new THREE.IcosahedronGeometry(0.08, hi ? 1 : 0), [0, 3.47, 0.3], C.onAir, {
+    emissive: 1,
+    aoAmt: 0,
+    ao: () => 1,
+  });
+  // stern A-frame crane over the mini-sub
+  for (const sx of [-1, 1])
+    put(acc, cylB(0.07, 0.06, 2.1, hi ? 5 : 3), [sx * 0.85, 0.87, -2.6], P.crane, {
+      q: qEuler(-0.32, 0, 0),
+      aoAmt: 0.05,
+    });
+  put(acc, new THREE.BoxGeometry(1.85, 0.14, 0.14), [0, 2.85, -3.25], P.crane, { aoAmt: 0 });
+  const sub = new THREE.CapsuleGeometry(0.34, 0.7, hi ? 3 : 1, hi ? 8 : 5).rotateX(Math.PI / 2);
+  put(acc, sub, [0, 1.25, -2.15], P.sub, { aoAmt: 0.1 });
+  if (hi) {
+    // sub fin, porthole, crane wire
+    put(acc, baseBox(0.06, 0.32, 0.3), [0, 1.47, -2.75], P.sub, { aoAmt: 0 });
+    put(acc, new THREE.CylinderGeometry(0.17, 0.17, 0.08, 8), [0, 1.25, -1.5], P.bridgeGlass, {
+      q: qEuler(Math.PI / 2, 0, 0),
+      emissive: 1,
+      aoAmt: 0,
+      ao: () => 1,
+    });
+    put(acc, cylB(0.02, 0.02, 0.9, 3, true), [0, 1.95, -3.2], C.steel, { aoAmt: 0 });
+    // lifebuoy on the bridge side, deck rail posts
+    put(acc, new THREE.TorusGeometry(0.22, 0.07, 4, 10), [0.83, 1.22, 0.15], C.red, {
+      q: qEuler(0, Math.PI / 2, 0),
+      aoAmt: 0,
+    });
+    for (let k = 0; k < 6; k++) {
+      const z = -1.6 + k * 0.85;
+      for (const sx of [-1, 1])
+        put(
+          acc,
+          cylB(0.025, 0.025, 0.35, 3, true),
+          [sx * (z > 1 ? 0.75 : 0.95), 0.89, z],
+          P.frame,
+          {
+            aoAmt: 0,
+          },
+        );
+    }
+  }
+  return finishSpin(acc.finish(rng, false, true), acc, spin);
+}
+
 export const RESEARCH_GEO: readonly PropGeoDef[] = [
   { id: 'weatherMast', variants: 2, build: weatherMast, footprint: 0.9, height: 6.2, windy: false },
   { id: 'observatory', variants: 2, build: observatory, footprint: 2.1, height: 3.8, windy: false },
@@ -313,6 +686,24 @@ export const RESEARCH_GEO: readonly PropGeoDef[] = [
     build: instrumentBuoy,
     footprint: 0.5,
     height: 2.0,
+    windy: false,
+  },
+  { id: 'biodomeHero', variants: 1, build: biodomeHero, footprint: 3.2, height: 5.4, windy: false },
+  { id: 'biodome', variants: 1, build: biodome, footprint: 1.8, height: 3.3, windy: false },
+  {
+    id: 'crystalCluster',
+    variants: 1,
+    build: crystalCluster,
+    footprint: 0.7,
+    height: 1.7,
+    windy: false,
+  },
+  {
+    id: 'researchVessel',
+    variants: 1,
+    build: researchVessel,
+    footprint: 1.3,
+    height: 3.3,
     windy: false,
   },
 ];

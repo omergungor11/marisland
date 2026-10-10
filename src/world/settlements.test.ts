@@ -6,7 +6,6 @@ import {
   LANDMARKS,
   LOT_ROLE_BY_KIND,
   LOT_ROOFS,
-  RESEARCH_OUTPOST,
   VILLAGE,
 } from '../content/settlements.ts';
 import { heroAzimuth } from '../camera/poses.ts';
@@ -181,7 +180,8 @@ describe('settlements — 20-seed sweep', () => {
       devops: ['volcanoCrater', 'hotSpring'],
       qa: ['sunkenShip'],
       design: ['giantTree'],
-      research: ['lonelyPalm'],
+      // TASK-400: the Biodome Lab's hero is a fixture (biodomeHero), not a landmark
+      research: [],
     };
     for (const seed of SEEDS) {
       const w = world(seed);
@@ -417,7 +417,7 @@ describe('settlements — 20-seed sweep', () => {
     }
   });
 
-  it('scatter avoids lots, plaza and paths; Lonely Palm palm is a landmark', () => {
+  it('scatter avoids lots, plaza and paths; the Research crater has no palm', () => {
     for (const seed of SEEDS.slice(0, 6)) {
       const w = world(seed);
       const p = w.props;
@@ -436,7 +436,9 @@ describe('settlements — 20-seed sweep', () => {
         for (let i = 0; i < p.count; i++)
           if (p.islandId[i] === lp.id && PROP_DEFS[p.defId[i]].id === 'palm') palms++;
         expect(palms).toBe(0);
-        expect(w.landmarks.some((l) => l.kind === 'lonelyPalm' && l.islandId === lp.id)).toBe(true);
+        expect(w.fixtures.some((f) => f.defId === 'biodomeHero' && f.islandId === lp.id)).toBe(
+          true,
+        );
       }
     }
   });
@@ -500,7 +502,8 @@ describe('campuses — 50-seed acceptance (TASK-302)', () => {
     qa: 4,
     design: 4,
     marketing: 2,
-    research: 1,
+    // TASK-400: the Biodome Lab is domes (fixtures) + a pier, no lots
+    research: 0,
   };
   /** Themes whose minimum may miss in ≤ 10 % of seeds (plan §8 TASK-302). */
   const SOFT: ThemeId[] = ['devops', 'qa', 'design', 'marketing', 'research'];
@@ -513,6 +516,7 @@ describe('campuses — 50-seed acceptance (TASK-302)', () => {
       const ok: Record<string, number> = {};
       const fails: string[] = [];
       const counts: Record<string, number[]> = {};
+      let vessels = 0;
       for (const seed of seeds) {
         const w = cache.get(seed) ?? generateWorld(seed);
         for (const isl of w.islands) {
@@ -575,34 +579,17 @@ describe('campuses — 50-seed acceptance (TASK-302)', () => {
               );
           }
         }
-        // Research outpost: ≥ palmClear from the palm, off the W9 hero line, dock + rowboat
+        // Research Biodome Lab (TASK-400): the hero dome in every crater, the vessel at its pier
         const lp = w.islands.find((i) => i.theme === 'research');
-        const hut = w.lots.find((l) => l.islandId === lp?.id);
-        if (lp && hut) {
+        if (lp) {
           const ctx = `seed ${seed} research`;
-          const palm = lp.anchors.palm;
-          const az = heroAzimuth(lp, w.islands);
-          expect(heroHeading(lp, w.islands), ctx).toBe(az);
-          const vx = -Math.sin((az * Math.PI) / 180);
-          const vz = -Math.cos((az * Math.PI) / 180);
-          for (const p of [hut, ...w.fixtures.filter((f) => f.defId === 'telescope')]) {
-            if (p.islandId !== lp.id) continue;
-            const dx = p.x - palm.x;
-            const dz = p.z - palm.z;
-            const d = Math.hypot(dx, dz);
-            expect(d, ctx).toBeGreaterThanOrEqual(RESEARCH_OUTPOST.palmClear - 1e-6);
-            const off = (Math.acos(Math.abs((dx * vx + dz * vz) / d)) * 180) / Math.PI;
-            expect(off, `${ctx} off the hero line`).toBeGreaterThanOrEqual(
-              RESEARCH_OUTPOST.viewClearDeg,
-            );
-          }
-          expect(hut.defId, ctx).toBe('researchHut');
-          expect(
-            w.moorings.some((m) => m.islandId === lp.id && m.defId === 'rowboat'),
-            ctx,
-          ).toBe(true);
+          expect(heroHeading(lp, w.islands), ctx).toBe(heroAzimuth(lp, w.islands));
+          const defs = w.fixtures.filter((f) => f.islandId === lp.id).map((f) => f.defId);
+          expect(defs, ctx).toContain('biodomeHero');
+          if (defs.includes('researchVessel')) vessels++;
         }
       }
+      expect(vessels / seeds.length, 'research vessel moored').toBeGreaterThanOrEqual(0.9);
       console.info(
         `campus lots over 50 seeds (min/avg/max): ${Object.entries(counts)
           .map(
