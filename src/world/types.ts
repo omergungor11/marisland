@@ -147,6 +147,8 @@ export interface WorldData {
    * `field`, else 0. Terrain colours read it so the patchwork shows ≥ 4 hues (sweep D11).
    */
   fieldColor: Uint8Array;
+  /** Stone viaducts between near islands (M17b, TASK-394); empty when no pair qualifies. */
+  bridges: BridgeData[];
   /** Theme districts (M14b): solar fields, quads, yards, gardens… Filled by the theme plans. */
   districts: DistrictData[];
   /** Scattered props (scatter runs inside generateWorld, after settlements). */
@@ -288,6 +290,26 @@ export interface LandmarkData {
   islandId: number;
   /** Geometry variant chosen by the planner (e.g. Coding turbine heights); unset = theme / rolled. */
   variant?: number;
+}
+
+/**
+ * Viaduct between two islands (TASK-394). (ax, az, ay) / (bx, bz, by) = deck-top centre at the
+ * two bluff-top ends; the deck tilts evenly between them. `bays` span pieces of `length / bays` u.
+ */
+export interface BridgeData {
+  islandA: number;
+  islandB: number;
+  ax: number;
+  az: number;
+  ay: number;
+  bx: number;
+  bz: number;
+  by: number;
+  length: number;
+  /** Heading A → B: atan2(dx, dz). */
+  yaw: number;
+  bays: number;
+  width: number;
 }
 
 /** Dock: starts on the shore at (x, z) and runs `segments` × 2 u along (cos rotY, sin rotY). */
