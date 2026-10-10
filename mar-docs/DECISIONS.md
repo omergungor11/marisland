@@ -2,6 +2,19 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-038: Sky craft — hot-air balloons and an airship, no shadows, no new program — 2026-10-10
+
+**Decision** (TASK-335): 2 / 4 / 5 balloons plus 0 / 1 / 1 airship (low / medium / high) drift over the
+islands' bounding box on closed-form orbits (drones' pattern: one InstancedMesh per kind, the shared lit
+program with dither fade, no agents). Balloons share concentric same-aspect ellipses turning one way at one
+angular speed, so their horizontal gap never drops below the radius step; they sit in a 34–60 u band below
+the cloud layer (60–90 u), the counter-rotating airship at 96 u. Data lives in `src/content/sky-craft.ts`.
+**Rationale**: a living sky at T0 with pastel, cozy shapes; ~300 tris per model, speeds of 1.6 / 3.2 u/s.
+**Shadows**: not cast. The fitted shadow slab ends far below 38+ u, so a cast would be clipped or flicker at
+the box edge, and cloud shadows are analytic blobs; adding a craft shadow pass would also double the calls.
+**Impact**: +1 draw call on low, +2 on medium / high, 0 new programs (same variant family as drones), ≈ 300
+tris per craft. They fade out closer than 50–100 u to the camera.
+
 ## D-037: Ladder region drift leaves cast-shadow cells out — 2026-10-09
 
 **Decision** (TASK-381): `regionDrift` (`scripts/ladder-metrics.ts`) skips cells whose L* differs by more
