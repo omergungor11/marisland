@@ -60,7 +60,7 @@ export const EDIT_LOGS = {
   meadow:
     'AekHBQRwaW5lC3JvY2tDbHVzdGVyBmZsb3dlcgRidXNoDWdpYW50TXVzaHJvb20VA_BupGmABLQCBAAAAAEEgAKgAb8BATUAAMUBlwGxEYoCATUCAL8BmQH1B_cBATUAAGxlkAKGAgE1AAClAo4D3g-eAgA1AAGOBLsD_RfpAQA1AAGZApQEiBztAQE1AAF88QPrDvwBATUAASuWA60Z3wEBNQACJN0B8ASMAgA1AAKGAQTGEIYCADUAAgc8zxr7AQA1AAIid-cX2gEBNQACUWLJEPQBATUAA1Nl3RX7AQE1AAPqAZABsRKKAgA1AAPFAUyJGJMCADUAA64B2wG9Bo8CATUABEfmAf4ajgIA',
   mixed:
-    'AekHBQdjb3R0YWdlBHBhbG0EYnVzaAtyb2NrQ2x1c3RlcgdsaWx5UGFkEQDGO6Q0gAWADAAAAAAAAgAAvwKzBgIAAAAAAgAAAAADAADAAZcDBAAA3wEDBDIZfwEBpgWuAYABzA0BAAAAAAEAAAAANQAAjwZbiwmAAgA1AAHQAS6RD5kCADUAAbcCrQGFE5ACADUAAiIulQXvAQA1AAOMAh6ZBo4CADUABL0DxgHNAe8BAA',
+    'AekHBQdjb3R0YWdlBHBhbG0GZmxvd2VyC2xhbnRlcm5Qb3N0BWJlbmNoGAaVyn8Gk8p_Bu_AfwKAPoAwoAKAIAIAAAAAAwAAYMsdBAAAnwEBAsABgAJfzBMCYAAA_wkCAAAAAAJgAACZBwIAAAAAAlAAH8sBAgAAAAADrwEAYJkBBCAAPwMVAADfAq8ChwOAAhUAAcABcOMOmgIVAAG_As8B7BKNAhUAAuAB8AHEAYACFQACPxDPBoACFQACPx_bC4ACFQADoAFPAIACFQAEzwEwhwOAAg',
 } as const;
 
 /** Department themes on seed 1001 (findIsland matches the theme id) with their display names. */
@@ -77,15 +77,18 @@ const CAMPUS_THEMES = [
 /**
  * L-live-<theme> cameras (M14c, seed 1001, raw `eye → target`): T3 close-ups on each campus' busiest
  * spot (life agent's TASK-383 picks; Coding, DevOps, Design re-aimed at the bot clusters in the
- * M14c verification), clear of canopies. Re-pin when the layout changes.
+ * M14c verification), clear of canopies. Re-pin when the layout changes. TASK-396 (the M17b bluffs
+ * raised Coding ≈ 4 u): Coding looks over the dev office and the pod beside it (typing pair,
+ * walking bots, code screens; the old eye saw a tree and aimed under the plateau, 2.8 %), DevOps
+ * over the west-shore rack yard by the pier (steam puffs, yard bots) instead of bare cone rock (0 %).
  */
 const LIVE_CAMS: Record<(typeof CAMPUS_THEMES)[number][0], string> = {
   hq: '66,14,-168,86,1.4,-171',
   qa: '-167.7,23,-189.3,-156,9,-177',
   design: '-144,30,82,-151,17,100',
-  coding: '114,17,32,97,5.5,25',
+  coding: '105,17,13,94,11,23',
   research: '-152,12,232,-133,0.5,222',
-  devops: '-56,30,-110,-58,16,-90',
+  devops: '-106,10,-88,-90,2.5,-78',
   marketing: '8,37,196,-6,25,182',
 };
 
@@ -101,8 +104,18 @@ const W7_CAM = '45,20,20,95,13,40';
 /** D-campus-research close-up (raw, seed 1001 Biodome Lab; TASK-400), re-pin when that layout changes. */
 const RESEARCH_CLOSE_CAM = '-143,13,246,-138.5,3,222.5';
 
-/** D-desk camera (raw `x,y,z,tx,ty,tz`), re-pin when the seed 1001 layout changes. */
-const DESK_CAM = '95.8,8.1,17.3,91.5,6.5,20';
+/**
+ * D-desk camera (raw `x,y,z,tx,ty,tz`), re-pin when the seed 1001 layout changes (TASK-396: +4 u
+ * for the raised Coding plateau, ground ≈ 9.5).
+ */
+const DESK_CAM = '95.8,12.1,17.3,91.5,10.5,20';
+
+/**
+ * Hearthholm beach macro (raw, seed 1001; D-macro and W8, TASK-396): the `macro-beach` orbit now
+ * faces the clocktower's wall (TASK-393 height), so a fixed T3 look west from the HQ quad over the
+ * coffee kiosk, flower bed and crab to the reeds, foam line and sea. Re-pin when the layout changes.
+ */
+const MACRO_CAM = '96,7,-170.5,85,2.5,-166';
 
 export const SHOT_PRESETS: readonly ShotPreset[] = [
   // ---- bible wow shots (1920×1080, medium quality)
@@ -147,10 +160,13 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   {
     id: 'W4',
     title: 'Beacon',
+    // TASK-396: the ×1.7 lighthouse (TASK-393) left the `island:` fit (island sphere only), so a
+    // raw T1 look from the north-west at 140 u: Beacon Rock in the left third, the whole lighthouse
+    // against the night sky, two sea stacks and the lit landing; `simt` 3 puts the beam broadside
     seed: 2024,
-    cam: 'island:Beacon Rock',
+    cam: '-52.7,57.5,-49.5,35,26,-154',
     time: 21.5,
-    simt: 5,
+    simt: 3,
     quality: 'medium',
     width: 1920,
     height: 1080,
@@ -204,7 +220,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'W8',
     title: 'Macro Shore',
     seed: 1001,
-    cam: 'macro-beach',
+    cam: MACRO_CAM,
     time: 14,
     simt: 5,
     quality: 'medium',
@@ -328,7 +344,9 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-shore',
     title: 'Shore',
     seed: 1001,
-    cam: 'shore',
+    // TASK-396: the `shore` orbit looks through the taller clocktower; a raw 40 u look west over
+    // the kiosk sandbar, its foam bands and the ferry pier (tower just out of frame, right)
+    cam: '116.6,21,-155,82,1,-155',
     time: 14,
     simt: 2,
     deltaT: 2,
@@ -338,7 +356,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-macro',
     title: 'Macro',
     seed: 1001,
-    cam: 'macro-beach',
+    cam: MACRO_CAM,
     time: 14,
     simt: 2,
     sets: ['dev'],
@@ -587,9 +605,11 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   // island, rejected placements dropped) and the theme-first world (TASK-380: one pine that now
   // collides with a Coding fixture dropped) — hill: 6 raises + smooth + meadow top behind the HQ
   // village; flood: 16 lowers on the harbour bay's east shore and south arm; meadow: smooth + meadow paint + 19 props on the Coding island
-  // (pines, rocks, flowers, bushes, a mushroom; macro view so the T3 flowers show); mixed: a
-  // flattened islet in the Palmlagoon lagoon (sand + meadow, cottage, palms, bush, rock, lily pad)
-  // and a channel lowered through the ring. The panel shots reuse them.
+  // (pines, rocks, flowers, bushes, a mushroom; macro view so the T3 flowers show); mixed (TASK-396,
+  // was a lagoon islet before TASK-401 raised QA into a plateau): on the factory plateau's east end
+  // two bushes and a palm removed, the ground flattened + meadow-painted for a cottage garden (palms,
+  // flowers, lantern, bench), and a sand slipway cut down through the bluff wall to the sea (stepped
+  // flattens + smooth). The panel shots reuse them.
   {
     id: 'E-panel',
     title: 'Edit panel · place',
@@ -636,9 +656,9 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   },
   {
     id: 'E-mixed',
-    title: 'Lagoon islet + channel',
+    title: 'Plateau garden + slipway',
     seed: 1001,
-    cam: 'island:Palmlagoon',
+    cam: '-90.1,30,-194.2,-131,6,-187',
     time: 15,
     simt: 2,
     edit: EDIT_LOGS.mixed,
