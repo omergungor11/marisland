@@ -107,6 +107,90 @@ export const BIODOME_PALETTE = {
 } as const;
 
 /**
+ * Observatory University campus colours (TASK-402a, geo/themes/campus.ts): warm brick and cream
+ * stucco halls under teal / slate roofs, a white-and-silver observatory dome, a green-copper
+ * library dome, Victorian white-and-teal glasshouses. Glass uses the biodome technique (tinted
+ * opaque panes from BIODOME_PALETTE.paneLow / paneHigh, glowing at night).
+ */
+export const CAMPUS_PALETTE = {
+  brick: '#C98A6B',
+  brickDark: '#B27258',
+  stucco: '#F3E6CC',
+  stone: '#E9E2D0',
+  stoneDark: '#CFC5AE',
+  trim: '#FAFAF5',
+  roofTeal: '#3E9FA6',
+  roofSlate: '#5E6F82',
+  copper: '#6DBFA1',
+  copperLight: '#93D8BC',
+  door: '#36A3A9',
+  wood: '#A8754F',
+  /** Window panes (emissive 1: warm lamp light at night). */
+  window: '#FFE0A0',
+  /** Observatory. */
+  dome: '#F4F2EC',
+  domeRib: '#B9C2CC',
+  silver: '#C9D1D9',
+  tube: '#E8ECF0',
+  tubeBand: '#4FC3C9',
+  lens: '#2E3C52',
+  shutterInside: '#34425A',
+  gold: '#F5C84C',
+  /** Terrarium interiors. */
+  soil: '#8A6A4E',
+  fern: ['#5DBB63', '#7FD34E', '#3E9A52'],
+  flowers: ['#FF8FB1', '#FFD166', '#C3B0FF', '#FF9E7A'],
+  trunk: '#B68A5E',
+  planter: '#E8735A',
+} as const;
+
+/**
+ * Campus sculptures, research bases and garden kit colours (TASK-402a, geo/themes/science.ts and
+ * geo/themes/garden.ts). Bronze / white marble / brass for the sculptures, white + teal for the
+ * outdoor science kit; the garden reuses the Coding hedge greens and the flowerBed bloom tones.
+ */
+export const SCIENCE_PALETTE = {
+  bronze: '#B9854B',
+  bronzeDark: '#8E6236',
+  marble: '#F2EFE8',
+  brass: '#E3B65B',
+  plinth: '#E9E2D0',
+  plinthDark: '#CFC5AE',
+  /** Atom: nucleus lumps, orbit rings, electron beads. */
+  nucleus: ['#FF8FB1', '#4FC3C9', '#FFD166'],
+  orbit: '#C9D1D9',
+  electron: '#4FC3C9',
+  /** DNA: strands (teal, coral) and rung halves. */
+  strand: ['#4FC3C9', '#FF7A5C'],
+  rung: ['#F5C84C', '#C3B0FF'],
+  /** Rocket. */
+  rocketBody: '#FAFAF5',
+  rocketRed: '#E35D6A',
+  rocketBand: '#4FC3C9',
+  nozzle: '#4F4A5E',
+  /** Radio dish / lab pods. */
+  dish: '#FAFAF5',
+  dishRing: '#86D9DD',
+  mount: '#C9D1D9',
+  podBody: '#FAFAF5',
+  podBand: '#4FC3C9',
+  podLeg: '#6F7685',
+  portholeGlow: '#BFE6FF',
+  solar: '#335A9C',
+  /** Garden kit. */
+  gravel: '#E6D8B8',
+  hedge: '#4E9C4B',
+  hedgeTop: '#69B857',
+  water: '#8FDCEB',
+  waterDeep: '#6FC8DC',
+  terracotta: '#E8735A',
+  wood: '#D2A679',
+  white: '#FAFAF5',
+  vine: ['#5DBB63', '#7FD34E', '#3E9A52'],
+  blooms: ['#FF8FB1', '#FFD166', '#C3B0FF', '#FF9E7A', '#FAFAF5'],
+} as const;
+
+/**
  * Biodome Lab site plan (world/gen/plans/research.ts). Distances in u; footprints are the
  * fixture radii (content/settlements FIXTURE_RADIUS) the planner keeps clear.
  */

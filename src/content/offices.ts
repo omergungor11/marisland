@@ -182,8 +182,8 @@ export const WORK_SPOTS: Readonly<Record<string, readonly WorkSpot[]>> = {
     { x: 0.6, z: 1.1, face: PI, pose: 'rack', sit: 0 },
   ],
   observatory: [
-    { x: 1.6, z: 2.3, face: -2.2, pose: 'look', sit: 0 },
-    { x: -1.6, z: 2.3, face: 2.2, pose: 'look', sit: 0 },
+    { x: 2.4, z: 5.2, face: -2.6, pose: 'look', sit: 0 },
+    { x: -2.4, z: 5.2, face: 2.6, pose: 'look', sit: 0 },
   ],
   sculptureTorus: [{ x: 0, z: 2.4, face: PI, pose: 'look', sit: 0 }],
   sculptureArch: [{ x: 0, z: 2.8, face: PI, pose: 'look', sit: 0 }],
