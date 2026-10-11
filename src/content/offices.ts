@@ -199,6 +199,14 @@ export const WORK_SPOTS: Readonly<Record<string, readonly WorkSpot[]>> = {
     { x: -2.2, z: 3.4, face: Math.atan2(2.2, -3.4), pose: 'look', sit: 0 },
   ],
   biodome: [{ x: 1.4, z: 2.2, face: Math.atan2(-1.4, -2.2), pose: 'inspect', sit: 0 }],
+  // Observatory University (TASK-402b): tend the glasshouses at the door, check the lab pods at the
+  // hatch, inspect the small dishes, clip the parterres, gaze at the sculptures
+  terrarium: [{ x: 1.0, z: 3.2, face: Math.atan2(-1.0, -3.2), pose: 'inspect', sit: 0 }],
+  labPod: [{ x: 0.9, z: 2.6, face: Math.atan2(-0.9, -2.6), pose: 'inspect', sit: 0 }],
+  radioDish: [{ x: 1.6, z: -2.0, face: Math.atan2(-1.6, 2.0), pose: 'inspect', sit: 0 }],
+  hedgeParterre: [{ x: 0, z: 2.5, face: PI, pose: 'inspect', sit: 0 }],
+  atomSculpture: [{ x: 0, z: 2.0, face: PI, pose: 'look', sit: 0 }],
+  armillarySphere: [{ x: 0, z: 2.2, face: PI, pose: 'look', sit: 0 }],
   barrierGate: [{ x: 0, z: 0.9, face: PI, pose: 'inspect', sit: 0 }],
   // legacy: a bench spot just outside the door
   cottage: [{ x: 0.9, z: 2.0, face: 0, pose: 'look', sit: BENCH }],

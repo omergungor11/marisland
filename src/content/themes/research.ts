@@ -1,7 +1,8 @@
 /**
- * Research — "Biodome Lab" (TASK-400, M17b Concept Archipelago) on the Lonely Palm slot: a
- * breached crater (archetype `crater` + `bluff`) with a cluster of glowing glass biodomes in
- * the bowl, pastel crystal outcrops on the rim and a research vessel moored at the cove pier.
+ * Research — "Observatory University" (TASK-402b, M17b; was the TASK-400 Biodome Lab) on the
+ * Lonely Palm slot: a terraced campus hill (archetype `campusHill` + `bluff`) with the summit
+ * observatory, a quad of faculty halls around the library, formal gardens, a glasshouse row, a
+ * research base, radio dishes and a sculpture walk; the research vessel at the cove pier.
  */
 import { FOLIAGE, SAND } from '../palette.ts';
 import { Zone } from '../../world/types.ts';
@@ -18,31 +19,108 @@ export const RESEARCH_THEME: ThemeDef = {
   crown: null,
   defSwap: {},
   landmarkVariant: {},
-  // the biodomes and the vessel are worldgen fixtures (RESEARCH_SITE)
+  // the campus is all worldgen fixtures (RESEARCH_SITE)
   decor: [],
+  // lanterns are planner fixtures (one variant: every rolled variant is one more draw call)
   pathLanterns: 0,
-  plazaDecor: { posts: 'lanternPost', seats: null, across: null },
+  // the planner sets its own benches and lanterns on the quad rim (RESEARCH_SITE.quadDecor)
+  plazaDecor: { posts: null, seats: null, across: null },
   workers: { weight: 0.3, cap: 2, deskShare: 0.5 },
   accessory: 6,
-  // cove beach keeps its ripples
+  // TASK-402b garden campus: mown lawns, flowering meadow, cream gravel walks, a stone quad
   ground: {
+    [Zone.grass]: {
+      material: 'lawn',
+      base: '#8CCB64',
+      layer: { mow: { amplitude: 0.03, period: 3 } },
+    },
+    [Zone.meadow]: {
+      material: 'meadow',
+      base: '#A6D86E',
+      layer: { speckle: ['#FF8FB1', '#FFFFFF', '#C3B0FF'] },
+    },
+    [Zone.path]: {
+      material: 'paving',
+      base: '#E6D8B8',
+      layer: { tile: { size: 0.9, grout: '#CFC5AE' } },
+    },
+    [Zone.plaza]: {
+      material: 'paving',
+      base: '#E9E2D0',
+      layer: { tile: { size: 1.3, grout: '#B9AE96' } },
+    },
     [Zone.sandDry]: { material: 'sand', base: SAND.dry, layer: { layers: ['ripples'] } },
     [Zone.sandWet]: { material: 'sand', base: SAND.wet, layer: { layers: ['ripples'] } },
   },
   patchwork: 'off',
   landmarks: {},
   scatter: [
-    // pastel crystal outcrops on the crater rim (above the bowl floor)
+    // park trees in groves between the buildings and gardens (scatter keeps off structures)
+    {
+      def: 'roundTree',
+      zones: [Zone.grass, Zone.meadow],
+      minDist: 2.8,
+      density: 0.9,
+      slopeMax: 0.9,
+      heights: [3, 30],
+      shore: [2, 99],
+      scale: [0.8, 1.2],
+      maxPerIsland: 46,
+    },
+    // palms on the cove beach
+    {
+      def: 'palm',
+      zones: [Zone.sandDry, Zone.grass],
+      minDist: 4,
+      density: 0.9,
+      slopeMax: 0.5,
+      heights: [0.3, 3.5],
+      shore: [1, 10],
+      scale: [0.85, 1.15],
+      maxPerIsland: 5,
+    },
+    // bushes and ground cover after the trees (the global rules would fill the lawns first)
+    {
+      def: 'bush',
+      zones: [Zone.grass, Zone.meadow],
+      minDist: 3,
+      density: 0.55,
+      slopeMax: 0.6,
+      heights: [0.8, 30],
+      shore: [2, 1000],
+      cluster: { scale: 18, threshold: 0.1 },
+      scale: [0.8, 1.3],
+    },
+    {
+      def: 'grassTuft',
+      zones: [Zone.grass, Zone.meadow],
+      minDist: 1.5,
+      density: 0.75,
+      slopeMax: 0.8,
+      heights: [0.5, 40],
+      scale: [0.8, 1.4],
+    },
+    {
+      def: 'flower',
+      zones: [Zone.meadow, Zone.grass],
+      minDist: 1.3,
+      density: 0.6,
+      slopeMax: 0.6,
+      heights: [0.8, 30],
+      cluster: { scale: 14, threshold: 0.2 },
+      scale: [0.8, 1.3],
+    },
+    // a few pastel crystal outcrops on the rocky wall tops only
     {
       def: 'crystalCluster',
-      zones: [Zone.grass, Zone.meadow, Zone.rock, Zone.cliff],
-      minDist: 1.4,
-      density: 1,
+      zones: [Zone.rock, Zone.cliff],
+      minDist: 6,
+      density: 0.8,
       slopeMax: 3,
-      heights: [4.05, 12],
+      heights: [2, 12],
       shore: [1, 99],
-      scale: [0.8, 1.25],
-      maxPerIsland: 5,
+      scale: [0.8, 1.15],
+      maxPerIsland: 3,
     },
     // instrument buoys bob just off the beach (lagoon band: they float at the waterline)
     {
@@ -67,7 +145,8 @@ export const RESEARCH_THEME: ThemeDef = {
       maxPerIsland: 4,
     },
   ],
-  scatterOff: [],
+  // re-added above after the trees; no boulders on the lawns (three rock variants = 6 calls)
+  scatterOff: ['bush', 'grassTuft', 'flower', 'rockCluster'],
   // creature weights: THEME_LIFE.research
   life: {},
   treePalette: FOLIAGE,
@@ -191,26 +270,161 @@ export const SCIENCE_PALETTE = {
 } as const;
 
 /**
- * Biodome Lab site plan (world/gen/plans/research.ts). Distances in u; footprints are the
- * fixture radii (content/settlements FIXTURE_RADIUS) the planner keeps clear.
+ * Observatory University site plan (TASK-402b, world/gen/plans/research.ts) on the terraced
+ * campus hill (archetype `campusHill`: anchors summit, quad, garden, glasshouse, spur, headland,
+ * harbour). Distances in u, angles in degrees. Rect sizes are [width, depth] footprints the
+ * planner keeps clear; disc radii default to FIXTURE_RADIUS.
  */
 export const RESEARCH_SITE = {
-  /**
-   * Hero biodome on the profile's `dome` anchor (searched within `search` u if it does not fit).
-   * `pad`: flatten-pad core radius (margin 0) — small, so the falloff stops short of the crest.
-   */
-  hero: { def: 'biodomeHero', radius: 3.2, pad: 2.8, search: 3, minShore: 2.5 },
-  /** Smaller domes around the hero (count, ring distance from the hero centre). */
-  small: { def: 'biodome', radius: 1.8, pad: 1.6, count: 2, ring: [4.4, 7] as const, minShore: 2 },
-  /** Kept free in front of the hero door: cos of the half-angle around the door direction. */
-  doorCos: 0.55,
-  /** Gap kept between the domes and other obstacles. */
-  gap: 0.3,
-  /** Max height relief under a small dome before its pad levels it. */
-  maxRelief: 2.2,
-  /** Door spot in front of each dome (path pin), past its radius. */
+  /** Gap kept between structures (u). */
+  gap: 0.6,
+  /** Door / link pin this far in front of a footprint. */
   doorGap: 1.2,
-  dock: { maxSegments: 3 },
+  /**
+   * Level step (u) neighbouring pads may keep (Pad.step): the summit, the quad terrace and the
+   * garden lawn stay on their own levels instead of being relaxed into one plateau.
+   */
+  padStep: 1.6,
+  /**
+   * Paths keep off ground this close to the shore (u) and steeper than `rimSlope` outside the
+   * cove: no walks across the earth walls.
+   */
+  rimKeep: 6,
+  rimSlope: 0.5,
+  /** …except within this distance (u) of the pier root (the climb from the cove). */
+  rimFree: 20,
+  /** Nothing stands on the cove ramp: within this shore distance (u) where the cove is. */
+  coveKeep: 12,
+  /** Summit observatory: pad radius ≈ 9 u flat; door toward the quad. */
+  observatory: {
+    def: 'observatory',
+    radius: 4.0,
+    pad: 4.4,
+    search: 8,
+    minShore: 6,
+    maxRelief: 4,
+  },
+  /** Campus quad: a paved disc (Zone.plaza, the hub) with the fountain at its centre. */
+  quad: {
+    radius: 5,
+    search: 8,
+    minShore: 7,
+    maxRelief: 2.6,
+    /** Quad centre at least this far from the observatory centre. */
+    obsGap: 13,
+    fountain: 'fountain',
+  },
+  /**
+   * Quad ring: buildings around the plaza, doors facing the fountain. `angle` = preferred bearing
+   * from the quad → observatory axis; slots slide by `stepDeg` up to `slideDeg`; `keepDeg` around
+   * the observatory and harbour avenues stays open. `back` = the gap behind the plaza rim.
+   */
+  ring: {
+    stepDeg: 8,
+    slideDeg: 64,
+    keepDeg: 10,
+    back: 1.2,
+    /** Extra set-backs tried when the rim slot is blocked. */
+    out: [0, 1.6, 3.2],
+    /** Flatten margin around a ring building (small: fewer neighbours chain their levels). */
+    padMargin: 1,
+    minShore: 2.5,
+    maxRelief: 3,
+    buildings: [
+      { def: 'libraryRotunda', variant: 0, angle: 180, size: [7.2, 7.4] as const, slide: 180 },
+      { def: 'facultyHall', variant: 0, angle: 112, size: [5.4, 5.4] as const },
+      { def: 'facultyHall', variant: 1, angle: -112, size: [5.4, 5.4] as const },
+      { def: 'facultyHall', variant: 2, angle: 60, size: [5.4, 5.4] as const },
+      { def: 'facultyHall', variant: 0, angle: -60, size: [5.4, 5.4] as const },
+      { def: 'campusTower', variant: 0, angle: 146, size: [2.6, 2.6] as const },
+      { def: 'facultyHall', variant: 1, angle: -146, size: [5.4, 5.4] as const },
+    ],
+  },
+  /** Scholar statues flanking the library steps (offset across the door axis, in from the rim). */
+  statues: { def: 'scholarStatue', side: 2.6, inset: 1.4 },
+  /** Benches and lantern posts on the quad rim (bearing offsets from the avenues, deg). */
+  quadDecor: { bench: 'bench', lantern: 'lanternPost', benchInset: 1.3, lanternInset: 0.6 },
+  /**
+   * Formal garden near the `garden` anchor: a grid of hedgeParterre tiles (centre cell = a
+   * sculpture when the grid is odd), topiary lines along the long sides, flower beds at the outer
+   * corners, benches at the ends. Layouts tried in order, each at `turns` around the quad axis.
+   */
+  garden: {
+    search: 13,
+    minShore: 3,
+    tile: 4.2,
+    pitch: 4.9,
+    /** Max relief under one tile / over the whole grid before the pads level it. */
+    tileRelief: 2.2,
+    gridRelief: 3.6,
+    layouts: [
+      [3, 3],
+      [4, 2],
+      [2, 4],
+      [3, 2],
+      [2, 3],
+      [2, 2],
+    ] as const,
+    turns: [0, 90, 45, 135, 25, 65],
+    centre: 'armillarySphere',
+    /** Even grids: the sculpture this far past the far end. */
+    endStatue: 2.4,
+    topiary: { def: 'topiary', out: 1.3, step: 2.45, variants: [1, 0] as const },
+    bed: { def: 'flowerBed', out: 1.5 },
+    bench: { def: 'bench', out: 1.6 },
+  },
+  /** Pergola walk from the garden toward the quad (pergolas end to end, open along the walk). */
+  pergola: { def: 'pergola', count: 3, minCount: 2, size: [3.2, 2.1] as const, lead: 1.4 },
+  /** Glasshouse district: a row of terrariums (+ the biodome conservatory at one end). */
+  glasshouse: {
+    search: 8,
+    minShore: 3,
+    maxRelief: 2.6,
+    def: 'terrarium',
+    count: [3, 4] as const,
+    pitch: 5.6,
+    /** Row beside the formal garden: this far out past the garden's edge (beyond the topiary). */
+    gardenGap: 2.4,
+    conservatory: 'biodomeHero',
+  },
+  /** Research base on the headland: lab pods, a weather mast and a small dish around a yard. */
+  base: {
+    /** Yard search radii around the headland anchor (tried in order), yards tested per radius. */
+    search: [7, 14] as const,
+    tries: 10,
+    /** Stop widening the search once this many items fit. */
+    minItems: 3,
+    minShore: 3.5,
+    maxRelief: 2.6,
+    ring: [3.4, 8] as const,
+    items: [
+      { def: 'labPod', variant: 1 },
+      { def: 'labPod', variant: 0 },
+      { def: 'radioDish', variant: 1 },
+      { def: 'weatherMast', variant: 0 },
+    ],
+  },
+  /** Big radio dish on the spur behind the summit (+ small dishes beside it). */
+  dish: {
+    def: 'radioDish',
+    search: 7,
+    minShore: 3,
+    maxRelief: 3.2,
+    small: 1,
+    smallRing: [5, 7.5] as const,
+  },
+  /** Sculpture walk: focal points on the avenues. */
+  sculptures: {
+    /** On the observatory avenue, these fractions of the way quad rim → observatory door. */
+    observatory: { def: 'atomSculpture', at: [0.45, 0.3, 0.6] as const, side: 2.2 },
+    /** Between the quad and the garden gate. */
+    garden: { def: 'dnaHelix', at: [0.5, 0.35, 0.65] as const, side: 2.2 },
+    /** On the harbour approach (pier root → quad). */
+    harbour: { def: 'rocketMonument', at: [0.55, 0.4, 0.7] as const, side: 2.6 },
+    /** Fallback: a lawn spot on this ring around the quad centre. */
+    ring: [10, 16] as const,
+  },
+  dock: { maxSegments: 3, lee: 30 },
   /** Research vessel alongside the pier (hull half length / half beam, side offset from the pier axis). */
   vessel: { def: 'researchVessel', halfLength: 3.3, halfBeam: 1.15, side: 2.1, minDepth: 0.35 },
 } as const;

@@ -529,13 +529,14 @@ export const ACTIVITY = {
       { goal: { kind: 'dock' }, item: 'crate' },
       { goal: { kind: 'hub' } },
     ],
-    // TASK-400 Biodome Lab: tend the domes, carry samples to the research vessel's pier
+    // TASK-402b Observatory University: glasshouses, the observatory, the lab pods, samples to the
+    // research vessel's pier, the garden and the sculptures
     research: [
-      { goal: { kind: 'spot', defs: ['biodomeHero'] }, item: 'clipboard' },
-      { goal: { kind: 'spot', defs: ['biodome'] } },
+      { goal: { kind: 'spot', defs: ['terrarium', 'biodomeHero'] }, item: 'clipboard' },
+      { goal: { kind: 'spot', defs: ['observatory'] }, item: 'laptop' },
+      { goal: { kind: 'spot', defs: ['labPod', 'radioDish', 'weatherMast'] }, item: 'clipboard' },
       { goal: { kind: 'dock' }, item: 'crate' },
-      { goal: { kind: 'spot', defs: ['weatherMast', 'observatory'] } },
-      { goal: { kind: 'seat', defs: ['researchHut'] }, item: 'laptop' },
+      { goal: { kind: 'spot', defs: ['hedgeParterre', 'armillarySphere', 'atomSculpture'] } },
       { goal: { kind: 'hub' } },
     ],
   } as Record<string, readonly ItineraryStep[]>,

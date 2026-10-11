@@ -252,7 +252,8 @@ export function postcardPose(world: CameraWorld, view: View, vp: Viewport): Pose
   s = clamp(s, (h - P.maxTargetY) / sp, h / sp);
   return {
     tx: camX + ux * cp * s,
-    ty: h - sp * s,
+    // ≥ 0: when `s` sits on its upper clamp, h − sp · s is 0 up to rounding (−1e−14, seed 1002)
+    ty: Math.max(0, h - sp * s),
     tz: camZ + uz * cp * s,
     dist: s,
     pitch,

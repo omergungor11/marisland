@@ -8,7 +8,7 @@ import {
   PATCHWORK,
   RAW_FLOOR,
   WINDWARD_CLIFF,
-  type CraterParams,
+  type CampusHillParams,
 } from '../../content/islands.ts';
 
 /**
@@ -563,39 +563,67 @@ const mossgrove: ProfileFactory = ({ island, rng, noise, windDir }) => {
 };
 
 /**
- * Lonely Palm → Research "Biodome Lab" (TASK-400): a breached crater (CraterParams). A mesa
- * with a raised crest ring around a sunken bowl, open to leeward where the bluff cove ramps
- * down to the beach; the bluff pass adds the outer earth walls. Anchors: `dome` (hero biodome,
- * bowl centre nudged windward) and `breach` (the gap in the crest, toward the cove).
+ * Lonely Palm → Research "Observatory University" (TASK-402b; was the TASK-400 crater): a lawn
+ * plateau on earth walls (the bluff pass) with a broad campus terrace and a summit plateau for
+ * the observatory, joined by soft grassy risers, plus two promontories (the big radio dish's
+ * spur behind the summit, the research base's headland). The layout is mirrored per island
+ * (`m`) and turned a little, so seeds differ. Anchors (world u): `summit`, `quad` (terrace
+ * centre), `garden`, `glasshouse`, `spur`, `headland`, `harbour` (lee coast).
  */
 const lonelypalm: ProfileFactory = ({ island, rng, noise, windDir }) => {
-  const C = ARCHETYPES.lonelypalm.crater as CraterParams;
+  const C = ARCHETYPES.lonelypalm.campusHill as CampusHillParams;
   const fr = frame(island, windDir);
+  const m = rng.chance(0.5) ? 1 : -1;
   const rot = rng.range(-C.turn, C.turn);
   const c = Math.cos(rot);
   const s = Math.sin(rot);
-  const bc = Math.cos((C.breachHalfDeg * Math.PI) / 180);
+  const jit = (): number => rng.range(-C.jitter, C.jitter);
+  // a layout point (local, mirrored + turned) → island-local
+  const lay = (x: number, z: number): { x: number; z: number } => ({
+    x: x * c - z * m * s,
+    z: x * s + z * m * c,
+  });
+  const T = { ...lay(C.terrace.x + jit(), C.terrace.z + jit()), r: C.terrace.r, h: C.terrace.h };
+  const S = { ...lay(C.summit.x + jit(), C.summit.z + jit()), r: C.summit.r, h: C.summit.h };
+  const DEG = Math.PI / 180;
+  const spurA =
+    Math.atan2(Math.sin(C.spur.angleDeg * DEG) * m, Math.cos(C.spur.angleDeg * DEG)) + rot;
+  const headA =
+    Math.atan2(Math.sin(C.headland.angleDeg * DEG) * m, Math.cos(C.headland.angleDeg * DEG)) + rot;
+  const plateau = (dx: number, dz: number, r: number): number =>
+    smoothstep(r + C.soft, r - C.soft, Math.hypot(dx, dz));
   const q: [number, number] = [0, 0];
   const sample = (x: number, z: number): number => {
     fr.toLocal(x, z, q);
-    const u = q[0] * c + q[1] * s;
-    const v = -q[0] * s + q[1] * c;
-    const d = Math.hypot(u, v / C.oval) + C.warp * noise.fbm(q[0] * 1.8, q[1] * 1.8, 2);
-    const mesa = smoothstep(C.coast + C.coastSoft, C.coast - C.coastSoft, d);
-    const len = Math.hypot(q[0], q[1]) || 1;
-    const breach = smoothstep(bc - C.breachSoft, bc + C.breachSoft, q[0] / len);
-    const k = (d - C.crestD) / C.crestWidth;
-    const jit = 1 + C.crestJitter * noise.fbm(q[0] * 3.1 + 7.7, q[1] * 3.1 - 2.3, 2);
-    const crest = C.crest * Math.exp(-k * k) * (1 - breach) * jit;
-    return Math.max(RAW_FLOOR, mesa * (C.floor + crest) - 0.5 * C.floor);
+    const lx = q[0];
+    const lz = q[1];
+    const a = angleOf(lx, lz);
+    const ds = angDiff(a, spurA) / (C.spur.widthDeg * DEG);
+    const dh = angDiff(a, headA) / (C.headland.widthDeg * DEG);
+    const reach = C.coast + C.spur.len * Math.exp(-ds * ds) + C.headland.len * Math.exp(-dh * dh);
+    const d = Math.hypot(lx, lz) + C.warp * noise.fbm(lx * 2.1 + 4.3, lz * 2.1 - 7.9, 2);
+    const body = smoothstep(reach + C.coastSoft, reach - C.coastSoft, d);
+    // the terraces fade out before the rim, so the bluff lip stays a level lawn edge
+    const rim = smoothstep(reach - C.rimFade[0], reach - C.rimFade[1], d);
+    const lift =
+      rim *
+      Math.max(T.h * plateau(lx - T.x, lz - T.z, T.r), S.h * plateau(lx - S.x, lz - S.z, S.r));
+    const lawn = C.lawn * (1 + C.lawnNoise * noise.fbm(lx * 2.6 - 1.7, lz * 2.6 + 6.1, 3));
+    return Math.max(RAW_FLOOR, body * (lawn + lift) - 0.5 * C.lawn);
   };
-  const dw = fr.toWorld(-C.domeShift, 0);
-  const bw = fr.toWorld(C.crestD, 0);
+  const w = (p: { x: number; z: number }) => fr.toWorld(p.x, p.z);
+  const at = (p: { x: number; z: number }, rotY = windDir) => ({ ...w(p), rotY });
+  const tip = (a: number, r: number) => w({ x: Math.cos(a) * r, z: Math.sin(a) * r });
   return {
     sample,
     anchors: {
-      dome: { x: dw.x, z: dw.z, rotY: windDir },
-      breach: { x: bw.x, z: bw.z, rotY: windDir },
+      summit: at(S),
+      quad: at(T),
+      garden: at(lay(C.garden.x, C.garden.z)),
+      glasshouse: at(lay(C.glasshouse.x, C.glasshouse.z)),
+      spur: { ...tip(spurA, C.coast - 0.08), rotY: windDir + spurA },
+      headland: { ...tip(headA, C.coast - 0.06), rotY: windDir + headA },
+      harbour: at({ x: C.coast, z: 0 }),
     },
   };
 };

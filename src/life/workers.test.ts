@@ -320,14 +320,14 @@ describe('workers: behaviour', () => {
 
 describe('workers: outposts', () => {
   /**
-   * A copy of the world where the Research island is an outpost again (TASK-400: the Biodome Lab
-   * has a walk graph): its settlement and fixtures dropped, two field huts on the crater bowl
-   * floor either side of the dome anchor, doors leeward.
+   * A copy of the world where the Research island is an outpost again (TASK-400 / TASK-402b: the
+   * campus has a walk graph): its settlement and fixtures dropped, two field huts on the levelled
+   * quad either side of its anchor, doors leeward.
    */
   function withOutpost(seed: number): WorldData | null {
     const wd = world(seed);
     const id = wd.islands.findIndex((i) => i.theme === 'research');
-    const c = id >= 0 ? wd.islands[id].anchors.dome : undefined;
+    const c = id >= 0 ? wd.islands[id].anchors.quad : undefined;
     if (!c) return null;
     const a = wd.windDir + Math.PI / 2;
     const hut = (s: number) => ({

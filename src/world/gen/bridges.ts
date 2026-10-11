@@ -204,8 +204,8 @@ export function generateBridges(w: BridgeInputs, rng: Rng): BridgeData[] {
   const best: Candidate[] = [];
   const isl = w.islands;
   const rims = rimPoints(w);
-  // the Research crater (TASK-400) is too small for a viaduct landing beside its domes
-  const crater = (k: number): boolean => !!ARCHETYPES[isl[k].archetype].crater;
+  // no viaduct lands on the Research campus (TASK-402b; was the TASK-400 crater, too small)
+  const crater = (k: number): boolean => !!ARCHETYPES[isl[k].archetype].campusHill;
   for (let i = 0; i < isl.length; i++) {
     if (crater(i)) continue;
     for (let j = i + 1; j < isl.length; j++) {
