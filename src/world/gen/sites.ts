@@ -140,6 +140,14 @@ export interface Pad {
   shape: Shape;
   margin: number;
   T: number;
+  /**
+   * Level difference (u) tolerated against an overlapping neighbour before the two are relaxed
+   * toward each other (unset = FLATTEN.maxStep; a pair uses the larger value). TASK-402b: the
+   * Research campus keeps its summit / terrace / lawn levels instead of one shared plateau.
+   */
+  step?: number;
+  /** Pads of one group (same island) always relax to FLATTEN.maxStep (one district level). */
+  group?: number;
 }
 
 export interface PendingLot extends LotData {
@@ -326,8 +334,15 @@ export function addShape(ctx: SiteCtx, isl: IslandData, sh: Shape, block: boolea
       if (shapeDist(sh, cellX(ix), cellZ(iz)) <= 0.5) ctx.blocked[iz * ctx.n + ix] = 1;
 }
 
-export function addPad(ctx: SiteCtx, isl: IslandData, sh: Shape, margin: number): void {
-  ctx.pads.push({ islandId: isl.id, shape: sh, margin, T: 0 });
+export function addPad(
+  ctx: SiteCtx,
+  isl: IslandData,
+  sh: Shape,
+  margin: number,
+  step?: number,
+  group?: number,
+): void {
+  ctx.pads.push({ islandId: isl.id, shape: sh, margin, T: 0, step, group });
 }
 
 export function pushLandmark(

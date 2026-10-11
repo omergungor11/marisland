@@ -54,13 +54,13 @@ export interface ShotPreset {
 
 /** Encoded edit logs (seed 1001) of the `edit` set; regenerate with `encodeLog` when the codec changes. */
 export const EDIT_LOGS = {
-  hill: 'AekHAAgA5HbsKoAFgA4AwAE_AAAAwAFAAAAA_wFAAAAAgAEfAAAAPz-_Av8FAwAggAL_BQQAH58CAQ',
+  hill: 'AekHAAgA5HbaJoAFgA4AwAE_AAAAwAFAAAAA_wFAAAAAgAEfAAAAPz-_Av8FAwAggAL_BQQAH58CAQ',
   flood:
-    'AekHABAB5H6sOcADgAwBgAKAAgAAAYABvwIAAAH_AYAFAAABwAP_AQAAAb8IwAcAAAHAAkAAAAHAAr8BAAABf_8IAAABgAKAAgAAAYABvwIAAAH_AYAFAAABwAP_AQAAAb8IwAcAAAHAAkAAAAHAAr8BAAA',
+    'AekHABAB5H6aNcADgAwBgAKAAgAAAYABvwIAAAH_AYAFAAABwAP_AQAAAb8IwAcAAAHAAkAAAAHAAr8BAAABf_8IAAABgAKAAgAAAYABvwIAAAH_AYAFAAABwAP_AQAAAb8IwAcAAAHAAkAAAAHAAr8BAAA',
   meadow:
-    'AekHBQRwaW5lC3JvY2tDbHVzdGVyBmZsb3dlcgRidXNoDWdpYW50TXVzaHJvb20VA_BupGmABLQCBAAAAAEEgAKgAb8BATUAAMUBlwGxEYoCATUCAL8BmQH1B_cBATUAAGxlkAKGAgE1AAClAo4D3g-eAgA1AAGOBLsD_RfpAQA1AAGZApQEiBztAQE1AAF88QPrDvwBATUAASuWA60Z3wEBNQACJN0B8ASMAgA1AAKGAQTGEIYCADUAAgc8zxr7AQA1AAIid-cX2gEBNQACUWLJEPQBATUAA1Nl3RX7AQE1AAPqAZABsRKKAgA1AAPFAUyJGJMCADUAA64B2wG9Bo8CATUABEfmAf4ajgIA',
+    'AekHBQRwaW5lC3JvY2tDbHVzdGVyBmZsb3dlcgRidXNoDWdpYW50TXVzaHJvb20VA_BukmWABLQCBAAAAAEEgAKgAb8BATUAAMUBlwGxEYoCATUCAL8BmQH1B_cBATUAAGxlkAKGAgE1AAClAo4D3g-eAgA1AAGOBLsD_RfpAQA1AAGZApQEiBztAQE1AAF88QPrDvwBATUAASuWA60Z3wEBNQACJN0B8ASMAgA1AAKGAQTGEIYCADUAAgc8zxr7AQA1AAIid-cX2gEBNQACUWLJEPQBATUAA1Nl3RX7AQE1AAPqAZABsRKKAgA1AAPFAUyJGJMCADUAA64B2wG9Bo8CATUABEfmAf4ajgIA',
   mixed:
-    'AekHBQdjb3R0YWdlBHBhbG0GZmxvd2VyC2xhbnRlcm5Qb3N0BWJlbmNoGAaVyn8Gk8p_Bu_AfwKAPoAwoAKAIAIAAAAAAwAAYMsdBAAAnwEBAsABgAJfzBMCYAAA_wkCAAAAAAJgAACZBwIAAAAAAlAAH8sBAgAAAAADrwEAYJkBBCAAPwMVAADfAq8ChwOAAhUAAcABcOMOmgIVAAG_As8B7BKNAhUAAuAB8AHEAYACFQACPxDPBoACFQACPx_bC4ACFQADoAFPAIACFQAEzwEwhwOAAg',
+    'AekHBQdjb3R0YWdlBHBhbG0GZmxvd2VyC2xhbnRlcm5Qb3N0BWJlbmNoFgatzn8CgD7uK6ACgCACAAAAAAMAAGDLHQQAAJ8BAQLAAYACX8wTAmAAAP8JAgAAAAACYAAAmQcCAAAAAAJQAB_LAQIAAAAAA68BAGCZAQQgAD8DFQAA3wKvAocDgAIVAAHAAXDjDpoCFQABvwLPAewSjQIVAALgAfABxAGAAhUAAj8QzwaAAhUAAj8f2wuAAhUAA6ABTwCAAhUABM8BMIcDgAI',
 } as const;
 
 /** Department themes on seed 1001 (findIsland matches the theme id) with their display names. */
@@ -83,13 +83,14 @@ const CAMPUS_THEMES = [
  * over the west-shore rack yard by the pier (steam puffs, yard bots) instead of bare cone rock (0 %).
  */
 const LIVE_CAMS: Record<(typeof CAMPUS_THEMES)[number][0], string> = {
-  hq: '66,14,-168,86,1.4,-171',
-  qa: '-167.7,23,-189.3,-156,9,-177',
-  design: '-144,30,82,-151,17,100',
-  coding: '105,17,13,94,11,23',
-  research: '-152,12,232,-133,0.5,222',
-  devops: '-106,10,-88,-90,2.5,-78',
-  marketing: '8,37,196,-6,25,182',
+  hq: '66,14,-184.54,86,1.4,-187.54',
+  qa: '-167.7,23,-205.84,-156,9,-193.54',
+  design: '-144,30,65.46,-151,17,83.46',
+  coding: '105,17,-3.54,94,11,6.46',
+  // TASK-402b: over the glasshouse row and the base pods (bots at the terrariums, mast and pods)
+  research: '-104,15,236,-118,8,226',
+  devops: '-106,10,-104.54,-90,2.5,-94.54',
+  marketing: '8,37,179.46,-6,25,165.46',
 };
 
 /** Warm-up per live campus (s; default 6): picked for the most bots in motion near the target. */
@@ -99,23 +100,26 @@ const LIVE_SIMT: Partial<Record<(typeof CAMPUS_THEMES)[number][0], number>> = { 
 const LIVE_CROP: [number, number, number, number] = [0.15, 0.1, 0.85, 0.9];
 
 /** W7 camera (raw, seed 1001 Coding; TASK-380), re-pin when that layout changes. */
-const W7_CAM = '45,20,20,95,13,40';
+const W7_CAM = '45,20,3.46,95,13,23.46';
 
-/** D-campus-research close-up (raw, seed 1001 Biodome Lab; TASK-400), re-pin when that layout changes. */
-const RESEARCH_CLOSE_CAM = '-143,13,246,-138.5,3,222.5';
+/** W9 Research hero (raw, seed 1001 Observatory University; TASK-402b), re-pin when the layout changes. */
+const W9_CAM = '-66,21,203,-126,15,221';
+
+/** W14 campus at golden hour (raw, seed 1001; TASK-402b): observatory, quad and gardens. */
+const W14_CAM = '-72,46,252,-131,5,226';
 
 /**
  * D-desk camera (raw `x,y,z,tx,ty,tz`), re-pin when the seed 1001 layout changes (TASK-396: +4 u
  * for the raised Coding plateau, ground ≈ 9.5).
  */
-const DESK_CAM = '95.8,12.1,17.3,91.5,10.5,20';
+const DESK_CAM = '94.1,13,0.5,91.5,10.2,3.46';
 
 /**
  * Hearthholm beach macro (raw, seed 1001; D-macro and W8, TASK-396): the `macro-beach` orbit now
  * faces the clocktower's wall (TASK-393 height), so a fixed T3 look west from the HQ quad over the
  * coffee kiosk, flower bed and crab to the reeds, foam line and sea. Re-pin when the layout changes.
  */
-const MACRO_CAM = '96,7,-170.5,85,2.5,-166';
+const MACRO_CAM = '91.8,7.4,-186.3,82.3,2,-182.2';
 
 export const SHOT_PRESETS: readonly ShotPreset[] = [
   // ---- bible wow shots (1920×1080, medium quality)
@@ -164,7 +168,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // raw T1 look from the north-west at 140 u: Beacon Rock in the left third, the whole lighthouse
     // against the night sky, two sea stacks and the lit landing; `simt` 3 puts the beam broadside
     seed: 2024,
-    cam: '-52.7,57.5,-49.5,35,26,-154',
+    cam: '65.21,57.5,13.6,152.91,26,-90.9',
     time: 21.5,
     simt: 3,
     quality: 'medium',
@@ -231,9 +235,11 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   },
   {
     id: 'W9',
-    title: 'Lonely Palm',
+    title: 'Observatory University',
+    // TASK-402b (was the Lonely Palm / Biodome hero): a low look from the east-north-east, the
+    // summit observatory against the evening sky over the base pods, glasshouses and dishes
     seed: 1001,
-    cam: 'island:Lonely Palm',
+    cam: W9_CAM,
     time: 18.75,
     simt: 5,
     quality: 'medium',
@@ -276,13 +282,28 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // and mist (seed 1001, raw `eye → target`; re-pin when the layout changes); the flow scrolls
     // between the two frames
     seed: 1001,
-    cam: '-82.2,13,113.1,-114,4.1,91',
+    cam: '-82.2,13,96.56,-114,4.1,74.46',
     time: 10.5,
     simt: 5,
     quality: 'medium',
     width: 1920,
     height: 1080,
     deltaT: 0.5,
+    sets: ['wow'],
+  },
+  {
+    id: 'W14',
+    title: 'Campus Golden Hour',
+    // TASK-402b: Observatory University from the east at golden hour, over the base pods and the
+    // glasshouses to the parterre garden, the quad and the summit observatory with its dishes;
+    // open sea behind (no other campus in frame, D-028 calls)
+    seed: 1001,
+    cam: W14_CAM,
+    time: 17.75,
+    simt: 5,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
     sets: ['wow'],
   },
 
@@ -330,7 +351,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     seed: 1001,
     // TASK-396: the `shore` orbit looks through the taller clocktower; a raw 40 u look west over
     // the kiosk sandbar, its foam bands and the ferry pier (tower just out of frame, right)
-    cam: '116.6,21,-155,82,1,-155',
+    cam: '116.6,21,-171.54,82,1,-171.54',
     time: 14,
     simt: 2,
     deltaT: 2,
@@ -457,9 +478,9 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: `D-campus-${theme}`,
     title: `Campus · ${name}`,
     seed: 1001,
-    // Research (TASK-400): the village fit looks straight down on the tiny crater, so a raw
-    // T2/T3 close-up from the cove side (seed 1001: domes in the bowl, vessel at the pier)
-    cam: theme === 'research' ? RESEARCH_CLOSE_CAM : `village:${theme}`,
+    // TASK-402b: the Research campus is big enough for the village fit again (was a raw cam on
+    // the TASK-400 crater)
+    cam: `village:${theme}`,
     time: 14,
     simt: 2,
     sets: ['dev'],
@@ -479,8 +500,9 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-pool-ducks',
     title: 'Pool · duck family (Coding)',
     seed: 1001,
-    // seed 1001: the family paddles on the pool centred (110.4, 21.1), not its twin at (101.5, 12.5); steep T3 look down
-    cam: '110.4,15,25.5,110.4,5.4,21.1',
+    // seed 1001: the family paddles on the pool centred (110.4, 4.6), not its twin at (101.5, -4); steep T3 look down
+    // (TASK-402b: the seed 1001 layout moved 16.54 u in −z)
+    cam: '110.4,15,8.96,110.4,5.4,4.56',
     time: 11,
     simt: 3,
     // low has no ducks (LIFE_PLAN.low.ducks = 0), the dev set defaults to low
@@ -651,7 +673,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'E-panel',
     title: 'Edit panel · place',
     seed: 1001,
-    cam: '109.1,70,-86.6,95.1,6,-186.6',
+    cam: '109.1,70,-103.14,95.1,6,-203.14',
     time: 15,
     simt: 2,
     width: 1280,
@@ -665,7 +687,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'E-hill',
     title: 'Hill behind the village',
     seed: 1001,
-    cam: '109.1,70,-86.6,95.1,6,-186.6',
+    cam: '109.1,70,-103.14,95.1,6,-203.14',
     time: 15,
     simt: 2,
     edit: EDIT_LOGS.hill,
@@ -685,7 +707,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'E-meadow',
     title: 'Meadow + 19 props',
     seed: 1001,
-    cam: '71.5,23,69.1,59.5,6,37.1',
+    cam: '71.5,23,52.56,59.5,6,20.56',
     time: 14,
     simt: 2,
     edit: EDIT_LOGS.meadow,
@@ -695,7 +717,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'E-mixed',
     title: 'Plateau garden + slipway',
     seed: 1001,
-    cam: '-90.1,30,-194.2,-131,6,-187',
+    cam: '-90.1,30,-210.74,-131,6,-203.54',
     time: 15,
     simt: 2,
     edit: EDIT_LOGS.mixed,

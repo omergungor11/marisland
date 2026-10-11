@@ -32,7 +32,7 @@ describe('waterfall placement (TASK-395)', () => {
     for (const w of worlds.values()) {
       for (const isl of w.islands) {
         const n = w.waterfalls.filter((f) => f.islandId === isl.id).length;
-        if (bluffOf(isl) && !ARCHETYPES[isl.archetype].crater) {
+        if (bluffOf(isl) && !ARCHETYPES[isl.archetype].noWaterfalls) {
           expect(n).toBeGreaterThanOrEqual(W.count[0]);
           expect(n).toBeLessThanOrEqual(W.count[1]);
         } else expect(n).toBe(0);

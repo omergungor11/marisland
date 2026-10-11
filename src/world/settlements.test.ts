@@ -417,7 +417,7 @@ describe('settlements — 20-seed sweep', () => {
     }
   });
 
-  it('scatter avoids lots, plaza and paths; the Research crater has no palm', () => {
+  it('scatter avoids lots, plaza and paths; the Research campus has its observatory', () => {
     for (const seed of SEEDS.slice(0, 6)) {
       const w = world(seed);
       const p = w.props;
@@ -431,15 +431,10 @@ describe('settlements — 20-seed sweep', () => {
           expect(shapeDist(sh, p.x[i], p.z[i]), `seed ${seed} prop in lot`).toBeGreaterThan(r);
       }
       const lp = w.islands.find((i) => i.archetype === 'lonelypalm');
-      if (lp) {
-        let palms = 0;
-        for (let i = 0; i < p.count; i++)
-          if (p.islandId[i] === lp.id && PROP_DEFS[p.defId[i]].id === 'palm') palms++;
-        expect(palms).toBe(0);
-        expect(w.fixtures.some((f) => f.defId === 'biodomeHero' && f.islandId === lp.id)).toBe(
+      if (lp)
+        expect(w.fixtures.some((f) => f.defId === 'observatory' && f.islandId === lp.id)).toBe(
           true,
         );
-      }
     }
   });
 
@@ -579,13 +574,13 @@ describe('campuses — 50-seed acceptance (TASK-302)', () => {
               );
           }
         }
-        // Research Biodome Lab (TASK-400): the hero dome in every crater, the vessel at its pier
+        // Research Observatory University (TASK-402b): the observatory on every campus, the vessel at its pier
         const lp = w.islands.find((i) => i.theme === 'research');
         if (lp) {
           const ctx = `seed ${seed} research`;
           expect(heroHeading(lp, w.islands), ctx).toBe(heroAzimuth(lp, w.islands));
           const defs = w.fixtures.filter((f) => f.islandId === lp.id).map((f) => f.defId);
-          expect(defs, ctx).toContain('biodomeHero');
+          expect(defs, ctx).toContain('observatory');
           if (defs.includes('researchVessel')) vessels++;
         }
       }

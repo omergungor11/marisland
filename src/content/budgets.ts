@@ -27,6 +27,9 @@ export interface Budget {
  * the old budget, to measured + ~10 %: calls low 157 (E-meadow; T3 views see ~47 terrain chunks and
  * the LOD0 groups of 3–4 islands of the 7-island layout) → 170, medium 232 → 255; gpuMemoryMB low
  * 63 (E-panel at 1280×720) → 70. Programs stay 9 / 17 / 24 (= pre-Phase-3 baseline).
+ * D-046 (TASK-402b): medium 255 → 300. The Research campus (≈ 20 instanced LOD1 groups: observatory,
+ * library, halls, tower, parterres, terrariums, dishes, pods, sculptures, each + its shadow pass) sits
+ * in the W11 postcard foreground: 216 → 289 calls measured (seed 1001); everything else stays ≤ 237.
  */
 export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
   low: {
@@ -42,7 +45,7 @@ export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
     newSeedMs: 1500,
   },
   medium: {
-    drawCalls: 255,
+    drawCalls: 300,
     triangles: 800_000,
     instances: 15_000,
     groundCover: 12_000,

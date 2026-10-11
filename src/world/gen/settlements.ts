@@ -677,7 +677,11 @@ function applyPads(ctx: SiteCtx): Uint8Array {
         if (A.islandId !== B.islandId) continue;
         if (dist(A.shape, B.shape) > bound(A) + bound(B)) continue;
         const d = A.T - B.T;
-        const ex = Math.abs(d) - FLATTEN.maxStep;
+        const lim =
+          A.group !== undefined && A.group === B.group
+            ? FLATTEN.maxStep
+            : Math.max(A.step ?? FLATTEN.maxStep, B.step ?? FLATTEN.maxStep);
+        const ex = Math.abs(d) - lim;
         if (ex <= 0) continue;
         const m = (ex / 2) * Math.sign(d);
         A.T -= m;
@@ -711,8 +715,20 @@ function applyPads(ctx: SiteCtx): Uint8Array {
         }
       }
   }
+  // the grid samples around every pier segment past the root stay as they are: a pad by the
+  // shore must not lift the ground the deck crosses out of the water (TASK-402b, seed 1526)
+  const pier = new Uint8Array(N);
+  for (const d of ctx.docks)
+    for (let k = 1; k <= d.segments; k++) {
+      const fx = (d.x + Math.cos(d.rotY) * DOCK.segment * k - h.originX) / h.cellSize;
+      const fz = (d.z + Math.sin(d.rotY) * DOCK.segment * k - h.originZ) / h.cellSize;
+      for (const iz of [Math.floor(fz), Math.floor(fz) + 1])
+        for (const ix of [Math.floor(fx), Math.floor(fx) + 1])
+          if (ix >= 0 && iz >= 0 && ix < n && iz < n) pier[iz * n + ix] = 1;
+    }
   const protect = new Uint8Array(N);
   for (let i = 0; i < N; i++) {
+    if (pier[i]) continue;
     if (coreW[i] > 0) {
       h.data[i] = coreT[i] / coreW[i];
       protect[i] = 1;

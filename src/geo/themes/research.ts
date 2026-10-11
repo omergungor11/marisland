@@ -1,30 +1,32 @@
 /**
- * research theme structure geometry (M14b TASK-375): weatherMast, observatory, instrumentBuoy;
+ * research theme structure geometry (M14b TASK-375): weatherMast, instrumentBuoy;
  * TASK-400 "Biodome Lab": biodomeHero, biodome, crystalCluster, researchVessel (the weather
- * mast and observatory stay in the catalogue for edit mode but are no longer planned).
+ * mast stays in the catalogue for edit mode but is no longer planned). TASK-402a: the campus
+ * (observatory, facultyHall, libraryRotunda, campusTower, terrarium) lives in ./campus.ts.
  * Defs: content/props-themes/research.ts.
  *
  * Hooks (userData.hooks):
  *  - weatherMast.anemometer: the cup rotor spins via aSpin (hub in userData.hub, axis z), the
  *    same branch as the windmill blades.
- *  - observatory.slit: the dome slit quad (centre + normal) where a work spot / scope can point.
  */
 import * as THREE from 'three';
-import { OFFICE_COLORS as C, OFFICE_PAL } from '../../content/palette-offices.ts';
+import { OFFICE_COLORS as C } from '../../content/palette-offices.ts';
 import { THEMES } from '../../content/themes.ts';
 import { BIODOME_PALETTE } from '../../content/themes/research.ts';
 import { hashInts } from '../../core/hash.ts';
 import { col, qEuler, type Acc } from '../kit.ts';
-import { Spin, domeCap, dish, finishSpin } from '../office-kit.ts';
+import { Spin, dish, finishSpin } from '../office-kit.ts';
 import { TAU, V, baseBox, cylB, jitterAcc, lathe, put } from '../parts.ts';
 import type { BuildOpts, PropGeoDef } from '../types.ts';
+import { CAMPUS_GEO } from './campus.ts';
+import { GARDEN_GEO } from './garden.ts';
+import { SCIENCE_GEO } from './science.ts';
 import { addHook, stripedBuoy } from './hq.ts';
 import { tagScreens } from './surface-tags.ts';
 
 const RS = THEMES.research.accent;
 const DOME = '#F4F2EC';
 const TEAL = '#4FC3C9';
-const PAL = OFFICE_PAL.research;
 
 /* ------------------------------- weatherMast ------------------------------- */
 
@@ -159,95 +161,6 @@ function weatherMast({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   tagScreens(g, 'spectrum'); // TASK-384: cabinet door readout
   return addHook(g, 'anemometer', { hub: [hub.x, hub.y, hub.z], axis: [0, 0, 1] });
 }
-
-/* -------------------------------- observatory -------------------------------- */
-
-/** Standalone observatory: drum + white dome with a teal slit, balcony, door and steps. */
-function observatory({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
-  const acc = jitterAcc(rng, 0.012);
-  const hi = lod === 0;
-  const R = 1.55;
-  const DH = 1.9;
-  const seg = hi ? 14 : 8;
-  put(acc, cylB(R + 0.2, R + 0.2, 0.2, seg), [0, 0, 0], C.plinth, { aoAmt: 0.25 });
-  put(acc, cylB(R, R, DH, seg, true), [0, 0.2, 0], DOME, { aoAmt: 0.18 });
-  // teal band under the dome + sill band
-  put(acc, cylB(R + 0.06, R + 0.06, 0.16, seg), [0, 0.2 + DH - 0.14, 0], TEAL, { aoAmt: 0 });
-  const dy = 0.2 + DH + 0.02;
-  put(acc, cylB(R + 0.12, R + 0.12, 0.08, seg), [0, dy - 0.04, 0], PAL[0].trim, { aoAmt: 0 });
-  domeCap(acc, V(0, dy, 0), R + 0.08, DOME, lod);
-  // slit: teal vertical slot on the +z face of the dome, glowing a little at night
-  const sy = dy + (R + 0.08) * 0.52;
-  const sz = (R + 0.08) * 0.84;
-  put(acc, new THREE.BoxGeometry(0.46, (R + 0.08) * 1.05, 0.07), [0, sy, sz], TEAL, {
-    q: qEuler(-0.55, 0, 0),
-    emissive: 0.3,
-    aoAmt: 0,
-    ao: () => 1,
-  });
-  // door + steps on the +z drum face
-  put(acc, baseBox(0.8, 1.4, 0.1), [0, 0.2, R - 0.02], WOODDOOR, { aoAmt: 0.05 });
-  put(acc, baseBox(1.3, 0.12, 0.5), [0, 0.2, R + 0.28], C.plinth, { aoAmt: 0.2 });
-  // windows (glow)
-  for (const a of hi ? [0.9, 2.3, 4.0, 5.3] : [2.3, 5.3]) {
-    const p = V(Math.sin(a) * (R + 0.01), 1.2, Math.cos(a) * (R + 0.01));
-    put(acc, new THREE.PlaneGeometry(0.42, 0.55), p, C.screenWarm, {
-      q: qEuler(0, a, 0),
-      emissive: 1,
-      aoAmt: 0,
-      ao: () => 1,
-    });
-  }
-  put(acc, cylB(R + 0.42, R + 0.42, 0.06, hi ? 14 : 8), [0, 0.2 + 0.7, 0], C.deskDark, {
-    aoAmt: 0.1,
-  });
-  if (hi) {
-    // balcony ring + posts
-    put(acc, new THREE.TorusGeometry(R + 0.35, 0.04, 4, 20), [0, 1.0, 0], C.steelLight, {
-      q: qEuler(Math.PI / 2, 0, 0),
-      aoAmt: 0,
-    });
-    for (let k = 0; k < 8; k++) {
-      const a = (k / 8) * TAU;
-      put(
-        acc,
-        cylB(0.03, 0.03, 0.5, 3, true),
-        [Math.sin(a) * (R + 0.35), 0.9, Math.cos(a) * (R + 0.35)],
-        C.steelLight,
-        { aoAmt: 0 },
-      );
-    }
-    // dome rib stripes
-    for (let k = 0; k < 6; k++) {
-      const a = (k / 6) * Math.PI;
-      put(acc, new THREE.TorusGeometry(R + 0.1, 0.022, 3, 10, Math.PI), [0, dy, 0], PAL[0].trim, {
-        q: qEuler(0, a, 0),
-        aoAmt: 0,
-      });
-    }
-    // LOD0-only variation: v0 = telescope tube out of the slit, v1 = solar panels on the plinth
-    if (variant === 0)
-      put(acc, new THREE.CylinderGeometry(0.1, 0.12, 0.9, 6), [0, sy + 0.2, sz + 0.22], DOME, {
-        q: qEuler(Math.PI / 2 - 0.65, 0, 0),
-        aoAmt: 0.05,
-      });
-    else
-      for (const x of [-1.2, 1.2])
-        put(acc, baseBox(0.8, 0.04, 0.5), [x, 0.35, R + 0.9], C.solar, {
-          q: qEuler(-0.4, 0, 0),
-          aoAmt: 0,
-        });
-    // lamp over the door
-    put(acc, new THREE.IcosahedronGeometry(0.1, 0), [0.0, 1.78, R + 0.1], C.screenWarm, {
-      emissive: 1,
-      aoAmt: 0,
-      ao: () => 1,
-    });
-  }
-  const g = acc.finish(rng, false, true);
-  return addHook(g, 'slit', { center: [0, sy, sz], normal: [0, 0.57, 0.82] });
-}
-const WOODDOOR = col('#A8754F').getStyle();
 
 /* ------------------------------- instrumentBuoy ------------------------------- */
 
@@ -678,8 +591,10 @@ function researchVessel({ rng, lod }: BuildOpts): THREE.BufferGeometry {
 }
 
 export const RESEARCH_GEO: readonly PropGeoDef[] = [
+  ...CAMPUS_GEO,
+  ...SCIENCE_GEO,
+  ...GARDEN_GEO,
   { id: 'weatherMast', variants: 2, build: weatherMast, footprint: 0.9, height: 6.2, windy: false },
-  { id: 'observatory', variants: 2, build: observatory, footprint: 2.1, height: 3.8, windy: false },
   {
     id: 'instrumentBuoy',
     variants: 2,

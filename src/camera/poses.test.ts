@@ -117,13 +117,22 @@ describe('camera presets on generated worlds', () => {
     });
   }
 
-  it('Lonely Palm hero framing: low look, horizon in the top third, palm and ring in frame (D13)', () => {
+  it('hero framing (D13): low look, horizon in the top third, landmark and ring in frame', () => {
     let seen = 0;
     for (const seed of SEEDS) {
       const cw = cameraWorld(world(seed));
-      const lp = cw.islands.find((i) => i.archetypeName === 'Lonely Palm');
-      if (!lp) continue;
+      const research = cw.islands.find((i) => i.archetypeName === 'Lonely Palm');
+      if (!research) continue;
       seen++;
+      // TASK-402b: the Research campus (52–58 u) is no longer a tiny island: it gets the sphere fit;
+      // the hero framing is checked on a tiny stand-in at its place
+      expect(isHeroIsland(research)).toBe(false);
+      const lp = {
+        ...research,
+        reach: 12.5, // the TASK-400 crater size
+        peakX: research.cx,
+        peakZ: research.cz,
+      };
       expect(isHeroIsland(lp)).toBe(true);
       for (const vp of [vpLand, { ...vpLand, insets: FRAMING.bareInsets }]) {
         const pose = heroPose(lp, LAND, vp);

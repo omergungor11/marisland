@@ -165,7 +165,10 @@ function deriveNear(
   if (rules.sandOnly) return s <= ZONE_RULES.wetSand ? Zone.sandWet : Zone.sandDry;
   const slope = slopeAtCell(h, ix, iz);
   const forced = (tag & Tag.cliff) !== 0 && slope > rules.forcedCliffSlope;
-  const cliff = rules.cliff === 'slope' ? slope > ZONE_RULES.cliffSlope || forced : forced;
+  const slopeCliff =
+    slope > (rules.cliffSlope ?? ZONE_RULES.cliffSlope) &&
+    s <= (rules.slopeCliffMaxShore ?? Infinity);
+  const cliff = rules.cliff === 'slope' ? slopeCliff || forced : forced;
   const pond = (tag & Tag.pond) !== 0;
   const sandZone = rules.sand === 'sandBlack' ? Zone.sandBlack : Zone.sandDry;
   if (cliff) return Zone.cliff;

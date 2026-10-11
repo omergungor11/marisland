@@ -216,7 +216,7 @@ describe('QA Test Factory plan (TASK-401), 30 seeds', () => {
     expect(got).toMatchInlineSnapshot(`
       [
         "0d6eb4f708e3c0df",
-        "66e1cb20b0808662",
+        "d031d482fc8e2010",
         "b050a5f651194303",
       ]
     `);
