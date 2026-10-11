@@ -183,10 +183,13 @@ export function windwardSector(lx: number, lz: number, halfAngle: number, soft: 
 }
 
 /**
- * Beacon Rock: a sheer 25 u stack with a slightly domed top (lighthouse),
- * a low landing lobe on the lee side, and 2–4 sea stacks offshore to
- * windward. The windward face is a forced cliff with no beach and (in the
- * height pass) no shelf.
+ * Beacon Rock: a sheer 25 u stack with a slightly domed top (lighthouse) and 2–4 sea stacks
+ * offshore to windward. The windward face is a forced cliff with no beach and (in the height
+ * pass) no shelf. TASK-403 (Marketing "Media Rock"): to leeward the stack steps down in
+ * nested terraces (TerraceParams) — upper ledge, middle ledge, fair ground at the waterline —
+ * each rimmed by an earth wall, the last one ramping down to a beach in its landing cove.
+ * Anchors: `lighthouse` (summit), `landing` (cove), `ledge0` / `ledge1` / `ledge2` (mid band of
+ * each shelf on the terrace axis; rotY = the axis heading).
  */
 const beaconrock: ProfileFactory = ({ island, rng, noise, windDir }) => {
   const fr = frame(island, windDir);
@@ -203,21 +206,78 @@ const beaconrock: ProfileFactory = ({ island, rng, noise, windDir }) => {
   }
   const landing = { x: rng.range(1.0, 1.1), z: rng.range(-0.25, 0.25) };
   const top = { x: rng.range(-0.25, -0.1), z: rng.range(-0.1, 0.1) };
+  // TASK-403 draws come after the stack / landing / summit rolls, so those keep their values
+  const T = ARCHETYPES.beaconrock.terraces;
+  const lean = T ? rng.range(-T.lean, T.lean) : 0;
+  const side = T && rng.next() < 0.5 ? -1 : 1;
+  const coveA = T ? (side * rng.range(T.cove.angleDeg[0], T.cove.angleDeg[1]) * Math.PI) / 180 : 0;
+  const cl = Math.cos(lean);
+  const sl = Math.sin(lean);
+  const sx = T?.stack.shift ?? 0;
+  const ss = T?.stack.scale ?? 1;
+  // shelf ellipses (axis centre c, half-length r0, half-width r1, radius units) from the u bands
+  const foot = T ? T.foot / ss - sx : 0;
+  const bs = T ? Math.min(T.bandScale.max, Math.max(T.bandScale.min, r / T.bandScale.ref)) : 1;
+  let rim = foot;
+  const shelves = (T?.shelves ?? []).map((S) => {
+    const inner = rim;
+    rim += (S.band * bs) / r;
+    const r0 = (rim - (T as NonNullable<typeof T>).inner) / 2;
+    return { ...S, c: rim - r0, r: [r0, r0 * S.across] as const, mid: (inner + rim) / 2 };
+  });
+  const last = shelves.length - 1;
+  const coveCos = T ? Math.cos((T.cove.halfDeg * Math.PI) / 180) : 1;
   const q: [number, number] = [0, 0];
   const w: [number, number] = [0, 0];
   const half = (WINDWARD_CLIFF.halfAngleDeg * Math.PI) / 180;
+  /** Stack top (raw): the dome rim value the shelf levels are fractions of. */
+  const TOP = 25;
+  /** Shelf k at axis coords (u, v): its raw height and the wall parameter (0 = rim foot … 1 = shelf). */
+  const shelf = (k: number, u: number, v: number, out: [number, number]): void => {
+    const S = shelves[k];
+    const eu = (u - S.c) / S.r[0];
+    const ev = v / S.r[1];
+    const d =
+      Math.hypot(eu, ev) +
+      (T as NonNullable<typeof T>).warp * noise.fbm(u * 2.3 + 5.1 * k, v * 2.3 - 3.3 * k, 2);
+    const unitU = r * Math.min(S.r[0], S.r[1]);
+    let run = S.wall / unitU;
+    if (k === last && T) {
+      const th = Math.atan2(ev, eu);
+      const cov = smoothstep(coveCos - T.cove.soft, coveCos + T.cove.soft, Math.cos(th - coveA));
+      run = lerp(run, T.cove.ramp / unitU, cov);
+    }
+    const step = 1 - smoothstep(1 - run, 1, d);
+    const lvl =
+      S.level * TOP + 1 + (T as NonNullable<typeof T>).ripple * noise.fbm(u * 4, v * 4, 2);
+    out[0] = lvl * step - 1;
+    out[1] = d < 1 - run ? 1 : d > 1 ? 0 : 1 - (d - (1 - run)) / run;
+  };
+  const sh: [number, number] = [0, 0];
+  const stackAt = (lx: number, lz: number): number => {
+    warpAt(noise, lx, lz, w);
+    const d = ss * Math.hypot(lx + sx + w[0] * 0.1, lz / 1.12 + w[1] * 0.1);
+    const body = smoothstep(1.0, 0.72, d);
+    const dome = 1 + 0.07 * (1 - Math.min(1, d * d)) + 0.03 * noise.fbm(lx * 3, lz * 3, 2);
+    return 26 * body * dome - 1;
+  };
   const sample = (x: number, z: number): number => {
     fr.toLocal(x, z, q);
     const lx = q[0];
     const lz = q[1];
-    warpAt(noise, lx, lz, w);
-    const d = Math.hypot(lx + w[0] * 0.1, lz / 1.12 + w[1] * 0.1);
-    const body = smoothstep(1.0, 0.72, d);
-    const dome = 1 + 0.07 * (1 - Math.min(1, d * d)) + 0.03 * noise.fbm(lx * 3, lz * 3, 2);
-    let h = 26 * body * dome - 1;
-    // lee landing: a low lobe the stair path will come down to
-    const dl = Math.hypot((lx - landing.x) / 0.5, (lz - landing.z) / 0.42);
-    h = Math.max(h, 3.8 * smoothstep(1, 0.35, dl) - 0.6);
+    let h = stackAt(lx, lz);
+    if (T) {
+      const u = lx * cl + lz * sl;
+      const v = -lx * sl + lz * cl;
+      for (let k = 0; k < shelves.length; k++) {
+        shelf(k, u, v, sh);
+        h = Math.max(h, sh[0]);
+      }
+    } else {
+      // lee landing: a low lobe the stair path will come down to
+      const dl = Math.hypot((lx - landing.x) / 0.5, (lz - landing.z) / 0.42);
+      h = Math.max(h, 3.8 * smoothstep(1, 0.35, dl) - 0.6);
+    }
     for (const st of stacks) {
       const ds = Math.hypot(lx - st.x + w[0] * 0.05, lz - st.z + w[1] * 0.05) / st.s;
       h = Math.max(h, st.h * smoothstep(1, 0.55, ds) - 1);
@@ -232,13 +292,48 @@ const beaconrock: ProfileFactory = ({ island, rng, noise, windDir }) => {
     if (windwardSector(lx, lz, half, WINDWARD_CLIFF.soft) > 0.5 && Math.hypot(lx, lz) > 0.55)
       t |= Tag.cliff;
     for (const st of stacks) if (Math.hypot(lx - st.x, lz - st.z) < st.s * 1.3) t |= Tag.cliff;
+    if (T) {
+      // the rim wall of the shelf that wins the max is a forced cliff (no beach at its foot);
+      // the cove ramp is not (its run is long, the wall parameter never reaches the band)
+      const u = lx * cl + lz * sl;
+      const v = -lx * sl + lz * cl;
+      let best = stackAt(lx, lz);
+      let wall = -1;
+      for (let k = 0; k < shelves.length; k++) {
+        shelf(k, u, v, sh);
+        if (sh[0] > best) {
+          best = sh[0];
+          wall = sh[1];
+        }
+      }
+      if (wall > 0 && wall < 0.97 && best > -0.5 && !inCove(u, v)) t |= Tag.cliff;
+    }
     return t;
+  };
+  /** Inside the landing cove sector of the last shelf (wider than the ramp, so the beach stays clean). */
+  const inCove = (u: number, v: number): boolean => {
+    if (!T) return false;
+    const S = shelves[last];
+    const th = Math.atan2(v / S.r[1], (u - S.c) / S.r[0]);
+    return Math.cos(th - coveA) > coveCos - T.cove.soft;
   };
   const anchors: IslandData['anchors'] = {};
   const topW = fr.toWorld(top.x, top.z);
   anchors.lighthouse = { x: topW.x, z: topW.z, rotY: windDir + Math.PI };
-  const lw = fr.toWorld(landing.x, landing.z);
-  anchors.landing = { x: lw.x, z: lw.z, rotY: windDir };
+  const axisW = (u: number, v: number): { x: number; z: number } =>
+    fr.toWorld(u * cl - v * sl, u * sl + v * cl);
+  if (T) {
+    const S = shelves[last];
+    const lw = axisW(S.c + S.r[0] * 0.78 * Math.cos(coveA), S.r[1] * 0.78 * Math.sin(coveA));
+    anchors.landing = { x: lw.x, z: lw.z, rotY: windDir + lean };
+    shelves.forEach((S, k) => {
+      const p = axisW(S.mid, 0);
+      anchors[`ledge${k}`] = { x: p.x, z: p.z, rotY: windDir + lean };
+    });
+  } else {
+    const lw = fr.toWorld(landing.x, landing.z);
+    anchors.landing = { x: lw.x, z: lw.z, rotY: windDir };
+  }
   stacks.forEach((st, k) => {
     const sw = fr.toWorld(st.x, st.z);
     anchors[`stack${k}`] = { x: sw.x, z: sw.z, rotY: 0 };

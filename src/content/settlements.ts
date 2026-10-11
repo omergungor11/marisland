@@ -172,6 +172,14 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   testHangar: 4.4,
   conveyor: 0.3,
   testTrack: 5.5,
+  // Marketing Media Rock (TASK-403): the obstacle discs bots and creatures keep clear of
+  giantScreen: 2.4,
+  antennaTower: 1.7,
+  mediaOffice: 3.4,
+  mediaShop: 2.2,
+  ferrisWheel: 3.4,
+  fairTent: 2.3,
+  fairBooth: 1.3,
   // Design
   sculptureArch: 2.4,
   sculptureStack: 1.3,

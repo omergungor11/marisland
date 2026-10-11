@@ -93,9 +93,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "6989456b4a3a1fa1",
-          "1001": "ecc9f8598437ca22",
-          "42": "1899b0eba68091f1",
+          "1": "969295a09ada58a4",
+          "1001": "77320fad3ff8ce13",
+          "42": "e45253d41158472c",
         }
       `);
     },
@@ -401,10 +401,11 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       for (const b of saved) b.on = false;
       // viaducts (TASK-394) off too, so only the TASK-400 Research crater differs from the old world
       (BRIDGES as { count: readonly number[] }).count = [0, 0];
-      // hashes.world: the pre-TASK-390 world with the TASK-400 Research crater and the TASK-401
-      // QA plateau profile (the atoll profile is gone), re-pinned for both
-      expect(generateWorld(1001).hashes.world).toBe('1a33a7f3e7c49687');
-      expect(generateWorld(1).hashes.world).toBe('aee307e357f1a77f');
+      // hashes.world: the pre-TASK-390 world with the TASK-400 Research crater, the TASK-401
+      // QA plateau profile (the atoll profile is gone) and the TASK-403 Media Rock (Beacon Rock
+      // terraces + plan, per-island roof keys), re-pinned for each
+      expect(generateWorld(1001).hashes.world).toBe('4dd35b86ef88ab29');
+      expect(generateWorld(1).hashes.world).toBe('8ddf43811be992ca');
     } finally {
       for (const b of saved) b.on = true;
       (BRIDGES as { count: readonly number[] }).count = bridgeCount;

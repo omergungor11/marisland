@@ -193,6 +193,21 @@ export const WORK_SPOTS: Readonly<Record<string, readonly WorkSpot[]>> = {
     { x: 1, z: 2.8, face: PI, pose: 'look', sit: 0 },
   ],
   weatherMast: [{ x: 0.7, z: 0.7, face: -(3 * PI) / 4, pose: 'inspect', sit: 0 }],
+  // Marketing Media Rock (TASK-403): watch the giant screen, queue at the wheel and the booths,
+  // peek into a tent, check the antenna hut and the office doors (outside FIXTURE_RADIUS)
+  giantScreen: [
+    { x: -1.4, z: 3.1, face: PI, pose: 'look', sit: 0 },
+    { x: 1.4, z: 3.1, face: PI, pose: 'look', sit: 0 },
+  ],
+  ferrisWheel: [
+    { x: -0.6, z: 3.7, face: PI, pose: 'look', sit: 0 },
+    { x: 3.2, z: 2.1, face: PI, pose: 'stand', sit: 0 },
+  ],
+  fairBooth: [{ x: 0, z: 1.8, face: PI, pose: 'stand', sit: 0 }],
+  fairTent: [{ x: 0.4, z: 3.0, face: PI, pose: 'look', sit: 0 }],
+  antennaTower: [{ x: 0.9, z: 2.2, face: PI, pose: 'inspect', sit: 0 }],
+  mediaOffice: [{ x: 0.75, z: 3.7, face: PI, pose: 'look', sit: 0 }],
+  mediaShop: [{ x: -0.9, z: 2.6, face: PI, pose: 'look', sit: 0 }],
   // Research Biodome Lab (TASK-400): tend the glass beside the door porch (domes ≈ 3.2 / 1.8 u)
   biodomeHero: [
     { x: 2.2, z: 3.4, face: Math.atan2(-2.2, -3.4), pose: 'inspect', sit: 0 },

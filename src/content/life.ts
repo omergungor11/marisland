@@ -497,12 +497,18 @@ export const ACTIVITY = {
       { goal: { kind: 'seat', defs: ['devOffice', 'devPod'] }, item: 'laptop' },
       { goal: { kind: 'dock' } },
     ],
+    // TASK-403 Media Rock: desks, the boulevard screen, the campus ledges, the fair, the pier
     marketing: [
       { goal: { kind: 'seat', defs: ['broadcastStudio'] }, item: 'laptop' },
-      { goal: { kind: 'spot', defs: ['stage'] } },
+      { goal: { kind: 'spot', defs: ['giantScreen'] } },
+      {
+        goal: { kind: 'spot', defs: ['antennaTower', 'mediaOffice', 'mediaShop'] },
+        item: 'clipboard',
+      },
       { goal: { kind: 'hub' } },
       { goal: { kind: 'seat', defs: ['billboard'] }, item: 'paintPot' },
-      { goal: { kind: 'spot', defs: ['stage'] } },
+      { goal: { kind: 'spot', defs: ['stage', 'fairBooth', 'fairTent'] } },
+      { goal: { kind: 'spot', defs: ['ferrisWheel'] } },
       { goal: { kind: 'dock' } },
     ],
     qa: [

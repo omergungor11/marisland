@@ -2,6 +2,32 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-046: Marketing "Media Rock" — Beacon Rock lee terraces, shelf-bound pads, per-island roof keys — 2026-10-11
+
+**Decision** (TASK-403): Beacon Rock keeps its roster slot, diameter roll, reach (2.35 r), sea stacks and the
+sheer windward cliff, but the stack moves 0.12 r windward and narrows (× 1/1.1) and its lee side steps down in
+three nested shelves (`ARCHETYPES.beaconrock.terraces`: upper ledge ≈ 0.64, middle ≈ 0.4, fair ground ≈ 0.17 of
+the stack top, bands 12 / 10 / 14 u × clamp(r / 24, 0.9, 1.2), earth walls tagged cliff, a beach ramp in the
+landing cove). The Marketing planner builds the Ad Boulevard on the summit (tower moved to the windward lip, a
+red-tiled street to a double-sided giant screen on the lee rim, billboards, flags, a café, the studio and the
+billboard office), the media campus on the ledges (antenna tower, layered media offices, photo studio / print
+shop) and the fair ground (paved disc, ferris wheel, stage, tents, game booths); stairs climb the walls hub to
+hub. Flatten pads on a terraced island leave ground > `padBreak` (2.5 u) off their level alone and do not relax
+toward pads on another shelf. `assignLotVariants` hashes a lot's index within its island (+ islandId · 4096),
+not its global index. The ferris wheel rotor is a mover (`render/movers.ts`, own InstancedMesh, 36 s per turn,
+drawn at every distance, no shadow pass).
+**Rationale**: user request (three directions combined into one island). Shelves in u keep room for buildings on
+the smallest roll (r ≈ 20). Without the pad gate, pads on neighbouring shelves relaxed to one height and cut the
+walls. The global roof key reshuffled every later island's roof colours whenever one island's lot count changed
+(the world-side twin of D-044).
+**Impact**: layout hash unchanged; height / zone / sites / routes / props hashes change (re-pinned). Other islands'
+heights, zones, lots (but their roof variants), landmarks, fixtures, paths, docks, scatter and waterfalls are
+unchanged; islands after Marketing get new roof variants once (HQ, the first island, keeps its own). W11 +15 draw
+calls (231), 0 new programs; L-live-marketing re-aimed at the fair. Close-ups pay one call per (def, variant)
+LOD0 group whose bounds touch the frustum, so the island trims its group count: no contact blob under the
+plinth / deck structures, `scatterOff` bush + rockCluster, bannerPole one variant, the 2-variant shop / booth
+share one LOD1. D-desk (Coding, low) still saw the fair at its edge (202 > 170): DESK_CAM swung 18° to sea.
+
 ## D-045: Viaducts (TASK-394) removed — 2026-10-11
 
 **Decision**: the stone-arch viaducts between near islands are dropped. The bridge code (pair picker,

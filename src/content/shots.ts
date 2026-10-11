@@ -89,7 +89,7 @@ const LIVE_CAMS: Record<(typeof CAMPUS_THEMES)[number][0], string> = {
   coding: '105,17,13,94,11,23',
   research: '-152,12,232,-133,0.5,222',
   devops: '-106,10,-88,-90,2.5,-78',
-  marketing: '8,37,196,-6,25,182',
+  marketing: '-60,15,196,-36,6,188',
 };
 
 /** Warm-up per live campus (s; default 6): picked for the most bots in motion near the target. */
@@ -106,9 +106,11 @@ const RESEARCH_CLOSE_CAM = '-143,13,246,-138.5,3,222.5';
 
 /**
  * D-desk camera (raw `x,y,z,tx,ty,tz`), re-pin when the seed 1001 layout changes (TASK-396: +4 u
- * for the raised Coding plateau, ground ≈ 9.5).
+ * for the raised Coding plateau, ground ≈ 9.5). TASK-403: swung 18° toward the open sea (same
+ * devPod and desks) — the old look had the Media Rock's fair and trees at the frame's edge, and
+ * every per-island LOD0 group whose bounds touch the frustum costs a call (202 > the low 170).
  */
-const DESK_CAM = '95.8,12.1,17.3,91.5,10.5,20';
+const DESK_CAM = '96.9,12.1,18.6,91.5,10.5,20';
 
 /**
  * Hearthholm beach macro (raw, seed 1001; D-macro and W8, TASK-396): the `macro-beach` orbit now
@@ -484,7 +486,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-desk',
     title: 'Desk · Coding',
     seed: 1001,
-    // seed 1001 devPod (lot 12, door facing SE, seated workers on low and medium): from outside its front, ~6 u (T3)
+    // seed 1001 devPod at (91.1, 20.4) (door facing SE, seated workers on low and medium): from outside its front, ~6 u (T3)
     cam: DESK_CAM,
     time: 14,
     simt: 2,
@@ -511,6 +513,29 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     cam: 'village:qa',
     time: 22,
     simt: 2,
+    sets: ['dev'],
+  },
+  {
+    id: 'D-marketing-campus',
+    title: 'Media Rock terraces · Marketing',
+    // TASK-403: from the lee sea, the stack stepping down — summit boulevard and giant screen,
+    // the campus ledges (antenna, offices, shops), the fair ground with the ferris wheel. Raw
+    // cam on the seed 1001 layout; re-pin when it changes.
+    seed: 1001,
+    cam: '-70,46,206,-14,8,180',
+    time: 10.5,
+    simt: 4,
+    sets: ['dev'],
+  },
+  {
+    id: 'D-marketing-night',
+    title: 'Media Rock night · Marketing',
+    // TASK-403: fair lights, the wheel's pods and rim bulbs, tent lanterns, the giant screen and
+    // the antenna lamps on the window / emissive path
+    seed: 1001,
+    cam: '-58,24,202,-32,6,186',
+    time: 21.5,
+    simt: 4,
     sets: ['dev'],
   },
   {

@@ -117,7 +117,7 @@ The seed picks 5–7 islands.
 | Island | Theme · size | Silhouette | Landmark | Key props | Creatures | Accent |
 |---|---|---|---|---|---|---|
 | **Hearthholm** | Fishing village · 110–140 u | Crescent around a harbour bay, 12 u hill | Clocktower + harbour wall with docks | Cottages, stilt huts, stalls, boats, laundry, lanterns | Villagers, cats, gulls | `#E8735A` |
-| **Beacon Rock** | Lighthouse · 40–60 u | 25 u sheer stack, zig-zag stair path | Red/white lighthouse | Sea stacks, keeper hut, buoys, rope fence | Puffins, seals | `#E35D6A` |
+| **Beacon Rock** (Marketing "Media Rock", TASK-403) | Media rock · 40–60 u | 25 u sheer stack (windward cliff + sea stacks), three lee shelves on earth walls down to the landing cove | Red/white broadcast lighthouse on the windward lip | Ad Boulevard (red street, giant double-sided screen, billboards, café), campus ledges (antenna tower, layered offices, photo studio, print shop), fair ground (ferris wheel, striped tents, game booths, stage) | Ferris wheel rotor (mover, not an agent) | `#E35D6A` |
 | **Millbrook** | Windmill farm · 80–110 u | Flat rolling plateau 6–8 u | 2–3 windmills on knolls | Patchwork fields, barn, haybales, pond, fences | Sheep, ducks | `#F5C84C` |
 | **Emberpeak** | Volcano · 90–120 u | 35 u notched cone + steam plume | Glowing crater; hot spring | Black sand, basalt columns, vents | Capybaras in spring | `#FF7A5C` |
 | **Palmlagoon** (QA "Test Factory", TASK-401) | Factory plateau · 70–100 u | Rounded-square plateau on a 6–6.8 u bluff, top 8.6–9.6 u | Check tower (~20 u with the sign) | Sawtooth hangars with extractor fans, conveyor bridges, crash-test loop track | Crates on the belts, test cart on the loop (movers, not agents) | `#7FD8B3` |
