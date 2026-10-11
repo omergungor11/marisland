@@ -429,7 +429,7 @@ export const ACTIVITY = {
   /** Focus: nearest campus hub within `radius` u (3-D) of the camera at tier >= `minTier`, re-evaluated every `every` steps; a rival must be `switchRatio` times nearer. */
   focus: { minTier: 2, radius: 190, every: 15, switchRatio: 0.8 },
   /** Ambient slots per island at ambientScale 1 (seat count is the soft limit). */
-  slots: { hq: 12, coding: 12, marketing: 9, qa: 9, design: 9, devops: 10, research: 5 },
+  slots: { hq: 12, coding: 12, marketing: 9, qa: 9, design: 9, devops: 10, research: 9 },
   /** Outposts (no walk graph) host at most this many ambient bots. */
   outpostSlots: 4,
   /** Wake: scale-in is delayed by up to `stagger` s (hash) so a campus fills in, not all at once. */
