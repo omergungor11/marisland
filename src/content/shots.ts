@@ -270,22 +270,6 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     sets: ['wow'],
   },
   {
-    id: 'W12',
-    title: 'Viaduct',
-    // M17b (TASK-394): the stone viaduct DevOps → QA Test Factory (seed 1001, since TASK-401 made
-    // QA a plateau), seen broadside from ≈ 170 u out at sea north-west of it: factory tower left,
-    // volcano right. Closer looks pull both campuses to T2 (310–530 calls on medium), so it stays
-    // this far out. Raw cam; re-pin when the seed 1001 layout changes.
-    seed: 1001,
-    cam: '-227,22,-3,-104,6,-122',
-    time: 16,
-    simt: 5,
-    quality: 'medium',
-    width: 1920,
-    height: 1080,
-    sets: ['wow'],
-  },
-  {
     id: 'W13',
     title: 'Falls',
     // M17b (TASK-395): from the sea, a Mossgrove waterfall off the bluff lip into its foam disc

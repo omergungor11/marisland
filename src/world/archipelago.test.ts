@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { adjacentPairs } from './gen/layout.ts';
 import { coveness } from './gen/heightfield.ts';
 import { ARCHETYPES } from '../content/islands.ts';
-import { BRIDGES } from '../content/bridges.ts';
 import { generateWorld, heightAt, Zone, type IslandData, type WorldData } from './index.ts';
 import { perfLimit } from '../test/perf.ts';
 
@@ -93,9 +92,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "6989456b4a3a1fa1",
-          "1001": "ecc9f8598437ca22",
-          "42": "1899b0eba68091f1",
+          "1": "c73e06f56a5794da",
+          "1001": "14adc1b7fce1caaa",
+          "42": "d8c493d433365f19",
         }
       `);
     },
@@ -396,18 +395,14 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
     const saved = BLUFFED.filter((a) => a !== 'lonelypalm').map(
       (a) => ARCHETYPES[a].bluff as { on: boolean },
     );
-    const bridgeCount = BRIDGES.count;
     try {
       for (const b of saved) b.on = false;
-      // viaducts (TASK-394) off too, so only the TASK-400 Research crater differs from the old world
-      (BRIDGES as { count: readonly number[] }).count = [0, 0];
       // hashes.world: the pre-TASK-390 world with the TASK-400 Research crater and the TASK-401
       // QA plateau profile (the atoll profile is gone), re-pinned for both
       expect(generateWorld(1001).hashes.world).toBe('1a33a7f3e7c49687');
       expect(generateWorld(1).hashes.world).toBe('aee307e357f1a77f');
     } finally {
       for (const b of saved) b.on = true;
-      (BRIDGES as { count: readonly number[] }).count = bridgeCount;
     }
   });
 });
