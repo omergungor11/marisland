@@ -103,7 +103,9 @@ const LIVE_CROP: [number, number, number, number] = [0.15, 0.1, 0.85, 0.9];
 const W7_CAM = '45,20,20,95,13,40';
 
 /** D-devops-* (raw, seed 1001 Ember Works; TASK-402), re-pin when that layout changes. */
-const DEVOPS_CAM = '-46,58,42,-52,4,-34';
+const DEVOPS_CAM = '-128,92,38,-56,2,-50';
+/** D-devops-terraces (raw, seed 1001): the data center terraces from the sea north-west of them. */
+const DEVOPS_TERRACE_CAM = '-122,30,-112,-80,8,-84';
 /** D-devops-harbour (raw, seed 1001): the container yard, CI/CD belt, pier and a cargo ship. */
 const DEVOPS_HARBOUR_CAM = '-54,20,6,-80,2,-24';
 
@@ -522,11 +524,21 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   {
     id: 'D-devops-campus',
     title: 'Ember Works · DevOps',
-    // TASK-402: from the sea south of Emberpeak over the harbour shelf (container yard, gantry
-    // crane, control tower, ships) and the foundry terraces (furnace, rail, smithies, lodges)
+    // TASK-402: high from the south-west so the three facilities share the frame: data center
+    // terraces (left), the harbour quay (centre), the foundry step (right, past the cone)
     seed: 1001,
     cam: DEVOPS_CAM,
     time: 15,
+    simt: 6,
+    sets: ['dev'],
+  },
+  {
+    id: 'D-devops-terraces',
+    title: 'Data center terraces · DevOps',
+    // density pass: the two data center levels, the cooling towers, lodges and sheds around them
+    seed: 1001,
+    cam: DEVOPS_TERRACE_CAM,
+    time: 11,
     simt: 6,
     sets: ['dev'],
   },

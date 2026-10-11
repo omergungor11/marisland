@@ -135,6 +135,28 @@ export const DEVOPS_WORKS = {
     anvil: '#5A5664',
     footprint: [3.8, 4.6] as const,
   },
+  /** containerRow (TASK-402 density pass): one loose stack on the quay, tiers per column. */
+  row: { tiers: [2, 2, 1] as const, footprint: [5.4, 6.8] as const },
+  /** fuelTank: two horizontal tanks on saddles side by side (z), a catwalk and a filler pipe. */
+  tank: {
+    r: 0.78,
+    len: 3,
+    gap: 0.2,
+    body: '#FFF4E0',
+    band: '#FF9F43',
+    saddle: '#6F7685',
+    footprint: [3.6, 2.8] as const,
+  },
+  /** forklift: a small yellow yard truck with its mast up front (+z) carrying a crate pallet. */
+  forklift: {
+    w: 1.1,
+    l: 1.7,
+    body: '#F5C84C',
+    dark: '#3A3F4D',
+    seat: '#E5822A',
+    pallet: '#D2A679',
+    footprint: [1.4, 2.4] as const,
+  },
   rail: {
     /** Segment length (x), gauge (rail centres at ±gauge / 2), rail top. */
     len: 2,
@@ -199,4 +221,15 @@ export const DEVOPS_PROP_DEFS: readonly PropDef[] = [
   // T2: the smithies are small; their LOD1 group would cost a far draw call in the postcard
   { id: 'smithy', geo: 'smithy', tier: 2, variants: 1, footprint: 2.1, flags: grounded },
   { id: 'railTrack', geo: 'railTrack', tier: 2, variants: 1, footprint: 1.0, flags: grounded },
+  // density pass: quay stock and machinery (the row is ≥ 3 u, so it draws from T0 like the yard)
+  {
+    id: 'containerRow',
+    geo: 'containerRow',
+    tier: 0,
+    variants: 1,
+    footprint: 3.2,
+    flags: grounded,
+  },
+  { id: 'fuelTank', geo: 'fuelTank', tier: 2, variants: 1, footprint: 1.8, flags: grounded },
+  { id: 'forklift', geo: 'forklift', tier: 2, variants: 1, footprint: 0.9, flags: grounded },
 ];

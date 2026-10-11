@@ -64,6 +64,7 @@ import {
   placeContainerYard,
   placeFoundry,
   placeQuadLodges,
+  placeVillage,
 } from './devops-works.ts';
 
 const S = DEVOPS_SITE;
@@ -138,9 +139,10 @@ export const planDevops: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   }
   for (const li of masts) linkLot(ctx, plan, li);
   // TASK-402: CI/CD belt + paved quay, lava foundry, worker lodges by the quad
-  finishHarbour(ctx, isl, containers, yard?.lots ?? []);
-  placeFoundry(ctx, isl, plan, rng.fork('foundry'));
+  finishHarbour(ctx, isl, containers, yard?.lots ?? [], site?.root ?? null, rng.fork('quay'));
+  const furnaces = placeFoundry(ctx, isl, plan, rng.fork('foundry'));
   if (quad) placeQuadLodges(ctx, isl, quad, rng.fork('lodges'));
+  placeVillage(ctx, isl);
 
   // pipeline: plant → nearest data center
   if (towers.length > 0 && terraces.length > 0) {
@@ -153,7 +155,14 @@ export const planDevops: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   }
   // steam main: a vent high on the cone above the plant, piped down to the nearest tower
   if (towers.length > 0) {
-    const main = steamMain(ctx, isl, centre, spring, towers);
+    const main = steamMain(ctx, isl, centre, spring, towers, S.plant.radius);
+    if (main)
+      (plan.lines ??= []).push({ islandId: isl.id, kind: 'pipe', closed: false, points: main });
+  }
+  // and a second one feeding the foundry furnaces from a vent above their step
+  const fUp = isl.anchors.foundryUpper;
+  if (fUp && furnaces.length > 0) {
+    const main = steamMain(ctx, isl, centre, fUp, furnaces, S.steam.furnaceR);
     if (main)
       (plan.lines ??= []).push({ islandId: isl.id, kind: 'pipe', closed: false, points: main });
   }
@@ -455,6 +464,7 @@ function steamMain(
   centre: XZ,
   spring: XZ,
   towers: readonly XZ[],
+  endR: number,
 ): XZ[] | null {
   const V = S.steam;
   const vent = bestSample(ctx, isl, spring, dist(spring, centre), (p, i) => {
@@ -469,7 +479,7 @@ function steamMain(
   if (!vent) return null;
   const tower = towers.reduce((a, b) => (dist(b, vent) < dist(a, vent) ? b : a));
   const start = add(vent, unit(vent, tower), 1);
-  const end = add(tower, unit(tower, vent), S.plant.radius + 0.6);
+  const end = add(tower, unit(tower, vent), endR + 0.6);
   const line = routeLine(ctx, isl, start, end);
   if (!line) return null;
   ctx.fixtures.push({ defId: 'steamVent', x: vent.x, z: vent.z, rotY: 0, islandId: isl.id });

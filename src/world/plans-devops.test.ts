@@ -173,7 +173,8 @@ describe('DevOps island plan (TASK-364) — 30 seeds', () => {
       const towers = d.fixtures.filter((f) => f.defId === 'coolingTower');
       const vents = d.fixtures.filter((f) => f.defId === 'steamVent');
       const dcs = d.lots.filter((l) => l.defId === 'dataCenter');
-      expect(pipes.length, `seed ${seed}`).toBeLessThanOrEqual(2);
+      // plant → data center, the steam main and (density pass) the foundry's steam main
+      expect(pipes.length, `seed ${seed}`).toBeLessThanOrEqual(3);
       const nearTower = (p: XZ): boolean =>
         Math.min(...towers.map((t) => dist(t, p))) <= DEVOPS_SITE.plant.radius + 1;
       for (const pipe of pipes) {
@@ -293,6 +294,14 @@ describe('DevOps island plan (TASK-364) — 30 seeds', () => {
             'foundry',
             'smithy',
             'cottage',
+            // density pass: quay stock and machinery, village rack sheds
+            'containerRow',
+            'fuelTank',
+            'forklift',
+            'crate',
+            'cableSpool',
+            'lanternPost',
+            'rackShed',
           ],
           ctx,
         ).toContain(f.defId);

@@ -56,9 +56,16 @@ function container(acc: Acc, at: THREE.Vector3, color: string, lod: 0 | 1): void
  * Container stack at (x, z): columns side by side along z with DEVOPS_WORKS.stack.tiers
  * containers each (tallest at −z; `turn` mirrors it), colours from the palette by `r`.
  */
-function stack(acc: Acc, x: number, z0: number, turn: boolean, r: Rng, lod: 0 | 1): void {
+function stack(
+  acc: Acc,
+  x: number,
+  z0: number,
+  turn: boolean,
+  r: Rng,
+  lod: 0 | 1,
+  T: readonly number[] = W.stack.tiers,
+): void {
   const C = W.container;
-  const T = W.stack.tiers;
   const pitch = C.w + W.stack.gap;
   T.forEach((tiers, c) => {
     const z = z0 + (turn ? -1 : 1) * (c - (T.length - 1) / 2) * pitch;
@@ -522,6 +529,83 @@ export function buildCargoShip(): THREE.BufferGeometry {
   return acc.finish(createRng(402).fork('cargo-ship'), false, true);
 }
 
+/* ------------------------------ quay stock ------------------------------- */
+
+/** containerRow: one loose stack on the quay (DEVOPS_WORKS.row.tiers), colours by the seed. */
+export function containerRow({ rng, lod }: BuildOpts): THREE.BufferGeometry {
+  const acc = jitterAcc(rng, 0.01);
+  stack(acc, 0, 0, false, rng.fork('colours'), lod, W.row.tiers);
+  return finish(acc, rng);
+}
+
+/** fuelTank: two horizontal tanks (along x) on grey saddles, an orange band, catwalk, filler. */
+export function fuelTank({ rng, lod }: BuildOpts): THREE.BufferGeometry {
+  const T = W.tank;
+  const acc = jitterAcc(rng, 0.01);
+  const hi = lod === 0;
+  const seg = hi ? 12 : 6;
+  const y = 0.35 + T.r;
+  for (const sz of [-1, 1]) {
+    const z = sz * (T.r + T.gap / 2);
+    put(acc, new THREE.CylinderGeometry(T.r, T.r, T.len, seg), [0, y, z], T.body, {
+      q: qEuler(0, 0, Math.PI / 2),
+      aoAmt: 0.15,
+    });
+    if (!hi) continue;
+    put(acc, new THREE.CylinderGeometry(T.r + 0.03, T.r + 0.03, 0.3, seg), [0, y, z], T.band, {
+      q: qEuler(0, 0, Math.PI / 2),
+      aoAmt: 0,
+    });
+    for (const sx of [-1, 1])
+      put(
+        acc,
+        new THREE.SphereGeometry(T.r, seg, 4, 0, Math.PI * 2, 0, Math.PI / 2),
+        [sx * (T.len / 2), y, z],
+        T.body,
+        {
+          q: qEuler(0, 0, -sx * (Math.PI / 2)),
+          aoAmt: 0.1,
+        },
+      );
+    for (const sx of [-0.9, 0.9])
+      put(acc, baseBox(0.25, y - 0.2, T.r * 1.5), [sx, 0, z], T.saddle, { aoAmt: 0.2 });
+  }
+  put(acc, baseBox(T.len + 0.4, 0.3, 2 * T.r + T.gap + 0.3), [0, 0, 0], T.saddle, { aoAmt: 0.2 });
+  if (hi) {
+    // catwalk over the tanks, filler pipe down one end
+    put(acc, baseBox(T.len * 0.7, 0.06, 0.5), [0, y + T.r + 0.05, 0], T.saddle, { aoAmt: 0 });
+    put(acc, baseBox(0.12, y + T.r, 0.12), [T.len / 2 + 0.55, 0, 0], T.band, { aoAmt: 0 });
+  }
+  return finish(acc, rng);
+}
+
+/** forklift: chassis, counterweight, cab cage, mast up front (+z) with forks and a crate pallet. */
+export function forklift({ rng, lod }: BuildOpts): THREE.BufferGeometry {
+  const F = W.forklift;
+  const acc = jitterAcc(rng, 0.01);
+  const hi = lod === 0;
+  put(acc, baseBox(F.w, 0.55, F.l), [0, 0.18, 0], F.body, { aoAmt: 0.15 });
+  put(acc, baseBox(F.w, 1.55, 0.25), [0, 0.35, F.l / 2 + 0.25], F.dark, { aoAmt: 0.1 });
+  put(acc, baseBox(0.9, 0.5, 0.9), [0, 0.42, F.l / 2 + 0.85], F.pallet, { aoAmt: 0.1 });
+  if (hi) {
+    for (const sx of [-1, 1])
+      for (const z of [-F.l / 3, F.l / 3])
+        put(acc, new THREE.CylinderGeometry(0.2, 0.2, 0.16, 8), [sx * (F.w / 2), 0.2, z], F.dark, {
+          q: qEuler(0, 0, Math.PI / 2),
+          aoAmt: 0,
+        });
+    put(acc, baseBox(F.w - 0.1, 0.45, 0.4), [0, 0.73, -F.l / 2 + 0.2], F.dark, { aoAmt: 0.1 });
+    put(acc, baseBox(0.45, 0.35, 0.45), [0, 0.73, -0.1], F.seat, { aoAmt: 0.1 });
+    for (const sx of [-1, 1])
+      for (const z of [-0.45, 0.45])
+        put(acc, baseBox(0.06, 1.15, 0.06), [sx * (F.w / 2 - 0.08), 0.73, z], F.dark, { aoAmt: 0 });
+    put(acc, baseBox(F.w, 0.06, 1.0), [0, 1.88, 0], F.body, { aoAmt: 0 });
+    for (const sx of [-0.25, 0.25])
+      put(acc, baseBox(0.1, 0.05, 0.95), [sx, 0.36, F.l / 2 + 0.85], F.dark, { aoAmt: 0 });
+  }
+  return finish(acc, rng);
+}
+
 export const DEVOPS_WORKS_GEO: readonly PropGeoDef[] = [
   {
     id: 'containerYard',
@@ -534,4 +618,14 @@ export const DEVOPS_WORKS_GEO: readonly PropGeoDef[] = [
   { id: 'foundry', variants: 1, build: foundry, footprint: 3.8, height: 10, windy: false },
   { id: 'smithy', variants: 1, build: smithy, footprint: 2.1, height: 4.6, windy: false },
   { id: 'railTrack', variants: 1, build: railTrack, footprint: 1.0, height: 0.22, windy: false },
+  {
+    id: 'containerRow',
+    variants: 1,
+    build: containerRow,
+    footprint: 3.2,
+    height: 4.1,
+    windy: false,
+  },
+  { id: 'fuelTank', variants: 1, build: fuelTank, footprint: 1.8, height: 2, windy: false },
+  { id: 'forklift', variants: 1, build: forklift, footprint: 0.9, height: 1.9, windy: false },
 ];

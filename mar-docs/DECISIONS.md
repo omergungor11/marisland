@@ -23,8 +23,14 @@ island's per-island LOD0 groups (bounding sphere = the whole island) reached int
 over the low budget 170) although every instance was dithered out: the batcher now skips the draw of a visible
 LOD0 group whose sphere lies wholly past its def's fade-out distance (pixel-identical: D-macro, W8, W11 0 px
 changed; D-macro 161, D-desk 166 → 148, W10 223 → 213).
-**Impact**: 0 new programs. New defs: containerYard, foundry, smithy (T2), railTrack (T2); the lodges reuse
-`cottage` (variant 0). Other islands' terrain, zones, lot positions, landmarks, fixtures, docks and scatter are
+**Density pass** (same day): the quay is dressed by the plan (paved quay is a blocked scatter zone): loose
+`containerRow` stacks, `fuelTank` pairs and `forklift`s first, then crate / cable-spool piles (existing defs and
+variants), lamp posts on the quay edge; a lane pier root → yard and an 8 u apron round the pier root stay clear and
+quay stock never blocks the footpath grid. Cottage lodges and rack sheds (fixtures) fill the data center and foundry
+shelves; a second steam main feeds the furnaces. D-devops-campus is a high south-west view with all three
+facilities, D-devops-terraces shows the data center levels.
+**Impact**: 0 new programs. New defs: containerYard, foundry, containerRow (T0), smithy, railTrack, fuelTank,
+forklift (T2); the lodges reuse `cottage` (variant 0). Other islands' terrain, zones, lot positions, landmarks, fixtures, docks and scatter are
 unchanged; what still moves with the DevOps plan is index-coupled: lot roof variants (`assignLotVariants` hashes
 the global lot index), path lanterns (every 5th global path node), the global ground-cover cap order in scatter,
 and the viaduct ends (D-045 removes those). W5, D-devops-* and L-live-devops look at the new campus.

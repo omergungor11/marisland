@@ -26,6 +26,7 @@ import {
   bestSample,
   clear,
   discShape,
+  segDist,
   dirOf,
   dist,
   onIsland,
@@ -88,6 +89,8 @@ interface FitOpts {
   gap: number;
   /** Pad margin (flatten core past the footprint); default FIX_MARGIN. */
   margin?: number;
+  /** Rasterise into the path-blocking grid (default true; quay stock leaves paths free). */
+  block?: boolean;
   /** Keep the centre within `tol` u of height `y` (stay on one shelf level). */
   level?: { y: number; tol: number };
 }
@@ -149,6 +152,7 @@ function putFixture(
   d: number,
   variant?: number,
   margin = FIX_MARGIN,
+  block = true,
 ): Shape {
   ctx.fixtures.push({
     defId,
@@ -159,7 +163,7 @@ function putFixture(
     ...(variant === undefined ? {} : { variant }),
   });
   const sh = rectShape(p.x, p.z, rotY, w, d);
-  addShape(ctx, isl, sh, true);
+  addShape(ctx, isl, sh, block);
   addPad(ctx, isl, sh, margin);
   return sh;
 }
@@ -176,7 +180,7 @@ function fixtureNear(
   variant?: number,
 ): XZ | null {
   const p = fitRect(ctx, isl, target, rotY, size[0], size[1], o);
-  if (p) putFixture(ctx, isl, defId, p, rotY, size[0], size[1], variant, o.margin);
+  if (p) putFixture(ctx, isl, defId, p, rotY, size[0], size[1], variant, o.margin, o.block);
   return p;
 }
 
@@ -281,6 +285,8 @@ export function finishHarbour(
   isl: IslandData,
   yard: XZ | null,
   sheds: readonly number[],
+  root: XZ | null,
+  rng: Rng,
 ): void {
   const H = S.harbour;
   const a = isl.anchors.harbour;
@@ -299,6 +305,7 @@ export function finishHarbour(
     }
   }
   if (best) belt(ctx, isl, best.a, best.b);
+  dressQuay(ctx, isl, F, yard, root, rng);
   // concrete quay (the ramp down the beach into the water included)
   const R = H.paveR;
   const [x0, x1] = gridRange(a.x - R, a.x + R);
@@ -310,6 +317,163 @@ export function finishHarbour(
       if (Math.hypot(cellX(ix) - a.x, cellZ(iz) - a.z) > R) continue;
       if (ctx.h.data[i] <= H.maxY) ctx.zone[i] = Zone.plaza;
     }
+}
+
+/** Push a small fixture (no pad) with a non-blocking disc obstacle. */
+function smallFixture(
+  ctx: SiteCtx,
+  isl: IslandData,
+  defId: string,
+  p: XZ,
+  rotY: number,
+  r: number,
+  variant?: number,
+): void {
+  ctx.fixtures.push({
+    defId,
+    x: p.x,
+    z: p.z,
+    rotY,
+    islandId: isl.id,
+    ...(variant === undefined ? {} : { variant }),
+  });
+  addShape(ctx, isl, discShape(p.x, p.z, r), false);
+}
+
+/**
+ * Quay dressing (density pass): stock and machinery kits on a shuffled grid over the paved quay
+ * (crate and cable-spool piles, fuel tanks, forklifts, loose container rows), a clear lane from
+ * the pier root to the yard, lamp posts along the quay edge. Existing defs keep their variants
+ * already drawn on the island (crate 1, cable spools 0/1, lantern post 1).
+ */
+function dressQuay(
+  ctx: SiteCtx,
+  isl: IslandData,
+  F: Frame,
+  yard: XZ | null,
+  root: XZ | null,
+  rng: Rng,
+): void {
+  const H = S.harbour;
+  const Q = H.quay;
+  // the lane pier root → yard and a clear apron round the pier root (its footpath leaves there)
+  const lane = (p: XZ): boolean =>
+    !!root && (dist(p, root) < Q.rootClear || (!!yard && segDist(p, root, yard) < Q.lane + 1.5));
+  const onQuay = (p: XZ, shore: number): boolean => {
+    if (!onIsland(ctx, isl, p.x, p.z) || dist(p, F.o) > H.paveR) return false;
+    if (heightAt(ctx.h, p.x, p.z) > H.maxY) return false;
+    return sdfAt(ctx, p.x, p.z) >= shore;
+  };
+  const free = (p: XZ, r: number): boolean => clear(ctx, isl, discShape(p.x, p.z, r), 0.6);
+  const cand: XZ[] = [];
+  for (let u = -H.paveR; u <= H.paveR; u += Q.pitch)
+    for (let v = -H.paveR; v <= H.paveR; v += Q.pitch) {
+      const p = F.at(u, v);
+      if (onQuay(p, Q.minShore) && !lane(p)) cand.push(p);
+    }
+  rng.shuffle(cand);
+  // machinery first (each kind up to its cap, each grid spot used once), then stock piles
+  const taken = new Set<XZ>();
+  // quay stock never blocks the footpath grid (the pier's path must reach the hub)
+  const fit = {
+    search: Q.bigSearch,
+    minShore: Q.minShore,
+    maxRelief: H.maxRelief,
+    gap: 0.8,
+    block: false,
+  };
+  let row = 0;
+  for (const [kind, def, size] of [
+    ['row', 'containerRow', W.row.footprint],
+    ['tank', 'fuelTank', W.tank.footprint],
+    ['forklift', 'forklift', W.forklift.footprint],
+  ] as const) {
+    let n = 0;
+    for (const p of cand) {
+      if (n >= Q.caps[kind]) break;
+      if (taken.has(p)) continue;
+      const rot =
+        kind === 'forklift'
+          ? rng.range(0, Math.PI * 2)
+          : F.rotY + (kind === 'row' ? (row % 2) * Math.PI : rng.chance(0.5) ? 0 : Math.PI / 2);
+      const q = fixtureNear(ctx, isl, def, p, rot, size, fit);
+      if (!q) continue;
+      taken.add(p);
+      if (kind === 'row') row++;
+      n++;
+    }
+  }
+  let piles = 0;
+  for (const p of cand) {
+    if (piles >= Q.piles) break;
+    if (taken.has(p) || !free(p, Q.pileR + 0.6)) continue;
+    const crates = rng.next() < Q.crateShare;
+    const n = rng.int(Q.pile[0], Q.pile[1]);
+    for (let k = 0; k < n; k++) {
+      const q = add(p, dirOf(rng.range(0, Math.PI * 2)), k === 0 ? 0 : rng.range(0.6, Q.pileR));
+      ctx.fixtures.push({
+        defId: crates ? 'crate' : 'cableSpool',
+        x: q.x,
+        z: q.z,
+        rotY: rng.range(0, Math.PI * 2),
+        islandId: isl.id,
+        variant: crates ? 1 : k % 2,
+      });
+    }
+    addShape(ctx, isl, discShape(p.x, p.z, Q.pileR + 0.4), false);
+    taken.add(p);
+    piles++;
+  }
+  // lamp posts along the quay edge, spaced, off the lane
+  const lamps: XZ[] = [];
+  const edge: XZ[] = [];
+  for (let u = -H.paveR; u <= H.paveR; u += 1)
+    for (let v = -H.paveR; v <= H.paveR; v += 1) {
+      const p = F.at(u, v);
+      const s = sdfAt(ctx, p.x, p.z);
+      if (s < Q.lampShore[0] || s > Q.lampShore[1] || !onQuay(p, Q.lampShore[0])) continue;
+      edge.push(p);
+    }
+  for (const p of edge) {
+    if (lamps.length >= Q.lamps) break;
+    if (lane(p) || lamps.some((q) => dist(q, p) < Q.lampGap) || !free(p, 0.4)) continue;
+    smallFixture(ctx, isl, 'lanternPost', p, F.rotY, 0.4, 1);
+    lamps.push(p);
+  }
+}
+
+/**
+ * Village infill (density pass): cottage lodges and rack sheds on the data center and foundry
+ * shelves (rows either side of each anchor, on its level, doors out to sea).
+ */
+export function placeVillage(ctx: SiteCtx, isl: IslandData): void {
+  const V = S.village;
+  for (const [key, want] of Object.entries(V.perShelf)) {
+    const a = isl.anchors[key];
+    if (!a) continue;
+    const F = frameOf(a);
+    const level = { y: heightAt(ctx.h, a.x, a.z), tol: V.levelTol };
+    const slots: XZ[] = [];
+    for (const v of V.rows)
+      for (let k = 0; k <= V.span / V.spacing; k++)
+        for (const sg of k === 0 ? [1] : [1, -1]) slots.push(F.at(sg * k * V.spacing, v));
+    let made = 0;
+    for (const p of slots) {
+      if (made >= want) break;
+      const shed = (made + 1) % V.shedEvery === 0;
+      const fit = {
+        search: V.search,
+        minShore: V.minShore,
+        maxRelief: V.maxRelief,
+        gap: VILLAGE.lotGap,
+        level,
+      };
+      const q = shed
+        ? fixtureNear(ctx, isl, 'rackShed', p, F.rotY, LOT_FOOTPRINT.rackShed, fit, made % 2)
+        : fixtureNear(ctx, isl, 'cottage', p, F.rotY, LOT_FOOTPRINT.cottage, fit, 0);
+      if (q) made++;
+    }
+  }
 }
 
 /**
@@ -349,11 +513,12 @@ function belt(ctx: SiteCtx, isl: IslandData, a: XZ, b: XZ): boolean {
  * Lava foundry: furnace halls on the upper step (mouths to the sea), a rail line along the lower
  * shelf, smithies inland of it and worker lodges seaward. The rail is a 'rail' polyline.
  */
-export function placeFoundry(ctx: SiteCtx, isl: IslandData, plan: SitePlan, rng: Rng): void {
+export function placeFoundry(ctx: SiteCtx, isl: IslandData, plan: SitePlan, rng: Rng): XZ[] {
   const Fd = S.foundry;
   const lower = isl.anchors.foundry;
   const upper = isl.anchors.foundryUpper;
-  if (!lower) return;
+  const furnaces: XZ[] = [];
+  if (!lower) return furnaces;
   const fit: FitOpts = {
     search: Fd.search,
     minShore: Fd.minShore,
@@ -373,6 +538,7 @@ export function placeFoundry(ctx: SiteCtx, isl: IslandData, plan: SitePlan, rng:
         W.foundry.footprint,
         { ...fit, maxRelief: Fd.maxRelief + 1 },
       );
+      if (p) furnaces.push(p);
       if (p)
         paintZone(
           ctx,
@@ -384,7 +550,7 @@ export function placeFoundry(ctx: SiteCtx, isl: IslandData, plan: SitePlan, rng:
   }
   const F = frameOf(lower);
   const rail = railLine(ctx, isl, F);
-  if (!rail) return;
+  if (!rail) return furnaces;
   const [ra, rb] = rail;
   (plan.lines ??= []).push({ islandId: isl.id, kind: 'rail', closed: false, points: [ra, rb] });
   const ru = unit(ra, rb);
@@ -427,6 +593,7 @@ export function placeFoundry(ctx: SiteCtx, isl: IslandData, plan: SitePlan, rng:
     if (def === 'smithy') smithies++;
     else if (def === 'cottage') lodges++;
   }
+  return furnaces;
 }
 
 /** The longest level straight run along the shelf tangent near its anchor (≥ rail[0] u). */

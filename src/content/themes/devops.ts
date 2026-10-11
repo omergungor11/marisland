@@ -233,6 +233,44 @@ export const DEVOPS_SITE = {
     maxRelief: 2.2,
     /** CI/CD belt: rack shed → the container yard, straight; shed-to-yard-edge range (u). */
     belt: [2, 16] as const,
+    /**
+     * Quay dressing (density pass): kits on a grid over the paved quay, shuffled; a lane `lane` u
+     * wide stays clear from the pier root to the yard. Loose container rows, fuel tanks and
+     * forklifts first, then crate / cable-spool piles; lamp posts along the quay edge.
+     */
+    quay: {
+      pitch: 3.6,
+      minShore: 2,
+      lane: 3,
+      rootClear: 8,
+      /** Machinery caps per kind (placed first), stock piles after, fit search for machinery. */
+      caps: { row: 3, tank: 2, forklift: 2 },
+      bigSearch: 3,
+      piles: 12,
+      crateShare: 0.65,
+      pile: [3, 4] as const,
+      pileR: 1.3,
+      lampShore: [1.2, 3.4] as const,
+      lampGap: 7,
+      lamps: 7,
+    },
+  },
+  /**
+   * Village infill (density pass): cottage lodges and rack sheds (fixtures of the existing defs,
+   * one variant set) on the data center and foundry shelves, doors out to sea, so the shelves
+   * read as small villages. Per anchor: how many, rows (u inland / out) and tangent spacing.
+   */
+  village: {
+    perShelf: { datacenterUpper: 2, datacenter: 4, foundryUpper: 3 } as Record<string, number>,
+    rows: [0, 3.5, -3.5, 6.5, -6.5] as const,
+    spacing: 4.4,
+    span: 24,
+    search: 2.5,
+    minShore: 3.5,
+    maxRelief: 2.6,
+    levelTol: 1.4,
+    /** Every `shedEvery`-th building is a rack shed (variants cycled), the rest cottages. */
+    shedEvery: 3,
   },
   /** Lava foundry on the `foundry` (lower) and `foundryUpper` shelves. */
   foundry: {
@@ -258,7 +296,7 @@ export const DEVOPS_SITE = {
     yardR: 5,
   },
   /** Steam main: a vent high on the cone above the plant, piped down to a cooling tower. */
-  steam: { ventY: [15, 24] as const, search: 16 },
+  steam: { ventY: [15, 24] as const, search: 16, furnaceR: 3.2 },
   /** Worker lodges (cottage fixtures, variants cycled) beside the ops quad. */
   quadLodges: { count: 2, ring: [7, 13] as const, variants: [0] as const },
 } as const;

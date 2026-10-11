@@ -159,6 +159,13 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   rackRow: 1.6,
   // DevOps "Ember Works" (TASK-402): the yard's middle stack (bots skirt the row of stacks)
   containerYard: 6,
+  // density pass: quay stock, machinery and village infill (fixtures of existing defs too)
+  containerRow: 3.2,
+  fuelTank: 1.7,
+  forklift: 1,
+  crate: 0.5,
+  cableSpool: 0.7,
+  rackShed: 1.9,
   foundry: 3.9,
   smithy: 2.1,
   cottage: 1.6,
