@@ -348,8 +348,12 @@ describe('settlements — 20-seed sweep', () => {
       }
       const coding = w.islands.find((i) => i.theme === 'coding');
       if (w.districts.some((d) => d.islandId === coding?.id && d.kind === 'solar')) solar++;
-      // fences are farm-only: no theme plans field fences any more (pipes are their own kind)
-      expect(w.fences.filter((f) => f.kind !== 'pipe').length, `seed ${seed} fences`).toBe(0);
+      // fences are farm-only: no theme plans field fences any more (pipes and the DevOps
+      // foundry rail, TASK-402, are their own kinds)
+      expect(
+        w.fences.filter((f) => f.kind !== 'pipe' && f.kind !== 'rail').length,
+        `seed ${seed} fences`,
+      ).toBe(0);
     }
     expect(solar / SEEDS.length).toBeGreaterThanOrEqual(0.9);
   });

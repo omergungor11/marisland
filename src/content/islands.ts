@@ -110,6 +110,33 @@ export interface CraterParams {
   domeShift: number;
 }
 
+/**
+ * A flat land shelf grown at the foot of a cone (TASK-402, Emberpeak → DevOps "Ember Works"), in
+ * island-local units (radius-normalised, +x leeward): a rounded rectangle whose radial axis points
+ * at `angle` (degrees from leeward, on the side the profile picks), level at raw height `h` where
+ * the cone is lower (the cone keeps everything above it). Its outer edge is the new coast, so
+ * `d + radial` must stay below the archetype's `reachScale` − 0.1. `steps` are higher, smaller
+ * shelves on the same axis (terraces climbing toward the cone).
+ */
+export interface ShelfParams {
+  /** Anchor name written for the theme planner (the shelf centre, rotY = outward heading). */
+  key: string;
+  /**
+   * Angle range from leeward (degrees), multiplied by the profile's side (+1 = away from the hot
+   * spring); negative ranges put the shelf on the spring's side.
+   */
+  angle: readonly [number, number];
+  d: number;
+  /** Half extents along the radial and tangential axes (radius units). */
+  radial: number;
+  tangential: number;
+  /** Raw plateau height (profile units, before the peak rescale). */
+  h: number;
+  /** Edge warp amplitude (fbm, in units of the half extents). */
+  warp: number;
+  steps?: readonly { key: string; d: number; radial: number; tangential: number; h: number }[];
+}
+
 export interface ArchetypeParams {
   displayName: string;
   /** Bible diameter range in u; radius = diameter / 2. */
@@ -145,6 +172,8 @@ export interface ArchetypeParams {
   bluff?: BluffParams;
   /** Breached-crater profile (Lonely Palm only, TASK-400). */
   crater?: CraterParams;
+  /** Flat shelves at the cone foot (Emberpeak only, TASK-402): [harbour, foundry]. */
+  shelves?: readonly ShelfParams[];
   zones: ZoneRuleParams;
 }
 
@@ -233,7 +262,53 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
     shelfWidth: 7,
     beachWidth: 5,
     terrace: { step: 4, strength: 0.2 },
-    bluff: { on: true, wall: [5, 6], peak: [34, 36], coveHalfDeg: 60, coveFlat: 0, coveRamp: 8 },
+    // TASK-402: the cove is a disc around the harbour shelf (was the ±60° lee sector) and stays
+    // low 14 u inland, so the harbour is a quay at the water, not a mesa; the rest has walls
+    bluff: {
+      on: true,
+      wall: [5, 6],
+      peak: [34, 36],
+      coveHalfDeg: 60,
+      coveAnchor: { key: 'harbour', radius: [0.55, 0.85] },
+      coveFlat: 14,
+      coveRamp: 12,
+      // the shelves stand 4–5 u above the beach at the rim: ease them in wider so faces stay ≤ 65°
+      rimEase: 6.5,
+    },
+    // TASK-402 "Ember Works": a low harbour shelf on the lee side away from the hot spring and a
+    // two-step foundry terrace further round the same side, on bluff walls; land stays < 1.27 r
+    shelves: [
+      {
+        key: 'harbour',
+        angle: [30, 40],
+        d: 1.0,
+        radial: 0.27,
+        tangential: 0.42,
+        h: 1.6,
+        warp: 0.06,
+      },
+      {
+        key: 'foundry',
+        angle: [100, 116],
+        d: 1.04,
+        radial: 0.22,
+        tangential: 0.34,
+        h: 4.6,
+        warp: 0.06,
+        steps: [{ key: 'foundryUpper', d: 0.76, radial: 0.1, tangential: 0.26, h: 10.5 }],
+      },
+      // negative angles: the hot-spring side (data center terraces beyond the geothermal plant)
+      {
+        key: 'datacenter',
+        angle: [-70, -56],
+        d: 1.0,
+        radial: 0.24,
+        tangential: 0.3,
+        h: 4.6,
+        warp: 0.06,
+        steps: [{ key: 'datacenterUpper', d: 0.72, radial: 0.13, tangential: 0.22, h: 10 }],
+      },
+    ],
     zones: {
       ...DEFAULT_ZONES,
       forestThreshold: 0.45,

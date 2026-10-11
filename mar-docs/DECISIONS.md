@@ -2,6 +2,33 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-046: DevOps "Ember Works" — cone-foot shelves with a harbour, a foundry and data center terraces (TASK-402) — 2026-10-11
+
+**Decision**: Emberpeak keeps its roster slot, diameter roll, reach and cone, and grows three flat shelves at
+the cone foot (`ARCHETYPES.emberpeak.shelves`, land ≤ 1.26 r inside the 1.35 r reach): a low harbour shelf on
+the lee side away from the hot spring (the bluff cove is now a disc around it, `coveAnchor` harbour, low 14 u
+inland), a two-step foundry terrace further round that side and a two-step data center terrace beyond the
+spring. The planner builds: data centers on both data center levels (replaces the fragile lee staircase); the
+deployment harbour (one `containerYard` prefab = three Docker-blue / teal / coral stacks + a gantry crane + the
+control tower, rack-shed build halls by the pier, a CI/CD belt of QA `conveyor` segments, paved quay); the lava
+foundry (furnace halls with chimneys on the upper step, a `rail` polyline of `railTrack` segments below it,
+smithies and cottage lodges); a steam main from a cone vent to a cooling tower; lodges by the ops quad. Movers:
+ore trains (crate carts on the rails) and two cargo ships per DevOps pier on a stadium loop past the pier head
+(`render/harbour-routes.ts`, a second movers mesh), time-driven; ships hide past 260 u, trains past 230 u.
+**Rationale**: user request (2026-10-11): more land and a DevOps facility (data center + harbour + foundry) on
+the volcano. Shelves on bluff walls keep the cone the hero silhouette; one prefab per facility and one variant
+per def keep the draw calls (W11 216 → 230, W5 242 → 231); pads on different shelf levels must not overlap
+their relaxation bounds or `applyPads` levels the step away (`levelSafe` in `plans/devops-works.ts`). The bigger
+island's per-island LOD0 groups (bounding sphere = the whole island) reached into far frustums (D-macro 155 → 173
+over the low budget 170) although every instance was dithered out: the batcher now skips the draw of a visible
+LOD0 group whose sphere lies wholly past its def's fade-out distance (pixel-identical: D-macro, W8, W11 0 px
+changed; D-macro 161, D-desk 166 → 148, W10 223 → 213).
+**Impact**: 0 new programs. New defs: containerYard, foundry, smithy (T2), railTrack (T2); the lodges reuse
+`cottage` (variant 0). Other islands' terrain, zones, lot positions, landmarks, fixtures, docks and scatter are
+unchanged; what still moves with the DevOps plan is index-coupled: lot roof variants (`assignLotVariants` hashes
+the global lot index), path lanterns (every 5th global path node), the global ground-cover cap order in scatter,
+and the viaduct ends (D-045 removes those). W5, D-devops-* and L-live-devops look at the new campus.
+
 ## D-045: Viaducts (TASK-394) removed — 2026-10-11
 
 **Decision**: the stone-arch viaducts between near islands are dropped. The bridge code (pair picker,

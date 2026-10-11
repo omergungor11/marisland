@@ -26,6 +26,7 @@ import { TAU, V, V2, baseBox, cylB, jitterAcc, lathe, prism, put, tubeAlong } fr
 import type { BuildOpts, PropGeoDef } from '../types.ts';
 import { accVerts } from './coding.ts';
 import { tagPulse, tagScreens, type VertexRange } from './surface-tags.ts';
+import { DEVOPS_WORKS_GEO } from './devops-works.ts';
 
 const finish = (acc: Acc, rng: Rng): THREE.BufferGeometry => acc.finish(rng, false, true);
 
@@ -638,4 +639,6 @@ export const DEVOPS_GEO: readonly PropGeoDef[] = [
     heights: [1.9, 1.6],
     windy: false,
   },
+  // TASK-402 "Ember Works"
+  ...DEVOPS_WORKS_GEO,
 ];

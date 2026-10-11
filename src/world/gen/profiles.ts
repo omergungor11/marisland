@@ -397,6 +397,27 @@ const emberpeak: ProfileFactory = ({ island, rng, noise, windDir }) => {
   const spring = { x: rng.range(0.7, 0.78), z: rng.range(-0.25, 0.25) };
   const springR = 8 / r;
   const springH = 6.6;
+  // TASK-402 shelves (drawn after the legacy rolls): on the side away from the spring
+  const side = spring.z >= 0 ? -1 : 1;
+  const shelves = (ARCHETYPES.emberpeak.shelves ?? []).flatMap((S) => {
+    const a = side * rng.range(S.angle[0], S.angle[1]) * (Math.PI / 180);
+    const base = { ...S, a, c: Math.cos(a), s: Math.sin(a) };
+    return [base, ...(S.steps ?? []).map((t) => ({ ...base, ...t, warp: S.warp }))];
+  });
+  /** Raw shelf value (> 0 = land), level at `h` inside its rounded rectangle. */
+  const shelfAt = (lx: number, lz: number): number => {
+    let best = RAW_FLOOR;
+    for (const S of shelves) {
+      const u = (lx * S.c + lz * S.s - S.d) / S.radial;
+      const v = (-lx * S.s + lz * S.c) / S.tangential;
+      if (Math.abs(u) > 1.6 || Math.abs(v) > 1.6) continue;
+      const e =
+        Math.cbrt(Math.abs(u) ** 3 + Math.abs(v) ** 3) +
+        S.warp * noise.fbm(lx * 4.1 + 13.7, lz * 4.1 - 8.9, 2);
+      best = Math.max(best, smoothstep(1, 0.82, e) * (S.h + COAST_LEVEL + 0.8) - 0.8);
+    }
+    return best;
+  };
   const q: [number, number] = [0, 0];
   const w: [number, number] = [0, 0];
   const sample = (x: number, z: number): number => {
@@ -423,6 +444,11 @@ const emberpeak: ProfileFactory = ({ island, rng, noise, windDir }) => {
     // hot-spring terrace (lee)
     const ds = Math.hypot(lx - spring.x, lz - spring.z) / springR;
     h = lerp(h, springH, smoothstep(1.5, 0.8, ds) * smoothstep(0.5, 2, h));
+    // foot shelves: level aprons where the cone is lower, a soft fillet where they meet
+    if (shelves.length > 0) {
+      const sv = shelfAt(lx, lz) + COAST_LEVEL;
+      if (sv > 0) h = h > 0 ? smax(h, sv, 0.8) : Math.max(h, sv);
+    }
     return Math.max(RAW_FLOOR, h - COAST_LEVEL);
   };
   const tag = (x: number, z: number): number => {
@@ -444,6 +470,10 @@ const emberpeak: ProfileFactory = ({ island, rng, noise, windDir }) => {
   anchors.notch = { x: nw.x, z: nw.z, rotY: windDir + notchA };
   const sw = fr.toWorld(spring.x, spring.z);
   anchors.hotspring = { x: sw.x, z: sw.z, rotY: windDir };
+  for (const S of shelves) {
+    const p = fr.toWorld(S.c * S.d, S.s * S.d);
+    anchors[S.key] = { x: p.x, z: p.z, rotY: windDir + S.a };
+  }
   return { sample, tag, anchors };
 };
 

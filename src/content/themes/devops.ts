@@ -131,9 +131,9 @@ export const DEVOPS_THEME: ThemeDef = {
 
 /**
  * DevOps site plan tuning (world/gen/plans/devops.ts). Distances in u, heights in u above sea.
- * Terraces: one dataCenter per pad; consecutive pads stand > 2 lot-pad bounds apart
- * (`spacing`) so FLATTEN.maxStep relaxation never merges them into one plateau, and each next
- * pad sits `rise` lower or higher (a staircase along the lee flank).
+ * TASK-402 "Ember Works": the archetype grows three shelves at the cone foot (content/islands.ts
+ * `shelves`): the data center terraces (`datacenter`, `datacenterUpper`) beyond the geothermal
+ * plant, the deployment harbour (`harbour`) and the lava foundry (`foundry`, `foundryUpper`).
  */
 export const DEVOPS_SITE = {
   plant: {
@@ -146,24 +146,22 @@ export const DEVOPS_SITE = {
     minShore: 3,
   },
   terraces: {
-    count: [3, 4] as const,
-    /** First (top) terrace: distance from the plant. */
-    fromPlant: [14, 40] as const,
-    spacing: [14, 19] as const,
-    rise: [1.5, 6] as const,
-    riseTarget: 2.5,
-    /** Pad centres within this height band (lee flank: off the beach, below the rim). */
-    y: [3, 18] as const,
-    minShore: 6,
-    maxRelief: 4.5,
+    /**
+     * Data centers per shelf level, in anchor order [upper, lower]: side by side along the
+     * shelf, doors facing out to sea; the levels differ by the shelf step (≈ 4 u).
+     */
+    perLevel: [1, 2] as const,
+    /** Target offset out to sea from each anchor (u), per level [upper, lower]. */
+    out: [0, 2] as const,
+    /** A lot centre stays within this of its shelf anchor's height (u). */
+    levelTol: 2,
+    /** Search radius around each shelf anchor, side spacing between the lot centres. */
+    search: 12,
+    side: 9,
+    minShore: 4,
+    maxRelief: 3.2,
     /** Concrete apron around each data center (district rect = footprint + 2 × apron). */
     apron: 1.6,
-    /** Every terrace keeps this far from the plant pads (no relaxation with them). */
-    plantClear: 14,
-    /** Candidate first terraces tried (best first) until a chain of `count[1]` stands. */
-    starts: 40,
-    /** Min leewardness of a start, per pass (lee flank first, then any side). */
-    lee: [0.25, -1] as const,
   },
   quad: {
     /** Ops quad (settlement plaza) radius. */
@@ -209,4 +207,95 @@ export const DEVOPS_SITE = {
     halfWidth: 0.6,
   },
   dock: { rowboats: [1, 2] as const },
+  /** Deployment harbour on the `harbour` shelf (pier, container yard, gantry crane, tower). */
+  harbour: {
+    /** Pier search around the shelf anchor; the anchor is ≈ 10 u inland of the quay. */
+    dockSearch: 26,
+    /** Concrete quay: shelf samples within this of the anchor and below `maxY` are paved. */
+    paveR: 17,
+    maxY: 4,
+    /** Container yard (stacks + crane, boom out to sea): slots tried in the shelf frame, search. */
+    yardSlots: [
+      [0, -2],
+      [0, 2],
+      [-7, -2],
+      [7, -2],
+      [0, -7],
+      [-7, 3],
+      [7, 3],
+    ] as const,
+    yardSearch: 10,
+    /** Yard headings tried (rad off the shelf's outward heading), each over every slot. */
+    yardTurns: [0, 0.35, -0.35],
+    /** The yard prefab is large: its footprint may span this much relief (the pad levels it). */
+    yardRelief: 3.6,
+    minShore: 2,
+    maxRelief: 2.2,
+    /** CI/CD belt: rack shed → the container yard, straight; shed-to-yard-edge range (u). */
+    belt: [2, 16] as const,
+  },
+  /** Lava foundry on the `foundry` (lower) and `foundryUpper` shelves. */
+  foundry: {
+    /** Furnace halls on the upper step (side spacing); the rail and a row of shops below. */
+    furnaces: [1, 2] as const,
+    furnaceSide: 8.5,
+    /** Rail line along the lower shelf at the foot of the step: length range, offsets tried. */
+    rail: [12, 28] as const,
+    railOut: [-7, -6, -8, -5, -9, -4] as const,
+    /** Rail pads: small discs this far apart (one big corridor pad would tie the step levels). */
+    railPad: 4,
+    /** The shop row stands this far seaward of the rail; smithies and lodges alternate. */
+    rowOff: 5.5,
+    smithies: [2, 3] as const,
+    lodges: [2, 3] as const,
+    pitch: 5.6,
+    /** Fit search around each shop slot (u). */
+    shopSearch: 3.5,
+    search: 7,
+    minShore: 4,
+    maxRelief: 2.6,
+    /** Paved foundry yard on the upper step (square around each furnace). */
+    yardR: 5,
+  },
+  /** Steam main: a vent high on the cone above the plant, piped down to a cooling tower. */
+  steam: { ventY: [15, 24] as const, search: 16 },
+  /** Worker lodges (cottage fixtures, variants cycled) beside the ops quad. */
+  quadLodges: { count: 2, ring: [7, 13] as const, variants: [0] as const },
+} as const;
+
+/**
+ * DevOps movers (TASK-402, render/movers.ts + render/harbour-routes.ts): closed-form, time-driven,
+ * not life agents. Cargo ships lap a stadium loop off each DevOps pier head, stopping alongside
+ * it; a short ore train shuttles along each foundry rail line. Distances in u, speeds in u/s.
+ */
+export const DEVOPS_MOVERS = {
+  ship: {
+    /** Ships per DevOps pier (phase-shifted by an equal share of the cycle). */
+    perDock: 2,
+    speed: 2.4,
+    /** Stop alongside the pier head (s). */
+    dwell: 7,
+    /** Stadium loop: near straight (through the pier head, along the coast), turn radius. */
+    straight: 22,
+    turnR: 9,
+    /** Near straight this far past the pier end (ship side to the pier head). */
+    off: 2.4,
+    /** The loop is pushed out by `push` u up to `tries` times until it lies in water. */
+    push: 2,
+    tries: 8,
+    /** Every loop sample (and ± `lateral` u across it) at least this deep. */
+    minDepth: 1.2,
+    lateral: 2.2,
+  },
+  train: {
+    /** Cars per rail line (crate carts), gap between them, speed, end dwell, scale. */
+    cars: 3,
+    gap: 1.7,
+    speed: 1.6,
+    dwell: 3,
+    scale: 1.25,
+  },
+  /** Dither fade by camera distance (u); the meshes hide 20 u past `fadeFar`. */
+  fadeNear: 170,
+  fadeFar: 240,
 } as const;

@@ -79,8 +79,9 @@ const CAMPUS_THEMES = [
  * spot (life agent's TASK-383 picks; Coding, DevOps, Design re-aimed at the bot clusters in the
  * M14c verification), clear of canopies. Re-pin when the layout changes. TASK-396 (the M17b bluffs
  * raised Coding ≈ 4 u): Coding looks over the dev office and the pod beside it (typing pair,
- * walking bots, code screens; the old eye saw a tree and aimed under the plateau, 2.8 %), DevOps
- * over the west-shore rack yard by the pier (steam puffs, yard bots) instead of bare cone rock (0 %).
+ * walking bots, code screens; the old eye saw a tree and aimed under the plateau, 2.8 %). TASK-402:
+ * DevOps looks over the harbour quay — the build-hall rack sheds, crates on the CI/CD belt into the
+ * container yard, yard bots (the old west-shore rack yard moved onto the harbour shelf).
  */
 const LIVE_CAMS: Record<(typeof CAMPUS_THEMES)[number][0], string> = {
   hq: '66,14,-168,86,1.4,-171',
@@ -88,7 +89,7 @@ const LIVE_CAMS: Record<(typeof CAMPUS_THEMES)[number][0], string> = {
   design: '-144,30,82,-151,17,100',
   coding: '105,17,13,94,11,23',
   research: '-152,12,232,-133,0.5,222',
-  devops: '-106,10,-88,-90,2.5,-78',
+  devops: '-100,10,-16,-86,2.5,-31',
   marketing: '8,37,196,-6,25,182',
 };
 
@@ -100,6 +101,11 @@ const LIVE_CROP: [number, number, number, number] = [0.15, 0.1, 0.85, 0.9];
 
 /** W7 camera (raw, seed 1001 Coding; TASK-380), re-pin when that layout changes. */
 const W7_CAM = '45,20,20,95,13,40';
+
+/** D-devops-* (raw, seed 1001 Ember Works; TASK-402), re-pin when that layout changes. */
+const DEVOPS_CAM = '-46,58,42,-52,4,-34';
+/** D-devops-harbour (raw, seed 1001): the container yard, CI/CD belt, pier and a cargo ship. */
+const DEVOPS_HARBOUR_CAM = '-54,20,6,-80,2,-24';
 
 /** D-campus-research close-up (raw, seed 1001 Biodome Lab; TASK-400), re-pin when that layout changes. */
 const RESEARCH_CLOSE_CAM = '-143,13,246,-138.5,3,222.5';
@@ -511,6 +517,37 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     cam: 'village:qa',
     time: 22,
     simt: 2,
+    sets: ['dev'],
+  },
+  {
+    id: 'D-devops-campus',
+    title: 'Ember Works · DevOps',
+    // TASK-402: from the sea south of Emberpeak over the harbour shelf (container yard, gantry
+    // crane, control tower, ships) and the foundry terraces (furnace, rail, smithies, lodges)
+    seed: 1001,
+    cam: DEVOPS_CAM,
+    time: 15,
+    simt: 6,
+    sets: ['dev'],
+  },
+  {
+    id: 'D-devops-harbour',
+    title: 'Deployment harbour · DevOps',
+    // TASK-402: T2 over the quay: gantry crane, stacks, control tower, rack sheds + belt, ships
+    seed: 1001,
+    cam: DEVOPS_HARBOUR_CAM,
+    time: 10,
+    simt: 6,
+    sets: ['dev'],
+  },
+  {
+    id: 'D-devops-night',
+    title: 'Ember Works night · DevOps',
+    // TASK-402: furnace mouths, lava troughs, forge coals, tower cab and cottage windows lit
+    seed: 1001,
+    cam: DEVOPS_CAM,
+    time: 22,
+    simt: 6,
     sets: ['dev'],
   },
   {

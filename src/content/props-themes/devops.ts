@@ -36,6 +36,128 @@ export const DEVOPS_COLORS = {
   lamp: '#FF5A4A',
 } as const;
 
+/**
+ * TASK-402 "Ember Works" structures (geo/themes/devops-works.ts): sizes in u (local x = width,
+ * z = depth, the fixture's rotY faces local +z) and colours. Palette: ART_BIBLE §2 roofs
+ * (Docker blue `#5DA9E9`, teal `#3FB8AF`, yellow, coral) on the DevOps concrete / steel family;
+ * lava `#FF6A3D` and window `#FFC870` glow at night through the emissive path.
+ */
+export const DEVOPS_WORKS = {
+  container: {
+    /** One container: length (x), width (z), height. */
+    l: 5,
+    w: 2.1,
+    h: 2,
+    colors: ['#5DA9E9', '#3FB8AF', '#FF9F43', '#F5C84C', '#E35D6A', '#4C8FD0'],
+    rib: '#E9EEF5',
+    door: '#3A3F4D',
+  },
+  /** One stack: columns side by side along z, `tiers` containers each (asymmetric). */
+  stack: { tiers: [3, 2, 1] as const, gap: 0.12 },
+  /**
+   * containerYard prefab: stacks (centre x, z; `turn` mirrors the tiers) in a row along the quay,
+   * the crane over the middle one; footprint (x × z) for the planner.
+   */
+  yard: {
+    stacks: [
+      { x: 0, z: 0, turn: false },
+      { x: -6.3, z: -0.6, turn: true },
+      { x: 6.3, z: -0.6, turn: true },
+    ] as const,
+    /** The crane straddles the stack at x = crane.x; the control tower stands on the quay. */
+    crane: { x: 0 },
+    tower: { x: -6.6, z: 4.9 },
+    footprint: [18.4, 13] as const,
+  },
+  crane: {
+    /** Gantry: legs at ±legX (x) and ±legZ (z), girder top, boom out to +boomZ over the quay. */
+    legX: 2.2,
+    legZ: 3.8,
+    top: 9,
+    boomZ: 9,
+    backZ: -5,
+    leg: 0.32,
+    body: '#FF9F43',
+    bodyDark: '#E5822A',
+    steel: '#8A909C',
+    cab: '#FFF4E0',
+    cable: '#4F4A5E',
+  },
+  tower: {
+    /** Harbour control tower (part of the yard prefab): base, shaft, glass cab, cap, pinwheel. */
+    base: 2.6,
+    shaft: 1.3,
+    shaftH: 8,
+    cabW: 3.2,
+    cabH: 2,
+    roofH: 0.5,
+    mast: 1.4,
+    radarR: 1.1,
+    wall: '#FFF4E0',
+    trim: '#3FB8AF',
+    glass: '#FFC870',
+    roof: '#5DA9E9',
+    radar: '#E9EEF5',
+  },
+  foundry: {
+    /** Furnace hall (x × z × h), monitor roof, two chimneys at the back, glowing mouth + trough. */
+    w: 6.6,
+    d: 4.2,
+    h: 3.6,
+    roofRise: 1.3,
+    chimneyR: 0.55,
+    chimneyH: 10,
+    /** Chimney centres (x, z) in the hall frame. */
+    chimneys: [
+      { x: -2.1, z: -1.1 },
+      { x: 2.3, z: -1.3 },
+    ] as const,
+    wall: '#9C8C86',
+    brick: '#C2675A',
+    roof: '#5A5664',
+    trim: '#F5C84C',
+    lavaHot: '#FFB347',
+    iron: '#6F7685',
+    footprint: [7, 5.4] as const,
+  },
+  smithy: {
+    w: 3.4,
+    d: 3,
+    h: 2.4,
+    roofRise: 1.1,
+    chimneyH: 4.6,
+    /** Chimney centre (x, z) in the hut frame; the forge stands in front of it. */
+    chimney: { x: -0.7, z: 0.95 },
+    wall: '#E7D3BC',
+    timber: '#8A5A3B',
+    roof: '#E8735A',
+    glow: '#FF6A3D',
+    anvil: '#5A5664',
+    footprint: [3.8, 4.6] as const,
+  },
+  rail: {
+    /** Segment length (x), gauge (rail centres at ±gauge / 2), rail top. */
+    len: 2,
+    gauge: 1.1,
+    top: 0.22,
+    steel: '#8A909C',
+    sleeper: '#8A5A3B',
+    ballast: '#7C7682',
+  },
+  ship: {
+    /** Cargo ship mover (render/movers.ts): hull length (z), beam, deck height, containers. */
+    l: 11,
+    beam: 3.4,
+    deck: 1.1,
+    hull: '#E35D6A',
+    hullLow: '#3A3F4D',
+    deckCol: '#D9CFC2',
+    bridge: '#FFF4E0',
+    window: '#FFC870',
+    funnel: '#FF9F43',
+  },
+} as const;
+
 /** TASK-393: the tower is built at its old size (8 / 7 u) and stretched in y by this factor. */
 export const COOLING_TOWER_RISE = 1.6;
 /** Cooling tower nominal heights per variant (u). */
@@ -64,4 +186,17 @@ export const DEVOPS_PROP_DEFS: readonly PropDef[] = [
     flags: grounded,
   },
   { id: 'rackRow', geo: 'rackRow', tier: 2, variants: 2, footprint: 1.6, flags: grounded },
+  // TASK-402 "Ember Works": one variant each (one draw call per def); ≥ 3 u structures from T0
+  {
+    id: 'containerYard',
+    geo: 'containerYard',
+    tier: 0,
+    variants: 1,
+    footprint: 11,
+    flags: grounded,
+  },
+  { id: 'foundry', geo: 'foundry', tier: 0, variants: 1, footprint: 3.8, flags: grounded },
+  // T2: the smithies are small; their LOD1 group would cost a far draw call in the postcard
+  { id: 'smithy', geo: 'smithy', tier: 2, variants: 1, footprint: 2.1, flags: grounded },
+  { id: 'railTrack', geo: 'railTrack', tier: 2, variants: 1, footprint: 1.0, flags: grounded },
 ];

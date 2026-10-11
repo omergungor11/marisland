@@ -2,12 +2,15 @@
  * DevOps island plan (Emberpeak volcano; M14b §2.3, TASK-364). The archetype supplies the cone,
  * the crater and the lee hot-spring terrace; the theme builds on them:
  * - Geothermal Plant: the hot spring becomes the cooling pool, two cooling towers beside it;
- * - Terraced Data Center: a staircase of level pads down the lee flank, one dataCenter each
- *   (concrete `Zone.plaza` written on every pad, `terrace` districts);
+ * - Terraced Data Center (TASK-402): dataCenter lots on the archetype's two `datacenter` shelf
+ *   levels (concrete `Zone.plaza` written on every pad, `terrace` districts; devops-works.ts);
  * - Ops quad: the settlement plaza beside a terrace, at its level (network hub);
  * - Antenna Ridge: 2–3 antennaMast lots high on the rim shoulders;
- * - Rack Yard: rackShed lots + rackRow fixtures on the black-sand beach by the lee dock;
- * - Pipeline: a 'pipe' polyline from the plant to the nearest data center.
+ * - Rack Yard: rackShed lots + rackRow fixtures by the pier (on the harbour quay since TASK-402);
+ * - Pipeline: a 'pipe' polyline from the plant to the nearest data center, and a steam main from
+ *   a vent high on the cone down to a cooling tower;
+ * - "Ember Works" (TASK-402, devops-works.ts): the deployment harbour (container yard, CI/CD
+ *   belt, paved quay), the lava foundry (furnaces, rail line, smithies, lodges), quad lodges.
  * Every random decision draws from labelled forks of `rng`; tuning lives in DEVOPS_SITE.
  */
 import type { Rng } from '../../../core/rng.ts';
@@ -16,7 +19,6 @@ import { DEVOPS_SITE } from '../../../content/themes/devops.ts';
 import { heightAt, Zone } from '../../types.ts';
 import type { DistrictData, IslandData, XZ } from '../../types.ts';
 import { cellX, cellZ, gridRange } from '../grid.ts';
-import { leewardness } from '../heightfield.ts';
 import { gridAStar } from '../paths.ts';
 import {
   add,
@@ -54,6 +56,15 @@ import {
   type SitePlan,
 } from '../sites.ts';
 import type { ThemePlanner } from './types.ts';
+import {
+  district,
+  paintZone,
+  placeDataCenters,
+  finishHarbour,
+  placeContainerYard,
+  placeFoundry,
+  placeQuadLodges,
+} from './devops-works.ts';
 
 const S = DEVOPS_SITE;
 const DC = 'dataCenter';
@@ -78,8 +89,8 @@ export const planDevops: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   const towers = placePlant(ctx, isl, spring);
   const plant = [spring, ...towers];
 
-  // terraced data center, then the ops quad beside one of its pads
-  const terraces = placeTerraces(ctx, isl, centre, plant, sIdx);
+  // data center terraces on their shelf (two levels), then the ops quad beside one of them
+  const terraces = placeDataCenters(ctx, isl, sIdx);
   for (const li of terraces) {
     const l = ctx.lots[li];
     const sh = rectShape(l.x, l.z, l.rotY, l.w + 2 * S.terraces.apron, l.d + 2 * S.terraces.apron);
@@ -104,25 +115,32 @@ export const planDevops: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
     terraces.every((li) => dist(ctx.lots[li], p) > padBound(DC) + padBound(def)) &&
     (!quad || dist(quad, p) > quadBound + padBound(def));
   const masts = placeRidge(ctx, isl, centre, hub, rng.fork('ridge'), sIdx, offTerraces);
-  // lee dock, rack yard on the beach beside it
-  const site = findDock(ctx, isl, {
-    near: hub,
-    maxDist: isl.reach + 10,
-    prefer: hub,
-    lee: 40,
-    carve: true,
-  });
+  // harbour pier (on the harbour shelf when the archetype has one), rack yard beside it
+  const port = isl.anchors.harbour;
+  const site = findDock(
+    ctx,
+    isl,
+    port
+      ? { near: port, maxDist: S.harbour.dockSearch, prefer: port, carve: true }
+      : { near: hub, maxDist: isl.reach + 10, prefer: hub, lee: 40, carve: true },
+  );
   const boats = rng.fork('boats');
   dockWithLink(ctx, isl, plan, site, rng.fork('moorings'), {
     rowboats: boats.int(S.dock.rowboats[0], S.dock.rowboats[1]),
     sailboats: 0,
   });
+  // TASK-402: the container yard takes the level quay first, the rack sheds fit around it
+  const containers = placeContainerYard(ctx, isl, plan);
   const yard = site ? placeYard(ctx, isl, site.root, rng.fork('yard'), sIdx, offTerraces) : null;
   if (yard) {
     plan.districts.push(yard.district);
     for (const li of yard.lots) linkLot(ctx, plan, li);
   }
   for (const li of masts) linkLot(ctx, plan, li);
+  // TASK-402: CI/CD belt + paved quay, lava foundry, worker lodges by the quad
+  finishHarbour(ctx, isl, containers, yard?.lots ?? []);
+  placeFoundry(ctx, isl, plan, rng.fork('foundry'));
+  if (quad) placeQuadLodges(ctx, isl, quad, rng.fork('lodges'));
 
   // pipeline: plant → nearest data center
   if (towers.length > 0 && terraces.length > 0) {
@@ -133,32 +151,16 @@ export const planDevops: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
     if (line)
       (plan.lines ??= []).push({ islandId: isl.id, kind: 'pipe', closed: false, points: line });
   }
+  // steam main: a vent high on the cone above the plant, piped down to the nearest tower
+  if (towers.length > 0) {
+    const main = steamMain(ctx, isl, centre, spring, towers);
+    if (main)
+      (plan.lines ??= []).push({ islandId: isl.id, kind: 'pipe', closed: false, points: main });
+  }
   return plan;
 };
 
 // ---------------------------------------------------------------------------
-
-/** Write `zone` on this island's land samples inside `sh`. */
-function paintZone(ctx: SiteCtx, isl: IslandData, sh: Shape, zone: number): void {
-  const R = (sh.r > 0 ? sh.r : Math.hypot(sh.hw, sh.hd)) + 1;
-  const [x0, x1] = gridRange(sh.x - R, sh.x + R);
-  const [z0, z1] = gridRange(sh.z - R, sh.z + R);
-  for (let iz = z0; iz <= z1; iz++)
-    for (let ix = x0; ix <= x1; ix++) {
-      const i = iz * ctx.n + ix;
-      if (ctx.islandMap[i] !== isl.id + 1 || ctx.sdf[i] <= 0) continue;
-      if (shapeDist(sh, cellX(ix), cellZ(iz)) <= 0) ctx.zone[i] = zone;
-    }
-}
-
-function district(
-  isl: IslandData,
-  kind: DistrictData['kind'],
-  sh: Shape,
-  rotY: number,
-): DistrictData {
-  return { islandId: isl.id, kind, x: sh.x, z: sh.z, rotY, w: sh.hw * 2, d: sh.hd * 2 };
-}
 
 /** Two cooling towers on the hot-spring terrace beside the pool (fixtures with level pads). */
 function placePlant(ctx: SiteCtx, isl: IslandData, spring: XZ): XZ[] {
@@ -201,31 +203,6 @@ function placePlant(ctx: SiteCtx, isl: IslandData, spring: XZ): XZ[] {
   return towers;
 }
 
-/** A dataCenter footprint at `p`, door facing downhill (away from the crater); null = no fit. */
-function terraceFit(ctx: SiteCtx, isl: IslandData, centre: XZ, p: XZ): TerraceFit | null {
-  const T = S.terraces;
-  const [w, d] = LOT_FOOTPRINT[DC];
-  const u = unit(centre, p);
-  const rotY = ang(u.x, u.z);
-  const sh = rectShape(p.x, p.z, rotY, w, d);
-  const yc = heightAt(ctx.h, p.x, p.z);
-  if (yc < T.y[0] - 2 || yc > T.y[1] + 2 || !onLand(ctx, isl, sh, T.minShore)) return null;
-  const r = relief(ctx, sh);
-  if (r > T.maxRelief) return null;
-  if (!clear(ctx, isl, sh, VILLAGE.lotGap) || !siteFree(ctx, isl, sh)) return null;
-  const y = padLevel(ctx, isl, sh);
-  if (y < T.y[0] || y > T.y[1]) return null;
-  return { p, rotY, relief: r, y };
-}
-
-interface TerraceFit {
-  p: XZ;
-  rotY: number;
-  relief: number;
-  /** Pad level the flatten pass will give it (mean footprint height). */
-  y: number;
-}
-
 /** Mean height of this island's land samples under `sh` (applyPads' pad level, before relaxing). */
 function padLevel(ctx: SiteCtx, isl: IslandData, sh: Shape): number {
   const R = Math.hypot(sh.hw, sh.hd) + 1;
@@ -245,119 +222,6 @@ function padLevel(ctx: SiteCtx, isl: IslandData, sh: Shape): number {
 }
 
 /**
- * Terraced data center: the best chain of `count` dataCenter pads stepping down the lee flank
- * (each next pad `spacing` away and `rise` lower, keeping its heading). Returns lot indices, top
- * first; empty when no chain of `count[0]` fits.
- */
-function placeTerraces(
-  ctx: SiteCtx,
-  isl: IslandData,
-  centre: XZ,
-  plant: readonly XZ[],
-  sIdx: number,
-): number[] {
-  const T = S.terraces;
-  const spring = plant[0];
-  const farFromPlant = (p: XZ): boolean => plant.every((q) => dist(p, q) >= T.plantClear);
-  const target = T.count[1];
-  /**
-   * Grow `chain` at its end: each next pad `spacing` away, its level `rise` from the last one
-   * in direction `sense` (0 = pick on the first step), keeping the heading; returns the sense.
-   */
-  const extend = (chain: TerraceFit[], others: readonly TerraceFit[], sense0: number): number => {
-    let sense = sense0;
-    let dir: XZ | null = null;
-    while (chain.length + others.length < target) {
-      const prev = chain[chain.length - 1];
-      let next: TerraceFit | null = null;
-      let nextSense = 0;
-      let ns = Infinity;
-      for (const q of ring(prev.p, T.spacing[0], T.spacing[1], 1, 32, 0)) {
-        if (!farFromPlant(q) || !onIsland(ctx, isl, q.x, q.z)) continue;
-        if (chain.some((c) => dist(c.p, q) < T.spacing[0])) continue;
-        if (others.some((c) => dist(c.p, q) < T.spacing[0])) continue;
-        // cheap pre-filter on the centre height, then the real pad level
-        const dc = Math.abs(prev.y - heightAt(ctx.h, q.x, q.z));
-        if (dc < T.rise[0] - 1.5 || dc > T.rise[1] + 1.5) continue;
-        const step = unit(prev.p, q);
-        const turn = dir ? 1 - (step.x * dir.x + step.z * dir.z) : 0;
-        if (3 * turn >= ns) continue;
-        const fit = terraceFit(ctx, isl, centre, q);
-        if (!fit) continue;
-        const dy = prev.y - fit.y;
-        const rise = Math.abs(dy);
-        if (rise < T.rise[0] || rise > T.rise[1] || (sense !== 0 && Math.sign(dy) !== sense))
-          continue;
-        const s = Math.abs(rise - T.riseTarget) + 3 * turn + 0.3 * fit.relief;
-        if (s >= ns) continue;
-        ns = s;
-        next = fit;
-        nextSense = Math.sign(dy);
-      }
-      if (!next) break;
-      dir = unit(prev.p, next.p);
-      sense = nextSense;
-      chain.push(next);
-    }
-    return sense;
-  };
-  let best: TerraceFit[] = [];
-  // lee flank first; any side of the plant when the lee holds no chain
-  for (const minLee of T.lee) {
-    // start candidates around the plant, flattest first (cheap relief, then the full fit)
-    const cand: { p: XZ; s: number }[] = [];
-    const R = T.fromPlant[1];
-    const [x0, x1] = gridRange(spring.x - R, spring.x + R);
-    const [z0, z1] = gridRange(spring.z - R, spring.z + R);
-    for (let iz = z0; iz <= z1; iz++)
-      for (let ix = x0; ix <= x1; ix++) {
-        const i = iz * ctx.n + ix;
-        if (ctx.islandMap[i] !== isl.id + 1 || ctx.sdf[i] < T.minShore) continue;
-        const p = cellPos(ctx, i);
-        const d = dist(p, spring);
-        if (d < T.fromPlant[0] || d > T.fromPlant[1] || !farFromPlant(p)) continue;
-        if (leewardness(isl, ctx.windDir, p.x, p.z) < minLee) continue;
-        const y = heightAt(ctx.h, p.x, p.z);
-        if (y < T.y[0] - 2 || y > T.y[1] + 2) continue;
-        const u = unit(centre, p);
-        const r = relief(ctx, rectShape(p.x, p.z, ang(u.x, u.z), ...LOT_FOOTPRINT[DC]));
-        cand.push({ p, s: r + 0.05 * Math.abs(d - T.fromPlant[0] - 4) });
-      }
-    cand.sort((a, b) => a.s - b.s);
-    let tried = 0;
-    for (const c of cand) {
-      if (tried >= T.starts || best.length >= target) break;
-      const st = terraceFit(ctx, isl, centre, c.p);
-      if (!st) continue;
-      tried++;
-      const fwd = [st];
-      const sense = extend(fwd, [], 0);
-      let chain = fwd;
-      if (fwd.length < target && sense !== 0) {
-        // the start may sit mid-staircase: grow the other way too
-        const back = [st];
-        extend(back, fwd.slice(1), -sense);
-        chain = [...back.slice(1).reverse(), ...fwd];
-      }
-      if (chain.length > best.length) best = chain;
-    }
-    if (best.length >= T.count[0]) break;
-  }
-  // top first
-  best.sort((a, b) => b.y - a.y);
-  if (best.length < T.count[0]) return [];
-  const lots: number[] = [];
-  for (const t of best) {
-    const li = tryLot(ctx, isl, DC, t.p, t.rotY, sIdx, {
-      minShore: T.minShore,
-      maxRelief: T.maxRelief,
-    });
-    if (li >= 0) lots.push(li);
-  }
-  return lots;
-}
-
-/**
  * Ops quad (the settlement plaza): a level disc beside a terrace, far enough from the other
  * terraces and the plant that the flatten relaxation never ties their levels together.
  */
@@ -370,6 +234,7 @@ function placeQuad(
 ): XZ | null {
   const Q = S.quad;
   const r = Q.radius;
+  const port = isl.anchors.harbour;
   const bound = r + FLATTEN.discMargin;
   const keep = padBound(DC) + bound + 0.5;
   const plantKeep = bound + S.plant.radius + FLATTEN.discMargin + 2;
@@ -380,6 +245,8 @@ function placeQuad(
     const level = t ? padLevel(ctx, isl, rectShape(t.x, t.z, t.rotY, t.w, t.d)) : 0;
     return bestSample(ctx, isl, t ?? plant[0], R, (p, i) => {
       if (ctx.sdf[i] < r + 2) return Infinity;
+      // TASK-402: the harbour quay is the container yard's, not the ops quad's
+      if (port && dist(p, port) < S.harbour.paveR) return Infinity;
       if (terraces.some((li, j) => j !== k && dist(lotOf(li), p) < keep)) return Infinity;
       if (plant.some((q) => dist(q, p) < plantKeep)) return Infinity;
       const sh = discShape(p.x, p.z, r);
@@ -579,6 +446,38 @@ function enclose(
 }
 
 /**
+ * Steam main: a steamVent fixture on the cone between the crater and the plant, at
+ * DEVOPS_SITE.steam.ventY, piped down to the nearest cooling tower; null when no route stands.
+ */
+function steamMain(
+  ctx: SiteCtx,
+  isl: IslandData,
+  centre: XZ,
+  spring: XZ,
+  towers: readonly XZ[],
+): XZ[] | null {
+  const V = S.steam;
+  const vent = bestSample(ctx, isl, spring, dist(spring, centre), (p, i) => {
+    const y = ctx.h.data[i];
+    if (y < V.ventY[0] || y > V.ventY[1]) return Infinity;
+    if (!clear(ctx, isl, discShape(p.x, p.z, 1), 1)) return Infinity;
+    // on the crater → plant line, as low as allowed
+    const u = unit(centre, spring);
+    const off = Math.abs((p.x - centre.x) * -u.z + (p.z - centre.z) * u.x);
+    return off + 0.3 * (y - V.ventY[0]);
+  });
+  if (!vent) return null;
+  const tower = towers.reduce((a, b) => (dist(b, vent) < dist(a, vent) ? b : a));
+  const start = add(vent, unit(vent, tower), 1);
+  const end = add(tower, unit(tower, vent), S.plant.radius + 0.6);
+  const line = routeLine(ctx, isl, start, end);
+  if (!line) return null;
+  ctx.fixtures.push({ defId: 'steamVent', x: vent.x, z: vent.z, rotY: 0, islandId: isl.id });
+  addShape(ctx, isl, discShape(vent.x, vent.z, 0.6), true);
+  return line;
+}
+
+/**
  * Pipeline from the plant to a data center: A* on the grid (land, off obstacles except at its
  * two ends, slope-limited), then straightened into long runs by line of sight. The pipe is
  * registered as a non-blocking obstacle (scatter keeps off it; footpaths may cross it).
@@ -589,7 +488,6 @@ function routePipe(
   towers: readonly XZ[],
   lot: { x: number; z: number; rotY: number; w: number; d: number },
 ): XZ[] | null {
-  const P = S.pipeline;
   const tower = towers.reduce((a, b) => (dist(b, lot) < dist(a, lot) ? b : a));
   const start = add(tower, unit(tower, lot), S.plant.radius + 0.6);
   // end: just outside the lot's side nearest the plant
@@ -600,6 +498,12 @@ function routePipe(
   const cu = Math.max(-lot.w / 2 - 0.8, Math.min(lot.w / 2 + 0.8, dx * t.x + dz * t.z));
   const cv = Math.max(-lot.d / 2 - 0.8, Math.min(lot.d / 2 + 0.8, dx * f.x + dz * f.z));
   const end = add(add(lot, t, cu), f, cv);
+  return routeLine(ctx, isl, start, end);
+}
+
+/** A pipe run from `start` to `end` (see routePipe); null when no route stands. */
+function routeLine(ctx: SiteCtx, isl: IslandData, start: XZ, end: XZ): XZ[] | null {
+  const P = S.pipeline;
   const ends = [start, end];
   const shapes = ctx.shapes[isl.id];
   const valid = (x: number, z: number): boolean => {

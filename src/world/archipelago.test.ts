@@ -93,9 +93,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "6989456b4a3a1fa1",
-          "1001": "ecc9f8598437ca22",
-          "42": "1899b0eba68091f1",
+          "1": "78362452cf5e3b02",
+          "1001": "c673bd9b1940377f",
+          "42": "3c2368fbfb67ce0b",
         }
       `);
     },
@@ -401,10 +401,11 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       for (const b of saved) b.on = false;
       // viaducts (TASK-394) off too, so only the TASK-400 Research crater differs from the old world
       (BRIDGES as { count: readonly number[] }).count = [0, 0];
-      // hashes.world: the pre-TASK-390 world with the TASK-400 Research crater and the TASK-401
-      // QA plateau profile (the atoll profile is gone), re-pinned for both
-      expect(generateWorld(1001).hashes.world).toBe('1a33a7f3e7c49687');
-      expect(generateWorld(1).hashes.world).toBe('aee307e357f1a77f');
+      // hashes.world: the pre-TASK-390 world with the TASK-400 Research crater, the TASK-401
+      // QA plateau profile (the atoll profile is gone) and the TASK-402 Emberpeak shelves +
+      // Ember Works plan, re-pinned for all three
+      expect(generateWorld(1001).hashes.world).toBe('02837001cd11074c');
+      expect(generateWorld(1).hashes.world).toBe('0c787c120e8112de');
     } finally {
       for (const b of saved) b.on = true;
       (BRIDGES as { count: readonly number[] }).count = bridgeCount;

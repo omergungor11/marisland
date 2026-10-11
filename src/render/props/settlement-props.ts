@@ -454,6 +454,8 @@ const LINE_SEGMENT: Readonly<
 > = {
   fence: { def: 'fence', len: 1.5 },
   pipe: { def: 'pipe', len: 2, variants: [0, 2], elbow: 1 },
+  // TASK-402: the foundry rail line (geo/themes/devops-works.ts railTrack spans x ∈ [−1, 1])
+  rail: { def: 'railTrack', len: 2 },
 };
 /** A polyline bend within this of 90° (rad) gets the line's elbow variant. */
 const ELBOW_TOLERANCE = 0.45;

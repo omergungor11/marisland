@@ -9,7 +9,7 @@
  * along (sin face, cos face), i.e. 0 = towards the door side.
  */
 import type { LotKind, ThemeId } from '../world/types.ts';
-import { COOLING_TOWER_HEIGHTS } from './props-themes/devops.ts';
+import { COOLING_TOWER_HEIGHTS, DEVOPS_WORKS } from './props-themes/devops.ts';
 import { QA_FACTORY } from './themes/qa.ts';
 
 export interface OfficeDef {
@@ -260,6 +260,25 @@ export const FIXTURE_EMITTERS: Readonly<Record<string, readonly (readonly Emitte
   steamVent: [
     [{ x: 0, y: 0.8, z: 0, preset: 'vent' }],
     [{ x: -0.16, y: 0.75, z: 0.04, preset: 'vent' }],
+  ],
+  // DevOps "Ember Works" (TASK-402): foundry chimney tops, the smithy chimney
+  foundry: [
+    DEVOPS_WORKS.foundry.chimneys.map((c) => ({
+      x: c.x,
+      y: DEVOPS_WORKS.foundry.chimneyH + 0.35,
+      z: c.z,
+      preset: 'chimney' as const,
+    })),
+  ],
+  smithy: [
+    [
+      {
+        x: DEVOPS_WORKS.smithy.chimney.x,
+        y: DEVOPS_WORKS.smithy.chimneyH + 0.3,
+        z: DEVOPS_WORKS.smithy.chimney.z,
+        preset: 'chimney',
+      },
+    ],
   ],
   // QA test hangars (TASK-401): the short chimney tops (geo/themes/qa-factory.ts)
   testHangar: [

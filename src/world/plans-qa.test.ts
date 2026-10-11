@@ -206,6 +206,8 @@ describe('QA Test Factory plan (TASK-401), 30 seeds', () => {
     expect(stilt).toBeGreaterThanOrEqual(24);
   });
 
+  // re-pinned TASK-402: the QA plan is unchanged, but the hash reads lot roof variants (picked by
+  // the global lot index, shifted by the new DevOps lots) and the DevOps → QA viaduct end
   it('deterministic: per-island snapshot', () => {
     const got = [1, 42, 1337].map((seed) => {
       const w = generateWorld(seed);
@@ -215,9 +217,9 @@ describe('QA Test Factory plan (TASK-401), 30 seeds', () => {
     });
     expect(got).toMatchInlineSnapshot(`
       [
-        "0d6eb4f708e3c0df",
-        "66e1cb20b0808662",
-        "b050a5f651194303",
+        "cc1fa049747adc1b",
+        "ba6da611945e8560",
+        "304b3d07410aa811",
       ]
     `);
   });

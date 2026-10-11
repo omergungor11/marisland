@@ -157,6 +157,12 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   // DevOps
   coolingTower: 2.6,
   rackRow: 1.6,
+  // DevOps "Ember Works" (TASK-402): the yard's middle stack (bots skirt the row of stacks)
+  containerYard: 6,
+  foundry: 3.9,
+  smithy: 2.1,
+  cottage: 1.6,
+  steamVent: 0.5,
   // Marketing
   billboardV2: 2.6,
   stage: 3.2,
