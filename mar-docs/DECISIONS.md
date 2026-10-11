@@ -2,6 +2,30 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-046: Research becomes "Observatory University" on a 52–58 u terraced campus hill — 2026-10-11
+
+**Decision** (TASK-402b, supersedes D-042): Lonely Palm (Research) grows from the 17–21 u crater to a 52–58 u
+campus hill (`ARCHETYPES.lonelypalm.campusHill`, reachScale 1.06, bluff walls 4.2–4.8 u, summit 12–13.2 u): a lawn
+plateau with a campus terrace and a summit plateau joined by lawn banks, two promontories and the leeward cove.
+`planResearch` builds the summit observatory, a paved quad (fountain, library, faculty halls, campus tower,
+statues), a hedge-parterre garden (3×3 or 4×2 with the armillary sphere, topiaries, beds, pergolas), a
+terrarium row, radio dishes on the spur, a research base (lab pods, small dish, weather mast), sculptures
+on the avenues and the cove pier with the research vessel (numbers: `RESEARCH_SITE`). Research keeps no
+waterfalls (`noWaterfalls`) and no viaduct landing; its height / colour classes stay `flat` / `sand`.
+Worldgen gains three generic hooks: pad level groups / steps (`Pad.group`, `Pad.step`: districts keep
+their own level instead of one relaxed plateau), pads never lifting the samples a pier crosses, and
+shore-limited slope cliffs (`slopeCliffMaxShore`, `cliffSlope`).
+**Rationale**: user request (2026-10-11): more land, a university feel, a big telescope, terrariums,
+wide gardens, research bases and science sculptures. 52–58 u is the largest size whose reach still keeps
+Research the last island the layout places, so most seeds only re-centre: seed 1001 moves every other
+island by −16.54 u in z (raw cams and edit logs translated); 2024 and 5005 re-roll.
+**Impact**: W9 is the Observatory University hero (raw cam, 18:45); new W14 "Campus Golden Hour"
+(17:45). The hero framing (`FRAMING.hero`, D13) no longer applies to any generated island. W12's
+viaduct pair changed with the seed 1001 layout (the preset is retired with D-045). The medium draw-call
+budget goes 255 → 300: the campus sits in the W11 postcard foreground with ≈ 20 instanced LOD1 groups
+(+ their shadow pass), 216 → 289 calls; every other wow / ci shot stays ≤ 237 (medium) / ≤ 170 (low).
+Research ambient worker slots 5 → 9.
+
 ## D-045: Viaducts (TASK-394) removed — 2026-10-11
 
 **Decision**: the stone-arch viaducts between near islands are dropped. The bridge code (pair picker,

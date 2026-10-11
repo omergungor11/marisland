@@ -10,6 +10,15 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-11 (TASK-402b, worldgen)**: Research is "Observatory University" (D-046): 52–58 u campus hill,
+  `campusHill` profile + `planResearch` (RESEARCH_SITE). Seed 1001's other islands moved −16.539 u in z
+  (raw cams, LIVE_CAMS, EDIT_LOGS translated; the mixed log's removed bush re-mapped, two removals dropped);
+  seed 2024 / 5005 layouts re-rolled (W4 cam re-pinned by the Beacon Rock delta). Space on the island is the
+  binding constraint: districts are placed garden → glasshouses (beside the garden) → dishes → base, each
+  with fallbacks; moving an anchor or the order re-balances which district shrinks (`scripts` probes were
+  temporary). W12 no longer shows a viaduct (pair changed; retire with D-045). Medium call budget 300
+  (W11 289 with the campus in front). Open: the library often hides behind the observatory from the
+  east; pergolas only in ~45 % of seeds; the rocket monument rarely fits; seed 8101 Coding has no solar.
 - **2026-10-10 evening**: M17b wave 2 + island redesigns merged (TASK-393/394/395/400/401).
   Research = crater + biodomes (`ARCHETYPES.lonelypalm.crater`), QA = factory plateau (palmlagoon
   bluff). Crater islands get no waterfalls and no viaduct ends (too small). Seed 1001's only viaduct
@@ -125,6 +134,16 @@
 - Shot presets are data in `src/content/shots.ts`; both the harness (`scripts/shots.ts`) and the app read them — keep them in sync
 
 ## Known Issues / Gotchas
+- Island size changes move the archipelago: `place()` attaches islands by decreasing reach, so an island
+  that stays the smallest keeps every other dart, and the layout only re-centres (all islands translate
+  by one delta) unless a gap / extent check fails. Check with a layout probe before picking a size
+  (TASK-402b: Research ≤ ~28.6 u reach keeps seed 1001 a pure translation). Translations are not
+  grid-aligned (2 u cells), so plans on the moved islands re-sample: positions shift by the delta ± a cell
+  and world-aligned patch lattices (Coding solar) reshuffle.
+- Pads relax every overlapping pair to FLATTEN.maxStep (0.2 u) through chains of neighbours: one dense
+  campus becomes one plateau. Use `addPad(…, step, group)` to keep district levels (Research).
+- Paths overwrite zones (Zone.path); a path along a bluff rim makes steep non-cliff cells
+  (archipelago bluff test): keep links off the rim (Research blocks steep rim cells outside the cove).
 - Picking/reactions (TASK-162): `src/interact/` (pure `picking.ts`, per-world `interaction.ts`), `src/anim/` (pose maths +
   matrix writer), bursts in `src/render/particles/bursts.ts`. `api.pick/hover/click(x, y)` (canvas CSS px) are the capture
   hooks. Reaction matrices must be written after `life.update` (interaction runs after the world view); prop reactions

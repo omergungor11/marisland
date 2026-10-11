@@ -22,10 +22,11 @@
 | **W6** | QA Test Factory | eyes + mask | Earth walls + plateau read against the sea; ≥2 sawtooth hangars with a conveyor bridge; loop track + check tower visible; crates on the belt |
 | **W7** | Mill Morning | metrics + eyes | Blade angle differs ≥0.5 s apart (deltaT); ≥4 field colours; mist band below 6 u; ≥5 sheep visible |
 | **W8** | Macro Shore | metrics + eyes | Foam line motion ≥2 s apart (deltaT); crab + ≥3 shells + grass tufts; 60→18 u dolly-in: all blooms-in, hardPops=0 |
-| **W9** | Research biodome hero | eyes | Criteria pending the Research redesign and TASK-396 re-frame (palm / sandbar criteria retired) |
+| **W9** | Observatory University | eyes | Observatory dome + telescope against the evening sky; walls, lawn and ≥3 campus pieces in front; no other island behind |
 | **W10** | Rainy Grove | eyes + mask | Ripples on water visible; treehouse windows lit; foliage saturation ≥40%; sky not neutral grey |
 | **W11** | Concept | eyes + mask | Postcard pose: horizon ≈0.74 NDC with cloud banks; all 7 islands in frame, walls + landmarks overlap in depth; earth-wall strata + grass lip visible; no island clipped |
 | **W13** | Falls | eyes + deltaT | Mossgrove fall reads lip → water; foam disc + mist at the foot; flow streaks move ≥0.5 s apart |
+| **W14** | Campus Golden Hour | eyes | Observatory, quad (fountain, ≥2 halls, library) and parterre garden in frame; glasshouses + lab pods read; nothing floating / on a slope; no other island in frame |
 
 **Global fail (any shot):** land pixel L<12% | foam z-fighting | island without visible shallow ring | two creatures in perfect sync phase
 

@@ -226,6 +226,8 @@ Details in `phases/phase-3.md`.
 | TASK-396 | Re-pin cams (D-macro blocked by a wall), DESK_CAM, live cams; `--assert` ×3 qualities | engine | S | COMPLETED | 393–395 |
 | TASK-397 | QA: wow before/after sheet, ladder ×3, 10-seed sweep | qa | M | PENDING | TASK-396 |
 | TASK-398 | Docs: ART_BIBLE §2/§4/§6/§8/§11 (soil #B9845A, postcard pitch band), DECISIONS D-039…D-045, MEMORY | docs | S | COMPLETED | TASK-397 |
+| TASK-402a | Observatory University prop kit: observatory, faculty halls, library rotunda, campus tower, terrarium, sculptures, radio dish, lab pod, garden kit | props | L | COMPLETED (3d2b414) | TASK-400 |
+| TASK-402b | Research → "Observatory University": 52–58 u terraced campus hill, quad, gardens, glasshouses, research base, dishes, sculptures; W9 re-framed, W14 "Campus Golden Hour" (D-046) | worldgen | L | COMPLETED | TASK-402a |
 
 ### M17 — Graphics II: decor & nature
 *Flower fields, fences, lanterns, benches, signs, rocks*
