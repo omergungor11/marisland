@@ -3,8 +3,10 @@ import type { Scope } from '../core/scope.ts';
 import type { Quality } from '../core/params.ts';
 import { PROP_DEF_INDEX } from '../content/props.ts';
 import { QA_FACTORY, QA_MOVERS } from '../content/themes/qa.ts';
+import { MEDIA_MOVERS, MEDIA_ROCK } from '../content/themes/marketing.ts';
 import type { PropStore } from '../world/prop-store.ts';
 import { buildCrateCart } from '../geo/themes/qa-factory.ts';
+import { buildWheelRotor } from '../geo/themes/marketing-media.ts';
 import { cartAt, trackPath } from '../geo/themes/qa-track.ts';
 import { makeDepthMaterial, makeLitMaterial } from './materials/factory.ts';
 
@@ -16,10 +18,15 @@ import { makeDepthMaterial, makeLitMaterial } from './materials/factory.ts';
  * them. Not life agents. Hidden (no draw call) while the camera is past the dither fade.
  * Placed from the settlement prop store at build time: props moved in edit mode keep their movers
  * where they were (like FIXTURE_EMITTERS before re-grounding).
+ * TASK-403: the Marketing ferris wheel rotors are a second InstancedMesh (same lit program) that
+ * turns about each wheel's hub at MEDIA_MOVERS.wheelPeriod; a T0 silhouette, so it is drawn at
+ * every distance.
  */
 export interface MoversView {
   /** Null when the world has no conveyors or tracks. */
   mesh: THREE.InstancedMesh | null;
+  /** Ferris wheel rotors; null when the world has no ferris wheel. */
+  wheels: THREE.InstancedMesh | null;
   update(time: number, camPos: THREE.Vector3): void;
 }
 
@@ -53,7 +60,47 @@ export function beltOffset(time: number): number {
   return (f - 0.5) * L;
 }
 
+/** Ferris wheel rotors: one instance per wheel, hub at (0, hubY, 0) of the frame, turning about local z. */
+function createWheels(
+  store: PropStore,
+  scope: Scope,
+): { mesh: THREE.InstancedMesh | null; update(time: number): void } {
+  const def = PROP_DEF_INDEX.ferrisWheel;
+  const hubs: THREE.Matrix4[] = [];
+  for (let i = 0; i < store.count; i++)
+    if (store.defId[i] === def)
+      hubs.push(
+        pivotOf(store, i).multiply(
+          new THREE.Matrix4().makeTranslation(0, MEDIA_ROCK.wheel.hubY, 0),
+        ),
+      );
+  if (hubs.length === 0) return { mesh: null, update: () => undefined };
+  const features = { instanced: true, dither: true, emissive: true, rim: true };
+  const mat = scope.add(
+    makeLitMaterial(features, {
+      fadeNear: MEDIA_MOVERS.fadeNear,
+      fadeFar: MEDIA_MOVERS.fadeFar,
+      name: 'wheels',
+    }),
+  );
+  const mesh = new THREE.InstancedMesh(scope.add(buildWheelRotor()), mat, hubs.length);
+  mesh.name = 'wheels';
+  // no shadow pass: the open rotor's shadow is a few thin lines (one draw call less, W11 budget)
+  mesh.castShadow = false;
+  scope.add(mesh);
+  const rot = new THREE.Matrix4();
+  const update = (time: number): void => {
+    rot.makeRotationZ((time / MEDIA_MOVERS.wheelPeriod) * Math.PI * 2);
+    hubs.forEach((h, k) => mesh.setMatrixAt(k, _m.multiplyMatrices(h, rot)));
+    mesh.instanceMatrix.needsUpdate = true;
+  };
+  update(0);
+  mesh.computeBoundingSphere();
+  return { mesh, update };
+}
+
 export function createMovers(store: PropStore, quality: Quality, scope: Scope): MoversView {
+  const wheels = createWheels(store, scope);
   const beltDef = PROP_DEF_INDEX.conveyor;
   const trackDef = PROP_DEF_INDEX.testTrack;
   const belts: Belt[] = [];
@@ -63,7 +110,7 @@ export function createMovers(store: PropStore, quality: Quality, scope: Scope): 
     else if (store.defId[i] === trackDef) tracks.push(pivotOf(store, i));
   }
   const n = belts.length + tracks.length;
-  if (n === 0) return { mesh: null, update: () => undefined };
+  if (n === 0) return { mesh: null, wheels: wheels.mesh, update: wheels.update };
   const features = { instanced: true, dither: true, emissive: true, rim: true };
   const geo = scope.add(buildCrateCart());
   const mat = scope.add(
@@ -87,6 +134,7 @@ export function createMovers(store: PropStore, quality: Quality, scope: Scope): 
     new THREE.Vector3().setFromMatrixPosition(m),
   );
   const update = (time: number, camPos: THREE.Vector3): void => {
+    wheels.update(time);
     const far = QA_MOVERS.fadeFar + 20;
     mesh.visible = centres.some((c) => c.distanceToSquared(camPos) < far * far);
     if (!mesh.visible) return;
@@ -114,5 +162,5 @@ export function createMovers(store: PropStore, quality: Quality, scope: Scope): 
   update(0, centres[0]);
   mesh.computeBoundingSphere();
   if (mesh.boundingSphere) mesh.boundingSphere.radius += 8;
-  return { mesh, update };
+  return { mesh, wheels: wheels.mesh, update };
 }

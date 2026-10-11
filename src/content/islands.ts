@@ -122,6 +122,48 @@ export interface CampusHillParams {
   glasshouse: { x: number; z: number };
 }
 
+/**
+ * Lee terraces (TASK-403, Beacon Rock → Marketing "Media Rock"), in island-local units (u along
+ * the terrace axis = leeward rolled by ± `lean` rad, v across it): nested ellipses stepping down
+ * from the stack toward the landing cove, each a flat shelf at `level` × the stack top with a
+ * steep earth wall (`wall` u of horizontal run) at its rim. Shelf widths are in u (the buildings
+ * need room on every island size): shelf k ends `band` u past the previous rim (the first one
+ * past the stack foot), its ellipse spans the axis from `inner` (inside the stack, radius units)
+ * to that rim and reaches `across` × its half-length to the sides. The last shelf is the fair
+ * ground at the waterline; inside its `cove` sector the rim ramps down to a beach (the landing).
+ * Raw profile values like the stack (rescaled to the peak).
+ */
+export interface TerraceParams {
+  shelves: readonly {
+    /** Shelf height as a fraction of the stack top. */
+    level: number;
+    /** Shelf width on the axis past the previous rim, in u (× `bandScale`); includes the wall. */
+    band: number;
+    /** Half-width across the axis / half-length along it. */
+    across: number;
+    /** Wall run at the rim (u). */
+    wall: number;
+  }[];
+  /** Where every shelf ellipse starts on the axis (radius units, inside the stack). */
+  inner: number;
+  /** Stack foot on the axis (radius units, before the stack shift / scale). */
+  foot: number;
+  /** Bands scale with the island: clamp(radius / ref, min, max). */
+  bandScale: { ref: number; min: number; max: number };
+  /** The stack moves windward by `shift` (radius units) and narrows by `scale` to make room. */
+  stack: { shift: number; scale: number };
+  /** Terrace axis roll off leeward (± rad, one draw per island). */
+  lean: number;
+  /** Rim warp amplitude (fbm, ellipse units). */
+  warp: number;
+  /** Shelf ripple amplitude (raw u): flat enough for pads, not a table top. */
+  ripple: number;
+  /** Flatten pads leave ground more than this many u off their level alone (walls, other shelves). */
+  padBreak: number;
+  /** Landing cove on the last shelf: centre angle off the axis (deg, side rolled), half-angle, ramp run (u). */
+  cove: { angleDeg: readonly [number, number]; halfDeg: number; soft: number; ramp: number };
+}
+
 export interface ArchetypeParams {
   displayName: string;
   /** Bible diameter range in u; radius = diameter / 2. */
@@ -159,6 +201,8 @@ export interface ArchetypeParams {
   campusHill?: CampusHillParams;
   /** No waterfalls off this island's bluff (TASK-402b: Research keeps its walls dry). */
   noWaterfalls?: boolean;
+  /** Lee terraces down to the landing cove (Beacon Rock only, TASK-403). */
+  terraces?: TerraceParams;
   zones: ZoneRuleParams;
 }
 
@@ -212,6 +256,23 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
     beachWidth: 3,
     terrace: { step: 0, strength: 0 },
     windwardCliff: true,
+    // TASK-403: the Media Rock — upper ledge (media campus), middle ledge, fair ground + cove
+    terraces: {
+      shelves: [
+        { level: 0.64, band: 12, across: 1.0, wall: 3.5 },
+        { level: 0.4, band: 10, across: 0.95, wall: 3.5 },
+        { level: 0.17, band: 14, across: 0.95, wall: 3 },
+      ],
+      inner: -0.3,
+      foot: 0.86,
+      bandScale: { ref: 24, min: 0.9, max: 1.2 },
+      stack: { shift: 0.12, scale: 1.1 },
+      lean: 0.35,
+      warp: 0.06,
+      ripple: 0.25,
+      padBreak: 2.5,
+      cove: { angleDeg: [35, 55], halfDeg: 22, soft: 0.15, ramp: 12 },
+    },
     zones: {
       ...DEFAULT_ZONES,
       forestThreshold: 2,

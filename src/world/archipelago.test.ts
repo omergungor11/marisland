@@ -92,9 +92,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "1a3daa803eed1be6",
-          "1001": "a49396786a8144fb",
-          "42": "15afe6bec7943643",
+          "1": "4251cb10ff1c4bca",
+          "1001": "7f117e7dc804699f",
+          "42": "fca86e97eff799f7",
         }
       `);
     },
@@ -414,10 +414,11 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
     );
     try {
       for (const b of saved) b.on = false;
-      // hashes.world: the pre-TASK-390 world with the TASK-401 QA plateau profile and the
-      // TASK-402b Research campus hill (its bigger disc moves the seed 1001 layout 16.5 u), re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('9bfef6584aa7e5bc');
-      expect(generateWorld(1).hashes.world).toBe('3144acbda26412da');
+      // hashes.world: the pre-TASK-390 world with the TASK-401 QA plateau profile, the
+      // TASK-402b Research campus hill (seed 1001 layout moved 16.5 u) and the TASK-403 Media Rock,
+      // re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('8768139ddd606f08');
+      expect(generateWorld(1).hashes.world).toBe('592cb3ea827ac553');
     } finally {
       for (const b of saved) b.on = true;
     }

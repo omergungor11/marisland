@@ -182,6 +182,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   // QA Test Factory crates on the conveyor bridges + the loop-track test cart (TASK-401)
   const movers = createMovers(settlement.props, d.quality, d.scope);
   if (movers.mesh) group.add(movers.mesh);
+  if (movers.wheels) group.add(movers.wheels);
   // hot-air balloons + airship over the archipelago (TASK-335)
   const skyCraft = createSkyCraft(world, d.quality, d.scope, seed);
   for (const m of skyCraft.meshes) group.add(m);

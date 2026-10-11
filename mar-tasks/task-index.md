@@ -223,6 +223,7 @@ Details in `phases/phase-3.md`.
 | TASK-395 | Waterfalls off bluff lips: lit flow tag, foam, mist puffs | shader | M | COMPLETED | TASK-390 |
 | TASK-400 | Research → "Biodome Lab": breached crater, glass biodomes, rim crystals, research vessel | worldgen | L | COMPLETED | TASK-390 |
 | TASK-401 | QA → "Test Factory": plateau, sawtooth hangars, conveyor bridges, loop track, check tower, movers | worldgen | L | COMPLETED | TASK-390 |
+| TASK-403 | Marketing → "Media Rock": lee terraces, Ad Boulevard + giant screen, media campus ledges (antenna, layered offices, photo / print shops), fair ground (ferris wheel mover, tents, booths, stage) | worldgen | L | COMPLETED | TASK-390 |
 | TASK-396 | Re-pin cams (D-macro blocked by a wall), DESK_CAM, live cams; `--assert` ×3 qualities | engine | S | COMPLETED | 393–395 |
 | TASK-397 | QA: wow before/after sheet, ladder ×3, 10-seed sweep | qa | M | PENDING | TASK-396 |
 | TASK-398 | Docs: ART_BIBLE §2/§4/§6/§8/§11 (soil #B9845A, postcard pitch band), DECISIONS D-039…D-045, MEMORY | docs | S | COMPLETED | TASK-397 |
