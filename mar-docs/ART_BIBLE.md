@@ -46,6 +46,7 @@
 | Grass (tips → shade) | `#C9E86F` `#A6DB5E` `#7BC950` `#5FAE45` |
 | Flowers | `#FF8FB1` `#FFE45C` `#FFFFFF` `#B39DFF` `#FF7A5C` |
 | Rock / warm cliff strata | `#A9AEB8` `#8A909C` `#666C7A` / `#D9B48F` `#C29A74` |
+| Earth wall (bluff soil, `GROUND_WALL`; strata tones ×1.2 … ×0.7, grass lip, dark foot, wet line) | `#B9845A` |
 | DevOps basalt (rock base; cracks `#958FA0` / `#5A5664`) | `#7A7584` (lifted from `#4F4C57`, D-030 theme) |
 | Foliage: deciduous / pine / palm | `#8FD16A` `#5DBB63` `#3E9A52` / `#3C8F68` `#2F7D5B` / `#7FD34E` `#5DB33C` |
 | Wood: planks / logs / dark / dock | `#D2A679` / `#A8754F` / `#8A5A3B` / `#B59B7E` |
@@ -119,9 +120,20 @@ The seed picks 5–7 islands.
 | **Beacon Rock** | Lighthouse · 40–60 u | 25 u sheer stack, zig-zag stair path | Red/white lighthouse | Sea stacks, keeper hut, buoys, rope fence | Puffins, seals | `#E35D6A` |
 | **Millbrook** | Windmill farm · 80–110 u | Flat rolling plateau 6–8 u | 2–3 windmills on knolls | Patchwork fields, barn, haybales, pond, fences | Sheep, ducks | `#F5C84C` |
 | **Emberpeak** | Volcano · 90–120 u | 35 u notched cone + steam plume | Glowing crater; hot spring | Black sand, basalt columns, vents | Capybaras in spring | `#FF7A5C` |
-| **Palmlagoon** | Atoll · 70–100 u | 8–15 u land ring around a lagoon | Sunken ship in the lagoon | Palms, hammock, beach hut, tide pools | Turtles, crabs, fish, dolphins | `#7FD8B3` |
+| **Palmlagoon** (QA "Test Factory", TASK-401) | Factory plateau · 70–100 u | Rounded-square plateau on a 6–6.8 u bluff, top 8.6–9.6 u | Check tower (~20 u with the sign) | Sawtooth hangars with extractor fans, conveyor bridges, crash-test loop track | Crates on the belts, test cart on the loop (movers, not agents) | `#7FD8B3` |
 | **Mossgrove** | Forest · 80–110 u | 20 u green dome + 18 u giant tree | Treehouse with rope ladder | Pines, giant mushrooms, log cabin, stream | Foxes, squirrels, owl, fireflies | `#3E9A52` |
-| **Lonely Palm** | Sandbar · 17–21 u (Phase 3, TASK-302; bible 10–16) | Flat sand oval, 0.6 u high | Single leaning palm | Message bottle, starfish, 1 rock | 1 crab, 1 gull | `#F7E1AE` |
+| **Lonely Palm** (Research "Biodome Lab", TASK-400) | Breached crater · 17–21 u | Bluff-ringed crater, crest ring around a sunken bowl, open to the leeward cove | Glass biodomes in the bowl | Rim crystals, research vessel at the cove pier | — | `#F7E1AE` |
+
+**Bluff coasts (TASK-390).** Every archetype except Beacon Rock (its own windward cliff) stands on a 5–7 u
+bluff wall with a harbour / leeward cove sector, tagged `Zone.cliff` and painted as earth wall (§2). Crater
+(Research) islands get no waterfalls (too small).
+
+**Waterfalls (TASK-395).** 1–3 per bluff island, 2.6–3.6 u wide ribbons off a bluff lip into a foam disc and
+mist at the foot; the flow scrolls along the sheet. None on cove beaches or crater islands.
+
+**Hero landmarks (TASK-393)** are 1.6–2× taller than the table's first-pass sizes so they read from the T0
+postcard: lighthouse shaft 15.5 u, wind turbines 24 / 19 / 16 u, cooling towers 13 / 11.5 u, clocktower body
++6.5 u. Hearthholm's clocktower above reads 11 u only as the original size.
 
 ## 5. Prop catalog
 
@@ -221,6 +233,12 @@ only zero-mean variation; nothing large appears with a tier. Checked by the zoom
 11 distances 700 → 21 u at a fixed 48° pitch, step mean ΔE2000 ≤ 5, p95 ≤ 12, drift vs the 170 u reference
 ≤ 4, and boundary pairs at 1.06 b / 0.94 b (D-035 for the mapping, slack and land floor).
 
+**Postcard pose (D-040).** The intro and the default hero view end on a fitted low 3/4 look instead of the
+high overview. Horizon at 0.74 NDC, so the look-down is atan(0.74 · tan 17.5°) ≈ 13° at FOV 35° (nearest
+islands ≈ 30°, far ones ≈ 15°); heading −10° so the 15:00 sun lights the islands from the right. The pitch band
+reaches 10° at and beyond 260 u (blended back by 150 u), so the pose is reachable. Portrait screens keep the
+58° overview.
+
 ## 7. Life & animation catalog
 
 Each instance's phase is `hash(id) × period`. Gust waves cross the map at 6 u/s (wavelength 40 u, strength 0–1) along the seeded wind direction.
@@ -257,6 +275,9 @@ Each instance's phase is `hash(id) × period`. Gust waves cross the map at 6 u/s
 | 28 | Dolphins · open water | every 30–60 s | 3 arcs, 2 u | parabola | Pair arcs in sync |
 | 29 | Capybaras · hot spring | blink 4 s | Head bob 0.03 u | sine | Orange `#FFA13D` sphere on head |
 | 30 | Rain ripples · rain only | 0.8 s | Ring 0 → 0.6 u | ease-out | Villagers open cone umbrellas |
+| 31 | QA movers · conveyor bridges, loop track | belt 1.1 u/s; cart 3 u/s, 1.2 s dwell at the gate | Crates one per belt segment; cart slows to 50 % at the loop top | linear | Time-driven instances, fade 150–210 u, hidden > 230 u |
+| 32 | QA hangar fans · front walls | with the wind, like the windmill | r 0.42 u | linear | — |
+| 33 | Waterfall flow · bluff lips | 3.2 u/s along the sheet | White streaks, 6 lanes | linear | Foam rings expand 0.9 u/s; mist puffs at the foot |
 
 **Click reactions.** Every click starts with a squash of 0.85/1.15 on `k=300, c=14`, then a ring of 6 sparkles in `#FFF6C2`. Then, per target:
 
@@ -286,7 +307,7 @@ The sequence starts at game time 15:00, so golden hour arrives about 62 s later 
 | 1.5–3 | Clouds slide radially outward (ease-out, 1.2 s), revealing the archipelago from 900 u. **By 3 s, every turquoise ring is visible.** |
 | 3–6.5 | Spline swoop down to 420 u, yaw +40°, pitch 80 → 58° (easeInOutCubic). A gull flock crosses the foreground at 3.8 s. Island labels pop in at 5.5 s, staggered 120 ms. |
 | 6.5–8.5 | Push toward Hearthholm to 300 u, passing a sailboat's wake. A fish jumps at 7.2 s. |
-| 8.5–10 | Settle at the T0 default (450 u, pitch 58°) with 2 % overshoot. Idle orbit starts at 0.6°/s. HUD buttons pop in, staggered 60 ms. |
+| 8.5–10 | Settle on the postcard pose (§6, D-040; the 450 u / 58° overview on portrait screens) with 2 % overshoot, the horizon and cloud banks rising into frame. Idle orbit starts at 0.6°/s. HUD buttons pop in, staggered 60 ms. |
 
 Any click or key jumps to the final pose with a 400 ms ease.
 
@@ -307,6 +328,7 @@ Any click or key jumps to the final pose with a 400 ms ease.
   - Press: scale 0.9 on `k=400, c=18`.
   - Tooltip pill after 400 ms.
 - **Island labels (T0 only):** Fredoka 600 16 px pill on `#FFF8ECDD`, with an 8 px dot in the island's accent colour. Sits just above the island's projected shelf ring (and never below 8 u above the peak), off the land. 250 ms pop-in; screen-space collision nudge (upward first).
+- **Default view:** the postcard pose (§6); the view-reset control returns to it (the 58° overview on portrait).
 - **Compass:** 64 px disc, coral N, rotates with camera yaw. Click springs the view back to north.
 - **Time dial:** 120 px arc filled with the live sky gradient; a sun/moon icon rides the arc. Drag to scrub; double-click returns to live time.
 - **New Seed:** dice wobbles for 0.4 s → clouds close (0.8 s) → world regenerates → clouds part (1.2 s).
@@ -342,11 +364,13 @@ Any click or key jumps to the final pose with a 400 ms ease.
 | W3 | **Lantern Night** | 1001 · T2 80 u Hearthholm · 22:00 | ≥ 8 bloomed warm emissives; ≥ 10 fireflies; mean land luminance ≥ 0.12; moon glitter streak on water |
 | W4 | **Beacon** | 2024 · T1 160 u, Beacon Rock in the left third · 21:30 | Beam cone visible in fog; cliff vs sky ΔL ≥ 0.1; ≥ 2 sea stacks; foam at the cliff base |
 | W5 | **Steam & Spring** | 3003 · T1 140 u Emberpeak · 10:00 | Steam column continuous for ≥ 15 u; black sand contrasts with the turquoise ring; crater glow visible; no land pixel < L 12 % |
-| W6 | **Lagoon** | 4004 · T1 110 u, pitch 70° over Palmlagoon · 12:00 | Sunken hull readable through water; lagoon lighter than the outer ring; ≥ 1 turtle; land ring has ≤ 2 channel breaks |
+| W6 | **QA Test Factory** | 4004 · village view of the QA plateau (`village:qa`) · 12:00 | Earth walls and the plateau read against the sea; ≥ 2 sawtooth hangars with a conveyor bridge; loop track and check tower visible; crates on the belt |
 | W7 | **Mill Morning** | 5005 · T2 90 u Millbrook · 06:45 | Blade angle differs between frames 0.5 s apart; ≥ 4 field colours; mist band below 6 u; ≥ 5 sheep |
 | W8 | **Macro Shore** | 1001 · T3 18 u, Hearthholm beach · 14:00 | Foam line moves between frames 2 s apart; crab + ≥ 3 shells + grass tufts visible; during a 3 s dolly-in from 60 u, nothing appears without a bloom-in |
-| W9 | **Lonely Palm** | any seed with it · T3 ≈ 40 u, look-down ≈ 9° toward the evening sun (D-019: 22° hides the horizon at FOV 35°) · 18:45 | Whole sandbar (17–21 u) + ring in frame; palm silhouetted against the sky gradient; sun glint bloom on water; horizon blends into fog (no hard line) |
+| W9 | **Research biodome hero** | 1001 · `island:Lonely Palm` · 18:45 | Criteria pending the Research redesign and TASK-396 re-frame (the old palm / sandbar criteria are retired) |
 | W10 | **Rainy Grove** | 6006 · T1 120 u Mossgrove, rain · 13:00 | Ripples on water; treehouse windows lit; foliage saturation ≥ 40 %; sky not neutral grey |
+| W11 | **Concept** | 1001 · `postcard` pose (§6) · 15:30 | Horizon at ≈ 0.74 NDC with cloud banks; all 7 islands in frame, walls and landmarks overlapping in depth; earth walls with strata and grass lip visible; no island clipped |
+| W13 | **Falls** | 1001 · raw cam from the sea at a Mossgrove waterfall, ≈ 40 u · 10:30 | Ribbon reads from lip to water; foam disc and mist at the foot; flow streaks move between frames 0.5 s apart |
 
 **Global fail (any shot):**
 - Land pixel with L < 12 %.

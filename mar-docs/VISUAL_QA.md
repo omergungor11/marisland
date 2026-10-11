@@ -10,7 +10,7 @@
 4. **Density test.** Clusters + clearings, size variety, nothing floating or buried?
 5. **Edge test.** Zoom 100 %: seams, acne, z-fighting, thin-geometry flicker?
 
-## Wow shots (W1–W10, 1920×1080, bible §11)
+## Wow shots (W1–W11, W13 — W12 retired with the viaducts, D-045; 1920×1080, bible §11)
 
 | ID | Title | How | Criteria |
 |----|-------|-----|----------|
@@ -19,11 +19,13 @@
 | **W3** | Lantern Night | eyes + mask | ≥8 bloomed warm emissives visible; ≥10 fireflies; mean land L≥0.12; moon glitter streak on water |
 | **W4** | Beacon | eyes + mask | Beam cone visible in fog; cliff vs sky ΔL≥0.1; ≥2 sea stacks; foam at cliff base |
 | **W5** | Steam & Spring | eyes + mask | Steam column ≥15 u continuous; black sand contrasts turquoise ring; crater glow visible; no land pixel L<12% |
-| **W6** | Lagoon | eyes + mask | Sunken hull readable through water; lagoon lighter than outer ring; ≥1 turtle visible; ring ≤2 channel breaks |
+| **W6** | QA Test Factory | eyes + mask | Earth walls + plateau read against the sea; ≥2 sawtooth hangars with a conveyor bridge; loop track + check tower visible; crates on the belt |
 | **W7** | Mill Morning | metrics + eyes | Blade angle differs ≥0.5 s apart (deltaT); ≥4 field colours; mist band below 6 u; ≥5 sheep visible |
 | **W8** | Macro Shore | metrics + eyes | Foam line motion ≥2 s apart (deltaT); crab + ≥3 shells + grass tufts; 60→18 u dolly-in: all blooms-in, hardPops=0 |
-| **W9** | Lonely Palm | eyes | Whole sandbar + ring in frame; palm silhouetted vs sky gradient; sun glint bloom on water; horizon blends to fog (no hard line) |
+| **W9** | Research biodome hero | eyes | Criteria pending the Research redesign and TASK-396 re-frame (palm / sandbar criteria retired) |
 | **W10** | Rainy Grove | eyes + mask | Ripples on water visible; treehouse windows lit; foliage saturation ≥40%; sky not neutral grey |
+| **W11** | Concept | eyes + mask | Postcard pose: horizon ≈0.74 NDC with cloud banks; all 7 islands in frame, walls + landmarks overlap in depth; earth-wall strata + grass lip visible; no island clipped |
+| **W13** | Falls | eyes + deltaT | Mossgrove fall reads lip → water; foam disc + mist at the foot; flow streaks move ≥0.5 s apart |
 
 **Global fail (any shot):** land pixel L<12% | foam z-fighting | island without visible shallow ring | two creatures in perfect sync phase
 
@@ -51,7 +53,7 @@
 **Sets:**
 - `ci` — 4 shots, 640×360, low quality; PR checks
 - `dev` — 12 shots, 960×540 (or custom), low quality; milestone review
-- `wow` — W1–W10 at 1920×1080, medium quality; slow under SwiftShader
+- `wow` — W1–W11, W13 at 1920×1080, medium quality; slow under SwiftShader
 
 **Outputs** in `shots/<set>/`:
 - `manifest.json` — timings, `renderer.info`, counters (hardPops, calls, tris, programs), hash

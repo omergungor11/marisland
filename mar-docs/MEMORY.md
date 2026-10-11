@@ -17,8 +17,8 @@
   Settlement decor/theme/district streams fork per island id (`settlement-props.ts`): one island's
   plan change no longer reshuffles the others' decor. Movers (crates, test cart) in
   `render/movers.ts`, time-driven, hidden > 230 u. Under load the 30-seed plan tests time out at
-  20 s; run them alone. Open: ART_BIBLE §4/§11 (W9 palm, W6 atoll), VISUAL_QA W6, DECISIONS →
-  TASK-398; E-mixed edit log targets the old lagoon; W4 cuts the tall lighthouse; D-macro faces a wall.
+  20 s; run them alone. Docs done (TASK-398, D-039…D-045). 2026-10-11: viaducts are being removed (D-045);
+  Research will be redesigned as a bigger campus (W9 criteria pending). Open: E-mixed edit log targets the old lagoon; W4 cuts the tall lighthouse; D-macro faces a wall.
 - **2026-10-10 later**: M17b wave 1 merged + pushed (TASK-390/391/392, balloons scaled 1.1–1.4).
   W11 "Concept" is the reference frame. Parallel agents MUST pass distinct `--port=` to
   `pnpm shots`: it reuses any server already on 4173 ("not ours") and can shoot another

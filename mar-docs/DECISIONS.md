@@ -2,6 +2,84 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-045: Viaducts (TASK-394) removed — 2026-10-11
+
+**Decision**: the stone-arch viaducts between near islands are dropped. The bridge code (pair picker,
+`geo/bridge.ts`, `render/bridges.ts`, `content/bridges.ts`), the W12 "Viaduct" preset and the bridge
+hash pins go away; another session removes them after this docs change merges.
+**Rationale**: user decision (2026-10-11): the code that adds bridges between islands is removed entirely.
+**Impact**: W12 is retired; the §11 wow list goes W11 → W13 with a gap. D-044's per-island decor fork stays.
+
+## D-044: Settlement decor, theme and district RNG streams fork per island id — 2026-10-10
+
+**Decision** (`settlement-props.ts`): the decor, theme and district streams are `fork`ed with the island id,
+not drawn from one shared stream in roster order.
+**Rationale**: removing the Research hut, palm and fixtures (TASK-400) shifted the shared stream, so other
+islands' rendered decor (laundry vs barrel, decor rolls) changed although their world data did not. One
+island's plan change must not move the others (golden rule 2: label-fork).
+**Impact**: render-side only (world hashes unchanged); later single-island changes leave the other islands' decor as is.
+
+## D-043: QA "Test Factory" redesign; movers are time-driven instanced meshes, not agents — 2026-10-10
+
+**Decision** (TASK-401): QA (archetype `palmlagoon`, id and size kept) becomes a solid rounded-square plateau on
+a bluff (wall 6–6.8 u, top 8.6–9.6 u) with a yard, 3 sawtooth hangars (extractor fans on the front wall)
+joined by conveyor bridges, a crash-test loop track and a ~13 u mast QA tower with a check sign (about 20 u
+with the sign). Crates on the belts and a test cart on the loop are one InstancedMesh (`render/movers.ts`, the
+shared lit program) whose poses are closed-form functions of the sim time; they dither out from 150 to
+210 u and the mesh is hidden beyond 230 u.
+**Rationale**: the atoll read as a flat ring from T0; the factory gives a second hard-edged hero and motion at
+T1–T3. Movers are not agents: no life budget, no steering, deterministic and frozen by captures. Id, size and
+height / colour classes are kept so the layout and every other island do not change.
+**Impact**: W11 +2 draw calls (movers hidden past 230 u); W6 retargets to the factory; the old lagoon
+edit log (E-mixed) and the atoll criteria are obsolete.
+
+## D-042: Research crater redesign — breached crater with biodomes (TASK-400) — 2026-10-10
+
+**Decision**: Research (archetype `lonelypalm`, 17–21 u, same roll and reach) fills its reach disc as a breached
+crater: crest ring around a sunken bowl, broken open over the leeward cove (`ARCHETYPES.lonelypalm.crater` +
+`bluff`, wall 3–3.4 u, peak 5.6–6 u), with glass biodomes in the bowl, rim crystals and a research vessel at the
+cove pier. Crater islands get no waterfalls (too small). A bigger, university-campus-style
+Research island is planned and will supersede this.
+**Rationale**: the single-palm sandbar had no silhouette in the postcard and no cliff to match the other six.
+Keeping id, size and reach leaves the layout, and so every other island, unchanged.
+**Impact**: W9 (palm hero) is retired; its criteria are pending the Research redesign.
+
+## D-041: Waterfalls ride the lit program as a flow tag — no new program — 2026-10-10
+
+**Decision** (TASK-395): 1–3 falls per bluff island (`content/waterfalls.ts`) leave the bluff lips as ribbons on
+the shared lit program with `aSpin.w = −SURFACE.flow` as the tag (D-034's channel), with a foam disc on the water
+and mist puffs at the foot. Crater islands (Research) get none; neither do cove beaches (`maxCove`).
+**Rationale**: the concept art has water falling off the walls. A separate water program would break the
+9 / 17 / 24 program budgets (D-033); the tag costs a branch in the existing activity shader and ribbons
+batch into one draw per island.
+**Impact**: 0 new programs; W13 shows one (Mossgrove, seed 1001); the flow scrolls between delta frames.
+
+## D-040: The postcard pose replaces the high overview as the intro's end — 2026-10-10
+
+**Decision** (TASK-392): the intro lands on `FRAMING.postcard` (horizon at 0.74 NDC, so look-down =
+atan(0.74 · tan 17.5°) ≈ 13.1° at FOV 35°; nearest islands seen at ≈ 30°, far ones ≈ 15°), fitted to land
+outlines, terrain, peaks and landmark tops. The pitch band reaches 10° at and beyond 260 u (blended back by
+150 u) so the pose is reachable and the first drag does not snap back to the 58° overview. Portrait screens
+(aspect < 1) keep the overview. The horizon gets cloud banks, a warmer grade and an aerial fog tint.
+**Rationale**: the high 58° overview shows flat discs; a low 3/4 view makes walls and landmarks overlap in
+depth, the "concept art" first glance (W11). FOV 35° shows a horizon only below 17.5° look-down, so the pose is
+set by the horizon height, not by a pitch angle.
+**Impact**: ART_BIBLE §6 / §8 updated; the 58° overview stays as a preset and for portrait; D-macro is blocked
+by a building wall until TASK-396 re-pins it.
+
+## D-039: Bluff coasts and soil-strata earth walls — 2026-10-10
+
+**Decision** (TASK-390, 391): every archetype except Beacon Rock (its own windward cliff) gets a `bluff`:
+a 5–7 u wall around the coast, tagged `Zone.cliff`, with a harbour / leeward cove sector (Hearthholm's cove is
+anchored on the harbour). The terrain material paints those walls as soil strata (`GROUND_WALL`: soil
+`#B9845A`, bands ≈ 1.6 u, grass lip and drips, dark foot, wet line, cracks) in a theme's cliff colour where it
+lists one.
+**Rationale**: the ring-shaped beach islands look like discs from a low camera; walls give the concept
+silhouette and read at T0 because the colour is baked in the albedo (D-031 holds). Walls are only 5–7 u: HQ
+office minimums, the W10 call budget and DevOps terraces limited them.
+**Impact**: islands are 5–7 u taller at the coast; ART_BIBLE §2 / §4 updated; Zone.cliff is on every bluff
+archetype; D-030 smooth terrain unchanged.
+
 ## D-038: Sky craft — hot-air balloons and an airship, no shadows, no new program — 2026-10-10
 
 **Decision** (TASK-335): 2 / 4 / 5 balloons plus 0 / 1 / 1 airship (low / medium / high) drift over the
