@@ -520,7 +520,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-sky-basket',
     title: 'Sky craft · basket, burner and sandbags',
     seed: 1001,
-    cam: '80.4,41,13,66.4,52,-7.1',
+    cam: '86,67,16,66.4,51.5,-7.1',
     time: 12,
     simt: 2,
     quality: 'medium',

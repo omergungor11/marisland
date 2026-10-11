@@ -92,6 +92,7 @@ const _p = new THREE.Vector3();
 const _q = new THREE.Quaternion();
 const _e = new THREE.Euler(0, 0, 0, 'YXZ');
 const _s = new THREE.Vector3();
+const _tint = new THREE.Color();
 
 /** Pose of craft `c` (index `k`) at time `t` into `_p` / `_q`. */
 function pose(c: CraftPath, t: number, k: number): void {
@@ -143,6 +144,12 @@ export function createSkyCraft(
       const mesh = new THREE.InstancedMesh(geo, mat, g.items.length);
       mesh.name = `sky-${g.kind}`;
       mesh.castShadow = false;
+      // colourway per balloon (instance colour tint); allocated on both kinds so they share one program
+      const tints = SKY_CRAFT.balloon.tints;
+      for (let i = 0; i < g.items.length; i++) {
+        const t = g.kind === 'balloon' ? tints[i % tints.length] : [1, 1, 1];
+        mesh.setColorAt(i, _tint.setRGB(t[0], t[1], t[2]));
+      }
       scope.add(mesh);
       return { mesh, items: g.items };
     });

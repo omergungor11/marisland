@@ -68,6 +68,16 @@ function ring(
   });
 }
 
+/** Warm brightness lift baked into the shaded side (the lit program's hemisphere fill goes blue-grey there). */
+function lift(c: THREE.Color, k: number): THREE.Color {
+  // the shade is blue: cancel it by pulling blue / green down in the albedo (red stays)
+  return new THREE.Color(
+    Math.min(1, c.r * (1 + 0.1 * k)),
+    c.g * (1 + 0.1 * k),
+    c.b * (1 - 0.62 * k),
+  );
+}
+
 const tetra = (r: number): THREE.BufferGeometry => new THREE.TetrahedronGeometry(r, 0);
 const octa = (r: number): THREE.BufferGeometry => new THREE.OctahedronGeometry(r, 0);
 
@@ -129,21 +139,25 @@ export function buildBalloonGeometry(lod = 0): THREE.BufferGeometry {
     return 0.001;
   };
 
-  // patched fabric: a few (gore, 2-ring band) cells swap to another stripe colour
+  // patched fabric: a few (gore, row-band) cells become a darker patch; every cell gets a small
+  // lightness offset so the quads read as cloth panels (no per-triangle jitter: `noJitter`)
   const stripes = C.stripes.map(col);
+  const patches = B.patches.map(col);
   const trim = col(C.trim);
   const pr = createRng(7).fork('balloon-patch');
   const bands = Math.ceil(rings / B.patchRows);
-  const cellStripe: number[] = [];
+  const cells: THREE.Color[] = [];
   for (let g = 0; g < gores; g++)
     for (let b = 0; b < bands; b++) {
       const r = pr.fork('cell', g * 64 + b);
-      const own = g % stripes.length;
-      cellStripe.push(
+      const base =
         r.range(0, 1) < B.patchChance
-          ? (own + 1 + Math.floor(r.range(0, 3))) % stripes.length
-          : own,
-      );
+          ? patches[Math.floor(r.range(0, patches.length))]
+          : stripes[g % stripes.length];
+      const c = base.clone();
+      const hsl = { h: 0, s: 0, l: 0 };
+      c.getHSL(hsl);
+      cells.push(c.setHSL(hsl.h, hsl.s, Math.min(0.95, hsl.l + r.range(-0.035, 0.035))));
     }
   put(
     acc,
@@ -154,9 +168,11 @@ export function buildBalloonGeometry(lod = 0): THREE.BufferGeometry {
       const g = Math.floor((((Math.atan2(p.x, p.z) + TAU) % TAU) / TAU) * gores) % gores;
       let ri = 0;
       while (ri < rings - 1 && p.y > ys[ri + 1]) ri++;
-      return stripes[cellStripe[g * bands + Math.floor(ri / B.patchRows)]];
+      const ym = (ys[ri] + ys[ri + 1]) / 2; // ring-cell middle: both triangles of a quad agree
+      const k = Math.min(1, Math.max(0, (1.5 - ym) / 6));
+      return lift(cells[g * bands + Math.floor(ri / B.patchRows)], k);
     },
-    { aoAmt: 0.18 },
+    { aoAmt: 0.06, noJitter: true },
   );
 
   // rope seams along every gore boundary, brass hoops + rivets studded on them
@@ -172,17 +188,17 @@ export function buildBalloonGeometry(lod = 0): THREE.BufferGeometry {
       seam.push(line);
     }
     for (const line of seam)
-      for (let i = 0; i < line.length - 1; i++) bar(acc, line[i], line[i + 1], 0.045, C.rope, 3);
+      for (let i = 0; i < line.length - 1; i++) bar(acc, line[i], line[i + 1], 0.055, B.thread, 3);
   }
   for (const hy of B.hoops) {
     const hr = envR(hy) + 0.07;
-    ring(acc, V(0, hy, 0), hr, 0.09, gores, 3, 'y', C.brass);
+    ring(acc, V(0, hy, 0), hr, 0.15, gores, 4, 'y', C.brass);
     if (fine)
       for (let k = 0; k < B.rivetsPerHoop; k++) {
         const phi = (k * TAU) / B.rivetsPerHoop;
         stud(
           acc,
-          octa(0.15),
+          octa(0.2),
           V(Math.sin(phi) * (hr + 0.04), hy, Math.cos(phi) * (hr + 0.04)),
           C.brass,
         );
@@ -361,7 +377,6 @@ export function buildAirshipGeometry(lod = 0): THREE.BufferGeometry {
   const radial = fine ? A.radial : A.radialLod;
   const stations = fine ? A.stations : A.stationsLod;
   const L = HULL_L;
-  const R = HULL_R;
 
   // hull: lathe about y rolled onto z (profile y = +L is the nose)
   const zs: number[] = [];
@@ -387,11 +402,12 @@ export function buildAirshipGeometry(lod = 0): THREE.BufferGeometry {
       let zi = 0;
       while (zi < stations - 1 && p.z > zs[zi + 1]) zi++;
       const zc = (zs[zi] + zs[zi + 1]) / 2;
-      if (Math.abs(zc - 2.2) < 1.3) return band;
-      if (Math.abs(zc + 7.2) < 0.8) return band2;
       const sec = Math.floor((((Math.atan2(p.x, p.y) + TAU) % TAU) / TAU) * radial);
-      if (p.y < -R * 0.35) return (sec + zi) & 1 ? belly : hull;
-      return (sec + zi) & 1 ? panel : hull;
+      // 1 on the underside / lower flanks (sector middle), 0 on top: lifts the shaded half
+      const k = Math.min(1, Math.max(0, 0.5 - Math.cos(((sec + 0.5) / radial) * TAU) * 0.7));
+      if (Math.abs(zc - 2.2) < 1.3) return lift(band, k);
+      if (Math.abs(zc + 7.2) < 0.8) return lift(band2, k);
+      return lift((sec + zi) & 1 ? (k > 0.5 ? belly : panel) : hull, k);
     },
     { q, aoAmt: 0.08 },
   );
@@ -469,7 +485,14 @@ export function buildAirshipGeometry(lod = 0): THREE.BufferGeometry {
   const gl = 6.2;
   const gh = 1.7;
   const roof = gy + gh / 2;
-  put(acc, bevBox(gw, gh, gl, 0.3), [0, gy, gz], A.cabin, { aoAmt: 0.05, ao: () => 0.95 });
+  const planks = [col(A.cabin), col(A.cabin2)];
+  put(
+    acc,
+    bevBox(gw, gh, gl, 0.3),
+    [0, gy, gz],
+    (p) => planks[Math.floor((p.y - gy + gh) / 0.28) & 1],
+    { aoAmt: 0.05, ao: () => 1, noJitter: true },
+  );
   put(acc, baseBox(gw + 0.22, 0.14, gl + 0.22), [0, roof - 0.04, gz], C.copper, { aoAmt: 0 });
   put(acc, baseBox(gw + 0.12, 0.12, gl + 0.12), [0, gy - gh / 2 - 0.1, gz], C.brass, { aoAmt: 0 });
   for (const sx of [-1, 1])

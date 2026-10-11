@@ -38,7 +38,7 @@ export const SKY_CRAFT = {
   fadeNear: 30,
   fadeFar: 12,
   /** Colours. Envelope gores cycle through `stripes`; trim = band at the mouth. */
-  stripes: ['#FF9E8A', '#FFE9A8', '#9FE0D0', '#B7A8F0'],
+  stripes: ['#EBC27A', '#EBCF98', '#E08F6A', '#6FB7A6'],
   trim: '#FFF4E0',
   basket: '#C9A06B',
   rope: '#D9C3A0',
@@ -56,7 +56,17 @@ export const SKY_CRAFT = {
     rings: 14,
     ringsLod: 8,
     /** Chance a gore cell is a patch in another stripe colour. */
-    patchChance: 0.1,
+    patchChance: 0.2,
+    /** Darker patch cells (burgundy, tobacco, deep teal) and the stitched-seam thread. */
+    patches: ['#A5524B', '#8F6A3A', '#3F8077'],
+    thread: '#6B4A32',
+    /** Per-balloon colourway: instance colour tint (rgb multiplier) by balloon index. */
+    tints: [
+      [1, 1, 1],
+      [1.1, 0.88, 0.78],
+      [0.82, 1.0, 1.06],
+      [1.06, 0.82, 0.92],
+    ],
     /** Height of a patch cell in rings. */
     patchRows: 3,
     /** Seam ribs (rope tubes) on every n-th gore boundary; 0 = none. */
@@ -69,13 +79,15 @@ export const SKY_CRAFT = {
     sandbag: ['#E8D5A8', '#D9B98A'],
   },
   airship: {
-    hull: '#FFF4E0',
+    hull: '#FFE2AE',
     /** Alternate panel tone (every other longitudinal panel / ring band). */
-    panel: '#F6E8CB',
-    belly: '#F2E3C4',
-    band: '#FF9E8A',
-    fins: ['#FF9E8A', '#9FE0D0'],
-    cabin: '#C9A06B',
+    panel: '#F6CF90',
+    belly: '#EEBF7C',
+    band: '#E88A62',
+    fins: ['#F0B050', '#7CC6B4'],
+    cabin: '#EDB96C',
+    /** Second plank tone for the gondola siding. */
+    cabin2: '#D69A52',
     window: '#FFE9A8',
     /** Hull tessellation: radial segments and stations (lod 1 uses the `Lod` pair). */
     radial: 24,
