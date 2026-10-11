@@ -25,6 +25,8 @@ export interface PartOpts {
   windAbs?: number | ((p: THREE.Vector3) => number);
   /** Also emit back faces (thin cloth / sails / open shells). */
   double?: boolean;
+  /** Skip the per-face HSL jitter (large smooth fabric: variation comes from the colour fn). */
+  noJitter?: boolean;
 }
 
 const MIN_L = 0.13;
@@ -79,6 +81,7 @@ export class Acc {
   private ao: number[] = [];
   private emi: number[] = [];
   private wabs: number[] = [];
+  private nj: number[] = [];
 
   add(geo: THREE.BufferGeometry, o: PartOpts & { m?: THREE.Matrix4 }): void {
     const g = geo.index ? geo.toNonIndexed() : geo;
@@ -121,6 +124,7 @@ export class Acc {
         this.colr.push(fc.r, fc.g, fc.b);
         this.wmul.push(wm);
         this.emi.push(o.emissive ?? 0);
+        this.nj.push(o.noJitter ? 1 : 0);
         this.wabs.push(
           o.windAbs === undefined
             ? NaN
@@ -166,9 +170,10 @@ export class Acc {
     for (let f = 0; f < n; f += 3) {
       c.setRGB(this.colr[f * 3], this.colr[f * 3 + 1], this.colr[f * 3 + 2]);
       c.getHSL(hsl);
-      const h = hsl.h + jr.range(-4, 4) / 360;
-      const l = Math.max(MIN_L, hsl.l + jr.range(-0.03, 0.03));
-      c.setHSL(h, hsl.s, l);
+      const jh = jr.range(-4, 4) / 360;
+      const jl = jr.range(-0.03, 0.03);
+      if (this.nj[f]) c.setHSL(hsl.h, hsl.s, Math.max(MIN_L, hsl.l));
+      else c.setHSL(hsl.h + jh, hsl.s, Math.max(MIN_L, hsl.l + jl));
       for (let k = 0; k < 3; k++) {
         const i = f + k;
         color[i * 3] = Math.min(1, Math.max(0, c.r));
