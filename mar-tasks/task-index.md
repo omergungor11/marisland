@@ -244,11 +244,11 @@ Details in `phases/phase-3.md`.
 | TASK-410 | HQ Harbour Guild kit (timetable board, bell post, ferry awning, guild hall variant, ferry hull …) | props | M | COMPLETED | 408, 409 |
 | TASK-411 | Coding Wind Gardens kit (pergola desks, hammocks, kites, rubber ducks, giant duck …) | props | M | COMPLETED | 408 |
 | TASK-412 | DevOps Ember Smiths kit (lava lanterns, ingots, anvil, onsen deck, server shrine, forge bell …) | props | M | COMPLETED | 408 |
-| TASK-413 | Marketing Carnival kit (popcorn cart, confetti cannon, marquee, balloon mast, mascot statue …) | props | M | PENDING | 408 |
+| TASK-413 | Marketing Carnival kit (popcorn cart, confetti cannon, marquee, balloon mast, mascot statue …) | props | M | COMPLETED | 408 |
 | TASK-414 | QA Inspectors kit (bug jars, stamp desk, cone pyramid, scoreboard, inspection booth, UV lamps …) | props | M | PENDING | 408, 410 |
 | TASK-415 | Design Glass & Light kit (hot shop, prism sculpture, stained screen, glass orbs, rainbow arc, canopy vitray …) | props | M | PENDING | 408, 414 |
 | TASK-416 | Research Star Academy kit (chalkboards, tea trolley, tripod telescopes, orrery, owl box, observatory slit …) | props | M | PENDING | 408 |
-| TASK-420…426 | Culture placement per island (fixtures, story spots, routes) — one plan file each; Coding: pin hedge variant (hedge now has 3 variants incl. bracketHedge, so the decor roll picks it ~1/3 until pinned) | worldgen | M ×7 | PENDING | 410…416 |
+| TASK-420…426 | Culture placement per island (fixtures, story spots, routes) — one plan file each; Marketing: marqueeSign "SHOW" S/W glyphs read badly, fix before placing; Coding: pin hedge variant (hedge now has 3 variants incl. bracketHedge, so the decor roll picks it ~1/3 until pinned) | worldgen | M ×7 | PENDING | 410…416 |
 | TASK-430 | Culture clock + Launch Day Relay (rhythm table, lamp sets, variant swaps, festival) | engine | M | PENDING | 420…426 |
 | TASK-431 | Culture movers (bell, crane lift, kites, confetti, caustics, weather balloon …) | life | M | PENDING | 420…426 |
 | TASK-432 | Bot culture: carried items, accessories, poses, itineraries, tableau bots | life | M | PENDING | 420…426 |

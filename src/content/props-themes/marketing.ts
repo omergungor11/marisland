@@ -5,7 +5,7 @@
 import { PropFlag } from '../../world/prop-store.ts';
 import type { PropDef } from '../props.ts';
 
-const { grounded, windy } = PropFlag;
+const { grounded, windy, noShadow } = PropFlag;
 
 export const MARKETING_PROP_DEFS: readonly PropDef[] = [
   // T0: must read from the far tier (billboard face = emissive-2 screen class; M14c slideshow)
@@ -50,4 +50,72 @@ export const MARKETING_PROP_DEFS: readonly PropDef[] = [
   },
   // v0 game booth, v1 café (one LOD1 group)
   { id: 'fairBooth', geo: 'fairBooth', tier: 2, variants: 2, footprint: 1.4, flags: grounded },
+];
+
+/**
+ * M19 TASK-413 "Carnival Broadcasters" kit (geo/themes/culture-marketing.ts; ledger:
+ * content/cultures/marketing.ts). Registered at the END of PROP_DEFS (content/props.ts) so no
+ * existing def index moves. prizeBooth is a separate def (not a fairBooth variant) so existing
+ * settlements keep rolling the same fairBooth variants.
+ */
+export const MARKETING_CULTURE_PROP_DEFS: readonly PropDef[] = [
+  {
+    id: 'mascotStatue',
+    geo: 'mascotStatue',
+    tier: 1,
+    variants: 1,
+    footprint: 1.6,
+    flags: grounded,
+  },
+  { id: 'marqueeSign', geo: 'marqueeSign', tier: 2, variants: 3, footprint: 1.3, flags: grounded },
+  {
+    id: 'popcornCart',
+    geo: 'popcornCart',
+    tier: 2,
+    variants: 2,
+    footprint: 0.95,
+    flags: grounded | windy,
+  },
+  {
+    id: 'balloonMast',
+    geo: 'balloonMast',
+    tier: 2,
+    variants: 2,
+    footprint: 1.0,
+    flags: grounded | windy,
+  },
+  {
+    id: 'confettiCannon',
+    geo: 'confettiCannon',
+    tier: 2,
+    variants: 2,
+    footprint: 0.8,
+    flags: grounded | windy,
+  },
+  {
+    id: 'searchlightPair',
+    geo: 'searchlightPair',
+    tier: 2,
+    variants: 2,
+    footprint: 1.5,
+    flags: grounded,
+  },
+  { id: 'prizeBooth', geo: 'prizeBooth', tier: 2, variants: 2, footprint: 1.4, flags: grounded },
+  { id: 'selfieSpot', geo: 'selfieSpot', tier: 2, variants: 2, footprint: 1.5, flags: grounded },
+  {
+    id: 'posterRoll',
+    geo: 'posterRoll',
+    tier: 3,
+    variants: 3,
+    footprint: 0.5,
+    flags: grounded | noShadow,
+  },
+  {
+    id: 'megaphoneStand',
+    geo: 'megaphoneStand',
+    tier: 3,
+    variants: 2,
+    footprint: 0.45,
+    flags: grounded | noShadow,
+  },
 ];
