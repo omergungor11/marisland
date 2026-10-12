@@ -52,7 +52,11 @@ const BODY = /* glsl */ `
       float gFlapT = ${(GULLS.flaps * GULLS.flapPeriod).toFixed(4)};
       float gFlap = gTT < gFlapT ? sin(6.2831853 * gTT / ${GULLS.flapPeriod.toFixed(4)}) * 0.75 : 0.0;
       float gAng = (gFlap + 0.12) * aGait.x * uMotionScale;
-      transformed.y += gAng * abs(position.z);
+      // hinge at the wing root (|z| = 0.12): rotate, don't shear, so the wing keeps its length
+      float gZ = abs(position.z);
+      float gD = max(gZ - 0.12, 0.0);
+      transformed.y += sin(gAng) * gD;
+      transformed.z = sign(position.z) * (min(gZ, 0.12) + cos(gAng) * gD);
       transformed.z *= mix(0.25, 1.0, aGait.x);
     } else {
       float lMove = aGait.x * uMotionScale;
