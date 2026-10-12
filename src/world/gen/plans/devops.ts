@@ -17,7 +17,7 @@ import type { Rng } from '../../../core/rng.ts';
 import { FLATTEN, LOT_FOOTPRINT, VILLAGE } from '../../../content/settlements.ts';
 import { DEVOPS_SITE } from '../../../content/themes/devops.ts';
 import { heightAt, Zone } from '../../types.ts';
-import type { DistrictData, IslandData, XZ } from '../../types.ts';
+import type { DistrictData, IslandData, StorySpot, XZ } from '../../types.ts';
 import { cellX, cellZ, gridRange } from '../grid.ts';
 import { gridAStar } from '../paths.ts';
 import {
@@ -62,7 +62,10 @@ import {
   placeDataCenters,
   finishHarbour,
   placeContainerYard,
+  placeCulture,
   placeFoundry,
+  placeOnsen,
+  placeValves,
   placeQuadLodges,
   placeVillage,
 } from './devops-works.ts';
@@ -86,6 +89,10 @@ export const planDevops: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   if (craterLm >= 0) plan.landmarks.push(craterLm);
   plan.landmarks.push(pool);
   const centre: XZ = crater ?? { x: isl.cx, z: isl.cz };
+  // TASK-422: the Ember Smiths onsen claims the pool rim before the plant
+  const stories: StorySpot[] = [];
+  plan.stories = stories;
+  placeOnsen(ctx, isl, spring, centre, stories);
 
   const towers = placePlant(ctx, isl, spring);
   const plant = [spring, ...towers];
@@ -141,6 +148,15 @@ export const planDevops: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   // TASK-405: CI/CD belt + paved quay, lava foundry, worker lodges by the quad
   finishHarbour(ctx, isl, containers, yard?.lots ?? [], site?.root ?? null, rng.fork('quay'));
   const furnaces = placeFoundry(ctx, isl, plan, rng.fork('foundry'));
+  // TASK-422: the Ember Smiths kit on the harbour, foundry and terraces (before the infill lodges)
+  placeCulture(
+    ctx,
+    isl,
+    plan,
+    rng.fork('culture', isl.id),
+    { root: site?.root ?? null, terraces, centre },
+    stories,
+  );
   if (quad) placeQuadLodges(ctx, isl, quad, rng.fork('lodges'));
   placeVillage(ctx, isl);
 
@@ -166,6 +182,8 @@ export const planDevops: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
     if (main)
       (plan.lines ??= []).push({ islandId: isl.id, kind: 'pipe', closed: false, points: main });
   }
+  // TASK-422: valve wheels on the finished pipe runs
+  placeValves(ctx, isl, plan);
   return plan;
 };
 

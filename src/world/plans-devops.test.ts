@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PROP_DEFS } from '../content/props.ts';
-import { FLATTEN } from '../content/settlements.ts';
+import { FIXTURE_RADIUS, FLATTEN } from '../content/settlements.ts';
+import { DEVOPS_CULTURE, DEVOPS_CULTURE_SITE } from '../content/cultures/devops.ts';
 import { DEVOPS_SITE, DEVOPS_THEME } from '../content/themes/devops.ts';
 import {
   generateWorld,
@@ -12,6 +13,7 @@ import {
   type XZ,
 } from './index.ts';
 import { lotShape, rectShape, shapeCorners, shapeDist } from './gen/sites.ts';
+import { THEME_IDS } from './types.ts';
 
 /** DevOps island plan (M14b §2.3, TASK-364) over 30 seeds. */
 const SEEDS = Array.from({ length: 30 }, (_, k) => 1000 + k * 263);
@@ -302,6 +304,9 @@ describe('DevOps island plan (TASK-364) — 30 seeds', () => {
             'cableSpool',
             'lanternPost',
             'rackShed',
+            // TASK-422 Ember Smiths kit + imported cargo crates
+            ...DEVOPS_CULTURE.kit.map((k) => k.id),
+            'cargoCrate',
           ],
           ctx,
         ).toContain(f.defId);
@@ -392,5 +397,132 @@ describe('DevOps Ember Works (TASK-405) — 30 seeds', () => {
       if (smithies.length >= 1 && lodges.length >= 1) full++;
     }
     expect(rate(full, n), 'foundry village').toBeGreaterThanOrEqual(0.85);
+  });
+});
+
+/** TASK-422 "Kor Demircileri" (Ember Smiths): the culture kit placed on Ember Works, 30 seeds. */
+describe('DevOps Ember Smiths culture (TASK-422) — 30 seeds', () => {
+  const C = DEVOPS_CULTURE_SITE;
+  const KIT = new Set([...DEVOPS_CULTURE.kit.map((k) => k.id), 'cargoCrate']);
+  /** [min, max] per def on one island; `share` = fraction of seeds with at least one. */
+  const RANGES: Record<string, { n: [number, number]; share: number }> = {
+    onsenDeck: { n: [0, 1], share: 1 },
+    onsenHouse: { n: [0, 1], share: 0.85 },
+    lavaLantern: { n: [0, C.lanterns.quayMax + C.lanterns.railMax], share: 0.95 },
+    ingotStack: { n: [0, C.ingots.count[1]], share: 0.9 },
+    anvil: { n: [0, C.anvils.max], share: 0.9 },
+    incidentSign: { n: [0, 1], share: 0.9 },
+    signalHorn: { n: [0, 2], share: 0.9 },
+    serverShrine: { n: [0, 1], share: 0.9 },
+    pipeValveWheel: { n: [0, C.valves.max], share: 0.9 },
+    pagerRock: { n: [0, 1], share: 0.9 },
+    cargoCrate: { n: [0, C.crates.piles.reduce((a, p) => a + p.n, 0)], share: 0.9 },
+  };
+
+  it('kit placed: counts per def within range; foundry v1 (forge bell) leads', () => {
+    let n = 0;
+    const hits: Record<string, number> = {};
+    for (const seed of SEEDS) {
+      const d = devops(seed);
+      if (!d) continue;
+      n++;
+      for (const [id, R] of Object.entries(RANGES)) {
+        const k = d.fixtures.filter((f) => f.defId === id).length;
+        expect(k, `seed ${seed} ${id}`).toBeGreaterThanOrEqual(R.n[0]);
+        expect(k, `seed ${seed} ${id}`).toBeLessThanOrEqual(R.n[1]);
+        if (k > 0) hits[id] = (hits[id] ?? 0) + 1;
+      }
+      const halls = d.fixtures.filter((f) => f.defId === 'foundry');
+      halls.forEach((h, k) =>
+        expect(h.variant, `seed ${seed} hall ${k}`).toBe(k === 0 ? C.forgeBellVariant : 0),
+      );
+      // crates: QA and HQ imports (cargoCrate variant = THEME_IDS index)
+      for (const f of d.fixtures.filter((x) => x.defId === 'cargoCrate'))
+        expect(['qa', 'hq'], `seed ${seed}`).toContain(THEME_IDS[f.variant ?? -1]);
+      // incident sign shows 42 days
+      for (const f of d.fixtures.filter((x) => x.defId === 'incidentSign'))
+        expect(f.variant, `seed ${seed}`).toBe(C.incident.variant);
+    }
+    for (const [id, R] of Object.entries(RANGES))
+      expect(rate(hits[id] ?? 0, n), id).toBeGreaterThanOrEqual(R.share);
+  });
+
+  it('ingots cool away from the furnace mouth; the onsen deck faces its pool', () => {
+    for (const seed of SEEDS) {
+      const d = devops(seed);
+      if (!d) continue;
+      const ctx = `seed ${seed}`;
+      const ingots = d.fixtures.filter((f) => f.defId === 'ingotStack');
+      const halls = d.fixtures.filter((f) => f.defId === 'foundry');
+      if (ingots.length > 0) {
+        // one row beside one hall: variants never decrease along it (hot v0 → cooled v2)
+        const hall = halls.reduce((a, b) => (dist(b, ingots[0]) < dist(a, ingots[0]) ? b : a));
+        const vs = ingots.map((f) => f.variant ?? -1);
+        expect(vs[0], ctx).toBe(0);
+        for (let k = 1; k < vs.length; k++) {
+          expect(vs[k], ctx).toBeGreaterThanOrEqual(vs[k - 1]);
+          expect(dist(ingots[k], hall), ctx).toBeGreaterThan(dist(ingots[k - 1], hall));
+        }
+        if (vs.length >= 3) expect(vs[vs.length - 1], ctx).toBe(2);
+      }
+      const pool = d.landmarks.find((l) => l.kind === 'hotSpring') as XZ;
+      for (const f of d.fixtures.filter((x) => x.defId === 'onsenDeck')) {
+        expect(dist(f, pool), ctx).toBeLessThanOrEqual(Math.max(...C.onsen.deckOff) + 1e-6);
+        // local +z (the water side) points at the pool centre
+        const f2 = { x: Math.cos(f.rotY), z: Math.sin(f.rotY) };
+        const u = { x: (pool.x - f.x) / dist(f, pool), z: (pool.z - f.z) / dist(f, pool) };
+        expect(f2.x * u.x + f2.z * u.z, ctx).toBeGreaterThan(0.99);
+      }
+      for (const f of d.fixtures.filter((x) => x.defId === 'onsenHouse'))
+        expect(dist(f, pool), ctx).toBeLessThanOrEqual(C.onsen.houseRing[1] + 1);
+    }
+  });
+
+  it('everything on land and level: kit props sit on their own level ground', () => {
+    for (const seed of SEEDS) {
+      const d = devops(seed);
+      if (!d) continue;
+      for (const f of d.fixtures) {
+        if (!KIT.has(f.defId)) continue;
+        const ctx = `seed ${seed} ${f.defId} @${f.x.toFixed(1)},${f.z.toFixed(1)}`;
+        const y0 = heightAt(d.w.height, f.x, f.z);
+        expect(y0, `${ctx} on land`).toBeGreaterThan(0.3);
+        const i = Math.round((f.z - d.w.height.originZ) / d.w.height.cellSize);
+        const j = Math.round((f.x - d.w.height.originX) / d.w.height.cellSize);
+        expect(d.w.islandMap[i * d.w.height.n + j], `${ctx} island`).toBe(d.isl.id + 1);
+        // the onsen deck / house: their pads (rect cores) are flat
+        if (f.defId === 'onsenDeck' || f.defId === 'onsenHouse') {
+          const [w, dd] = f.defId === 'onsenDeck' ? C.onsen.deck : C.onsen.house;
+          for (const p of shapeCorners(rectShape(f.x, f.z, f.rotY, w, dd)))
+            expect(Math.abs(heightAt(d.w.height, p.x, p.z) - y0), ctx).toBeLessThanOrEqual(0.5);
+          continue;
+        }
+        // small props: ≤ 0.7 u relief round their footprint (the valve straddles a pipe slope: 1.2)
+        const r = FIXTURE_RADIUS[f.defId];
+        const ys = [0, 1, 2, 3, 4, 5, 6, 7].map((k) =>
+          heightAt(d.w.height, f.x + Math.cos(k * 0.785) * r, f.z + Math.sin(k * 0.785) * r),
+        );
+        const rel = Math.max(y0, ...ys) - Math.min(y0, ...ys);
+        expect(rel, ctx).toBeLessThanOrEqual(f.defId === 'pipeValveWheel' ? 1.2 : 0.7);
+      }
+    }
+  });
+
+  it('story spots: ≥ 5 per island, ledger kinds once each, on the island', () => {
+    const kinds = new Set(DEVOPS_CULTURE.storySpots.map((s) => s.kind));
+    for (const seed of SEEDS) {
+      const d = devops(seed);
+      if (!d) continue;
+      const st = d.w.storySpots.filter((s) => s.islandId === d.isl.id);
+      expect(st.length, `seed ${seed}`).toBeGreaterThanOrEqual(5);
+      expect(new Set(st.map((s) => s.kind)).size, `seed ${seed} unique`).toBe(st.length);
+      for (const s of st) {
+        const ctx = `seed ${seed} ${s.kind}`;
+        expect(kinds.has(s.kind), ctx).toBe(true);
+        expect(s.defs.length, ctx).toBeGreaterThan(0);
+        expect(dist(s.pos, d.isl.anchors.crater ?? s.pos), ctx).toBeLessThanOrEqual(d.isl.reach);
+        expect(s.pos.y, ctx).toBeGreaterThanOrEqual(heightAt(d.w.height, s.pos.x, s.pos.z) - 1e-6);
+      }
+    }
   });
 });

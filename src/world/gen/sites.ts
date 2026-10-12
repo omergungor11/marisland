@@ -180,7 +180,10 @@ export interface SitePlan {
   districts: DistrictData[];
   /** Theme polylines (M14b, e.g. kind 'pipe'): appended to `world.fences` in plan order. */
   lines?: Polyline[];
-  /** Culture story spots (M19): into `world.storySpots` in plan order, y set after the pads. */
+  /**
+   * Culture story spots (M19): into `world.storySpots` in plan order. Plans write `pos.y` as the
+   * height above the ground (0 = on it); the final ground is added after the pads.
+   */
   stories?: StorySpot[];
 }
 

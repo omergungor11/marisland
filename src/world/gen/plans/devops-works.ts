@@ -11,12 +11,13 @@
  * Every random decision draws from the `rng` it is given; tuning lives in DEVOPS_SITE.
  */
 import type { Rng } from '../../../core/rng.ts';
+import { DEVOPS_CULTURE, DEVOPS_CULTURE_SITE } from '../../../content/cultures/devops.ts';
 import { DEVOPS_WORKS as W } from '../../../content/props-themes/devops.ts';
 import { FLATTEN, LOT_FOOTPRINT, VILLAGE } from '../../../content/settlements.ts';
 import { QA_FACTORY } from '../../../content/themes/qa.ts';
 import { DEVOPS_SITE } from '../../../content/themes/devops.ts';
-import { heightAt, Zone } from '../../types.ts';
-import type { DistrictData, IslandData, XZ } from '../../types.ts';
+import { heightAt, THEME_IDS, Zone } from '../../types.ts';
+import type { DistrictData, FixtureData, IslandData, StorySpot, XZ } from '../../types.ts';
 import { cellX, cellZ, gridRange } from '../grid.ts';
 import {
   add,
@@ -33,8 +34,10 @@ import {
   onLand,
   rectShape,
   relief,
+  ring,
   sdfAt,
   shapeDist,
+  shapesOverlap,
   siteFree,
   tryLot,
   unit,
@@ -44,6 +47,7 @@ import {
 } from '../sites.ts';
 
 const S = DEVOPS_SITE;
+const C = DEVOPS_CULTURE_SITE;
 
 /** Write `zone` on this island's land samples inside `sh`. */
 export function paintZone(ctx: SiteCtx, isl: IslandData, sh: Shape, zone: number): void {
@@ -537,6 +541,8 @@ export function placeFoundry(ctx: SiteCtx, isl: IslandData, plan: SitePlan, rng:
         U.rotY,
         W.foundry.footprint,
         { ...fit, maxRelief: Fd.maxRelief + 1 },
+        // TASK-422: the first hall rings the forge bell (foundry v1), the others stay v0
+        furnaces.length === 0 ? C.forgeBellVariant : 0,
       );
       if (p) furnaces.push(p);
       if (p)
@@ -625,4 +631,509 @@ function railLine(ctx: SiteCtx, isl: IslandData, F: Frame): [XZ, XZ] | null {
     }
   }
   return best && bl >= Fd.rail[0] ? best : null;
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* TASK-422 "Kor Demircileri" (Ember Smiths): the culture kit placed on the facilities above.   */
+/* ------------------------------------------------------------------------------------------ */
+
+/** Local (x, z) of a fixture facing `rotY` → world (local +z = dirOf(rotY), +x = (sin, −cos)). */
+const local = (p: XZ, rotY: number, x: number, z: number): XZ => ({
+  x: p.x + Math.sin(rotY) * x + Math.cos(rotY) * z,
+  z: p.z - Math.cos(rotY) * x + Math.sin(rotY) * z,
+});
+
+interface SpotOpts {
+  r: number;
+  /** Stay within `tol` u of height `y` (same shelf / pad level). */
+  y?: number;
+  tol?: number;
+  minShore?: number;
+  maxRelief?: number;
+  /** Obstacles this spot may touch (its own facility's shapes). */
+  ignore?: (o: Shape) => boolean;
+  /** Footpath pins to keep clear (the path leaves there). */
+  pins?: readonly XZ[];
+  /** Block the footpath grid under it (kitFixture). */
+  block?: boolean;
+  /** Keep out of the falloff of pads on another level (props out on open slopes). */
+  falloff?: boolean;
+}
+
+/** A small kit prop fits at `p`: on land, level, clear of every other obstacle. */
+function spotOk(ctx: SiteCtx, isl: IslandData, p: XZ, o: SpotOpts): boolean {
+  if (!onIsland(ctx, isl, p.x, p.z) || sdfAt(ctx, p.x, p.z) < (o.minShore ?? 1)) return false;
+  const y = heightAt(ctx.h, p.x, p.z);
+  if (y < 0.5 || (o.y !== undefined && Math.abs(y - o.y) > (o.tol ?? 0.6))) return false;
+  const sh = discShape(p.x, p.z, o.r);
+  if (relief(ctx, sh) > (o.maxRelief ?? C.maxRelief)) return false;
+  if (o.pins?.some((q) => dist(q, p) < C.pinClear + o.r)) return false;
+  for (const s of ctx.shapes[isl.id])
+    if (s.tag !== 'plaza' && !o.ignore?.(s) && shapesOverlap(s, sh, C.gap)) return false;
+  if (!levelSafe(ctx, isl, sh, C.padMargin)) return false;
+  // nor inside the falloff of a pad on another level (the ground there tilts after flattening)
+  if (o.falloff)
+    for (const q of ctx.pads) {
+      if (q.islandId !== isl.id || o.ignore?.(q.shape)) continue;
+      if (Math.abs(heightAt(ctx.h, q.shape.x, q.shape.z) - y) <= C.falloffTol) continue;
+      if (shapeDist(q.shape, p.x, p.z) < q.margin + FLATTEN.falloff + o.r) return false;
+    }
+  return true;
+}
+
+/**
+ * A kit prop: the fixture, its disc obstacle and a small level pad. `block`: footpaths route round
+ * it (off for props by the pier root and the lot doors, where a blocked disc can cut a link).
+ */
+function kitFixture(
+  ctx: SiteCtx,
+  isl: IslandData,
+  defId: string,
+  p: XZ,
+  rotY: number,
+  r: number,
+  variant?: number,
+  block = false,
+): void {
+  ctx.fixtures.push({
+    defId,
+    x: p.x,
+    z: p.z,
+    rotY,
+    islandId: isl.id,
+    ...(variant === undefined ? {} : { variant }),
+  });
+  const sh = discShape(p.x, p.z, r);
+  addShape(ctx, isl, sh, block);
+  addPad(ctx, isl, sh, C.padMargin);
+}
+
+/** First spot of `cands` that fits; pushes the fixture + its (non-blocking) disc. */
+function kitAt(
+  ctx: SiteCtx,
+  isl: IslandData,
+  defId: string,
+  cands: readonly XZ[],
+  rotY: (p: XZ) => number,
+  o: SpotOpts,
+  variant?: number,
+): XZ | null {
+  for (const p of cands) {
+    if (!spotOk(ctx, isl, p, o)) continue;
+    kitFixture(ctx, isl, defId, p, rotY(p), o.r, variant, o.block);
+    return p;
+  }
+  return null;
+}
+
+const islandFx = (ctx: SiteCtx, isl: IslandData, defId: string): FixtureData[] =>
+  ctx.fixtures.filter((f) => f.islandId === isl.id && f.defId === defId);
+
+/** Obstacle centred on a segment of `pts` (a rail corridor / pipe run rect). */
+const onLine =
+  (pts: readonly XZ[]) =>
+  (o: Shape): boolean =>
+    o.r === 0 && pts.some((q, j) => j > 0 && segDist(o, pts[j - 1], q) < 0.05);
+
+type StoryFn = (kind: string, p: XZ, dy: number, rotY: number) => void;
+
+/** Story spot writer into `out` (defs from the culture ledger, pos.y = dy above the ground). */
+function storyInto(isl: IslandData, out: StorySpot[]): StoryFn {
+  return (kind, p, dy, rotY) => {
+    const def = DEVOPS_CULTURE.storySpots.find((s) => s.kind === kind);
+    out.push({
+      kind,
+      islandId: isl.id,
+      // y above the ground: buildSettlements resolves it once the pads are flat
+      pos: { x: p.x, y: dy, z: p.z },
+      rotY,
+      defs: def?.defs ?? [],
+    });
+  };
+}
+
+/**
+ * The onsen (placed first, right after the pool landmark, so the cooling towers and pipes keep
+ * off the bath): story spots appended to `stories`.
+ */
+export function placeOnsen(
+  ctx: SiteCtx,
+  isl: IslandData,
+  spring: XZ,
+  centre: XZ,
+  stories: StorySpot[],
+): void {
+  onsen(ctx, isl, spring, centre, storyInto(isl, stories));
+}
+
+/**
+ * Place the rest of the Ember Smiths kit (ISLAND_CULTURES §2.3) around the finished facilities;
+ * story spots appended to `stories`. Everything draws from `rng` (the island's `culture` fork);
+ * counts and offsets live in DEVOPS_CULTURE_SITE.
+ */
+export function placeCulture(
+  ctx: SiteCtx,
+  isl: IslandData,
+  plan: SitePlan,
+  rng: Rng,
+  site: { root: XZ | null; terraces: readonly number[]; centre: XZ },
+  stories: StorySpot[],
+): void {
+  const story = storyInto(isl, stories);
+  const yardFx = islandFx(ctx, isl, 'containerYard')[0];
+  const pins = plan.links.map((l) => l.pin);
+  if (site.root)
+    gate(ctx, isl, site.root, yardFx ?? site.centre, yardFx ? 'yard' : 'none', story, pins);
+  if (yardFx) {
+    quayKit(ctx, isl, yardFx, story, pins);
+    crates(ctx, isl, yardFx, rng.fork('crates'));
+  }
+  foundryKit(ctx, isl, plan, rng.fork('ingots'), story, pins);
+  shrine(ctx, isl, site.terraces, pins);
+}
+
+/** Onsen deck on the hot-spring rim (facing the pool) + the bath house beside / behind it. */
+function onsen(ctx: SiteCtx, isl: IslandData, spring: XZ, centre: XZ, story: StoryFn): void {
+  const O = C.onsen;
+  const pool = (o: Shape): boolean => o.r > 0 && dist(o, spring) < 0.05;
+  const inland = unit(spring, centre);
+  const rectOk = (p: XZ, rotY: number, w: number, d: number, margin: number): boolean => {
+    const sh = rectShape(p.x, p.z, rotY, w, d);
+    if (!onLand(ctx, isl, sh, O.minShore) || relief(ctx, sh) > O.maxRelief) return false;
+    for (const s of ctx.shapes[isl.id])
+      if (s.tag !== 'plaza' && !pool(s) && shapesOverlap(s, sh, 0.4)) return false;
+    return siteFree(ctx, isl, sh) && levelSafe(ctx, isl, sh, margin);
+  };
+  // deck spots on the pool rim (one radius ring, the nearest that has any), best first
+  let decks: { p: XZ; rot: number; s: number }[] = [];
+  for (const r of O.deckOff) {
+    for (let k = 0; k < O.angles; k++) {
+      const d = dirOf((k / O.angles) * Math.PI * 2);
+      const p = add(spring, d, r);
+      const rot = ang(-d.x, -d.z);
+      if (!rectOk(p, rot, O.deck[0], O.deck[1], O.deckMargin)) continue;
+      const rel = relief(ctx, rectShape(p.x, p.z, rot, O.deck[0], O.deck[1]));
+      decks.push({ p, rot, s: rel + (O.inland * (1 - (d.x * inland.x + d.z * inland.z))) / 2 });
+    }
+    if (decks.length > 0) break;
+  }
+  if (decks.length === 0) return;
+  decks = decks.sort((a, b) => a.s - b.s).slice(0, O.deckTries);
+  // the bath house: the flattest spot on a ring round the pool at its level, nearest the deck,
+  // door to the pool; the first deck spot that leaves room for one wins
+  const [hw, hd] = O.house;
+  const y0 = heightAt(ctx.h, spring.x, spring.z);
+  const homes = ring(spring, O.houseRing[0], O.houseRing[1], 1, O.angles, 0)
+    .filter((q) => Math.abs(heightAt(ctx.h, q.x, q.z) - y0) <= O.houseLevel)
+    .map((q) => {
+      const face = unit(q, spring);
+      return { q, rot: ang(face.x, face.z) };
+    })
+    .filter((h) => rectOk(h.q, h.rot, hw, hd, FLATTEN.lotMargin));
+  let pick = { deck: decks[0], house: null as { q: XZ; rot: number } | null };
+  for (const deck of decks) {
+    const dsh = rectShape(deck.p.x, deck.p.z, deck.rot, O.deck[0], O.deck[1]);
+    let bs = Infinity;
+    for (const h of homes) {
+      if (shapesOverlap(dsh, rectShape(h.q.x, h.q.z, h.rot, hw, hd), 0.4)) continue;
+      const sc =
+        relief(ctx, rectShape(h.q.x, h.q.z, h.rot, hw, hd)) + O.houseNear * dist(h.q, deck.p);
+      if (sc < bs) {
+        bs = sc;
+        pick = { deck, house: h };
+      }
+    }
+    if (pick.house) break;
+  }
+  const { p, rot } = pick.deck;
+  putFixture(ctx, isl, 'onsenDeck', p, rot, O.deck[0], O.deck[1], undefined, O.deckMargin, false);
+  const [cx, cz, cy] = O.capybara;
+  story('onsenCapybara', local(p, rot, cx, cz), cy, rot);
+  const h = pick.house;
+  if (h) putFixture(ctx, isl, 'onsenHouse', h.q, h.rot, hw, hd, undefined, FLATTEN.lotMargin);
+}
+
+/** The gate (pier root): incident sign + a siren across the lane, lava lanterns to the yard. */
+function gate(
+  ctx: SiteCtx,
+  isl: IslandData,
+  root: XZ,
+  to: XZ,
+  kind: 'yard' | 'none',
+  story: StoryFn,
+  pins: readonly XZ[],
+): void {
+  const u = unit(root, to);
+  const n = { x: -u.z, z: u.x };
+  const I = C.incident;
+  let signSide = 0;
+  find: for (const [along, off] of I.at)
+    for (const sg of [1, -1]) {
+      const side = { x: n.x * sg, z: n.z * sg };
+      const p = add(add(root, u, along), side, off);
+      // the board faces the pier root: crews read it as they come ashore
+      const to = unit(p, root);
+      const face = ang(to.x, to.z);
+      const o = { pins, r: 1.1, maxRelief: I.maxRelief, minShore: I.minShore };
+      if (!kitAt(ctx, isl, 'incidentSign', [p], () => face, o, I.variant)) continue;
+      story('incidentWatch', add(p, to, 1.8), 0, face + Math.PI);
+      signSide = sg;
+      break find;
+    }
+  // the harbour siren across the lane from the sign (either side without one)
+  const [ha, hs] = C.horns.pier;
+  const hc = (signSide ? [-signSide] : [1, -1]).flatMap((sg) =>
+    ha.map((a) => add(add(root, u, a), n, sg * hs)),
+  );
+  kitAt(ctx, isl, 'signalHorn', hc, () => ang(u.x, u.z), {
+    pins,
+    r: 0.6,
+    maxRelief: C.horns.maxRelief,
+  });
+  const L = C.lanterns;
+  const len = kind === 'yard' ? dist(root, to) - W.yard.footprint[1] / 2 - 1 : 18;
+  let made = 0;
+  for (let s = L.avenueStart; s <= len && made < L.avenueMax; s += L.avenuePitch)
+    for (const sg of [1, -1]) {
+      const p = add(add(root, u, s), n, sg * L.avenueOff);
+      if (kitAt(ctx, isl, 'lavaLantern', [p], () => ang(u.x, u.z), { pins, r: 0.35 })) made++;
+    }
+  // the rest along the quay edge, spaced off every lamp already standing there
+  const a = isl.anchors.harbour;
+  if (!a) return;
+  const H = S.harbour;
+  const F = frameOf(a);
+  const lamps = ctx.fixtures.filter(
+    (f) => f.islandId === isl.id && (f.defId === 'lanternPost' || f.defId === 'lavaLantern'),
+  );
+  for (let du = -H.paveR; du <= H.paveR && made < L.quayMax; du += 1)
+    for (let dv = -H.paveR; dv <= H.paveR && made < L.quayMax; dv += 1) {
+      const p = F.at(du, dv);
+      if (dist(p, a) > H.paveR || heightAt(ctx.h, p.x, p.z) > H.maxY) continue;
+      const sd = sdfAt(ctx, p.x, p.z);
+      if (sd < H.quay.lampShore[0] || sd > H.quay.lampShore[1]) continue;
+      if (lamps.some((q) => dist(q, p) < L.quayGap)) continue;
+      if (!kitAt(ctx, isl, 'lavaLantern', [p], () => F.rotY, { pins, r: 0.35 })) continue;
+      lamps.push(ctx.fixtures[ctx.fixtures.length - 1]);
+      made++;
+    }
+}
+
+/** Container yard: the pager rock by the control tower; the cat / nap story spots. */
+function quayKit(
+  ctx: SiteCtx,
+  isl: IslandData,
+  yard: FixtureData,
+  story: StoryFn,
+  pins: readonly XZ[],
+): void {
+  const rot = yard.rotY;
+  const f = dirOf(rot);
+  const lx = { x: f.z, z: -f.x };
+  const tower = add(add(yard, lx, W.yard.tower.x), f, W.yard.tower.z);
+  const pin = add(tower, f, 2.6);
+  // no incident sign at the pier root: it stands by the tower path instead, facing its walkers
+  const I = C.incident;
+  if (islandFx(ctx, isl, 'incidentSign').length === 0) {
+    const sc = I.tower.x.map((x) => add(add(pin, lx, x), f, I.tower.z));
+    const o = { pins: pins.filter((q) => dist(q, pin) > 0.01), r: 1.1, maxRelief: I.maxRelief };
+    const s = kitAt(ctx, isl, 'incidentSign', sc, () => rot, o, I.variant);
+    if (s) story('incidentWatch', add(s, f, 1.8), 0, rot + Math.PI);
+  }
+  const P = C.pager;
+  const pc = [
+    ...P.out.flatMap((o) => P.side.map((s) => add(add(tower, f, o), lx, s))),
+    ...P.end.map(([x, z]) => add(add(tower, lx, x), f, z)),
+  ].filter((p) => dist(p, pin) >= P.pinClear);
+  const pager = kitAt(ctx, isl, 'pagerRock', pc, (p) => ang(p.x - tower.x, p.z - tower.z), {
+    pins,
+    r: 0.6,
+    maxRelief: 1,
+  });
+  if (pager) story('pagerCrab', pager, 0, 0);
+  story('craneCat', add(yard, lx, W.yard.crane.x), W.crane.top, rot);
+  const row = islandFx(ctx, isl, 'containerRow')[0];
+  if (row) story('containerNap', row, 2 * W.container.h, row.rotY);
+  else story('containerNap', yard, W.stack.tiers[0] * W.container.h, rot);
+}
+
+/**
+ * Foundry: the first furnace hall's ingot stacks (hot v0 by the mouth → cooled v2 away from it)
+ * and a siren at its yard edge; an anvil outside each smithy door; lava lanterns along the
+ * rail's seaward side and the ore-cart flower at its far end.
+ */
+function foundryKit(
+  ctx: SiteCtx,
+  isl: IslandData,
+  plan: SitePlan,
+  rng: Rng,
+  story: StoryFn,
+  pins: readonly XZ[],
+): void {
+  const halls = islandFx(ctx, isl, 'foundry');
+  const furnace = halls[0];
+  if (furnace) {
+    const y = heightAt(ctx.h, furnace.x, furnace.z);
+    const G = C.ingots;
+    const n = rng.int(G.count[0], G.count[1]);
+    const own = (o: Shape): boolean => o.r === 0 && dist(o, furnace) < 0.05;
+    // the row beside a hall's mouth (the first hall first), the longest one wins
+    let best: { at: XZ[]; rot: number } = { at: [], rot: 0 };
+    for (const h of halls)
+      for (const sg of [1, -1]) {
+        const got: XZ[] = [];
+        const mine = (o: Shape): boolean => o.r === 0 && dist(o, h) < 0.05;
+        const yh = heightAt(ctx.h, h.x, h.z);
+        for (let k = 0; k < n; k++) {
+          const ax = sg * (G.along[0] + k * G.along[1]);
+          const p = local(h, h.rotY, ax, G.out[0] + k * G.out[1]);
+          const o = { pins, r: 0.75, y: yh, tol: 0.6, ignore: mine, maxRelief: G.maxRelief };
+          if (!spotOk(ctx, isl, p, o)) break;
+          got.push(p);
+        }
+        if (got.length > best.at.length) best = { at: got, rot: h.rotY };
+      }
+    const m = best.at.length;
+    for (const [k, p] of best.at.entries()) {
+      const v = m > 1 ? Math.round((k * 2) / (m - 1)) : 0;
+      kitFixture(ctx, isl, 'ingotStack', p, best.rot + (k % 2 ? 0.25 : -0.25), 0.75, v, true);
+    }
+    const [hx, hz] = C.horns.furnace;
+    kitAt(
+      ctx,
+      isl,
+      'signalHorn',
+      [-hx, hx].map((x) => local(furnace, furnace.rotY, x, hz)),
+      () => furnace.rotY,
+      { pins, r: 0.6, y, tol: 0.6, ignore: own, maxRelief: C.horns.maxRelief, block: true },
+    );
+  }
+  let hammer = false;
+  for (const s of islandFx(ctx, isl, 'smithy').slice(0, C.anvils.max)) {
+    const [ax, az] = C.anvils.at;
+    const dz = W.smithy.footprint[1] / 2 + az;
+    const sx = W.smithy.footprint[0] / 2 + C.anvils.side;
+    const cands = [
+      ...[ax, -ax].map((x) => local(s, s.rotY, x, dz)),
+      ...[sx, -sx].map((x) => local(s, s.rotY, x, 0.6)),
+    ];
+    const a = kitAt(ctx, isl, 'anvil', cands, () => s.rotY + 0.4, { pins, r: 0.45, block: true });
+    // a smith at the first anvil (hammer pose), standing on its door side
+    if (a && !hammer) {
+      hammer = true;
+      story('anvilHammer', add(a, dirOf(s.rotY), 0.9), 0, s.rotY + Math.PI);
+    }
+  }
+  const rail = plan.lines?.find((l) => l.islandId === isl.id && l.kind === 'rail');
+  if (!rail) return;
+  const a = rail.points[0];
+  const b = rail.points[rail.points.length - 1];
+  const u = unit(a, b);
+  const len = dist(a, b);
+  // seaward = away from the furnace step
+  const away = furnace ? unit(furnace, add(a, u, len / 2)) : { x: -u.z, z: u.x };
+  const sg = away.x * -u.z + away.z * u.x >= 0 ? 1 : -1;
+  const n = { x: -u.z * sg, z: u.x * sg };
+  const y = heightAt(ctx.h, a.x, a.z);
+  const L = C.lanterns;
+  const ignore = onLine(rail.points);
+  let made = 0;
+  for (let s = 1; s <= len - 1 && made < L.railMax; s += L.railPitch) {
+    // seaward side first, else the step side
+    const cands = [1, -1].map((k) => add(add(a, u, s), n, k * L.railOff));
+    const o = { pins, r: 0.35, y, tol: 0.8, ignore, block: true };
+    if (kitAt(ctx, isl, 'lavaLantern', cands, () => ang(n.x, n.z), o)) made++;
+  }
+  story('cartFlower', add(b, u, -1), W.rail.top, ang(u.x, u.z));
+}
+
+/** The server shrine beside the top data center hall, facing out to sea with it. */
+function shrine(
+  ctx: SiteCtx,
+  isl: IslandData,
+  terraces: readonly number[],
+  pins: readonly XZ[],
+): void {
+  const S2 = C.shrine;
+  for (const li of terraces) {
+    const l = ctx.lots[li];
+    const y = heightAt(ctx.h, l.x, l.z);
+    const c = [1, -1].flatMap((sg) => [
+      local(l, l.rotY, sg * (l.w / 2 + S2.side), l.d / 2 + S2.front),
+      local(l, l.rotY, sg * (l.w / 2 - S2.inset), l.d / 2 + S2.apron),
+    ]);
+    if (kitAt(ctx, isl, 'serverShrine', c, () => l.rotY, { pins, r: 0.8, y, tol: 0.8 })) return;
+  }
+}
+
+/** Valve wheels beside the longest run of each pipe line (wheel facing away from the pipe). */
+export function placeValves(ctx: SiteCtx, isl: IslandData, plan: SitePlan): void {
+  const V = C.valves;
+  let made = 0;
+  for (const line of plan.lines ?? []) {
+    if (made >= V.max) break;
+    if (line.islandId !== isl.id || line.kind !== 'pipe') continue;
+    const pts = line.points;
+    const runs = pts
+      .map((q, j) => ({ j, L: j > 0 ? dist(pts[j - 1], q) : 0 }))
+      .filter((r) => r.L >= V.minRun)
+      .sort((a, b) => b.L - a.L);
+    const ignore = onLine(pts);
+    const o = {
+      pins: plan.links.map((l) => l.pin),
+      r: 0.8,
+      maxRelief: V.maxRelief,
+      ignore,
+      falloff: true,
+    };
+    find: for (const { j, L } of runs) {
+      const u = unit(pts[j - 1], pts[j]);
+      for (const t of V.at)
+        for (const sg of [1, -1]) {
+          const m = add(pts[j - 1], u, L * t);
+          const n = { x: -u.z * sg, z: u.x * sg };
+          if (kitAt(ctx, isl, 'pipeValveWheel', [add(m, n, V.off)], () => ang(n.x, n.z), o)) {
+            made++;
+            break find;
+          }
+        }
+    }
+  }
+}
+
+/** Imported cargo crates (cargoCrate, THEME_IDS-order variants) in small piles beside the yard. */
+function crates(ctx: SiteCtx, isl: IslandData, yard: FixtureData, rng: Rng): void {
+  const K = C.crates;
+  const H = S.harbour;
+  const a = isl.anchors.harbour;
+  if (!a) return;
+  const cand: XZ[] = [];
+  for (let u = -K.search; u <= K.search; u += 1.5)
+    for (let v = -K.search; v <= K.search; v += 1.5) {
+      const p = local(yard, yard.rotY, u, v);
+      if (dist(p, a) > H.paveR || heightAt(ctx.h, p.x, p.z) > H.maxY) continue;
+      cand.push(p);
+    }
+  // nearest the yard first: the crates wait beside the stacks
+  const ysh = rectShape(yard.x, yard.z, yard.rotY, ...W.yard.footprint);
+  cand.sort((p, q) => shapeDist(ysh, p.x, p.z) - shapeDist(ysh, q.x, q.z));
+  for (const pile of K.piles) {
+    const v = THEME_IDS.indexOf(pile.theme);
+    const p = cand.find((q) => spotOk(ctx, isl, q, { r: K.pileR, minShore: H.quay.minShore }));
+    if (!p) continue;
+    for (let k = 0; k < pile.n; k++) {
+      const off = k === 0 ? 0 : rng.range(0.45, K.pileR - 0.15);
+      const q = add(p, dirOf(rng.range(0, Math.PI * 2)), off);
+      const rotY = rng.range(0, Math.PI * 2);
+      ctx.fixtures.push({
+        defId: 'cargoCrate',
+        x: q.x,
+        z: q.z,
+        rotY,
+        islandId: isl.id,
+        variant: v,
+      });
+    }
+    addShape(ctx, isl, discShape(p.x, p.z, K.pileR), false);
+  }
 }

@@ -109,6 +109,10 @@ const DEVOPS_CAM = '-128,92,21.46,-56,2,-66.54';
 const DEVOPS_TERRACE_CAM = '-122,30,-128.54,-80,8,-100.54';
 /** D-devops-harbour (raw, seed 1001): the container yard, CI/CD belt, pier and a cargo ship. */
 const DEVOPS_HARBOUR_CAM = '-54,20,-10.54,-80,2,-40.54';
+/** D-culture-devops (raw, seed 1001; TASK-422): the onsen, quay and gate from the lee sea. */
+const DEVOPS_CULTURE_CAM = '-128,36,-104,-80,6,-70';
+/** D-culture-devops-onsen (raw, seed 1001; TASK-422): the onsen deck and bath house close up. */
+const DEVOPS_ONSEN_CAM = '-101,13,-74,-83,7.5,-81';
 
 /** W9 Research hero (raw, seed 1001 Observatory University; TASK-402b), re-pin when the layout changes. */
 const W9_CAM = '-66,21,203,-126,15,221';
@@ -653,6 +657,28 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     cam: 'village:coding',
     time: 22,
     simt: 2,
+    sets: ['dev'],
+  },
+  {
+    id: 'D-culture-devops',
+    title: 'Kor Demircileri · DevOps',
+    // TASK-422: T2 (~70 u) from the lee sea at shift's end: onsen deck + bath house on the pool
+    // rim, lava lanterns down the quay, the harbour gate. Raw cam on the seed 1001 layout.
+    seed: 1001,
+    cam: DEVOPS_CULTURE_CAM,
+    time: 17.75,
+    simt: 6,
+    sets: ['dev'],
+  },
+  {
+    id: 'D-culture-devops-onsen',
+    title: 'Onsen night · DevOps',
+    // TASK-422: across the pool from the sea side: the onsen deck (capybara spot), the bath house,
+    // lava lanterns lit at dusk
+    seed: 1001,
+    cam: DEVOPS_ONSEN_CAM,
+    time: 20,
+    simt: 6,
     sets: ['dev'],
   },
   // ---- HUD review (TASK-182): dock + dial, settings sheet, photo bar on desktop and phones
