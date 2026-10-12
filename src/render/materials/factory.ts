@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { APPEAR_OUT_GLSL } from '../props/appear.ts';
+import { ALWAYS_APPEAR, APPEAR_OUT_GLSL } from '../props/appear.ts';
 import { BLOOM_IN, TREE_SWAY, WINDMILL } from '../../content/anim.ts';
 import { SHARED } from '../uniforms.ts';
 import { FIELDS_GLSL } from '../shaders/chunks/fields.glsl.ts';
@@ -66,6 +66,11 @@ export interface LitOptions {
    * late. Off for moving meshes (their origin hash would change as they move).
    */
   lamps?: { stagger?: boolean; lateOff?: boolean };
+  /**
+   * Far structure merge (TASK-407): the geometry is pre-transformed instances (`uMarMerged`;
+   * per-vertex origin in `aSpin.xyz`, scale in `aAppear`, yaw code in `floor(aSeed)`).
+   */
+  merged?: boolean;
 }
 
 type FeatureFlag = 'wind' | 'bloomIn' | 'dither' | 'emissive' | 'rim';
@@ -153,6 +158,7 @@ uniform vec3 uCameraPos;
 uniform float uFadeNear;
 uniform float uFadeFar;
 uniform float uMarBloomIn;
+uniform float uMarMerged;
 ${ACTIVITY_VERTEX_PARS}
 ${marAttr('float', 'wind')}
 ${marAttr('float', 'aSeed')}
@@ -181,7 +187,20 @@ const VERTEX_DISPLACE = /* glsl */ `
     mat4 marM = modelMatrix;
   #endif
   vec3 marOrigin = marM[3].xyz;
+  // far structure merge (TASK-407, render/props/far-merge.ts): pre-transformed instances in one
+  // mesh carry their instance origin in aSpin.xyz (|w| < 0.5: no tag; the baked facade code of
+  // ACTIVITY_OCCUPANCY) and their scale in aAppear (merged meshes only show settled instances).
+  // The pivot terms below are identities otherwise.
+  vec3 marPivot = vec3(0.0);
+  float marScale = 1.0;
+  float marAppear = aAppear;
   #ifdef MAR_SPIN
+  if (uMarMerged > 0.5) {
+    marOrigin = aSpin.xyz;
+    marPivot = marOrigin;
+    marScale = aAppear;
+    marAppear = ${f(ALWAYS_APPEAR)};
+  }
   // spin tags: 1 (blades) and 3 (turbine rotor, then yawed below); 2 / 4 / negative do not spin
   if ((aSpin.w > 0.5 && aSpin.w < 1.5) || (aSpin.w > 2.5 && aSpin.w < 3.5)) {
     // ART_BIBLE §7 #18: 6 s/rev × wind (0.5–1.5), extra turn on gusts
@@ -197,17 +216,17 @@ const VERTEX_DISPLACE = /* glsl */ `
 ${ACTIVITY_DISPLACE}  #ifdef MAR_BLOOM_IN
   // reduced motion (uMotionScale < 1): bloom-in becomes a dither fade, no scale spring
   float marBloomD = 1.0;
-  if (marIsRemoved(aAppear)) {
+  if (marIsRemoved(marAppear)) {
     // removed by an edit (TASK-211): the bloom-in reversed (dither out under reduced motion)
     bool marRm = uMotionScale < 0.999;
-    float marOut = marRemoveFade(aAppear, uTime, marRm);
+    float marOut = marRemoveFade(marAppear, uTime, marRm);
     if (marRm) marBloomD = marOut;
     else transformed *= marOut;
   } else if (uMarBloomIn > 0.5) {
     if (uMotionScale < 0.999) {
-      marBloomD = smoothstep(0.0, ${f(BLOOM_IN.ditherMs / 1000)}, uTime - aAppear);
+      marBloomD = smoothstep(0.0, ${f(BLOOM_IN.ditherMs / 1000)}, uTime - marAppear);
     } else {
-      transformed *= marSpringIn(uTime - aAppear, ${f(BLOOM_IN.k)}, ${f(BLOOM_IN.c)});
+      transformed *= marSpringIn(uTime - marAppear, ${f(BLOOM_IN.k)}, ${f(BLOOM_IN.c)});
     }
   }
   #endif
@@ -223,12 +242,12 @@ ${ACTIVITY_DISPLACE}  #ifdef MAR_BLOOM_IN
       mat3 marR = mat3(marM);
       float marS2 = max(dot(marR[0], marR[0]), 1e-6);
       vec3 marDirL = transpose(marR) * vec3(uWind.x, 0.0, uWind.y) / marS2;
-      float marH = max(transformed.y, 0.0);
+      float marH = max((transformed.y - marPivot.y) / marScale, 0.0);
       transformed += marDirL * (marAng * marH * marW);
-      // canopy squash at the gust peak: y 0.97, xz 1.03
+      // canopy squash at the gust peak: y 0.97, xz 1.03 (about the instance pivot)
       float marSq = ${f(TREE_SWAY.squash)} * marGust * marW;
-      transformed.y *= 1.0 - marSq;
-      transformed.xz *= 1.0 + marSq;
+      transformed.y = marPivot.y + (transformed.y - marPivot.y) * (1.0 - marSq);
+      transformed.xz = marPivot.xz + (transformed.xz - marPivot.xz) * (1.0 + marSq);
     }
   }
   #endif
@@ -414,9 +433,11 @@ export interface FadeUniforms {
 function sharedVertexUniforms(
   fade: FadeUniforms,
   v: ResolvedVariant,
+  merged = false,
 ): Record<string, THREE.IUniform> {
   return {
     uMarBloomIn: { value: v.features.bloomIn ? 1 : 0 },
+    uMarMerged: { value: merged ? 1 : 0 },
     uTime: SHARED.uTime,
     uWind: SHARED.uWind,
     uGustSpeed: SHARED.uGustSpeed,
@@ -450,7 +471,7 @@ export class LitMaterial extends THREE.MeshLambertMaterial {
     const lampMode = new THREE.Vector2(opts.lamps?.stagger ? 1 : 0, opts.lamps?.lateOff ? 1 : 0);
     const defines = defineMap();
     const uniforms: Record<string, THREE.IUniform> = {
-      ...sharedVertexUniforms(this.fade, variant),
+      ...sharedVertexUniforms(this.fade, variant, opts.merged),
       uMarRim: { value: variant.features.rim ? 1 : 0 },
       uHorizon: SHARED.uHorizon,
       uShadowTint: SHARED.uShadowTint,
@@ -511,13 +532,14 @@ export function makeLitMaterial(features: LitFeatures, opts?: LitOptions): LitMa
 export function makeDepthMaterial(
   features: LitFeatures,
   fade?: FadeUniforms,
+  merged = false,
 ): THREE.MeshDepthMaterial {
   const variant = resolveVariant(features);
   const fadeU: FadeUniforms = fade ?? { uFadeNear: { value: 1e6 }, uFadeFar: { value: 2e6 } };
   const mat = new THREE.MeshDepthMaterial();
   mat.name = `${variant.key}:depth`;
   const defines = defineMap();
-  const uniforms = sharedVertexUniforms(fadeU, variant);
+  const uniforms = sharedVertexUniforms(fadeU, variant, merged);
   (mat as unknown as { defaultAttributeValues: typeof DEFAULT_ATTRS }).defaultAttributeValues =
     DEFAULT_ATTRS;
   mat.onBeforeCompile = (shader) => {

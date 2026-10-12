@@ -112,7 +112,7 @@ describe('material factory', () => {
       expect(shader.defines).toHaveProperty(d);
     }
     expect(shader.vertexShader).toContain('marGustAt(marOrigin.xz');
-    expect(shader.vertexShader).toContain('marSpringIn(uTime - aAppear');
+    expect(shader.vertexShader).toContain('marSpringIn(uTime - marAppear');
     expect(shader.fragmentShader).toContain('marBayer4(gl_FragCoord.xy)');
     expect(shader.uniforms.uFadeNear).toBe(m.fade.uFadeNear);
   });
@@ -128,7 +128,7 @@ describe('material factory', () => {
     };
     d.onBeforeCompile(shader as never, undefined as never);
     expect(shader.vertexShader).toContain('marGustAt(marOrigin.xz');
-    expect(shader.vertexShader).toContain('marSpringIn(uTime - aAppear');
+    expect(shader.vertexShader).toContain('marSpringIn(uTime - marAppear');
     expect(shader.uniforms.uFadeFar).toBe(lit.fade.uFadeFar);
     expect(shader.uniforms.uMarBloomIn.value).toBe(1);
     expect(d.customProgramCacheKey()).toBe(`${lit.variant.key}:depth`);

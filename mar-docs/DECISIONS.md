@@ -2,6 +2,42 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-049: Far structure merge — one pre-transformed LOD1 mesh per island at T0–T1 (TASK-407) — 2026-10-12
+
+**Decision**: at tiers 0–1 the LOD1 groups (one InstancedMesh per (def, variant) across islands, D-022)
+are replaced, once every instance has settled, by one merged mesh per (island, material class, tier
+class) (`render/props/far-merge.ts`). A material class is every per-material uniform of the prop
+materials (fade near/far, lamp late-off, rim; `PropMaterials.mergedFor` makes one twin LitMaterial +
+depth material per class with `uMarMerged = 1`); a tier class is "shown at T0 and T1" or "T1 only".
+The merged mesh is an InstancedMesh of one identity instance (same instanced lit / depth program,
+0 new programs) whose vertices are the instances baked to world space. Per-instance shader inputs
+ride existing attributes: `aSpin.xyz` = instance origin (dither fade, wind gust, lamp / screen /
+occupancy hashes, hover), `aSeed` = the instance seed, `aAppear` = instance scale (wind pivot height),
+normals in world space (shadow normal bias, 16-bit); the night facade occupancy, which needs
+object-space normals and positions, gets its facade test and quadrant baked into `aSpin.w` as
+`(q + 3) / 16` (< 0.5, below every tag). `ao` is baked into the colour. LOD1 geometry that uses the
+`aSpin` tag channel (windmill / clock blades, turbines, solar trackers, animated screens, weather
+mast) stays instanced. The batcher shows the merged meshes only when nothing is in flight: no
+queued pop, every bloom-in older than 2.05 s (`marSpringIn` is exactly 1 after 2 s), no removal fade,
+no outside write to a LOD1 group (click reactions, 0.1 s grace). Otherwise the groups draw as before,
+so the swap is pixel-neutral and needs no fade; T2 keeps the existing LOD1 → LOD0 transition.
+Edits and flood hides (`rewrite`) mark the touched store indices' islands (current and last merged)
+dirty; dirty islands are rebuilt lazily (first T0/T1 frame, and after their fades) and only they.
+Meshes are disposed on rebuild and with the world scope.
+**Rationale**: W11 (postcard, all 7 islands) drew 298 of the 300 medium calls, 196 of them LOD1
+groups (98 colour + 98 shadow); M19 needs headroom. Per-vertex origin keeps every per-instance
+effect identical; packing a yaw code into `aSeed` instead was tried and lost wind-phase precision
+(W11 2.3 k px differ) or normal precision (shadow specks).
+**Impact** (seed 1001, SwiftShader): medium W11 298 → 146 calls, W1 227 → 101, W4 200 → 119, W5 / W8
+unchanged (219 / 154, T2); high W11 298 → 146; low W11 142 → 66, W1 109 → 46, D-overview 109 → 46.
+Programs unchanged (W11 17, low 9, high 17/24). Pixels: W5 / W8 0 px, W1 2 px, W4 (night) 51 px
+(max Δ 2), W11 171 px (single pixels on swaying tree edges, max Δ 37); ladder frames identical,
+ladder misses unchanged. GPU memory +7 MB at T0/T1 (merged buffers, ≈ 120 k vertices for seed 1001:
+medium W11 140 → 147, dev low D-overview 43 → 50); T2/T3 views never build them. Interactive
+transitions (T2 → T1, T1 → T0) draw the old call count for ~2 s until the bloom-ins settle.
+Interfaces: `BatcherDeps.mergedMaterialFor`, `PropBatcher.farMerge`, `PropMaterials.mergedFor`,
+`LitOptions.merged`, `makeDepthMaterial(features, fade, merged)`, uniform `uMarMerged`.
+
 ## D-048: DevOps "Ember Works" — cone-foot shelves with a harbour, a foundry and data center terraces (TASK-405) — 2026-10-11
 
 **Decision**: Emberpeak keeps its roster slot, diameter roll, reach and cone, and grows three flat shelves at

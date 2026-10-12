@@ -257,6 +257,11 @@
 
 - Draw calls: a per-group `InstancedMesh` costs 1 call; contact blobs are merged per LOD in the batcher (`blobMerge`).
   A new per-(def, island) mesh type needs the same treatment; sky craft are only 2 calls, island groups dominate
+- Far structure merge (D-049): at T0–T1 LOD1 draws through `props:far:*` meshes where `uMarMerged` = 1 means
+  `aSpin.xyz` = instance origin, `aAppear` = scale, `aSpin.w` (< 0.5) = baked facade code. A new per-instance
+  term in the lit shader (anything reading `marOrigin`, `marM`, `objectNormal`, `aAppear` or object-space
+  `transformed`) needs a merged twin, or its LOD1 geometry must carry an `aSpin` tag (stays instanced).
+  Don't pack data into `aSeed`: its fraction is the wind phase (1024 yaw codes → visible sway diffs)
 
 > Rules: read at session start; update gotchas/patterns as discovered; delete stale info; keep it
 > short. Architecture decisions go to DECISIONS.md, not here.
