@@ -243,7 +243,7 @@ Details in `phases/phase-3.md`.
 | TASK-409 | Pennant & signage kit: 7 pennant cuts, pier signpost, cargo crate ×7, sail stripe, emblem glyphs | props | M | COMPLETED | — |
 | TASK-410 | HQ Harbour Guild kit (timetable board, bell post, ferry awning, guild hall variant, ferry hull …) | props | M | COMPLETED | 408, 409 |
 | TASK-411 | Coding Wind Gardens kit (pergola desks, hammocks, kites, rubber ducks, giant duck …) | props | M | COMPLETED | 408 |
-| TASK-412 | DevOps Ember Smiths kit (lava lanterns, ingots, anvil, onsen deck, server shrine, forge bell …) | props | M | PENDING | 408 |
+| TASK-412 | DevOps Ember Smiths kit (lava lanterns, ingots, anvil, onsen deck, server shrine, forge bell …) | props | M | COMPLETED | 408 |
 | TASK-413 | Marketing Carnival kit (popcorn cart, confetti cannon, marquee, balloon mast, mascot statue …) | props | M | PENDING | 408 |
 | TASK-414 | QA Inspectors kit (bug jars, stamp desk, cone pyramid, scoreboard, inspection booth, UV lamps …) | props | M | PENDING | 408, 410 |
 | TASK-415 | Design Glass & Light kit (hot shop, prism sculpture, stained screen, glass orbs, rainbow arc, canopy vitray …) | props | M | PENDING | 408, 414 |

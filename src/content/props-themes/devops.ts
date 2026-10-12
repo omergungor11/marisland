@@ -4,10 +4,12 @@
  */
 import { PropFlag } from '../../world/prop-store.ts';
 import { OFFICE_PAL } from '../palette-offices.ts';
+import { EMISSIVE, FLOWERS, ROCK, WALLS, WOOD } from '../palette.ts';
+import { SKY_CRAFT } from '../sky-craft.ts';
 import { THEMES } from '../themes/index.ts';
 import type { PropDef } from '../props.ts';
 
-const { grounded } = PropFlag;
+const { grounded, noShadow } = PropFlag;
 
 export const DEVOPS_COLORS = {
   /** Cooling tower concrete (OFFICE_PAL.devops wall family) + rim / band accent. */
@@ -180,6 +182,46 @@ export const DEVOPS_WORKS = {
   },
 } as const;
 
+/**
+ * TASK-412 "Kor Demircileri" (Ember Smiths) kit colours (geo/themes/culture-devops.ts). Everything
+ * is a palette-table hex (ART_BIBLE §2 / palette.ts / palette-offices.ts / sky-craft.ts); the lava
+ * and window hexes glow at night through the emissive path. Heat tones of the ingot variants run
+ * hot (lava) -> warm (accent) -> cooled (steel).
+ */
+export const DEVOPS_CULTURE_KIT = {
+  lava: EMISSIVE.lava,
+  glow: EMISSIVE.lantern,
+  window: EMISSIVE.window,
+  orange: THEMES.devops.accent,
+  orangeDeep: '#E5822A',
+  copper: '#C9754A',
+  brass: SKY_CRAFT.brass,
+  iron: '#3A3F4D',
+  steel: '#6F7685',
+  steelLight: ROCK[1],
+  steelPale: '#B4B9C4',
+  basalt: '#4F4A5E',
+  basaltLight: '#7A7584',
+  basaltDark: '#5A5664',
+  red: '#E35D6A',
+  coral: '#E8735A',
+  teal: '#3FB8AF',
+  hazard: '#F5C84C',
+  cream: WALLS[0],
+  paper: WALLS[1],
+  woodLight: WOOD.planks,
+  wood: WOOD.logs,
+  woodDark: WOOD.dark,
+  flowers: FLOWERS,
+  led: ['#7CFFB0', '#FFC870', '#7CC4FF'],
+  /** Ingot rows per heat variant (bottom -> top). */
+  ingotHeat: [
+    ['#FF9F43', '#FFB347', '#FFC870'],
+    ['#8A909C', '#E5822A', '#FF6A3D'],
+    ['#8A909C', '#6F7685', '#E5822A'],
+  ],
+} as const;
+
 /** TASK-393: the tower is built at its old size (8 / 7 u) and stretched in y by this factor. */
 export const COOLING_TOWER_RISE = 1.6;
 /** Cooling tower nominal heights per variant (u). */
@@ -217,7 +259,8 @@ export const DEVOPS_PROP_DEFS: readonly PropDef[] = [
     footprint: 11,
     flags: grounded,
   },
-  { id: 'foundry', geo: 'foundry', tier: 0, variants: 1, footprint: 3.8, flags: grounded },
+  // variant 1 = forge bell (TASK-412): LOD1 identical to variant 0, so still one far group
+  { id: 'foundry', geo: 'foundry', tier: 0, variants: 2, footprint: 3.8, flags: grounded },
   // T2: the smithies are small; their LOD1 group would cost a far draw call in the postcard
   { id: 'smithy', geo: 'smithy', tier: 2, variants: 1, footprint: 2.1, flags: grounded },
   { id: 'railTrack', geo: 'railTrack', tier: 2, variants: 1, footprint: 1.0, flags: grounded },
@@ -232,4 +275,53 @@ export const DEVOPS_PROP_DEFS: readonly PropDef[] = [
   },
   { id: 'fuelTank', geo: 'fuelTank', tier: 2, variants: 1, footprint: 1.8, flags: grounded },
   { id: 'forklift', geo: 'forklift', tier: 2, variants: 1, footprint: 0.9, flags: grounded },
+];
+
+/**
+ * TASK-412 Ember Smiths kit (geo/themes/culture-devops.ts); ledger: content/cultures/devops.ts.
+ * Appended at the END of PROP_DEFS (content/props.ts, after the signage kit) so every existing def
+ * index — and with it the world hash pins — stays put. Tier >= 2 (+0 W11 calls) except onsenHouse;
+ * none reaches isLargeStructure (< 3 u high, plan extent < 3 u).
+ */
+export const DEVOPS_CULTURE_PROP_DEFS: readonly PropDef[] = [
+  { id: 'lavaLantern', geo: 'lavaLantern', tier: 2, variants: 1, footprint: 0.5, flags: grounded },
+  { id: 'onsenDeck', geo: 'onsenDeck', tier: 2, variants: 1, footprint: 2.8, flags: grounded },
+  { id: 'ingotStack', geo: 'ingotStack', tier: 2, variants: 3, footprint: 1.0, flags: grounded },
+  {
+    id: 'incidentSign',
+    geo: 'incidentSign',
+    tier: 2,
+    variants: 2,
+    footprint: 1.3,
+    flags: grounded,
+  },
+  {
+    id: 'pipeValveWheel',
+    geo: 'pipeValveWheel',
+    tier: 2,
+    variants: 1,
+    footprint: 1.2,
+    flags: grounded,
+  },
+  { id: 'signalHorn', geo: 'signalHorn', tier: 2, variants: 1, footprint: 1.0, flags: grounded },
+  {
+    id: 'serverShrine',
+    geo: 'serverShrine',
+    tier: 2,
+    variants: 1,
+    footprint: 1.0,
+    flags: grounded,
+  },
+  // T3 micro props: no shadow-pass copy (B4)
+  { id: 'anvil', geo: 'anvil', tier: 3, variants: 1, footprint: 0.7, flags: grounded | noShadow },
+  {
+    id: 'pagerRock',
+    geo: 'pagerRock',
+    tier: 3,
+    variants: 1,
+    footprint: 0.9,
+    flags: grounded | noShadow,
+  },
+  // the one tier-1 def: a small bath house by the hot spring
+  { id: 'onsenHouse', geo: 'onsenHouse', tier: 1, variants: 1, footprint: 2.2, flags: grounded },
 ];

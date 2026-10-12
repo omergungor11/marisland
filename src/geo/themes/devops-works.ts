@@ -13,6 +13,7 @@ import { Acc, col, qEuler, qFromTo } from '../kit.ts';
 import { Spin, fan, finishSpin } from '../office-kit.ts';
 import { V, V2, baseBox, cylB, gableRoof, jitterAcc, prism, put, windowAt } from '../parts.ts';
 import type { BuildOpts, PropGeoDef } from '../types.ts';
+import { FlatAcc, forgeBellInto, forgeMedallionInto } from './culture-devops.ts';
 
 const UP = V(0, 1, 0);
 const finish = (acc: Acc, rng: BuildOpts['rng']): THREE.BufferGeometry =>
@@ -234,11 +235,14 @@ function towerInto(acc: Acc, spin: Spin, ox: number, oz: number, lod: 0 | 1): vo
  * Lava foundry: a stone hall with a brick base band and a monitor roof (glowing clerestory),
  * a big arched furnace mouth at +z glowing with lava, a lava trough running out of it, a tipped
  * ladle, two tall brick chimneys at the back (FIXTURE_EMITTERS smoke), an ore heap.
+ * Variant 1 (TASK-412 "forge bell", Ember Smiths): the same hall plus a belfry with a brass bell and a
+ * lava lantern on the monitor ridge and the hammer-and-gear medallion over the furnace mouth. Both
+ * are LOD0 only: LOD1 is identical for every variant (flat, no seed jitter) so it stays one far group.
  */
-export function foundry({ rng, lod }: BuildOpts): THREE.BufferGeometry {
+export function foundry({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const Fd = W.foundry;
-  const acc = jitterAcc(rng, 0.012);
   const hi = lod === 0;
+  const acc = hi ? jitterAcc(rng, 0.012) : new FlatAcc();
   const { w, d, h } = Fd;
   put(acc, baseBox(w + 0.4, 0.3, d + 0.4), [0, 0, 0], Fd.iron, { aoAmt: 0.2 });
   put(acc, baseBox(w, h, d), [0, 0.3, 0], Fd.wall, { aoAmt: 0.2 });
@@ -344,6 +348,10 @@ export function foundry({ rng, lod }: BuildOpts): THREE.BufferGeometry {
           aoAmt: 0,
         },
       );
+  }
+  if (hi && variant === 1) {
+    forgeBellInto(acc, 0, 0.3 + h + Fd.roofRise + 0.3 + 0.45, 0);
+    forgeMedallionInto(acc, 0, 0.3 + 3.0, d / 2);
   }
   // chimneys: brick stacks with a yellow band and a dark cap
   const seg = hi ? 10 : 6;
@@ -615,7 +623,7 @@ export const DEVOPS_WORKS_GEO: readonly PropGeoDef[] = [
     height: 12,
     windy: false,
   },
-  { id: 'foundry', variants: 1, build: foundry, footprint: 3.8, height: 10, windy: false },
+  { id: 'foundry', variants: 2, build: foundry, footprint: 3.8, height: 10, windy: false },
   { id: 'smithy', variants: 1, build: smithy, footprint: 2.1, height: 4.6, windy: false },
   { id: 'railTrack', variants: 1, build: railTrack, footprint: 1.0, height: 0.22, windy: false },
   {
