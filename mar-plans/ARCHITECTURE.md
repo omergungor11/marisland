@@ -128,6 +128,7 @@ Rendering derives everything **per chunk** (32×32 cells = 64 u). Only chunks wi
 - Not BatchedMesh: no custom per-instance attributes, and without `WEBGL_multi_draw` (uncertain on iOS) it degrades to one draw per instance. Swappable behind the same interface.
 - At T0, tree masses are **blobs**, one group per canopy colour class across all islands (recoloured from each island's `treePalette`), that cross-dither with the real trees.
 - Structures ≥ 3 u and landmarks show from T0 with their own LOD1 built from LOD0 colours (D-032, `STRUCTURE_MIN_SIZE`, `STRUCTURES_FROM_T0`). LOD1 groups are per (def, variant); variants with identical LOD1 geometry fold into variant 0.
+- Far structure merge (D-049, `render/props/far-merge.ts`): at T0–T1, once every LOD1 instance has settled, one pre-transformed mesh per (island, material class, tier class) draws instead of the LOD1 groups (same lit / depth program, `uMarMerged`; per-vertex origin / seed / scale). Bloom-ins, removal fades and click reactions draw through the groups; an edit rebuilds only its island. LOD1 geometry with `aSpin` tags stays instanced.
 
 **Living surfaces and drones (M14c).** Drone couriers are one `InstancedMesh` on the lit program (6 on medium, 10 on high, none on low), dither-faded by camera distance and posed in closed form from sim time (`render/drones.ts`, `content/activity.ts`). Monitors, LEDs, billboards and pipes use the `aSpin.w` surface tags (§3).
 

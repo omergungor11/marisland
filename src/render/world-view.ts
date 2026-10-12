@@ -241,6 +241,8 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     counters: d.counters,
     materialFor: d.propMaterial ?? pm.materialFor,
     depthMaterialFor: d.propDepthMaterial ?? pm.depthMaterialFor,
+    // TASK-407 far structure merge (its twins must match the props' own materials)
+    mergedMaterialFor: d.propMaterial ? undefined : pm.mergedFor,
     softAppear: d.softAppear ?? true,
     castShadows: d.quality !== 'low',
     interiorShadows: d.quality === 'high',

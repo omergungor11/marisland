@@ -21,6 +21,18 @@ import {
 export interface PropMaterials {
   materialFor(def: PropDef, lod: Lod, groundCover: boolean): THREE.Material;
   depthMaterialFor(def: PropDef, lod: Lod, groundCover: boolean): THREE.Material | null;
+  /**
+   * TASK-407 far structure merge: the merged-mesh twin of a def's LOD1 material (same program,
+   * `uMarMerged` on). Defs whose LOD1 materials agree on every per-material uniform share one
+   * twin; `key` names that class.
+   */
+  mergedFor(def: PropDef): MergedMaterials;
+}
+
+export interface MergedMaterials {
+  key: string;
+  material: THREE.Material;
+  depth: THREE.Material;
 }
 
 export function propFeatures(def: PropDef, groundCover: boolean): LitFeatures {
@@ -58,8 +70,32 @@ export function createPropMaterials(scope: Scope): PropMaterials {
     }
     return m;
   };
+  const merged = new Map<string, MergedMaterials>();
   return {
     materialFor: get,
+    mergedFor(def) {
+      // every per-material uniform of a (non-ground-cover instance's) prop material: fade, lamp
+      // late-off, rim (bloom-in is on for all of them)
+      const [near, far] = def.fade ?? TIER_FADE[def.tier] ?? TIER_FADE[0];
+      const lateOff = !NIGHT.alwaysOn.includes(def.geo);
+      const features = propFeatures(def, false);
+      const key = `${near}:${far}:${lateOff ? 1 : 0}:${features.rim ? 1 : 0}`;
+      let m = merged.get(key);
+      if (!m) {
+        const material = scope.add(
+          makeLitMaterial(features, {
+            fadeNear: near,
+            fadeFar: far,
+            name: `prop:merged:${key}`,
+            lamps: { stagger: true, lateOff },
+            merged: true,
+          }),
+        );
+        const depth = scope.add(makeDepthMaterial(features, material.fade, true));
+        merged.set(key, (m = { key, material, depth }));
+      }
+      return m;
+    },
     depthMaterialFor(def, lod, gc) {
       if (gc) return null; // ground cover does not cast map shadows (contact blobs only)
       const k = key(def, lod, gc);

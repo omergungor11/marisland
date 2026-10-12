@@ -12,6 +12,7 @@ import {
   TURBINE_YAW,
 } from '../../content/activity.ts';
 import { WATERFALL_LOOK as WF } from '../../content/waterfalls.ts';
+import { MERGED_FACADE_BIAS, MERGED_FACADE_SCALE } from '../props/far-merge.ts';
 
 /**
  * GLSL for the living close-up surfaces (M14c TASK-384), spliced into the ONE lit program by
@@ -142,8 +143,16 @@ export const ACTIVITY_VARY = /* glsl */ `
 export const ACTIVITY_OCCUPANCY = /* glsl */ `
     if (uLampMode.y > 0.5) {
       vec3 marOn3 = objectNormal;
-      if (abs(marOn3.y) < 0.5 && dot(transformed.xz, marOn3.xz) > ${f(OCCUPANCY.minDepth)}) {
-        float marQ = floor(atan(marOn3.z, marOn3.x) / 1.5707963 + 0.5);
+      bool marFacade = abs(marOn3.y) < 0.5 && dot(transformed.xz, marOn3.xz) > ${f(OCCUPANCY.minDepth)};
+      float marQ = floor(atan(marOn3.z, marOn3.x) / 1.5707963 + 0.5);
+      #ifdef MAR_SPIN
+      if (uMarMerged > 0.5) {
+        // far merge (TASK-407): the object-space facade test and quadrant, baked per vertex
+        marFacade = aSpin.w > ${f(0.5 / MERGED_FACADE_SCALE)};
+        marQ = floor(aSpin.w * ${f(MERGED_FACADE_SCALE)} + 0.5) - ${f(MERGED_FACADE_BIAS)};
+      }
+      #endif
+      if (marFacade) {
         float marOk = marHash12(marOrigin.xz * 0.913 + vec2(marQ * 17.0, 5.3));
         float marOt = uTime / ${f(OCCUPANCY.period)} + marOk * 13.0;
         float marOs = floor(marOt);

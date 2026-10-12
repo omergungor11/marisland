@@ -36,6 +36,7 @@ import {
   type TreePalette,
 } from './clusters.ts';
 import { ALWAYS_APPEAR, APPEAR_OUT_SECONDS, HIDDEN_APPEAR, encodeAppearOut } from './appear.ts';
+import { createFarMerge, type FarMerge } from './far-merge.ts';
 
 /**
  * PropBatcher (ARCHITECTURE §3, D-004): one InstancedMesh per
@@ -111,6 +112,15 @@ export interface BatcherDeps {
    * `height` enables smooth-twin grounding (off without it).
    */
   world?: BatcherWorld;
+  /**
+   * TASK-407 far structure merge: merged-mesh twin materials of a def's LOD1 material (prop
+   * materials `mergedFor`). Without it the LOD1 groups always draw instanced.
+   */
+  mergedMaterialFor?: (def: PropDef) => {
+    key: string;
+    material: THREE.Material;
+    depth: THREE.Material | null;
+  };
 }
 
 export interface BatcherWorld {
@@ -173,6 +183,8 @@ export interface PropBatcher {
   slotsOf(i: number): readonly { g: Group; k: number }[] | undefined;
   /** TASK-213: T0 cluster cells (tests / debugging). */
   readonly clusters: ClusterIndex;
+  /** TASK-407: per-island merged LOD1 meshes (null without `mergedMaterialFor`). */
+  readonly farMerge: FarMerge | null;
 }
 
 export interface RewriteStats {
@@ -187,6 +199,14 @@ export interface RewriteStats {
   /** T0 cluster cells re-derived (TASK-213). */
   clusters: number;
 }
+
+/**
+ * TASK-407: seconds after a bloom-in start until it is over (`marSpringIn` is exactly 1 after
+ * 2 s; the reduced-motion dither takes BLOOM_IN.ditherMs) — the far merge waits for it.
+ */
+const SETTLE_SECONDS = 2.05;
+/** TASK-407: quiet time after an outside write (click reaction) before the far merge returns. */
+const OUTSIDE_GRACE_SECONDS = 0.1;
 
 /** Instances to allocate so `needed` fit with edit headroom. */
 export function grownCapacity(needed: number): number {
@@ -601,6 +621,8 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
   let finishRemovals: (g: Group) => void = () => {};
   let tier = -1;
   let firstUpdate = true;
+  /** Engine time after which every bloom-in / restore started so far is over (TASK-407). */
+  let settleAt = -Infinity;
   const popQueue: { g: Group; k: number }[] = [];
   const stats = { instances, groundCover, groups: groups.length, visibleInstances: 0 };
   const gcRadius = d.groundCoverRadius ?? 60;
@@ -710,6 +732,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
   const setAppear = (g: Group, k: number, v: number): void => {
     (g.appear.array as Float32Array)[k] = v;
     g.appear.needsUpdate = true;
+    if (v >= 0 && v < HIDDEN_APPEAR) settleAt = Math.max(settleAt, v + SETTLE_SECONDS);
   };
   /** Appear value for an instance (re)appearing through an edit at `time`. */
   const appearNow = (g: Group, time: number): number => {
@@ -1034,6 +1057,73 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
   const syncNearBlobs = blobMerge(0);
   const syncFarBlobs = blobMerge(1);
 
+  // ---- far structure merge (TASK-407, far-merge.ts): at tiers 0–1 one pre-transformed mesh per
+  // (island, material class, tier class) replaces the LOD1 groups, but only while every instance
+  // is settled — bloom-ins, removal fades and click reactions (instance matrices written from
+  // outside) draw through the groups, so the swap itself is pixel-neutral.
+  const far = d.mergedMaterialFor
+    ? createFarMerge({
+        scope: d.scope,
+        root,
+        store,
+        castShadows: d.castShadows,
+        materialsFor: d.mergedMaterialFor,
+        tierMask: (g) =>
+          (wantsVisible(g as Group, 0) ? 1 : 0) | (wantsVisible(g as Group, 1) ? 2 : 0),
+      })
+    : null;
+  if (far) for (let i = 0; i < store.count; i++) far.markDirty(store.islandId[i]);
+  let farList: Group[] = [];
+  let farListLen = -1;
+  /** LOD1 groups across islands (the merge candidates). */
+  const farGroups = (): Group[] => {
+    if (farListLen !== groups.length) {
+      farListLen = groups.length;
+      farList = groups.filter(
+        (g) =>
+          g.lod === 1 &&
+          !g.groundCover &&
+          g.bucket === ALL_ISLANDS &&
+          !(g.members.length && g.members[0] < 0),
+      );
+    }
+    return farList;
+  };
+  /** Attribute versions of the LOD1 groups after the batcher's own writes. */
+  const seen = new Map<Group, { mesh: THREE.InstancedMesh; m: number; a: number }>();
+  const snapshot = (): void => {
+    if (!far) return;
+    for (const g of farGroups())
+      seen.set(g, { mesh: g.mesh, m: g.mesh.instanceMatrix.version, a: g.appear.version });
+  };
+  /** True when someone else (click reactions) wrote a LOD1 group since `snapshot`. */
+  const touchedOutside = (): boolean => {
+    for (const g of farGroups()) {
+      const s = seen.get(g);
+      if (
+        !s ||
+        s.mesh !== g.mesh ||
+        s.m !== g.mesh.instanceMatrix.version ||
+        s.a !== g.appear.version
+      )
+        return true;
+    }
+    return false;
+  };
+  const markEdited = (i: number): void => far?.markIndex(i, store.islandId[i]);
+  const syncFar = (time: number, cam?: THREE.Vector3): void => {
+    if (!far) return;
+    const fg = farGroups();
+    if (touchedOutside()) settleAt = Math.max(settleAt, time + OUTSIDE_GRACE_SECONDS);
+    const settled =
+      tier >= 0 && tier <= 1 && !popQueue.length && !pending.length && time >= settleAt;
+    if (settled && far.dirty.size) far.rebuild(fg);
+    // without the camera skip pass nothing else restores a group mesh hidden by the merge
+    if (!cam) for (const g of fg) g.mesh.visible = g.visible;
+    far.sync(fg, tier, settled, cam);
+    snapshot();
+  };
+
   const batcher: PropBatcher = {
     group: root,
     stats,
@@ -1046,6 +1136,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
         if (wantsVisible(g, t)) show(g, time, first);
         else hide(g);
       }
+      snapshot();
     },
     update(time, fx, fz, cam) {
       // ground cover: only chunks near the focus, only at T3
@@ -1098,6 +1189,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
           const stagger = unitHash(d.seed, k, 31) * (BLOOM_IN.staggerMs / 1000);
           arr[k] = time + stagger;
           g.appear.needsUpdate = true;
+          settleAt = Math.max(settleAt, arr[k] + SETTLE_SECONDS);
         }
         n++;
       }
@@ -1111,11 +1203,13 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
           : 0;
       syncNearBlobs();
       syncFarBlobs();
+      syncFar(time, cam);
     },
     slotsOf(i) {
       return maps().slots.get(i);
     },
     clusters,
+    farMerge: far,
     rewrite(indices, time) {
       const st: RewriteStats = {
         updated: 0,
@@ -1131,6 +1225,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
         if (i < 0 || i >= store.count) continue;
         const def = PROP_DEFS[store.defId[i]];
         if (!def) continue;
+        markEdited(i);
         const removed = (store.flags[i] & PropFlag.removed) !== 0;
         const sl = slots.get(i);
         if (!sl) {
@@ -1168,6 +1263,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
       flushTouched();
       syncNearBlobs();
       syncFarBlobs();
+      snapshot();
       return st;
     },
   };
