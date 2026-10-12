@@ -116,14 +116,21 @@ function cylDir(
 type Pt = readonly [number, number];
 /** Block letters as polylines in a [0,1] x [0,1] cell (+y up). */
 const FONT: Readonly<Record<string, ReadonlyArray<ReadonlyArray<Pt>>>> = {
+  // chamfered corners and open ends (TASK-423: the square S read as a 5 / 9 next to the H)
   S: [
     [
-      [1, 1],
-      [0, 1],
-      [0, 0.5],
-      [1, 0.5],
-      [1, 0],
-      [0, 0],
+      [1, 0.86],
+      [0.82, 1],
+      [0.18, 1],
+      [0, 0.84],
+      [0, 0.66],
+      [0.18, 0.52],
+      [0.82, 0.48],
+      [1, 0.34],
+      [1, 0.16],
+      [0.82, 0],
+      [0.18, 0],
+      [0, 0.14],
     ],
   ],
   H: [
@@ -149,12 +156,15 @@ const FONT: Readonly<Record<string, ReadonlyArray<ReadonlyArray<Pt>>>> = {
       [0, 0],
     ],
   ],
+  // flat feet and a tall middle (TASK-423: the sharp V feet overshot into spikes)
   W: [
     [
       [0, 1],
-      [0.25, 0],
-      [0.5, 0.6],
-      [0.75, 0],
+      [0.14, 0],
+      [0.34, 0],
+      [0.5, 0.7],
+      [0.66, 0],
+      [0.86, 0],
       [1, 1],
     ],
   ],
@@ -219,8 +229,10 @@ function addWord(
   color: string,
 ): void {
   const n = word.length;
-  const gapK = 0.3;
+  const gapK = 0.36;
   const lw = Math.min(h * 0.72, maxW / (n + gapK * (n - 1)));
+  // narrow letters (4-letter words) get thinner strokes so their counters stay open
+  th = Math.min(th, lw * 0.21);
   const total = n * lw + (n - 1) * lw * gapK;
   const x0 = at.x - total / 2;
   [...word].forEach((ch, i) => {

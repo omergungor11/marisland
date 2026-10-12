@@ -215,6 +215,17 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   ferrisWheel: 3.4,
   fairTent: 2.3,
   fairBooth: 1.3,
+  // Marketing Carnival (TASK-423; the rect defs also block their full rect)
+  mascotStatue: 1.7,
+  marqueeSign: 1.2,
+  popcornCart: 1.0,
+  balloonMast: 0.9,
+  confettiCannon: 0.8,
+  searchlightPair: 1.6,
+  prizeBooth: 1.3,
+  selfieSpot: 1.4,
+  posterRoll: 0.55,
+  megaphoneStand: 0.45,
   // Design
   sculptureArch: 2.4,
   sculptureStack: 1.3,

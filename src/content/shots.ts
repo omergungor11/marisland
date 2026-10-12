@@ -783,12 +783,37 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     sets: ['dev'],
   },
   {
+    id: 'D-culture-marketing',
+    title: 'Culture · Marketing Carnival Broadcasters (T2, 17:30)',
+    // seed 1001 Media Rock (TASK-423): the fair at golden hour from the lee sea: popcorn carts,
+    // confetti cannons and searchlights at the stage, prize booths and balloon masts by the wheel,
+    // the SHOW sign at the pier side, the media campus ledges above
+    seed: 1001,
+    cam: '-84,32,186,-32,8,160',
+    time: 17.5,
+    simt: 4,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
     id: 'D-culture-hq-night',
     title: 'Harbour Guild evening · HQ',
     // TASK-420: closer over the pier root at 20:30 (lit timetable, awning lantern, the quad beyond)
     seed: 1001,
     cam: HQ_CULTURE_NIGHT_CAM,
     time: 20.5,
+    simt: 4,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-culture-marketing-night',
+    title: 'Culture · Marketing fair night (T3, 21:30)',
+    // seed 1001: from the pier side, the lit SHOW marquee, the popcorn carts, the prize booth and
+    // the searchlights behind the stage, the wheel's bulbs and the balloon bunch beyond
+    seed: 1001,
+    cam: '-62,18,138,-38,5,160',
+    time: 21.5,
     simt: 4,
     quality: 'medium',
     sets: ['dev'],
