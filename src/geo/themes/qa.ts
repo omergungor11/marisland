@@ -336,7 +336,17 @@ export const QA_GEO: readonly PropGeoDef[] = [
     windy: false,
   },
   // M17b TASK-401: the Test Factory
-  { id: 'testHangar', variants: 1, build: testHangar, footprint: 5.6, height: 6.9, windy: false },
+  // variant 1 (hallOfChecks, M19 TASK-414) is buildable but unplaced: `variants` stays 1 until wave 2;
+  // its LOD1 is the plain hangar's (B2)
+  {
+    id: 'testHangar',
+    variants: 1,
+    build: testHangar,
+    footprint: 5.6,
+    height: 6.9,
+    windy: false,
+    lod1Of: { 1: 0 },
+  },
   { id: 'conveyor', variants: 1, build: conveyor, footprint: 1.0, height: 2.8, windy: false },
   { id: 'testTrack', variants: 1, build: testTrack, footprint: 7, height: 3.6, windy: false },
   { id: 'qaTower', variants: 1, build: qaTower, footprint: 3, height: 20, windy: false },
