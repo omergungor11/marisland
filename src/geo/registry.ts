@@ -67,6 +67,11 @@ import {
 import { giantMushroom, palm, pine, roundTree, treeBlob } from './trees.ts';
 import { THEME_GEO } from './themes/index.ts';
 import { withGuildHall } from './themes/culture-hq.ts';
+import {
+  withCanopyVitray,
+  withGlassChimeLine,
+  withGlassPavilion,
+} from './themes/culture-design.ts';
 import type { Lod, PropGeoDef } from './types.ts';
 import type * as THREE from 'three';
 
@@ -159,7 +164,8 @@ defs.push(
   D('fence', 2, fence, 0.9, 0.8),
   D('lanternPost', 3, lanternPost, 0.5, 2.3),
   D('laundryLine', 3, laundryLine, 2.1, 2.0, true),
-  D('bunting', 3, bunting, 3.1, 2.6, true),
+  // variant 3 = glass chime line (M19 TASK-415): buildable, `variants` stays 3 until placed
+  { ...D('bunting', 3, withGlassChimeLine(bunting), 3.1, 2.6, true), lod1Of: { 3: 2 } },
   D('bench', 2, bench, 0.8, 0.8),
   D('barrel', 2, barrel, 0.3, 0.6),
   D('crate', 2, crate, 0.45, 0.6, false, [0.6, 0.48]),
@@ -168,7 +174,8 @@ defs.push(
   // landmarks
   D('lighthouse', 3, lighthouse, 2.6, 19.5),
   D('clocktower', 3, clocktower, 2.0, 17.7),
-  D('giantTree', 3, giantTree, 4.5, 18.5, true),
+  // variant 3 = canopy vitray (M19 TASK-415): LOD1 = v2, `variants` stays 3 until placed
+  { ...D('giantTree', 3, withCanopyVitray(giantTree), 4.5, 18.5, true), lod1Of: { 3: 2 } },
   D('sunkenShip', 2, sunkenShip, 5.5, 6),
   D('hotSpring', 1, hotSpring, 3.5, 1),
   D('volcanoCrater', 1, volcanoCrater, 5.4, 0.34),
@@ -188,7 +195,8 @@ defs.push(
   D('inspectionTower', 2, inspectionTower, 1.9, 6.35),
   D('testLabStilt', 2, testLabStilt, 2.2, 4.4),
   D('atelier', 2, atelier, 3.2, 3.55),
-  D('galleryPavilion', 2, galleryPavilion, 2.8, 3.6),
+  // variant 2 = glass roof (M19 TASK-415): LOD1 = v1, `variants` stays 2 until placed
+  { ...D('galleryPavilion', 2, withGlassPavilion(galleryPavilion), 2.8, 3.6), lod1Of: { 2: 1 } },
   D('dataCenter', 2, dataCenter, 4.0, 3.25),
   D('rackShed', 2, rackShed, 2.1, 3),
   D('antennaMast', 2, antennaMast, 1.4, 9.2, false, [9.8, 8.6]),
