@@ -11,15 +11,22 @@
  *   photo studio and the print shop, broadcast studio lots — fronts to the view, backs to the wall;
  * - Fair ground on the low shelf: a paved disc ringed by tents and game booths, the ferris wheel
  *   (its rotor turns in render/movers.ts), the stage and banner poles;
- * - Landing: the cove pier + megaphone kiosk; ad buoys in the lee water.
+ * - Landing: the cove pier + megaphone kiosk; ad buoys in the lee water;
+ * - the Carnival Broadcasters culture (M19 TASK-423, `carnival`): the mascot crab and the SHOW
+ *   sign at the fair entrance, confetti cannons and searchlights at the stage, popcorn carts, prize
+ *   booths and balloon masts round the fair (the launch mast is a story spot), LIVE / NEW signs on
+ *   the Ad Boulevard, a selfie deck by the Broadcast Tower, poster rolls at the print shop and
+ *   megaphone stands at the media offices, plus the story spots.
  * Stairs climb the earth walls between the shelves (stair links hub → hub, in switchbacks).
  * Random draws come from labelled forks of `rng`; tuning lives in MARKETING_PLAN.
  */
-import { FLATTEN, LOT_FOOTPRINT, VILLAGE } from '../../../content/settlements.ts';
+import { MARKETING_CULTURE_SITES as CS } from '../../../content/cultures/marketing.ts';
+import { FIXTURE_RADIUS, FLATTEN, LOT_FOOTPRINT, VILLAGE } from '../../../content/settlements.ts';
 import { OFFICE_DEFS } from '../../../content/offices.ts';
 import { MARKETING_PLAN as P } from '../../../content/themes/marketing.ts';
 import { THEMES } from '../../../content/themes/index.ts';
-import { Zone, type IslandData, type XZ } from '../../types.ts';
+import type { Rng } from '../../../core/rng.ts';
+import { Zone, type IslandData, type StorySpot, type XZ } from '../../types.ts';
 import { heightAt } from '../../types.ts';
 import { cellX, cellZ, gridRange } from '../grid.ts';
 import {
@@ -42,6 +49,8 @@ import {
   pushLandmark,
   rectShape,
   relief,
+  sdfAt,
+  segDist,
   seedHub,
   shapeCorners,
   shapeDist,
@@ -547,6 +556,17 @@ export const planMarketing: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   dockWithLink(ctx, isl, plan, site, rng.fork('moorings'), { rowboats: 1, sailboats: 0 }, 'stair');
   const dockLink = site ? (plan.links.pop() as LinkReq) : null;
   if (site) placeKiosk(ctx, isl, site.root);
+  // ---- Carnival Broadcasters culture (M19 TASK-423): before the links, so the paths route round it
+  plan.stories = carnival(ctx, isl, rng.fork('culture'), {
+    fair: fair ? { c: fair.p, r: FR, level: heightAt(ctx.h, fair.p.x, fair.p.z) } : null,
+    entry: site?.root ?? landing,
+    lh,
+    summit: anchor,
+    top,
+    levels,
+    ledge0: ledges[0] ?? null,
+    street: { a: access, u, len: L },
+  });
   let upper = mid;
   for (const h of hubs) {
     if (!h) continue;
@@ -571,3 +591,416 @@ export const planMarketing: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   for (let k = f0; k < ctx.fixtures.length; k++) ctx.fixtures[k].defId = 'adBuoy';
   return plan;
 };
+
+interface CarnivalSite {
+  /** The fair paving disc (centre, radius, shelf level). */
+  fair: { c: XZ; r: number; level: number } | null;
+  /** Where arrivals come from: the pier root (else the landing anchor). */
+  entry: XZ;
+  /** Broadcast Tower foot, the summit anchor and its height. */
+  lh: XZ;
+  summit: XZ;
+  top: number;
+  levels: readonly number[];
+  ledge0: XZ | null;
+  /** Ad Boulevard: from `a` along `u` for `len` u. */
+  street: { a: XZ; u: XZ; len: number };
+}
+
+type Cand = { p: XZ; rot: number };
+
+/** Candidates on rings round `c` (radii × angles from `phase`), facing `face(p)`. */
+function ringCands(
+  c: XZ,
+  radii: readonly number[],
+  n: number,
+  phase: number,
+  face: (p: XZ) => number,
+): Cand[] {
+  const out: Cand[] = [];
+  for (const r of radii)
+    for (let k = 0; k < n; k++) {
+      const p = add(c, dirOf(phase + (k / n) * TAU), r);
+      out.push({ p, rot: face(p) });
+    }
+  return out;
+}
+
+/** Candidates on a grid round `c` (within `radius`, `step` apart), nearest first. */
+function nearCands(c: XZ, radius: number, step: number, rot: number): Cand[] {
+  const out: Cand[] = [];
+  for (let dz = -radius; dz <= radius + 1e-6; dz += step)
+    for (let dx = -radius; dx <= radius + 1e-6; dx += step)
+      if (dx * dx + dz * dz <= radius * radius + 1e-6)
+        out.push({ p: { x: c.x + dx, z: c.z + dz }, rot });
+  return out.sort((a, b) => dist(a.p, c) - dist(b.p, c));
+}
+
+/** Candidates farthest from `others` first. */
+function spreadFrom(cands: Cand[], others: readonly XZ[]): Cand[] {
+  if (!others.length) return cands;
+  return cands
+    .map((c) => ({ c, d: Math.min(...others.map((o) => dist(o, c.p))) }))
+    .sort((a, b) => b.d - a.d)
+    .map((x) => x.c);
+}
+
+const toward = (from: XZ, to: XZ): number => {
+  const f = unit(from, to);
+  return ang(f.x, f.z);
+};
+
+/** Smallest angle between two bearings. */
+const angGap = (a: number, b: number): number =>
+  Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+
+/**
+ * Carnival Broadcasters (M19 TASK-423, ISLAND_CULTURES §2.4): the culture kit round the fair, the
+ * stage, the boulevard, the summit and the media campus, plus its story spots. Every number is
+ * MARKETING_CULTURE_SITES; every draw comes from a sub-fork of `rng`.
+ */
+function carnival(ctx: SiteCtx, isl: IslandData, rng: Rng, s: CarnivalSite): StorySpot[] {
+  const stories: StorySpot[] = [];
+  const story = (kind: string, p: XZ, rotY: number, defs: readonly string[]): void => {
+    stories.push({ kind, islandId: isl.id, pos: { x: p.x, y: 0, z: p.z }, rotY, defs });
+  };
+  const rects: Readonly<Record<string, readonly [number, number]>> = CS.rect;
+  const shapeOf = (defId: string, p: XZ, rot: number): Shape =>
+    rects[defId]
+      ? rectShape(p.x, p.z, rot, rects[defId][0], rects[defId][1])
+      : discShape(p.x, p.z, FIXTURE_RADIUS[defId]);
+  /** This island's fixtures of `defId` placed so far (the theme plan's own pieces). */
+  const fixturesOf = (defId: string) =>
+    ctx.fixtures.filter((f) => f.islandId === isl.id && f.defId === defId);
+  /**
+   * Place `defId` at the first candidate whose footprint fits: on the shelf `level` (`level` NaN:
+   * on the summit plateau; −Infinity: any land with relief ≤ `tol`), clear of every obstacle by
+   * `gap`; with a flatten pad.
+   */
+  const placeFirst = (
+    defId: string,
+    cands: readonly Cand[],
+    level: number,
+    variant: number,
+    o: { gap?: number; inPlaza?: boolean; tol?: number; ok?: (sh: Shape) => boolean } = {},
+  ): Cand | null => {
+    for (const c of cands) {
+      const sh = shapeOf(defId, c.p, c.rot);
+      const ground = Number.isNaN(level)
+        ? onSummit(ctx, isl, sh, s.top)
+        : level === -Infinity
+          ? onLand(ctx, isl, sh, P.shelfMinShore) && relief(ctx, sh) <= (o.tol ?? 1)
+          : onShelf(ctx, isl, sh, level, o.tol ?? P.shelfTol);
+      if (!ground || !clear(ctx, isl, sh, o.gap ?? 0.4, o.inPlaza)) continue;
+      // the ground round the footprint is nearly level already: the pad then flattens it whole
+      // (a pad leaves the shelf walls alone, so a footprint against one would keep a slope)
+      const g = CS.level.grow;
+      const grown =
+        sh.r > 0 ? discShape(sh.x, sh.z, sh.r + g) : { ...sh, hw: sh.hw + g, hd: sh.hd + g };
+      if (relief(ctx, grown) > CS.level.relief) continue;
+      if (!siteFree(ctx, isl, sh) || (o.ok && !o.ok(sh))) continue;
+      fixture(ctx, isl, defId, c.p, c.rot, sh, { pad: FLATTEN.discMargin, variant });
+      return c;
+    }
+    return null;
+  };
+
+  // ---- the fair: entrance pair, stage dressing, popcorn, prize booths, balloon masts
+  let mascot: Cand | null = null;
+  const F = s.fair;
+  if (F) {
+    const { c: C, r: FR, level: lv } = F;
+    const towardC = (p: XZ): number => toward(p, C);
+    /** Fallback spots: anywhere `r0`–`r1` u from the fair centre on a 1 u grid, nearest first. */
+    const around = (r0: number, r1: number): Cand[] =>
+      nearCands(C, r1, 1, 0)
+        .filter((c) => dist(c.p, C) >= r0)
+        .map((c) => ({ p: c.p, rot: towardC(c.p) }));
+    /** On the fair shelf, else on levelled land (beach, shelf foot) by the fair. */
+    const shelfOrLand = (defId: string, cands: Cand[], variant: number, gap: number): Cand | null =>
+      placeFirst(defId, cands, lv, variant, { inPlaza: true, gap }) ??
+      placeFirst(defId, cands, -Infinity, variant, { inPlaza: true, gap, tol: CS.fallbackRelief });
+    const FB = CS.fallback;
+    const e = unit(C, s.entry);
+    const perp = { x: -e.z, z: e.x };
+    const E = CS.entrance;
+    // the way in (pier root → fair centre) stays open
+    const offWay = (sh: Shape): boolean =>
+      samples(sh).every((q) => segDist(q, s.entry, C) >= E.keep);
+    const side = rng.fork('entrance').chance(0.5) ? 1 : -1;
+    const faceOut = ang(e.x, e.z); // fronts toward the arrivals
+    // beside the way, nearest the fair first, the preferred side first at each step
+    const wayLen = dist(C, s.entry);
+    const flankCands = (out: number, half: number, k: number): Cand[] => {
+      const cands: Cand[] = [];
+      for (let t = FR + out; t <= Math.max(FR + out, wayLen - 1); t += E.step)
+        for (const sd of [k, -k])
+          for (let off = E.keep + half; off <= E.keep + half + E.search; off += E.step)
+            cands.push({ p: add(add(C, e, t), perp, sd * off), rot: faceOut });
+      return cands;
+    };
+    /** On the fair shelf; else on the ramp down to the pier (levelled by its pad). */
+    const atEntrance = (defId: string, cands: Cand[], variant: number, gap: number): Cand | null =>
+      placeFirst(defId, cands, lv, variant, { inPlaza: true, gap, ok: offWay }) ??
+      placeFirst(defId, cands, -Infinity, variant, { inPlaza: true, gap, ok: offWay });
+    // (fronts along the way: the width axis is across it)
+    const mHalf = FIXTURE_RADIUS.mascotStatue;
+    mascot = atEntrance('mascotStatue', flankCands(E.mascotOut, mHalf, side), 0, 0.4);
+    const sHalf = CS.rect.marqueeSign[0] / 2;
+    atEntrance('marqueeSign', flankCands(E.signOut, sHalf, -side), CS.marquee.show, 0.3);
+
+    // stage: confetti cannons at its front corners (one mid-blast), the searchlights behind it
+    const stage = fixturesOf('stage')[0];
+    if (stage) {
+      const fwd = dirOf(stage.rotY);
+      const sd = { x: -fwd.z, z: fwd.x };
+      const K = CS.confetti;
+      for (const k of [-1, 1]) {
+        const cands: Cand[] = [];
+        // beside the stage's front corner, then out in front of it (toward the crowd)
+        for (const df of K.along)
+          for (const ds of K.out)
+            cands.push({
+              p: add(
+                add(stage, sd, k * (P.stage.w / 2 + K.side + ds)),
+                fwd,
+                P.stage.d / 2 - K.back + df,
+              ),
+              rot: stage.rotY + k * K.splay,
+            });
+        placeFirst('confettiCannon', cands, lv, k === K.blastSide ? 1 : 0, {
+          inPlaza: true,
+          gap: 0.3,
+        });
+      }
+      const L = CS.searchlight;
+      const back: Cand[] = [];
+      for (const db of [0, 0.8, 1.6])
+        for (const ds of [0, 1.5, -1.5, 3, -3])
+          back.push({
+            p: add(add(stage, fwd, -(P.stage.d / 2 + L.back + db)), sd, ds),
+            rot: stage.rotY,
+          });
+      for (const k of [1, -1])
+        for (const df of [0, -1.2])
+          back.push({
+            p: add(add(stage, sd, k * (P.stage.w / 2 + 2.0)), fwd, df),
+            rot: stage.rotY,
+          });
+      if (!placeFirst('searchlightPair', back, lv, L.variant, { inPlaza: true, gap: 0.4 }))
+        shelfOrLand('searchlightPair', around(FR, FR + FB.searchlight), L.variant, FB.gap);
+    }
+
+    // popcorn carts on the paving rim, spread round it
+    const pr = rng.fork('popcorn');
+    const PC = CS.popcorn;
+    const nPop = pr.int(PC.count[0], PC.count[1]);
+    const popAt: XZ[] = [];
+    for (let k = 0; k < nPop; k++) {
+      const radii = PC.radii.map((d) => FR + d);
+      const cands = spreadFrom(ringCands(C, radii, PC.angles, pr.range(0, TAU), towardC), popAt);
+      const got =
+        placeFirst('popcornCart', cands, lv, k % 2, { inPlaza: true, gap: 0.4 }) ??
+        shelfOrLand('popcornCart', spreadFrom(around(0, FR + FB.popcorn), popAt), k % 2, FB.gap);
+      if (!got) break;
+      popAt.push(got.p);
+    }
+    if (popAt.length) story('popcornGulls', popAt[0], towardC(popAt[0]), ['popcornCart']);
+
+    // prize booths outside the rim: the first holds the giant plush duck
+    const zr = rng.fork('prize');
+    const PZ = CS.prize;
+    const nPrize = zr.int(PZ.count[0], PZ.count[1]);
+    const prizeAt: XZ[] = [];
+    for (let k = 0; k < nPrize; k++) {
+      const radii = PZ.radii.map((d) => FR + d);
+      const cands = spreadFrom(ringCands(C, radii, PZ.angles, zr.range(0, TAU), towardC), [
+        ...popAt,
+        ...prizeAt,
+      ]);
+      const v = k === 0 ? 1 : 0;
+      const got =
+        placeFirst('prizeBooth', cands, lv, v, { inPlaza: true, gap: 0.5 }) ??
+        shelfOrLand(
+          'prizeBooth',
+          spreadFrom(around(FR + 1, FR + FB.prize), [...popAt, ...prizeAt]),
+          v,
+          FB.gap,
+        );
+      if (!got) break;
+      if (k === 0) story('giftDuck', got.p, got.rot, ['prizeBooth']);
+      prizeAt.push(got.p);
+    }
+
+    // balloon masts round the fair edge, away from the stage and from each other
+    const br = rng.fork('masts');
+    const M = CS.masts;
+    const nMasts = br.int(M.count[0], M.count[1]);
+    const avoid: number[] = stage ? [Math.atan2(stage.z - C.z, stage.x - C.x)] : [];
+    const radii: number[] = [];
+    for (let r = M.ring[0]; r <= M.ring[1] + 1e-6; r += 1) radii.push(FR + r);
+    const phase = br.range(0, TAU);
+    const bearing = (p: XZ): number => Math.atan2(p.z - C.z, p.x - C.x);
+    for (let k = 0; k < nMasts; k++) {
+      const spreadOut = (cands: Cand[]): Cand[] =>
+        cands
+          .map((c) => ({ c, g: Math.min(Math.PI, ...avoid.map((b) => angGap(bearing(c.p), b))) }))
+          .sort((x, y) => y.g - x.g || dist(x.c.p, C) - dist(y.c.p, C))
+          .map((x) => x.c);
+      const v = k === 0 ? 0 : 1;
+      const got =
+        placeFirst('balloonMast', spreadOut(ringCands(C, radii, M.angles, phase, towardC)), lv, v, {
+          gap: M.gap,
+          inPlaza: true,
+        }) ?? shelfOrLand('balloonMast', spreadOut(around(FR + 1, FR + FB.masts)), v, FB.gap);
+      if (!got) break;
+      avoid.push(bearing(got.p));
+      if (k === 0) story('balloonLaunch', got.p, got.rot, ['balloonMast']);
+    }
+
+    // no room at the entrance: the mascot greets from the fair shelf, nearest the way in
+    const eb = Math.atan2(e.z, e.x);
+    const fr: number[] = [];
+    for (let r = CS.mascotRing[0]; r <= CS.mascotRing[1]; r++) fr.push(FR + r);
+    mascot ??= placeFirst(
+      'mascotStatue',
+      ringCands(C, fr, 24, eb, (p) => toward(C, p))
+        .map((c) => ({ c, g: angGap(Math.atan2(c.p.z - C.z, c.p.x - C.x), eb) }))
+        .sort((x, y) => x.g - y.g || dist(x.c.p, C) - dist(y.c.p, C))
+        .map((x) => x.c),
+      lv,
+      0,
+      { inPlaza: true, ok: offWay },
+    );
+  }
+
+  // ---- the ferris wheel operator asleep in his cabin; a balloon snagged on the antenna
+  const wheel = fixturesOf('ferrisWheel')[0];
+  if (wheel) story('wheelNap', wheel, wheel.rotY, ['ferrisWheel']);
+  const antenna = fixturesOf('antennaTower')[0];
+  if (antenna) story('snaggedBalloon', antenna, antenna.rotY, ['antennaTower']);
+
+  // ---- Ad Boulevard: LIVE by the giant screen, NEW at the street start (fronts to the street)
+  const { a: A, u: U, len } = s.street;
+  const nrm = { x: -U.z, z: U.x };
+  const edge = P.boulevard.width / 2 + CS.boulevard.edge;
+  /** Spots `off` u from the street axis, both sides, from `from` to `to` u along it. */
+  const streetCands = (from: number, to: number, off: number): Cand[] => {
+    const out: Cand[] = [];
+    const step = from < to ? 1 : -1;
+    for (let t = from; step > 0 ? t <= to : t >= to; t += step)
+      for (const sd of [1, -1]) {
+        const d = { x: nrm.x * sd, z: nrm.z * sd };
+        out.push({ p: add(add(A, U, t), d, off), rot: ang(-d.x, -d.z) });
+      }
+    return out;
+  };
+  placeFirst('marqueeSign', streetCands(len - 1, len / 2, edge), NaN, CS.marquee.live, {
+    gap: 0.3,
+  });
+  placeFirst('marqueeSign', streetCands(1, len / 2, edge), NaN, CS.marquee.fresh, { gap: 0.3 });
+  // no fair room at all: the mascot stands on the boulevard, facing the street
+  const mEdge = P.boulevard.width / 2 + CS.boulevard.edge + FIXTURE_RADIUS.mascotStatue;
+  mascot ??= placeFirst('mascotStatue', streetCands(1, len - 1, mEdge), NaN, 0, { gap: 0.4 });
+  if (mascot) story('mascotWave', mascot.p, mascot.rot, ['mascotStatue']);
+
+  // ---- the poster crew pasting a new slide on the first billboard: leaning boards beside it
+  const bb = fixturesOf('billboardV2')[0];
+  if (bb) {
+    const fwd = dirOf(bb.rotY);
+    const sd = { x: -fwd.z, z: fwd.x };
+    const half = P.billboard.w / 2 + CS.crewBoards;
+    const boards: Cand[] = [];
+    // beside it on the frontage line, else tucked behind its ends
+    for (const k of [1, -1]) boards.push({ p: add(bb, sd, k * half), rot: bb.rotY });
+    for (const k of [1, -1])
+      boards.push({
+        p: add(add(bb, sd, k * (P.billboard.w / 2 - CS.crewBoards)), fwd, -P.billboard.d / 2 - 0.7),
+        rot: bb.rotY + Math.PI,
+      });
+    placeFirst('posterRoll', boards, NaN, 2, { gap: 0.2 });
+    story('posterCrew', add(bb, fwd, P.billboard.d / 2 + 0.8), bb.rotY, [
+      'billboardV2',
+      'posterRoll',
+    ]);
+  }
+
+  // ---- media campus: poster rolls at the print shop (else the photo studio), megaphone stands
+  // at the media office fronts
+  const shop = fixturesOf('mediaShop').sort((x, y) => (y.variant ?? 0) - (x.variant ?? 0))[0];
+  if (shop) {
+    const PS = CS.posters;
+    const fwd = dirOf(shop.rotY);
+    const sd = { x: -fwd.z, z: fwd.x };
+    const lvl = heightAt(ctx.h, shop.x, shop.z);
+    const spots: Cand[] = [];
+    for (const k of [1, -1])
+      spots.push({
+        p: add(add(shop, fwd, P.shop.d / 2 + PS.front), sd, k * (P.shop.w / 2 - PS.inset)),
+        rot: shop.rotY + k * 0.4,
+      });
+    for (const df of [0, -P.shop.d / 2 + PS.inset])
+      for (const k of [1, -1])
+        spots.push({
+          p: add(add(shop, sd, k * (P.shop.w / 2 + PS.side)), fwd, df),
+          rot: shop.rotY,
+        });
+    let v = 0;
+    for (const c of spots)
+      if (v <= 2 && placeFirst('posterRoll', [c], lvl, v, { gap: 0.2, tol: 0.5 })) v++;
+  }
+  const MG = CS.megaphones;
+  let megas = 0;
+  for (const office of fixturesOf('mediaOffice')) {
+    if (megas >= MG.max) break;
+    const fwd = dirOf(office.rotY);
+    const sd = { x: -fwd.z, z: fwd.x };
+    const lvl = heightAt(ctx.h, office.x, office.z);
+    const cands = [1, -1].map((k) => ({
+      p: add(add(office, fwd, P.office.d / 2 + MG.front), sd, k * (P.office.w / 2 - MG.inset)),
+      rot: office.rotY + k * 0.5,
+    }));
+    if (placeFirst('megaphoneStand', cands, lvl, megas % 2, { gap: 0.2, tol: 0.5 })) megas++;
+  }
+
+  // ---- selfie deck by the Broadcast Tower, its back to the sea (else on the upper ledge's rim)
+  const SF = CS.selfie;
+  const byEdge = (cands: Cand[], maxShore: number = SF.maxShore): Cand[] =>
+    cands
+      .map((c) => ({ c, d: sdfAt(ctx, c.p.x, c.p.z) }))
+      .filter((x) => x.d <= maxShore)
+      .sort((x, y) => x.d - y.d || dist(x.c.p, s.lh) - dist(y.c.p, s.lh))
+      .map((x) => x.c);
+  const radii: number[] = [];
+  for (let r = SF.ring[0]; r <= SF.ring[1]; r++) radii.push(r);
+  const inland = (p: XZ): number => toward(p, s.summit);
+  let selfie = placeFirst(
+    'selfieSpot',
+    byEdge(ringCands(s.lh, radii, SF.angles, 0, inland)),
+    NaN,
+    0,
+    { gap: 0.6 },
+  );
+  const l0 = s.ledge0;
+  if (!selfie && l0 && Number.isFinite(s.levels[0]))
+    selfie = placeFirst(
+      'selfieSpot',
+      byEdge(nearCands(l0, SF.ledgeSearch, 1, 0).map((c) => ({ p: c.p, rot: toward(c.p, s.lh) }))),
+      s.levels[0],
+      1,
+      { gap: 0.6 },
+    );
+  // else anywhere on the summit plateau, nearest its rim
+  selfie ??= placeFirst(
+    'selfieSpot',
+    byEdge(
+      nearCands(s.summit, SF.summitSearch, 1, 0).map((c) => ({ p: c.p, rot: inland(c.p) })),
+      99,
+    ),
+    NaN,
+    0,
+    { gap: 0.6 },
+  );
+  if (selfie) story('lighthouseSelfie', selfie.p, selfie.rot, ['selfieSpot', 'lighthouse']);
+  return stories;
+}

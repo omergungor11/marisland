@@ -740,6 +740,31 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     quality: 'medium',
     sets: ['dev'],
   },
+  {
+    id: 'D-culture-marketing',
+    title: 'Culture · Marketing Carnival Broadcasters (T2, 17:30)',
+    // seed 1001 Media Rock (TASK-423): the fair at golden hour from the lee sea: popcorn carts,
+    // confetti cannons and searchlights at the stage, prize booths and balloon masts by the wheel,
+    // the SHOW sign at the pier side, the media campus ledges above
+    seed: 1001,
+    cam: '-84,32,186,-32,8,160',
+    time: 17.5,
+    simt: 4,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-culture-marketing-night',
+    title: 'Culture · Marketing fair night (T3, 21:30)',
+    // seed 1001: from the pier side, the lit SHOW marquee, the popcorn carts, the prize booth and
+    // the searchlights behind the stage, the wheel's bulbs and the balloon bunch beyond
+    seed: 1001,
+    cam: '-62,18,138,-38,5,160',
+    time: 21.5,
+    simt: 4,
+    quality: 'medium',
+    sets: ['dev'],
+  },
   // ---- living close-up (M14c, TASK-383/384): `pnpm shots live [--assert]`. A 0.5 s `deltaT` pair per
   // campus at T3 on medium (16 workers + drones + animated surfaces); the harness measures the motion
   // inside LIVE_CROP over solid pixels (the mask frame drops water / sky: foam and swell are not campus

@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { PROP_DEFS, PROP_DEF_INDEX } from '../content/props.ts';
+import { MARKETING_CULTURE_SITES as CS } from '../content/cultures/marketing.ts';
+import { MARKETING_CULTURE_PROP_DEFS } from '../content/props-themes/marketing.ts';
+import { FIXTURE_RADIUS } from '../content/settlements.ts';
 import { THEMES } from '../content/themes/index.ts';
 import { MARKETING_PLAN } from '../content/themes/marketing.ts';
 import { StageHash } from './gen/hash.ts';
+import { discShape, rectShape, shapeCorners, shapeDist, type Shape } from './gen/sites.ts';
 import { generateWorld, heightAt, zoneAt, Zone, type WorldData } from './index.ts';
 
 // TASK-403: the Marketing "Media Rock" plan (Beacon Rock stack + lee terraces), 30 seeds
@@ -229,10 +233,120 @@ describe('Marketing Media Rock plan (TASK-403), 30 seeds', () => {
     });
     expect(got).toMatchInlineSnapshot(`
       [
-        "fe7bc47816215466",
-        "7166e186a2b409a2",
-        "b42ae1fd52e33053",
+        "9451115e1a7cf4c3",
+        "f65accf800bb0a20",
+        "7205bcbc2659445a",
       ]
     `);
   });
 });
+
+/** Count range per culture def on the Marketing island (30 seeds). */
+const KIT_COUNTS: Record<string, readonly [number, number]> = {
+  mascotStatue: [1, 1],
+  marqueeSign: [2, 3],
+  popcornCart: [0, 2],
+  balloonMast: [0, 3],
+  confettiCannon: [0, 2],
+  searchlightPair: [0, 1],
+  prizeBooth: [0, 2],
+  selfieSpot: [0, 1],
+  posterRoll: [0, 4],
+  megaphoneStand: [0, 2],
+};
+const CULTURE_DEFS = new Set(MARKETING_CULTURE_PROP_DEFS.map((d) => d.id));
+
+describe(
+  'Marketing Carnival Broadcasters culture (TASK-423), 30 seeds',
+  { timeout: 120_000 },
+  () => {
+    it('kit placed in range, ≥ 5 story spots, every piece on levelled land clear of lots', () => {
+      for (const seed of SEEDS) {
+        const w = world(seed);
+        const { isl, of } = mktOf(w);
+        const ctx = `seed ${seed}`;
+        for (const [def, [lo, hi]] of Object.entries(KIT_COUNTS)) {
+          const n = of(def).length;
+          expect(n, `${ctx} ${def}`).toBeGreaterThanOrEqual(lo);
+          expect(n, `${ctx} ${def}`).toBeLessThanOrEqual(hi);
+        }
+        // story spots: ≥ 5 distinct kinds on this island's land
+        const st = w.storySpots.filter((s) => s.islandId === isl.id);
+        expect(st.length, ctx).toBeGreaterThanOrEqual(5);
+        expect(new Set(st.map((s) => s.kind)).size, ctx).toBe(st.length);
+        for (const s of st) expect(s.pos.y, `${ctx} ${s.kind}`).toBeGreaterThan(0.3);
+        const lots = w.lots
+          .filter((l) => l.islandId === isl.id)
+          .map((l) => rectShape(l.x, l.z, l.rotY, l.w, l.d));
+        const rects = CS.rect as Record<string, readonly [number, number]>;
+        for (const f of w.fixtures.filter(
+          (x) => x.islandId === isl.id && CULTURE_DEFS.has(x.defId),
+        )) {
+          const r = rects[f.defId];
+          const sh: Shape = r
+            ? rectShape(f.x, f.z, f.rotY, r[0], r[1])
+            : discShape(f.x, f.z, FIXTURE_RADIUS[f.defId]);
+          const pts = r
+            ? [{ x: f.x, z: f.z }, ...shapeCorners(sh)]
+            : [0, 1, 2, 3, 4, 5].map((k) => ({
+                x: f.x + Math.cos(k * 1.047) * sh.r,
+                z: f.z + Math.sin(k * 1.047) * sh.r,
+              }));
+          const ys = pts.map((p) => heightAt(w.height, p.x, p.z));
+          const at = `${ctx} ${f.defId}@${f.x.toFixed(1)},${f.z.toFixed(1)}`;
+          // on land, level (nothing floats off a shelf rim or sinks into a wall)
+          expect(Math.min(...ys), at).toBeGreaterThan(0.3);
+          expect(Math.max(...ys) - Math.min(...ys), at).toBeLessThanOrEqual(r ? 0.45 : 0.6);
+          for (const l of lots)
+            for (const p of pts) expect(shapeDist(l, p.x, p.z), at).toBeGreaterThan(0);
+          expect(f.variant, at).toBeDefined();
+        }
+      }
+    });
+
+    it('the fair carries the show: confetti, masts (launch anchor), searchlights, popcorn, prize duck', () => {
+      most(0.9, (w) => {
+        const { isl, of } = mktOf(w);
+        const st = new Set(w.storySpots.filter((s) => s.islandId === isl.id).map((s) => s.kind));
+        return (
+          of('confettiCannon').length >= 1 &&
+          of('balloonMast').length >= 2 &&
+          of('selfieSpot').length === 1 &&
+          st.has('balloonLaunch') &&
+          st.has('mascotWave')
+        );
+      });
+      most(0.85, (w) => mktOf(w).of('searchlightPair').length === 1);
+      most(0.85, (w) => mktOf(w).of('popcornCart').length >= 1);
+      // the fair shelf is often full: the giant plush duck finds a booth spot in most seeds
+      most(0.7, (w) =>
+        mktOf(w)
+          .of('prizeBooth')
+          .some((f) => f.variant === 1),
+      );
+      // the launch mast is the pennant mast (v0), one per island
+      for (const seed of SEEDS.slice(0, 10)) {
+        const w = world(seed);
+        const { isl, of } = mktOf(w);
+        const launch = w.storySpots.filter(
+          (s) => s.islandId === isl.id && s.kind === 'balloonLaunch',
+        );
+        if (!launch.length) continue;
+        expect(launch.length).toBe(1);
+        const m = of('balloonMast').find(
+          (f) => Math.hypot(f.x - launch[0].pos.x, f.z - launch[0].pos.z) < 1e-6,
+        );
+        expect(m?.variant, `seed ${seed}`).toBe(0);
+      }
+    });
+
+    it('culture defs stay on the Marketing island', () => {
+      for (const seed of SEEDS.slice(0, 6)) {
+        const w = world(seed);
+        const id = mktOf(w).isl.id;
+        for (const f of w.fixtures)
+          if (CULTURE_DEFS.has(f.defId)) expect(f.islandId, `seed ${seed}`).toBe(id);
+      }
+    });
+  },
+);
