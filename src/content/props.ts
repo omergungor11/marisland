@@ -7,7 +7,7 @@ import { PropFlag } from '../world/prop-store.ts';
 import { PROP_DEFS_BUILDINGS } from './props-buildings.ts';
 import { HQ_PROP_DEFS, HQ_CULTURE_PROP_DEFS } from './props-themes/hq.ts';
 import { CODING_CULTURE_PROP_DEFS, CODING_PROP_DEFS } from './props-themes/coding.ts';
-import { MARKETING_PROP_DEFS } from './props-themes/marketing.ts';
+import { MARKETING_CULTURE_PROP_DEFS, MARKETING_PROP_DEFS } from './props-themes/marketing.ts';
 import { QA_PROP_DEFS } from './props-themes/qa.ts';
 import { DESIGN_PROP_DEFS } from './props-themes/design.ts';
 import { DEVOPS_PROP_DEFS } from './props-themes/devops.ts';
@@ -117,6 +117,7 @@ export const PROP_DEFS: readonly PropDef[] = [
   // M19 culture kits, appended after everything else so no existing defId shifts (hash pins)
   ...HQ_CULTURE_PROP_DEFS,
   ...CODING_CULTURE_PROP_DEFS,
+  ...MARKETING_CULTURE_PROP_DEFS,
 ];
 
 export const PROP_DEF_INDEX: Record<string, number> = Object.fromEntries(
