@@ -180,6 +180,18 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   smithy: 2.1,
   cottage: 1.6,
   steamVent: 0.5,
+  // DevOps "Kor Demircileri" kit (TASK-422); the onsen deck is walkable planks (only its rack /
+  // bench core is solid, the capybara story spot stays reachable)
+  lavaLantern: 0.3,
+  ingotStack: 0.75,
+  anvil: 0.45,
+  incidentSign: 1.1,
+  signalHorn: 0.6,
+  serverShrine: 0.8,
+  pipeValveWheel: 0.8,
+  pagerRock: 0.6,
+  onsenDeck: 0.8,
+  onsenHouse: 2,
   // Marketing
   billboardV2: 2.6,
   stage: 3.2,

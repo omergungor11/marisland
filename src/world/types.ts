@@ -410,7 +410,8 @@ export function zoneAt(h: Heightfield, zone: Uint8Array, x: number, z: number): 
 
 /**
  * A culture story spot (M19, TASK-408): a quiet T3 mini scene on an island, emitted by the theme
- * plans (`SitePlan.stories`, y = final ground height) into `world.storySpots`. `kind` is a content key (content/cultures StorySpotDef.kind),
+ * plans (`SitePlan.stories`; world y = final ground + the plan's pos.y, e.g. a crane cab) into
+ * `world.storySpots`. `kind` is a content key (content/cultures StorySpotDef.kind),
  * `defs` the prop def ids placed at the spot (same ids `appendSettlementProps.push` takes).
  */
 export interface StorySpot {

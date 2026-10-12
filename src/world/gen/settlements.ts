@@ -1157,7 +1157,7 @@ export function buildSettlements(input: SettlementInput, rng: Rng): SettlementRe
     storySpots: plans.flatMap((p) =>
       (p.stories ?? []).map((st) => ({
         ...st,
-        pos: { x: st.pos.x, y: heightAt(input.h, st.pos.x, st.pos.z), z: st.pos.z },
+        pos: { x: st.pos.x, y: heightAt(input.h, st.pos.x, st.pos.z) + st.pos.y, z: st.pos.z },
       })),
     ),
     shapes: ctx.shapes,
