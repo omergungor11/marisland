@@ -254,6 +254,7 @@ Details in `phases/phase-3.md`.
 | TASK-432 | Bot culture: carried items, accessories, poses, itineraries, tableau bots | life | M | COMPLETED | 420…426 |
 | TASK-433 | Critter culture: ladybug, owl, pigeon, cats, capybara, mascot crab ; follow-up: capybara reads like a turtle from above| life | M | COMPLETED | 432 |
 | TASK-434 | Culture boats: HQ ferries on 'ferry' routes with dwell (life/ferry.ts), QA inspection boat + Design lantern boat on island rings, sailboat variants 5 (rollVariants 2); follow-up: boats can overlap each other at piers (seen in D-ferry-dock) | life | M | COMPLETED | TASK-420 |
+| TASK-435 | Regression fix: D-sky-basket black frame = one NaN pixel from FLAT_SHADED derivative normals on a far sliver triangle (Bug Zoo at 351 u), spread by bloom → guarded flat normal (factory.ts), pow(d<0) fix; shared wake mesh, shadows skipped past half fade (D-sky-craft 297 → 282) | engine | S | COMPLETED | TASK-424 |
 | TASK-440 | Culture ground + light: stripe layer, terrazzo, `marquee`/`stained` surface kinds, emissive hues; fix Marketing ladder ground-tone step 120→21 u and Research 30→21 (TASK-397) | shader | M | PENDING | 430…433 |
 | TASK-441 | Sky culture: balloon accents + pennants, HQ airship livery, Launch Show take-off | props | S | PENDING | 423, 431 |
 | TASK-450 | Presets W15–W19, D-culture/D-story/D-gallery | engine | S | PENDING | 440, 441 |
