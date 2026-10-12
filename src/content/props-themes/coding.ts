@@ -10,7 +10,7 @@ import { OFFICE_PAL } from '../palette-offices.ts';
 import { THEMES } from '../themes/index.ts';
 import type { PropDef } from '../props.ts';
 
-const { grounded } = PropFlag;
+const { grounded, windy, noShadow } = PropFlag;
 
 export const CODING_COLORS = {
   /** Turbine / panel frame white (OFFICE_PAL.coding wall family). */
@@ -46,9 +46,9 @@ export const TURBINE_HEIGHTS = [24, 19, 16] as const;
 
 export const CODING_PROP_DEFS: readonly PropDef[] = [
   // T0 signature: white tapered tower, slim blades with blue tips; blades turn via aSpin
-  { id: 'windTurbine', geo: 'windTurbine', tier: 0, variants: 3, footprint: 1.3, flags: grounded },
+  { id: 'windTurbine', geo: 'windTurbine', tier: 0, variants: 4, footprint: 1.3, flags: grounded },
   { id: 'solarRow', geo: 'solarRow', tier: 1, variants: 2, footprint: 2.3, flags: grounded },
-  { id: 'hedge', geo: 'hedge', tier: 2, variants: 2, footprint: 1.1, flags: grounded },
+  { id: 'hedge', geo: 'hedge', tier: 2, variants: 3, footprint: 1.1, flags: grounded },
   { id: 'bikeRack', geo: 'bikeRack', tier: 3, variants: 2, footprint: 0.8, flags: grounded },
   {
     id: 'reflectingPoolEdge',
@@ -57,5 +57,56 @@ export const CODING_PROP_DEFS: readonly PropDef[] = [
     variants: 2,
     footprint: 1.1,
     flags: grounded,
+  },
+];
+
+/**
+ * M19 TASK-411 "Wind Gardens" kit (geo/themes/culture-coding.ts; ledger: content/cultures/coding.ts).
+ * Registered at the END of PROP_DEFS (content/props.ts, after the signage kit) so no existing def
+ * index moves. windTurbine v3 = windChimeTower and hedge v2 = bracketHedge are variants above.
+ */
+export const CODING_CULTURE_PROP_DEFS: readonly PropDef[] = [
+  {
+    id: 'rubberDuck',
+    geo: 'rubberDuck',
+    tier: 3,
+    variants: 3,
+    footprint: 0.3,
+    flags: grounded | noShadow,
+  },
+  { id: 'kite', geo: 'kite', tier: 2, variants: 3, footprint: 1.2, flags: grounded | windy },
+  {
+    id: 'pergolaDesk',
+    geo: 'pergolaDesk',
+    tier: 2,
+    variants: 2,
+    footprint: 1.9,
+    flags: grounded | windy,
+  },
+  { id: 'hammock', geo: 'hammock', tier: 2, variants: 2, footprint: 1.9, flags: grounded | windy },
+  {
+    id: 'kiteRack',
+    geo: 'kiteRack',
+    tier: 2,
+    variants: 2,
+    footprint: 1.9,
+    flags: grounded | windy,
+  },
+  { id: 'giantDuck', geo: 'giantDuck', tier: 1, variants: 1, footprint: 1.6, flags: grounded },
+  {
+    id: 'whiteboardA',
+    geo: 'whiteboardA',
+    tier: 3,
+    variants: 3,
+    footprint: 0.9,
+    flags: grounded | noShadow,
+  },
+  {
+    id: 'mugStack',
+    geo: 'mugStack',
+    tier: 3,
+    variants: 2,
+    footprint: 0.45,
+    flags: grounded | noShadow,
   },
 ];

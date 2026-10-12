@@ -18,10 +18,12 @@ import {
   TURBINE_HEIGHTS,
   TURBINE_RISE,
 } from '../../content/props-themes/coding.ts';
+import { createRng } from '../../core/rng.ts';
 import { Acc, col, createNoise, qEuler } from '../kit.ts';
 import { Spin, finishSpin } from '../office-kit.ts';
 import { TAU, V, V2, baseBox, bevBox, cylB, jitterAcc, lathe, prism, put } from '../parts.ts';
 import type { BuildOpts, PropGeoDef } from '../types.ts';
+import { BRACKET_ARMS, CODING_CULTURE_GEO, addChimePagoda } from './culture-coding.ts';
 import { tagTracker, tagYawHead } from './surface-tags.ts';
 
 /** Vertices emitted so far (Acc keeps its buffers private; ranges are exact, degenerate tris never land). */
@@ -68,7 +70,11 @@ function bladeParts(r0: number, len: number, chord: number, thick: number, lod: 
   };
 }
 
-export function windTurbine({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
+export function windTurbine({ rng: rng0, lod, variant }: BuildOpts): THREE.BufferGeometry {
+  // LOD1 draws from a fixed stream per height class, so variant 3 (windChimeTower, TASK-411) has
+  // exactly the LOD1 of variant 0 (B2: no extra far geometry for the culture variant)
+  const rng =
+    lod === 1 ? createRng(0x71b0).fork('turbine-lod1', variant % TURBINE_HEIGHTS.length) : rng0;
   const r = rng.fork('turbine');
   // H = the original (pre TASK-393) height: rotor and nacelle keep their old proportions, only the
   // tower stretches (hub 0.73 H → 1.27 H) and the rotor grows 20 % so it still reads on top.
@@ -102,6 +108,8 @@ export function windTurbine({ rng, lod, variant }: BuildOpts): THREE.BufferGeome
     aoAmt: 0.2,
   });
   put(acc, cylB(r0 * 1.45, r0 * 1.3, yA, seg), [0, 0, 0], col(K.steel), { aoAmt: 0.25 });
+  // windChimeTower: chime pagoda round the foot (before the head, so the yaw range stays the tail)
+  if (lod === 0 && variant === TURBINE_CHIME_VARIANT) addChimePagoda(acc, r0);
   if (lod === 0) {
     // service door (dark) with a lamp over it
     put(acc, baseBox(0.34 * k, 0.62 * k, 0.1), [0, yA, r0 * 1.0], col(K.dark), { aoAmt: 0 });
@@ -195,6 +203,9 @@ export function windTurbine({ rng, lod, variant }: BuildOpts): THREE.BufferGeome
   tagYawHead(g, { first: headFirst, count: headCount });
   return g;
 }
+
+/** windTurbine variant 3 = windChimeTower (hero-height turbine with a chime pagoda; LOD1 = variant 0). */
+export const TURBINE_CHIME_VARIANT = 3;
 
 const PANEL_W = 1.1;
 const PANEL_D = 1.25;
@@ -318,12 +329,15 @@ export function hedge({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const top = col(K.hedgeTop);
   const colorFn = (p: THREE.Vector3): THREE.Color => (p.y > h - 0.1 ? top : body);
   const arms: Array<[number, number, number, number]> =
-    variant % 2 === 0
-      ? [[0, 0, 2.0, 0.7]]
-      : [
-          [-0.55, 0, 1.4, 0.7],
-          [0.35, 0.55, 0.7, 1.3],
-        ];
+    variant === 2
+      ? // bracketHedge (TASK-411): a clipped `{`
+        BRACKET_ARMS.map((a) => [...a])
+      : variant % 2 === 0
+        ? [[0, 0, 2.0, 0.7]]
+        : [
+            [-0.55, 0, 1.4, 0.7],
+            [0.35, 0.55, 0.7, 1.3],
+          ];
   arms.forEach(([x, z, w, d], i) => {
     const geo =
       lod === 0
@@ -430,15 +444,15 @@ export function reflectingPoolEdge({ rng, lod, variant }: BuildOpts): THREE.Buff
 export const CODING_GEO: readonly PropGeoDef[] = [
   {
     id: 'windTurbine',
-    variants: 3,
+    variants: 4,
     build: windTurbine,
     footprint: 1.3,
     height: 15,
-    heights: TURBINE_HEIGHTS,
+    heights: [...TURBINE_HEIGHTS, TURBINE_HEIGHTS[0]],
     windy: false,
   },
   { id: 'solarRow', variants: 2, build: solarRow, footprint: 2.35, height: 0.85, windy: false },
-  { id: 'hedge', variants: 2, build: hedge, footprint: 1.1, height: 0.8, windy: false },
+  { id: 'hedge', variants: 3, build: hedge, footprint: 1.1, height: 0.8, windy: false },
   {
     id: 'bikeRack',
     variants: 2,
@@ -456,4 +470,5 @@ export const CODING_GEO: readonly PropGeoDef[] = [
     heights: [0.25, 0.34],
     windy: false,
   },
+  ...CODING_CULTURE_GEO,
 ];
