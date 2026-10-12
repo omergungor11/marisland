@@ -37,6 +37,7 @@ import { createLanternPools, type LanternPools } from './night/lantern-pools.ts'
 import { createBeam } from './night/beam.ts';
 import { createDrones } from './drones.ts';
 import { createMovers } from './movers.ts';
+import { createCultureMovers } from './culture-movers.ts';
 import { createSkyCraft } from './sky-craft.ts';
 import { createWaterfalls } from './waterfalls.ts';
 import type { DirtyRegion } from '../world/edit-types.ts';
@@ -188,6 +189,8 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   if (movers.mesh) group.add(movers.mesh);
   if (movers.wheels) group.add(movers.wheels);
   if (movers.ships) group.add(movers.ships);
+  const cultureMovers = createCultureMovers(settlement.props, world, d.scope);
+  group.add(cultureMovers.group);
   // hot-air balloons + airship over the archipelago (TASK-335)
   const skyCraft = createSkyCraft(world, d.quality, d.scope, seed);
   for (const m of skyCraft.meshes) group.add(m);
@@ -369,6 +372,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     beam.update();
     drones.update(time);
     movers.update(time, _camPos);
+    cultureMovers.update(time, env.hour, env, _camPos, culture.state);
     skyCraft.update(time);
     water.update(_camPos, d.getTime());
     terrain.update(d.getTime());
