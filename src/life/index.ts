@@ -3,6 +3,7 @@ import {
   ACTIVITY,
   CATS,
   CRABS,
+  CULTURE_BOATS,
   GULLS,
   LIFE_PLAN,
   SHEEP,
@@ -20,7 +21,7 @@ import {
   pickJumpSpot,
 } from './arcs.ts';
 import type { AgentKind } from './agents.ts';
-import { mooringsOf, resolveRoutes, Rowboats, Sailboats } from './boats.ts';
+import { islandRing, mooringsOf, resolveRoutes, Rowboats, Sailboats } from './boats.ts';
 import { makeCtx, setMotion, type LifeDeps } from './ctx.ts';
 import { FishSchools } from './fish.ts';
 import { flockCentres, Gulls, type Perch } from './gulls.ts';
@@ -56,6 +57,10 @@ export interface LifeSystem extends System {
   /** Kinds by name, for tests / debug / the reaction layer. */
   readonly kinds: {
     sailboats?: Sailboats;
+    /** Culture boats (TASK-434): HQ ferries on the timetable, QA inspection boat, Design lantern boat. */
+    ferries?: Sailboats;
+    patrol?: Sailboats;
+    lanternBoat?: Sailboats;
     rowboats?: Rowboats;
     parked?: Rowboats;
     gulls?: Gulls;
@@ -88,10 +93,42 @@ export function createLife(deps: LifeDeps): LifeSystem {
   const kinds: LifeSystem['kinds'] = {};
   const all: AgentKind[] = [];
 
-  const routes = resolveRoutes(ctx);
+  const allRoutes = resolveRoutes(ctx);
+  const routes = allRoutes.filter((r) => r.kind !== 'ferry');
   if (routes.length > 0 && plan.sailboats > 0) {
     kinds.sailboats = new Sailboats(base, ctx, routes, plan.sailboats);
     all.push(kinds.sailboats);
+  }
+  const ferryRoutes = allRoutes.filter((r) => r.kind === 'ferry');
+  if (ferryRoutes.length > 0 && plan.ferries > 0) {
+    const F = CULTURE_BOATS.ferry;
+    kinds.ferries = new Sailboats(base, ctx, ferryRoutes, plan.ferries, {
+      name: 'ferry',
+      variant: F.variant,
+      speed: F.speed,
+      ferry: true,
+    });
+    all.push(kinds.ferries);
+  }
+  const P = CULTURE_BOATS.patrol;
+  const patrolRing = plan.patrolBoats > 0 ? islandRing(ctx, P.theme, P.margin) : null;
+  if (patrolRing) {
+    kinds.patrol = new Sailboats(base, ctx, [patrolRing], plan.patrolBoats, {
+      name: 'patrol',
+      variant: P.variant,
+      speed: P.speed,
+    });
+    all.push(kinds.patrol);
+  }
+  const LB = CULTURE_BOATS.lantern;
+  const lanternRing = plan.lanternBoats > 0 ? islandRing(ctx, LB.theme, LB.margin) : null;
+  if (lanternRing) {
+    kinds.lanternBoat = new Sailboats(base, ctx, [lanternRing], plan.lanternBoats, {
+      name: 'lanternBoat',
+      variant: LB.variant,
+      speed: LB.speed,
+    });
+    all.push(kinds.lanternBoat);
   }
   const moorings = mooringsOf(ctx, 'rowboat', plan.rowboats);
   if (moorings.length > 0) {

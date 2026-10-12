@@ -25,7 +25,7 @@
  *   giantTree v3     `withCanopyVitray`: canopy panels + studio window; LOD1 = v2
  *   galleryPavilion v2  `withGlassPavilion`: faceted coloured glass roof; LOD1 = v1
  *   bunting v3       `withGlassChimeLine`: hanging glass drops; LOD1 = v2
- *   lanternBoat      exported builder for sailboat v5 (geo/coastal.ts is wired by the orchestrator)
+ *   lanternBoat      builder for sailboat v4 (wired in geo/registry.ts, TASK-434)
  *
  * Budget rules (ISLAND_CULTURES §4.2): tier-2/3 defs stay < 3 u (isLargeStructure false); glass is
  * `emissive: 1` (switches on with the lamps ramp, staggered); molten parts are `emissive: 1.6`
@@ -1726,7 +1726,7 @@ export function lanternBoat({ rng, lod }: BuildOpts): THREE.BufferGeometry {
     const colr = GLASS_WHEEL[(i * 3 + 1) % GLASS_WHEEL.length];
     put(
       acc,
-      new THREE.CylinderGeometry(0.15, 0.2, 0.36, 6).translate(0, 0.18, 0),
+      new THREE.CylinderGeometry(0.15, 0.2, 0.36, hi ? 6 : 4).translate(0, 0.18, 0),
       [hx, hullH + 0.2 + (hi ? 0 : 0.4), lz],
       colr,
       {
@@ -1734,13 +1734,11 @@ export function lanternBoat({ rng, lod }: BuildOpts): THREE.BufferGeometry {
         windAbs: 0,
       },
     );
-    put(
-      acc,
-      new THREE.ConeGeometry(0.22, 0.14, 6),
-      [hx, hullH + 0.2 + (hi ? 0 : 0.4) + 0.43, lz],
-      K.came,
-      { aoAmt: 0, windAbs: 0 },
-    );
+    if (hi)
+      put(acc, new THREE.ConeGeometry(0.22, 0.14, 6), [hx, hullH + 0.2 + 0.43, lz], K.came, {
+        aoAmt: 0,
+        windAbs: 0,
+      });
   }
   // mast, masthead lantern, lateen sail (cream with a violet stripe)
   const mastZ = 0.35;

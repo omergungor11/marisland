@@ -108,12 +108,13 @@ describe('TASK-414 variants of existing defs (hallOfChecks, bugZoo, inspection b
   it('placed variants are bumped but never rolled (TASK-424); the boat waits for wave 3', () => {
     expect(PROP_GEO.testHangar.variants).toBe(2);
     expect(PROP_GEO.terrarium.variants).toBe(3);
-    expect(PROP_GEO.sailboat.variants).toBe(2);
+    expect(PROP_GEO.sailboat.variants).toBe(5);
     expect(PROP_DEFS[PROP_DEF_INDEX.testHangar].variants).toBe(2);
     expect(PROP_DEFS[PROP_DEF_INDEX.testHangar].rollVariants).toBe(1);
     expect(PROP_DEFS[PROP_DEF_INDEX.terrarium].variants).toBe(3);
     expect(PROP_DEFS[PROP_DEF_INDEX.terrarium].rollVariants).toBe(2);
-    expect(PROP_DEFS[PROP_DEF_INDEX.sailboat].variants).toBe(2);
+    expect(PROP_DEFS[PROP_DEF_INDEX.sailboat].variants).toBe(5);
+    expect(PROP_DEFS[PROP_DEF_INDEX.sailboat].rollVariants).toBe(2);
   });
 
   it('testHangar v0 is untouched; v1 (hallOfChecks) adds badges and shares LOD1', () => {

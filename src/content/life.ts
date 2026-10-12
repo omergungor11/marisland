@@ -9,6 +9,10 @@ export interface LifePlan {
   rowboats: number;
   /** Parked (non-sailing) sailboats at moorings. */
   parked: number;
+  /** Culture boats (TASK-434): HQ ferries on 'ferry' routes, QA inspection boat, Design lantern boat. */
+  ferries: number;
+  patrolBoats: number;
+  lanternBoats: number;
   flocks: number;
   gullsPerFlock: [number, number];
   schools: number;
@@ -33,9 +37,12 @@ export interface LifePlan {
 }
 export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
   low: {
-    sailboats: 2,
+    sailboats: 1,
     rowboats: 1,
     parked: 0,
+    ferries: 1,
+    patrolBoats: 0,
+    lanternBoats: 0,
     flocks: 2,
     gullsPerFlock: [3, 3],
     schools: 1,
@@ -53,9 +60,12 @@ export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
     butterflies: 6,
   },
   medium: {
-    sailboats: 3,
-    rowboats: 2,
-    parked: 1,
+    sailboats: 2,
+    rowboats: 1,
+    parked: 0,
+    ferries: 1,
+    patrolBoats: 1,
+    lanternBoats: 1,
     flocks: 3,
     gullsPerFlock: [3, 5],
     schools: 2,
@@ -76,6 +86,9 @@ export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
     sailboats: 4,
     rowboats: 3,
     parked: 2,
+    ferries: 2,
+    patrolBoats: 1,
+    lanternBoats: 1,
     flocks: 3,
     gullsPerFlock: [5, 8],
     schools: 2,
@@ -169,6 +182,18 @@ export const SAILBOAT = {
   },
   /** Fallback route: ring radius beyond the island, minimum depth, loop spacing. */
   route: { margin: 25, minDepth: 2, spacing: 2, count: 2, pushStep: 2, pushMax: 80 },
+} as const;
+
+/**
+ * Culture boats (TASK-434, ISLAND_CULTURES §3.1). Ferries (sailboat v2) run the 'ferry' routes on a
+ * closed-form timetable: cruise at `speed`, brake at constant `decel` to stand still at each stop for
+ * the route's `dwell` s (HQ_FERRY.dwell), accelerate away. The inspection boat (v3) and the lantern boat
+ * (v4) circle their culture island on a ring `margin` u beyond its radius at a leisurely `speed`.
+ */
+export const CULTURE_BOATS = {
+  ferry: { variant: 2, speed: 3.4, decel: 0.45, startFrac: 0.12, heelScale: 0.6 },
+  patrol: { variant: 3, theme: 'qa', speed: 2.2, margin: 22 },
+  lantern: { variant: 4, theme: 'design', speed: 1.4, margin: 30 },
 } as const;
 
 export const ROWBOAT = {

@@ -42,7 +42,7 @@ export const PROP_DEFS_BUILDINGS: PropDef[] = [
   // coastal
   d('dock', 1, 2, 1.1, grounded),
   d('rowboat', 1, 2, 1.2, grounded),
-  d('sailboat', 0, 2, 2.6, windy),
+  d('sailboat', 0, 5, 2.6, windy, undefined, { rollVariants: 2 }),
   d('seaStack', 0, 3, 2.6, 0),
   d('buoy', 2, 2, 0.35, 0),
   d('driftwood', 2, 2, 0.8, grounded),

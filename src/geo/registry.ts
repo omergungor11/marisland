@@ -68,6 +68,7 @@ import { giantMushroom, palm, pine, roundTree, treeBlob } from './trees.ts';
 import { THEME_GEO } from './themes/index.ts';
 import { withGuildHall } from './themes/culture-hq.ts';
 import {
+  lanternBoat,
   withCanopyVitray,
   withGlassChimeLine,
   withGlassPavilion,
@@ -152,7 +153,8 @@ defs.push(
   // coastal
   D('dock', 2, dock, 1.2, 0.95),
   D('rowboat', 2, rowboat, 1.3, 0.6),
-  D('sailboat', 2, sailboat, 2.8, 5.2, true),
+  // v2 ferry, v3 inspection boat (coastal.ts), v4 lantern boat (Design); random rolls keep v0/v1
+  D('sailboat', 5, (o) => (o.variant === 4 ? lanternBoat(o) : sailboat(o)), 2.8, 5.2, true),
   D('seaStack', 3, seaStack, 3, 10, false, [6, 10, 15]),
   D('buoy', 2, buoy, 0.4, 0.85),
   D('driftwood', 2, driftwood, 0.9, 0.4),
