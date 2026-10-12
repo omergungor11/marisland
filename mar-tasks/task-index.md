@@ -228,7 +228,7 @@ Details in `phases/phase-3.md`.
 | TASK-406 | Draw-call budget for the D-sky-* close shots: LOD0 contact blobs merged into one mesh (`props:L0:blobs`, like LOD1); D-sky-craft/basket/balloon-night 341/338/339 → 277/276/275 | engine | S | COMPLETED | TASK-405 |
 | TASK-396 | Re-pin cams (D-macro blocked by a wall), DESK_CAM, live cams; `--assert` ×3 qualities | engine | S | COMPLETED | 393–395 |
 | TASK-397 | QA: wow before/after sheet, ladder ×3, 10-seed sweep — wow 13/13, ladder fails on Marketing T2–T3 ground tone (→ TASK-440), seed 3003 W11 302 (→ TASK-407), gulls + orphan rotors (→ TASK-399) | qa | M | COMPLETED | TASK-396 |
-| TASK-399 | Fix QA defects: seagulls drawn as stretched planks (W2/W3), orphan rotors beside turbines (W7) | engine | S | IN PROGRESS | TASK-397 |
+| TASK-399 | Fix QA defects: seagulls drawn as stretched planks (W2/W3), orphan rotors beside turbines (W7) | engine | S | COMPLETED | TASK-397 |
 | TASK-398 | Docs: ART_BIBLE §2/§4/§6/§8/§11 (soil #B9845A, postcard pitch band), DECISIONS D-039…D-045, MEMORY | docs | S | COMPLETED | TASK-397 |
 | TASK-402a | Observatory University prop kit: observatory, faculty halls, library rotunda, campus tower, terrarium, sculptures, radio dish, lab pod, garden kit | props | L | COMPLETED (3d2b414) | TASK-400 |
 | TASK-402b | Research → "Observatory University": 52–58 u terraced campus hill, quad, gardens, glasshouses, research base, dishes, sculptures; W9 re-framed, W14 "Campus Golden Hour" (D-046) | worldgen | L | COMPLETED | TASK-402a |
