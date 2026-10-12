@@ -232,6 +232,32 @@ Details in `phases/phase-3.md`.
 | TASK-402a | Observatory University prop kit: observatory, faculty halls, library rotunda, campus tower, terrarium, sculptures, radio dish, lab pod, garden kit | props | L | COMPLETED (3d2b414) | TASK-400 |
 | TASK-402b | Research → "Observatory University": 52–58 u terraced campus hill, quad, gardens, glasshouses, research base, dishes, sculptures; W9 re-framed, W14 "Campus Golden Hour" (D-046) | worldgen | L | COMPLETED | TASK-402a |
 
+### M19 — Seven Cultures
+*Every island a profession-themed micro-culture (plan: `mar-plans/ISLAND_CULTURES.md`). Chosen: HQ Harbour Guild, Coding Wind Gardens, DevOps Ember Smiths, Marketing Carnival Broadcasters, QA Inspectors, Design Glass & Light, Research Star Academy. Budget gate first (W11 298/300); culture kits mostly tier 2–3, ≤ 10 new defs per island, 0 new programs.*
+
+| ID | Task | Agent | Complexity | Status | Dependencies |
+|----|------|-------|------------|--------|--------------|
+| TASK-407 | Far structure merge: one merged mesh per island at T0–T1, swap to instanced groups at T2; W11 ≤ 230 (cut-off point) | engine | L | IN PROGRESS | TASK-406 |
+| TASK-408 | Culture contract: `content/cultures/*` types + 7 stubs, `noShadow` prop flag, `cultureDefsPerIsland`, `StorySpot`, ledger test | engine | S | IN PROGRESS | — |
+| TASK-409 | Pennant & signage kit: 7 pennant cuts, pier signpost, cargo crate ×7, sail stripe, emblem glyphs | props | M | IN PROGRESS | — |
+| TASK-410 | HQ Harbour Guild kit (timetable board, bell post, ferry awning, guild hall variant, ferry hull …) | props | M | PENDING | 408, 409 |
+| TASK-411 | Coding Wind Gardens kit (pergola desks, hammocks, kites, rubber ducks, giant duck …) | props | M | PENDING | 408 |
+| TASK-412 | DevOps Ember Smiths kit (lava lanterns, ingots, anvil, onsen deck, server shrine, forge bell …) | props | M | PENDING | 408 |
+| TASK-413 | Marketing Carnival kit (popcorn cart, confetti cannon, marquee, balloon mast, mascot statue …) | props | M | PENDING | 408 |
+| TASK-414 | QA Inspectors kit (bug jars, stamp desk, cone pyramid, scoreboard, inspection booth, UV lamps …) | props | M | PENDING | 408, 410 |
+| TASK-415 | Design Glass & Light kit (hot shop, prism sculpture, stained screen, glass orbs, rainbow arc, canopy vitray …) | props | M | PENDING | 408, 414 |
+| TASK-416 | Research Star Academy kit (chalkboards, tea trolley, tripod telescopes, orrery, owl box, observatory slit …) | props | M | PENDING | 408 |
+| TASK-420…426 | Culture placement per island (fixtures, story spots, routes) — one plan file each | worldgen | M ×7 | PENDING | 410…416 |
+| TASK-430 | Culture clock + Launch Day Relay (rhythm table, lamp sets, variant swaps, festival) | engine | M | PENDING | 420…426 |
+| TASK-431 | Culture movers (bell, crane lift, kites, confetti, caustics, weather balloon …) | life | M | PENDING | 420…426 |
+| TASK-432 | Bot culture: carried items, accessories, poses, itineraries, tableau bots | life | M | PENDING | 420…426 |
+| TASK-433 | Critter culture: ladybug, owl, pigeon, cats, capybara, mascot crab | life | M | PENDING | 432 |
+| TASK-440 | Culture ground + light: stripe layer, terrazzo, `marquee`/`stained` surface kinds, emissive hues | shader | M | PENDING | 430…433 |
+| TASK-441 | Sky culture: balloon accents + pennants, HQ airship livery, Launch Show take-off | props | S | PENDING | 423, 431 |
+| TASK-450 | Presets W15–W19, D-culture/D-story/D-gallery | engine | S | PENDING | 440, 441 |
+| TASK-451 | M19 QA: 10 seeds, ladder ×7, culture checklist | qa | M | PENDING | 450 |
+| TASK-452 | Docs: ART_BIBLE §12 Cultures, DECISIONS D-049…D-051, MEMORY | docs | S | PENDING | 451 |
+
 ### M17 — Graphics II: decor & nature
 *Flower fields, fences, lanterns, benches, signs, rocks*
 
