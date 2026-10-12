@@ -3,11 +3,12 @@ import type { Scope } from '../core/scope.ts';
 import { hashInts } from '../core/hash.ts';
 import { BEAM } from '../content/lighting.ts';
 import { PROP_DEF_INDEX } from '../content/props.ts';
-import { CULTURE_MOVERS as M, windowPhase } from '../content/cultures/movers.ts';
+import { CULTURE_MOVERS as M } from '../content/cultures/movers.ts';
+import type { CultureFestival, CultureState } from './culture-clock.ts';
 import type { EnvState } from '../env/env-state.ts';
 import { makeLifeMaterial } from '../life/life-material.ts';
 import { PropFlag, type PropStore } from '../world/prop-store.ts';
-import { heightAt, type WorldData } from '../world/types.ts';
+import { heightAt, type ThemeId, type WorldData } from '../world/types.ts';
 import { buildBeamGeometry } from './night/beam.ts';
 import { createSkyProgramMaterial } from './sky/sky.ts';
 import { SHARED } from './uniforms.ts';
@@ -38,6 +39,8 @@ export interface CultureCtx {
   wind: { x: number; z: number; s: number };
   /** Reduced-motion scale 0..1 for the wobble terms. */
   motion: number;
+  /** The ritual running on the scene's island now (culture clock), or null. */
+  fest: CultureFestival | null;
 }
 
 /** One instance being written into the mesh buffers. */
@@ -147,6 +150,7 @@ function rings(
 
 /** A scene bound to one anchor (a prop instance or a story spot). */
 interface Scene {
+  theme: ThemeId;
   /** Centre in world space (distance gate). */
   cx: number;
   cy: number;
@@ -169,6 +173,7 @@ function pivotOf(s: PropStore, i: number): THREE.Matrix4 {
 }
 
 function sceneAt(
+  theme: ThemeId,
   pivot: THREE.Matrix4,
   yaw: number,
   localCentre: V3,
@@ -176,7 +181,7 @@ function sceneAt(
   run: Scene['run'],
 ): Scene {
   _a.set(...localCentre).applyMatrix4(pivot);
-  return { cx: _a.x, cy: _a.y, cz: _a.z, max, pivot, yaw, run, wl: { x: 1, z: 0 } };
+  return { theme, cx: _a.x, cy: _a.y, cz: _a.z, max, pivot, yaw, run, wl: { x: 1, z: 0 } };
 }
 
 /* ------------------------------------- scenes ------------------------------------- */
@@ -185,7 +190,7 @@ function bellScene(variant: number): Scene['run'] {
   const B = M.bell;
   const at = B.centre[variant % B.centre.length];
   return (w, c) => {
-    if (!B.windows.some((x) => windowPhase(c.hour, x) >= 0)) return;
+    if (c.fest?.id !== B.ritual) return;
     rings(w, at, [0, 1, 0], B, 0, c.time);
   };
 }
@@ -205,8 +210,8 @@ function craneScene(variant: number, idx: number): Scene['run'] {
 function kiteScene(variant: number, idx: number): Scene['run'] {
   const K = M.kites;
   return (w, c, s) => {
-    const ph = windowPhase(c.hour, K.window);
-    if (ph < 0) return;
+    if (c.fest?.id !== K.ritual) return;
+    const ph = c.fest.phase;
     const e = ph < K.rise ? smooth(ph / K.rise) : ph > 1 - K.fall ? smooth((1 - ph) / K.fall) : 1;
     if (e <= 0) return;
     const gust = Math.min(1.2, Math.max(0.6, c.wind.s));
@@ -261,7 +266,6 @@ function kiteScene(variant: number, idx: number): Scene['run'] {
 
 function liftScene(idx: number): Scene['run'] {
   const L = M.lift;
-  const horn = M.horn.windows[1];
   return (w, c) => {
     const cyc = c.time / L.period + idx * 0.37;
     const n = Math.floor(cyc);
@@ -286,7 +290,7 @@ function liftScene(idx: number): Scene['run'] {
     );
     const topY = y + ch;
     for (const s of [-1, 1]) cable(w, [s * L.beamX, L.cableTop, L.z], [cx + s * L.lugX, topY, L.z]);
-    if (windowPhase(c.hour, horn) >= 0)
+    if (c.fest?.id === M.horn.lampRitual)
       w.put(
         PART.beacon,
         [cx, topY + 0.18, L.z],
@@ -300,7 +304,7 @@ function liftScene(idx: number): Scene['run'] {
 function hornScene(): Scene['run'] {
   const H = M.horn;
   return (w, c) => {
-    if (!H.windows.some((x) => windowPhase(c.hour, x) >= 0)) return;
+    if (!c.fest || !H.rituals.includes(c.fest.id)) return;
     for (const m of H.mouths) rings(w, m.at, m.dir, H, H.travel, c.time);
   };
 }
@@ -308,9 +312,9 @@ function hornScene(): Scene['run'] {
 function confettiScene(idx: number): Scene['run'] {
   const C = M.confetti;
   return (w, c) => {
-    const ph = windowPhase(c.hour, C.window);
-    if (ph < 0) return;
-    const age = ph * C.life;
+    if (c.fest?.id !== C.ritual) return;
+    const age = c.fest.phase * C.showSeconds;
+    if (age >= C.life) return;
     const e = 1 - Math.exp(-age / C.tau);
     for (let i = 0; i < C.pieces; i++) {
       const u1 = rnd(i, idx, 11);
@@ -342,8 +346,8 @@ function confettiScene(idx: number): Scene['run'] {
 function flagScene(): Scene['run'] {
   const F = M.flag;
   return (w, c) => {
-    const ph = windowPhase(c.hour, F.window);
-    if (ph < 0) return;
+    if (c.fest?.id !== F.ritual) return;
+    const ph = c.fest.phase;
     const up = ph < F.climb ? smooth(ph / F.climb) : ph > 0.88 ? smooth((1 - ph) / 0.12) : 1;
     const y = F.pole[1] + (F.topY - F.pole[1]) * up;
     const wob = c.motion * (0.22 * Math.sin(c.time * 3.1) + 0.08 * Math.sin(c.time * 7.3));
@@ -384,8 +388,8 @@ function antScene(): Scene['run'] {
 function balloonScene(): Scene['run'] {
   const B = M.balloon;
   return (w, c, s) => {
-    const ph = windowPhase(c.hour, B.window);
-    if (ph < 0) return;
+    if (c.fest?.id !== B.ritual) return;
+    const ph = c.fest.phase;
     const e = ph ** 1.6;
     const sc = 1 - smooth((ph - 0.9) / 0.1);
     if (sc <= 0) return;
@@ -455,7 +459,13 @@ export interface CultureMoversView {
   group: THREE.Group;
   /** The one part mesh (null when the world has no culture scene). */
   mesh: THREE.InstancedMesh | null;
-  update(time: number, hour: number, env: EnvState, camPos: THREE.Vector3): void;
+  update(
+    time: number,
+    hour: number,
+    env: EnvState,
+    camPos: THREE.Vector3,
+    culture?: Pick<CultureState, 'festival'>,
+  ): void;
   /** Instances written last frame, scenes in range, visible beams. */
   stats(): { instances: number; scenes: number; beams: number };
   readonly sceneCount: number;
@@ -497,22 +507,24 @@ export function createCultureMovers(
     const idx = ids.get(d) ?? 0;
     ids.set(d, idx + 1);
     const v = store.variant[i];
+    const th: ThemeId = world.islands[store.islandId[i]]?.theme ?? 'hq';
     const pv = (): THREE.Matrix4 => pivotOf(store, i);
     if (d === D.bell)
       scenes.push(
-        sceneAt(pv(), store.rotY[i], M.bell.centre[v % 2], 3 * M.bell.rings, bellScene(v)),
+        sceneAt(th, pv(), store.rotY[i], M.bell.centre[v % 2], 3 * M.bell.rings, bellScene(v)),
       );
     else if (d === D.crane)
-      scenes.push(sceneAt(pv(), store.rotY[i], M.crane.hang[v % 2], 2, craneScene(v, idx)));
+      scenes.push(sceneAt(th, pv(), store.rotY[i], M.crane.hang[v % 2], 2, craneScene(v, idx)));
     else if (d === D.rack)
       scenes.push(
-        sceneAt(pv(), store.rotY[i], [0, 2, 0], M.kites.slots.length * 6, kiteScene(v, idx)),
+        sceneAt(th, pv(), store.rotY[i], [0, 2, 0], M.kites.slots.length * 6, kiteScene(v, idx)),
       );
     else if (d === D.yard) {
-      scenes.push(sceneAt(pv(), store.rotY[i], [0, 4, M.lift.z], 4, liftScene(idx)));
+      scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 4, M.lift.z], 4, liftScene(idx)));
     } else if (d === D.horn)
       scenes.push(
         sceneAt(
+          th,
           pv(),
           store.rotY[i],
           [0, 1.5, 0.5],
@@ -521,12 +533,17 @@ export function createCultureMovers(
         ),
       );
     else if (d === D.cannon)
-      scenes.push(sceneAt(pv(), store.rotY[i], [0, 2, 1], M.confetti.pieces, confettiScene(idx)));
-    else if (d === D.flag) scenes.push(sceneAt(pv(), store.rotY[i], [0, 1.2, 0], 1, flagScene()));
-    else if (d === D.cart) scenes.push(sceneAt(pv(), store.rotY[i], [0, 2, 0], 3, balloonScene()));
+      scenes.push(
+        sceneAt(th, pv(), store.rotY[i], [0, 2, 1], M.confetti.pieces, confettiScene(idx)),
+      );
+    else if (d === D.flag)
+      scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 1.2, 0], 1, flagScene()));
+    else if (d === D.cart)
+      scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 2, 0], 3, balloonScene()));
     else if (d === D.prism) {
       const s = store.scale[i] || 1;
       const sc = sceneAt(
+        th,
         pv(),
         0,
         [0, 1, 0],
@@ -579,7 +596,16 @@ export function createCultureMovers(
       new THREE.Quaternion().setFromAxisAngle(_up, sp.rotY),
       new THREE.Vector3(1, 1, 1),
     );
-    scenes.push(sceneAt(m, sp.rotY, [0, 0, 0], M.ants.count, antScene()));
+    scenes.push(
+      sceneAt(
+        world.islands[sp.islandId]?.theme ?? 'coding',
+        m,
+        sp.rotY,
+        [0, 0, 0],
+        M.ants.count,
+        antScene(),
+      ),
+    );
   }
   // research balloon carts get the 06:00 launch only (their static balloon stays tethered)
 
@@ -619,8 +645,15 @@ export function createCultureMovers(
     night: 0,
     wind: { x: 1, z: 0, s: 1 },
     motion: 1,
+    fest: null,
   };
-  const update = (time: number, hour: number, env: EnvState, camPos: THREE.Vector3): void => {
+  const update = (
+    time: number,
+    hour: number,
+    env: EnvState,
+    camPos: THREE.Vector3,
+    culture?: Pick<CultureState, 'festival'>,
+  ): void => {
     ctx.time = time;
     ctx.hour = hour;
     ctx.sun = env.sunSkyDir;
@@ -645,6 +678,7 @@ export function createCultureMovers(
         s.wl.x = ctx.wind.x * cs - ctx.wind.z * sn;
         s.wl.z = ctx.wind.x * sn + ctx.wind.z * cs;
         writer.pivot = s.pivot;
+        ctx.fest = culture?.festival[s.theme] ?? null;
         const before = writer.n;
         s.run(writer, ctx, s);
         if (writer.n > before) nScenes++;

@@ -2,10 +2,10 @@ import * as THREE from 'three';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { Scope } from '../core/scope.ts';
 import { PROP_DEFS } from '../content/props.ts';
-import { CULTURE_MOVERS as M, windowPhase } from '../content/cultures/movers.ts';
+import { CULTURE_MOVERS as M } from '../content/cultures/movers.ts';
 import { createEnvState, sampleEnv, type EnvState } from '../env/env-state.ts';
 import { generateWorld } from '../world/index.ts';
-import type { WorldData } from '../world/types.ts';
+import { THEME_IDS, type ThemeId, type WorldData } from '../world/types.ts';
 import { appendSettlementProps } from './props/settlement-props.ts';
 import { createCultureMovers, type CultureMoversView } from './culture-movers.ts';
 import { PART, buildPartsGeometry } from './culture-mover-parts.ts';
@@ -22,6 +22,13 @@ function firstOf(
       return new THREE.Vector3(store.x[i], store.y[i] + 2, store.z[i]);
   void w;
   return null;
+}
+
+/** Culture-clock state with one ritual running on `theme` (or none). */
+function fest(theme?: ThemeId, id = '', phase = 0.3) {
+  const festival = {} as Record<ThemeId, { id: string; phase: number } | null>;
+  for (const t of THEME_IDS) festival[t] = t === theme ? { id, phase } : null;
+  return { festival };
 }
 
 function env(hour: number): EnvState {
@@ -51,12 +58,6 @@ describe('culture movers', () => {
     view = createCultureMovers(props, world, new Scope('test'));
   });
 
-  it('windowPhase wraps midnight and is -1 outside', () => {
-    expect(windowPhase(6.25, { hour: 6, dur: 0.5 })).toBeCloseTo(0.5);
-    expect(windowPhase(7, { hour: 6, dur: 0.5 })).toBe(-1);
-    expect(windowPhase(0.1, { hour: 23.9, dur: 0.4 })).toBeCloseTo(0.5);
-  });
-
   it('parts geometry: one merged mesh, every kind present, no NaN', () => {
     const g = buildPartsGeometry();
     const limb = g.getAttribute('limb');
@@ -76,44 +77,50 @@ describe('culture movers', () => {
     const at = firstOf(world, props, 'bellPost');
     expect(at).not.toBeNull();
     const e = env(6.1);
-    view.update(10, 6.1, e, at!);
+    view.update(10, 6.1, e, at!, fest('hq', 'ferryFanfare'));
     const a = snapshot(view);
     expect(view.stats().instances).toBeGreaterThanOrEqual(M.bell.rings);
     expect(a.every(Number.isFinite)).toBe(true);
-    view.update(10.5, 6.1, e, at!);
+    view.update(10.5, 6.1, e, at!, fest('hq', 'ferryFanfare'));
     const b = snapshot(view);
     expect(b).not.toEqual(a); // ripples move with sim time
-    view.update(10, 6.1, e, at!);
+    view.update(10, 6.1, e, at!, fest('hq', 'ferryFanfare'));
     expect(snapshot(view)).toEqual(a); // same (t, hour) -> same pose
   });
 
-  it('rituals follow the hour: bell rings only in its windows, kites only at 14:00', () => {
+  it('rituals follow the culture clock: bell rings only in the fanfare, kites only on kite day', () => {
     const bell = firstOf(world, props, 'bellPost')!;
-    view.update(3, 12, env(12), bell);
+    view.update(3, 12, env(12), bell, fest());
     const noon = view.stats().instances;
-    view.update(3, 6.1, env(6.1), bell);
+    view.update(3, 6, env(6), bell, fest('hq', 'ferryFanfare'));
     expect(view.stats().instances).toBeGreaterThan(noon);
     const rack = firstOf(world, props, 'kiteRack');
     if (rack) {
-      view.update(3, 9, env(9), rack);
+      view.update(3, 9, env(9), rack, fest());
       const before = view.stats().instances;
-      view.update(3, 14.3, env(14.3), rack);
+      view.update(3, 14, env(14), rack, fest('coding', 'kiteDay'));
       expect(view.stats().instances).toBeGreaterThan(before);
     }
   });
 
-  it('QA flag climbs the mast in the green-light window', () => {
+  it('QA flag climbs the mast at green light, confetti bursts at the show', () => {
     const mast = firstOf(world, props, 'flagMast')!;
-    view.update(3, 12, env(12), mast);
+    view.update(3, 12, env(12), mast, fest());
     const idle = view.stats().instances;
-    view.update(3, 16.3, env(16.3), mast);
+    view.update(3, 16, env(16), mast, fest('qa', 'greenLight'));
     expect(view.stats().instances).toBeGreaterThan(idle);
+    const cannon = firstOf(world, props, 'confettiCannon')!;
+    view.update(3, 17.5, env(17.5), cannon, fest('marketing', 'goldenHourShow', 0.03));
+    const burst = view.stats().instances;
+    view.update(3, 17.5, env(17.5), cannon, fest('marketing', 'goldenHourShow', 0.5));
+    expect((burst - view.stats().instances) % M.confetti.pieces).toBe(0);
+    expect(burst - view.stats().instances).toBeGreaterThanOrEqual(M.confetti.pieces);
   });
 
   it('design light patches: under the prism at noon, >= 2x longer at 17:30, none at night', () => {
     const prism = firstOf(world, props, 'prismSculpture')!;
     const lenAt = (hour: number): number => {
-      view.update(3, hour, env(hour), prism);
+      view.update(3, hour, env(hour), prism, fest());
       const m = view.mesh!;
       const gait = m.geometry.getAttribute('aGait');
       let best = 0;
@@ -136,7 +143,7 @@ describe('culture movers', () => {
 
   it('hidden beyond the range: nothing written, no draw', () => {
     const far = new THREE.Vector3(5000, 50, 5000);
-    view.update(3, 6.1, env(6.1), far);
+    view.update(3, 6.1, env(6.1), far, fest('hq', 'ferryFanfare'));
     expect(view.stats().instances).toBe(0);
     expect(view.mesh?.visible).toBe(false);
     expect(view.stats().beams).toBe(0);
@@ -145,7 +152,7 @@ describe('culture movers', () => {
   it('reduced motion calms the wobble but keeps the ritual', () => {
     const mast = firstOf(world, props, 'bellPost')!;
     SHARED.uMotionScale.value = 0;
-    view.update(3, 6.1, env(6.1), mast);
+    view.update(3, 6, env(6), mast, fest('hq', 'ferryFanfare'));
     const n = view.stats().instances;
     expect(n).toBeGreaterThan(0);
     SHARED.uMotionScale.value = 1;

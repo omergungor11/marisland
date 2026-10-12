@@ -7,12 +7,6 @@
  */
 import { FLOWERS, ROOFS, WALLS } from '../palette.ts';
 
-/** A daily window: starts at `hour`, lasts `dur` game hours (wraps past midnight). */
-export interface HourWindow {
-  hour: number;
-  dur: number;
-}
-
 export const CULTURE_MOVERS = {
   /** Everything is hidden (no instance written, no draw) past this camera distance, u. */
   range: 260,
@@ -21,10 +15,8 @@ export const CULTURE_MOVERS = {
 
   /** HQ Harbour Guild: the 06:00 / 18:00 Ferry Fanfare rings the bell post. */
   bell: {
-    windows: [
-      { hour: 6, dur: 0.5 },
-      { hour: 18, dur: 0.5 },
-    ] as readonly HourWindow[],
+    /** Rhythm slot (content/cultures/rhythm.ts) that rings it. */
+    ritual: 'ferryFanfare',
     /** Bell centre (local) per bellPost variant. */
     centre: [
       [0.7, 1.78, 0],
@@ -52,7 +44,7 @@ export const CULTURE_MOVERS = {
 
   /** Coding Wind Gardens: Kite Day, 14:00, wind-gated, from the kite rack. */
   kites: {
-    window: { hour: 14, dur: 1.2 } as HourWindow,
+    ritual: 'kiteDay',
     /** Rack slot indices that fly (variant 1 racks lack slot 3 anyway). */
     slots: [0, 2, 4, 5] as readonly number[],
     slotX0: -1.7,
@@ -69,7 +61,7 @@ export const CULTURE_MOVERS = {
     tail: 2.2,
     bob: 0.28,
     sway: 0.7,
-    colors: [ROOFS[5], FLOWERS[0], ROOFS[3], ROOFS[2]] as readonly string[],
+    colors: [ROOFS[5], FLOWERS[0], FLOWERS[4], ROOFS[2]] as readonly string[],
   },
 
   /** DevOps Ember Works: the yard gantry lifts a container, swings it and sets it down. */
@@ -94,10 +86,9 @@ export const CULTURE_MOVERS = {
   },
   /** DevOps signalHorn: rings out of both horn mouths at the 06:00 siren and Release Night. */
   horn: {
-    windows: [
-      { hour: 6, dur: 0.4 },
-      { hour: 21, dur: 0.5 },
-    ] as readonly HourWindow[],
+    rituals: ['shiftSiren', 'releaseNight'] as readonly string[],
+    /** The one that also lights the lift's lamp. */
+    lampRitual: 'releaseNight',
     /** Mouths (local) and their unit directions, big horn then the treble one. */
     mouths: [
       { at: [0.9, 2.05, 0.9], dir: [0.623, 0.256, 0.739] },
@@ -127,7 +118,9 @@ export const CULTURE_MOVERS = {
     lean: [0.38, 0.06] as const,
   },
   confetti: {
-    window: { hour: 17.5, dur: 0.3 } as HourWindow,
+    ritual: 'goldenHourShow',
+    /** Ritual length (rhythm `seconds`): the burst is its first `life` seconds. */
+    showSeconds: 60,
     /** Muzzle (local) and barrel direction of the confettiCannon. */
     muzzle: [0, 1.1, 0.39] as const,
     dir: [0, 0.741, 0.671] as const,
@@ -152,12 +145,12 @@ export const CULTURE_MOVERS = {
 
   /** QA Test Factory: the green-light flag climbs the mast, ants march by the bug zoo. */
   flag: {
-    window: { hour: 16, dur: 0.55 } as HourWindow,
+    ritual: 'greenLight',
     pole: [0, 0.35, 0] as const,
     topY: 1.55,
     climb: 0.35,
     size: 0.6,
-    color: '#FF2020',
+    color: '#FF7A5C',
   },
   ants: {
     count: 9,
@@ -196,7 +189,7 @@ export const CULTURE_MOVERS = {
 
   /** Research Star Academy: the 06:00 weather balloon leaves the cart and rises out of view. */
   balloon: {
-    window: { hour: 6, dur: 0.6 } as HourWindow,
+    ritual: 'weatherBalloon',
     /** Release point (cart-local) = the tethered balloon's top-up spot. */
     from: [0.05, 2.05, 0] as const,
     rise: 70,
@@ -208,10 +201,3 @@ export const CULTURE_MOVERS = {
     wobble: 0.35,
   },
 } as const;
-
-/** Phase 0..1 of `hour` inside `w` (-1 when outside). */
-export function windowPhase(hour: number, w: HourWindow): number {
-  let u = (hour - w.hour) % 24;
-  if (u < 0) u += 24;
-  return u < w.dur ? u / w.dur : -1;
-}
