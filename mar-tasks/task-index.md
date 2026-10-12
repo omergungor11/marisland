@@ -225,6 +225,7 @@ Details in `phases/phase-3.md`.
 | TASK-401 | QA → "Test Factory": plateau, sawtooth hangars, conveyor bridges, loop track, check tower, movers | worldgen | L | COMPLETED | TASK-390 |
 | TASK-403 | Marketing → "Media Rock": lee terraces, Ad Boulevard + giant screen, media campus ledges (antenna, layered offices, photo / print shops), fair ground (ferris wheel mover, tents, booths, stage) | worldgen | L | COMPLETED | TASK-390 |
 | TASK-405 | DevOps → "Ember Works": cone-foot shelves (harbour, foundry, data center terraces), container yard + crane + control tower, CI/CD belt, quay machinery, furnaces + rail + smithies, lodges, cargo ships / ore trains (movers), batcher far-group skip (D-048) | worldgen | L | COMPLETED | TASK-390 |
+| TASK-406 | Draw-call budget for the D-sky-* close shots: LOD0 contact blobs merged into one mesh (`props:L0:blobs`, like LOD1); D-sky-craft/basket/balloon-night 341/338/339 → 277/276/275 | engine | S | COMPLETED | TASK-405 |
 | TASK-396 | Re-pin cams (D-macro blocked by a wall), DESK_CAM, live cams; `--assert` ×3 qualities | engine | S | COMPLETED | 393–395 |
 | TASK-397 | QA: wow before/after sheet, ladder ×3, 10-seed sweep | qa | M | PENDING | TASK-396 |
 | TASK-398 | Docs: ART_BIBLE §2/§4/§6/§8/§11 (soil #B9845A, postcard pitch band), DECISIONS D-039…D-045, MEMORY | docs | S | COMPLETED | TASK-397 |

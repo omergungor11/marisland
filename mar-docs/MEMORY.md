@@ -246,5 +246,8 @@
   `MAR_PERF_SCALE=0` disables them; on a loaded container re-run `pnpm vitest run src/world` alone before
   calling a failure a regression (best-of-N already filters worker contention)
 
+- Draw calls: a per-group `InstancedMesh` costs 1 call; contact blobs are merged per LOD in the batcher (`blobMerge`).
+  A new per-(def, island) mesh type needs the same treatment; sky craft are only 2 calls, island groups dominate
+
 > Rules: read at session start; update gotchas/patterns as discovered; delete stale info; keep it
 > short. Architecture decisions go to DECISIONS.md, not here.

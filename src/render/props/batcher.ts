@@ -472,8 +472,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
       }
       blobs = makeBlobs(mesh, radii, aAppear, capacity);
       blobs.visible = false;
-      // LOD1 contact blobs draw through the merged far-blob mesh (one call, see syncFarBlobs)
-      if (lod === 0) root.add(blobs);
+      // contact blobs draw through one merged mesh per LOD (see blobMerge)
     }
     const g: Group = {
       mesh,
@@ -799,8 +798,6 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
         );
       }
       blobs.visible = oldBlobs.visible;
-      root.remove(oldBlobs);
-      if (g.lod === 0) root.add(blobs);
       oldBlobs.dispose();
       oldBlobs.geometry.dispose();
       g.blobs = blobs;
@@ -962,73 +959,80 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
     return cells.length;
   };
 
-  // ---- merged LOD1 contact blobs (TASK-373 draw-call budget): the LOD1 groups keep their own
+  // ---- merged contact blobs (TASK-373 / TASK-406 draw-call budget): every group keeps its own
   // blob InstancedMesh as CPU state (matrices + shared aAppear, written by every path above), but
-  // only this one mesh draws them: the visible LOD1 groups' blobs concatenated, re-copied when a
-  // group's visibility, count, matrices or appear values changed (attribute versions).
-  let far: THREE.InstancedMesh | null = null;
-  let farAppear: THREE.InstancedBufferAttribute | null = null;
-  let farSig = -1;
-  const disposeFar = (): void => {
-    if (!far) return;
-    root.remove(far);
-    far.dispose();
-    far.geometry.dispose();
-    far = null;
+  // only one merged mesh per LOD draws them: the visible groups' blobs concatenated, re-copied when
+  // a group's visibility, count, matrices or appear values changed (attribute versions). LOD0 used
+  // to draw one call per (def, variant, island) group; that was ~35 of the ~340 calls of a close
+  // sky-craft frame.
+  const blobMerge = (lod: Lod) => {
+    let mesh: THREE.InstancedMesh | null = null;
+    let appear: THREE.InstancedBufferAttribute | null = null;
+    let lastSig = -1;
+    const dispose = (): void => {
+      if (!mesh) return;
+      root.remove(mesh);
+      mesh.dispose();
+      mesh.geometry.dispose();
+      mesh = null;
+    };
+    d.scope.defer(dispose);
+    const sync = (): void => {
+      let sig = 0;
+      let total = 0;
+      let src: THREE.InstancedMesh | null = null;
+      for (const g of groups) {
+        const b = g.blobs;
+        if (g.lod !== lod || !b || !g.visible) continue;
+        src = b;
+        for (const v of [b.id, b.count, b.instanceMatrix.version, g.appear.version])
+          sig = (Math.imul(sig, 31) + v) | 0;
+        total += b.count;
+      }
+      sig = (Math.imul(sig, 31) + total) | 0;
+      if (sig === lastSig) return;
+      lastSig = sig;
+      if (!src || !total) {
+        if (mesh) mesh.visible = false;
+        return;
+      }
+      if (!mesh || mesh.instanceMatrix.count < total) {
+        dispose();
+        const cap = grownCapacity(total);
+        const geo = new THREE.InstancedBufferGeometry();
+        const base = src.geometry;
+        geo.setAttribute('position', base.getAttribute('position'));
+        geo.setAttribute('uv', base.getAttribute('uv'));
+        geo.setIndex(base.index);
+        appear = new THREE.InstancedBufferAttribute(new Float32Array(cap), 1);
+        appear.setUsage(THREE.DynamicDrawUsage);
+        geo.setAttribute('aAppear', appear);
+        mesh = new THREE.InstancedMesh(geo, src.material, cap);
+        mesh.renderOrder = src.renderOrder;
+        mesh.frustumCulled = true;
+        mesh.name = `props:L${lod}:blobs`;
+        root.add(mesh);
+      }
+      const mat = mesh.instanceMatrix.array as Float32Array;
+      const app = appear!.array as Float32Array;
+      let off = 0;
+      for (const g of groups) {
+        const b = g.blobs;
+        if (g.lod !== lod || !b || !g.visible) continue;
+        mat.set((b.instanceMatrix.array as Float32Array).subarray(0, b.count * 16), off * 16);
+        app.set((g.appear.array as Float32Array).subarray(0, b.count), off);
+        off += b.count;
+      }
+      mesh.count = total;
+      mesh.visible = true;
+      mesh.instanceMatrix.needsUpdate = true;
+      appear!.needsUpdate = true;
+      mesh.computeBoundingSphere();
+    };
+    return sync;
   };
-  d.scope.defer(disposeFar);
-  const syncFarBlobs = (): void => {
-    let sig = 0;
-    let total = 0;
-    let src: THREE.InstancedMesh | null = null;
-    for (const g of groups) {
-      const b = g.blobs;
-      if (g.lod !== 1 || !b || !g.visible) continue;
-      src = b;
-      for (const v of [b.id, b.count, b.instanceMatrix.version, g.appear.version])
-        sig = (Math.imul(sig, 31) + v) | 0;
-      total += b.count;
-    }
-    sig = (Math.imul(sig, 31) + total) | 0;
-    if (sig === farSig) return;
-    farSig = sig;
-    if (!src || !total) {
-      if (far) far.visible = false;
-      return;
-    }
-    if (!far || far.instanceMatrix.count < total) {
-      disposeFar();
-      const cap = grownCapacity(total);
-      const geo = new THREE.InstancedBufferGeometry();
-      const base = src.geometry;
-      geo.setAttribute('position', base.getAttribute('position'));
-      geo.setAttribute('uv', base.getAttribute('uv'));
-      geo.setIndex(base.index);
-      farAppear = new THREE.InstancedBufferAttribute(new Float32Array(cap), 1);
-      farAppear.setUsage(THREE.DynamicDrawUsage);
-      geo.setAttribute('aAppear', farAppear);
-      far = new THREE.InstancedMesh(geo, src.material, cap);
-      far.renderOrder = src.renderOrder;
-      far.frustumCulled = true;
-      far.name = 'props:L1:blobs';
-      root.add(far);
-    }
-    const mat = far.instanceMatrix.array as Float32Array;
-    const app = farAppear!.array as Float32Array;
-    let off = 0;
-    for (const g of groups) {
-      const b = g.blobs;
-      if (g.lod !== 1 || !b || !g.visible) continue;
-      mat.set((b.instanceMatrix.array as Float32Array).subarray(0, b.count * 16), off * 16);
-      app.set((g.appear.array as Float32Array).subarray(0, b.count), off);
-      off += b.count;
-    }
-    far.count = total;
-    far.visible = true;
-    far.instanceMatrix.needsUpdate = true;
-    farAppear!.needsUpdate = true;
-    far.computeBoundingSphere();
-  };
+  const syncNearBlobs = blobMerge(0);
+  const syncFarBlobs = blobMerge(1);
 
   const batcher: PropBatcher = {
     group: root,
@@ -1105,6 +1109,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
         tier >= 3
           ? groups.reduce((a, g) => a + (g.groundCover && g.visible ? g.mesh.count : 0), 0)
           : 0;
+      syncNearBlobs();
       syncFarBlobs();
     },
     slotsOf(i) {
@@ -1161,6 +1166,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
       }
       st.clusters = rewriteClusters(indices, time);
       flushTouched();
+      syncNearBlobs();
       syncFarBlobs();
       return st;
     },
