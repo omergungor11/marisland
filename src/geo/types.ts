@@ -21,4 +21,9 @@ export interface PropGeoDef {
   /** Optional per-variant nominal heights (size classes). */
   heights?: readonly number[];
   windy: boolean;
+  /**
+   * LOD1 of variant `k` is built as variant `lod1Of[k]` (identical far geometry, M19 B2: a culture
+   * variant such as hqAnnex 2 adds no new LOD1 look).
+   */
+  lod1Of?: Readonly<Record<number, number>>;
 }
