@@ -1,5 +1,14 @@
 import * as THREE from 'three';
-import { CLIFF_STRATA, GRASS, ROCK, ROOFS, SAND, WALLS, WOOD } from '../content/palette.ts';
+import {
+  CLIFF_STRATA,
+  EMISSIVE,
+  GRASS,
+  ROCK,
+  ROOFS,
+  SAND,
+  WALLS,
+  WOOD,
+} from '../content/palette.ts';
 import { Acc, blob, col, createNoise, frustum, mat, qEuler } from './kit.ts';
 import { TAU, TINT, V, V2, baseBox, cylB, jitterAcc, lathe, put, tubeAlong } from './parts.ts';
 import type { BuildOpts } from './types.ts';
@@ -177,7 +186,220 @@ function hullShape(L: number, W: number): THREE.Shape {
   return s;
 }
 
+/** Half-width of the ferry hull (`hullShape(6, 2.2)`) at z, for rails and benches. */
+function ferryHalf(z: number): number {
+  if (z < -1.2) return 0.77 + ((z + 3) / 1.8) * 0.33;
+  if (z < 1.05) return 1.1 - ((z + 1.2) / 2.25) * 0.066;
+  return Math.max(0, 1.034 * (1 - (z - 1.05) / 1.95));
+}
+
+/**
+ * Harbour Guild ferry (sailboat variant 2, M19 TASK-410): 6 u white hull with coral boot-top and
+ * sheer stripe, aft cabin + wheelhouse with a swallowtail HQ pennant, forward passenger deck under a
+ * coral/cream striped awning with benches, rails, lifebuoys and a bow lantern. Bow +z, same pivot
+ * as the sailboat (keel at y = 0). LOD1: hull, cabin, wheelhouse, awning slab, mast, flag.
+ */
+function ferry({ rng, lod }: BuildOpts): THREE.BufferGeometry {
+  const acc = jitterAcc(rng);
+  const hi = lod === 0;
+  const hullH = 0.78;
+  const CORAL = ROOFS[0];
+  const L = 6;
+  const W = 2.2;
+  const ext = (depth: number): THREE.BufferGeometry =>
+    new THREE.ExtrudeGeometry(hullShape(L, W), { depth, bevelEnabled: false }).rotateX(Math.PI / 2);
+  // stacked bands (flat side faces: a colour fn on the big triangles would split them diagonally)
+  const bands: ReadonlyArray<readonly [number, number, string]> = hi
+    ? [
+        [0, 0.26, CORAL],
+        [0.26, 0.52, WALLS[1]],
+        [0.52, 0.64, CORAL],
+        [0.64, hullH, WALLS[1]],
+      ]
+    : [
+        [0, 0.3, CORAL],
+        [0.3, hullH, WALLS[1]],
+      ];
+  for (const [y0, y1, c] of bands)
+    put(
+      acc,
+      ext(y1 - y0),
+      [0, y1, 0],
+      (p) => (y1 === hullH && p.y > hullH - 0.01 ? col(WOOD.planks) : col(c)),
+      { aoAmt: 0.2, noJitter: true },
+    );
+  const deck = hullH;
+  // aft cabin + wheelhouse
+  put(
+    acc,
+    new THREE.BoxGeometry(1.55, 0.95, 1.8).translate(0, 0.475, 0),
+    [0, deck, -1.95],
+    col(WALLS[0]),
+    {
+      aoAmt: 0.15,
+    },
+  );
+  put(
+    acc,
+    new THREE.BoxGeometry(1.8, 0.1, 2.05).translate(0, 0.05, 0),
+    [0, deck + 0.95, -1.95],
+    col(CORAL),
+    {
+      aoAmt: 0.05,
+    },
+  );
+  put(
+    acc,
+    new THREE.BoxGeometry(1.1, 0.7, 1.0).translate(0, 0.35, 0),
+    [0, deck + 1.05, -1.7],
+    col(WALLS[0]),
+    {
+      aoAmt: 0.1,
+    },
+  );
+  put(
+    acc,
+    new THREE.BoxGeometry(1.34, 0.1, 1.24).translate(0, 0.05, 0),
+    [0, deck + 1.75, -1.7],
+    col(CORAL),
+    {
+      aoAmt: 0.05,
+    },
+  );
+  const mastTop = deck + 1.85 + 1.25;
+  put(acc, cylB(0.05, 0.04, 1.25, hi ? 5 : 3, true), [0, deck + 1.85, -1.7], col(WOOD.dark), {
+    aoAmt: 0,
+  });
+  // swallowtail pennant streaming aft (-z)
+  const fy = mastTop - 0.18;
+  const flag = new THREE.ShapeGeometry(
+    new THREE.Shape([
+      new THREE.Vector2(0, 0.2),
+      new THREE.Vector2(0.85, 0.2),
+      new THREE.Vector2(0.62, 0),
+      new THREE.Vector2(0.85, -0.2),
+      new THREE.Vector2(0, -0.2),
+    ]),
+  );
+  put(acc, flag, [0, fy, -1.7], col(CORAL), {
+    q: qEuler(0, Math.PI / 2, 0),
+    double: true,
+    aoAmt: 0,
+    ao: () => 1,
+    windAbs: (p) => clamp01((-1.7 - p.z) / 0.85) * 0.9 + 0.1,
+  });
+  // awning over the passenger deck
+  const aw = 2.0;
+  const ad = 2.3;
+  const ay = deck + 1.45;
+  const az = 0.0;
+  if (hi) {
+    const n = 6;
+    for (let i = 0; i < n; i++) {
+      const sw = aw / n;
+      put(
+        acc,
+        new THREE.BoxGeometry(sw, 0.08, ad),
+        [-aw / 2 + (i + 0.5) * sw, ay, az],
+        col(i % 2 === 0 ? CORAL : WALLS[0]),
+        { q: qEuler(0.06, 0, 0), aoAmt: 0.05 },
+      );
+    }
+    for (const sx of [-1, 1])
+      for (const z of [-1.0, 1.0])
+        put(
+          acc,
+          cylB(0.05, 0.045, 1.4, 5, true),
+          [sx * Math.min(0.85, ferryHalf(z) - 0.2), deck, z],
+          col(WOOD.dark),
+          {
+            aoAmt: 0.1,
+          },
+        );
+    // benches along both sides
+    for (const sx of [-1, 1]) {
+      put(
+        acc,
+        new THREE.BoxGeometry(0.3, 0.07, 1.5),
+        [sx * 0.68, deck + 0.34, 0.0],
+        col(WOOD.planks),
+        { aoAmt: 0.1 },
+      );
+      for (const z of [-0.6, 0.6])
+        put(
+          acc,
+          new THREE.BoxGeometry(0.26, 0.34, 0.07),
+          [sx * 0.68, deck + 0.17, z],
+          col(WOOD.dark),
+          { aoAmt: 0.15 },
+        );
+    }
+    // rails: posts + top rope each side
+    for (const sx of [-1, 1]) {
+      const pts: THREE.Vector3[] = [];
+      for (const z of [-2.6, -1.1, 0.4, 1.5, 2.2]) {
+        const x = sx * ferryHalf(z) * 0.93;
+        put(acc, cylB(0.025, 0.025, 0.34, 3, true), [x, deck, z], col(WOOD.dark), { aoAmt: 0 });
+        pts.push(V(x, deck + 0.34, z));
+      }
+      put(acc, tubeAlong(pts, 0.022, 3), [0, 0, 0], col(WALLS[1]), { aoAmt: 0 });
+    }
+    // windows (warm at night) on the cabin sides and the wheelhouse front
+    for (const sx of [-1, 1])
+      for (const z of [-2.5, -1.95, -1.4])
+        put(
+          acc,
+          new THREE.BoxGeometry(0.05, 0.3, 0.38),
+          [sx * 0.78, deck + 0.55, z],
+          col(EMISSIVE.window),
+          {
+            emissive: 1,
+            aoAmt: 0,
+            ao: () => 1,
+          },
+        );
+    put(acc, new THREE.BoxGeometry(0.8, 0.3, 0.05), [0, deck + 1.4, -1.2], col(EMISSIVE.window), {
+      emissive: 1,
+      aoAmt: 0,
+      ao: () => 1,
+    });
+    // lifebuoys on the cabin sides
+    for (const sx of [-1, 1])
+      put(
+        acc,
+        new THREE.TorusGeometry(0.2, 0.065, 4, 9),
+        [sx * 0.8, deck + 0.52, -2.45],
+        col(ROOFS[1]),
+        {
+          q: qEuler(0, Math.PI / 2, 0),
+          aoAmt: 0,
+        },
+      );
+    // funnel
+    put(acc, cylB(0.2, 0.17, 0.55, 7), [0, deck + 1.05, -2.5], col(WALLS[1]), { aoAmt: 0.1 });
+    put(acc, cylB(0.21, 0.21, 0.14, 7), [0, deck + 1.5, -2.5], col(CORAL), { aoAmt: 0 });
+    // bow bollard + lantern
+    put(acc, cylB(0.1, 0.09, 0.26, 6), [0, deck, 2.55], col(ROCK[2]), { aoAmt: 0.1 });
+    put(acc, new THREE.IcosahedronGeometry(0.1, 0), [0, deck + 0.4, 2.55], col(EMISSIVE.lantern), {
+      emissive: 1,
+      aoAmt: 0,
+      ao: () => 1,
+    });
+    put(acc, cylB(0.02, 0.02, 0.18, 3, true), [0, deck + 0.26, 2.55], col(ROCK[2]), { aoAmt: 0 });
+  } else {
+    put(acc, new THREE.BoxGeometry(aw, 0.12, ad), [0, ay, az], col(CORAL), {
+      aoAmt: 0.05,
+      q: qEuler(0.06, 0, 0),
+    });
+    put(acc, new THREE.BoxGeometry(0.1, 1.4, 0.1), [0, deck + 0.7, 0], col(WOOD.dark), {
+      aoAmt: 0.1,
+    });
+  }
+  return acc.finish(rng, true, true);
+}
+
 export function sailboat({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
+  if (variant === 2) return ferry({ rng, lod, variant });
   const acc = jitterAcc(rng);
   const sailHex = variant % 2 === 0 ? WALLS[1] : ROOFS[3];
   const hullH = 0.75;

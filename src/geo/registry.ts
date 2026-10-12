@@ -66,6 +66,7 @@ import {
 } from './offices.ts';
 import { giantMushroom, palm, pine, roundTree, treeBlob } from './trees.ts';
 import { THEME_GEO } from './themes/index.ts';
+import { withGuildHall } from './themes/culture-hq.ts';
 import type { Lod, PropGeoDef } from './types.ts';
 import type * as THREE from 'three';
 
@@ -173,7 +174,9 @@ defs.push(
   D('volcanoCrater', 1, volcanoCrater, 5.4, 0.34),
   // phase-3 office shells (footprints from content/offices.ts), far proxy, interiors, fixtures
   D('hqOffice', 2, hqOffice, 3.6, 5.4),
-  D('hqAnnex', 2, hqAnnex, 2.2, 7.9),
+  // variant 2 = Harbour Guild hall (M19 TASK-410): buildable, but `variants` stays 2 until wave 2
+  // places it and bumps OFFICE_DEFS / LOT_ROOFS / props-buildings together
+  { ...D('hqAnnex', 2, withGuildHall(hqAnnex), 2.2, 7.9), lod1Of: { 2: 1 } },
   D('meetingPavilion', 2, meetingPavilion, 2.8, 4.1),
   D('coffeeKiosk', 2, coffeeKiosk, 1.5, 2.75),
   D('devOffice', 2, devOffice, 4.0, 3.9, false, [4.1, 3.7]),
@@ -215,6 +218,7 @@ export function buildProp(
 ): THREE.BufferGeometry {
   const def = PROP_GEO[id];
   if (!def) throw new Error(`unknown prop geo: ${id}`);
-  const rng = createRng(seed).fork('geo', variant).fork(id);
-  return def.build({ rng, lod, variant });
+  const v = lod === 1 ? (def.lod1Of?.[variant] ?? variant) : variant;
+  const rng = createRng(seed).fork('geo', v).fork(id);
+  return def.build({ rng, lod, variant: v });
 }
