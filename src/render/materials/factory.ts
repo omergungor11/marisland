@@ -412,6 +412,22 @@ const FRAG_DITHER = /* glsl */ `
   #endif
 `;
 
+/**
+ * Flat-shaded normal with a guard (TASK-435): three's `normalize(cross(dFdx(p), dFdy(p)))` is NaN
+ * where a 2×2 quad's derivatives degenerate (far sliver triangles at the frustum edge). One NaN
+ * pixel in the HDR input blacks out the whole frame through the bloom mip chain; such a pixel
+ * faces the camera instead. Insert after `#include <normal_fragment_begin>`.
+ */
+export const FRAG_FLAT_NORMAL = /* glsl */ `
+  #ifdef FLAT_SHADED
+  {
+    vec3 marFn = cross(fdx, fdy);
+    float marL2 = dot(marFn, marFn);
+    normal = (marL2 > 1e-30 && marL2 < 1e30) ? marFn * inversesqrt(marL2) : vec3(0.0, 0.0, 1.0);
+  }
+  #endif
+`;
+
 const FRAG_OUTGOING = /* glsl */ `
   #ifdef MAR_SHADOW_TINT
   ${SHARED_LIT_GLSL.sunVisibility}
@@ -563,6 +579,7 @@ export class LitMaterial extends THREE.MeshLambertMaterial {
       fs = replaceOnce(fs, '#include <common>', FRAG_PARS, 'after');
       fs = replaceOnce(fs, '#include <clipping_planes_fragment>', FRAG_DITHER, 'after');
       fs = replaceOnce(fs, '#include <color_fragment>', ACTIVITY_SURFACE, 'after');
+      fs = replaceOnce(fs, '#include <normal_fragment_begin>', FRAG_FLAT_NORMAL, 'after');
       fs = replaceOnce(fs, '#include <opaque_fragment>', FRAG_CLOUD, 'before');
       fs = replaceOnce(fs, '#include <opaque_fragment>', FRAG_OUTGOING, 'before');
       fs = replaceOnce(fs, '#include <fog_fragment>', FRAG_MIST, 'after');

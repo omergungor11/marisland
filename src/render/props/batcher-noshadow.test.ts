@@ -53,4 +53,40 @@ describe('PropFlag.noShadow', () => {
     expect(shadow('fakeNoShadow').length).toBeGreaterThan(0);
     expect(shadow('fakeNoShadow').some(Boolean)).toBe(false);
   });
+
+  it('a group past its half fade casts no shadow (depth pass discards it all, TASK-435)', () => {
+    const store = createPropStore(8);
+    for (const id of ['fakeLit', 'fakeNoShadow'])
+      store.push(PROP_DEF_INDEX[id], 0, 0, 1, 0, 0, 1, 0, 0, PropFlag.grounded);
+    const mat = Object.assign(new THREE.MeshLambertMaterial(), {
+      fade: { uFadeNear: { value: 100 }, uFadeFar: { value: 200 } },
+    });
+    const b = createPropBatcher(store, {
+      scope: new Scope('t'),
+      seed: 1,
+      counters: {
+        hardPops: 0,
+        instances: 0,
+        groundCover: 0,
+        agents: 0,
+        particles: 0,
+        gpuMemoryMB: 0,
+        rebuilds: 0,
+      },
+      materialFor: () => mat,
+      softAppear: true,
+      castShadows: true,
+    });
+    b.setTier(3, 0);
+    const at = (d: number, id: string): { visible: boolean; cast: boolean } => {
+      b.update(0, 0, 0, new THREE.Vector3(d, 0, 0));
+      const g = b.groups.find((x) => x.def.id === id && x.visible)!;
+      return { visible: g.mesh.visible, cast: g.mesh.castShadow };
+    };
+    expect(at(120, 'fakeLit')).toEqual({ visible: true, cast: true });
+    // past the midpoint 150 (+ the group's bounding radius): drawn dithered, no shadow draw
+    expect(at(170, 'fakeLit')).toEqual({ visible: true, cast: false });
+    expect(at(120, 'fakeLit')).toEqual({ visible: true, cast: true });
+    expect(at(120, 'fakeNoShadow').cast).toBe(false);
+  });
 });

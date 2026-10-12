@@ -194,8 +194,11 @@ export class Sailboats extends AgentKind {
   /** Ferry timetable per route (ferries only) and start offset per boat, s. */
   readonly schedules: FerrySchedule[] = [];
   readonly tOff: Float64Array;
-  /** Foam-dot wake behind the hulls (one mesh for all boats). */
+  /** Foam-dot wake behind the hulls (one mesh for all boats; shared across kinds when given). */
   readonly foam: WakeFoam;
+  /** This kind's first boat slot in `foam`; false = `foam` is shared and driven by its owner. */
+  private readonly wakeBase: number;
+  private readonly ownsFoam: boolean;
   private readonly p = { x: 0, y: 0 };
   private readonly a = { x: 0, y: 0 };
   private readonly b = { x: 0, y: 0 };
@@ -206,6 +209,8 @@ export class Sailboats extends AgentKind {
     routes: Route[],
     count: number,
     spec: BoatSpec = SAIL_SPEC,
+    /** Shared wake (TASK-435: one draw call for every boat kind) and this kind's first slot in it. */
+    wake?: { foam: WakeFoam; base: number },
   ) {
     super({
       ...o,
@@ -227,7 +232,9 @@ export class Sailboats extends AgentKind {
     this.dist = new Float64Array(count);
     this.dir = new Float32Array(count).fill(1);
     this.wakeAt = new Float64Array(count).fill(Number.NaN);
-    this.foam = new WakeFoam(o, ctx, this.capacity);
+    this.foam = wake?.foam ?? new WakeFoam(o, ctx, this.capacity);
+    this.wakeBase = wake?.base ?? 0;
+    this.ownsFoam = !wake;
     const per = new Array<number>(routes.length).fill(0);
     for (let i = 0; i < this.capacity; i++) per[i % routes.length]++;
     const seen = new Array<number>(routes.length).fill(0);
@@ -331,17 +338,17 @@ export class Sailboats extends AgentKind {
     const last = this.wakeAt[i];
     if (!Number.isNaN(last) && Math.abs(d - last) < w.spacing) return;
     this.wakeAt[i] = d;
-    this.foam.stamp(i, x - fx * w.back, z - fz * w.back, -fz, fx, this.simT);
+    this.foam.stamp(this.wakeBase + i, x - fx * w.back, z - fz * w.back, -fz, fx, this.simT);
   }
 
   override fixedUpdate(dt?: number): void {
     super.fixedUpdate(dt);
-    this.foam.fixedUpdate(dt);
+    if (this.ownsFoam) this.foam.fixedUpdate(dt);
   }
 
   override update(alpha: number): void {
     super.update(alpha);
-    this.foam.update(alpha);
+    if (this.ownsFoam) this.foam.update(alpha);
   }
 }
 

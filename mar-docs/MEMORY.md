@@ -147,6 +147,16 @@
 - Shot presets are data in `src/content/shots.ts`; both the harness (`scripts/shots.ts`) and the app read them — keep them in sync
 
 ## Known Issues / Gotchas
+- **One NaN pixel = black frame** (TASK-435, D-sky-basket): the composer input is HalfFloat and the
+  bloom mip chain spreads a single NaN over the whole image (harness: `blank frame (sigma 0)`, no console
+  error). Source was three's flat-shaded normal `normalize(cross(dFdx(p), dFdy(p)))` = 0/0 on a far L0
+  sliver (Bug Zoo, 351 u) at the frustum edge — any new prop placement can trigger it; the lit factory
+  now guards it (`FRAG_FLAT_NORMAL`). Also avoid `pow(x, y)` with x < 0 (undefined in GLSL). To find the
+  culprit: read the composer `inputBuffer` with `readRenderTargetPixels` (Uint16, exponent 31 = NaN/Inf)
+  and hide meshes one by one (temporary `window.__DBG = { scene, backend, ctx }` in app.ts + dev server).
+- Shadow pass: prop groups wholly past their half fade cast nothing (depth material discards
+  `vFade < 0.5`), so `batcher.update(cam)` turns their `castShadow` off (`Group.casts` keeps the base).
+  Boat kinds share ONE `WakeFoam` (life/index.ts, slot offsets) — a mesh per kind cost a call each.
 - Gulls are sized for T0 specks but now fly through T2 cams (TASK-399): the TASK-151 model (3.4 u
   span of near-rectangular 1.5 u wing slabs) read as long planks when the flock passes 10–25 u from the
   camera heading toward it (chord foreshortened), and the old flap SHEARED (`y += a·|z|`, wing 33 %

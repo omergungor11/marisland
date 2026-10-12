@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import {
   ATTR_LOCATION,
+  FRAG_FLAT_NORMAL,
   PROGRAM_FEATURES,
   allVariantKeys,
   makeDepthMaterial,
@@ -115,6 +116,25 @@ describe('material factory', () => {
     expect(shader.vertexShader).toContain('marSpringIn(uTime - marAppear');
     expect(shader.fragmentShader).toContain('marBayer4(gl_FragCoord.xy)');
     expect(shader.uniforms.uFadeNear).toBe(m.fade.uFadeNear);
+  });
+
+  it('guards the flat-shaded normal against NaN right after three computes it (TASK-435)', () => {
+    // the guard reuses three's fdx / fdy: an upgrade renaming them must fail here, not at link time
+    expect(THREE.ShaderChunk.normal_fragment_begin).toMatch(
+      /#ifdef FLAT_SHADED\s*vec3 fdx = dFdx\( vViewPosition \);\s*vec3 fdy = dFdy\( vViewPosition \);\s*vec3 normal = normalize\( cross\( fdx, fdy \) \);/,
+    );
+    const m = makeLitMaterial({ rim: true });
+    expect(m.flatShading).toBe(true);
+    const shader = {
+      uniforms: {} as Record<string, THREE.IUniform>,
+      defines: {} as Record<string, unknown>,
+      vertexShader: THREE.ShaderLib.lambert.vertexShader,
+      fragmentShader: THREE.ShaderLib.lambert.fragmentShader,
+    };
+    m.onBeforeCompile(shader as never, undefined as never);
+    expect(shader.fragmentShader).toContain('#include <normal_fragment_begin>' + FRAG_FLAT_NORMAL);
+    // degenerate (0) and overflowing (Inf / NaN) cross products fall back to a camera-facing normal
+    expect(FRAG_FLAT_NORMAL).toContain('marL2 > 1e-30 && marL2 < 1e30');
   });
 
   it('depth material carries the same displacement', () => {
