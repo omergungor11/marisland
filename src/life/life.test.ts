@@ -181,7 +181,8 @@ describe('life: boats', () => {
     expect(r.splats.length).toBe(0);
     const alive = foam.alive(sb.simT);
     expect(alive).toBeGreaterThan(sb.capacity * 4);
-    expect(alive).toBeLessThanOrEqual(sb.capacity * WAKE_PAIRS);
+    // the foam is shared by every boat kind (TASK-435), so the ceiling counts all of them
+    expect(alive).toBeLessThanOrEqual(foam.boatCount * WAKE_PAIRS);
     // two dots per pair, one draw call
     expect(foam.mesh.count).toBeGreaterThan(0);
     expect(foam.mesh.count).toBeLessThanOrEqual(foam.capacity);
@@ -205,6 +206,8 @@ describe('life: boats', () => {
       const r = rig();
       r.tier.v = 1;
       const sb = r.life.kinds.sailboats!;
+      const { ferries, patrol, lanternBoat } = r.life.kinds;
+      const boats = [sb, ferries, patrol, lanternBoat].filter((k) => k !== undefined);
       run(r, 30 * 12);
       r.life.update(FIXED_STEP, 1);
       const m = sb.foam.mesh.instanceMatrix.array as Float32Array;
@@ -214,17 +217,26 @@ describe('life: boats', () => {
       for (let k = 0; k < sb.foam.mesh.count; k++) {
         const x = m[k * 16 + 12];
         const z = m[k * 16 + 14];
-        for (let i = 0; i < sb.capacity; i++)
-          if (Math.hypot(x - sb.x[i], z - sb.z[i]) < lim) {
-            near++;
-            break;
-          }
+        if (boats.some((b) => [...b.x].some((bx, i) => Math.hypot(x - bx, z - b.z[i]) < lim)))
+          near++;
       }
       expect(sb.foam.mesh.count).toBeGreaterThan(0);
       expect(near).toBe(sb.foam.mesh.count);
       return { out: Array.from(m.slice(0, sb.foam.mesh.count * 16)), near };
     };
     expect(grab().out).toEqual(grab().out);
+  });
+
+  it('every sailing boat kind stamps into ONE wake mesh (one draw call, TASK-435)', () => {
+    const r = rig();
+    const { sailboats, ferries, patrol, lanternBoat } = r.life.kinds;
+    const boats = [sailboats, ferries, patrol, lanternBoat].filter((k) => k !== undefined);
+    expect(boats.length).toBeGreaterThan(1);
+    for (const b of boats) expect(b.foam).toBe(boats[0].foam);
+    expect(boats[0].foam.boatCount).toBe(boats.reduce((n, b) => n + b.capacity, 0));
+    const wakes: THREE.Object3D[] = [];
+    r.life.group.traverse((o) => o.name === 'life:wake' && wakes.push(o));
+    expect(wakes).toHaveLength(1);
   });
 
   it('moored rowboats bob with differing phases', () => {

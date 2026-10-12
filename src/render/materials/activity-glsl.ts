@@ -285,7 +285,8 @@ vec4 marSpectrum(vec2 uv, float asp, float seed, float t) {
     float fj = float(j);
     float c = 0.15 + 0.7 * (0.5 + 0.5 * sin(t * ${f(A.spectrum.drift)} * (0.5 + 0.3 * fj) + fj * 2.1 + seed * 6.283));
     float w = 0.05 + 0.04 * fj;
-    y += (0.62 - 0.15 * fj) * exp(-pow((m.x - c) / w, 2.0));
+    float d = (m.x - c) / w; // not pow(d, 2.0): undefined (NaN on some drivers) for d < 0
+    y += (0.62 - 0.15 * fj) * exp(-d * d);
   }
   if (abs(m.x - fract(t / ${f(A.spectrum.sweep)} + seed)) < 0.015) return vec4(${v3(INK.spectrum[1])}, 1.0);
   if (abs(m.y - y) < 0.035) return vec4(${v3(INK.spectrum[0])}, 1.0);

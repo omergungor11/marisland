@@ -148,6 +148,8 @@ export interface Group {
   appear: THREE.InstancedBufferAttribute;
   blobs: THREE.InstancedMesh | null;
   visible: boolean;
+  /** Casts map shadows at all (quality, def flags); `update(cam)` drops it per frame by distance. */
+  casts: boolean;
   cx: number;
   cz: number;
 }
@@ -512,6 +514,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
       appear: aAppear,
       blobs,
       visible: false,
+      casts: mesh.castShadow,
       cx: n ? cx / n : 0,
       cz: n ? cz / n : 0,
     };
@@ -1169,10 +1172,17 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
         for (const g of groups) {
           if (g.groundCover || !g.visible) continue;
           // the fade-out edge the group's material actually dithers with (no fade → never)
-          const mat = g.mesh.material as { fade?: { uFadeFar: { value: number } } };
+          const mat = g.mesh.material as {
+            fade?: { uFadeNear: { value: number }; uFadeFar: { value: number } };
+          };
           const far = mat.fade?.uFadeFar.value ?? Infinity;
           const sph = g.mesh.boundingSphere;
-          g.mesh.visible = !sph || cam.distanceTo(sph.center) - sph.radius < far;
+          const near = sph ? cam.distanceTo(sph.center) - sph.radius : -Infinity;
+          g.mesh.visible = near < far;
+          // the depth material cuts at half fade (vFade < 0.5): past that every caster fragment is
+          // discarded, so the shadow pass would only cost a draw call (TASK-435)
+          const half = mat.fade ? 0.5 * (mat.fade.uFadeNear.value + far) : Infinity;
+          g.mesh.castShadow = g.casts && near < half;
         }
       // removal fades that are over → zero-scaled instances (TASK-211)
       if (pending.length) {

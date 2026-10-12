@@ -22,6 +22,7 @@ import {
 } from './arcs.ts';
 import type { AgentKind } from './agents.ts';
 import { islandRing, mooringsOf, resolveRoutes, Rowboats, Sailboats } from './boats.ts';
+import { WakeFoam } from './wake.ts';
 import { makeCtx, setMotion, type LifeDeps } from './ctx.ts';
 import { FishSchools } from './fish.ts';
 import { flockCentres, Gulls, type Perch } from './gulls.ts';
@@ -95,39 +96,60 @@ export function createLife(deps: LifeDeps): LifeSystem {
 
   const allRoutes = resolveRoutes(ctx);
   const routes = allRoutes.filter((r) => r.kind !== 'ferry');
-  if (routes.length > 0 && plan.sailboats > 0) {
-    kinds.sailboats = new Sailboats(base, ctx, routes, plan.sailboats);
-    all.push(kinds.sailboats);
-  }
   const ferryRoutes = allRoutes.filter((r) => r.kind === 'ferry');
-  if (ferryRoutes.length > 0 && plan.ferries > 0) {
-    const F = CULTURE_BOATS.ferry;
-    kinds.ferries = new Sailboats(base, ctx, ferryRoutes, plan.ferries, {
-      name: 'ferry',
-      variant: F.variant,
-      speed: F.speed,
-      ferry: true,
-    });
-    all.push(kinds.ferries);
-  }
   const P = CULTURE_BOATS.patrol;
   const patrolRing = plan.patrolBoats > 0 ? islandRing(ctx, P.theme, P.margin) : null;
-  if (patrolRing) {
-    kinds.patrol = new Sailboats(base, ctx, [patrolRing], plan.patrolBoats, {
-      name: 'patrol',
-      variant: P.variant,
-      speed: P.speed,
-    });
-    all.push(kinds.patrol);
-  }
   const LB = CULTURE_BOATS.lantern;
   const lanternRing = plan.lanternBoats > 0 ? islandRing(ctx, LB.theme, LB.margin) : null;
+  const sailing = routes.length > 0 && plan.sailboats > 0 ? plan.sailboats : 0;
+  const ferrying = ferryRoutes.length > 0 && plan.ferries > 0 ? plan.ferries : 0;
+  const patrolling = patrolRing ? plan.patrolBoats : 0;
+  const lanterns = lanternRing ? plan.lanternBoats : 0;
+  // every boat kind stamps into ONE foam mesh (a mesh per kind cost a draw call each, TASK-435)
+  const boatCount = sailing + ferrying + patrolling + lanterns;
+  const wake = boatCount > 0 ? new WakeFoam(base, ctx, boatCount) : null;
+  let wakeBase = 0;
+  const wakeSlot = (n: number): { foam: WakeFoam; base: number } => {
+    const slot = { foam: wake as WakeFoam, base: wakeBase };
+    wakeBase += n;
+    return slot;
+  };
+  if (sailing > 0) {
+    kinds.sailboats = new Sailboats(base, ctx, routes, sailing, undefined, wakeSlot(sailing));
+    all.push(kinds.sailboats);
+  }
+  if (ferrying > 0) {
+    const F = CULTURE_BOATS.ferry;
+    kinds.ferries = new Sailboats(
+      base,
+      ctx,
+      ferryRoutes,
+      ferrying,
+      { name: 'ferry', variant: F.variant, speed: F.speed, ferry: true },
+      wakeSlot(ferrying),
+    );
+    all.push(kinds.ferries);
+  }
+  if (patrolRing) {
+    kinds.patrol = new Sailboats(
+      base,
+      ctx,
+      [patrolRing],
+      patrolling,
+      { name: 'patrol', variant: P.variant, speed: P.speed },
+      wakeSlot(patrolling),
+    );
+    all.push(kinds.patrol);
+  }
   if (lanternRing) {
-    kinds.lanternBoat = new Sailboats(base, ctx, [lanternRing], plan.lanternBoats, {
-      name: 'lanternBoat',
-      variant: LB.variant,
-      speed: LB.speed,
-    });
+    kinds.lanternBoat = new Sailboats(
+      base,
+      ctx,
+      [lanternRing],
+      lanterns,
+      { name: 'lanternBoat', variant: LB.variant, speed: LB.speed },
+      wakeSlot(lanterns),
+    );
     all.push(kinds.lanternBoat);
   }
   const moorings = mooringsOf(ctx, 'rowboat', plan.rowboats);
@@ -256,9 +278,11 @@ export function createLife(deps: LifeDeps): LifeSystem {
       for (const k of landKinds) k.syncTier(tier);
       ambient.fixedUpdate();
       for (const k of all) k.fixedUpdate(dt);
+      wake?.fixedUpdate(dt);
     },
     update(_dt, alpha) {
       for (const k of all) k.update(alpha);
+      wake?.update(alpha);
       kinds.fireflies?.update(alpha);
       kinds.butterflies?.update(alpha);
       recount();
