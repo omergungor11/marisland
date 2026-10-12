@@ -15,6 +15,7 @@ import { CULTURE_HQ_GEO } from './culture-hq.ts';
 import { MARKETING_CULTURE_GEO } from './culture-marketing.ts';
 import { CULTURE_QA_GEO, withBugZoo } from './culture-qa.ts';
 import { CULTURE_DESIGN_GEO } from './culture-design.ts';
+import { RESEARCH_CULTURE_GEO } from './culture-research.ts';
 
 export const THEME_GEO: readonly PropGeoDef[] = [
   ...HQ_GEO,
@@ -30,4 +31,5 @@ export const THEME_GEO: readonly PropGeoDef[] = [
   ...MARKETING_CULTURE_GEO,
   ...CULTURE_QA_GEO,
   ...CULTURE_DESIGN_GEO,
+  ...RESEARCH_CULTURE_GEO,
 ];

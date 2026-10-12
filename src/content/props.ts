@@ -11,7 +11,7 @@ import { MARKETING_CULTURE_PROP_DEFS, MARKETING_PROP_DEFS } from './props-themes
 import { QA_CULTURE_PROP_DEFS, QA_PROP_DEFS } from './props-themes/qa.ts';
 import { DESIGN_CULTURE_PROP_DEFS, DESIGN_PROP_DEFS } from './props-themes/design.ts';
 import { DEVOPS_CULTURE_PROP_DEFS, DEVOPS_PROP_DEFS } from './props-themes/devops.ts';
-import { RESEARCH_PROP_DEFS } from './props-themes/research.ts';
+import { RESEARCH_CULTURE_PROP_DEFS, RESEARCH_PROP_DEFS } from './props-themes/research.ts';
 import { SIGNAGE_PROP_DEFS } from './props-themes/signage.ts';
 
 export interface PropDef {
@@ -121,6 +121,7 @@ export const PROP_DEFS: readonly PropDef[] = [
   ...MARKETING_CULTURE_PROP_DEFS,
   ...QA_CULTURE_PROP_DEFS,
   ...DESIGN_CULTURE_PROP_DEFS,
+  ...RESEARCH_CULTURE_PROP_DEFS,
 ];
 
 export const PROP_DEF_INDEX: Record<string, number> = Object.fromEntries(
