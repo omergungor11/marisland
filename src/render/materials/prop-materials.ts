@@ -9,7 +9,10 @@ import {
   makeLitMaterial,
   type LitFeatures,
   type LitMaterial,
+  type LitOptions,
 } from './factory.ts';
+import { cultureGateOf, cultureLampTheme } from '../../content/cultures/rhythm.ts';
+import { GATES } from '../uniforms.ts';
 
 /**
  * PropBatcher material provider: one LitMaterial (+ matching depth material) per
@@ -48,6 +51,22 @@ export function propFeatures(def: PropDef, groundCover: boolean): LitFeatures {
   };
 }
 
+/**
+ * Night-lamp mode of a def's material: static instances switch on one by one; houses lose some
+ * windows late. Culture lamp sets (TASK-430, content/cultures/rhythm.ts) follow their island's
+ * clock instead (never late-off); time-gated defs get their shared gate uniform.
+ */
+function lampsOf(def: PropDef): Pick<LitOptions, 'gate'> & {
+  lamps: { stagger: boolean; lateOff: boolean; culture: boolean };
+} {
+  const culture = cultureLampTheme(def.id) !== null;
+  const g = cultureGateOf(def.id);
+  return {
+    lamps: { stagger: true, lateOff: !culture && !NIGHT.alwaysOn.includes(def.geo), culture },
+    ...(g ? { gate: GATES[g] } : {}),
+  };
+}
+
 export function createPropMaterials(scope: Scope): PropMaterials {
   const lit = new Map<string, LitMaterial>();
   const depth = new Map<string, THREE.Material>();
@@ -63,7 +82,7 @@ export function createPropMaterials(scope: Scope): PropMaterials {
           fadeFar: far,
           name: `prop:${k}`,
           // static instances: lights switch on one by one; houses lose some windows late
-          lamps: { stagger: true, lateOff: !NIGHT.alwaysOn.includes(def.geo) },
+          ...lampsOf(def),
         }),
       );
       lit.set(k, m);
@@ -77,9 +96,12 @@ export function createPropMaterials(scope: Scope): PropMaterials {
       // every per-material uniform of a (non-ground-cover instance's) prop material: fade, lamp
       // late-off, rim (bloom-in is on for all of them)
       const [near, far] = def.fade ?? TIER_FADE[def.tier] ?? TIER_FADE[0];
-      const lateOff = !NIGHT.alwaysOn.includes(def.geo);
+      const { lamps, gate } = lampsOf(def);
       const features = propFeatures(def, false);
-      const key = `${near}:${far}:${lateOff ? 1 : 0}:${features.rim ? 1 : 0}`;
+      const key =
+        `${near}:${far}:${lamps.lateOff ? 1 : 0}:${features.rim ? 1 : 0}` +
+        (lamps.culture ? ':c' : '') +
+        (gate ? `:g${cultureGateOf(def.id)}` : '');
       let m = merged.get(key);
       if (!m) {
         const material = scope.add(
@@ -87,7 +109,8 @@ export function createPropMaterials(scope: Scope): PropMaterials {
             fadeNear: near,
             fadeFar: far,
             name: `prop:merged:${key}`,
-            lamps: { stagger: true, lateOff },
+            lamps,
+            gate,
             merged: true,
           }),
         );

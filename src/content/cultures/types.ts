@@ -33,6 +33,8 @@ export interface StorySpotDef {
 export interface RhythmSlot {
   id: string;
   hour: number;
+  /** Ritual length in real seconds (festival phase 0..1 over it); omitted = a plain daily phase. */
+  seconds?: number;
 }
 
 /** The island's turn in the shared Launch Day Relay (1 = first, 7 = last). */

@@ -4,6 +4,10 @@ import { mistColor, morningMist, type WeatherFx } from '../env/weather.ts';
 import { MIST, MORNING_MIST } from '../content/weather.ts';
 import { GUST, SWELL } from '../content/anim.ts';
 import { POOLS } from '../content/lighting.ts';
+import { CULTURE_GATES, type CultureGateId } from '../content/cultures/rhythm.ts';
+
+/** Culture clock island slots (≤ 7 islands per world, ARCHETYPES). */
+export const CULTURE_SLOTS = 7;
 
 /**
  * Shared uniform objects (ARCHITECTURE §7): every material references these same
@@ -76,7 +80,23 @@ export const SHARED = {
   uMistMax: { value: 0 },
   /** Post-grade weather saturation delta (read by the composer in JS; not a shader uniform). */
   uWeatherGrade: { value: 0 },
+  // ---- culture clock (TASK-430, render/culture-clock.ts; slot i = world.islands[i])
+  /** xy = island centre, z = 1 / reach, w = 1 when the slot holds an island (0 = unused). */
+  uCultureIsle: { value: Array.from({ length: CULTURE_SLOTS }, () => new THREE.Vector4()) },
+  /** x = the island's culture lamp set 0..1, y = Launch Day Relay emissive boost (≥ 0). */
+  uCultureLamps: { value: Array.from({ length: CULTURE_SLOTS }, () => new THREE.Vector2()) },
+  /** x = relay phase 0..1 over RELAY.lengthS (0 outside), y = relay step (order − 1, −1 outside),
+   *  z = 1 while any island carries a relay boost (incl. the fade-out). */
+  uFestival: { value: new THREE.Vector3(0, -1, 0) },
 };
+
+/**
+ * Time-gated defs (content CULTURE_GATES): one shared 0..1 visibility per gate, bound as the
+ * gated def's per-material `uMarGate` (dither fade, colour + depth). Written by the culture clock.
+ */
+export const GATES: Record<CultureGateId, { value: number }> = Object.fromEntries(
+  Object.keys(CULTURE_GATES).map((g) => [g, { value: 1 }]),
+) as Record<CultureGateId, { value: number }>;
 
 export type SharedUniforms = typeof SHARED;
 

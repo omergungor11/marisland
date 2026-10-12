@@ -43,6 +43,7 @@ import type { DirtyRegion } from '../world/edit-types.ts';
 import type { SubImageRenderer } from './gl-subimage.ts';
 import { createPropMirror, type PropMirror } from './props/prop-mirror.ts';
 import { createRebuilder, type Rebuilder } from './rebuild.ts';
+import { createCultureClock, type CultureClock } from './culture-clock.ts';
 
 /**
  * Everything seed-derived on the render side (ARCHITECTURE §1 "world scope").
@@ -77,6 +78,8 @@ export interface WorldView {
   mirror: PropMirror;
   /** Night lantern pools (re-splatted after prop edits, TASK-213). */
   pools: LanternPools;
+  /** Culture clock (TASK-430): island lamp sets, Launch Day Relay, rituals, time gates. */
+  culture: CultureClock;
   /**
    * TASK-213: run the edit rebuild path once on unchanged data (chunk under the camera focus)
    * so the first live edit is warm. Interactive mode only; `between` waits between the steps
@@ -299,6 +302,8 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
 
   const env = createEnvState();
   let lastTier = -1;
+  const culture = createCultureClock(world.islands, d.getHour(), d.getTime());
+  d.scope.defer(() => culture.dispose());
 
   // weather (TASK-172): seeded FSM → blended look → EnvState deltas + uniforms + rain
   const wo = d.weather;
@@ -351,6 +356,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     const tier = d.getTier();
     writeEnvUniforms(env, time, _camPos, tier);
     writeWeatherUniforms(fx, env, world.windDir, time);
+    culture.update(d.getHour(), time, fx.rain);
     setWind(world.windDir, fx.gust);
     // T0 postcard: the fog curve is fitted for island/village views; at map distance it would
     // wash the whole archipelago out, so scale density down with camera distance (D-009).
@@ -458,6 +464,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     rebuild,
     mirror,
     pools,
+    culture,
     prewarmEdits: (between) =>
       rebuild.prewarm(_focus.x, _focus.z, async () => {
         await between?.();
