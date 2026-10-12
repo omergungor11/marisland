@@ -153,5 +153,10 @@ export const CARRIED_ITEM_SLOT = {
   clipboard: 8,
   crate: 9,
   paintPot: 10,
+  // M19 cultures (TASK-432): HQ post bag, Marketing megaphone, Design blowpipe, Research books
+  satchel: 11,
+  megaphone: 12,
+  blowpipe: 13,
+  books: 14,
 } as const;
 export type CarriedItem = keyof typeof CARRIED_ITEM_SLOT;

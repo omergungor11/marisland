@@ -60,9 +60,13 @@ const BODY = /* glsl */ `
       transformed.z *= mix(0.25, 1.0, aGait.x);
     } else {
       float lMove = aGait.x * uMotionScale;
-      // pose y: 0..1 = wave / graze amount, 2..3 = typing amount (y - 2); identity for y in [0, 1]
+      // pose y: 0..1 = wave / graze amount, 2..3.4 = typing amount (y - 2); identity for y in [0, 1].
+      // y >= 4 (workers, M19 cultures): code = floor(y / 4) (1 hammer, 2 stamp, 3 selfie, 4 hold to
+      // light, 5 gaze, 6 bell, 7 rest), amount = y - 4 * code
+      float lCode = aGait.y >= 3.9 ? floor(aGait.y * 0.25 + 0.001) : 0.0;
+      float lAmt = lCode > 0.5 ? max(aGait.y - 4.0 * lCode, 0.0) : 0.0;
       float lPose = aGait.y >= 1.5 ? 0.0 : aGait.y;
-      float lType = aGait.y >= 1.5 ? aGait.y - 2.0 : 0.0;
+      float lType = (aGait.y >= 1.5 && lCode < 0.5) ? aGait.y - 2.0 : 0.0;
       float lPh = aGait.z + limb.z;
       int lM = int(lMode + 0.5);
       if (lM == 0) {
@@ -101,9 +105,39 @@ const BODY = /* glsl */ `
         // worker arm: walk swing, wave (right arm, limb.z > 0) and typing (both): the arm pitches
         // forward about the shoulder, alternating +-0.12 rad at ~9 Hz
         float lSg = limb.z >= 0.0 ? 1.0 : -1.0;
-        transformed.x += limb.x * sin(aGait.z) * max(limb.y - transformed.y, 0.0) * lMove * (1.0 - lPose) * (1.0 - lType);
+        transformed.x += limb.x * sin(aGait.z) * max(limb.y - transformed.y, 0.0) * lMove * (1.0 - lPose) * (1.0 - lType) * (1.0 - step(0.5, lCode));
         float lA = 0.0;
-        if (lPose > 0.0 && lSg > 0.0)
+        if (lCode > 0.5) {
+          // culture poses: the arm pitches forward about the shoulder by lAng (0 hangs, pi/2 points
+          // ahead, pi overhead); the steady part holds under reduced motion, only the swing scales
+          float lPh0 = fract(aSeed) * 6.2831853;
+          bool lRt = lSg > 0.0;
+          int lK = int(lCode + 0.5);
+          float lAng = 0.0;
+          if (lK == 1) {
+            float lU = 0.5 + 0.5 * cos(6.9115038 * uTime + lPh0);
+            lAng = 1.6 + uMotionScale * (2.0 * lU * lU - 0.75);
+          } else if (lK == 2) {
+            float lU = 0.5 + 0.5 * sin(3.9269908 * uTime + lPh0);
+            lAng = lRt ? 1.3 + uMotionScale * (lU * lU * lU - 0.3) : 0.75;
+          } else if (lK == 3) {
+            lAng = lRt ? 2.5 + uMotionScale * 0.07 * sin(uTime * 1.7 + lPh0) : 0.1;
+          } else if (lK == 4) {
+            lAng = lRt ? 2.8 + uMotionScale * 0.12 * sin(3.1415927 * uTime + lPh0) : 0.9;
+          } else if (lK == 5) {
+            lAng = lRt ? 2.2 + uMotionScale * 0.05 * sin(uTime + lPh0) : 0.0;
+          } else if (lK == 6) {
+            float lU = max(0.0, sin(6.2831853 * 0.9 * uTime + lPh0));
+            lAng = lRt ? 2.7 - uMotionScale * 0.9 * lU : 0.0;
+          } else {
+            lAng = 0.55;
+          }
+          float lCa = cos(lAmt * lAng);
+          float lSa = sin(lAmt * lAng);
+          vec2 lRc = vec2(transformed.x, transformed.y - limb.y);
+          transformed.x = lRc.x * lCa - lRc.y * lSa;
+          transformed.y = limb.y + lRc.x * lSa + lRc.y * lCa;
+        } else if (lPose > 0.0 && lSg > 0.0)
           lA = lPose * (2.7 + 0.35 * sin(uTime * 12.0 + aSeed * 6.2831853)) * uMotionScale;
         else if (lType > 0.0)
           lA = lType * (1.2 + 0.12 * sin(uTime * 56.548668 + aSeed * 6.2831853 + (lSg > 0.0 ? 3.14159 : 0.0))) * uMotionScale;

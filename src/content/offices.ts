@@ -56,7 +56,21 @@ export const RAISED_FLOOR: Readonly<Record<string, number>> = {
 /** Floor a def's interior (and its seated workers) stands on, above the lot pivot (u). */
 export const floorOf = (defId: string): number => (RAISED_FLOOR[defId] ?? 0) + FLOOR_Y;
 
-export type WorkPose = 'type' | 'stand' | 'paint' | 'inspect' | 'look' | 'rack';
+export type WorkPose =
+  | 'type'
+  | 'stand'
+  | 'paint'
+  | 'inspect'
+  | 'look'
+  | 'rack'
+  // M19 culture poses (TASK-432, content/life.ts POSES): arm / lean / lie animation per pose
+  | 'hammer'
+  | 'stamp'
+  | 'selfie'
+  | 'light'
+  | 'gaze'
+  | 'bell'
+  | 'nap';
 
 export interface WorkSpot {
   /** Lot-local position (u). */
@@ -225,6 +239,71 @@ export const WORK_SPOTS: Readonly<Record<string, readonly WorkSpot[]>> = {
   atomSculpture: [{ x: 0, z: 2.0, face: PI, pose: 'look', sit: 0 }],
   armillarySphere: [{ x: 0, z: 2.2, face: PI, pose: 'look', sit: 0 }],
   barrierGate: [{ x: 0, z: 0.9, face: PI, pose: 'inspect', sit: 0 }],
+  // M19 culture fixtures (TASK-432), same structure-local frame. A bot stands at z ≈ footprint + 0.8
+  // in front of the prop (the own footprint is not blocked for its own spots), looking at the pivot.
+  // HQ Harbour Guild: timetable, bell post, coffee cart (chat hub), notice board
+  timetableBoard: [{ x: 0.2, z: 1.9, face: PI, pose: 'look', sit: 0 }],
+  bellPost: [{ x: 0, z: 1.5, face: PI, pose: 'bell', sit: 0 }],
+  coffeeCart: [
+    { x: -0.8, z: 2.0, face: PI, pose: 'stand', sit: 0 },
+    { x: 0.9, z: 2.0, face: PI, pose: 'stand', sit: 0 },
+  ],
+  guildNoticeBoard: [
+    { x: -0.8, z: 2.2, face: PI, pose: 'look', sit: 0 },
+    { x: 0.8, z: 2.2, face: PI, pose: 'look', sit: 0 },
+  ],
+  // Coding Wind Gardens: type outdoors at the pergola desk, nap in the hammock, read the board
+  pergolaDesk: [
+    { x: -0.7, z: 1.7, face: PI, pose: 'type', sit: 0 },
+    { x: 0.7, z: 1.7, face: PI, pose: 'type', sit: 0 },
+  ],
+  hammock: [{ x: 0, z: 0, face: PI / 2, pose: 'nap', sit: 0 }],
+  whiteboardA: [{ x: 0.7, z: 1.6, face: PI, pose: 'look', sit: 0 }],
+  kiteRack: [{ x: 0, z: 2.6, face: PI, pose: 'gaze', sit: 0 }],
+  // DevOps Ember Smiths: the anvil, the incident board, the siren, the pager
+  anvil: [{ x: 0, z: 1.2, face: PI, pose: 'hammer', sit: 0 }],
+  incidentSign: [
+    { x: -0.7, z: 2.3, face: PI, pose: 'look', sit: 0 },
+    { x: 0.8, z: 2.3, face: PI, pose: 'look', sit: 0 },
+  ],
+  signalHorn: [{ x: 0, z: 1.8, face: PI, pose: 'look', sit: 0 }],
+  pagerRock: [{ x: 0, z: 1.6, face: PI, pose: 'inspect', sit: 0 }],
+  // Marketing Carnival: selfie platform, megaphone, popcorn, prize booth, marquee, mascot
+  selfieSpot: [{ x: 0, z: 2.3, face: PI, pose: 'selfie', sit: 0 }],
+  megaphoneStand: [{ x: 0, z: 1.3, face: PI, pose: 'stand', sit: 0 }],
+  popcornCart: [{ x: 0, z: 1.7, face: PI, pose: 'stand', sit: 0 }],
+  prizeBooth: [{ x: 0, z: 2.1, face: PI, pose: 'stand', sit: 0 }],
+  marqueeSign: [{ x: 0, z: 2.4, face: PI, pose: 'look', sit: 0 }],
+  mascotStatue: [{ x: 0, z: 3.0, face: PI, pose: 'look', sit: 0 }],
+  // QA Inspectors: stamp desk, clipboard wall, scoreboard, mannequin bench
+  stampDesk: [{ x: 0, z: 1.5, face: PI, pose: 'stamp', sit: 0 }],
+  clipboardWall: [
+    { x: -0.6, z: 1.8, face: PI, pose: 'inspect', sit: 0 },
+    { x: 0.6, z: 1.8, face: PI, pose: 'inspect', sit: 0 },
+  ],
+  scoreboard: [{ x: 0, z: 2.4, face: PI, pose: 'gaze', sit: 0 }],
+  dummyBench: [{ x: 0, z: 1.9, face: PI, pose: 'look', sit: 0 }],
+  // Design Glass & Light: hot shop, gather ring (chat hub), stained screen, shelf, orb
+  hotShop: [{ x: 0, z: 2.4, face: PI, pose: 'light', sit: 0 }],
+  gatherRing: [
+    { x: 2.3, z: 0, face: -PI / 2, pose: 'light', sit: 0 },
+    { x: -2.3, z: 0, face: PI / 2, pose: 'light', sit: 0 },
+    { x: 0, z: 2.3, face: PI, pose: 'light', sit: 0 },
+  ],
+  stainedScreen: [{ x: 0, z: 1.9, face: PI, pose: 'light', sit: 0 }],
+  blowpipeRack: [{ x: 0, z: 1.4, face: PI, pose: 'look', sit: 0 }],
+  sampleShelf: [{ x: 0, z: 1.4, face: PI, pose: 'look', sit: 0 }],
+  glassOrb: [{ x: 0, z: 1.4, face: PI, pose: 'look', sit: 0 }],
+  // Research Stargazer Academy: telescope, orrery, lecture steps (chat hub), board, tea, books
+  tripodTelescope: [{ x: 0, z: 1.4, face: PI, pose: 'gaze', sit: 0 }],
+  orrery: [{ x: 0, z: 2.1, face: PI, pose: 'gaze', sit: 0 }],
+  lectureSteps: [
+    { x: -1.1, z: 3.1, face: PI, pose: 'look', sit: 0 },
+    { x: 1.1, z: 3.1, face: PI, pose: 'look', sit: 0 },
+  ],
+  chalkboard: [{ x: 0, z: 1.9, face: PI, pose: 'inspect', sit: 0 }],
+  teaTrolley: [{ x: 0, z: 1.5, face: PI, pose: 'stand', sit: 0 }],
+  bookCart: [{ x: 0, z: 1.5, face: PI, pose: 'look', sit: 0 }],
   // legacy: a bench spot just outside the door
   cottage: [{ x: 0.9, z: 2.0, face: 0, pose: 'look', sit: BENCH }],
   logCabin: [{ x: 1.0, z: 2.0, face: 0, pose: 'look', sit: BENCH }],
