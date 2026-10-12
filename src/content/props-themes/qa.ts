@@ -22,7 +22,16 @@ export const QA_PROP_DEFS: readonly PropDef[] = [
   // floats: pivot = water level, no contact blob (like buoy)
   { id: 'inspectionBuoy', geo: 'inspectionBuoy', tier: 2, variants: 2, footprint: 0.45, flags: 0 },
   // M17b TASK-401 Test Factory: hangars (9 × 6.5 u, ≈ 7 u to the chimney tops) and the loop track read from T0
-  { id: 'testHangar', geo: 'testHangar', tier: 0, variants: 1, footprint: 3.8, flags: grounded },
+  // v1 = hallOfChecks (TASK-424): only where the QA plan pins it, random rolls keep v0
+  {
+    id: 'testHangar',
+    geo: 'testHangar',
+    tier: 0,
+    variants: 2,
+    rollVariants: 1,
+    footprint: 3.8,
+    flags: grounded,
+  },
   // one 2 u bridge segment; a T1 detail (thin), crates ride it (render/movers.ts)
   { id: 'conveyor', geo: 'conveyor', tier: 1, variants: 1, footprint: 0.6, flags: grounded },
   { id: 'testTrack', geo: 'testTrack', tier: 0, variants: 1, footprint: 3.5, flags: grounded },
@@ -34,9 +43,9 @@ export const QA_PROP_DEFS: readonly PropDef[] = [
  * M19 TASK-414 Inspectors' Island kit (geo/themes/culture-qa.ts). Appended to PROP_DEFS AFTER the
  * earlier culture kits (content/props.ts) so no existing defId shifts (world hashes stay put until
  * wave 2 places them). All stay < 3 u tall and < 3 u in one plan extent (no T0 promotion by
- * isLargeStructure); ledger and priority order: content/cultures/qa.ts. Variants of existing defs
- * (testHangar v1 hallOfChecks, terrarium v2 bugZoo, sailboat v3 inspection boat) are buildable but
- * unplaced and keep their `variants` counts until wave 2.
+ * isLargeStructure); ledger and priority order: content/cultures/qa.ts. Variants of existing defs:
+ * testHangar v1 hallOfChecks and terrarium v2 bugZoo are pinned by the QA plan (TASK-424, never
+ * rolled); sailboat v3 (inspection boat) stays unplaced until wave 3.
  */
 export const QA_CULTURE_PROP_DEFS: readonly PropDef[] = [
   { id: 'dummyBench', geo: 'dummyBench', tier: 2, variants: 1, footprint: 1.0, flags: grounded },

@@ -92,9 +92,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "041e4424a9085fd4",
-          "1001": "f597fc0815312fb1",
-          "42": "14ff6299f8ba0f65",
+          "1": "046b4dc5317e43af",
+          "1001": "c6d86de36660b996",
+          "42": "efcdb44ff8dc1bae",
         }
       `);
     },
@@ -417,9 +417,10 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // hashes.world: the pre-TASK-390 world with the TASK-401 QA plateau profile, the
       // TASK-402b Research campus hill (seed 1001 layout moved 16.5 u), the TASK-403 Media Rock
       // and the TASK-405 Emberpeak shelves + Ember Works plan, the TASK-421 Coding Wind Gardens,
-      // TASK-420 Harbour Guild and TASK-422 DevOps Ember Smiths placements, re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('d21c586923ce3a0a');
-      expect(generateWorld(1).hashes.world).toBe('e2ab5f2063816d24');
+      // TASK-420 Harbour Guild, TASK-422 DevOps Ember Smiths and TASK-424 QA Inspectors placements,
+      // re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('37108283c59b3bc2');
+      expect(generateWorld(1).hashes.world).toBe('88270a8b939fa718');
     } finally {
       for (const b of saved) b.on = true;
     }

@@ -31,7 +31,8 @@ const BUDGET: Record<string, number> = {
   facultyHall: 1500,
   libraryRotunda: 2500,
   campusTower: 1500,
-  terrarium: 3300,
+  // v2 = the QA Bug Zoo (TASK-424; culture-qa.test caps it at 3500)
+  terrarium: 3350,
   atomSculpture: 1800,
   dnaHelix: 1800,
   armillarySphere: 1800,

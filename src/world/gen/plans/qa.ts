@@ -14,10 +14,18 @@
  *   checklist boards and cones on those lanes.
  * Every random decision draws from labelled forks of `rng`; tuning lives in QA_PLAN.
  */
-import { FLATTEN, LANDMARKS, VILLAGE } from '../../../content/settlements.ts';
+import { QA_CULTURE, QA_CULTURE_SITES } from '../../../content/cultures/qa.ts';
+import {
+  FIXTURE_RADIUS,
+  FLATTEN,
+  LANDMARKS,
+  PATHS,
+  VILLAGE,
+} from '../../../content/settlements.ts';
 import { QA_PLAN as P } from '../../../content/themes/qa.ts';
 import { THEMES } from '../../../content/themes/index.ts';
-import type { IslandData, XZ } from '../../types.ts';
+import type { Rng } from '../../../core/rng.ts';
+import type { IslandData, StorySpot, XZ } from '../../types.ts';
 import { heightAt } from '../../types.ts';
 import { gridRange } from '../grid.ts';
 import {
@@ -42,6 +50,7 @@ import {
   rectShape,
   relief,
   shapeDist,
+  shapesOverlap,
   siteFree,
   unit,
   type Shape,
@@ -188,11 +197,17 @@ function bridge(ctx: SiteCtx, isl: IslandData, A: Hangar, B: Hangar): boolean {
   return true;
 }
 
+interface Track {
+  p: XZ;
+  rot: number;
+  sh: Shape;
+}
+
 /** Loop track beside the yard: flattest fitting spot, long axis radial or tangential. */
-function placeTrack(ctx: SiteCtx, isl: IslandData, yard: XZ): void {
+function placeTrack(ctx: SiteCtx, isl: IslandData, yard: XZ): Track | null {
   const [w, d] = P.track;
   const r0 = P.yardR + P.trackYardGap + w / 2;
-  let best: { p: XZ; rot: number; sh: Shape } | null = null;
+  let best: Track | null = null;
   let bs = Infinity;
   bestSample(ctx, isl, yard, P.trackSearch, (p, i) => {
     if (ctx.sdf[i] < P.trackMinShore || dist(p, yard) < r0) return Infinity;
@@ -211,8 +226,9 @@ function placeTrack(ctx: SiteCtx, isl: IslandData, yard: XZ): void {
     }
     return Infinity;
   });
-  const b = best as { p: XZ; rot: number; sh: Shape } | null;
+  const b = best as Track | null;
   if (b) fixture(ctx, isl, 'testTrack', b.p, b.rot, b.sh, { block: true, pad: FLATTEN.discMargin });
+  return b;
 }
 
 /**
@@ -349,11 +365,364 @@ export const planQa: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   for (let k = 0; k + 1 < hangars.length; k++) bridge(ctx, isl, hangars[k], hangars[k + 1]);
 
   // crash-test loop track beside the yard
-  placeTrack(ctx, isl, yard);
+  const track = placeTrack(ctx, isl, yard);
 
   // test labs on lanes from the yard (lane 0 runs down to the pier), then the checkpoints
   campusLots(ctx, isl, plan, { ...P.campus, quadR: R }, rng.fork('campus'), sIdx, yard);
   placeStiltLab(ctx, isl, plan, site ? site.root : harbour, sIdx);
   placeGates(ctx, isl, yard);
+
+  // Inspectors' Island culture (M19 TASK-424): last, round the finished factory
+  plan.stories = inspectors(ctx, isl, plan, rng.fork('culture'), {
+    yard,
+    hangars,
+    track,
+    tower: tp,
+    root: site ? site.root : null,
+  });
   return plan;
 };
+
+/* ------------------------------------------------------------------------------------------ */
+/* TASK-424 "Müfettişler Adası" (Inspectors' Island): the culture kit round the Test Factory.   */
+/* ------------------------------------------------------------------------------------------ */
+
+interface QaSite {
+  yard: XZ;
+  hangars: readonly Hangar[];
+  track: Track | null;
+  tower: XZ | null;
+  root: XZ | null;
+}
+
+/** Geometry-local (x, z) of a prop facing `rotY` → world (+z = dirOf(rotY), +x = (sin, −cos)). */
+const loc = (p: XZ, rotY: number, x: number, z: number): XZ => ({
+  x: p.x + Math.sin(rotY) * x + Math.cos(rotY) * z,
+  z: p.z - Math.cos(rotY) * x + Math.sin(rotY) * z,
+});
+
+/** applyPads' relaxation bound of a pad (circumradius + margin). */
+const padBound = (sh: Shape, margin: number): number =>
+  (sh.r > 0 ? sh.r : Math.hypot(sh.hw, sh.hd)) + margin;
+
+interface KitOpts {
+  /** Obstacles (and their pads) the prop may touch: the building it stands against. */
+  ignore?: (o: Shape) => boolean;
+  minShore?: number;
+  maxRelief?: number;
+  /** Its level pad margin (default QA_CULTURE_SITES.padMargin). */
+  pad?: number;
+  /** Skip the lane clearance (props against a building front by the yard). */
+  lanesOk?: boolean;
+}
+
+interface Spot {
+  p: XZ;
+  rotY: number;
+}
+
+/**
+ * Place the Inspectors' kit (ISLAND_CULTURES §2.5) round the yard, hangars, track, tower, gates
+ * and labs; returns the story spots. Every number is QA_CULTURE_SITES; draws from forks of `rng`.
+ */
+function inspectors(
+  ctx: SiteCtx,
+  isl: IslandData,
+  plan: SitePlan,
+  rng: Rng,
+  s: QaSite,
+): StorySpot[] {
+  const K = QA_CULTURE_SITES;
+  const stories: StorySpot[] = [];
+  const story = (kind: string, p: XZ, dy: number, rotY: number): void => {
+    const def = QA_CULTURE.storySpots.find((d) => d.kind === kind);
+    stories.push({
+      kind,
+      islandId: isl.id,
+      // y above the ground: buildSettlements resolves it once the pads are flat
+      pos: { x: p.x, y: dy, z: p.z },
+      rotY,
+      defs: def?.defs ?? [],
+    });
+  };
+  const pins = (): XZ[] => [...plan.links.map((l) => l.pin), ...(s.root ? [s.root] : [])];
+  const radius = (defId: string): number => FIXTURE_RADIUS[defId] ?? 0.5;
+  const facing = (from: XZ, to: XZ): number => ang(to.x - from.x, to.z - from.z);
+
+  /** `sh` fits: on land, level, clear of obstacles / lanes / footpath pins / other pad levels. */
+  const fits = (sh: Shape, o: KitOpts = {}): boolean => {
+    const minShore = o.minShore ?? 1.5;
+    if (!onLand(ctx, isl, sh, minShore, 0.5)) return false;
+    if (relief(ctx, sh) > (o.maxRelief ?? K.maxRelief)) return false;
+    const rr = padBound(sh, 0);
+    if (pins().some((q) => dist(q, sh) < K.pinClear + rr)) return false;
+    for (const q of ctx.shapes[isl.id])
+      if (q.tag !== 'plaza' && !o.ignore?.(q) && shapesOverlap(q, sh, K.gap)) return false;
+    if (!o.lanesOk)
+      for (const lane of ctx.lanes[isl.id])
+        for (const q of lane) if (shapeDist(sh, q.x, q.z) < PATHS.halfWidth + 0.3) return false;
+    // never inside the relax bound of a pad on another level (it would flatten the step away)
+    const y = heightAt(ctx.h, sh.x, sh.z);
+    for (const q of ctx.pads) {
+      if (q.islandId !== isl.id || o.ignore?.(q.shape)) continue;
+      if (Math.abs(heightAt(ctx.h, q.shape.x, q.shape.z) - y) <= K.stepTol) continue;
+      if (dist(q.shape, sh) <= padBound(q.shape, q.margin) + padBound(sh, o.pad ?? K.padMargin))
+        return false;
+    }
+    return true;
+  };
+  /** Fixture + obstacle (blocks the footpath grid) + a small level pad. */
+  const put = (
+    defId: string,
+    sh: Shape,
+    rotY: number,
+    variant?: number,
+    pad: number = K.padMargin,
+  ): void => {
+    ctx.fixtures.push({
+      defId,
+      x: sh.x,
+      z: sh.z,
+      rotY,
+      islandId: isl.id,
+      ...(variant === undefined ? {} : { variant }),
+    });
+    addShape(ctx, isl, sh, true);
+    addPad(ctx, isl, sh, pad);
+  };
+  /** First candidate that fits (the def's K.rect, else its radius disc); null when none does. */
+  const kitAt = (
+    defId: string,
+    cands: readonly Spot[],
+    o: KitOpts = {},
+    variant?: number,
+  ): Spot | null => {
+    const rs = (K.rect as Readonly<Record<string, readonly [number, number]>>)[defId];
+    for (const c of cands) {
+      const sh = rs
+        ? rectShape(c.p.x, c.p.z, c.rotY, rs[0], rs[1])
+        : discShape(c.p.x, c.p.z, radius(defId));
+      if (!fits(sh, o)) continue;
+      put(defId, sh, c.rotY, variant);
+      return c;
+    }
+    return null;
+  };
+
+  // ---- Hall of Checks: the first hangar (furthest round from the harbour); desk + clipboards
+  const hall = s.hangars.length ? s.hangars[0] : null;
+  if (hall) {
+    const fx = ctx.fixtures.find(
+      (f) =>
+        f.islandId === isl.id && f.defId === 'testHangar' && f.x === hall.p.x && f.z === hall.p.z,
+    );
+    if (fx) fx.variant = K.hallVariant;
+    const rot = hall.a + Math.PI;
+    const front = P.hangar[1] / 2;
+    const own: KitOpts = { ignore: (o) => o === hall.sh, lanesOk: true };
+    // desk one side of the door, clipboards the other (mirrored when a conveyor bridge is in the way)
+    for (const sx of [1, -1]) {
+      const desk = loc(hall.p, rot, sx * K.hall.desk[0], front + K.hall.desk[1]);
+      if (!kitAt('stampDesk', [{ p: desk, rotY: rot }], own)) continue;
+      story('sleepyStamp', desk, 0, rot);
+      const boards = K.hall.boards.map(([x, z]) => ({
+        p: loc(hall.p, rot, sx * x, front + z),
+        rotY: rot,
+      }));
+      kitAt('clipboardWall', boards, own);
+      break;
+    }
+  }
+
+  // ---- Inspection booths beside the barrier gates (cone side first), window to the lane
+  const B = K.booth;
+  let booths = 0;
+  for (const g of ctx.fixtures.filter((f) => f.islandId === isl.id && f.defId === 'barrierGate')) {
+    if (booths >= B.max) break;
+    const t = dirOf(g.rotY);
+    const right = { x: t.z, z: -t.x };
+    search: for (const sg of [-1, 1])
+      for (const side of B.side)
+        for (const along of B.along) {
+          const c = add(add(g, right, sg * side), t, along);
+          const rotY = ang(-sg * right.x, -sg * right.z);
+          const sh = rectShape(c.x, c.z, rotY, B.size, B.size);
+          if (!fits(sh, { maxRelief: B.maxRelief, pad: B.pad })) continue;
+          put('inspectionBooth', sh, rotY, undefined, B.pad);
+          booths++;
+          break search;
+        }
+  }
+
+  // ---- Flag mast at the QA tower's foot, beside its access path, facing the yard
+  if (s.tower) {
+    const tower = s.tower;
+    const r = (LANDMARKS.qaTower.radius ?? 2.6) + K.mast.ring;
+    const a0 = facing(tower, s.yard);
+    const n = K.mast.samples;
+    const cands: Spot[] = [];
+    for (let k = 1; k <= n / 2; k++)
+      for (const sg of [1, -1]) {
+        const p = add(tower, dirOf(a0 + (sg * k * TAU) / n), r);
+        cands.push({ p, rotY: facing(p, s.yard) });
+      }
+    const m = kitAt('flagMast', cands);
+    if (m) story('greenLight', m.p, 0, m.rotY);
+  }
+
+  // ---- Scoreboard v0 ("BUGS: 0") on the yard rim across from the hall, facing the yard
+  const S = K.scoreboard;
+  const hallA = hall ? hall.a : 0;
+  const rim = (ringR: number): { p: XZ; a: number }[] => {
+    const out: { p: XZ; a: number }[] = [];
+    for (let k = 0; k < S.samples; k++) {
+      const a = (k / S.samples) * TAU;
+      out.push({ p: add(s.yard, dirOf(a), P.yardR + ringR), a });
+    }
+    return out;
+  };
+  const across = rim(S.yardRing).sort(
+    (u, v) => angGap(u.a, hallA + Math.PI) - angGap(v.a, hallA + Math.PI),
+  );
+  kitAt(
+    'scoreboard',
+    across.map((c) => ({ p: c.p, rotY: facing(c.p, s.yard) })),
+    {},
+    0,
+  );
+
+  // ---- Dummy benches on the yard rim, facing it (the first one's coffee break is a story)
+  const D = K.benches;
+  const want = rng.fork('benches').int(D.count[0], D.count[1]);
+  const benchA: number[] = [];
+  const benchRim = D.rings.flatMap((r) =>
+    rim(r).sort((u, v) => angGap(u.a, hallA) - angGap(v.a, hallA)),
+  );
+  for (const c of benchRim) {
+    if (benchA.length >= want) break;
+    if (benchA.some((a) => angGap(a, c.a) < D.minApartDeg * DEG)) continue;
+    const rotY = facing(c.p, s.yard);
+    if (!kitAt('dummyBench', [{ p: c.p, rotY }])) continue;
+    if (!benchA.length) story('dummyCoffee', loc(c.p, rotY, 0, 1.3), 0, rotY + Math.PI);
+    benchA.push(c.a);
+  }
+
+  // ---- Loop track: UV lamps along its sides, the "BUGS: 1" scoreboard, the cone pyramid
+  if (s.track) {
+    const T = s.track;
+    const [w, d] = P.track;
+    const U = K.uvLamps;
+    const lampN = rng.fork('uvLamps').int(U.count[0], U.count[1]);
+    let lamps = 0;
+    for (const [sx, sz] of [
+      [1, 0],
+      [-1, 1],
+      [1, 1],
+      [-1, 0],
+    ] as const) {
+      if (lamps >= lampN) break;
+      const p = loc(T.p, T.rot, sx * (w / 2 + U.side), U.at[sz]);
+      const l = kitAt('uvLampPost', [{ p, rotY: facing(p, T.p) }]);
+      if (!l) continue;
+      if (!lamps) story('uvBugHunt', loc(p, l.rotY, 0, -1.2), 0, l.rotY);
+      lamps++;
+    }
+    const sides: Spot[] = [];
+    for (const sx of [-1, 1])
+      for (const z of [0, 3, -3]) {
+        const p = loc(T.p, T.rot, sx * (w / 2 + S.trackSide), z);
+        sides.push({ p, rotY: facing(p, loc(T.p, T.rot, 0, z)) });
+      }
+    // the board stands with its back to the track rim, face out to the yard side visitors
+    const sb = kitAt('scoreboard', sides, {}, 1);
+    if (sb) {
+      const jar = loc(sb.p, sb.rotY, S.jar[0], S.jar[1]);
+      kitAt('bugJar', [{ p: jar, rotY: sb.rotY }]);
+      story('scoreboardDrop', loc(sb.p, sb.rotY, 0, 1.4), 0, sb.rotY + Math.PI);
+    }
+    const ends: Spot[] = [];
+    for (const sz of [1, -1]) {
+      const p = loc(T.p, T.rot, 0, sz * (d / 2 + K.cones.end));
+      ends.push({ p, rotY: T.rot + (sz > 0 ? 0 : Math.PI) });
+    }
+    const cone = kitAt('conePyramid', ends);
+    if (cone) story('gullOnCones', cone.p, K.gullY, cone.rotY);
+  }
+
+  // ---- Bug Zoo (terrarium v2) near a test lab, door to the nearest lane, its own footpath
+  const Z = K.zoo;
+  const labs = plan.lots.map((i) => ctx.lots[i]).filter((l) => l.defId === 'testLab');
+  const zr = radius('terrarium');
+  let zoo: Spot | null = null;
+  for (const lab of labs) {
+    let best: { p: XZ; score: number } | null = null;
+    for (let r = Z.ring[0]; r <= Z.ring[1]; r += 2)
+      for (let k = 0; k < Z.samples; k++) {
+        const p = add(lab, dirOf(lab.rotY + (k / Z.samples) * TAU), r);
+        const sh = discShape(p.x, p.z, zr);
+        if (!fits(sh, { minShore: Z.minShore, maxRelief: Z.maxRelief, pad: Z.pad })) continue;
+        if (!clear(ctx, isl, sh, 1) || !siteFree(ctx, isl, sh)) continue;
+        const score = relief(ctx, sh) + 0.05 * r;
+        if (!best || score < best.score - 1e-9) best = { p, score };
+      }
+    if (!best) continue;
+    // door toward the nearest lane sample (else the lab)
+    let to: XZ = lab;
+    let bd = Infinity;
+    for (const lane of ctx.lanes[isl.id])
+      for (const q of lane)
+        if (dist(q, best.p) < bd) {
+          bd = dist(q, best.p);
+          to = q;
+        }
+    const rotY = facing(best.p, to);
+    put('terrarium', discShape(best.p.x, best.p.z, zr), rotY, Z.variant, Z.pad);
+    plan.links.push({
+      pin: add(best.p, dirOf(rotY), zr + Z.doorGap),
+      kind: 'path',
+      done: () => undefined,
+    });
+    zoo = { p: best.p, rotY };
+    break;
+  }
+  if (zoo) {
+    const z0 = zoo;
+    const own: KitOpts = { ignore: (o) => o.r === zr && dist(o, z0.p) < 1e-6 };
+    const jar = loc(z0.p, z0.rotY, Z.jar[0], Z.jar[1]);
+    kitAt('bugJar', [{ p: jar, rotY: z0.rotY }], own);
+    story('antTrail', loc(z0.p, z0.rotY, Z.ants[0], Z.ants[1]), 0, z0.rotY + Math.PI / 2);
+  }
+
+  // ---- Bug jars by the test labs: front corners beside the door, else under a side window
+  const J = K.jars;
+  for (const lab of labs.slice(0, J.labs)) {
+    const own: KitOpts = { ignore: (o) => dist(o, lab) < 1e-6 };
+    const cands: Spot[] = J.at.map(([fx, ox, fz, oz]) => ({
+      p: loc(lab, lab.rotY, fx * (lab.w / 2) + ox, fz * (lab.d / 2) + oz),
+      rotY: lab.rotY,
+    }));
+    kitAt('bugJar', cands, own);
+  }
+
+  // ---- The crab under inspection: a cone on the cove beach beside the pier root
+  if (s.root) {
+    const root = s.root;
+    const C = K.crab;
+    const pier = (o: Shape): boolean => o.r > 0 && dist(o, root) < 1e-6;
+    const spot = bestSample(ctx, isl, root, C.search, (p, i) => {
+      const y = ctx.h.data[i];
+      if (y < C.y[0] || y > C.y[1] || dist(p, root) < C.minFromRoot) return Infinity;
+      const sh = discShape(p.x, p.z, radius('trafficCone'));
+      if (!fits(sh, { ignore: pier, minShore: C.minShore, maxRelief: C.maxRelief }))
+        return Infinity;
+      return dist(p, root);
+    });
+    if (spot) {
+      ctx.fixtures.push({ defId: 'trafficCone', x: spot.x, z: spot.z, rotY: 0, islandId: isl.id });
+      addShape(ctx, isl, discShape(spot.x, spot.z, radius('trafficCone')), false);
+      // the crab faces the cone from the sea side
+      story('crabInspection', spot, 0, facing(root, spot));
+    }
+  }
+  return stories;
+}

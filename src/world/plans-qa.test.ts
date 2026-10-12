@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { QA_CULTURE, QA_CULTURE_SITES } from '../content/cultures/qa.ts';
 import { PROP_DEFS, PROP_DEF_INDEX } from '../content/props.ts';
+import { FIXTURE_RADIUS } from '../content/settlements.ts';
 import { QA_PLAN } from '../content/themes/qa.ts';
 import { StageHash } from './gen/hash.ts';
 import { generateWorld, heightAt, type WorldData, type XZ } from './index.ts';
@@ -215,10 +217,111 @@ describe('QA Test Factory plan (TASK-401), 30 seeds', () => {
     });
     expect(got).toMatchInlineSnapshot(`
       [
-        "0ef0cb393965c674",
-        "1641fcd87cce1193",
-        "925b3d708442eedd",
+        "a9b15b4f42c955f4",
+        "fc46124637aaa499",
+        "da16bc1caa27e028",
       ]
     `);
+  });
+});
+
+/** TASK-424 "Müfettişler Adası" (Inspectors' Island): the culture kit on the Test Factory. */
+describe("QA Inspectors' Island culture (TASK-424), 30 seeds", () => {
+  const C = QA_CULTURE_SITES;
+  const KIT = new Set(QA_CULTURE.kit.map((k) => k.id));
+  /** [min, max] per def on the island; `share` = fraction of seeds with at least one. */
+  const RANGES: Record<string, { n: [number, number]; share: number }> = {
+    stampDesk: { n: [0, 1], share: 0.95 },
+    clipboardWall: { n: [0, 1], share: 0.8 },
+    inspectionBooth: { n: [0, C.booth.max], share: 0.8 },
+    flagMast: { n: [0, 1], share: 0.95 },
+    scoreboard: { n: [0, 2], share: 1 },
+    dummyBench: { n: [0, C.benches.count[1]], share: 0.95 },
+    uvLampPost: { n: [0, C.uvLamps.count[1]], share: 0.95 },
+    conePyramid: { n: [0, 1], share: 0.9 },
+    bugJar: { n: [0, 2 + C.jars.labs], share: 1 },
+  };
+  const dist = (a: XZ, b: XZ): number => Math.hypot(a.x - b.x, a.z - b.z);
+
+  it('kit placed: counts per def in range; one Hall of Checks; one Bug Zoo (pinned variants)', () => {
+    const hits: Record<string, number> = {};
+    let zoos = 0;
+    for (const seed of SEEDS) {
+      const w = world(seed);
+      const { isl } = qaOf(w);
+      const ctx = `seed ${seed}`;
+      const fx = w.fixtures.filter((f) => f.islandId === isl.id);
+      for (const [id, R] of Object.entries(RANGES)) {
+        const k = fx.filter((f) => f.defId === id).length;
+        expect(k, `${ctx} ${id}`).toBeGreaterThanOrEqual(R.n[0]);
+        expect(k, `${ctx} ${id}`).toBeLessThanOrEqual(R.n[1]);
+        if (k > 0) hits[id] = (hits[id] ?? 0) + 1;
+      }
+      const halls = fx.filter((f) => f.defId === 'testHangar' && f.variant === C.hallVariant);
+      expect(halls.length, ctx).toBe(1);
+      const zoo = fx.filter((f) => f.defId === 'terrarium');
+      expect(zoo.length, ctx).toBeLessThanOrEqual(1);
+      for (const z of zoo) expect(z.variant, ctx).toBe(C.zoo.variant);
+      zoos += zoo.length;
+      // scoreboards: at most one of each digit
+      for (const v of [0, 1])
+        expect(
+          fx.filter((f) => f.defId === 'scoreboard' && f.variant === v).length,
+          ctx,
+        ).toBeLessThanOrEqual(1);
+      // the stamp desk stands at the hall's door, the flag mast at the tower's foot
+      for (const d of fx.filter((f) => f.defId === 'stampDesk'))
+        expect(dist(d, halls[0]), ctx).toBeLessThan(QA_PLAN.hangar[1] / 2 + 3);
+      const tower = w.landmarks.find((m) => m.islandId === isl.id && m.kind === 'qaTower');
+      for (const m of fx.filter((f) => f.defId === 'flagMast'))
+        expect(dist(m, tower as XZ), ctx).toBeLessThan(5);
+      // booths beside a barrier gate
+      const gates = fx.filter((f) => f.defId === 'barrierGate');
+      for (const b of fx.filter((f) => f.defId === 'inspectionBooth'))
+        expect(Math.min(...gates.map((g) => dist(g, b))), ctx).toBeLessThan(6);
+    }
+    for (const [id, R] of Object.entries(RANGES))
+      expect((hits[id] ?? 0) / SEEDS.length, id).toBeGreaterThanOrEqual(R.share);
+    expect(zoos / SEEDS.length, 'bug zoo').toBeGreaterThanOrEqual(0.9);
+  });
+
+  it('everything on land and level, nothing in the water', () => {
+    for (const seed of SEEDS) {
+      const w = world(seed);
+      const { isl } = qaOf(w);
+      for (const f of w.fixtures) {
+        if (f.islandId !== isl.id || !(KIT.has(f.defId) || f.defId === 'terrarium')) continue;
+        const ctx = `seed ${seed} ${f.defId} @${f.x.toFixed(1)},${f.z.toFixed(1)}`;
+        const y0 = heightAt(w.height, f.x, f.z);
+        expect(y0, `${ctx} on land`).toBeGreaterThan(0.4);
+        const i = Math.round((f.z - w.height.originZ) / w.height.cellSize);
+        const j = Math.round((f.x - w.height.originX) / w.height.cellSize);
+        expect(w.islandMap[i * w.height.n + j], `${ctx} island`).toBe(isl.id + 1);
+        const r = FIXTURE_RADIUS[f.defId];
+        const ys = [0, 1, 2, 3, 4, 5, 6, 7].map((k) =>
+          heightAt(w.height, f.x + Math.cos(k * 0.785) * r, f.z + Math.sin(k * 0.785) * r),
+        );
+        expect(Math.max(y0, ...ys) - Math.min(y0, ...ys), ctx).toBeLessThanOrEqual(0.7);
+      }
+    }
+  });
+
+  it('story spots: ≥ 5 per island, ledger kinds once each, on the island', () => {
+    const kinds = new Set(QA_CULTURE.storySpots.map((s) => s.kind));
+    for (const seed of SEEDS) {
+      const w = world(seed);
+      const { isl } = qaOf(w);
+      const st = w.storySpots.filter((s) => s.islandId === isl.id);
+      expect(st.length, `seed ${seed}`).toBeGreaterThanOrEqual(5);
+      expect(new Set(st.map((s) => s.kind)).size, `seed ${seed} unique`).toBe(st.length);
+      for (const s of st) {
+        const ctx = `seed ${seed} ${s.kind}`;
+        expect(kinds.has(s.kind), ctx).toBe(true);
+        expect(s.defs.length, ctx).toBeGreaterThan(0);
+        const y = heightAt(w.height, s.pos.x, s.pos.z);
+        expect(y, `${ctx} on land`).toBeGreaterThan(0.3);
+        expect(s.pos.y, ctx).toBeGreaterThanOrEqual(y - 1e-6);
+      }
+    }
   });
 });

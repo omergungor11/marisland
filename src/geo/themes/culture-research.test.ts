@@ -232,7 +232,9 @@ describe('TASK-416 variants of existing defs (observatory v2, campusTower v3)', 
     expect(PROP_GEO.observatory.variants).toBe(3);
     expect(PROP_DEFS.find((p) => p.id === 'campusTower')?.variants).toBe(4);
     expect(PROP_GEO.campusTower.variants).toBe(4);
-    // terrarium untouched (the mini volcano is its own def)
-    expect(PROP_DEFS.find((p) => p.id === 'terrarium')?.variants).toBe(2);
+    // terrarium: Research's v0-v1 (the mini volcano is its own def) + the QA Bug Zoo v2 (TASK-424),
+    // which random rolls never pick
+    expect(PROP_DEFS.find((p) => p.id === 'terrarium')?.variants).toBe(3);
+    expect(PROP_DEFS.find((p) => p.id === 'terrarium')?.rollVariants).toBe(2);
   });
 });

@@ -1031,11 +1031,12 @@ export const CAMPUS_GEO: readonly PropGeoDef[] = [
   },
   {
     id: 'terrarium',
-    variants: 2,
+    // v2 = QA Bug Zoo (geo/themes/culture-qa.ts withBugZoo), placed by the QA plan (TASK-424)
+    variants: 3,
     build: terrarium,
     footprint: 2.6,
     height: 4,
-    heights: [5.0, 3.0],
+    heights: [5.0, 3.0, 3.1],
     windy: false,
   },
 ];

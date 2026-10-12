@@ -47,7 +47,16 @@ export const RESEARCH_PROP_DEFS: readonly PropDef[] = [
   // slender (2 u) but 9.5 u tall: a T1 silhouette that still reads in the postcard view
   // v3 = bell cupola (TASK-416, LOD1 = v0's)
   { id: 'campusTower', geo: 'campusTower', tier: 1, variants: 4, footprint: 1.6, flags: grounded },
-  { id: 'terrarium', geo: 'terrarium', tier: 0, variants: 2, footprint: 2.6, flags: grounded },
+  // v2 = QA Bug Zoo (TASK-424): only where the QA plan pins it, random rolls keep v0-v1
+  {
+    id: 'terrarium',
+    geo: 'terrarium',
+    tier: 0,
+    variants: 3,
+    rollVariants: 2,
+    footprint: 2.6,
+    flags: grounded,
+  },
   // sculptures
   {
     id: 'atomSculpture',
