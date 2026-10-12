@@ -1079,6 +1079,71 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     deltaT: 2,
     sets: ['dev'],
   })),
+  // ---- culture ground + light (M19 wave 4, TASK-440), seed 1001 raw cams (re-pin when the layout
+  // changes): Design glass-shard terrazzo, stained glass lit through by a low sun (dawn from the
+  // west, golden hour from the east) and from inside at night, the Marketing marquee chase at the
+  // Launch Show (0.4 s pair), the QA UV lamp pools at the night bug hunt
+  {
+    id: 'D-ground-terrazzo',
+    title: 'Terrazzo · Design hot-shop yard (T3, 14:00)',
+    seed: 1001,
+    cam: '-152,33,63,-147.4,21.5,77',
+    time: 14,
+    simt: 4,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-stained-dawn',
+    title: 'Stained glass · dawn through the canopy vitray (06:15)',
+    seed: 1001,
+    cam: '-116,40,96,-142,36,90',
+    time: 6.25,
+    simt: 4,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-stained-golden',
+    title: 'Stained glass · Prism Hour from the east (17:45)',
+    seed: 1001,
+    cam: '-168,52,98,-142,33,88',
+    time: 17.75,
+    simt: 4,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-stained-night',
+    title: 'Stained glass · Jewel Tree close (21:00)',
+    seed: 1001,
+    cam: '-168,52,98,-142,33,88',
+    time: 21,
+    simt: 4,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-marquee-show',
+    title: 'Marquee chase · SHOW sign at the Launch Show (17:30, 0.4 s pair)',
+    seed: 1001,
+    cam: '-45.6,6.2,147.2,-39.4,5.3,149.1',
+    time: 17.5,
+    simt: 4,
+    deltaT: 0.4,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-ground-uv-night',
+    title: 'UV lamp pools · QA night bug hunt (21:30)',
+    seed: 1001,
+    cam: '-170.5,17.8,-191.9,-160,8,-208',
+    time: 21.5,
+    simt: 4,
+    quality: 'medium',
+    sets: ['dev'],
+  },
   // ---- living close-up (M14c, TASK-383/384): `pnpm shots live [--assert]`. A 0.5 s `deltaT` pair per
   // campus at T3 on medium (16 workers + drones + animated surfaces); the harness measures the motion
   // inside LIVE_CROP over solid pixels (the mask frame drops water / sky: foam and swell are not campus

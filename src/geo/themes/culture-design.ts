@@ -38,6 +38,7 @@ import { Acc, col, qEuler, type ColorFn } from '../kit.ts';
 import { TAU, V, baseBox, bevBox, cylB, lathe, put, tubeAlong } from '../parts.ts';
 import type { BuildOpts, Lod, PropBuilder, PropGeoDef } from '../types.ts';
 import { addGlyph } from './glyphs.ts';
+import { tagStained } from './surface-tags.ts';
 import { cultureAcc } from './culture-devops.ts';
 
 /** Thickness of every glass slab (u): Design glass is chunky, never a thin pane. */
@@ -762,7 +763,9 @@ function stainedScreen({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   put(acc, polyGeo(windowOutline(hi ? 12 : 6), 0.1), [0, 0, 0], K.came, { aoAmt: 0 });
   panes(acc, quilt ? quiltPanes() : sunburstPanes(), [0, 0, 0], undefined, 1, GLASS_T + 0.04);
   if (hi) addGlyph(acc, 'prism', V(0, 0.19, 0.12), { size: 0.18, color: G.plum, depth: 0.03 });
-  return acc.finish(rng, false, true);
+  const g = acc.finish(rng, false, true);
+  tagStained(g); // near LOD: low sun shines through the panes (TASK-440)
+  return g;
 }
 
 /* ================================== gatherRing ================================ */
@@ -1356,6 +1359,7 @@ export function withCanopyVitray(base: PropBuilder, vitrayVariant = 3): PropBuil
     canopyVitrayInto(acc);
     const extra = acc.finish(o.rng.fork('vitray'), false, true);
     const merged = mergeGeometries([g, extra], false);
+    tagStained(merged, g.getAttribute('position').count); // the vitray panels (TASK-440)
     merged.computeBoundingBox();
     merged.computeBoundingSphere();
     merged.userData = { ...g.userData, tris: merged.getAttribute('position').count / 3 };
@@ -1578,7 +1582,9 @@ function glassPavilion({ rng, lod }: BuildOpts): THREE.BufferGeometry {
 export function withGlassPavilion(base: PropBuilder, glassVariant = 2): PropBuilder {
   return (o) => {
     if (o.variant !== glassVariant) return base(o);
-    return glassPavilion(o);
+    const g = glassPavilion(o);
+    if (o.lod === 0) tagStained(g); // the glass roof (TASK-440)
+    return g;
   };
 }
 

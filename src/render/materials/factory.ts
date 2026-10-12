@@ -439,7 +439,7 @@ const FRAG_OUTGOING = /* glsl */ `
   #ifdef MAR_EMISSIVE
     // night glow: mask × lamps (staggered, flickering; vertex) × gain → crosses the bloom threshold
     // TASK-384: animated surfaces weight their glow (dim backgrounds, bright ink)
-    outgoingLight += diffuseColor.rgb * (vMarEmissive * marSG * ${f(NIGHT.emissiveGain)});
+    outgoingLight += diffuseColor.rgb * marTint * (vMarEmissive * marSG * ${f(NIGHT.emissiveGain)});
   #endif
 ${ACTIVITY_GLOW}
   {
@@ -447,7 +447,7 @@ ${ACTIVITY_GLOW}
     vec2 marPl = marPool(vMarCloudXZ);
     if (marPl.x > 0.0) {
       float marUp = 1.0 - smoothstep(${POOL_GAIN.fade0}, ${POOL_GAIN.fade1}, vMarWorldY - marPl.y);
-      outgoingLight += diffuseColor.rgb * uPoolColor
+      outgoingLight += diffuseColor.rgb * marPoolColor(vMarCloudXZ)
         * (marPl.x * marUp * ${POOL_GAIN.prop} * marPoolFlicker(vMarCloudXZ, uTime) * (1.0 - uDebugMask));
     }
   }
@@ -545,6 +545,7 @@ export class LitMaterial extends THREE.MeshLambertMaterial {
       uShadowTint: SHARED.uShadowTint,
       uNight: SHARED.uNight,
       uDebugMask: SHARED.uDebugMask,
+      uSunColor: SHARED.uSunColor,
       uLamps: SHARED.uLamps,
       uLampMode: { value: lampMode },
       uCultureIsle: SHARED.uCultureIsle,

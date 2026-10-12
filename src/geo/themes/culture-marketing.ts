@@ -19,8 +19,8 @@
  * roll its variants, so a third variant would shift what they already show (ISLAND_CULTURES B10
  * allowed it, hard rule 4 forbids silent changes). It reuses the booth proportions (MEDIA_ROCK.booth).
  *
- * Marquee bulbs and sign letters are emissive 1 (lit like windows); the `marquee` surface kind (LED
- * chase) is a later shader task. Every part is a primitive, vertex-coloured; pivots on the ground;
+ * Marquee bulbs and sign letters are emissive 1 (lit like windows); the border bulbs carry the
+ * `marquee` surface tag (LED chase, TASK-440; near LOD only). Every part is a primitive, vertex-coloured; pivots on the ground;
  * 1 u = 1 m. Everything stays < 2.85 u tall and < 3 u in one plan extent so no def is promoted to
  * tier 0 by the batcher (isLargeStructure, 5 % margin) - the mascot included.
  */
@@ -34,6 +34,7 @@ import { TAU, V, baseBox, cylB, jitterAcc, put, ropePoints, tubeAlong } from '..
 import type { BuildOpts, PropGeoDef } from '../types.ts';
 import { addGlyph, type GlyphId } from './glyphs.ts';
 import { addHook } from './hq.ts';
+import { tagMarquee } from './surface-tags.ts';
 
 const K = MEDIA_ROCK.colors;
 const RED = K.accent;
@@ -693,18 +694,29 @@ function marqueeSign({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   }
   // bulb border (far: the four corners only)
   const step = hi ? 0.18 : 99;
-  const rim = (len: number, fn: (s: number) => THREE.Vector3): void => {
+  const rim = (len: number, fn: (s: number) => THREE.Vector3): THREE.Vector3[] => {
     const n = Math.max(1, Math.round(len / step));
-    for (let k = 0; k < n; k++) bulb(acc, fn(k / n), hi ? 0.058 : 0.1, k % 2 ? CREAM : AMBER);
+    const at: THREE.Vector3[] = [];
+    for (let k = 0; k < n; k++) {
+      at.push(fn(k / n));
+      bulb(acc, at[k], hi ? 0.058 : 0.1, k % 2 ? CREAM : AMBER);
+    }
+    return at;
   };
   const bx = W / 2 - 0.02;
   const by0 = y0 + 0.03;
   const by1 = y0 + Hc - 0.03;
   const bz = 0.2;
-  rim(W, (s) => V(-bx + s * 2 * bx, by0, bz));
-  rim(W, (s) => V(bx - s * 2 * bx, by1, bz));
-  rim(Hc, (s) => V(-bx, by1 - s * (by1 - by0), bz));
-  rim(Hc, (s) => V(bx, by0 + s * (by1 - by0), bz));
+  const bottom = rim(W, (s) => V(-bx + s * 2 * bx, by0, bz));
+  const top = rim(W, (s) => V(bx - s * 2 * bx, by1, bz));
+  const left = rim(Hc, (s) => V(-bx, by1 - s * (by1 - by0), bz));
+  const right = rim(Hc, (s) => V(bx, by0 + s * (by1 - by0), bz));
+  // LED chase (TASK-440) runs round the border: bottom → right → top → left (near LOD only)
+  const chase = hi
+    ? [...bottom, ...right, ...top, ...left].map((c) =>
+        acc.xf ? c.clone().applyMatrix4(acc.xf) : c,
+      )
+    : [];
   // crest: emblem on a short mast, side bulbs
   put(acc, cylB(0.07, 0.07, 0.3, hi ? 5 : 4), [0, y0 + Hc, 0], CHROME, { aoAmt: 0 });
   const crest: GlyphId = word === 'LIVE' ? 'megaphone' : 'star';
@@ -723,7 +735,9 @@ function marqueeSign({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   }
   if (hi && word !== 'LIVE')
     for (const sx of [-1, 1]) bulb(acc, V(sx * 0.8, y0 + Hc + 0.12, 0.16), 0.08, AMBER);
-  return finish(acc, rng);
+  const g = finish(acc, rng);
+  if (hi) tagMarquee(g, chase, 0.08);
+  return g;
 }
 
 /* ---------------------------------- balloonMast ---------------------------------- */

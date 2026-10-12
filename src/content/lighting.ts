@@ -4,7 +4,7 @@
  * `palette.ts` → `LIGHTING`; this file holds the derived/tuned numbers the
  * render layer needs on top of them.
  */
-import { LIGHTING } from './palette.ts';
+import { FLOWERS, LIGHTING } from './palette.ts';
 
 /**
  * Fit a FogExp2 density (f = 1 − exp(−(d·x)²)) to the bible's fog curve,
@@ -240,7 +240,14 @@ export const POOLS = {
     stoneLantern: { radius: 4.2, intensity: 0.7, offset: 0 },
     coffeeKiosk: { radius: 4, intensity: 0.6, offset: 0.7 },
     broadcastStudio: { radius: 3.6, intensity: 0.5, offset: 1.9 },
-  } as Record<string, { radius: number; intensity: number; offset: number }>,
+    // QA night bug hunt (TASK-440): violet pools under the UV lamp posts (`hue` 1 = uvColor)
+    uvLampPost: { radius: 5, intensity: 1, offset: 0, hue: 1 },
+  } as Record<string, { radius: number; intensity: number; offset: number; hue?: number }>,
+  /**
+   * Second pool colour (TASK-440): a source's `hue` share blends its pool from `color` toward this
+   * (the pool texture's B channel = light-weighted hue share), e.g. the UV lamps' violet.
+   */
+  uvColor: FLOWERS[3],
 } as const;
 
 /**

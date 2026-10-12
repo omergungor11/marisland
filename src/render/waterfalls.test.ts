@@ -8,6 +8,8 @@ import { generateWorld, heightAt } from '../world/index.ts';
 import {
   ACTIVITY_SURFACE,
   ACTIVITY_VARY,
+  CULTURE_SURFACE,
+  CULTURE_SURFACE_PRE,
   FLOW_SURFACE,
   PULSE_ONLY,
 } from './materials/activity-glsl.ts';
@@ -34,7 +36,9 @@ describe('waterfall flow tag (TASK-395)', () => {
   it('leaves the untagged / kind 1–9 GLSL unchanged when the flow branch is cut out', () => {
     // pre-TASK-395 ACTIVITY_SURFACE / ACTIVITY_VARY: re-pin only for a deliberate surface change
     expect(ACTIVITY_SURFACE.split(FLOW_SURFACE)).toHaveLength(2);
-    expect(sha(ACTIVITY_SURFACE.replace(FLOW_SURFACE, ''))).toBe('32236d315ac038b6');
+    // (TASK-440's culture kinds are cut out as well: they run in front of the flow branch)
+    const base = ACTIVITY_SURFACE.replace(CULTURE_SURFACE_PRE, '').replace(CULTURE_SURFACE, '');
+    expect(sha(base.replace(FLOW_SURFACE, ''))).toBe('32236d315ac038b6');
     expect(ACTIVITY_VARY.split(PULSE_ONLY)).toHaveLength(2);
     expect(sha(ACTIVITY_VARY.replace(PULSE_ONLY, ''))).toBe('e285bbfd2d54f04f');
     // the flow branch only runs for its own kind

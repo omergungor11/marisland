@@ -1,5 +1,5 @@
 /** Design / Art (Mossgrove, forest dome) — M14b plan §2.6 (TASK-367). */
-import { FOLIAGE } from '../palette.ts';
+import { FOLIAGE, ROOFS } from '../palette.ts';
 import type { CampusSpec } from '../settlements.ts';
 import { Zone } from '../../world/types.ts';
 import type { ThemeDef } from './index.ts';
@@ -120,11 +120,16 @@ export const DESIGN_THEME: ThemeDef = {
       base: '#E8D6B8',
       layer: { layers: ['pebbles', 'speckle'], speckle: ['#FF6F91', '#5FB8F0'] },
     },
-    // mosaic quad
+    // glass-shard terrazzo (Glass & Light, TASK-440): the mosaic quad's tesserae and a scatter of
+    // cullet chips in the stained-glass amber / violet (the confetti paths keep pink / blue)
     [Zone.plaza]: {
       material: 'paving',
       base: '#E6D3C0',
-      layer: { layers: ['mosaic'], tile: { size: 0.25, grout: '#B07CE0' } },
+      layer: {
+        layers: ['mosaic', 'speckle'],
+        tile: { size: 0.25, grout: '#B07CE0' },
+        speckle: [ROOFS[3], ROOFS[4]],
+      },
     },
   },
   // open the dome a little: meadow clearings for the sheep and the garden, forest still dominant

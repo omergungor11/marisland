@@ -15,9 +15,9 @@ import {
 /**
  * Lantern pools (TASK-171, ARCHITECTURE §7 "Night": additive decals, not point lights).
  * Every pool source (lantern posts, stalls, house doors … content POOLS.sources) is splatted
- * on the CPU into one small RG8 world texture: R = light (small core, long quadratic tail and a
+ * on the CPU into one small RGBA8 world texture: R = light (small core, long quadratic tail and a
  * wobbly rim so pools never read as discs), G = the pool's ground height / POOL_HEIGHT_RANGE
- * (props fade the light out with height above it). Terrain, props and water add
+ * (props fade the light out with height above it), B = hue share (POOLS.uvColor, TASK-440). Terrain, props and water add
  * `albedo × poolColor × R × lamps` — one texture fetch, no extra program, no draw call.
  *
  * Edits (TASK-213): `update(indices)` re-derives the sources of the touched render-store
@@ -47,6 +47,8 @@ export interface PoolSource {
   y: number;
   r: number;
   k: number;
+  /** Hue share (0 = POOLS.color, 1 = POOLS.uvColor; TASK-440). */
+  u: number;
 }
 
 /** Texture placement of the splat (world square [origin, origin + extent]², `size`² texels). */
@@ -85,6 +87,7 @@ export function poolSourceOf(props: PropStore, i: number): PoolSource | null {
     y: props.y[i],
     r: src.radius * sc,
     k: src.intensity,
+    u: src.hue ?? 0,
   };
 }
 
@@ -141,7 +144,8 @@ export function poolInside(s: PoolSource, L: PoolLayout): boolean {
 }
 
 /**
- * Splat `sources` into the texels of `rect` of RG8 `data` (R light 0..255, G height); texels
+ * Splat `sources` into the texels of `rect` of RGBA8 `data` (R light 0..255, G height, B hue
+ * share — light-weighted, TASK-440, A unused); texels
  * outside `rect` are untouched. Per texel the sources accumulate in array order, so a sub-rect
  * equals the same texels of a full splat. Pure; exported for tests.
  */
@@ -157,6 +161,7 @@ export function splatPoolsRect(
   const light = new Float32Array(rect.w * rect.h);
   const hSum = new Float32Array(rect.w * rect.h);
   const wSum = new Float32Array(rect.w * rect.h);
+  const uSum = new Float32Array(rect.w * rect.h);
   const rx1 = rect.x + rect.w - 1;
   const ry1 = rect.y + rect.h - 1;
   for (const s of sources) {
@@ -186,28 +191,31 @@ export function splatPoolsRect(
         light[k] += v;
         hSum[k] += v * s.y;
         wSum[k] += v;
+        uSum[k] += v * s.u;
       }
     }
   }
   for (let j = 0; j < rect.h; j++)
     for (let i = 0; i < rect.w; i++) {
       const k = j * w + i;
-      const o = ((rect.y + j) * size + rect.x + i) * 2;
+      const o = ((rect.y + j) * size + rect.x + i) * 4;
       // soft clamp so overlapping pools saturate gracefully instead of clipping
       const l = 1 - Math.exp(-1.6 * light[k]);
       data[o] = Math.round(Math.min(1, l / (1 - Math.exp(-1.6))) * 255);
       const h = wSum[k] > 0 ? hSum[k] / wSum[k] : 0;
       data[o + 1] = Math.round(Math.min(1, Math.max(0, h / POOL_HEIGHT_RANGE)) * 255);
+      data[o + 2] = wSum[k] > 0 ? Math.round(Math.min(1, uSum[k] / wSum[k]) * 255) : 0;
+      data[o + 3] = 255;
     }
 }
 
-/** Splat sources into RG8 data (R light 0..255, G height). Pure; exported for tests. */
+/** Splat sources into RGBA8 data (R light 0..255, G height, B hue share). Pure; exported for tests. */
 export function splatPools(
   sources: readonly PoolSource[],
 ): { data: Uint8Array; size: number; originX: number; originZ: number; extent: number } | null {
   const L = poolLayout(sources);
   if (!L) return null;
-  const data = new Uint8Array(L.size * L.size * 2);
+  const data = new Uint8Array(L.size * L.size * 4);
   splatPoolsRect(sources, L, { x: 0, y: 0, w: L.size, h: L.size }, data);
   return { data, ...L };
 }
@@ -266,7 +274,14 @@ export class PoolSources {
 
 const sameSource = (a: PoolSource | null, b: PoolSource | null): boolean =>
   a === b ||
-  (!!a && !!b && a.x === b.x && a.z === b.z && a.y === b.y && a.r === b.r && a.k === b.k);
+  (!!a &&
+    !!b &&
+    a.x === b.x &&
+    a.z === b.z &&
+    a.y === b.y &&
+    a.r === b.r &&
+    a.k === b.k &&
+    a.u === b.u);
 
 /**
  * Build the pool texture for this world and bind it to SHARED (reset on dispose). `renderer`:
@@ -302,7 +317,7 @@ export function createLanternPools(
         splat.data,
         splat.size,
         splat.size,
-        THREE.RGFormat,
+        THREE.RGBAFormat,
         THREE.UnsignedByteType,
       );
       t.colorSpace = THREE.NoColorSpace;
@@ -312,7 +327,7 @@ export function createLanternPools(
       t.wrapT = THREE.ClampToEdgeWrapping;
       t.generateMipmaps = false;
       t.flipY = false;
-      t.unpackAlignment = 2;
+      t.unpackAlignment = 4;
       t.needsUpdate = true;
       t.name = 'lantern-pools';
       tex = t;

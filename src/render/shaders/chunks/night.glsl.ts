@@ -3,12 +3,15 @@
  * the per-world pool texture (SHARED.uPoolTex / uPoolMap) and the lamp flicker. No point
  * lights — pools are additive light on the receiving surface × albedo.
  *
- * Uniforms declared here: uPoolTex, uPoolMap, uPoolColor, uLamps. The including shader must
+ * Uniforms declared here: uPoolTex, uPoolMap, uPoolColor, uLamps. Pool texture: R light, G height,
+ * B hue share (marPoolColor; water keeps the warm uPoolColor). The including shader must
  * NOT declare them again; it passes time explicitly.
  */
+import * as THREE from 'three';
 import { NIGHT, POOLS } from '../../../content/lighting.ts';
 
 const f = (v: number): string => v.toFixed(5);
+const UV = new THREE.Color(POOLS.uvColor);
 const TAU = Math.PI * 2;
 
 /** Height range encoded in the pool texture's G channel (u). Shared with lantern-pools.ts. */
@@ -41,6 +44,12 @@ vec2 marPool(vec2 xz) {
   if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) return vec2(0.0);
   vec2 s = texture2D(uPoolTex, uv).rg;
   return vec2(s.r * uLamps.x, s.g * ${f(POOL_HEIGHT_RANGE)});
+}
+
+/** Pool colour at world xz (TASK-440): uPoolColor toward POOLS.uvColor by the texel's hue share. */
+vec3 marPoolColor(vec2 xz) {
+  float u = texture2D(uPoolTex, (xz - uPoolMap.xy) * uPoolMap.z).b;
+  return mix(uPoolColor, vec3(${f(UV.r)}, ${f(UV.g)}, ${f(UV.b)}), u);
 }
 
 /**

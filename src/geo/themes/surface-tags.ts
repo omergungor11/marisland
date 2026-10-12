@@ -227,3 +227,44 @@ export function tagTracker(
 ): void {
   tagRange(g, r, [pivot.x, pivot.y, pivot.z, MOTION_TAG.tracker + restTilt / Math.PI]);
 }
+
+/**
+ * Marquee chase (TASK-440): the lit vertices (emissive ≥ 0.5) within `r` of bulb k's centre get
+ * (k, bulb count, 0, −marquee); `centres` in chase order round the border, in geometry space.
+ */
+export function tagMarquee(
+  g: THREE.BufferGeometry,
+  centres: readonly THREE.Vector3[],
+  r: number,
+): void {
+  const pos = g.getAttribute('position');
+  const emi = g.getAttribute('emissive') as THREE.BufferAttribute | undefined;
+  if (!emi) return;
+  const s = spinAttr(g);
+  const p = new THREE.Vector3();
+  const r2 = r * r;
+  for (let i = 0; i < pos.count; i++) {
+    if (emi.getX(i) < 0.5) continue;
+    p.fromBufferAttribute(pos, i);
+    for (let k = 0; k < centres.length; k++)
+      if (p.distanceToSquared(centres[k]) <= r2) {
+        s.setXYZW(i, k, centres.length, 0, -SURFACE.marquee);
+        break;
+      }
+  }
+  s.needsUpdate = true;
+}
+
+/**
+ * Stained glass (TASK-440): the glass vertices (emissive 1: lamp class, not the molten ≥ 1.5
+ * screen class) from vertex `first` on get (0, 0, 0, −stained). LOD0 only — a tagged LOD1 would
+ * keep its group out of the far merge (D-049).
+ */
+export function tagStained(g: THREE.BufferGeometry, first = 0): void {
+  const emi = g.getAttribute('emissive') as THREE.BufferAttribute | undefined;
+  if (!emi) return;
+  const s = spinAttr(g);
+  for (let i = first; i < emi.count; i++)
+    if (Math.abs(emi.getX(i) - 1) < 1e-3) s.setXYZW(i, 0, 0, 0, -SURFACE.stained);
+  s.needsUpdate = true;
+}

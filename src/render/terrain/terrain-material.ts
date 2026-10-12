@@ -239,7 +239,7 @@ ${GROUND_COLOR_GLSL}
       float marNear = 1.0 - smoothstep(${POOL_GAIN.fade0}, ${POOL_GAIN.fade1}, abs(vMarWorld.y - marPl.y));
       // D14: the pool follows the ground facets (world normal from three's view-space normal)
       float marFacet = marPoolFacet(vMarWorld.xz, marPl.x, normalize((vec4(normal, 0.0) * viewMatrix).xyz));
-      outgoingLight += diffuseColor.rgb * uPoolColor
+      outgoingLight += diffuseColor.rgb * marPoolColor(vMarWorld.xz)
         * (marPl.x * marNear * marFacet * ${POOL_GAIN.ground} * marPoolFlicker(vMarWorld.xz, uTime));
     }
   }

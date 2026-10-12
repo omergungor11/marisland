@@ -17,7 +17,7 @@
  * brand slide only and take the current slide's colour otherwise (seamless with the board).
  */
 import { OFFICE_COLORS } from './palette-offices.ts';
-import { FLOWERS, WALLS } from './palette.ts';
+import { EMISSIVE, FLOWERS, WALLS } from './palette.ts';
 import { THEMES } from './themes/index.ts';
 import type { ThemeId } from '../world/types.ts';
 
@@ -34,6 +34,10 @@ export const SURFACE = {
   pulse: 9,
   /** Waterfall sheet / foam disc (TASK-395): (u, v, mode, −10), content/waterfalls.ts. */
   flow: 10,
+  /** Marquee bulb chase (TASK-440): (bulb index along the border, bulb count, 0, −11). */
+  marquee: 11,
+  /** Stained glass (TASK-440): low sun shining through the pane, lamp-lit at night; (0, 0, 0, −12). */
+  stained: 12,
 } as const;
 export type SurfaceKind = keyof typeof SURFACE;
 
@@ -133,6 +137,34 @@ export const PULSE = {
   color: '#7CF6FF',
   dayTint: 0.85,
   nightGlow: 1.4,
+} as const;
+
+/**
+ * Marquee bulb chase (TASK-440, Marketing marqueeSign): every `group`-th bulb is lit and the lit
+ * set steps round the border `rate` bulbs per second; the others dim to `off` (glow and albedo).
+ * The glow itself rides the bulbs' lamp class (culture lamp set: on 17:24, before the Launch Show).
+ */
+export const MARQUEE = { group: 3, rate: 5, off: 0.3, offAlbedo: 0.7 } as const;
+
+/**
+ * Stained glass (TASK-440, Design stainedScreen / canopy vitray / glass pavilion). Day: the sun
+ * shines through the pane — the face turned away from the sun glows with pane colour × sun colour
+ * × (½ − ½ n·s) × (1 − s.y)^`lowSun` × `day` (s = direction to the sun; wrapped because the thick
+ * glass diffuses: an edge-on pane glows half, the sunlit face not at all), so a low dawn / golden
+ * sun lights the panes and a high noon sun leaves them to their vertex colour. Night: the panes'
+ * lamp glow (emissive 1, culture lamp set) is tinted toward the studio lamp light: × mix(1,
+ * `nightTint`, `nightTintMix`) × `night` (a full multiply by the amber would mute the blues and
+ * greens; Design stays many-coloured at night, ISLAND_CULTURES §2.6).
+ */
+export const STAINED = {
+  day: 1.4,
+  lowSun: 1,
+  /** Share of the sun's hue kept (0 = its luminance only): an orange golden sun would turn every
+   * pane coral; half keeps the warm cast and the pane hues apart. */
+  sunHue: 0.5,
+  night: 0.8,
+  nightTint: EMISSIVE.window,
+  nightTintMix: 0.35,
 } as const;
 
 /** Wind turbine head yaw: into the wind plus a slow hunting wobble (deg, s). */

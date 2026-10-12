@@ -1,12 +1,14 @@
 import * as THREE from 'three';
 import {
   LEDS,
+  MARQUEE,
   MOTION_TAG,
   OCCUPANCY,
   PULSE,
   SCREEN_ANIM as A,
   SCREEN_INK as INK,
   SLIDES,
+  STAINED,
   SURFACE,
   TRACKER,
   TURBINE_YAW,
@@ -115,6 +117,50 @@ export const FLOW_SURFACE = /* glsl */ `if (marK > ${f(SURFACE.flow - 0.5)}) {
       }
     } else `;
 
+const MQ = MARQUEE;
+/** Linear night tint of stained glass: white → studio lamp light by `nightTintMix`. */
+const nightTint = new THREE.Color(1, 1, 1).lerp(
+  new THREE.Color(STAINED.nightTint),
+  STAINED.nightTintMix,
+);
+/**
+ * Culture kinds (TASK-440), spliced in front of the flow kind (`… else` + the older chain).
+ * Marquee: bulb `vMarSurf.x` of `vMarSurf.y` is lit when it is in the chase's current group,
+ * the others dim (albedo and glow weight). Stained: flags the day transmission for ACTIVITY_GLOW
+ * (it needs the shaded normal) and tints the night lamp glow toward the studio light.
+ */
+export const CULTURE_SURFACE = /* glsl */ `if (marK > ${f(SURFACE.stained - 0.5)}) {
+      marStain = 1.0;
+      marTint = vec3(${f(nightTint.r)}, ${f(nightTint.g)}, ${f(nightTint.b)}) * ${f(STAINED.night)};
+    } else if (marK > ${f(SURFACE.marquee - 0.5)}) {
+      float marMq = step(fract((vMarSurf.x - floor(marSt * ${f(MQ.rate)})) / ${f(MQ.group)}), ${f(0.5 / MQ.group)});
+      marC.rgb = diffuseColor.rgb * mix(${f(MQ.offAlbedo)}, 1.0, marMq);
+      marC.a = mix(${f(MQ.off)}, 1.0, marMq);
+    } else `;
+
+/**
+ * TS twin of the stained-glass day term in ACTIVITY_GLOW (× pane colour × sun colour): the light
+ * a low sun sends through a pane with world normal `n` (unit), `s` = unit direction to the sun —
+ * wrapped (diffusing glass): full on the face turned away from the sun, half edge-on, 0 facing it.
+ */
+export function stainedDayGlow(
+  n: { x: number; y: number; z: number },
+  s: { x: number; y: number; z: number },
+): number {
+  if (s.y <= 0) return 0;
+  const low = 1 - Math.min(1, Math.max(0, s.y));
+  const t = Math.min(1, s.y / 0.06);
+  const fade = t * t * (3 - 2 * t);
+  return (
+    (0.5 - 0.5 * (n.x * s.x + n.y * s.y + n.z * s.z)) * low ** STAINED.lowSun * fade * STAINED.day
+  );
+}
+
+/** Declarations of the culture kinds' outputs (in front of ACTIVITY_SURFACE's body). */
+export const CULTURE_SURFACE_PRE = /* glsl */ `
+  float marStain = 0.0;
+  vec3 marTint = vec3(1.0);`;
+
 export const ACTIVITY_VARYINGS = /* glsl */ `
 varying vec4 vMarSurf;
 varying float vMarSurfSeed;
@@ -175,6 +221,8 @@ const pick = (name: string, list: readonly string[]): string =>
 
 export const ACTIVITY_FRAG_PARS = /* glsl */ `
 uniform float uMotionScale;
+uniform vec3 uSunSkyDir;
+uniform vec3 uSunColor;
 ${ACTIVITY_VARYINGS}
 float marHf(vec2 p) {
   vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -351,14 +399,14 @@ vec3 marSlide(float idx, vec2 uv, float asp, vec3 base, float lt) {
 /** Fragment, after `#include <color_fragment>`: may rewrite `diffuseColor.rgb`. */
 export const ACTIVITY_SURFACE = /* glsl */ `
   float marSG = 1.0;
-  float marPG = 0.0;
+  float marPG = 0.0;${CULTURE_SURFACE_PRE}
   if (vMarSurf.w > 0.5 && uDebugMask < 0.5) {
     float marK = floor(vMarSurf.w + 0.5);
     float marSt = uTime * mix(0.3, 1.0, uMotionScale);
     vec2 marUv = clamp(vMarSurf.xy, 0.0, 1.0);
     float marAsp = vMarSurf.z;
     vec4 marC = vec4(diffuseColor.rgb, 1.0);
-    ${FLOW_SURFACE}if (marK > ${f(SURFACE.pulse - 0.5)}) {
+    ${CULTURE_SURFACE}${FLOW_SURFACE}if (marK > ${f(SURFACE.pulse - 0.5)}) {
       float marPs = fract((vMarSurf.x - marSt * ${f(PULSE.speed)}) / ${f(PULSE.spacing)});
       float marPw = ${f(PULSE.width / PULSE.spacing)};
       float marPb = smoothstep(0.0, marPw * 0.5, marPs) * (1.0 - smoothstep(marPw * 0.5, marPw, marPs));
@@ -403,4 +451,16 @@ export const ACTIVITY_SURFACE = /* glsl */ `
 /** FRAG_OUTGOING additions: pipe pulse glow at night (× lamps; day is a tint only). */
 export const ACTIVITY_GLOW = /* glsl */ `
   outgoingLight += ${v3(PULSE.color)} * (marPG * ${f(PULSE.nightGlow)} * uLamps.x);
+  if (marStain > 0.5 && uSunSkyDir.y > 0.0) {
+    // stained glass (TASK-440): a low sun behind the pane shines through it (s = to the sun)
+    // NaN-safe (one NaN pixel blacks the frame through bloom): no normalize of a possibly-zero
+    // vector, pow only of a base clamped above 0
+    vec3 marWn = (vec4(normal, 0.0) * viewMatrix).xyz;
+    marWn /= max(length(marWn), 1e-5);
+    float marLow = max(1.0 - clamp(uSunSkyDir.y, 0.0, 1.0), 1e-4);
+    float marTr = clamp(0.5 - 0.5 * dot(marWn, uSunSkyDir), 0.0, 1.0) * pow(marLow, ${f(STAINED.lowSun)})
+      * smoothstep(0.0, 0.06, uSunSkyDir.y);
+    vec3 marSc = mix(vec3(dot(uSunColor, vec3(0.2126, 0.7152, 0.0722))), uSunColor, ${f(STAINED.sunHue)});
+    outgoingLight += diffuseColor.rgb * marSc * (marTr * ${f(STAINED.day)});
+  }
 `;

@@ -21,13 +21,13 @@ describe('lantern pools (TASK-171)', () => {
   });
 
   it('splats a soft pool: bright core, zero outside the rim, height in G', () => {
-    const s = splatPools([{ x: 10, z: -4, y: 6.4, r: 4, k: 1 }]);
+    const s = splatPools([{ x: 10, z: -4, y: 6.4, r: 4, k: 1, u: 0 }]);
     expect(s).not.toBeNull();
     if (!s) return;
     const at = (x: number, z: number): [number, number] => {
       const i = Math.floor(((x - s.originX) / s.extent) * s.size);
       const j = Math.floor(((z - s.originZ) / s.extent) * s.size);
-      const k = (j * s.size + i) * 2;
+      const k = (j * s.size + i) * 4;
       return [s.data[k], s.data[k + 1]];
     };
     const [core, h] = at(10, -4);
@@ -57,12 +57,28 @@ describe('lantern pools (TASK-171)', () => {
 
   it('is deterministic', () => {
     const src = [
-      { x: 0, z: 0, y: 1, r: 3, k: 0.5 },
-      { x: 2, z: 1, y: 1, r: 4, k: 1 },
+      { x: 0, z: 0, y: 1, r: 3, k: 0.5, u: 0 },
+      { x: 2, z: 1, y: 1, r: 4, k: 1, u: 1 },
     ];
     const a = splatPools(src);
     const b = splatPools(src);
     expect(a?.data).toEqual(b?.data);
+  });
+
+  it('carries the light-weighted hue share in B (TASK-440 UV pools)', () => {
+    const s = splatPools([
+      { x: 0, z: 0, y: 1, r: 4, k: 1, u: 0 },
+      { x: 20, z: 0, y: 1, r: 4, k: 1, u: 1 },
+    ]);
+    if (!s) throw new Error('no splat');
+    const at = (x: number, z: number): number => {
+      const t = s.extent / s.size;
+      const i = Math.floor((x - s.originX) / t);
+      const j = Math.floor((z - s.originZ) / t);
+      return s.data[(j * s.size + i) * 4 + 2];
+    };
+    expect(at(0, 0)).toBe(0);
+    expect(at(20, 0)).toBe(255);
   });
 });
 
@@ -95,7 +111,7 @@ describe('lantern pools follow edits (TASK-213)', () => {
       expect(t.changed).toBe(true);
       expect(t.outside).toBe(false);
       splatPoolsRect(book.list(), layout, t.rect!, data);
-      const want = new Uint8Array(layout.size * layout.size * 2);
+      const want = new Uint8Array(layout.size * layout.size * 4);
       splatPoolsRect(book.list(), layout, { x: 0, y: 0, w: layout.size, h: layout.size }, want);
       expect(data).toEqual(want);
     };
