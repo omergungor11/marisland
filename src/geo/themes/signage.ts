@@ -15,6 +15,7 @@
 import * as THREE from 'three';
 import { WOOD, ROCK } from '../../content/palette.ts';
 import { THEMES } from '../../content/themes.ts';
+import { CULTURES, type PennantCut } from '../../content/cultures/index.ts';
 import { THEME_IDS, type ThemeId } from '../../world/types.ts';
 import { Acc, qEuler } from '../kit.ts';
 import { gridSurface } from '../coastal.ts';
@@ -38,18 +39,10 @@ export const SIGN_THICK = 0.12;
 const CREAM = '#FAFAF5';
 const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
 
-export type PennantCut =
-  'swallowtail' | 'kite' | 'square' | 'streamer' | 'chevron' | 'scallop' | 'star';
-/** Cut per culture, index = THEME_IDS (hq, coding, marketing, qa, design, devops, research). */
-export const CUT_OF_THEME: Readonly<Record<ThemeId, PennantCut>> = {
-  hq: 'swallowtail',
-  coding: 'kite',
-  marketing: 'streamer',
-  qa: 'chevron',
-  design: 'scallop',
-  devops: 'square',
-  research: 'star',
-};
+/** Cut per culture (content/cultures, the single source), index = THEME_IDS. */
+export const CUT_OF_THEME: Readonly<Record<ThemeId, PennantCut>> = Object.fromEntries(
+  THEME_IDS.map((t) => [t, CULTURES[t].pennant.cut]),
+) as Record<ThemeId, PennantCut>;
 export const PENNANT_CUTS: readonly PennantCut[] = THEME_IDS.map((t) => CUT_OF_THEME[t]);
 export const ACCENT_OF_THEME = (t: ThemeId): string => THEMES[t].accent;
 

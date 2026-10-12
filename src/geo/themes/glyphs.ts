@@ -38,13 +38,13 @@ export const GLYPH_IDS: readonly GlyphId[] = [
   'telescope',
 ];
 
-/** Culture emblem (ISLAND_CULTURES §2: bell, </>, megaphone, tick, brush, hammer, telescope). */
+/** Culture emblem (ISLAND_CULTURES §2: bell, </>, megaphone, tick, prism, hammer, telescope). */
 export const GLYPH_OF_THEME: Readonly<Record<ThemeId, GlyphId>> = {
   hq: 'bell',
   coding: 'code',
   marketing: 'megaphone',
   qa: 'check',
-  design: 'brush',
+  design: 'prism',
   devops: 'hammer',
   research: 'telescope',
 };

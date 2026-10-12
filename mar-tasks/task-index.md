@@ -238,8 +238,8 @@ Details in `phases/phase-3.md`.
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|------------|--------|--------------|
 | TASK-407 | Far structure merge: one merged mesh per island at T0–T1, swap to instanced groups at T2; W11 ≤ 230 (cut-off point) | engine | L | IN PROGRESS | TASK-406 |
-| TASK-408 | Culture contract: `content/cultures/*` types + 7 stubs, `noShadow` prop flag, `cultureDefsPerIsland`, `StorySpot`, ledger test | engine | S | IN PROGRESS | — |
-| TASK-409 | Pennant & signage kit: 7 pennant cuts, pier signpost, cargo crate ×7, sail stripe, emblem glyphs | props | M | IN PROGRESS | — |
+| TASK-408 | Culture contract: `content/cultures/*` types + 7 stubs, `noShadow` prop flag, `cultureDefsPerIsland`, `StorySpot`, ledger test | engine | S | COMPLETED | — |
+| TASK-409 | Pennant & signage kit: 7 pennant cuts, pier signpost, cargo crate ×7, sail stripe, emblem glyphs | props | M | COMPLETED | — |
 | TASK-410 | HQ Harbour Guild kit (timetable board, bell post, ferry awning, guild hall variant, ferry hull …) | props | M | PENDING | 408, 409 |
 | TASK-411 | Coding Wind Gardens kit (pergola desks, hammocks, kites, rubber ducks, giant duck …) | props | M | PENDING | 408 |
 | TASK-412 | DevOps Ember Smiths kit (lava lanterns, ingots, anvil, onsen deck, server shrine, forge bell …) | props | M | PENDING | 408 |
