@@ -2,13 +2,15 @@ import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { BUTTERFLIES, DUCKS } from '../content/life-critters.ts';
 import { BUDGETS } from '../content/budgets.ts';
+import { CULTURES } from '../content/cultures/index.ts';
 import { LIFE_PLAN } from '../content/life.ts';
+import { LADYBUGS, SPOT_CRITTERS } from '../content/life-spot-critters.ts';
 import { Scope } from '../core/scope.ts';
 import type { Quality } from '../core/params.ts';
 import { SHARED } from '../render/uniforms.ts';
 import { generateWorld, type WorldData } from '../world/index.ts';
 import type { Ducks } from './critters.ts';
-import { Butterflies, findPools } from './critters.ts';
+import { Butterflies, findPools, planZooSites } from './critters.ts';
 import { createLife, type LifeSystem } from './index.ts';
 import { makeCtx } from './ctx.ts';
 
@@ -23,6 +25,7 @@ const world = (seed: number): WorldData => {
 function rig(seed: number, quality: Quality = 'medium', tier = 2) {
   const scope = new Scope('critters-test');
   const counters = { agents: 0 };
+  const cam = new THREE.Vector3(0, 40, 0);
   const life: LifeSystem = createLife({
     world: world(seed),
     scope,
@@ -31,9 +34,9 @@ function rig(seed: number, quality: Quality = 'medium', tier = 2) {
     water: { splat: () => undefined },
     counters: counters as never,
     getTier: () => tier,
-    cameraPos: new THREE.Vector3(0, 40, 0),
+    cameraPos: cam,
   });
-  return { life, counters, scope };
+  return { life, counters, scope, cam };
 }
 
 const clock = (night: number, time: number): void => {
@@ -256,5 +259,191 @@ describe('critters: butterflies', () => {
       expect(span(0.3)).toBeLessThan(span(1) * 0.6);
       return;
     }
+  });
+});
+
+describe('critters: culture story-spot animals (TASK-433)', () => {
+  const spotsOf = (seed: number, q: Quality = 'medium', tier = 2) => rig(seed, q, tier);
+  const poses = (life: LifeSystem, t: number): number[] => {
+    SHARED.uNight.value = 1;
+    SHARED.uTime.value = t;
+    life.fixedUpdate(1 / 30);
+    life.update(1 / 30, 1);
+    const out: number[] = [];
+    for (const m of life.spots?.meshes ?? [])
+      out.push(...Array.from(m.mesh.instanceMatrix.array as Float32Array));
+    return out;
+  };
+
+  it('content keys are real culture story-spot kinds', () => {
+    const kinds = new Set(Object.values(CULTURES).flatMap((c) => c.storySpots.map((s) => s.kind)));
+    for (const k of Object.keys(SPOT_CRITTERS)) expect(kinds.has(k)).toBe(true);
+  });
+
+  it('stand at the story spots that need an animal, never count as agents', () => {
+    let seen = 0;
+    for (const s of SEEDS) {
+      const r = spotsOf(s);
+      const sp = r.life.spots;
+      const w = world(s);
+      const want = w.storySpots.filter((x) => SPOT_CRITTERS[x.kind]);
+      if (want.length === 0) {
+        expect(sp).toBeUndefined();
+        continue;
+      }
+      expect(sp).toBeDefined();
+      if (!sp) continue;
+      seen++;
+      const total = want.reduce((n, x) => n + SPOT_CRITTERS[x.kind].length, 0);
+      expect(sp.items.length).toBe(total);
+      for (const it of sp.items) {
+        const spot = want.find((x) => x.kind === it.kind);
+        expect(spot).toBeDefined();
+        if (!spot) continue;
+        // near its spot (offsets and anchors are a few u at most), on the island's own ground
+        expect(Math.hypot(it.x - spot.pos.x, it.z - spot.pos.z)).toBeLessThan(8);
+        expect(Number.isFinite(it.y)).toBe(true);
+      }
+      frame(r.life, 4);
+      expect(r.life.stats.agents).toBe(r.counters.agents);
+      expect(r.life.stats.agents).toBeLessThanOrEqual(BUDGETS.medium.agents);
+    }
+    expect(seen).toBeGreaterThan(0);
+  });
+
+  it('are a pure function of the clock: same clock, same pixels; going back restores', () => {
+    for (const s of SEEDS) {
+      const a = spotsOf(s);
+      const b = spotsOf(s);
+      if (!a.life.spots || !b.life.spots) continue;
+      const at = poses(a.life, 12.5);
+      expect(poses(b.life, 12.5)).toEqual(at);
+      expect(poses(a.life, 23.1)).not.toEqual(at);
+      expect(poses(a.life, 12.5)).toEqual(at);
+    }
+  });
+
+  it('no two critters of one species and idle loop are in sync', () => {
+    let pairs = 0;
+    for (const s of SEEDS) {
+      const sp = spotsOf(s).life.spots;
+      if (!sp) continue;
+      const P = [0, 0].map(() => ({
+        x: 0,
+        y: 0,
+        z: 0,
+        yaw: 0,
+        pitch: 0,
+        roll: 0,
+        sx: 1,
+        sy: 1,
+        sz: 1,
+        move: 0,
+        dip: 0,
+        gait: 0,
+      }));
+      for (const m of sp.meshes) {
+        const phases = new Set(m.items.map((it) => it.ph.toFixed(4)));
+        expect(phases.size).toBe(m.items.length);
+        for (let i = 0; i < m.items.length; i++)
+          for (let j = i + 1; j < m.items.length; j++) {
+            if (m.items[i].spec.idle !== m.items[j].spec.idle) continue;
+            let differ = 0;
+            for (const t of [3, 7.7, 11.3, 19.9, 31.4]) {
+              sp.poseOf(m.items[i], t, P[0]);
+              sp.poseOf(m.items[j], t, P[1]);
+              // compare the pose, not the place: two gulls at two spots never share a position
+              const sig = (q: (typeof P)[0], it: (typeof m.items)[0]): number[] => [
+                q.yaw + it.hd,
+                q.sy,
+                q.sz,
+                q.dip,
+                q.move,
+                q.y - it.y,
+                q.roll,
+              ];
+              const a = sig(P[0], m.items[i]);
+              const b = sig(P[1], m.items[j]);
+              if (a.some((v, k) => Math.abs(v - b[k]) > 1e-6)) differ++;
+            }
+            pairs++;
+            expect(differ).toBeGreaterThanOrEqual(4);
+          }
+      }
+    }
+    expect(pairs).toBeGreaterThan(0);
+  });
+
+  it('are hidden below tier 2 and beyond the fade distance; owls are night only', () => {
+    let checked = false;
+    for (const s of SEEDS) {
+      const low = spotsOf(s, 'medium', 1);
+      if (!low.life.spots) continue;
+      low.cam.set(low.life.spots.items[0].x, 30, low.life.spots.items[0].z);
+      poses(low.life, 5);
+      for (const m of low.life.spots.meshes) expect(m.mesh.visible).toBe(false);
+
+      const r = spotsOf(s);
+      const sp = r.life.spots;
+      if (!sp) continue;
+      checked = true;
+      const first = sp.items[0];
+      r.cam.set(first.x, 30, first.z);
+      poses(r.life, 5);
+      const mesh0 = sp.meshes.find((m) => m.items.includes(first));
+      expect(mesh0?.mesh.visible).toBe(true);
+      // far away (> fade[1] from everything): nothing is drawn
+      r.cam.set(first.x + 2000, 30, first.z);
+      poses(r.life, 5);
+      for (const m of sp.meshes) {
+        expect(m.mesh.visible).toBe(false);
+        expect(m.mesh.count).toBe(0);
+      }
+      // owls: gone by day, out at night
+      const owl = sp.meshes.find((m) => m.species === 'owl');
+      if (owl) {
+        const o = owl.items[0];
+        r.cam.set(o.x, 30, o.z);
+        SHARED.uNight.value = 0;
+        SHARED.uTime.value = 5;
+        r.life.update(1 / 30, 1);
+        expect(owl.mesh.visible).toBe(false);
+        poses(r.life, 5);
+        expect(owl.mesh.visible).toBe(true);
+      }
+    }
+    expect(checked).toBe(true);
+  });
+});
+
+describe('critters: Bug Zoo ladybugs (TASK-433)', () => {
+  it('fly only at the QA terrarium variant, by day, as the butterfly model (not agents)', () => {
+    let seen = false;
+    for (const s of SEEDS) {
+      const r = rig(s);
+      const l = r.life.kinds.ladybugs;
+      const zoo = planZooSites(
+        makeCtx({
+          world: world(s),
+          scope: new Scope('z'),
+          seed: s,
+          quality: 'medium',
+          water: { splat: () => undefined },
+          counters: { agents: 0 },
+          getTier: () => 2,
+          cameraPos: new THREE.Vector3(),
+        }),
+      );
+      expect(!!l).toBe(zoo.length > 0);
+      if (!l) continue;
+      seen = true;
+      expect(l.capacity).toBe(Math.round(LIFE_PLAN.medium.butterflies * LADYBUGS.share));
+      frame(r.life, 9, 0);
+      expect(l.mesh.count).toBe(l.capacity);
+      expect(l.liveCount).toBe(0);
+      frame(r.life, 9, 1);
+      expect(l.mesh.count).toBe(0);
+    }
+    expect(seen).toBe(true);
   });
 });

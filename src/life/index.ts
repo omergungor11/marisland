@@ -25,8 +25,8 @@ import { makeCtx, setMotion, type LifeDeps } from './ctx.ts';
 import { FishSchools } from './fish.ts';
 import { flockCentres, Gulls, type Perch } from './gulls.ts';
 import type { Cats, Crabs, Sheep, Villagers } from './land.ts';
-import type { Butterflies } from './critters.ts';
-import { createCritterKinds, type Ducks } from './critters.ts';
+import type { Butterflies, SpotCritters } from './critters.ts';
+import { createCritterKinds, createSpotCritters, type Ducks } from './critters.ts';
 import { Fireflies, planSwarms } from './fireflies.ts';
 import { createLandKinds, type LandKind } from './land.ts';
 import { buildSolids, buildWalkGraph, makeMask, makeStopMask } from './land-world.ts';
@@ -74,7 +74,11 @@ export interface LifeSystem extends System {
     /** Theme creatures (TASK-332): ducks on the Coding pool (agents), day butterflies over Design (particles). */
     ducks?: Ducks;
     butterflies?: Butterflies;
+    /** Bug Zoo ladybugs (TASK-433): the butterfly model in red, particles like the butterflies. */
+    ladybugs?: Butterflies;
   };
+  /** Story-spot animals (TASK-433): instanced per species, not agents (not in `kinds`, never counted or picked). */
+  readonly spots?: SpotCritters;
   /** Seaward dock-end / mooring perches used by landing gulls. */
   readonly counts: { coconutDrops: number };
 }
@@ -160,6 +164,7 @@ export function createLife(deps: LifeDeps): LifeSystem {
   });
   const critters = createCritterKinds(base, ctx, plan);
   Object.assign(kinds, critters);
+  const spots = createSpotCritters(base, ctx);
   const landKinds: LandKind[] = [
     land.villagers,
     kinds.workers,
@@ -210,6 +215,7 @@ export function createLife(deps: LifeDeps): LifeSystem {
     name: 'life',
     group,
     kinds,
+    spots,
     ambient,
     counts,
     stats,
@@ -224,6 +230,8 @@ export function createLife(deps: LifeDeps): LifeSystem {
       for (const k of all) k.update(alpha);
       kinds.fireflies?.update(alpha);
       kinds.butterflies?.update(alpha);
+      kinds.ladybugs?.update(alpha);
+      spots?.update();
       recount();
     },
     onTier(tier) {
@@ -235,6 +243,8 @@ export function createLife(deps: LifeDeps): LifeSystem {
       for (const k of all) k.motionScale = s;
       if (kinds.fireflies) kinds.fireflies.motionScale = s;
       if (kinds.butterflies) kinds.butterflies.motionScale = s;
+      if (kinds.ladybugs) kinds.ladybugs.motionScale = s;
+      if (spots) spots.motionScale = s;
     },
     setCursorWorld(x, z = null) {
       kinds.fish?.setRepel(x, z);
