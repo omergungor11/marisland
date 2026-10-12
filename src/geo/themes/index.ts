@@ -10,6 +10,7 @@ import { QA_GEO } from './qa.ts';
 import { DESIGN_GEO } from './design.ts';
 import { DEVOPS_GEO } from './devops.ts';
 import { RESEARCH_GEO } from './research.ts';
+import { SIGNAGE_GEO } from './signage.ts';
 
 export const THEME_GEO: readonly PropGeoDef[] = [
   ...HQ_GEO,
@@ -19,4 +20,5 @@ export const THEME_GEO: readonly PropGeoDef[] = [
   ...DESIGN_GEO,
   ...DEVOPS_GEO,
   ...RESEARCH_GEO,
+  ...SIGNAGE_GEO,
 ];
