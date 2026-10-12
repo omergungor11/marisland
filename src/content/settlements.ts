@@ -263,6 +263,17 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   pergola: 2.0,
   biodomeHero: 3.2,
   biodome: 1.8,
+  // Research Star Academy (TASK-426; lectureSteps / chalkboard also block their rects)
+  tripodTelescope: 0.65,
+  chalkboard: 0.8,
+  orrery: 1.0,
+  lectureSteps: 2.2,
+  teaTrolley: 0.6,
+  weatherBalloonCart: 1.0,
+  owlBox: 0.5,
+  pigeonPerch: 0.5,
+  bookCart: 0.6,
+  miniVolcanoTerrarium: 0.45,
   researchVessel: 1.2,
   // HQ Harbour Guild (TASK-420): the obstacle discs of the culture kit (worldgen + life solids)
   ferryAwning: 1.5,

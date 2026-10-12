@@ -843,6 +843,31 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     quality: 'medium',
     sets: ['dev'],
   },
+  {
+    id: 'D-culture-research',
+    title: 'Culture · Research Star Academy (T2, 17:45)',
+    // seed 1001 Observatory University (TASK-426) at golden hour: the quad with the orrery, the
+    // faculty pennants and the tea trolley at the library, the comet-night observatory with its
+    // telescope terrace, the bell-cupola tower
+    seed: 1001,
+    cam: '-127,22,238,-136,8,215',
+    time: 17.75,
+    simt: 4,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-culture-research-comet',
+    title: 'Culture · Research Comet Night (T3, 22:00)',
+    // seed 1001: the observatory with its slit open, the telescope + book-pile stool and the
+    // comet board on its terrace, the owl box behind the dome
+    seed: 1001,
+    cam: '-146,24,207,-123,9,216',
+    time: 22,
+    simt: 4,
+    quality: 'medium',
+    sets: ['dev'],
+  },
   // ---- living close-up (M14c, TASK-383/384): `pnpm shots live [--assert]`. A 0.5 s `deltaT` pair per
   // campus at T3 on medium (16 workers + drones + animated surfaces); the harness measures the motion
   // inside LIVE_CROP over solid pixels (the mask frame drops water / sky: foam and swell are not campus

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { RESEARCH_CULTURE_SITES as CS } from '../content/cultures/research.ts';
 import { PROP_DEFS } from '../content/props.ts';
+import { RESEARCH_CULTURE_PROP_DEFS } from '../content/props-themes/research.ts';
 import { FIXTURE_RADIUS } from '../content/settlements.ts';
 import { RESEARCH_SITE } from '../content/themes/research.ts';
 import { generateWorld, heightAt, Zone, type FixtureData, type WorldData } from './index.ts';
@@ -85,6 +87,9 @@ const PLAN_DEFS = [
   'dnaHelix',
   'rocketMonument',
   'researchVessel',
+  // Star Academy culture (TASK-426)
+  ...RESEARCH_CULTURE_PROP_DEFS.map((d) => d.id),
+  'pennantLine',
 ];
 
 /** Buildings and big kit: must stand on level ground (their pads). */
@@ -285,5 +290,121 @@ describe('Research Observatory University plan (TASK-402b) — 30 seeds', () => 
     }
     expect(allTrees / n, 'park trees on average').toBeGreaterThanOrEqual(5);
     expect(withBuoys / n, 'instrument buoys').toBeGreaterThanOrEqual(0.8);
+  });
+});
+
+/** Count range per Star Academy def on the Research island (30 seeds). */
+const KIT_COUNTS: Record<string, readonly [number, number]> = {
+  tripodTelescope: [1, 3],
+  chalkboard: [0, 2],
+  orrery: [0, 1],
+  lectureSteps: [0, 1],
+  teaTrolley: [0, 1],
+  weatherBalloonCart: [0, 1],
+  owlBox: [0, 2],
+  pigeonPerch: [0, 2],
+  bookCart: [0, 3],
+  miniVolcanoTerrarium: [0, 3],
+  pennantLine: [0, CS.pennants.count],
+};
+const CULTURE_DEFS = new Set(RESEARCH_CULTURE_PROP_DEFS.map((d) => d.id));
+
+describe('Research Star Academy culture (TASK-426) — 30 seeds', { timeout: 120_000 }, () => {
+  it('kit placed in range, ≥ 5 story spots, every piece on level land', () => {
+    for (const seed of SEEDS) {
+      const d = research(seed);
+      if (!d) continue;
+      const ctx = `seed ${seed}`;
+      for (const [def, [lo, hi]] of Object.entries(KIT_COUNTS)) {
+        const n = d.of(def).length;
+        expect(n, `${ctx} ${def}`).toBeGreaterThanOrEqual(lo);
+        expect(n, `${ctx} ${def}`).toBeLessThanOrEqual(hi);
+      }
+      // THE observatory is the comet-night variant, the tower the bell cupola
+      expect(d.observatory?.variant, ctx).toBe(CS.observatoryVariant);
+      for (const t of d.of('campusTower')) expect(t.variant, ctx).toBe(3);
+      const st = d.w.storySpots.filter((s) => s.islandId === d.isl.id);
+      expect(st.length, ctx).toBeGreaterThanOrEqual(5);
+      expect(new Set(st.map((s) => s.kind)).size, ctx).toBe(st.length);
+      for (const s of st) expect(s.pos.y, `${ctx} ${s.kind}`).toBeGreaterThan(0.3);
+      for (const f of d.fixtures) {
+        const isKit = CULTURE_DEFS.has(f.defId);
+        if (!isKit && f.defId !== 'pennantLine') continue;
+        const at = `${ctx} ${f.defId}@${f.x.toFixed(1)},${f.z.toFixed(1)}`;
+        expect(f.variant, at).toBeDefined();
+        const y = heightAt(d.w.height, f.x, f.z);
+        expect(y, at).toBeGreaterThan(0.3);
+        if (f.defId === 'pennantLine') {
+          // the rigid cord: both poles on land at the centre's height
+          for (const s of [1, -1]) {
+            const px = f.x - Math.sin(f.rotY) * s * CS.pennants.half;
+            const pz = f.z + Math.cos(f.rotY) * s * CS.pennants.half;
+            expect(Math.abs(heightAt(d.w.height, px, pz) - y), `${at} pole`).toBeLessThan(0.5);
+          }
+          continue;
+        }
+        const r = f.defId === 'lectureSteps' ? 1.6 : (FIXTURE_RADIUS[f.defId] ?? 0.5) * 0.6;
+        expect(spread(d.w, f.x, f.z, r), `${at} level`).toBeLessThan(0.75);
+      }
+    }
+  });
+
+  it('the academy reads: orrery, tea trolley, comet watch, balloon launch, volcano row, lectures', () => {
+    type R = NonNullable<ReturnType<typeof research>>;
+    const rate = (f: (d: R) => boolean): number => {
+      let n = 0;
+      let ok = 0;
+      for (const seed of SEEDS) {
+        const d = research(seed);
+        if (!d) continue;
+        n++;
+        if (f(d)) ok++;
+      }
+      return ok / n;
+    };
+    const kinds = (d: R): Set<string> =>
+      new Set(d.w.storySpots.filter((s) => s.islandId === d.isl.id).map((s) => s.kind));
+    expect(
+      rate((d) => d.of('orrery').length === 1),
+      'orrery',
+    ).toBeGreaterThanOrEqual(0.9);
+    expect(
+      rate((d) => kinds(d).has('teaTime')),
+      'tea',
+    ).toBeGreaterThanOrEqual(0.9);
+    expect(
+      rate((d) => kinds(d).has('cometWatch')),
+      'comet',
+    ).toBeGreaterThanOrEqual(0.9);
+    expect(
+      rate((d) => kinds(d).has('balloonLaunch')),
+      'balloon',
+    ).toBeGreaterThanOrEqual(0.9);
+    expect(
+      rate((d) => kinds(d).has('owlNight')),
+      'owl',
+    ).toBeGreaterThanOrEqual(0.9);
+    expect(
+      rate((d) => kinds(d).has('volcanoSteam')),
+      'volcanoes',
+    ).toBeGreaterThanOrEqual(0.8);
+    // space is the binding constraint (garden → glasshouses → base first): the lecture often drops
+    expect(
+      rate((d) => kinds(d).has('lecture')),
+      'lecture',
+    ).toBeGreaterThanOrEqual(0.3);
+    expect(
+      rate((d) => d.of('pennantLine').length >= 1),
+      'pennants',
+    ).toBeGreaterThanOrEqual(0.75);
+  });
+
+  it('culture defs stay on the Research island', () => {
+    for (const seed of SEEDS.slice(0, 6)) {
+      const d = research(seed);
+      if (!d) continue;
+      for (const f of d.w.fixtures)
+        if (CULTURE_DEFS.has(f.defId)) expect(f.islandId, `seed ${seed} ${f.defId}`).toBe(d.isl.id);
+    }
   });
 });

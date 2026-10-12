@@ -12,14 +12,22 @@
  * - the research base on the headland (lab pods, small dish, weather mast) and the big radio
  *   dish on the spur behind the summit;
  * - sculptures on the avenues (atom, DNA helix, rocket), the cove pier with the research vessel;
- * - path links from every door to the quad hub.
+ * - path links from every door to the quad hub;
+ * - the Star Academy culture (M19 TASK-426, `academy`): the comet-night observatory and the bell
+ *   cupola tower, an orrery on the quad, the tea trolley and book carts at the library, faculty
+ *   pennant lines (library front + avenues), lecture steps facing a chalkboard on the lawn, a
+ *   summit telescope with a book-pile stool and the comet board, owl boxes, telescopes on the
+ *   terrace edges, the weather balloon cart at the mast, pigeon perches by the statues, mini
+ *   volcano terrariums before the glasshouses, plus the story spots.
  * Every random decision draws from labelled forks of `rng`; numbers: RESEARCH_SITE.
  */
 import type { Rng } from '../../../core/rng.ts';
-import { DOCK, FIXTURE_RADIUS, FLATTEN } from '../../../content/settlements.ts';
+import { DOCK, FIXTURE_RADIUS, FLATTEN, PATHS } from '../../../content/settlements.ts';
+import { RESEARCH_CULTURE_SITES as CS } from '../../../content/cultures/research.ts';
+import { ARCHETYPES } from '../../../content/islands.ts';
 import { RESEARCH_SITE as S } from '../../../content/themes/research.ts';
-import { heightAt, type IslandData, type XZ } from '../../types.ts';
-import { gridRange } from '../grid.ts';
+import { THEME_IDS, heightAt, type IslandData, type StorySpot, type XZ } from '../../types.ts';
+import { cellX, cellZ, gridRange } from '../grid.ts';
 import { coveness } from '../heightfield.ts';
 import {
   add,
@@ -35,12 +43,17 @@ import {
   dockWithLink,
   findDock,
   newPlan,
+  onIsland,
   onLand,
   rectShape,
   relief,
   ring,
   sdfAt,
   segDist,
+  cellOf,
+  shapeCorners,
+  shapeDist,
+  shapesOverlap,
   unit,
   type Shape,
   type SiteCtx,
@@ -147,9 +160,10 @@ export const planResearch: ThemePlanner = ({ ctx, isl, rng }) => {
   put(ctx, isl, Q.fountain, quad, a0 + Math.PI);
   if (obs) {
     const door = ang(-axis.x, -axis.z);
+    // the comet-night variant (dome slit open): the Star Academy's landmark (TASK-426)
     put(ctx, isl, O.def, obs, door, {
       sh: discShape(obs.x, obs.z, O.radius),
-      variant: rng.fork('observatory').int(0, 1),
+      variant: CS.observatoryVariant,
     });
     addPad(ctx, isl, discShape(obs.x, obs.z, O.pad), FLATTEN.discMargin, S.padStep, LEVEL.summit);
     pin(plan, add(obs, dirOf(door), O.radius + S.doorGap + 0.6));
@@ -205,6 +219,18 @@ export const planResearch: ThemePlanner = ({ ctx, isl, rng }) => {
     if (dist(p, harbourAt) < S.rimFree || segDist(p, harbourAt, quad) < 3) continue;
     if (coveness(isl, ctx.windDir, p.x, p.z) < 0.5) ctx.blocked[i] = 1;
   }
+
+  // ---- Star Academy culture (M19 TASK-426): last, so the campus districts keep their room and
+  // the path pins' connectivity check sees the blocked rim
+  const obsDoor = obs ? add(obs, unit(obs, quad), O.radius + S.doorGap + 0.6) : null;
+  const gate = g ? add(g.c, g.u, g.half + 1.2) : null;
+  plan.stories = academy(ctx, isl, rng.fork('culture'), {
+    quad,
+    obs,
+    avenues: [aH, aG, a0],
+    walks: [obsDoor, gate].filter((q): q is XZ => q !== null),
+    pins: plan.links.map((l) => l.pin),
+  });
   return plan;
 };
 
@@ -698,5 +724,610 @@ function moorVessel(
     ctx.fixtures.push({ defId: V.def, x: p.x, z: p.z, rotY: rot, islandId: isl.id });
     addShape(ctx, isl, rectShape(p.x, p.z, rot, V.halfBeam * 2, V.halfLength * 2), false);
     return;
+  }
+}
+
+interface AcademySite {
+  quad: XZ;
+  obs: XZ | null;
+  /** Avenue bearings out of the quad: harbour, garden, observatory (pennant order). */
+  avenues: readonly number[];
+  /** Walk ends the lawn pieces keep off (quad → observatory door, quad → garden gate). */
+  walks: readonly XZ[];
+  /** Path pins of the plan so far (the hub, doors, gates, the pier): kept clear. */
+  pins: readonly XZ[];
+}
+
+type Cand = { p: XZ; rot: number };
+
+const xz = (p: XZ): [number, number] => [p.x, p.z];
+const face = (from: XZ, to: XZ): number => {
+  const u = unit(from, to);
+  return ang(u.x, u.z);
+};
+
+/**
+ * Star Academy (M19 TASK-426, ISLAND_CULTURES §2.7): the culture kit round the quad, the library,
+ * the lawn, the summit, the base and the glasshouses, plus its story spots. Every number is
+ * RESEARCH_CULTURE_SITES; every draw comes from a sub-fork of `rng`.
+ */
+function academy(ctx: SiteCtx, isl: IslandData, rng: Rng, s: AcademySite): StorySpot[] {
+  const stories: StorySpot[] = [];
+  const story = (kind: string, p: XZ, rotY: number, defs: readonly string[]): void => {
+    stories.push({ kind, islandId: isl.id, pos: { x: p.x, y: 0, z: p.z }, rotY, defs });
+  };
+  const { quad } = s;
+  const fixturesOf = (defId: string) =>
+    ctx.fixtures.filter((f) => f.islandId === isl.id && f.defId === defId);
+  /** Clear of the walks quad → observatory door / garden gate. */
+  const offWalks = (sh: Shape): boolean => {
+    const pts = sh.r > 0 ? [sh] : [sh, ...shapeCorners(sh)];
+    const keep = CS.avenueKeep + sh.r;
+    return pts.every((q) => s.walks.every((w) => segDist(q, quad, w) >= keep));
+  };
+  /** Relief over the footprint grown by `level.grow` (before the pads). */
+  const reliefAround = (sh: Shape): number => {
+    const g = CS.level.grow;
+    return relief(
+      ctx,
+      sh.r > 0 ? discShape(sh.x, sh.z, sh.r + g) : { ...sh, hw: sh.hw + g, hd: sh.hd + g },
+    );
+  };
+  /**
+   * Footprint free here: on land, clear by `gap`, near-level round it (≤ `maxRelief`; NaN = no
+   * test: a district pad levels it later), off the cove ramp.
+   */
+  const free = (sh: Shape, gap: number, inPlaza: boolean, maxRelief: number, minShore = 1.5) =>
+    !(sdfAt(ctx, sh.x, sh.z) < S.coveKeep && coveness(isl, ctx.windDir, sh.x, sh.z) > 0.6) &&
+    onLand(ctx, isl, sh, minShore) &&
+    clear(ctx, isl, sh, gap, inPlaza) &&
+    s.pins.every((q) => shapeDist(sh, q.x, q.z) >= CS.pinKeep) &&
+    (Number.isNaN(maxRelief) || reliefAround(sh) <= maxRelief) &&
+    opensPins(sh);
+  /**
+   * Which path pins of the plan (hub first, doors, gates, the pier root) are linked to the hub
+   * pin over open cells (8-connected, the rim blocked) with `extra` cells blocked too: the start
+   * cell is the pin's nearest open one in a 5 × 5 window, like the path linker's.
+   */
+  const linkedPins = (extra: ReadonlySet<number>): boolean[] => {
+    const n = ctx.n;
+    const open = (i: number): boolean =>
+      ctx.islandMap[i] === isl.id + 1 &&
+      ctx.sdf[i] >= PATHS.minShore &&
+      !ctx.blocked[i] &&
+      !extra.has(i);
+    const near = (p: XZ): number => {
+      const c = cellOf(ctx, p.x, p.z);
+      let best = -1;
+      let bd = Infinity;
+      for (let dz = -2; dz <= 2; dz++)
+        for (let dx = -2; dx <= 2; dx++) {
+          const i = c + dz * n + dx;
+          if (!open(i)) continue;
+          const d = dist(cellPos(ctx, i), p);
+          if (d < bd) {
+            bd = d;
+            best = i;
+          }
+        }
+      return best;
+    };
+    const starts = s.pins.map(near);
+    if (starts.length === 0 || starts[0] < 0) return s.pins.map(() => false);
+    const seen = new Uint8Array(n * n);
+    const q = [starts[0]];
+    seen[starts[0]] = 1;
+    while (q.length) {
+      const i = q.pop() as number;
+      for (const j of [i + 1, i - 1, i + n, i - n, i + n + 1, i + n - 1, i - n + 1, i - n - 1])
+        if (!seen[j] && open(j)) {
+          seen[j] = 1;
+          q.push(j);
+        }
+    }
+    return starts.map((i) => i >= 0 && seen[i] === 1);
+  };
+  /** Pins linked before any culture piece (one the campus itself walled off is not checked). */
+  const linked0 = linkedPins(new Set());
+  /**
+   * Every pin linked before stays linked with `sh` in place (its cells blocked): small pieces
+   * round the fountain or between the ring buildings could otherwise wall a pin off.
+   */
+  const opensPins = (sh: Shape): boolean => {
+    const R = (sh.r > 0 ? sh.r : Math.hypot(sh.hw, sh.hd)) + 1;
+    const extra = new Set<number>();
+    const [x0, x1] = gridRange(sh.x - R, sh.x + R);
+    const [z0, z1] = gridRange(sh.z - R, sh.z + R);
+    for (let iz = z0; iz <= z1; iz++)
+      for (let ix = x0; ix <= x1; ix++)
+        if (shapeDist(sh, cellX(ix), cellZ(iz)) <= 0.5) extra.add(iz * ctx.n + ix);
+    const now = linkedPins(extra);
+    return linked0.every((was, k) => !was || now[k]);
+  };
+  const padsHere = () => ctx.pads.filter((p) => p.islandId === isl.id);
+  /** Mean ground height over a shape (centre + rim / corner samples, before the pads). */
+  const meanH = (sh: Shape): number => {
+    // the grid samples inside the footprint (as the pad's own level is taken)
+    const R = sh.r > 0 ? sh.r : Math.hypot(sh.hw, sh.hd);
+    const [x0, x1] = gridRange(sh.x - R, sh.x + R);
+    const [z0, z1] = gridRange(sh.z - R, sh.z + R);
+    let sum = 0;
+    let cnt = 0;
+    for (let iz = z0; iz <= z1; iz++)
+      for (let ix = x0; ix <= x1; ix++) {
+        const i = iz * ctx.n + ix;
+        if (ctx.islandMap[i] !== isl.id + 1 || shapeDist(sh, cellX(ix), cellZ(iz)) > 0.5) continue;
+        sum += ctx.h.data[i];
+        cnt++;
+      }
+    return cnt > 0 ? sum / cnt : heightAt(ctx.h, sh.x, sh.z);
+  };
+  /**
+   * A new pad round `sh` is safe: its core keeps `padKeep` u off every other pad's footprint,
+   * and a core it overlaps sits near its level (`padLevel` u): overlapping cores blend their
+   * levels, which would tilt both floors.
+   */
+  const padClear = (sh: Shape): boolean => {
+    const y = meanH(sh);
+    return padsHere().every(
+      (p) =>
+        !shapesOverlap(p.shape, sh, CS.pad + CS.level.padKeep) &&
+        (!shapesOverlap(p.shape, sh, CS.pad + p.margin) ||
+          Math.abs(meanH(p.shape) - y) <= CS.level.padLevel),
+    );
+  };
+  /** The footprint lies inside one existing pad's flat core. */
+  // (a terraced island's pad leaves ground more than `padBreak` u off its level alone)
+  const brk = (ARCHETYPES[isl.archetype].terraces?.padBreak ?? Infinity) - CS.level.breakKeep;
+  const inPadCore = (sh: Shape, cell = 0): boolean => {
+    const pts =
+      sh.r > 0
+        ? [sh, ...[0, 1, 2, 3, 4, 5, 6, 7].map((k) => add(sh, dirOf((k / 8) * TAU), sh.r))]
+        : [sh, ...shapeCorners(sh)];
+    // every core the footprint touches: overlapping cores blend their levels, so they must be one
+    // pad or the quad terrace's group (one flat level; the slope districts' groups are not)
+    const touch = padsHere().filter((p) => shapesOverlap(p.shape, sh, p.margin));
+    if (touch.length === 0) return false;
+    if (touch.length > 1 && !touch.every((p) => p.group === LEVEL.quad)) return false;
+    const p = touch.find((q) =>
+      sh.r > 0
+        ? shapeDist(q.shape, sh.x, sh.z) + sh.r <= q.margin - cell
+        : pts.every((c) => shapeDist(q.shape, c.x, c.z) <= q.margin - cell),
+    );
+    if (!p) return false;
+    // every grid sample the footprint's ground blends from is within the pad's reach of its level
+    const T = meanH(p.shape);
+    const R = (sh.r > 0 ? sh.r : Math.hypot(sh.hw, sh.hd)) + 1;
+    const [x0, x1] = gridRange(sh.x - R, sh.x + R);
+    const [z0, z1] = gridRange(sh.z - R, sh.z + R);
+    for (let iz = z0; iz <= z1; iz++)
+      for (let ix = x0; ix <= x1; ix++)
+        if (
+          shapeDist(sh, cellX(ix), cellZ(iz)) <= 1 &&
+          Math.abs(ctx.h.data[iz * ctx.n + ix] - T) > brk
+        )
+          return false;
+    return true;
+  };
+  /**
+   * How a footprint gets level ground: 'core' = inside a district pad's flat core already (no
+   * pad of its own); 'pad' = its own pad on near-level ground (`level.relief`), its core clear
+   * of every other pad's footprint (core samples blend: it never shifts a building's floor);
+   * null = no way to level it here (next to a footprint it must already be flat: `level.flat`).
+   */
+  const groundOf = (sh: Shape, flat: number = CS.level.flat): 'core' | 'pad' | null => {
+    if (inPadCore(sh)) return 'core';
+    const rel = reliefAround(sh);
+    if (padClear(sh)) return rel <= CS.level.relief ? 'pad' : null;
+    return rel <= flat ? 'core' : null;
+  };
+  interface PlaceO {
+    /** On the quad paving: small gap, no relief test, no pad (the quad pad levels it). */
+    plaza?: boolean;
+    /** Clearance to other obstacles (default `gap.plaza` / `gap.lawn`). */
+    gap?: number;
+    /** Ground already flat enough next to a footprint (default `level.flat`). */
+    flat?: number;
+    ok?: (sh: Shape) => boolean;
+  }
+  /** Place `defId` at the first free candidate (its FIXTURE_RADIUS disc); on the lawn with a pad. */
+  const placeFirst = (
+    defId: string,
+    cands: readonly Cand[],
+    variant: number,
+    o: PlaceO = {},
+  ): Cand | null => {
+    const r = radiusOf(defId);
+    for (const c of cands) {
+      const sh = discShape(c.p.x, c.p.z, r);
+      const gap = o.gap ?? (o.plaza ? CS.gap.plaza : CS.gap.lawn);
+      if (!free(sh, gap, !!o.plaza, NaN)) continue;
+      const g = o.plaza ? 'core' : groundOf(sh, o.flat);
+      if (!g || (o.ok && !o.ok(sh))) continue;
+      put(ctx, isl, defId, c.p, c.rot, { sh, variant, pad: g === 'pad' ? CS.pad : undefined });
+      return c;
+    }
+    return null;
+  };
+  const ringAt = (
+    c: XZ,
+    r0: number,
+    r1: number,
+    n: number,
+    phase: number,
+    rot: (p: XZ) => number,
+  ): Cand[] => ring(c, r0, r1, 0.5, n, phase).map((p) => ({ p, rot: rot(p) }));
+
+  // ---- lecture steps facing a chalkboard on the lawn (first: the biggest footprint)
+  {
+    const C = CS.lecture;
+    const st = C.steps;
+    const bd = C.board;
+    /** The whole site: steps back edge → board back edge. */
+    const len = st.back + st.d / 2 + bd.at + bd.d / 2;
+    const siteOf = (p: XZ, rot: number): Shape =>
+      rectShape(...xz(add(p, dirOf(rot), len / 2 - st.back - st.d / 2)), rot, st.w, len);
+    let best: { p: XZ; rot: number; score: number } | null = null;
+    bestSample(ctx, isl, quad, C.ring[1], (p) => {
+      const d = dist(p, quad);
+      if (d < C.ring[0]) return Infinity;
+      for (const t of C.turns) {
+        // t = 0: the class looks away from the quad (the board's face toward the campus)
+        const rot = face(quad, p) + t * DEG;
+        const all = siteOf(p, rot);
+        if (!free(all, C.gap, false, C.relief, C.minShore) || !offWalks(all)) continue;
+        // its pad stays off every other pad core (never drags a building's level)
+        if (!padClear(all)) continue;
+        const score = d + 2 * relief(ctx, all) + Math.abs(t) * 0.02;
+        if (!best || score < best.score) best = { p, rot, score };
+      }
+      return Infinity;
+    });
+    const b = best as { p: XZ; rot: number } | null;
+    if (b) {
+      const f = dirOf(b.rot);
+      const sp = add(b.p, f, -st.back);
+      const bp = add(b.p, f, bd.at);
+      put(ctx, isl, 'lectureSteps', b.p, b.rot, {
+        sh: rectShape(sp.x, sp.z, b.rot, st.w, st.d),
+        variant: st.variant,
+      });
+      put(ctx, isl, 'chalkboard', bp, b.rot + Math.PI, {
+        sh: rectShape(bp.x, bp.z, b.rot, bd.w, bd.d),
+        variant: bd.variant,
+      });
+      // one pad levels the steps, the lecturer's spot and the board together
+      addPad(ctx, isl, siteOf(b.p, b.rot), CS.pad, S.padStep);
+      story('lecture', add(b.p, f, bd.at - 0.9), b.rot + Math.PI, ['lectureSteps', 'chalkboard']);
+    }
+  }
+
+  // ---- the quad: the orrery on the paving, between the avenue mouths
+  {
+    const O = CS.orrery;
+    const bearing = (p: XZ): number => Math.atan2(p.z - quad.z, p.x - quad.x);
+    const gapOf = (p: XZ): number => Math.min(...s.avenues.map((v) => angGap(bearing(p), v)));
+    const cands: Cand[] = [];
+    for (const r of O.at)
+      for (let k = 0; k < O.angles; k++) {
+        const p = add(quad, dirOf((k / O.angles) * TAU), r);
+        if (gapOf(p) >= O.keepDeg * DEG) cands.push({ p, rot: face(p, quad) });
+      }
+    // farthest from the avenues first
+    cands.sort((a, b) => gapOf(b.p) - gapOf(a.p));
+    placeFirst('orrery', cands, O.variant, { plaza: true });
+  }
+
+  // ---- the library: tea trolley and book carts beside the door, the faculty pennants in front
+  const lib = fixturesOf('libraryRotunda')[0];
+  const L = CS.library;
+  const libDepth = S.ring.buildings[0].size[1];
+  if (lib) {
+    const f = dirOf(lib.rotY);
+    const side = perp(f);
+    const spots = (sgn: number): Cand[] => {
+      const out: Cand[] = [];
+      for (const df of L.front)
+        for (const ds of L.side)
+          out.push({
+            p: add(add(lib, f, libDepth / 2 + df), side, sgn * ds),
+            rot: lib.rotY + (sgn * Math.PI) / 2,
+          });
+      return out;
+    };
+    const lr = rng.fork('library');
+    const sgn = lr.chance(0.5) ? 1 : -1;
+    const tea = placeFirst('teaTrolley', [...spots(sgn), ...spots(-sgn)], L.trolley.variant, {
+      plaza: true,
+    });
+    if (tea) story('teaTime', add(tea.p, f, 0.9), lib.rotY + Math.PI, ['teaTrolley']);
+    const nBooks = lr.int(L.books.count[0], L.books.count[1]);
+    for (let k = 0; k < nBooks; k++)
+      placeFirst('bookCart', [...spots(-sgn), ...spots(sgn)], L.books.variants[k], {
+        plaza: true,
+      });
+  }
+  // a cord crosses a walk: no pad of its own (a terrace step on a ramp breaks the climb), so the
+  // whole strip must lie inside one district core (the rigid cord needs both poles level)
+  pennants(ctx, isl, quad, lib, s.avenues, (sh) => (inPadCore(sh) ? 'core' : null), opensPins);
+
+  // ---- summit: the comet watch (telescope + book-pile stool + the comet board) and the owl box,
+  // on the flat terrace round the dome (inside the observatory pad's core: no pads of their own)
+  const SM = CS.summit;
+  let owlStory = false;
+  if (s.obs) {
+    const obs = s.obs;
+    // (the pad's core reaches farther, but on the summit cone only this ring ends up flat)
+    const flatR = S.observatory.radius + SM.flat;
+    const obsY = meanH(discShape(obs.x, obs.z, S.observatory.pad));
+    const door = face(obs, quad);
+    const phase = rng.fork('summit').range(0, TAU);
+    const offDoor = (p: XZ): boolean => angGap(face(obs, p), door) >= SM.doorKeepDeg * DEG;
+    /** Terrace spots for a footprint of radius `r`: just clear of the dome, centre on the flat. */
+    const terrace = (r: number, rot: (p: XZ) => number, drop: number = SM.drop): Cand[] => {
+      const r0 = S.observatory.radius + SM.gap + r;
+      if (r0 > flatR) return [];
+      // the terrace edge is not always flat in the end: the ground there must already be near
+      // the observatory's level
+      return ringAt(obs, r0, flatR, SM.angles, phase, rot).filter(
+        (c) => offDoor(c.p) && Math.abs(heightAt(ctx.h, c.p.x, c.p.z) - obsY) <= drop,
+      );
+    };
+    const out = (p: XZ): number => face(obs, p);
+    const rS = radiusOf('tripodTelescope');
+    const rB = SM.stool.r;
+    // the telescope with its book-pile stool beside the eyepiece (either side) where both fit,
+    // nearest the door sector first (seen from the quad, beside the open slit)
+    const bySlit = (cs: Cand[]): Cand[] =>
+      cs
+        .map((c) => ({ c, g: angGap(face(obs, c.p), door) }))
+        .sort((a, b) => a.g - b.g)
+        .map((x) => x.c);
+    let scope: Cand | null = null;
+    let stool: XZ | null = null;
+    for (const withStool of [true, false]) {
+      for (const c of bySlit(terrace(rS, out))) {
+        if (!free(discShape(c.p.x, c.p.z, rS), SM.gap, false, NaN)) continue;
+        const f = dirOf(c.rot);
+        const q = [1, -1]
+          .map((k) => add(add(c.p, perp(f), k * SM.stool.side), f, -SM.stool.back))
+          .find((q) => dist(q, obs) <= flatR && free(discShape(q.x, q.z, rB), SM.gap, false, NaN));
+        if (withStool && !q) continue;
+        scope = c;
+        stool = q ?? null;
+        break;
+      }
+      if (scope) break;
+    }
+    if (scope) {
+      put(ctx, isl, 'tripodTelescope', scope.p, scope.rot, { variant: SM.tripodVariant });
+      if (stool) {
+        put(ctx, isl, 'bookCart', stool, scope.rot, {
+          sh: discShape(stool.x, stool.z, rB),
+          variant: SM.stool.variant,
+        });
+        story('bookStepGazer', stool, scope.rot, ['tripodTelescope', 'bookCart']);
+      }
+      const at = scope.p;
+      // the comet board on the terrace next to it, its face outward (a slim rect along the rim,
+      // inside the flat core with a sample cell to spare), nearest the telescope
+      const B = SM.board;
+      const near = terrace(B.d / 2, out, SM.slimDrop).sort((a, b) => dist(a.p, at) - dist(b.p, at));
+      let board = false;
+      for (const c of near) {
+        const sh = rectShape(c.p.x, c.p.z, c.rot, B.w, B.d);
+        if (!free(sh, SM.gap, false, NaN) || !inPadCore(sh, B.cell)) continue;
+        put(ctx, isl, 'chalkboard', c.p, c.rot, { sh, variant: B.variant });
+        board = true;
+        break;
+      }
+      story(
+        'cometWatch',
+        scope.p,
+        scope.rot,
+        board
+          ? ['observatory', 'tripodTelescope', 'chalkboard']
+          : ['observatory', 'tripodTelescope'],
+      );
+    }
+    // the owl box behind the dome (opposite the door first)
+    const back = terrace(radiusOf('owlBox'), (p) => face(p, obs), SM.slimDrop).sort(
+      (a, b) => angGap(face(obs, b.p), door) - angGap(face(obs, a.p), door),
+    );
+    const owl = placeFirst('owlBox', back, SM.owlVariant, { gap: SM.gap });
+    if (owl) {
+      story('owlNight', owl.p, owl.rot, ['owlBox']);
+      owlStory = true;
+    }
+  }
+
+  // ---- the base: the weather balloon cart (and an owl box) by the mast
+  const B = CS.balloon;
+  const mast = fixturesOf('weatherMast')[0];
+  const br = rng.fork('balloon');
+  let cart: Cand | null = null;
+  if (mast) {
+    const cands = ringAt(mast, B.ring[0], B.ring[1], B.angles, br.range(0, TAU), (p) =>
+      face(p, mast),
+    );
+    cart = placeFirst('weatherBalloonCart', cands, B.variant);
+    const owl = placeFirst('owlBox', cands, B.owlVariant);
+    if (owl && !owlStory) story('owlNight', owl.p, owl.rot, ['owlBox']);
+  }
+  if (!cart && s.obs) {
+    // no mast (or no room by it): the launch spot on the lawn round the summit
+    const obs = s.obs;
+    const cands = ringAt(obs, B.fallback[0], B.fallback[1], 16, br.range(0, TAU), (p) =>
+      face(p, obs),
+    );
+    cart = placeFirst('weatherBalloonCart', cands, B.variant, { ok: offWalks });
+  }
+  if (cart)
+    story(
+      'balloonLaunch',
+      cart.p,
+      cart.rot,
+      mast ? ['weatherBalloonCart', 'weatherMast'] : ['weatherBalloonCart'],
+    );
+
+  // ---- glasshouses: a row of mini volcano terrariums in front of the terrarium row
+  const houses = fixturesOf(S.glasshouse.def);
+  if (houses.length) {
+    const V = CS.volcanoes;
+    const mid = {
+      x: houses.reduce((a, h) => a + h.x, 0) / houses.length,
+      z: houses.reduce((a, h) => a + h.z, 0) / houses.length,
+    };
+    const f = dirOf(houses[0].rotY);
+    const along = houses.length > 1 ? unit(houses[0], houses[houses.length - 1]) : perp(f);
+    const rT = radiusOf(S.glasshouse.def);
+    const rV = radiusOf('miniVolcanoTerrarium');
+    let row: XZ[] | null = null;
+    // behind the row first (the doors and their walk stay open), else in front of it
+    let facing = houses[0].rotY;
+    let grounds: ('core' | 'pad' | null)[] = [];
+    search: for (const n of V.count)
+      for (const sd of [-1, 1])
+        for (const df of V.front)
+          for (const sl of V.slide) {
+            const c = add(add(mid, f, sd * (rT + df)), along, sl);
+            const pts = Array.from({ length: n }, (_, k) =>
+              add(c, along, (k - (n - 1) / 2) * V.pitch),
+            );
+            const shs = pts.map((q) => discShape(q.x, q.z, rV));
+            if (!shs.every((sh) => free(sh, CS.gap.plaza, false, NaN))) continue;
+            const gs = shs.map((sh) => groundOf(sh));
+            if (gs.some((g) => !g)) continue;
+            row = pts;
+            grounds = gs;
+            facing = houses[0].rotY + (sd > 0 ? 0 : Math.PI);
+            break search;
+          }
+    if (row) {
+      row.forEach((q, k) =>
+        put(ctx, isl, 'miniVolcanoTerrarium', q, facing, {
+          variant: k % 2,
+          pad: grounds[k] === 'pad' ? CS.pad : undefined,
+        }),
+      );
+      story('volcanoSteam', row[Math.floor(row.length / 2)], facing + Math.PI, [
+        'miniVolcanoTerrarium',
+      ]);
+    }
+  }
+
+  // ---- pigeon perches beside the statues (scholars first)
+  {
+    const P = CS.pigeons;
+    let n = 0;
+    for (const def of P.statues)
+      for (const st of fixturesOf(def)) {
+        if (n >= P.max) break;
+        const r = radiusOf(def) + radiusOf('pigeonPerch') + P.out;
+        const cands = ringAt(st, r, r, P.angles, st.rotY, (p) => face(p, st));
+        // the scholar statues stand on the quad paving
+        if (
+          !placeFirst('pigeonPerch', cands, n % 2, { plaza: def === 'scholarStatue', flat: P.flat })
+        )
+          continue;
+        if (n === 0) story('pigeonStatue', st, st.rotY, ['pigeonPerch', def]);
+        n++;
+      }
+  }
+
+  // ---- telescopes on the terrace edges, looking out to sea, spread apart
+  {
+    const T = CS.tripods;
+    const want = rng.fork('tripods').int(T.count[0], T.count[1]);
+    const placed: XZ[] = fixturesOf('tripodTelescope').map((f) => ({ x: f.x, z: f.z }));
+    const c0 = { x: isl.cx, z: isl.cz };
+    const cells = islandCells(ctx, isl)
+      .filter((i) => ctx.sdf[i] >= T.shore[0] && ctx.sdf[i] <= T.shore[1])
+      .map((i) => {
+        const p = cellPos(ctx, i);
+        return { p, y: heightAt(ctx.h, p.x, p.z) };
+      })
+      .filter((c) => c.y >= T.minUp)
+      // the highest edges first (the view); the cell order breaks ties
+      .sort((a, b) => b.y - a.y)
+      .map((c) => c.p);
+    for (let k = 0; k < want; k++) {
+      const cands = cells
+        .filter((p) => placed.every((q) => dist(p, q) >= T.spread))
+        .map((p) => ({ p, rot: face(c0, p) }));
+      const got = placeFirst('tripodTelescope', cands, T.variant, { ok: offWalks });
+      if (!got) break;
+      placed.push(got.p);
+    }
+  }
+  return stories;
+}
+
+/**
+ * Faculty pennant lines (pennantLine: poles ±half across the cord): the first along the library
+ * front (the research faculty), then across the avenues out of the quad, the other faculties in
+ * THEME_IDS order. The cord span stays walkable; only the poles block. `ground` levels the cord
+ * strip (inside a pad core, its own pad, or already flat); `opens` keeps the path pins open.
+ */
+function pennants(
+  ctx: SiteCtx,
+  isl: IslandData,
+  quad: XZ,
+  lib: { x: number; z: number; rotY: number } | undefined,
+  avenues: readonly number[],
+  ground: (sh: Shape) => 'core' | 'pad' | null,
+  opens: (sh: Shape) => boolean,
+): void {
+  const P = CS.pennants;
+  const R = S.quad.radius;
+  const research = THEME_IDS.indexOf('research');
+  const order = [research, ...THEME_IDS.map((_, i) => i).filter((i) => i !== research)];
+  const cands: Cand[] = [];
+  if (lib) {
+    const d = S.ring.buildings[0].size[1] / 2 + P.libraryGap;
+    for (const extra of [0, 0.6])
+      cands.push({ p: add(lib, dirOf(lib.rotY), d + extra), rot: lib.rotY });
+  }
+  for (let t = 0; t <= P.reach; t += P.step)
+    for (const a of avenues) cands.push({ p: add(quad, dirOf(a), R + P.start + t), rot: a });
+  const lines: XZ[] = [];
+  const pole = (q: XZ): boolean => {
+    const sh = discShape(q.x, q.z, P.poleR);
+    return (
+      onIsland(ctx, isl, q.x, q.z) &&
+      heightAt(ctx.h, q.x, q.z) > 0.5 &&
+      clear(ctx, isl, sh, 0.2, true) &&
+      opens(sh)
+    );
+  };
+  for (const c of cands) {
+    if (lines.length >= P.count) break;
+    if (lines.some((q) => dist(q, c.p) < P.spacing - 0.1)) continue;
+    const nrm = perp(dirOf(c.rot));
+    const a = add(c.p, nrm, P.half);
+    const b = add(c.p, nrm, -P.half);
+    if (!pole(a) || !pole(b)) continue;
+    // the rigid cord needs both poles on one level: the strip under it is levelled
+    const strip = rectShape(c.p.x, c.p.z, c.rot, 2 * (P.half + P.poleR), P.cordDepth);
+    // the cord grazes no building or dome (posts and lamps beside the walk may stand under it)
+    const big = (o: Shape): boolean => (o.r > 0 ? o.r : Math.max(o.hw, o.hd)) > P.bigR;
+    if (ctx.shapes[isl.id].some((o) => o.tag !== 'plaza' && big(o) && shapesOverlap(o, strip, 0.2)))
+      continue;
+    const g = ground(strip);
+    if (!g) continue;
+    ctx.fixtures.push({
+      defId: 'pennantLine',
+      x: c.p.x,
+      z: c.p.z,
+      rotY: c.rot,
+      islandId: isl.id,
+      variant: order[lines.length % order.length],
+    });
+    if (g === 'pad') addPad(ctx, isl, strip, CS.pad, S.padStep);
+    addShape(ctx, isl, discShape(a.x, a.z, P.poleR), true);
+    addShape(ctx, isl, discShape(b.x, b.z, P.poleR), true);
+    // the span under the cord: walkable, but nothing later grows into the pennants
+    addShape(ctx, isl, rectShape(c.p.x, c.p.z, c.rot, 2 * P.half, P.cordDepth), false);
+    lines.push(c.p);
   }
 }

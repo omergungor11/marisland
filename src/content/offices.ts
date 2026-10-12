@@ -307,6 +307,12 @@ export const FIXTURE_EMITTERS: Readonly<Record<string, readonly (readonly Emitte
   // Ember Smiths bath house (TASK-422): steam from the copper vent chimney (geo hook
   // culture-devops.ts onsenHouse `userData.hooks.emitter`)
   onsenHouse: [[{ x: 1.0, y: 2.9, z: -0.3, preset: 'vent' }]],
+  // Star Academy mini volcano terrariums (TASK-426): steam from the crater (geo hook
+  // culture-research.ts miniVolcanoTerrarium `userData.hooks.emitter`, per variant)
+  miniVolcanoTerrarium: [
+    [{ x: 0, y: 0.84, z: 0, preset: 'vent' }],
+    [{ x: -0.12, y: 0.65, z: 0, preset: 'vent' }],
+  ],
   // QA test hangars (TASK-401): the short chimney tops (geo/themes/qa-factory.ts)
   testHangar: [
     QA_FACTORY.hangar.chimneys.map((c) => ({

@@ -336,7 +336,8 @@ export const RESEARCH_SITE = {
       { def: 'facultyHall', variant: 1, angle: -112, size: [5.4, 5.4] as const },
       { def: 'facultyHall', variant: 2, angle: 60, size: [5.4, 5.4] as const },
       { def: 'facultyHall', variant: 0, angle: -60, size: [5.4, 5.4] as const },
-      { def: 'campusTower', variant: 0, angle: 146, size: [2.6, 2.6] as const },
+      // v3 = bell cupola (Star Academy, TASK-426)
+      { def: 'campusTower', variant: 3, angle: 146, size: [2.6, 2.6] as const },
       { def: 'facultyHall', variant: 1, angle: -146, size: [5.4, 5.4] as const },
     ],
   },
