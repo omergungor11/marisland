@@ -918,6 +918,30 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     quality: 'medium',
     sets: ['dev'],
   })),
+  // ---- culture boats (M19 wave 3, TASK-434), seed 1001 raw cams (re-pin when routes / layout change):
+  // the HQ ferry dwells ~8 s at the Marketing pier (sim 28–36 s) then pulls away (deltaT pair);
+  // the Design lantern boat drifts off Mossgrove, its glass lanterns lit at night.
+  {
+    id: 'D-ferry-dock',
+    title: 'Ferry at the pier (dwell, then departure)',
+    seed: 1001,
+    cam: '-72,10,116,-62,1.5,146',
+    time: 10,
+    simt: 30,
+    quality: 'medium',
+    deltaT: 14,
+    sets: ['dev'],
+  },
+  {
+    id: 'D-lantern-boat-night',
+    title: 'Lantern boat · night',
+    seed: 1001,
+    cam: '-212,5.5,139,-200,3,136.5',
+    time: 21,
+    simt: 20,
+    quality: 'medium',
+    sets: ['dev'],
+  },
   // ---- living close-up (M14c, TASK-383/384): `pnpm shots live [--assert]`. A 0.5 s `deltaT` pair per
   // campus at T3 on medium (16 workers + drones + animated surfaces); the harness measures the motion
   // inside LIVE_CROP over solid pixels (the mask frame drops water / sky: foam and swell are not campus

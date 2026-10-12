@@ -1,6 +1,6 @@
 import type * as THREE from 'three';
 import { BOAT_BOB } from '../content/anim.ts';
-import { ROWBOAT, SAILBOAT } from '../content/life.ts';
+import { CULTURE_BOATS, ROWBOAT, SAILBOAT } from '../content/life.ts';
 import { unitHash } from '../core/hash.ts';
 import { arcLengths, pointAtLength, smoothPolyline, type Vec2 } from '../core/math/catmull-rom.ts';
 import { PROP_GEO, buildProp } from '../geo/index.ts';
@@ -9,6 +9,7 @@ import { makeLitMaterial } from '../render/materials/factory.ts';
 import { AgentKind, rotYFor, type AgentKindOpts } from './agents.ts';
 import type { LifeCtx } from './ctx.ts';
 import { buildBoatPlaceholder } from './geo/creatures.ts';
+import { buildFerrySchedule, ferryDist, type FerrySchedule } from './ferry.ts';
 import { WakeFoam } from './wake.ts';
 
 const DEG = Math.PI / 180;
@@ -19,6 +20,30 @@ export interface Route {
   pts: Vec2[];
   lens: Float32Array;
   total: number;
+  /** 'route' (sailing loop) or 'ferry' (timetable with dwell). */
+  kind: string;
+  /** Seconds standing at each stop (ferries). */
+  dwell: number;
+  /** Arc length of each stop on the smoothed loop, ascending (nearest loop point to the dock end). */
+  stopArcs: number[];
+}
+
+/** Arc lengths of `stops` on the loop (nearest vertex), ascending, near-duplicates merged. */
+function stopArcsOf(pts: Vec2[], lens: Float32Array, stops: Vec2[]): number[] {
+  const arcs = stops.map((s) => {
+    let best = 0;
+    let bd = Infinity;
+    pts.forEach((p, i) => {
+      const d = Math.hypot(p.x - s.x, p.y - s.y);
+      if (d < bd) {
+        bd = d;
+        best = i;
+      }
+    });
+    return lens[best];
+  });
+  arcs.sort((a, b) => a - b);
+  return arcs.filter((a, i) => i === 0 || a - arcs[i - 1] > 2);
 }
 
 /** Closed loops from `world.boatRoutes`, else the fallback rings around the two largest islands. */
@@ -26,11 +51,13 @@ export function resolveRoutes(ctx: LifeCtx): Route[] {
   const given = ctx.world.boatRoutes;
   const loops: Vec2[][] = [];
   const stopsOf: Vec2[][] = [];
+  const kinds: Array<{ kind: string; dwell: number }> = [];
   const docks = ctx.world.docks ?? [];
   if (given && given.length > 0) {
     given.forEach((r, ri) => {
       if (r.length < 4) return;
       loops.push(r.map((p) => ({ x: p.x, y: p.z })));
+      kinds.push(ctx.world.boatMeta?.[ri] ?? { kind: 'route', dwell: 0 });
       stopsOf.push(
         (ctx.world.boatStops?.[ri] ?? []).flatMap((di) => {
           const d = docks[di];
@@ -49,14 +76,40 @@ export function resolveRoutes(ctx: LifeCtx): Route[] {
       if (loop) {
         loops.push(loop);
         stopsOf.push([]);
+        kinds.push({ kind: 'route', dwell: 0 });
       }
     }
   }
   return loops.map((raw, li) => {
     const pts = smoothPolyline(raw, 4, true);
     const lens = arcLengths(pts, true);
-    return { pts, lens, total: lens[lens.length - 1], stops: stopsOf[li] };
+    return {
+      pts,
+      lens,
+      total: lens[lens.length - 1],
+      stops: stopsOf[li],
+      ...kinds[li],
+      stopArcs: stopArcsOf(pts, lens, stopsOf[li]),
+    };
   });
+}
+
+/** A loop `margin` u beyond a themed island's radius (inspection / lantern boat), or null. */
+export function islandRing(ctx: LifeCtx, theme: string, margin: number): Route | null {
+  const isl = ctx.world.islands.find((i) => i.theme === theme);
+  const raw = isl && ringAround(ctx, isl.cx, isl.cz, isl.radius + margin);
+  if (!raw) return null;
+  const pts = smoothPolyline(raw, 4, true);
+  const lens = arcLengths(pts, true);
+  return {
+    pts,
+    lens,
+    total: lens[lens.length - 1],
+    stops: [],
+    kind: 'route',
+    dwell: 0,
+    stopArcs: [],
+  };
 }
 
 /** Circle of radius r pushed outward per angle until every point is over water ≥ minDepth; null if impossible. */
@@ -102,9 +155,9 @@ function orientBoat(g: THREE.BufferGeometry, draft: number): THREE.BufferGeometr
   return g;
 }
 
-export function sailboatGeometry(seed: number): THREE.BufferGeometry {
+export function sailboatGeometry(seed: number, variant = 0): THREE.BufferGeometry {
   return 'sailboat' in PROP_GEO
-    ? orientBoat(buildProp('sailboat', seed, 0, 0), 0.35)
+    ? orientBoat(buildProp('sailboat', seed, variant, 0), 0.35)
     : buildBoatPlaceholder();
 }
 export function rowboatGeometry(seed: number): THREE.BufferGeometry {
@@ -118,6 +171,16 @@ export const litCreatureMaterial = (name: string): THREE.Material =>
 
 type Opts = Omit<AgentKindOpts, 'name' | 'capacity' | 'geometry' | 'material'>;
 
+/** One instanced mesh per boat variant (draw calls): which prop variant, which loops, how fast. */
+export interface BoatSpec {
+  name: string;
+  variant: number;
+  speed: number;
+  /** Ferries follow a closed-form timetable (`ferry.ts`) instead of the integrated loop. */
+  ferry?: boolean;
+}
+const SAIL_SPEC: BoatSpec = { name: 'sailboat', variant: 0, speed: SAILBOAT.speed };
+
 export class Sailboats extends AgentKind {
   private readonly route: Int32Array;
   private readonly d0: Float32Array;
@@ -127,6 +190,10 @@ export class Sailboats extends AgentKind {
   /** Travelled distance at the last wake stamp (NaN = none yet). */
   private readonly wakeAt: Float64Array;
   readonly routes: Route[];
+  readonly spec: BoatSpec;
+  /** Ferry timetable per route (ferries only) and start offset per boat, s. */
+  readonly schedules: FerrySchedule[] = [];
+  readonly tOff: Float64Array;
   /** Foam-dot wake behind the hulls (one mesh for all boats). */
   readonly foam: WakeFoam;
   private readonly p = { x: 0, y: 0 };
@@ -138,15 +205,23 @@ export class Sailboats extends AgentKind {
     private readonly ctx: LifeCtx,
     routes: Route[],
     count: number,
+    spec: BoatSpec = SAIL_SPEC,
   ) {
     super({
       ...o,
-      name: 'sailboat',
+      name: spec.name,
       capacity: routes.length ? count : 0,
-      geometry: sailboatGeometry(o.seed),
-      material: litCreatureMaterial('life:sailboat'),
+      geometry: sailboatGeometry(o.seed, spec.variant),
+      material: litCreatureMaterial(`life:${spec.name}`),
     });
+    this.spec = spec;
     this.routes = routes;
+    this.tOff = new Float64Array(count);
+    if (spec.ferry) {
+      const F = CULTURE_BOATS.ferry;
+      for (const R of routes)
+        this.schedules.push(buildFerrySchedule(R.total, R.stopArcs, R.dwell, spec.speed, F.decel));
+    }
     this.route = new Int32Array(count);
     this.d0 = new Float32Array(count);
     this.dist = new Float64Array(count);
@@ -161,7 +236,12 @@ export class Sailboats extends AgentKind {
       const k = seen[r]++;
       this.route[i] = r;
       this.d0[i] = ((k + this.phase[i] * 0.4) / per[r]) * routes[r].total;
-      this.dir[i] = k % 2 === 0 ? 1 : -1;
+      this.dir[i] = spec.ferry || k % 2 === 0 ? 1 : -1;
+      if (spec.ferry) {
+        const cycle = this.schedules[r].cycle;
+        this.tOff[i] = (CULTURE_BOATS.ferry.startFrac + k / per[r]) * cycle;
+        this.d0[i] = 0;
+      }
       this.active[i] = 1;
       this.stepAgent(i, 0, 0);
       this.snap(i);
@@ -169,18 +249,20 @@ export class Sailboats extends AgentKind {
   }
 
   /** Integrate travelled distance; slows to `stopSpeed` near a route stop and passes it. */
-  private advance(i: number, dir: number, dt: number): number {
+  private advance(i: number, dir: number, dt: number, t: number): number {
     const R = this.routes[this.route[i]];
+    if (this.spec.ferry)
+      return (this.dist[i] = ferryDist(this.schedules[this.route[i]], t + this.tOff[i]));
     if (R.stops.length > 0 && dt > 0) {
       const p = pointAtLength(R.pts, R.lens, this.d0[i] + this.dist[i], true, this.p);
       let near = Infinity;
       for (const s of R.stops) near = Math.min(near, Math.hypot(s.x - p.x, s.y - p.y));
       const u = Math.min(1, Math.max(0, near / SAILBOAT.stopRadius));
       const k = u * u * (3 - 2 * u);
-      const v = SAILBOAT.stopSpeed + (SAILBOAT.speed - SAILBOAT.stopSpeed) * k;
+      const v = SAILBOAT.stopSpeed + (this.spec.speed - SAILBOAT.stopSpeed) * k;
       this.dist[i] += dir * v * dt;
     } else {
-      this.dist[i] += dir * SAILBOAT.speed * dt;
+      this.dist[i] += dir * this.spec.speed * dt;
     }
     return this.dist[i];
   }
@@ -188,7 +270,7 @@ export class Sailboats extends AgentKind {
   protected stepAgent(i: number, dt: number, t: number): void {
     const R = this.routes[this.route[i]];
     const dir = this.dir[i];
-    const d = this.d0[i] + this.advance(i, dir, dt);
+    const d = this.d0[i] + this.advance(i, dir, dt, t);
     const at = (s: number, out: Vec2): Vec2 => pointAtLength(R.pts, R.lens, s, true, out);
     const p = at(d, this.p);
     const ahead = at(d + dir * 1.5, this.a);
@@ -211,8 +293,16 @@ export class Sailboats extends AgentKind {
     const e0 = Math.atan2(z - h2.y, x - h2.x);
     let dh = e1 - e0;
     dh = Math.atan2(Math.sin(dh), Math.cos(dh));
-    const rate = (dh / 6) * SAILBOAT.speed; // rad/s, > 0 = turning right
-    const heel = Math.max(-1, Math.min(1, rate / SAILBOAT.heelRate)) * SAILBOAT.heelDeg * DEG;
+    // actual speed (ferries stand still at stops): look 0.25 s ahead on the timetable
+    const sp = this.spec.ferry
+      ? (ferryDist(this.schedules[this.route[i]], t + this.tOff[i] + 0.25) - this.dist[i]) / 0.25
+      : this.spec.speed;
+    const rate = (dh / 6) * sp; // rad/s, > 0 = turning right
+    const heel =
+      Math.max(-1, Math.min(1, rate / SAILBOAT.heelRate)) *
+      SAILBOAT.heelDeg *
+      DEG *
+      (this.spec.ferry ? CULTURE_BOATS.ferry.heelScale : 1);
     const sw = this.ctx.swell;
     const rx = -fz;
     const rz = fx;

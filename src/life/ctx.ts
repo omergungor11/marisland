@@ -19,6 +19,8 @@ export interface LifeWorld extends Omit<WorldData, 'boatRoutes' | 'docks'> {
   boatRoutes?: { x: number; z: number }[][];
   /** Dock indices each route passes (parallel to `boatRoutes`). */
   boatStops?: number[][];
+  /** Route kind ('route' | 'ferry') and ferry dwell (s), parallel to `boatRoutes` (TASK-434). */
+  boatMeta?: { kind: string; dwell: number }[];
   docks?: {
     x: number;
     z: number;
@@ -70,6 +72,7 @@ export function makeCtx(deps: LifeDeps): LifeCtx {
     ...deps.world,
     boatRoutes: deps.world.boatRoutes?.map((r) => r.points),
     boatStops: deps.world.boatRoutes?.map((r) => r.stops ?? []),
+    boatMeta: deps.world.boatRoutes?.map((r) => ({ kind: r.kind, dwell: r.dwell ?? 0 })),
     docks: deps.world.docks,
   };
   return {

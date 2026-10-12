@@ -79,6 +79,10 @@ const TARGET: Record<string, number> = {
 const VARIANT_TARGET: Record<string, number> = {
   'bunting:3': 1500,
   'giantTree:3': 2400,
+  // TASK-434: culture boats (HQ ferry, inspection boat, lantern boat)
+  'sailboat:2': 800,
+  'sailboat:3': 900,
+  'sailboat:4': 650,
 };
 
 /** Props from the buildings/coastal/decor/landmarks families: carry an `emissive` attribute. */

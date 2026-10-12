@@ -157,8 +157,8 @@ describe('TASK-410 hqAnnex v2 (guildHall)', () => {
 });
 
 describe('TASK-410 ferry (sailboat v2)', () => {
-  it('sailboat keeps 2 variants in the registry; v2 is buildable', () => {
-    expect(PROP_GEO.sailboat.variants).toBe(2);
+  it('sailboat has 5 variants in the registry (rolls keep 2); v2 is buildable', () => {
+    expect(PROP_GEO.sailboat.variants).toBe(5);
     const g0 = buildProp('sailboat', 3, 2, 0);
     const g1 = buildProp('sailboat', 3, 2, 1);
     const s = size(g0);
