@@ -10,7 +10,7 @@ import { CODING_PROP_DEFS } from './props-themes/coding.ts';
 import { MARKETING_PROP_DEFS } from './props-themes/marketing.ts';
 import { QA_PROP_DEFS } from './props-themes/qa.ts';
 import { DESIGN_PROP_DEFS } from './props-themes/design.ts';
-import { DEVOPS_PROP_DEFS } from './props-themes/devops.ts';
+import { DEVOPS_CULTURE_PROP_DEFS, DEVOPS_PROP_DEFS } from './props-themes/devops.ts';
 import { RESEARCH_PROP_DEFS } from './props-themes/research.ts';
 import { SIGNAGE_PROP_DEFS } from './props-themes/signage.ts';
 
@@ -114,6 +114,8 @@ export const PROP_DEFS: readonly PropDef[] = [
   ...DEVOPS_PROP_DEFS,
   ...RESEARCH_PROP_DEFS,
   ...SIGNAGE_PROP_DEFS,
+  // M19 culture kits: appended at the end so the indices above (and the world hashes) never move
+  ...DEVOPS_CULTURE_PROP_DEFS,
 ];
 
 export const PROP_DEF_INDEX: Record<string, number> = Object.fromEntries(

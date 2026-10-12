@@ -27,6 +27,7 @@ import type { BuildOpts, PropGeoDef } from '../types.ts';
 import { accVerts } from './coding.ts';
 import { tagPulse, tagScreens, type VertexRange } from './surface-tags.ts';
 import { DEVOPS_WORKS_GEO } from './devops-works.ts';
+import { CULTURE_DEVOPS_GEO } from './culture-devops.ts';
 
 const finish = (acc: Acc, rng: Rng): THREE.BufferGeometry => acc.finish(rng, false, true);
 
@@ -641,4 +642,6 @@ export const DEVOPS_GEO: readonly PropGeoDef[] = [
   },
   // TASK-405 "Ember Works"
   ...DEVOPS_WORKS_GEO,
+  // TASK-412 Ember Smiths culture kit
+  ...CULTURE_DEVOPS_GEO,
 ];

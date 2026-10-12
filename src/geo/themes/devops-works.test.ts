@@ -36,10 +36,10 @@ function meanColor(g: THREE.BufferGeometry): THREE.Color {
 }
 
 describe('TASK-405 Ember Works structures', () => {
-  it('one variant each; the ≥ 3 u structures read from T0, the smithy from T2', () => {
+  it('one variant each (foundry: + the TASK-412 forge bell); the ≥ 3 u structures read from T0, the smithy from T2', () => {
     for (const g of DEVOPS_WORKS_GEO) {
       const d = PROP_DEFS.find((p) => p.id === g.id);
-      expect(d?.variants, g.id).toBe(1);
+      expect(d?.variants, g.id).toBe(g.id === 'foundry' ? 2 : 1);
     }
     for (const id of ['containerYard', 'foundry'])
       expect(PROP_DEFS.find((p) => p.id === id)?.tier, id).toBe(0);
