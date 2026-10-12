@@ -207,6 +207,16 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   testHangar: 4.4,
   conveyor: 0.3,
   testTrack: 5.5,
+  // QA "Müfettişler Adası" kit (TASK-424); the booth also blocks its full 2.8 u slab rect
+  dummyBench: 1.0,
+  inspectionBooth: 1.8,
+  uvLampPost: 0.35,
+  scoreboard: 1.3,
+  bugJar: 0.4,
+  conePyramid: 0.65,
+  flagMast: 0.55,
+  stampDesk: 0.75,
+  clipboardWall: 1.3,
   // Marketing Media Rock (TASK-403): the obstacle discs bots and creatures keep clear of
   giantScreen: 2.4,
   antennaTower: 1.7,

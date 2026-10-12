@@ -30,7 +30,8 @@ export const QA_THEME: ThemeDef = {
     ['bench', 1],
   ],
   pathLanterns: 0.4,
-  plazaDecor: { posts: 'lanternPost', seats: 'checklistBoard', across: null },
+  // the yard's rim posts are the UV lamps of the night bug hunt (TASK-424)
+  plazaDecor: { posts: 'uvLampPost', seats: 'checklistBoard', across: null },
   workers: { weight: 0.9, cap: 7, deskShare: 0.4 },
   accessory: 3,
   ground: {

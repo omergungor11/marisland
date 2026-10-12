@@ -818,6 +818,31 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     quality: 'medium',
     sets: ['dev'],
   },
+  {
+    id: 'D-culture-qa',
+    title: 'Culture · QA Inspectors (T2, 12:00 siren test)',
+    // seed 1001 Palmlagoon (TASK-424): over the factory yard to the Hall of Checks (tick badges,
+    // stamp desk, clipboard wall), the dummy benches, the scoreboards and UV lamps round the loop
+    // track, the cone pyramid; the check tower with its flag mast behind
+    seed: 1001,
+    cam: '-190,38,-176,-156,8,-204',
+    time: 12,
+    simt: 4,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-culture-qa-night',
+    title: 'Culture · QA bug hunt night (UV lamps, 21:30)',
+    // seed 1001: the loop track and the yard rim lit purple by the UV lamp posts, the "BUGS: 1"
+    // scoreboard and its jar, the Bug Zoo beyond
+    seed: 1001,
+    cam: '-175,22,-185,-160,8,-208',
+    time: 21.5,
+    simt: 4,
+    quality: 'medium',
+    sets: ['dev'],
+  },
   // ---- living close-up (M14c, TASK-383/384): `pnpm shots live [--assert]`. A 0.5 s `deltaT` pair per
   // campus at T3 on medium (16 workers + drones + animated surfaces); the harness measures the motion
   // inside LIVE_CROP over solid pixels (the mask frame drops water / sky: foam and swell are not campus

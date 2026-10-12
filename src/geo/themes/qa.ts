@@ -336,11 +336,11 @@ export const QA_GEO: readonly PropGeoDef[] = [
     windy: false,
   },
   // M17b TASK-401: the Test Factory
-  // variant 1 (hallOfChecks, M19 TASK-414) is buildable but unplaced: `variants` stays 1 until wave 2;
-  // its LOD1 is the plain hangar's (B2)
+  // variant 1 = hallOfChecks (M19 TASK-414), pinned by the QA plan on one hangar (TASK-424); its
+  // LOD1 is the plain hangar's (B2)
   {
     id: 'testHangar',
-    variants: 1,
+    variants: 2,
     build: testHangar,
     footprint: 5.6,
     height: 6.9,

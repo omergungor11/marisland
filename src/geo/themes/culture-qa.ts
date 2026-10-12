@@ -45,7 +45,7 @@ const RED = C.red;
 const UV = FLOWERS[3];
 const INK = C.dark;
 
-/** The `terrarium` variant index of the Bug Zoo (the def keeps `variants: 2` until wave 2). */
+/** The `terrarium` variant index of the Bug Zoo (placed by the QA plan, TASK-424). */
 export const BUG_ZOO_VARIANT = 2;
 
 /* --------------------------------- helpers --------------------------------- */
