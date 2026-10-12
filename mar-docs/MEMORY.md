@@ -10,6 +10,17 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-13 (M19 "Seven Cultures", orchestrator)**: plan `mar-plans/ISLAND_CULTURES.md` (user picked the
+  ★ culture for 6 islands, Design = Glass & Light). Done + pushed: TASK-407 far merge (W11 298 → 146),
+  408 contract, 409 signage, 410–416 kits, 420–426 placements (story spots → `world.storySpots`,
+  `PropDef.rollVariants`, `PendingLot.pin`, ferry routes with dwell), 430 culture clock + 21:00 relay
+  (rainbow gated), 431 movers, 432 bot looks/poses/tableaux, 433 spot critters, 434 culture boats, 399
+  gull fix. W11 now ~151. Open: TASK-435 `D-sky-basket` renders BLACK on main (regression after 2e0afca,
+  being bisected) + D-sky-craft 297/300; TASK-440 ground/light (incl. the Marketing/Research ladder ΔE
+  fails) running; then 441 sky culture, 450 presets W15–W19, 451 QA, 452 docs (D-049…D-051 partly
+  written by agents). Follow-ups in task-index rows (pipes float on Emberpeak, boats overlap at piers,
+  capybara reads as a turtle, Research pennants 0–3). Merge pattern: every placement re-pins the
+  archipelago world hashes — regenerate them for the merged tree instead of picking a side.
 - **2026-10-11 (TASK-402b, worldgen)**: Research is "Observatory University" (D-046): 52–58 u campus hill,
   `campusHill` profile + `planResearch` (RESEARCH_SITE). Seed 1001's other islands moved −16.539 u in z
   (raw cams, LIVE_CAMS, EDIT_LOGS translated; the mixed log's removed bush re-mapped, two removals dropped);
