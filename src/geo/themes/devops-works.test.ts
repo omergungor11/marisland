@@ -1,4 +1,4 @@
-/** TASK-402 "Ember Works" structures and mover routes (budgets, LOD1 consistency, closed forms). */
+/** TASK-405 "Ember Works" structures and mover routes (budgets, LOD1 consistency, closed forms). */
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { DEVOPS_MOVERS } from '../../content/themes/devops.ts';
@@ -35,7 +35,7 @@ function meanColor(g: THREE.BufferGeometry): THREE.Color {
   return new THREE.Color(r / w, gg / w, bb / w);
 }
 
-describe('TASK-402 Ember Works structures', () => {
+describe('TASK-405 Ember Works structures', () => {
   it('one variant each; the ≥ 3 u structures read from T0, the smithy from T2', () => {
     for (const g of DEVOPS_WORKS_GEO) {
       const d = PROP_DEFS.find((p) => p.id === g.id);
@@ -98,7 +98,7 @@ describe('TASK-402 Ember Works structures', () => {
   });
 });
 
-describe('TASK-402 mover routes (closed form)', () => {
+describe('TASK-405 mover routes (closed form)', () => {
   const L: Loop = {
     a: { x: 0, z: 0 },
     t: { x: 1, z: 0 },

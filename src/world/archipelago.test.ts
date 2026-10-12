@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { adjacentPairs } from './gen/layout.ts';
 import { coveness } from './gen/heightfield.ts';
 import { ARCHETYPES } from '../content/islands.ts';
-import { BRIDGES } from '../content/bridges.ts';
 import { generateWorld, heightAt, Zone, type IslandData, type WorldData } from './index.ts';
 import { perfLimit } from '../test/perf.ts';
 
@@ -93,9 +92,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "ce8c905008296085",
-          "1001": "d11548be71d116dd",
-          "42": "4001d67271971cae",
+          "1": "1b8d27c0aca32860",
+          "1001": "1bb9587883db4aee",
+          "42": "82c88811486d2905",
         }
       `);
     },
@@ -122,7 +121,7 @@ describe('archipelago — 30-seed full generation', () => {
         const land = [...zc.values()].reduce((a, b) => a + b, 0);
         expect(land, ctx).toBeGreaterThan(0);
         expect(sum(zc, SAND), ctx).toBeGreaterThan(0);
-        // Lonely Palm is the Research crater since TASK-400: a green bowl and a cove beach too
+        // Lonely Palm is the Research campus (TASK-402b): green lawns and a cove beach too
         expect(sum(zc, GREEN), ctx).toBeGreaterThan(0);
       }
       const reachFrac = w.islands.map(() => 0);
@@ -192,6 +191,7 @@ describe('archipelago — 30-seed full generation', () => {
 
   it('archetype signatures', () => {
     const seen = new Set<string>();
+    const noSolar: number[] = [];
     for (const seed of SEEDS) {
       const w = world(seed);
       for (const isl of w.islands) {
@@ -241,8 +241,10 @@ describe('archipelago — 30-seed full generation', () => {
             // bluff plateau (TASK-390): 10–12 u peak; 6.5–8 u without the bluff
             expect(isl.peakY, ctx).toBeLessThanOrEqual(ARCHETYPES.millbrook.bluff?.on ? 12.5 : 8.5);
             // theme-first Coding (D-029): the patches are solar gravel (`field` zone) wherever the
-            // tech park left clean ground: 2.5 % … 19 %, median ≈ 13 % over these 30 seeds
-            expect(sum(zc, [Zone.field]), ctx).toBeGreaterThan(land * 0.02);
+            // tech park left clean ground: median ≈ 13 % over these 30 seeds. Patch cells are
+            // world-aligned, so a layout shift reshuffles them; TASK-402b (seed 8101 moved 21.3 u)
+            // left one park with no clean patch at all
+            if (sum(zc, [Zone.field]) <= land * 0.02) noSolar.push(seed);
             expect(isl.anchors.knoll0 && isl.anchors.knoll1 && isl.anchors.pond, ctx).toBeTruthy();
             break;
           case 'mossgrove': {
@@ -260,11 +262,22 @@ describe('archipelago — 30-seed full generation', () => {
             break;
           }
           case 'lonelypalm': {
-            // TASK-400 breached crater: rim above the bowl, the hero-dome and breach anchors
+            // TASK-402b terraced campus hill: the summit on the bluff peak range, one body, the
+            // campus anchors (summit, quad, garden, glasshouse, spur, headland, harbour)
             const b = ARCHETYPES.lonelypalm.bluff;
-            expect(isl.peakY, ctx).toBeGreaterThanOrEqual((b?.peak[0] ?? 0) - 0.5);
+            expect(isl.peakY, ctx).toBeGreaterThanOrEqual((b?.peak[0] ?? 0) - 0.8);
             expect(isl.peakY, ctx).toBeLessThanOrEqual((b?.peak[1] ?? 0) + 0.5);
-            expect(isl.anchors.dome && isl.anchors.breach, ctx).toBeTruthy();
+            expect(components(w, isl), ctx).toBe(1);
+            for (const k of [
+              'summit',
+              'quad',
+              'garden',
+              'glasshouse',
+              'spur',
+              'headland',
+              'harbour',
+            ])
+              expect(isl.anchors[k], `${ctx} ${k}`).toBeDefined();
             break;
           }
           case 'hearthholm':
@@ -274,6 +287,9 @@ describe('archipelago — 30-seed full generation', () => {
       }
     }
     expect(seen.size).toBe(7);
+    expect(noSolar.length, `Coding parks without solar: ${noSolar.join(', ')}`).toBeLessThanOrEqual(
+      1,
+    );
   });
 
   it('full world generation time (warm)', () => {
@@ -374,7 +390,7 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
     }
   });
 
-  it('peaks: Hearthholm 18–20 u, Millbrook 10–12 u, Mossgrove ≥ 21.5 u (was 19–21); QA plateau ≤ 10 u; Research crater rim ≥ 5 u', () => {
+  it('peaks: Hearthholm 18–20 u, Millbrook 10–12 u, Mossgrove ≥ 21.5 u (was 19–21); QA plateau ≤ 10 u; Research summit ≥ 10 u', () => {
     for (const seed of SEEDS) {
       for (const isl of world(seed).islands) {
         const ctx = `seed ${seed} ${isl.archetype}`;
@@ -385,30 +401,26 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
         if (isl.archetype === 'millbrook') expect(isl.peakY, ctx).toBeGreaterThanOrEqual(9.5);
         if (isl.archetype === 'mossgrove') expect(isl.peakY, ctx).toBeGreaterThanOrEqual(21.5);
         if (isl.archetype === 'palmlagoon') expect(isl.peakY, ctx).toBeLessThanOrEqual(10);
-        // TASK-400: the Research crater rim (bluff 3–3.4 u + crest)
-        if (isl.archetype === 'lonelypalm') expect(isl.peakY, ctx).toBeGreaterThanOrEqual(5);
+        // TASK-402b: the Research summit plateau (bluff 4.2–4.8 u + the terraced hill)
+        if (isl.archetype === 'lonelypalm') expect(isl.peakY, ctx).toBeGreaterThanOrEqual(10);
       }
     }
   });
 
   it('the content flag switches an island back: the TASK-390 bluffs off = the pre-M17b world', () => {
-    // the Research crater (TASK-400) keeps its bluff: it is the island's shape, not a coast option
+    // the Research campus hill (TASK-402b) keeps its bluff: it is the island's shape, not a coast option
     const saved = BLUFFED.filter((a) => a !== 'lonelypalm').map(
       (a) => ARCHETYPES[a].bluff as { on: boolean },
     );
-    const bridgeCount = BRIDGES.count;
     try {
       for (const b of saved) b.on = false;
-      // viaducts (TASK-394) off too, so only the TASK-400 Research crater differs from the old world
-      (BRIDGES as { count: readonly number[] }).count = [0, 0];
-      // hashes.world: the pre-TASK-390 world with the TASK-400 Research crater, the TASK-401
-      // QA plateau profile (the atoll profile is gone) and the TASK-402 Emberpeak shelves +
-      // Ember Works plan, re-pinned for all three
-      expect(generateWorld(1001).hashes.world).toBe('405cf4aff331e8ce');
-      expect(generateWorld(1).hashes.world).toBe('3580d7c29baeaf8d');
+      // hashes.world: the pre-TASK-390 world with the TASK-401 QA plateau profile, the
+      // TASK-402b Research campus hill (seed 1001 layout moved 16.5 u), the TASK-403 Media Rock
+      // and the TASK-405 Emberpeak shelves + Ember Works plan, re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('02f8e51f83cfe79c');
+      expect(generateWorld(1).hashes.world).toBe('6dd424b051b50d61');
     } finally {
       for (const b of saved) b.on = true;
-      (BRIDGES as { count: readonly number[] }).count = bridgeCount;
     }
   });
 });

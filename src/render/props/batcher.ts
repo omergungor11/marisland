@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { Scope } from '../../core/scope.ts';
 import type { PropStore } from '../../world/prop-store.ts';
 import { PropFlag } from '../../world/prop-store.ts';
-import { PROP_DEFS, PROP_DEF_INDEX, TIER_FADE, type PropDef } from '../../content/props.ts';
+import { PROP_DEFS, PROP_DEF_INDEX, type PropDef } from '../../content/props.ts';
 import { buildProp, type Lod } from '../../geo/index.ts';
 import { unitHash } from '../../core/hash.ts';
 import { BLOOM_IN } from '../../content/anim.ts';
@@ -154,9 +154,9 @@ export interface PropBatcher {
   setTier(tier: number, time: number): void;
   /**
    * Per frame: drain the pop queue and gate ground-cover chunks around the focus. With `cam`
-   * (TASK-402), a visible per-island LOD0 group whose bounding sphere lies wholly past its def's
-   * dither fade-out distance skips its draw (every instance is dithered away already, colour and
-   * shadow alike); its contact blobs and visibility state are untouched.
+   * (TASK-405), a visible group (LOD0 per island or LOD1) whose bounding sphere lies wholly past
+   * its material's dither fade-out distance skips its draw (every instance is dithered away
+   * already, colour and shadow alike); its contact blobs and visibility state are untouched.
    */
   update(time: number, focusX: number, focusZ: number, cam?: THREE.Vector3): void;
   /** Groups for picking / debugging. */
@@ -1068,8 +1068,10 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
       firstUpdate = false;
       if (cam)
         for (const g of groups) {
-          if (g.lod !== 0 || g.groundCover || !g.visible) continue;
-          const far = (g.def.fade ?? TIER_FADE[g.def.tier] ?? TIER_FADE[0])[1];
+          if (g.groundCover || !g.visible) continue;
+          // the fade-out edge the group's material actually dithers with (no fade → never)
+          const mat = g.mesh.material as { fade?: { uFadeFar: { value: number } } };
+          const far = mat.fade?.uFadeFar.value ?? Infinity;
           const sph = g.mesh.boundingSphere;
           g.mesh.visible = !sph || cam.distanceTo(sph.center) - sph.radius < far;
         }

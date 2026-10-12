@@ -73,8 +73,8 @@ export function placeWaterfalls(world: PlaceInput, rng: Rng): WaterfallData[] {
   ]);
   const at = (x: number, z: number): number => heightAt(h, x, z);
   for (const isl of world.islands) {
-    // the Research crater (TASK-400) is a bluff ring too, but too small for a fall
-    if (!bluffOf(isl) || ARCHETYPES[isl.archetype].crater) continue;
+    // Research (TASK-402b) keeps its campus walls dry: `noWaterfalls`
+    if (!bluffOf(isl) || ARCHETYPES[isl.archetype].noWaterfalls) continue;
     const r = rng.fork('island', isl.id);
     const id = isl.id + 1;
     const lots = world.lots.filter((l) => l.islandId === isl.id);

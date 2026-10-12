@@ -38,7 +38,6 @@ import { createBeam } from './night/beam.ts';
 import { createDrones } from './drones.ts';
 import { createMovers } from './movers.ts';
 import { createSkyCraft } from './sky-craft.ts';
-import { createBridges } from './bridges.ts';
 import { createWaterfalls } from './waterfalls.ts';
 import type { DirtyRegion } from '../world/edit-types.ts';
 import type { SubImageRenderer } from './gl-subimage.ts';
@@ -181,16 +180,14 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   const drones = createDrones(world, d.quality, d.scope, seed);
   if (drones.mesh) group.add(drones.mesh);
   // QA Test Factory crates on the conveyor bridges + the loop-track test cart (TASK-401)
-  // + the DevOps ore trains and cargo ships (TASK-402)
+  // + the DevOps ore trains and cargo ships (TASK-405)
   const movers = createMovers(settlement.props, d.quality, d.scope, world);
   if (movers.mesh) group.add(movers.mesh);
+  if (movers.wheels) group.add(movers.wheels);
   if (movers.ships) group.add(movers.ships);
   // hot-air balloons + airship over the archipelago (TASK-335)
   const skyCraft = createSkyCraft(world, d.quality, d.scope, seed);
   for (const m of skyCraft.meshes) group.add(m);
-  // stone viaducts between near islands (TASK-394)
-  const bridges = createBridges(world, d.quality, d.scope);
-  if (bridges.mesh) group.add(bridges.mesh);
   const clouds = createClouds(world, d.quality, d.scope);
   group.add(clouds.group);
   /** Owner render index (house or single prop) → its chimney / vent emitters (follow re-grounding, off while flooded / removed). */

@@ -50,14 +50,27 @@ describe('sky craft', () => {
     expect(minGap).toBeGreaterThan(18);
   });
 
-  it('models stay in the low-poly budget with vertex colour', () => {
-    for (const [g, max] of [
-      [buildBalloonGeometry(), 400],
-      [buildAirshipGeometry(), 400],
+  it('steampunk models stay in budget with vertex colour; lod 1 is lighter', () => {
+    for (const [g, g1, min, max] of [
+      [buildBalloonGeometry(), buildBalloonGeometry(1), 1500, 4000],
+      [buildAirshipGeometry(), buildAirshipGeometry(1), 2000, 5000],
     ] as const) {
-      expect(g.userData.tris).toBeGreaterThan(50);
+      expect(g.userData.tris).toBeGreaterThan(min);
       expect(g.userData.tris).toBeLessThan(max);
+      expect(g1.userData.tris).toBeLessThan(g.userData.tris * 0.7);
       expect(g.getAttribute('color')).toBeDefined();
+      expect(g.getAttribute('emissive')).toBeDefined();
     }
+  });
+
+  it('airship propellers carry aSpin hubs on the z axis; geometry is deterministic', () => {
+    const g = buildAirshipGeometry();
+    const spin = g.getAttribute('aSpin');
+    let spinning = 0;
+    for (let i = 0; i < spin.count; i++) if (spin.getW(i) === 1) spinning++;
+    expect(spinning).toBeGreaterThan(30);
+    expect(g.userData.hubs).toHaveLength(3);
+    const a = buildBalloonGeometry().getAttribute('color').array;
+    expect(Array.from(buildBalloonGeometry().getAttribute('color').array)).toEqual(Array.from(a));
   });
 });

@@ -5,7 +5,8 @@ import { MARKETING_PLAN } from '../content/themes/marketing.ts';
 import { StageHash } from './gen/hash.ts';
 import { generateWorld, heightAt, zoneAt, Zone, type WorldData } from './index.ts';
 
-// M14b TASK-365: the Marketing island plan (Beacon Rock sea stack), 30 seeds.
+// TASK-403: the Marketing "Media Rock" plan (Beacon Rock stack + lee terraces), 30 seeds
+// (replaces the TASK-365 sea-stack plan tests).
 const SEEDS = Array.from({ length: 30 }, (_, k) => 1000 + k * 263);
 const cache = new Map<number, WorldData>();
 const world = (seed: number): WorldData => {
@@ -17,11 +18,20 @@ const mktOf = (w: WorldData) => {
   const isl = w.islands.find((i) => i.theme === 'marketing');
   if (!isl) throw new Error('no Marketing island');
   const s = w.settlements.find((x) => x.islandId === isl.id);
+  const fx = w.fixtures.filter((f) => f.islandId === isl.id);
+  const lh = w.landmarks.find((m) => m.islandId === isl.id && m.kind === 'lighthouse');
   return {
     isl,
     s,
+    lh,
     lots: (s?.lots ?? []).map((i) => w.lots[i]),
-    fx: w.fixtures.filter((f) => f.islandId === isl.id),
+    fx,
+    of: (defId: string) => fx.filter((f) => f.defId === defId),
+    /** Shelf heights at the profile's ledge anchors (upper, middle, fair). */
+    levels: [0, 1, 2].map((k) => {
+      const a = isl.anchors[`ledge${k}`];
+      return a ? heightAt(w.height, a.x, a.z) : NaN;
+    }),
   };
 };
 function reachable(w: WorldData, start: number): Uint8Array {
@@ -55,22 +65,68 @@ function islandHash(w: WorldData, id: number): string {
     for (const q of p.points) h.float(q.x).float(q.z);
   return h.hex();
 }
+/** At least `frac` of the seeds pass `ok`. */
+function most(frac: number, ok: (w: WorldData, seed: number) => boolean): void {
+  const bad = SEEDS.filter((seed) => !ok(world(seed), seed));
+  expect(1 - bad.length / SEEDS.length, `failing seeds ${bad.join(' ')}`).toBeGreaterThanOrEqual(
+    frac,
+  );
+}
 
-describe('Marketing island plan (TASK-365), 30 seeds', () => {
-  it('the Broadcast Tower (lighthouse variant 2) is the landmark, drawn from T0', () => {
+describe('Marketing Media Rock plan (TASK-403), 30 seeds', () => {
+  it('terraces: three shelves stepping down to leeward, earth walls between them', () => {
+    for (const seed of SEEDS) {
+      const w = world(seed);
+      const { isl, levels } = mktOf(w);
+      const ctx = `seed ${seed}`;
+      const [l0, l1, l2] = levels;
+      // the stack (≈ 25 u) > upper ledge > middle ledge > fair ground > the sea
+      expect(isl.peakY - l0, ctx).toBeGreaterThan(5);
+      expect(l0 - l1, ctx).toBeGreaterThan(3.5);
+      expect(l1 - l2, ctx).toBeGreaterThan(3.5);
+      expect(l2, ctx).toBeGreaterThan(2.5);
+      // walls: cliff cells between the shelf levels
+      let walls = 0;
+      for (let i = 0; i < w.zone.length; i++)
+        if (w.islandMap[i] === isl.id + 1 && w.zone[i] === Zone.cliff) {
+          const y = w.height.data[i];
+          if (y > l2 + 1 && y < l0 - 1) walls++;
+        }
+      expect(walls, ctx).toBeGreaterThan(20);
+    }
+  });
+
+  it('the Broadcast Tower (lighthouse variant 2) is the landmark and the tallest top', () => {
     expect(THEMES.marketing.landmarkVariant.lighthouse).toBe(2);
     expect(PROP_DEFS[PROP_DEF_INDEX.lighthouse].tier).toBe(0);
     for (const seed of SEEDS) {
       const w = world(seed);
-      const { s } = mktOf(w);
+      const { s, lh, of } = mktOf(w);
       expect(
         s?.landmarks.map((i) => w.landmarks[i].kind),
         `seed ${seed}`,
       ).toEqual(['lighthouse']);
+      if (!lh) continue;
+      const top = heightAt(w.height, lh.x, lh.z) + MARKETING_PLAN.towerHeight;
+      // the antenna tower (16.3 u with its whip) and the giant screen stay below it
+      for (const f of [...of('antennaTower'), ...of('giantScreen')])
+        expect(heightAt(w.height, f.x, f.z) + 16.3, `seed ${seed} ${f.defId}`).toBeLessThan(top);
     }
   });
 
-  it('Studio Ledge: ≥ 2 lots (broadcastStudio + billboard office) in ≥ 90 %, all connected', () => {
+  it('Ad Boulevard: giant screen on the summit, the street hub (Zone.plaza), billboards and a café', () => {
+    most(0.9, (w) => {
+      const { isl, s, of } = mktOf(w);
+      const scr = of('giantScreen');
+      if (!s?.plaza || scr.length !== 1) return false;
+      if (heightAt(w.height, scr[0].x, scr[0].z) < isl.peakY - 6) return false;
+      if (zoneAt(w.height, w.zone, s.plaza.x, s.plaza.z) !== Zone.plaza) return false;
+      const cafe = of('fairBooth').some((f) => f.variant === 1);
+      return of('billboardV2').length >= 1 && cafe;
+    });
+  });
+
+  it('lots: broadcast studios + the billboard office in >= 90 %, all connected', () => {
     let ok = 0;
     const counts: number[] = [];
     for (const seed of SEEDS) {
@@ -89,65 +145,54 @@ describe('Marketing island plan (TASK-365), 30 seeds', () => {
     expect(ok / SEEDS.length).toBeGreaterThanOrEqual(0.9);
   });
 
-  it('Clifftop Stage: quad (plaza) with the stage facing it and banner poles; Landing kiosk', () => {
-    let stages = 0;
-    for (const seed of SEEDS) {
-      const w = world(seed);
-      const { s, fx } = mktOf(w);
-      const ctx = `seed ${seed}`;
-      expect(s?.plaza, ctx).not.toBeNull();
-      if (!s?.plaza) continue;
-      expect(zoneAt(w.height, w.zone, s.plaza.x, s.plaza.z), ctx).toBe(Zone.plaza);
-      const stage = fx.find((f) => f.defId === 'stage');
-      if (stage) {
-        stages++;
-        // front (+z = rotY) toward the quad centre
-        const dx = s.plaza.x - stage.x;
-        const dz = s.plaza.z - stage.z;
-        const d = Math.hypot(dx, dz);
-        expect((Math.cos(stage.rotY) * dx + Math.sin(stage.rotY) * dz) / d, ctx).toBeGreaterThan(
-          0.99,
-        );
-        expect(fx.filter((f) => f.defId === 'bannerPole').length, ctx).toBeGreaterThanOrEqual(1);
-      }
-      const kiosk = fx.find((f) => f.defId === 'megaphoneKiosk');
-      expect(kiosk, `${ctx} kiosk`).toBeDefined();
-      if (kiosk) expect(heightAt(w.height, kiosk.x, kiosk.z), ctx).toBeGreaterThan(0.3);
-      expect(s.docks.length, ctx).toBe(1);
-    }
-    expect(stages / SEEDS.length).toBeGreaterThanOrEqual(0.9);
+  it('media campus on the ledges: antenna tower, a layered office, a shop', () => {
+    most(0.9, (w) => {
+      const { levels, of } = mktOf(w);
+      const onLedge = (f: { x: number; z: number }): boolean => {
+        const y = heightAt(w.height, f.x, f.z);
+        return levels.slice(0, 2).some((l) => Math.abs(y - l) < 1.6);
+      };
+      const ant = of('antennaTower');
+      return (
+        ant.length === 1 &&
+        onLedge(ant[0]) &&
+        of('mediaOffice').length >= 1 &&
+        of('mediaOffice').every(onLedge) &&
+        of('mediaShop').length >= 1 &&
+        of('mediaShop').every(onLedge)
+      );
+    });
   });
 
-  it('two billboards on ledges face the archipelago centre, tops below the tower', () => {
-    let two = 0;
-    for (const seed of SEEDS) {
-      const w = world(seed);
-      const { isl, fx } = mktOf(w);
-      const lh = w.landmarks.find((m) => m.islandId === isl.id && m.kind === 'lighthouse');
-      if (!lh) continue;
-      const top = heightAt(w.height, lh.x, lh.z) + MARKETING_PLAN.towerHeight;
-      const cx = w.islands.reduce((a, o) => a + o.cx, 0) / w.islands.length;
-      const cz = w.islands.reduce((a, o) => a + o.cz, 0) / w.islands.length;
-      const bbs = fx.filter((f) => f.defId === 'billboardV2');
-      if (bbs.length === MARKETING_PLAN.billboard.count) two++;
-      for (const b of bbs) {
-        const ctx = `seed ${seed} billboard @${b.x.toFixed(1)},${b.z.toFixed(1)}`;
-        const y = heightAt(w.height, b.x, b.z);
-        expect(y, ctx).toBeGreaterThan(0.3);
-        expect(y + MARKETING_PLAN.billboard.height, ctx).toBeLessThan(top);
-        const d = Math.hypot(cx - b.x, cz - b.z);
-        const facing = (Math.cos(b.rotY) * (cx - b.x) + Math.sin(b.rotY) * (cz - b.z)) / d;
-        expect(facing, ctx).toBeGreaterThan(0.999);
-      }
-    }
-    expect(two / SEEDS.length).toBeGreaterThanOrEqual(0.9);
+  it('fair ground on the low shelf: ferris wheel, stage, tents and booths round a paved disc', () => {
+    most(0.9, (w) => {
+      const { levels, of } = mktOf(w);
+      const low = (f: { x: number; z: number }): boolean =>
+        Math.abs(heightAt(w.height, f.x, f.z) - levels[2]) < 1.6;
+      const wheel = of('ferrisWheel');
+      const stage = of('stage');
+      const games = of('fairBooth').filter((f) => f.variant === 0);
+      return (
+        wheel.length === 1 &&
+        low(wheel[0]) &&
+        stage.length === 1 &&
+        low(stage[0]) &&
+        of('fairTent').length >= 2 &&
+        of('fairTent').every(low) &&
+        games.length >= 1
+      );
+    });
   });
 
-  it('leftover audit: no keeper cottage, ad buoys instead of plain buoys, lawn on the summit', () => {
+  it('landing: one pier, the megaphone kiosk on land; ad buoys, no keeper cottage', () => {
     for (const seed of SEEDS) {
       const w = world(seed);
-      const { isl, fx } = mktOf(w);
+      const { isl, s, of, fx } = mktOf(w);
       const ctx = `seed ${seed}`;
+      expect(s?.docks.length, ctx).toBe(1);
+      const kiosk = of('megaphoneKiosk');
+      expect(kiosk.length, `${ctx} kiosk`).toBe(1);
+      expect(heightAt(w.height, kiosk[0].x, kiosk[0].z), ctx).toBeGreaterThan(0.3);
       const defs = w.lots.filter((l) => l.islandId === isl.id).map((l) => l.defId);
       for (const d of ['cottage', 'stiltHut', 'logCabin', 'towerHouse', 'barn'])
         expect(defs, ctx).not.toContain(d);
@@ -155,8 +200,14 @@ describe('Marketing island plan (TASK-365), 30 seeds', () => {
         fx.map((f) => f.defId),
         ctx,
       ).not.toContain('buoy');
-      expect(fx.filter((f) => f.defId === 'adBuoy').length, ctx).toBeGreaterThanOrEqual(1);
-      // the stack top reads as brand lawn, not bare rock
+      expect(of('adBuoy').length, ctx).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it('the summit reads as brand lawn, not bare rock', () => {
+    for (const seed of SEEDS) {
+      const w = world(seed);
+      const { isl } = mktOf(w);
       let lawn = 0;
       let top = 0;
       const n = w.height.n;
@@ -165,7 +216,7 @@ describe('Marketing island plan (TASK-365), 30 seeds', () => {
         top++;
         if (w.zone[i] === Zone.grass || w.zone[i] === Zone.meadow) lawn++;
       }
-      expect(lawn / Math.max(1, top), ctx).toBeGreaterThan(0.4);
+      expect(lawn / Math.max(1, top), `seed ${seed}`).toBeGreaterThan(0.4);
     }
   });
 
@@ -178,9 +229,9 @@ describe('Marketing island plan (TASK-365), 30 seeds', () => {
     });
     expect(got).toMatchInlineSnapshot(`
       [
-        "f634576b65a6a756",
-        "7587e739b19cd86f",
-        "78b40b9d66b59a82",
+        "fe7bc47816215466",
+        "7166e186a2b409a2",
+        "b42ae1fd52e33053",
       ]
     `);
   });

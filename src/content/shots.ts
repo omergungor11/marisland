@@ -54,13 +54,13 @@ export interface ShotPreset {
 
 /** Encoded edit logs (seed 1001) of the `edit` set; regenerate with `encodeLog` when the codec changes. */
 export const EDIT_LOGS = {
-  hill: 'AekHAAgA5HbsKoAFgA4AwAE_AAAAwAFAAAAA_wFAAAAAgAEfAAAAPz-_Av8FAwAggAL_BQQAH58CAQ',
+  hill: 'AekHAAgA5HbaJoAFgA4AwAE_AAAAwAFAAAAA_wFAAAAAgAEfAAAAPz-_Av8FAwAggAL_BQQAH58CAQ',
   flood:
-    'AekHABAB5H6sOcADgAwBgAKAAgAAAYABvwIAAAH_AYAFAAABwAP_AQAAAb8IwAcAAAHAAkAAAAHAAr8BAAABf_8IAAABgAKAAgAAAYABvwIAAAH_AYAFAAABwAP_AQAAAb8IwAcAAAHAAkAAAAHAAr8BAAA',
+    'AekHABAB5H6aNcADgAwBgAKAAgAAAYABvwIAAAH_AYAFAAABwAP_AQAAAb8IwAcAAAHAAkAAAAHAAr8BAAABf_8IAAABgAKAAgAAAYABvwIAAAH_AYAFAAABwAP_AQAAAb8IwAcAAAHAAkAAAAHAAr8BAAA',
   meadow:
-    'AekHBQRwaW5lC3JvY2tDbHVzdGVyBmZsb3dlcgRidXNoDWdpYW50TXVzaHJvb20VA_BupGmABLQCBAAAAAEEgAKgAb8BATUAAMUBlwGxEYoCATUCAL8BmQH1B_cBATUAAGxlkAKGAgE1AAClAo4D3g-eAgA1AAGOBLsD_RfpAQA1AAGZApQEiBztAQE1AAF88QPrDvwBATUAASuWA60Z3wEBNQACJN0B8ASMAgA1AAKGAQTGEIYCADUAAgc8zxr7AQA1AAIid-cX2gEBNQACUWLJEPQBATUAA1Nl3RX7AQE1AAPqAZABsRKKAgA1AAPFAUyJGJMCADUAA64B2wG9Bo8CATUABEfmAf4ajgIA',
+    'AekHBQRwaW5lC3JvY2tDbHVzdGVyBmZsb3dlcgRidXNoDWdpYW50TXVzaHJvb20VA_BukmWABLQCBAAAAAEEgAKgAb8BATUAAMUBlwGxEYoCATUCAL8BmQH1B_cBATUAAGxlkAKGAgE1AAClAo4D3g-eAgA1AAGOBLsD_RfpAQA1AAGZApQEiBztAQE1AAF88QPrDvwBATUAASuWA60Z3wEBNQACJN0B8ASMAgA1AAKGAQTGEIYCADUAAgc8zxr7AQA1AAIid-cX2gEBNQACUWLJEPQBATUAA1Nl3RX7AQE1AAPqAZABsRKKAgA1AAPFAUyJGJMCADUAA64B2wG9Bo8CATUABEfmAf4ajgIA',
   mixed:
-    'AekHBQdjb3R0YWdlBHBhbG0GZmxvd2VyC2xhbnRlcm5Qb3N0BWJlbmNoGAaVyn8Gk8p_Bu_AfwKAPoAwoAKAIAIAAAAAAwAAYMsdBAAAnwEBAsABgAJfzBMCYAAA_wkCAAAAAAJgAACZBwIAAAAAAlAAH8sBAgAAAAADrwEAYJkBBCAAPwMVAADfAq8ChwOAAhUAAcABcOMOmgIVAAG_As8B7BKNAhUAAuAB8AHEAYACFQACPxDPBoACFQACPx_bC4ACFQADoAFPAIACFQAEzwEwhwOAAg',
+    'AekHBQdjb3R0YWdlBHBhbG0GZmxvd2VyC2xhbnRlcm5Qb3N0BWJlbmNoFgatzn8CgD7uK6ACgCACAAAAAAMAAGDLHQQAAJ8BAQLAAYACX8wTAmAAAP8JAgAAAAACYAAAmQcCAAAAAAJQAB_LAQIAAAAAA68BAGCZAQQgAD8DFQAA3wKvAocDgAIVAAHAAXDjDpoCFQABvwLPAewSjQIVAALgAfABxAGAAhUAAj8QzwaAAhUAAj8f2wuAAhUAA6ABTwCAAhUABM8BMIcDgAI',
 } as const;
 
 /** Department themes on seed 1001 (findIsland matches the theme id) with their display names. */
@@ -79,18 +79,19 @@ const CAMPUS_THEMES = [
  * spot (life agent's TASK-383 picks; Coding, DevOps, Design re-aimed at the bot clusters in the
  * M14c verification), clear of canopies. Re-pin when the layout changes. TASK-396 (the M17b bluffs
  * raised Coding ≈ 4 u): Coding looks over the dev office and the pod beside it (typing pair,
- * walking bots, code screens; the old eye saw a tree and aimed under the plateau, 2.8 %). TASK-402:
+ * walking bots, code screens; the old eye saw a tree and aimed under the plateau, 2.8 %). TASK-405:
  * DevOps looks over the harbour quay — the build-hall rack sheds, crates on the CI/CD belt into the
  * container yard, yard bots (the old west-shore rack yard moved onto the harbour shelf).
  */
 const LIVE_CAMS: Record<(typeof CAMPUS_THEMES)[number][0], string> = {
-  hq: '66,14,-168,86,1.4,-171',
-  qa: '-167.7,23,-189.3,-156,9,-177',
-  design: '-144,30,82,-151,17,100',
-  coding: '105,17,13,94,11,23',
-  research: '-152,12,232,-133,0.5,222',
-  devops: '-100,10,-16,-86,2.5,-31',
-  marketing: '8,37,196,-6,25,182',
+  hq: '66,14,-184.54,86,1.4,-187.54',
+  qa: '-167.7,23,-205.84,-156,9,-193.54',
+  design: '-144,30,65.46,-151,17,83.46',
+  coding: '105,17,-3.54,94,11,6.46',
+  // TASK-402b: over the glasshouse row and the base pods (bots at the terrariums, mast and pods)
+  research: '-104,15,236,-118,8,226',
+  devops: '-80,7.5,-24,-70,2.6,-36',
+  marketing: '-60,15,179.46,-36,6,171.46',
 };
 
 /** Warm-up per live campus (s; default 6): picked for the most bots in motion near the target. */
@@ -100,30 +101,35 @@ const LIVE_SIMT: Partial<Record<(typeof CAMPUS_THEMES)[number][0], number>> = { 
 const LIVE_CROP: [number, number, number, number] = [0.15, 0.1, 0.85, 0.9];
 
 /** W7 camera (raw, seed 1001 Coding; TASK-380), re-pin when that layout changes. */
-const W7_CAM = '45,20,20,95,13,40';
+const W7_CAM = '45,20,3.46,95,13,23.46';
 
-/** D-devops-* (raw, seed 1001 Ember Works; TASK-402), re-pin when that layout changes. */
-const DEVOPS_CAM = '-128,92,38,-56,2,-50';
+/** D-devops-* (raw, seed 1001 Ember Works; TASK-405), re-pin when that layout changes. */
+const DEVOPS_CAM = '-128,92,21.46,-56,2,-66.54';
 /** D-devops-terraces (raw, seed 1001): the data center terraces from the sea north-west of them. */
-const DEVOPS_TERRACE_CAM = '-122,30,-112,-80,8,-84';
+const DEVOPS_TERRACE_CAM = '-122,30,-128.54,-80,8,-100.54';
 /** D-devops-harbour (raw, seed 1001): the container yard, CI/CD belt, pier and a cargo ship. */
-const DEVOPS_HARBOUR_CAM = '-54,20,6,-80,2,-24';
+const DEVOPS_HARBOUR_CAM = '-54,20,-10.54,-80,2,-40.54';
 
-/** D-campus-research close-up (raw, seed 1001 Biodome Lab; TASK-400), re-pin when that layout changes. */
-const RESEARCH_CLOSE_CAM = '-143,13,246,-138.5,3,222.5';
+/** W9 Research hero (raw, seed 1001 Observatory University; TASK-402b), re-pin when the layout changes. */
+const W9_CAM = '-66,21,203,-126,15,221';
+
+/** W14 campus at golden hour (raw, seed 1001; TASK-402b): observatory, quad and gardens. */
+const W14_CAM = '-72,46,252,-131,5,226';
 
 /**
  * D-desk camera (raw `x,y,z,tx,ty,tz`), re-pin when the seed 1001 layout changes (TASK-396: +4 u
- * for the raised Coding plateau, ground ≈ 9.5).
+ * for the raised Coding plateau, ground ≈ 9.5). TASK-403: swung 18° toward the open sea (same
+ * devPod and desks) — the old look had the Media Rock's fair and trees at the frame's edge, and
+ * every per-island LOD0 group whose bounds touch the frustum costs a call (202 > the low 170).
  */
-const DESK_CAM = '95.8,12.1,17.3,91.5,10.5,20';
+const DESK_CAM = '94.1,13,0.5,91.5,10.2,3.46';
 
 /**
  * Hearthholm beach macro (raw, seed 1001; D-macro and W8, TASK-396): the `macro-beach` orbit now
  * faces the clocktower's wall (TASK-393 height), so a fixed T3 look west from the HQ quad over the
  * coffee kiosk, flower bed and crab to the reeds, foam line and sea. Re-pin when the layout changes.
  */
-const MACRO_CAM = '96,7,-170.5,85,2.5,-166';
+const MACRO_CAM = '91.8,7.4,-186.3,82.3,2,-182.2';
 
 export const SHOT_PRESETS: readonly ShotPreset[] = [
   // ---- bible wow shots (1920×1080, medium quality)
@@ -172,7 +178,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // raw T1 look from the north-west at 140 u: Beacon Rock in the left third, the whole lighthouse
     // against the night sky, two sea stacks and the lit landing; `simt` 3 puts the beam broadside
     seed: 2024,
-    cam: '-52.7,57.5,-49.5,35,26,-154',
+    cam: '65.21,57.5,13.6,152.91,26,-90.9',
     time: 21.5,
     simt: 3,
     quality: 'medium',
@@ -239,9 +245,11 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   },
   {
     id: 'W9',
-    title: 'Lonely Palm',
+    title: 'Observatory University',
+    // TASK-402b (was the Lonely Palm / Biodome hero): a low look from the east-north-east, the
+    // summit observatory against the evening sky over the base pods, glasshouses and dishes
     seed: 1001,
-    cam: 'island:Lonely Palm',
+    cam: W9_CAM,
     time: 18.75,
     simt: 5,
     quality: 'medium',
@@ -278,35 +286,34 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     sets: ['wow'],
   },
   {
-    id: 'W12',
-    title: 'Viaduct',
-    // M17b (TASK-394): the stone viaduct DevOps → QA Test Factory (seed 1001, since TASK-401 made
-    // QA a plateau), seen broadside from ≈ 170 u out at sea north-west of it: factory tower left,
-    // volcano right. Closer looks pull both campuses to T2 (310–530 calls on medium), so it stays
-    // this far out. Raw cam; re-pin when the seed 1001 layout changes.
-    seed: 1001,
-    cam: '-227,22,-3,-104,6,-122',
-    time: 16,
-    simt: 5,
-    quality: 'medium',
-    width: 1920,
-    height: 1080,
-    sets: ['wow'],
-  },
-  {
     id: 'W13',
     title: 'Falls',
     // M17b (TASK-395): from the sea, a Mossgrove waterfall off the bluff lip into its foam disc
     // and mist (seed 1001, raw `eye → target`; re-pin when the layout changes); the flow scrolls
     // between the two frames
     seed: 1001,
-    cam: '-82.2,13,113.1,-114,4.1,91',
+    cam: '-82.2,13,96.56,-114,4.1,74.46',
     time: 10.5,
     simt: 5,
     quality: 'medium',
     width: 1920,
     height: 1080,
     deltaT: 0.5,
+    sets: ['wow'],
+  },
+  {
+    id: 'W14',
+    title: 'Campus Golden Hour',
+    // TASK-402b: Observatory University from the east at golden hour, over the base pods and the
+    // glasshouses to the parterre garden, the quad and the summit observatory with its dishes;
+    // open sea behind (no other campus in frame, D-028 calls)
+    seed: 1001,
+    cam: W14_CAM,
+    time: 17.75,
+    simt: 5,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
     sets: ['wow'],
   },
 
@@ -354,7 +361,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     seed: 1001,
     // TASK-396: the `shore` orbit looks through the taller clocktower; a raw 40 u look west over
     // the kiosk sandbar, its foam bands and the ferry pier (tower just out of frame, right)
-    cam: '116.6,21,-155,82,1,-155',
+    cam: '116.6,21,-171.54,82,1,-171.54',
     time: 14,
     simt: 2,
     deltaT: 2,
@@ -481,9 +488,9 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: `D-campus-${theme}`,
     title: `Campus · ${name}`,
     seed: 1001,
-    // Research (TASK-400): the village fit looks straight down on the tiny crater, so a raw
-    // T2/T3 close-up from the cove side (seed 1001: domes in the bowl, vessel at the pier)
-    cam: theme === 'research' ? RESEARCH_CLOSE_CAM : `village:${theme}`,
+    // TASK-402b: the Research campus is big enough for the village fit again (was a raw cam on
+    // the TASK-400 crater)
+    cam: `village:${theme}`,
     time: 14,
     simt: 2,
     sets: ['dev'],
@@ -492,7 +499,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-desk',
     title: 'Desk · Coding',
     seed: 1001,
-    // seed 1001 devPod (lot 12, door facing SE, seated workers on low and medium): from outside its front, ~6 u (T3)
+    // seed 1001 devPod at (91.1, 20.4) (door facing SE, seated workers on low and medium): from outside its front, ~6 u (T3)
     cam: DESK_CAM,
     time: 14,
     simt: 2,
@@ -503,12 +510,66 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-pool-ducks',
     title: 'Pool · duck family (Coding)',
     seed: 1001,
-    // seed 1001: the family paddles on the pool centred (110.4, 21.1), not its twin at (101.5, 12.5); steep T3 look down
-    cam: '110.4,15,25.5,110.4,5.4,21.1',
+    // seed 1001: the family paddles on the pool centred (110.4, 4.6), not its twin at (101.5, -4); steep T3 look down
+    // (TASK-402b: the seed 1001 layout moved 16.54 u in −z)
+    cam: '110.4,15,8.96,110.4,5.4,4.56',
     time: 11,
     simt: 3,
     // low has no ducks (LIFE_PLAN.low.ducks = 0), the dev set defaults to low
     quality: 'high',
+    sets: ['dev'],
+  },
+  // Sky craft close looks (TASK-404). Raw cams aimed at the closed-form orbit position at simt 2
+  // (seed 1001, medium): balloon 0 at (66.4, 60.6, -7.1), the airship at (-144.4, 96, 54.5) heading
+  // ≈ +z, seen from its +x flank. Re-pin if `skyCraftPaths` or the seed layout changes.
+  {
+    id: 'D-sky-craft',
+    title: 'Sky craft · steampunk balloon (day)',
+    seed: 1001,
+    cam: '90.4,63,19,66.4,58,-7.1',
+    time: 12,
+    simt: 2,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-sky-basket',
+    title: 'Sky craft · basket, burner and sandbags',
+    seed: 1001,
+    cam: '86,67,16,66.4,51.5,-7.1',
+    time: 12,
+    simt: 2,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-sky-airship',
+    title: 'Sky craft · steampunk airship (day)',
+    seed: 1001,
+    cam: '-161.6,88,90,-146,94,54',
+    time: 15,
+    simt: 2,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-sky-night',
+    title: 'Sky craft · lit windows and burner flame (night)',
+    seed: 1001,
+    cam: '-161.6,88,90,-146,94,54',
+    time: 22,
+    simt: 2,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-sky-balloon-night',
+    title: 'Sky craft · burner flame (night)',
+    seed: 1001,
+    cam: '90.4,63,19,66.4,58,-7.1',
+    time: 22,
+    simt: 2,
+    quality: 'medium',
     sets: ['dev'],
   },
   {
@@ -524,7 +585,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   {
     id: 'D-devops-campus',
     title: 'Ember Works · DevOps',
-    // TASK-402: high from the south-west so the three facilities share the frame: data center
+    // TASK-405: high from the south-west so the three facilities share the frame: data center
     // terraces (left), the harbour quay (centre), the foundry step (right, past the cone)
     seed: 1001,
     cam: DEVOPS_CAM,
@@ -545,7 +606,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   {
     id: 'D-devops-harbour',
     title: 'Deployment harbour · DevOps',
-    // TASK-402: T2 over the quay: gantry crane, stacks, control tower, rack sheds + belt, ships
+    // TASK-405: T2 over the quay: gantry crane, stacks, control tower, rack sheds + belt, ships
     seed: 1001,
     cam: DEVOPS_HARBOUR_CAM,
     time: 10,
@@ -555,11 +616,34 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   {
     id: 'D-devops-night',
     title: 'Ember Works night · DevOps',
-    // TASK-402: furnace mouths, lava troughs, forge coals, tower cab and cottage windows lit
+    // TASK-405: furnace mouths, lava troughs, forge coals, tower cab and cottage windows lit
     seed: 1001,
     cam: DEVOPS_CAM,
     time: 22,
     simt: 6,
+    sets: ['dev'],
+  },
+  {
+    id: 'D-marketing-campus',
+    title: 'Media Rock terraces · Marketing',
+    // TASK-403: from the lee sea, the stack stepping down — summit boulevard and giant screen,
+    // the campus ledges (antenna, offices, shops), the fair ground with the ferris wheel. Raw
+    // cam on the seed 1001 layout; re-pin when it changes.
+    seed: 1001,
+    cam: '-70,46,189.46,-14,8,163.46',
+    time: 10.5,
+    simt: 4,
+    sets: ['dev'],
+  },
+  {
+    id: 'D-marketing-night',
+    title: 'Media Rock night · Marketing',
+    // TASK-403: fair lights, the wheel's pods and rim bulbs, tent lanterns, the giant screen and
+    // the antenna lamps on the window / emissive path
+    seed: 1001,
+    cam: '-58,24,185.46,-32,6,169.46',
+    time: 21.5,
+    simt: 4,
     sets: ['dev'],
   },
   {
@@ -663,7 +747,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'E-panel',
     title: 'Edit panel · place',
     seed: 1001,
-    cam: '109.1,70,-86.6,95.1,6,-186.6',
+    cam: '109.1,70,-103.14,95.1,6,-203.14',
     time: 15,
     simt: 2,
     width: 1280,
@@ -677,7 +761,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'E-hill',
     title: 'Hill behind the village',
     seed: 1001,
-    cam: '109.1,70,-86.6,95.1,6,-186.6',
+    cam: '109.1,70,-103.14,95.1,6,-203.14',
     time: 15,
     simt: 2,
     edit: EDIT_LOGS.hill,
@@ -697,7 +781,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'E-meadow',
     title: 'Meadow + 19 props',
     seed: 1001,
-    cam: '71.5,23,69.1,59.5,6,37.1',
+    cam: '71.5,23,52.56,59.5,6,20.56',
     time: 14,
     simt: 2,
     edit: EDIT_LOGS.meadow,
@@ -707,7 +791,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'E-mixed',
     title: 'Plateau garden + slipway',
     seed: 1001,
-    cam: '-90.1,30,-194.2,-131,6,-187',
+    cam: '-90.1,30,-210.74,-131,6,-203.54',
     time: 15,
     simt: 2,
     edit: EDIT_LOGS.mixed,

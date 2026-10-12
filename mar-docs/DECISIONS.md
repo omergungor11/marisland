@@ -2,7 +2,7 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
-## D-046: DevOps "Ember Works" — cone-foot shelves with a harbour, a foundry and data center terraces (TASK-402) — 2026-10-11
+## D-048: DevOps "Ember Works" — cone-foot shelves with a harbour, a foundry and data center terraces (TASK-405) — 2026-10-11
 
 **Decision**: Emberpeak keeps its roster slot, diameter roll, reach and cone, and grows three flat shelves at
 the cone foot (`ARCHETYPES.emberpeak.shelves`, land ≤ 1.26 r inside the 1.35 r reach): a low harbour shelf on
@@ -17,12 +17,14 @@ ore trains (crate carts on the rails) and two cargo ships per DevOps pier on a s
 (`render/harbour-routes.ts`, a second movers mesh), time-driven; ships hide past 260 u, trains past 230 u.
 **Rationale**: user request (2026-10-11): more land and a DevOps facility (data center + harbour + foundry) on
 the volcano. Shelves on bluff walls keep the cone the hero silhouette; one prefab per facility and one variant
-per def keep the draw calls (W11 216 → 230, W5 242 → 231); pads on different shelf levels must not overlap
+per def keep the draw calls; pads on different shelf levels must not overlap
 their relaxation bounds or `applyPads` levels the step away (`levelSafe` in `plans/devops-works.ts`). The bigger
 island's per-island LOD0 groups (bounding sphere = the whole island) reached into far frustums (D-macro 155 → 173
 over the low budget 170) although every instance was dithered out: the batcher now skips the draw of a visible
-LOD0 group whose sphere lies wholly past its def's fade-out distance (pixel-identical: D-macro, W8, W11 0 px
-changed; D-macro 161, D-desk 166 → 148, W10 223 → 213).
+group (LOD0 per island and LOD1) whose sphere lies wholly past its material's fade-out distance
+(pixel-identical: D-macro, W5, W8, W11 0 px changed). Measured on medium after merging main (ff8c010 → this
+branch): W11 302 → 298, W5 232 → 273, D-macro (low) 114 → 128; D-sky-* 344–360 → 338–341 (over 300 on main
+already).
 **Density pass** (same day): the quay is dressed by the plan (paved quay is a blocked scatter zone): loose
 `containerRow` stacks, `fuelTank` pairs and `forklift`s first, then crate / cable-spool piles (existing defs and
 variants), lamp posts on the quay edge; a lane pier root → yard and an 8 u apron round the pier root stay clear and
@@ -30,10 +32,59 @@ quay stock never blocks the footpath grid. Cottage lodges and rack sheds (fixtur
 shelves; a second steam main feeds the furnaces. D-devops-campus is a high south-west view with all three
 facilities, D-devops-terraces shows the data center levels.
 **Impact**: 0 new programs. New defs: containerYard, foundry, containerRow (T0), smithy, railTrack, fuelTank,
-forklift (T2); the lodges reuse `cottage` (variant 0). Other islands' terrain, zones, lot positions, landmarks, fixtures, docks and scatter are
-unchanged; what still moves with the DevOps plan is index-coupled: lot roof variants (`assignLotVariants` hashes
-the global lot index), path lanterns (every 5th global path node), the global ground-cover cap order in scatter,
-and the viaduct ends (D-045 removes those). W5, D-devops-* and L-live-devops look at the new campus.
+forklift (T2); the lodges reuse `cottage` (variant 0). Other islands' terrain, zones, lot positions, landmarks,
+fixtures and docks are unchanged; still index-coupled to the DevOps plan: path lanterns (every 5th global path
+node) and the global ground-cover cap order in scatter (lot roof variants are per island since D-047). W5, D-devops-* and L-live-devops look at the new campus.
+
+## D-047: Marketing "Media Rock" — Beacon Rock lee terraces, shelf-bound pads, per-island roof keys — 2026-10-11
+
+**Decision** (TASK-403): Beacon Rock keeps its roster slot, diameter roll, reach (2.35 r), sea stacks and the
+sheer windward cliff, but the stack moves 0.12 r windward and narrows (× 1/1.1) and its lee side steps down in
+three nested shelves (`ARCHETYPES.beaconrock.terraces`: upper ledge ≈ 0.64, middle ≈ 0.4, fair ground ≈ 0.17 of
+the stack top, bands 12 / 10 / 14 u × clamp(r / 24, 0.9, 1.2), earth walls tagged cliff, a beach ramp in the
+landing cove). The Marketing planner builds the Ad Boulevard on the summit (tower moved to the windward lip, a
+red-tiled street to a double-sided giant screen on the lee rim, billboards, flags, a café, the studio and the
+billboard office), the media campus on the ledges (antenna tower, layered media offices, photo studio / print
+shop) and the fair ground (paved disc, ferris wheel, stage, tents, game booths); stairs climb the walls hub to
+hub. Flatten pads on a terraced island leave ground > `padBreak` (2.5 u) off their level alone and do not relax
+toward pads on another shelf. `assignLotVariants` hashes a lot's index within its island (+ islandId · 4096),
+not its global index. The ferris wheel rotor is a mover (`render/movers.ts`, own InstancedMesh, 36 s per turn,
+drawn at every distance, no shadow pass).
+**Rationale**: user request (three directions combined into one island). Shelves in u keep room for buildings on
+the smallest roll (r ≈ 20). Without the pad gate, pads on neighbouring shelves relaxed to one height and cut the
+walls. The global roof key reshuffled every later island's roof colours whenever one island's lot count changed
+(the world-side twin of D-044).
+**Impact**: layout hash unchanged; height / zone / sites / routes / props hashes change (re-pinned). Other islands'
+heights, zones, lots (but their roof variants), landmarks, fixtures, paths, docks, scatter and waterfalls are
+unchanged; islands after Marketing get new roof variants once (HQ, the first island, keeps its own). W11 +15 draw
+calls (231), 0 new programs; L-live-marketing re-aimed at the fair. Close-ups pay one call per (def, variant)
+LOD0 group whose bounds touch the frustum, so the island trims its group count: no contact blob under the
+plinth / deck structures, `scatterOff` bush + rockCluster, bannerPole one variant, the 2-variant shop / booth
+share one LOD1. D-desk (Coding, low) still saw the fair at its edge (202 > 170): DESK_CAM swung 18° to sea.
+
+## D-046: Research becomes "Observatory University" on a 52–58 u terraced campus hill — 2026-10-11
+
+**Decision** (TASK-402b, supersedes D-042): Lonely Palm (Research) grows from the 17–21 u crater to a 52–58 u
+campus hill (`ARCHETYPES.lonelypalm.campusHill`, reachScale 1.06, bluff walls 4.2–4.8 u, summit 12–13.2 u): a lawn
+plateau with a campus terrace and a summit plateau joined by lawn banks, two promontories and the leeward cove.
+`planResearch` builds the summit observatory, a paved quad (fountain, library, faculty halls, campus tower,
+statues), a hedge-parterre garden (3×3 or 4×2 with the armillary sphere, topiaries, beds, pergolas), a
+terrarium row, radio dishes on the spur, a research base (lab pods, small dish, weather mast), sculptures
+on the avenues and the cove pier with the research vessel (numbers: `RESEARCH_SITE`). Research keeps no
+waterfalls (`noWaterfalls`) and no viaduct landing; its height / colour classes stay `flat` / `sand`.
+Worldgen gains three generic hooks: pad level groups / steps (`Pad.group`, `Pad.step`: districts keep
+their own level instead of one relaxed plateau), pads never lifting the samples a pier crosses, and
+shore-limited slope cliffs (`slopeCliffMaxShore`, `cliffSlope`).
+**Rationale**: user request (2026-10-11): more land, a university feel, a big telescope, terrariums,
+wide gardens, research bases and science sculptures. 52–58 u is the largest size whose reach still keeps
+Research the last island the layout places, so most seeds only re-centre: seed 1001 moves every other
+island by −16.54 u in z (raw cams and edit logs translated); 2024 and 5005 re-roll.
+**Impact**: W9 is the Observatory University hero (raw cam, 18:45); new W14 "Campus Golden Hour"
+(17:45). The hero framing (`FRAMING.hero`, D13) no longer applies to any generated island. W12's
+viaduct pair changed with the seed 1001 layout (the preset is retired with D-045). The medium draw-call
+budget goes 255 → 300: the campus sits in the W11 postcard foreground with ≈ 20 instanced LOD1 groups
+(+ their shadow pass), 216 → 289 calls; every other wow / ci shot stays ≤ 237 (medium) / ≤ 170 (low).
+Research ambient worker slots 5 → 9.
 
 ## D-045: Viaducts (TASK-394) removed — 2026-10-11
 

@@ -2,14 +2,14 @@
  * DevOps island plan (Emberpeak volcano; M14b §2.3, TASK-364). The archetype supplies the cone,
  * the crater and the lee hot-spring terrace; the theme builds on them:
  * - Geothermal Plant: the hot spring becomes the cooling pool, two cooling towers beside it;
- * - Terraced Data Center (TASK-402): dataCenter lots on the archetype's two `datacenter` shelf
+ * - Terraced Data Center (TASK-405): dataCenter lots on the archetype's two `datacenter` shelf
  *   levels (concrete `Zone.plaza` written on every pad, `terrace` districts; devops-works.ts);
  * - Ops quad: the settlement plaza beside a terrace, at its level (network hub);
  * - Antenna Ridge: 2–3 antennaMast lots high on the rim shoulders;
- * - Rack Yard: rackShed lots + rackRow fixtures by the pier (on the harbour quay since TASK-402);
+ * - Rack Yard: rackShed lots + rackRow fixtures by the pier (on the harbour quay since TASK-405);
  * - Pipeline: a 'pipe' polyline from the plant to the nearest data center, and a steam main from
  *   a vent high on the cone down to a cooling tower;
- * - "Ember Works" (TASK-402, devops-works.ts): the deployment harbour (container yard, CI/CD
+ * - "Ember Works" (TASK-405, devops-works.ts): the deployment harbour (container yard, CI/CD
  *   belt, paved quay), the lava foundry (furnaces, rail line, smithies, lodges), quad lodges.
  * Every random decision draws from labelled forks of `rng`; tuning lives in DEVOPS_SITE.
  */
@@ -130,7 +130,7 @@ export const planDevops: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
     rowboats: boats.int(S.dock.rowboats[0], S.dock.rowboats[1]),
     sailboats: 0,
   });
-  // TASK-402: the container yard takes the level quay first, the rack sheds fit around it
+  // TASK-405: the container yard takes the level quay first, the rack sheds fit around it
   const containers = placeContainerYard(ctx, isl, plan);
   const yard = site ? placeYard(ctx, isl, site.root, rng.fork('yard'), sIdx, offTerraces) : null;
   if (yard) {
@@ -138,7 +138,7 @@ export const planDevops: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
     for (const li of yard.lots) linkLot(ctx, plan, li);
   }
   for (const li of masts) linkLot(ctx, plan, li);
-  // TASK-402: CI/CD belt + paved quay, lava foundry, worker lodges by the quad
+  // TASK-405: CI/CD belt + paved quay, lava foundry, worker lodges by the quad
   finishHarbour(ctx, isl, containers, yard?.lots ?? [], site?.root ?? null, rng.fork('quay'));
   const furnaces = placeFoundry(ctx, isl, plan, rng.fork('foundry'));
   if (quad) placeQuadLodges(ctx, isl, quad, rng.fork('lodges'));
@@ -254,7 +254,7 @@ function placeQuad(
     const level = t ? padLevel(ctx, isl, rectShape(t.x, t.z, t.rotY, t.w, t.d)) : 0;
     return bestSample(ctx, isl, t ?? plant[0], R, (p, i) => {
       if (ctx.sdf[i] < r + 2) return Infinity;
-      // TASK-402: the harbour quay is the container yard's, not the ops quad's
+      // TASK-405: the harbour quay is the container yard's, not the ops quad's
       if (port && dist(p, port) < S.harbour.paveR) return Infinity;
       if (terraces.some((li, j) => j !== k && dist(lotOf(li), p) < keep)) return Infinity;
       if (plant.some((q) => dist(q, p) < plantKeep)) return Infinity;

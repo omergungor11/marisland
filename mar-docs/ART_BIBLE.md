@@ -117,19 +117,19 @@ The seed picks 5–7 islands.
 | Island | Theme · size | Silhouette | Landmark | Key props | Creatures | Accent |
 |---|---|---|---|---|---|---|
 | **Hearthholm** | Fishing village · 110–140 u | Crescent around a harbour bay, 12 u hill | Clocktower + harbour wall with docks | Cottages, stilt huts, stalls, boats, laundry, lanterns | Villagers, cats, gulls | `#E8735A` |
-| **Beacon Rock** | Lighthouse · 40–60 u | 25 u sheer stack, zig-zag stair path | Red/white lighthouse | Sea stacks, keeper hut, buoys, rope fence | Puffins, seals | `#E35D6A` |
+| **Beacon Rock** (Marketing "Media Rock", TASK-403) | Media rock · 40–60 u | 25 u sheer stack (windward cliff + sea stacks), three lee shelves on earth walls down to the landing cove | Red/white broadcast lighthouse on the windward lip | Ad Boulevard (red street, giant double-sided screen, billboards, café), campus ledges (antenna tower, layered offices, photo studio, print shop), fair ground (ferris wheel, striped tents, game booths, stage) | Ferris wheel rotor (mover, not an agent) | `#E35D6A` |
 | **Millbrook** | Windmill farm · 80–110 u | Flat rolling plateau 6–8 u | 2–3 windmills on knolls | Patchwork fields, barn, haybales, pond, fences | Sheep, ducks | `#F5C84C` |
-| **Emberpeak** (DevOps "Ember Works", TASK-402) | Volcano · 90–120 u | 35 u notched cone + steam plume over three cone-foot shelves on bluff walls (harbour quay, two-step foundry and data center terraces) | Glowing crater; hot spring with cooling towers | Container yard (Docker-blue / teal / coral stacks, gantry crane, control tower), CI/CD belt, furnace halls with chimneys (lava glow at night), smithies, rail line, cottage lodges, black sand, vents | Ore trains on the rails, cargo ships at the pier (movers) | `#FF7A5C` |
+| **Emberpeak** (DevOps "Ember Works", TASK-405) | Volcano · 90–120 u | 35 u notched cone + steam plume over three cone-foot shelves on bluff walls (harbour quay, two-step foundry and data center terraces) | Glowing crater; hot spring with cooling towers | Container yard (Docker-blue / teal / coral stacks, gantry crane, control tower), CI/CD belt, furnace halls with chimneys (lava glow at night), smithies, rail line, cottage lodges, black sand, vents | Ore trains on the rails, cargo ships at the pier (movers) | `#FF7A5C` |
 | **Palmlagoon** (QA "Test Factory", TASK-401) | Factory plateau · 70–100 u | Rounded-square plateau on a 6–6.8 u bluff, top 8.6–9.6 u | Check tower (~20 u with the sign) | Sawtooth hangars with extractor fans, conveyor bridges, crash-test loop track | Crates on the belts, test cart on the loop (movers, not agents) | `#7FD8B3` |
 | **Mossgrove** | Forest · 80–110 u | 20 u green dome + 18 u giant tree | Treehouse with rope ladder | Pines, giant mushrooms, log cabin, stream | Foxes, squirrels, owl, fireflies | `#3E9A52` |
-| **Lonely Palm** (Research "Biodome Lab", TASK-400) | Breached crater · 17–21 u | Bluff-ringed crater, crest ring around a sunken bowl, open to the leeward cove | Glass biodomes in the bowl | Rim crystals, research vessel at the cove pier | — | `#F7E1AE` |
+| **Lonely Palm** (Research "Observatory University", TASK-402b, D-046) | Terraced campus hill · 52–58 u | 4.2–4.8 u bluff walls, a lawn plateau with a campus terrace and a summit plateau (12–13.2 u), a dish spur, a base headland, the leeward cove | Summit observatory (~11 u) with a big radio dish | Quad of faculty halls round the library and fountain, campus tower, hedge-parterre garden with topiaries and pergolas, terrarium row, lab pods + weather mast, atom / DNA / rocket / armillary sculptures, research vessel at the cove pier | Campus bots | `#F7E1AE` |
 
 **Bluff coasts (TASK-390).** Every archetype except Beacon Rock (its own windward cliff) stands on a 5–7 u
-bluff wall with a harbour / leeward cove sector, tagged `Zone.cliff` and painted as earth wall (§2). Crater
-(Research) islands get no waterfalls (too small).
+bluff wall with a harbour / leeward cove sector, tagged `Zone.cliff` and painted as earth wall (§2). The
+Research campus (4.2–4.8 u walls) gets no waterfalls (`noWaterfalls`, D-046).
 
 **Waterfalls (TASK-395).** 1–3 per bluff island, 2.6–3.6 u wide ribbons off a bluff lip into a foam disc and
-mist at the foot; the flow scrolls along the sheet. None on cove beaches or crater islands.
+mist at the foot; the flow scrolls along the sheet. None on cove beaches or on the Research campus.
 
 **Hero landmarks (TASK-393)** are 1.6–2× taller than the table's first-pass sizes so they read from the T0
 postcard: lighthouse shaft 15.5 u, wind turbines 24 / 19 / 16 u, cooling towers 13 / 11.5 u, clocktower body
@@ -367,10 +367,11 @@ Any click or key jumps to the final pose with a 400 ms ease.
 | W6 | **QA Test Factory** | 4004 · village view of the QA plateau (`village:qa`) · 12:00 | Earth walls and the plateau read against the sea; ≥ 2 sawtooth hangars with a conveyor bridge; loop track and check tower visible; crates on the belt |
 | W7 | **Mill Morning** | 5005 · T2 90 u Millbrook · 06:45 | Blade angle differs between frames 0.5 s apart; ≥ 4 field colours; mist band below 6 u; ≥ 5 sheep |
 | W8 | **Macro Shore** | 1001 · T3 18 u, Hearthholm beach · 14:00 | Foam line moves between frames 2 s apart; crab + ≥ 3 shells + grass tufts visible; during a 3 s dolly-in from 60 u, nothing appears without a bloom-in |
-| W9 | **Research biodome hero** | 1001 · `island:Lonely Palm` · 18:45 | Criteria pending the Research redesign and TASK-396 re-frame (the old palm / sandbar criteria are retired) |
+| W9 | **Observatory University** | 1001 · raw cam low from the east, ≈ 60 u · 18:45 | The observatory dome and telescope stand against the evening sky above the horizon; walls, lawn and ≥ 3 other campus pieces (halls, dish, pods, glasshouses) read in front; no other island behind it |
 | W10 | **Rainy Grove** | 6006 · T1 120 u Mossgrove, rain · 13:00 | Ripples on water; treehouse windows lit; foliage saturation ≥ 40 %; sky not neutral grey |
 | W11 | **Concept** | 1001 · `postcard` pose (§6) · 15:30 | Horizon at ≈ 0.74 NDC with cloud banks; all 7 islands in frame, walls and landmarks overlapping in depth; earth walls with strata and grass lip visible; no island clipped |
 | W13 | **Falls** | 1001 · raw cam from the sea at a Mossgrove waterfall, ≈ 40 u · 10:30 | Ribbon reads from lip to water; foam disc and mist at the foot; flow streaks move between frames 0.5 s apart |
+| W14 | **Campus Golden Hour** | 1001 · raw cam from the east, ≈ 85 u · 17:45 | Observatory, quad (fountain, ≥ 2 halls, library) and the parterre garden all in frame; terrariums and lab pods read; nothing floating or on a slope; no other island in frame (calls) |
 
 **Global fail (any shot):**
 - Land pixel with L < 12 %.

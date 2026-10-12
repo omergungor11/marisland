@@ -1,5 +1,5 @@
 /**
- * Closed-form routes of the DevOps movers (TASK-402; render/movers.ts draws them). Pure maths over
+ * Closed-form routes of the DevOps movers (TASK-405; render/movers.ts draws them). Pure maths over
  * world data, no three.js: a cargo ship laps a stadium loop off a pier head (stopping alongside
  * it), an ore train shuttles along a rail line. Every pose is a function of the sim time only.
  */

@@ -17,6 +17,15 @@ import type { BuildOpts, PropGeoDef } from '../types.ts';
 import { addHook, cloth, lighten, pennant, stripedBuoy } from './hq.ts';
 import { accVerts } from './coding.ts';
 import { tagSlides } from './surface-tags.ts';
+import {
+  antennaTower,
+  fairBooth,
+  fairTent,
+  ferrisWheel,
+  giantScreen,
+  mediaOffice,
+  mediaShop,
+} from './marketing-media.ts';
 
 const MK = THEMES.marketing.accent;
 const PAL = OFFICE_PAL.marketing;
@@ -472,7 +481,7 @@ function adBuoy({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
 export const MARKETING_GEO: readonly PropGeoDef[] = [
   { id: 'billboardV2', variants: 2, build: billboardV2, footprint: 2.8, height: 5.7, windy: false },
   { id: 'stage', variants: 2, build: stage, footprint: 3.4, height: 5.0, windy: true },
-  { id: 'bannerPole', variants: 2, build: bannerPole, footprint: 1.0, height: 5.6, windy: true },
+  { id: 'bannerPole', variants: 1, build: bannerPole, footprint: 1.0, height: 5.6, windy: true },
   {
     id: 'megaphoneKiosk',
     variants: 2,
@@ -482,4 +491,19 @@ export const MARKETING_GEO: readonly PropGeoDef[] = [
     windy: false,
   },
   { id: 'adBuoy', variants: 2, build: adBuoy, footprint: 0.5, height: 1.8, windy: false },
+  // TASK-403 Media Rock (geo/themes/marketing-media.ts)
+  { id: 'giantScreen', variants: 1, build: giantScreen, footprint: 4.4, height: 9.6, windy: false },
+  {
+    id: 'antennaTower',
+    variants: 1,
+    build: antennaTower,
+    footprint: 1.8,
+    height: 16.3,
+    windy: false,
+  },
+  { id: 'mediaOffice', variants: 1, build: mediaOffice, footprint: 3.4, height: 7.4, windy: false },
+  { id: 'mediaShop', variants: 2, build: mediaShop, footprint: 2.2, height: 3.6, windy: false },
+  { id: 'ferrisWheel', variants: 1, build: ferrisWheel, footprint: 4.6, height: 6.6, windy: false },
+  { id: 'fairTent', variants: 1, build: fairTent, footprint: 2.5, height: 4.3, windy: true },
+  { id: 'fairBooth', variants: 2, build: fairBooth, footprint: 1.4, height: 2.6, windy: false },
 ];

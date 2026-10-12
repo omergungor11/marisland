@@ -16,6 +16,7 @@ import {
   VILLAGE,
 } from '../../content/settlements.ts';
 import { OFFICE_DEFS } from '../../content/offices.ts';
+import { ARCHETYPES } from '../../content/islands.ts';
 import { THEMES } from '../../content/themes/index.ts';
 import type {
   ArchetypeId,
@@ -653,6 +654,11 @@ function applyPads(ctx: SiteCtx): Uint8Array {
   const pads = ctx.pads;
   const bound = (p: Pad): number =>
     (p.shape.r > 0 ? p.shape.r : Math.hypot(p.shape.hw, p.shape.hd)) + p.margin;
+  // TASK-403: on terraced islands a pad keeps to its own shelf — it neither relaxes toward a pad
+  // on another shelf nor touches ground more than `padBreak` u off its level (walls stay walls)
+  const brk = new Map<number, number>();
+  for (const isl of ctx.islands)
+    brk.set(isl.id, ARCHETYPES[isl.archetype].terraces?.padBreak ?? Infinity);
   for (const p of pads) {
     let sum = 0;
     let cnt = 0;
@@ -677,7 +683,12 @@ function applyPads(ctx: SiteCtx): Uint8Array {
         if (A.islandId !== B.islandId) continue;
         if (dist(A.shape, B.shape) > bound(A) + bound(B)) continue;
         const d = A.T - B.T;
-        const ex = Math.abs(d) - FLATTEN.maxStep;
+        if (Math.abs(d) > (brk.get(A.islandId) as number)) continue;
+        const lim =
+          A.group !== undefined && A.group === B.group
+            ? FLATTEN.maxStep
+            : Math.max(A.step ?? FLATTEN.maxStep, B.step ?? FLATTEN.maxStep);
+        const ex = Math.abs(d) - lim;
         if (ex <= 0) continue;
         const m = (ex / 2) * Math.sign(d);
         A.T -= m;
@@ -697,6 +708,7 @@ function applyPads(ctx: SiteCtx): Uint8Array {
       for (let ix = x0; ix <= x1; ix++) {
         const i = iz * n + ix;
         if (sdf[i] <= 0 || h.data[i] <= 0) continue;
+        if (Math.abs(h.data[i] - p.T) > (brk.get(p.islandId) as number)) continue;
         const dFoot = shapeDist(p.shape, cellX(ix), cellZ(iz));
         const dCore = dFoot - p.margin;
         if (dCore <= 0) {
@@ -711,8 +723,20 @@ function applyPads(ctx: SiteCtx): Uint8Array {
         }
       }
   }
+  // the grid samples around every pier segment past the root stay as they are: a pad by the
+  // shore must not lift the ground the deck crosses out of the water (TASK-402b, seed 1526)
+  const pier = new Uint8Array(N);
+  for (const d of ctx.docks)
+    for (let k = 1; k <= d.segments; k++) {
+      const fx = (d.x + Math.cos(d.rotY) * DOCK.segment * k - h.originX) / h.cellSize;
+      const fz = (d.z + Math.sin(d.rotY) * DOCK.segment * k - h.originZ) / h.cellSize;
+      for (const iz of [Math.floor(fz), Math.floor(fz) + 1])
+        for (const ix of [Math.floor(fx), Math.floor(fx) + 1])
+          if (ix >= 0 && iz >= 0 && ix < n && iz < n) pier[iz * n + ix] = 1;
+    }
   const protect = new Uint8Array(N);
   for (let i = 0; i < N; i++) {
+    if (pier[i]) continue;
     if (coreW[i] > 0) {
       h.data[i] = coreT[i] / coreW[i];
       protect[i] = 1;
@@ -845,10 +869,17 @@ export function roofNeighbours(lots: readonly LotData[]): number[][] {
  */
 function assignLotVariants(lots: LotData[], seed: number): void {
   const nb = roofNeighbours(lots);
-  const order = lots.map((l, i) => {
+  // TASK-403: the hash key is the lot's index within its island (+ islandId · 4096), so one
+  // island's lot count no longer reshuffles the roofs of the islands after it (the first island
+  // keeps its global indices)
+  const local = new Map<number, number>();
+  const order = lots.map((l) => {
+    const li = local.get(l.islandId) ?? 0;
+    local.set(l.islandId, li + 1);
+    const key = l.islandId * 4096 + li;
     const k = LOT_ROOFS[l.defId]?.length ?? 1;
     const vs = Array.from({ length: k }, (_, v) => v);
-    const h = vs.map((v) => hashInts(seed, i, v));
+    const h = vs.map((v) => hashInts(seed, key, v));
     return vs.sort((x, y) => h[x] - h[y]);
   });
   const set = new Uint8Array(lots.length);

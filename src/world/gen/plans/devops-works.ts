@@ -1,5 +1,5 @@
 /**
- * DevOps "Ember Works" (TASK-402): the facilities on the three cone-foot shelves of Emberpeak
+ * DevOps "Ember Works" (TASK-405): the facilities on the three cone-foot shelves of Emberpeak
  * (content/islands.ts `shelves`; anchors carry the shelf centre and its outward heading):
  * - Geothermal data center: dataCenter lots on the `datacenter` / `datacenterUpper` shelves
  *   (two levels, doors to the sea) beyond the hot-spring plant; worker lodges by the ops quad;

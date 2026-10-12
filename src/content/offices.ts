@@ -182,8 +182,8 @@ export const WORK_SPOTS: Readonly<Record<string, readonly WorkSpot[]>> = {
     { x: 0.6, z: 1.1, face: PI, pose: 'rack', sit: 0 },
   ],
   observatory: [
-    { x: 1.6, z: 2.3, face: -2.2, pose: 'look', sit: 0 },
-    { x: -1.6, z: 2.3, face: 2.2, pose: 'look', sit: 0 },
+    { x: 2.4, z: 5.2, face: -2.6, pose: 'look', sit: 0 },
+    { x: -2.4, z: 5.2, face: 2.6, pose: 'look', sit: 0 },
   ],
   sculptureTorus: [{ x: 0, z: 2.4, face: PI, pose: 'look', sit: 0 }],
   sculptureArch: [{ x: 0, z: 2.8, face: PI, pose: 'look', sit: 0 }],
@@ -193,12 +193,35 @@ export const WORK_SPOTS: Readonly<Record<string, readonly WorkSpot[]>> = {
     { x: 1, z: 2.8, face: PI, pose: 'look', sit: 0 },
   ],
   weatherMast: [{ x: 0.7, z: 0.7, face: -(3 * PI) / 4, pose: 'inspect', sit: 0 }],
+  // Marketing Media Rock (TASK-403): watch the giant screen, queue at the wheel and the booths,
+  // peek into a tent, check the antenna hut and the office doors (outside FIXTURE_RADIUS)
+  giantScreen: [
+    { x: -1.4, z: 3.1, face: PI, pose: 'look', sit: 0 },
+    { x: 1.4, z: 3.1, face: PI, pose: 'look', sit: 0 },
+  ],
+  ferrisWheel: [
+    { x: -0.6, z: 3.7, face: PI, pose: 'look', sit: 0 },
+    { x: 3.2, z: 2.1, face: PI, pose: 'stand', sit: 0 },
+  ],
+  fairBooth: [{ x: 0, z: 1.8, face: PI, pose: 'stand', sit: 0 }],
+  fairTent: [{ x: 0.4, z: 3.0, face: PI, pose: 'look', sit: 0 }],
+  antennaTower: [{ x: 0.9, z: 2.2, face: PI, pose: 'inspect', sit: 0 }],
+  mediaOffice: [{ x: 0.75, z: 3.7, face: PI, pose: 'look', sit: 0 }],
+  mediaShop: [{ x: -0.9, z: 2.6, face: PI, pose: 'look', sit: 0 }],
   // Research Biodome Lab (TASK-400): tend the glass beside the door porch (domes ≈ 3.2 / 1.8 u)
   biodomeHero: [
     { x: 2.2, z: 3.4, face: Math.atan2(-2.2, -3.4), pose: 'inspect', sit: 0 },
     { x: -2.2, z: 3.4, face: Math.atan2(2.2, -3.4), pose: 'look', sit: 0 },
   ],
   biodome: [{ x: 1.4, z: 2.2, face: Math.atan2(-1.4, -2.2), pose: 'inspect', sit: 0 }],
+  // Observatory University (TASK-402b): tend the glasshouses at the door, check the lab pods at the
+  // hatch, inspect the small dishes, clip the parterres, gaze at the sculptures
+  terrarium: [{ x: 1.0, z: 3.2, face: Math.atan2(-1.0, -3.2), pose: 'inspect', sit: 0 }],
+  labPod: [{ x: 0.9, z: 2.6, face: Math.atan2(-0.9, -2.6), pose: 'inspect', sit: 0 }],
+  radioDish: [{ x: 1.6, z: -2.0, face: Math.atan2(-1.6, 2.0), pose: 'inspect', sit: 0 }],
+  hedgeParterre: [{ x: 0, z: 2.5, face: PI, pose: 'inspect', sit: 0 }],
+  atomSculpture: [{ x: 0, z: 2.0, face: PI, pose: 'look', sit: 0 }],
+  armillarySphere: [{ x: 0, z: 2.2, face: PI, pose: 'look', sit: 0 }],
   barrierGate: [{ x: 0, z: 0.9, face: PI, pose: 'inspect', sit: 0 }],
   // legacy: a bench spot just outside the door
   cottage: [{ x: 0.9, z: 2.0, face: 0, pose: 'look', sit: BENCH }],
@@ -261,7 +284,7 @@ export const FIXTURE_EMITTERS: Readonly<Record<string, readonly (readonly Emitte
     [{ x: 0, y: 0.8, z: 0, preset: 'vent' }],
     [{ x: -0.16, y: 0.75, z: 0.04, preset: 'vent' }],
   ],
-  // DevOps "Ember Works" (TASK-402): foundry chimney tops, the smithy chimney
+  // DevOps "Ember Works" (TASK-405): foundry chimney tops, the smithy chimney
   foundry: [
     DEVOPS_WORKS.foundry.chimneys.map((c) => ({
       x: c.x,

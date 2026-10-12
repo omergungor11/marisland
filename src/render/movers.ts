@@ -6,10 +6,12 @@ import { QA_FACTORY, QA_MOVERS } from '../content/themes/qa.ts';
 import { DEVOPS_MOVERS } from '../content/themes/devops.ts';
 import { DEVOPS_WORKS } from '../content/props-themes/devops.ts';
 import { DOCK } from '../content/settlements.ts';
+import { MEDIA_MOVERS, MEDIA_ROCK } from '../content/themes/marketing.ts';
 import type { PropStore } from '../world/prop-store.ts';
 import type { WorldData, XZ } from '../world/types.ts';
 import { buildCrateCart } from '../geo/themes/qa-factory.ts';
 import { buildCargoShip } from '../geo/themes/devops-works.ts';
+import { buildWheelRotor } from '../geo/themes/marketing-media.ts';
 import { cartAt, trackPath } from '../geo/themes/qa-track.ts';
 import { makeDepthMaterial, makeLitMaterial } from './materials/factory.ts';
 import { pierLoop, shipPose, trainAt, type Loop } from './harbour-routes.ts';
@@ -22,15 +24,20 @@ import { pierLoop, shipPose, trainAt, type Loop } from './harbour-routes.ts';
  * them. Not life agents. Hidden (no draw call) while the camera is past the dither fade.
  * Placed from the settlement prop store at build time: props moved in edit mode keep their movers
  * where they were (like FIXTURE_EMITTERS before re-grounding).
- * TASK-402 (DevOps "Ember Works"): the crate-cart mesh also carries the ore trains on the foundry
+ * TASK-405 (DevOps "Ember Works"): the crate-cart mesh also carries the ore trains on the foundry
  * rail lines (render/harbour-routes.ts trainAt; y from the rail segment props), and a second mesh
  * sails the cargo ships round a loop off each DevOps pier head (pierLoop / shipPose).
+ * TASK-403: the Marketing ferris wheel rotors are a second InstancedMesh (same lit program) that
+ * turns about each wheel's hub at MEDIA_MOVERS.wheelPeriod; a T0 silhouette, so it is drawn at
+ * every distance.
  */
 export interface MoversView {
   /** Null when the world has no conveyors, tracks or rail lines. */
   mesh: THREE.InstancedMesh | null;
   /** Cargo ships (null when no DevOps pier has a loop in water). */
   ships: THREE.InstancedMesh | null;
+  /** Ferris wheel rotors; null when the world has no ferris wheel. */
+  wheels: THREE.InstancedMesh | null;
   update(time: number, camPos: THREE.Vector3): void;
 }
 
@@ -116,12 +123,52 @@ export function beltOffset(time: number): number {
   return (f - 0.5) * L;
 }
 
+/** Ferris wheel rotors: one instance per wheel, hub at (0, hubY, 0) of the frame, turning about local z. */
+function createWheels(
+  store: PropStore,
+  scope: Scope,
+): { mesh: THREE.InstancedMesh | null; update(time: number): void } {
+  const def = PROP_DEF_INDEX.ferrisWheel;
+  const hubs: THREE.Matrix4[] = [];
+  for (let i = 0; i < store.count; i++)
+    if (store.defId[i] === def)
+      hubs.push(
+        pivotOf(store, i).multiply(
+          new THREE.Matrix4().makeTranslation(0, MEDIA_ROCK.wheel.hubY, 0),
+        ),
+      );
+  if (hubs.length === 0) return { mesh: null, update: () => undefined };
+  const features = { instanced: true, dither: true, emissive: true, rim: true };
+  const mat = scope.add(
+    makeLitMaterial(features, {
+      fadeNear: MEDIA_MOVERS.fadeNear,
+      fadeFar: MEDIA_MOVERS.fadeFar,
+      name: 'wheels',
+    }),
+  );
+  const mesh = new THREE.InstancedMesh(scope.add(buildWheelRotor()), mat, hubs.length);
+  mesh.name = 'wheels';
+  // no shadow pass: the open rotor's shadow is a few thin lines (one draw call less, W11 budget)
+  mesh.castShadow = false;
+  scope.add(mesh);
+  const rot = new THREE.Matrix4();
+  const update = (time: number): void => {
+    rot.makeRotationZ((time / MEDIA_MOVERS.wheelPeriod) * Math.PI * 2);
+    hubs.forEach((h, k) => mesh.setMatrixAt(k, _m.multiplyMatrices(h, rot)));
+    mesh.instanceMatrix.needsUpdate = true;
+  };
+  update(0);
+  mesh.computeBoundingSphere();
+  return { mesh, update };
+}
+
 export function createMovers(
   store: PropStore,
   quality: Quality,
   scope: Scope,
   world?: WorldData,
 ): MoversView {
+  const wheels = createWheels(store, scope);
   const beltDef = PROP_DEF_INDEX.conveyor;
   const trackDef = PROP_DEF_INDEX.testTrack;
   const belts: Belt[] = [];
@@ -137,8 +184,12 @@ export function createMovers(
   if (n === 0)
     return {
       mesh: null,
+      wheels: wheels.mesh,
       ships: ships?.mesh ?? null,
-      update: (t, c) => ships?.update(t, c),
+      update: (t, c) => {
+        wheels.update(t);
+        ships?.update(t, c);
+      },
     };
   const features = { instanced: true, dither: true, emissive: true, rim: true };
   const geo = scope.add(buildCrateCart());
@@ -167,6 +218,7 @@ export function createMovers(
   const T = DEVOPS_MOVERS.train;
   const base = belts.length + tracks.length;
   const update = (time: number, camPos: THREE.Vector3): void => {
+    wheels.update(time);
     ships?.update(time, camPos);
     const far = QA_MOVERS.fadeFar + 20;
     mesh.visible = centres.some((c) => c.distanceToSquared(camPos) < far * far);
@@ -208,10 +260,10 @@ export function createMovers(
   update(0, centres[0]);
   mesh.computeBoundingSphere();
   if (mesh.boundingSphere) mesh.boundingSphere.radius += 8;
-  return { mesh, ships: ships?.mesh ?? null, update };
+  return { mesh, wheels: wheels.mesh, ships: ships?.mesh ?? null, update };
 }
 
-/** Cargo ships (TASK-402): `perDock` per DevOps pier whose loop lies in water. */
+/** Cargo ships (TASK-405): `perDock` per DevOps pier whose loop lies in water. */
 function createShips(
   world: WorldData,
   quality: Quality,

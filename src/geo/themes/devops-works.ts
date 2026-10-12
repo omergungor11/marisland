@@ -1,5 +1,5 @@
 /**
- * DevOps "Ember Works" structures (TASK-402): containerYard (stacks, gantry crane, control tower), foundry,
+ * DevOps "Ember Works" structures (TASK-405): containerYard (stacks, gantry crane, control tower), foundry,
  * smithy, railTrack — plus the cargo ship the movers sail (not a prop). Sizes and colours:
  * content/props-themes/devops.ts DEVOPS_WORKS. One variant each (one draw call per def).
  * Local frame: x = width, z = depth, the fixture's rotY faces local +z; ground at y = 0.

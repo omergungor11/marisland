@@ -22,6 +22,13 @@ export interface ZoneRuleParams {
    * 'tagged' = cliff only where the profile forces it (Emberpeak rim + notch).
    */
   cliff: 'slope' | 'tagged';
+  /**
+   * 'slope' cliffs only within this shore distance (u; unset = everywhere), above `cliffSlope`
+   * (unset = ZONE_RULES.cliffSlope). TASK-402b: on Research every steep bank along the walls is
+   * earth (also pad edges at the rim), the summit / terrace banks inland stay lawn.
+   */
+  slopeCliffMaxShore?: number;
+  cliffSlope?: number;
   /** Forced-cliff cells become cliff above this slope. */
   forcedCliffSlope: number;
   /** Rock regardless of slope above this fraction of the peak (bare summits). */
@@ -81,37 +88,84 @@ export interface BluffParams {
 }
 
 /**
- * Breached crater (TASK-400, Lonely Palm → Research "Biodome Lab"), in island-local units
- * (radius-normalised, +x leeward): a mesa whose land ends at `coast`, a raised crest ring at
- * `crestD` around a sunken bowl, broken open over the leeward `breachHalfDeg` sector where the
- * bluff cove ramps down to the beach. Raw profile values (the heightfield rescales the total
- * to `bluff.peak − wall`): bowl = floor / 2, crest = floor / 2 + crest.
+ * Terraced campus hill (TASK-402b, Lonely Palm → Research "Observatory University"), in
+ * island-local units (radius-normalised, +x leeward, `z` mirrored per island): a lawn plateau
+ * whose land ends at `coast` (plus two promontories), a broad campus terrace and a summit
+ * plateau for the observatory, with soft grassy risers between them. Raw profile levels (the
+ * heightfield rescales the summit to `bluff.peak − wall`).
  */
-export interface CraterParams {
-  /** Land ends at this warped radius (keep < reachScale − 0.1: land inside the reach disc). */
+export interface CampusHillParams {
+  /** Land ends at this warped radius (keep ≤ reachScale − 0.12: land inside the reach disc). */
   coast: number;
-  /** Half-width of the coast smoothstep. */
   coastSoft: number;
-  /** Minor/major axis ratio of the oval (major axis rolled ± `turn` rad around the wind axis). */
-  oval: number;
-  turn: number;
   /** Coast warp amplitude (fbm, radius units). */
   warp: number;
-  floor: number;
-  crest: number;
-  crestD: number;
-  crestWidth: number;
-  /** Crest height jitter (fbm amplitude, fraction of `crest`). */
-  crestJitter: number;
-  breachHalfDeg: number;
-  /** Breach sector edge softness (cos units). */
-  breachSoft: number;
-  /** Hero dome anchor: this far windward of the centre (radius units). */
-  domeShift: number;
+  /** Promontory: the coast grows by `len` around the angle (deg from leeward, mirrored), `widthDeg` wide. */
+  spur: { angleDeg: number; widthDeg: number; len: number };
+  headland: { angleDeg: number; widthDeg: number; len: number };
+  /** Lawn level and its gentle fbm swell (raw). */
+  lawn: number;
+  lawnNoise: number;
+  /** Campus terrace: centre (local x, z), radius, raw height above the lawn. */
+  terrace: { x: number; z: number; r: number; h: number };
+  /** Summit plateau (observatory): centre, radius, raw height above the lawn. */
+  summit: { x: number; z: number; r: number; h: number };
+  /** Riser half-width (radius units). */
+  soft: number;
+  /** Terrace lifts fade out between these distances inside the coast (radius units). */
+  rimFade: readonly [number, number];
+  /** Seeded jitter of the terrace / summit centres (radius units) and rotation (rad). */
+  jitter: number;
+  turn: number;
+  /** Garden lawn and glasshouse anchors (local x, z; z mirrored like the rest). */
+  garden: { x: number; z: number };
+  glasshouse: { x: number; z: number };
 }
 
 /**
- * A flat land shelf grown at the foot of a cone (TASK-402, Emberpeak → DevOps "Ember Works"), in
+ * Lee terraces (TASK-403, Beacon Rock → Marketing "Media Rock"), in island-local units (u along
+ * the terrace axis = leeward rolled by ± `lean` rad, v across it): nested ellipses stepping down
+ * from the stack toward the landing cove, each a flat shelf at `level` × the stack top with a
+ * steep earth wall (`wall` u of horizontal run) at its rim. Shelf widths are in u (the buildings
+ * need room on every island size): shelf k ends `band` u past the previous rim (the first one
+ * past the stack foot), its ellipse spans the axis from `inner` (inside the stack, radius units)
+ * to that rim and reaches `across` × its half-length to the sides. The last shelf is the fair
+ * ground at the waterline; inside its `cove` sector the rim ramps down to a beach (the landing).
+ * Raw profile values like the stack (rescaled to the peak).
+ */
+export interface TerraceParams {
+  shelves: readonly {
+    /** Shelf height as a fraction of the stack top. */
+    level: number;
+    /** Shelf width on the axis past the previous rim, in u (× `bandScale`); includes the wall. */
+    band: number;
+    /** Half-width across the axis / half-length along it. */
+    across: number;
+    /** Wall run at the rim (u). */
+    wall: number;
+  }[];
+  /** Where every shelf ellipse starts on the axis (radius units, inside the stack). */
+  inner: number;
+  /** Stack foot on the axis (radius units, before the stack shift / scale). */
+  foot: number;
+  /** Bands scale with the island: clamp(radius / ref, min, max). */
+  bandScale: { ref: number; min: number; max: number };
+  /** The stack moves windward by `shift` (radius units) and narrows by `scale` to make room. */
+  stack: { shift: number; scale: number };
+  /** Terrace axis roll off leeward (± rad, one draw per island). */
+  lean: number;
+  /** Rim warp amplitude (fbm, ellipse units). */
+  warp: number;
+  /** Shelf ripple amplitude (raw u): flat enough for pads, not a table top. */
+  ripple: number;
+  /** Flatten pads leave ground more than this many u off their level alone (walls, other shelves). */
+  padBreak: number;
+  /** Landing cove on the last shelf: centre angle off the axis (deg, side rolled), half-angle, ramp run (u). */
+  cove: { angleDeg: readonly [number, number]; halfDeg: number; soft: number; ramp: number };
+}
+
+/**
+ * A flat land shelf grown at the foot of a cone (TASK-405, Emberpeak → DevOps "Ember Works"), in
  * island-local units (radius-normalised, +x leeward): a rounded rectangle whose radial axis points
  * at `angle` (degrees from leeward, on the side the profile picks), level at raw height `h` where
  * the cone is lower (the cone keeps everything above it). Its outer edge is the new coast, so
@@ -170,9 +224,13 @@ export interface ArchetypeParams {
   windwardCliff?: boolean;
   /** Bluff coast + raised plateau (BLUFF); unset = the low beach-ringed disc. */
   bluff?: BluffParams;
-  /** Breached-crater profile (Lonely Palm only, TASK-400). */
-  crater?: CraterParams;
-  /** Flat shelves at the cone foot (Emberpeak only, TASK-402): [harbour, foundry]. */
+  /** Terraced campus hill profile (Lonely Palm only, TASK-402b). */
+  campusHill?: CampusHillParams;
+  /** No waterfalls off this island's bluff (TASK-402b: Research keeps its walls dry). */
+  noWaterfalls?: boolean;
+  /** Lee terraces down to the landing cove (Beacon Rock only, TASK-403). */
+  terraces?: TerraceParams;
+  /** Flat shelves at the cone foot (Emberpeak only, TASK-405): [harbour, foundry, data center]. */
   shelves?: readonly ShelfParams[];
   zones: ZoneRuleParams;
 }
@@ -227,6 +285,23 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
     beachWidth: 3,
     terrace: { step: 0, strength: 0 },
     windwardCliff: true,
+    // TASK-403: the Media Rock — upper ledge (media campus), middle ledge, fair ground + cove
+    terraces: {
+      shelves: [
+        { level: 0.64, band: 12, across: 1.0, wall: 3.5 },
+        { level: 0.4, band: 10, across: 0.95, wall: 3.5 },
+        { level: 0.17, band: 14, across: 0.95, wall: 3 },
+      ],
+      inner: -0.3,
+      foot: 0.86,
+      bandScale: { ref: 24, min: 0.9, max: 1.2 },
+      stack: { shift: 0.12, scale: 1.1 },
+      lean: 0.35,
+      warp: 0.06,
+      ripple: 0.25,
+      padBreak: 2.5,
+      cove: { angleDeg: [35, 55], halfDeg: 22, soft: 0.15, ramp: 12 },
+    },
     zones: {
       ...DEFAULT_ZONES,
       forestThreshold: 2,
@@ -262,7 +337,7 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
     shelfWidth: 7,
     beachWidth: 5,
     terrace: { step: 4, strength: 0.2 },
-    // TASK-402: the cove is a disc around the harbour shelf (was the ±60° lee sector) and stays
+    // TASK-405: the cove is a disc around the harbour shelf (was the ±60° lee sector) and stays
     // low 14 u inland, so the harbour is a quay at the water, not a mesa; the rest has walls
     bluff: {
       on: true,
@@ -273,9 +348,9 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
       coveFlat: 14,
       coveRamp: 12,
       // the shelves stand 4–5 u above the beach at the rim: ease them in wider so faces stay ≤ 65°
-      rimEase: 6.5,
+      rimEase: 7.5,
     },
-    // TASK-402 "Ember Works": a low harbour shelf on the lee side away from the hot spring and a
+    // TASK-405 "Ember Works": a low harbour shelf on the lee side away from the hot spring and a
     // two-step foundry terrace further round the same side, on bluff walls; land stays < 1.27 r
     shelves: [
       {
@@ -383,47 +458,58 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
   lonelypalm: {
     displayName: 'Lonely Palm',
     /**
-     * Phase 3 (TASK-302): 17–21 u (bible 10–16); reachScale 1.3 keeps the W9 hero fit (ring =
-     * reach + 8 u ≤ maxDist 50). TASK-400 (Research "Biodome Lab"): the same roll and reach (the
-     * layout is unchanged), but the land now fills the reach disc as a breached crater.
+     * TASK-402b (Research "Observatory University"): 52–58 u (was the 17–21 u crater). Still the
+     * last island the layout places (smallest reach), so on most seeds the other islands keep
+     * their places or shift as a whole (re-centring). Height / colour classes are kept so the
+     * neighbour-contrast rule (and with it most layouts) does not change.
      */
-    diameter: [17, 21],
-    sizeClass: 'tiny',
-    peak: [0.55, 0.65],
+    diameter: [52, 58],
+    sizeClass: 'small',
+    peak: [6, 7],
     heightClass: 'flat',
     colorClass: 'sand',
-    boundsScale: 2.2,
-    reachScale: 1.3,
-    shelfWidth: 5,
-    beachWidth: 3,
-    beachMax: 0.9,
+    boundsScale: 1.35,
+    reachScale: 1.06,
+    shelfWidth: 7,
+    beachWidth: 4,
     terrace: { step: 0, strength: 0 },
-    // crater walls: a bluff ring with the leeward cove as the breach, crest kept sharp (rimEase)
+    // lawn plateau on earth walls, the leeward cove for the pier; the lawns run flat to the rim
     bluff: {
       on: true,
-      wall: [3, 3.4],
-      peak: [5.6, 6],
+      wall: [4.2, 4.8],
+      peak: [12, 13.2],
       coveHalfDeg: 30,
       coveFlat: 0,
-      coveRamp: 5,
-      rimEase: 0.5,
+      coveRamp: 12,
+      rimEase: 3,
     },
-    crater: {
-      coast: 1.2,
-      coastSoft: 0.1,
-      oval: 0.9,
-      turn: 0.5,
-      warp: 0.05,
-      floor: 0.3,
-      crest: 0.6,
-      crestD: 0.9,
-      crestWidth: 0.12,
-      crestJitter: 0.25,
-      breachHalfDeg: 40,
-      breachSoft: 0.2,
-      domeShift: 0.12,
+    campusHill: {
+      coast: 0.95,
+      coastSoft: 0.05,
+      warp: 0.035,
+      spur: { angleDeg: 140, widthDeg: 24, len: 0.045 },
+      headland: { angleDeg: -150, widthDeg: 26, len: 0.045 },
+      lawn: 1,
+      lawnNoise: 0.08,
+      terrace: { x: 0.14, z: 0.3, r: 0.36, h: 0.8 },
+      summit: { x: -0.34, z: 0.1, r: 0.25, h: 2.1 },
+      soft: 0.17,
+      rimFade: [0.06, 0.3],
+      jitter: 0.04,
+      turn: 0.25,
+      garden: { x: 0.12, z: -0.46 },
+      glasshouse: { x: 0.45, z: -0.5 },
     },
-    zones: { ...DEFAULT_ZONES, forestThreshold: 2, meadowThreshold: 0.15, wetSandMaxY: 1.5 },
+    noWaterfalls: true,
+    // steep ground is cliff only along the walls: the summit and terrace banks stay lawn
+    zones: {
+      ...DEFAULT_ZONES,
+      forestThreshold: 2,
+      meadowThreshold: 0.15,
+      rockMinFrac: 2,
+      slopeCliffMaxShore: 8,
+      cliffSlope: 0.55,
+    },
   },
 };
 

@@ -429,7 +429,7 @@ export const ACTIVITY = {
   /** Focus: nearest campus hub within `radius` u (3-D) of the camera at tier >= `minTier`, re-evaluated every `every` steps; a rival must be `switchRatio` times nearer. */
   focus: { minTier: 2, radius: 190, every: 15, switchRatio: 0.8 },
   /** Ambient slots per island at ambientScale 1 (seat count is the soft limit). */
-  slots: { hq: 12, coding: 12, marketing: 9, qa: 9, design: 9, devops: 10, research: 5 },
+  slots: { hq: 12, coding: 12, marketing: 9, qa: 9, design: 9, devops: 10, research: 9 },
   /** Outposts (no walk graph) host at most this many ambient bots. */
   outpostSlots: 4,
   /** Wake: scale-in is delayed by up to `stagger` s (hash) so a campus fills in, not all at once. */
@@ -497,12 +497,18 @@ export const ACTIVITY = {
       { goal: { kind: 'seat', defs: ['devOffice', 'devPod'] }, item: 'laptop' },
       { goal: { kind: 'dock' } },
     ],
+    // TASK-403 Media Rock: desks, the boulevard screen, the campus ledges, the fair, the pier
     marketing: [
       { goal: { kind: 'seat', defs: ['broadcastStudio'] }, item: 'laptop' },
-      { goal: { kind: 'spot', defs: ['stage'] } },
+      { goal: { kind: 'spot', defs: ['giantScreen'] } },
+      {
+        goal: { kind: 'spot', defs: ['antennaTower', 'mediaOffice', 'mediaShop'] },
+        item: 'clipboard',
+      },
       { goal: { kind: 'hub' } },
       { goal: { kind: 'seat', defs: ['billboard'] }, item: 'paintPot' },
-      { goal: { kind: 'spot', defs: ['stage'] } },
+      { goal: { kind: 'spot', defs: ['stage', 'fairBooth', 'fairTent'] } },
+      { goal: { kind: 'spot', defs: ['ferrisWheel'] } },
       { goal: { kind: 'dock' } },
     ],
     qa: [
@@ -529,13 +535,14 @@ export const ACTIVITY = {
       { goal: { kind: 'dock' }, item: 'crate' },
       { goal: { kind: 'hub' } },
     ],
-    // TASK-400 Biodome Lab: tend the domes, carry samples to the research vessel's pier
+    // TASK-402b Observatory University: glasshouses, the observatory, the lab pods, samples to the
+    // research vessel's pier, the garden and the sculptures
     research: [
-      { goal: { kind: 'spot', defs: ['biodomeHero'] }, item: 'clipboard' },
-      { goal: { kind: 'spot', defs: ['biodome'] } },
+      { goal: { kind: 'spot', defs: ['terrarium', 'biodomeHero'] }, item: 'clipboard' },
+      { goal: { kind: 'spot', defs: ['observatory'] }, item: 'laptop' },
+      { goal: { kind: 'spot', defs: ['labPod', 'radioDish', 'weatherMast'] }, item: 'clipboard' },
       { goal: { kind: 'dock' }, item: 'crate' },
-      { goal: { kind: 'spot', defs: ['weatherMast', 'observatory'] } },
-      { goal: { kind: 'seat', defs: ['researchHut'] }, item: 'laptop' },
+      { goal: { kind: 'spot', defs: ['hedgeParterre', 'armillarySphere', 'atomSculpture'] } },
       { goal: { kind: 'hub' } },
     ],
   } as Record<string, readonly ItineraryStep[]>,

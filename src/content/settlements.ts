@@ -157,7 +157,7 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   // DevOps
   coolingTower: 2.6,
   rackRow: 1.6,
-  // DevOps "Ember Works" (TASK-402): the yard's middle stack (bots skirt the row of stacks)
+  // DevOps "Ember Works" (TASK-405): the yard's middle stack (bots skirt the row of stacks)
   containerYard: 6,
   // density pass: quay stock, machinery and village infill (fixtures of existing defs too)
   containerRow: 3.2,
@@ -185,6 +185,14 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   testHangar: 4.4,
   conveyor: 0.3,
   testTrack: 5.5,
+  // Marketing Media Rock (TASK-403): the obstacle discs bots and creatures keep clear of
+  giantScreen: 2.4,
+  antennaTower: 1.7,
+  mediaOffice: 3.4,
+  mediaShop: 2.2,
+  ferrisWheel: 3.4,
+  fairTent: 2.3,
+  fairBooth: 1.3,
   // Design
   sculptureArch: 2.4,
   sculptureStack: 1.3,
@@ -193,7 +201,23 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   giantMushroom: 0.8,
   // Research
   weatherMast: 0.8,
-  observatory: 1.9,
+  // campus (TASK-402a): circles around the footprints of the PropDefs
+  observatory: 4.0,
+  facultyHall: 3.2,
+  libraryRotunda: 3.6,
+  campusTower: 1.6,
+  terrarium: 2.6,
+  atomSculpture: 1.3,
+  dnaHelix: 1.1,
+  armillarySphere: 1.6,
+  scholarStatue: 1.1,
+  rocketMonument: 1.9,
+  radioDish: 3.2,
+  labPod: 2.8,
+  fountain: 1.9,
+  hedgeParterre: 2.4,
+  topiary: 0.5,
+  pergola: 2.0,
   biodomeHero: 3.2,
   biodome: 1.8,
   researchVessel: 1.2,

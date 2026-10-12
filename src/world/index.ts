@@ -23,7 +23,6 @@ import { Tag } from './gen/profiles.ts';
 import { buildZones } from './gen/zones.ts';
 import { buildSettlements, markSites } from './gen/settlements.ts';
 import { buildRoutes } from './gen/routes.ts';
-import { generateBridges, markBridges } from './gen/bridges.ts';
 import { placeWaterfalls } from './gen/waterfalls.ts';
 import { createOccupancy, scatterProps } from './gen/scatter.ts';
 import { compactPropStore, createPropStore } from './prop-store.ts';
@@ -201,7 +200,6 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
     fences: sites.fences,
     fields: rawLand.fields,
     fieldColor,
-    bridges: [],
     districts: [...patchDistricts(islands, rawLand.fields), ...sites.districts],
     waterfalls: [],
     props: createPropStore(0),
@@ -213,18 +211,6 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
   };
   const occupancy = createOccupancy();
   markSites(occupancy, world, sites.shapes);
-  world.bridges = generateBridges(
-    {
-      height,
-      islandMap: rawLand.islandMap,
-      islands,
-      lots: sites.lots,
-      docks: sites.docks,
-      landmarks: sites.landmarks,
-    },
-    root.fork('bridges'),
-  );
-  markBridges(occupancy, world.bridges);
   world.genAux.siteOccupancy = occupancy.data.slice();
   // spare slots for Phase 2 edits; hashes and consumers only read `count` entries
   world.props = compactPropStore(scatterProps(world, occupancy).props, EDIT_PROPS.propHeadroom);

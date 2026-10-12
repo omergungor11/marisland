@@ -37,7 +37,7 @@ export const DEVOPS_COLORS = {
 } as const;
 
 /**
- * TASK-402 "Ember Works" structures (geo/themes/devops-works.ts): sizes in u (local x = width,
+ * TASK-405 "Ember Works" structures (geo/themes/devops-works.ts): sizes in u (local x = width,
  * z = depth, the fixture's rotY faces local +z) and colours. Palette: ART_BIBLE §2 roofs
  * (Docker blue `#5DA9E9`, teal `#3FB8AF`, yellow, coral) on the DevOps concrete / steel family;
  * lava `#FF6A3D` and window `#FFC870` glow at night through the emissive path.
@@ -135,7 +135,7 @@ export const DEVOPS_WORKS = {
     anvil: '#5A5664',
     footprint: [3.8, 4.6] as const,
   },
-  /** containerRow (TASK-402 density pass): one loose stack on the quay, tiers per column. */
+  /** containerRow (TASK-405 density pass): one loose stack on the quay, tiers per column. */
   row: { tiers: [2, 2, 1] as const, footprint: [5.4, 6.8] as const },
   /** fuelTank: two horizontal tanks on saddles side by side (z), a catwalk and a filler pipe. */
   tank: {
@@ -208,7 +208,7 @@ export const DEVOPS_PROP_DEFS: readonly PropDef[] = [
     flags: grounded,
   },
   { id: 'rackRow', geo: 'rackRow', tier: 2, variants: 2, footprint: 1.6, flags: grounded },
-  // TASK-402 "Ember Works": one variant each (one draw call per def); ≥ 3 u structures from T0
+  // TASK-405 "Ember Works": one variant each (one draw call per def); ≥ 3 u structures from T0
   {
     id: 'containerYard',
     geo: 'containerYard',

@@ -123,7 +123,7 @@ describe('DevOps island plan (TASK-364) — 30 seeds', () => {
     expect(rate(masts, n), 'antenna ridge').toBeGreaterThanOrEqual(0.9);
   });
 
-  it('terraced data center (TASK-402): data centers on two shelf levels, level concrete pads', () => {
+  it('terraced data center (TASK-405): data centers on two shelf levels, level concrete pads', () => {
     let n = 0;
     let ok = 0;
     let two = 0;
@@ -229,7 +229,7 @@ describe('DevOps island plan (TASK-364) — 30 seeds', () => {
       const sh = rectShape(yard.x, yard.z, yard.rotY, yard.w, yard.d);
       for (const p of [...sheds, ...racks])
         expect(shapeDist(sh, p.x, p.z), `seed ${seed} yard piece`).toBeLessThanOrEqual(0);
-      // black sand (or, TASK-402, the paved harbour quay) inside the yard rect
+      // black sand (or, TASK-405, the paved harbour quay) inside the yard rect
       let black = 0;
       for (let u = -0.5; u <= 0.5; u += 0.1)
         for (let v = -0.5; v <= 0.5; v += 0.1) {
@@ -319,8 +319,8 @@ describe('DevOps island plan (TASK-364) — 30 seeds', () => {
   });
 });
 
-/** TASK-402 "Ember Works": the shelves and the harbour / foundry facilities over 30 seeds. */
-describe('DevOps Ember Works (TASK-402) — 30 seeds', () => {
+/** TASK-405 "Ember Works": the shelves and the harbour / foundry facilities over 30 seeds. */
+describe('DevOps Ember Works (TASK-405) — 30 seeds', () => {
   it('shelf anchors; land stays inside the reach disc', { timeout: 60_000 }, () => {
     for (const seed of SEEDS) {
       const d = devops(seed);

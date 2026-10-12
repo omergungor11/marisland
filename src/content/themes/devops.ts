@@ -131,7 +131,7 @@ export const DEVOPS_THEME: ThemeDef = {
 
 /**
  * DevOps site plan tuning (world/gen/plans/devops.ts). Distances in u, heights in u above sea.
- * TASK-402 "Ember Works": the archetype grows three shelves at the cone foot (content/islands.ts
+ * TASK-405 "Ember Works": the archetype grows three shelves at the cone foot (content/islands.ts
  * `shelves`): the data center terraces (`datacenter`, `datacenterUpper`) beyond the geothermal
  * plant, the deployment harbour (`harbour`) and the lava foundry (`foundry`, `foundryUpper`).
  */
@@ -302,7 +302,7 @@ export const DEVOPS_SITE = {
 } as const;
 
 /**
- * DevOps movers (TASK-402, render/movers.ts + render/harbour-routes.ts): closed-form, time-driven,
+ * DevOps movers (TASK-405, render/movers.ts + render/harbour-routes.ts): closed-form, time-driven,
  * not life agents. Cargo ships lap a stadium loop off each DevOps pier head, stopping alongside
  * it; a short ore train shuttles along each foundry rail line. Distances in u, speeds in u/s.
  */
