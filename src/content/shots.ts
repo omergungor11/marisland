@@ -715,6 +715,31 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     panel: 'photo',
     sets: ['dev'],
   },
+  // ---- M19 cultures (wave 2): one T2 look per island culture + a story / night close-up
+  {
+    id: 'D-culture-coding',
+    title: 'Culture · Coding Wind Gardens (T2, 14:00)',
+    // seed 1001 Millbrook (TASK-421): the Tech Park lawn (pergola desks, giant duck), the chime
+    // pagoda turbine with its hammock and the kite field north of it, from the south-east
+    seed: 1001,
+    cam: '150,46,30,104,9.5,20',
+    time: 14,
+    simt: 3,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-culture-coding-desks',
+    title: 'Culture · Coding pergola desks and the bug board (T3, 15:00)',
+    // seed 1001: a lawn strip's pergola desks, mug crate and the bug whiteboard with its rubber
+    // duck (story `bugDoodle`), seen from the paved spine over the pool with the rubber ducks
+    seed: 1001,
+    cam: '113,20,-6,106,9.8,5',
+    time: 15,
+    simt: 3,
+    quality: 'medium',
+    sets: ['dev'],
+  },
   // ---- living close-up (M14c, TASK-383/384): `pnpm shots live [--assert]`. A 0.5 s `deltaT` pair per
   // campus at T3 on medium (16 workers + drones + animated surfaces); the harness measures the motion
   // inside LIVE_CROP over solid pixels (the mask frame drops water / sky: foam and swell are not campus

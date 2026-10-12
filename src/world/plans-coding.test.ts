@@ -5,10 +5,12 @@
  */
 import { describe, expect, it } from 'vitest';
 import { PROP_DEFS } from '../content/props.ts';
-import { TURBINE_HEIGHTS } from '../content/props-themes/coding.ts';
+import { FIXTURE_RADIUS } from '../content/settlements.ts';
+import { CODING_CULTURE_SITES as CS } from '../content/cultures/coding.ts';
+import { CODING_CULTURE_PROP_DEFS, TURBINE_HEIGHTS } from '../content/props-themes/coding.ts';
 import { appendSettlementProps } from '../render/props/settlement-props.ts';
-import { generateWorld, Zone, type IslandData, type WorldData } from './index.ts';
-import { rectShape, shapeDist } from './gen/sites.ts';
+import { generateWorld, heightAt, Zone, type IslandData, type WorldData } from './index.ts';
+import { discShape, rectShape, shapeCorners, shapeDist, type Shape } from './gen/sites.ts';
 
 const SEEDS = Array.from({ length: 30 }, (_, i) => 1 + i * 37);
 const worlds = new Map<number, WorldData>();
@@ -103,7 +105,11 @@ describe('Coding island plan (TASK-363)', { timeout: 120_000 }, () => {
         ).toBe(true);
       }
       // heights by knoll rank (ranked on the planner's ground, before the pads): distinct, one 15 u
-      const hs = tb.map((m) => TURBINE_HEIGHTS[m.variant ?? -1]).sort((a, b) => b - a);
+      // (the tallest wears the chime pagoda: variant 3, the variant-0 tower)
+      const hs = tb
+        .map((m) => TURBINE_HEIGHTS[m.variant === CS.chimeVariant ? 0 : (m.variant ?? -1)])
+        .sort((a, b) => b - a);
+      expect(tb.filter((m) => m.variant === CS.chimeVariant).length, ctx).toBe(1);
       expect(hs, ctx).toEqual(TURBINE_HEIGHTS.slice(0, hs.length));
     }
     expect(three / SEEDS.length).toBeGreaterThanOrEqual(0.9);
@@ -193,5 +199,87 @@ describe('Coding island plan (TASK-363)', { timeout: 120_000 }, () => {
       };
     });
     expect(snap).toMatchSnapshot();
+  });
+});
+
+/** Count range per culture def on the Coding island (30 seeds). */
+const KIT_COUNTS: Record<string, readonly [number, number]> = {
+  pergolaDesk: [4, 4],
+  whiteboardA: [2, 2],
+  mugStack: [3, 3],
+  giantDuck: [1, 1],
+  rubberDuck: [2, 4],
+  hammock: [1, 3],
+  kite: [0, 6],
+  kiteRack: [0, 1],
+};
+const CULTURE_DEFS = new Set(CODING_CULTURE_PROP_DEFS.map((d) => d.id));
+
+describe('Coding Wind Gardens culture (TASK-421)', { timeout: 120_000 }, () => {
+  it('kit placed in range, ≥ 5 story spots, every piece on levelled land clear of lots', () => {
+    let kites = 0;
+    for (const seed of SEEDS) {
+      const w = world(seed);
+      const isl = codingOf(w);
+      const ctx = `seed ${seed}`;
+      const fx = w.fixtures.filter((f) => f.islandId === isl.id && CULTURE_DEFS.has(f.defId));
+      for (const [def, [lo, hi]] of Object.entries(KIT_COUNTS)) {
+        const n = fx.filter((f) => f.defId === def).length;
+        expect(n, `${ctx} ${def}`).toBeGreaterThanOrEqual(lo);
+        expect(n, `${ctx} ${def}`).toBeLessThanOrEqual(hi);
+      }
+      if (fx.some((f) => f.defId === 'kiteRack')) kites++;
+      // story spots: ≥ 5 distinct kinds, on this island's land
+      const st = w.storySpots.filter((s) => s.islandId === isl.id);
+      expect(st.length, ctx).toBeGreaterThanOrEqual(5);
+      expect(new Set(st.map((s) => s.kind)).size, ctx).toBe(st.length);
+      for (const s of st) expect(s.pos.y, `${ctx} ${s.kind}`).toBeGreaterThan(0.3);
+      // on land, level (posts and poles never float or sink), clear of every building
+      const lots = w.lots
+        .filter((l) => l.islandId === isl.id)
+        .map((l) => rectShape(l.x, l.z, l.rotY, l.w, l.d));
+      const rects = CS.rect as Record<string, readonly [number, number]>;
+      for (const f of fx) {
+        const r = rects[f.defId];
+        const sh: Shape = r
+          ? rectShape(f.x, f.z, f.rotY, r[0], r[1])
+          : discShape(f.x, f.z, FIXTURE_RADIUS[f.defId]);
+        const pts = r
+          ? [{ x: f.x, z: f.z }, ...shapeCorners(sh)]
+          : [0, 1, 2, 3, 4, 5].map((k) => ({
+              x: f.x + Math.cos(k * 1.047) * sh.r,
+              z: f.z + Math.sin(k * 1.047) * sh.r,
+            }));
+        const ys = pts.map((p) => heightAt(w.height, p.x, p.z));
+        const at = `${ctx} ${f.defId}@${f.x.toFixed(1)},${f.z.toFixed(1)}`;
+        expect(Math.min(...ys), at).toBeGreaterThan(0.3);
+        expect(Math.max(...ys) - Math.min(...ys), at).toBeLessThanOrEqual(r ? 0.45 : 0.6);
+        for (const l of lots)
+          for (const p of pts) expect(shapeDist(l, p.x, p.z), at).toBeGreaterThan(0);
+      }
+      // bracket hedges (v2) only on the Hack Garden of this island
+      for (const f of w.fixtures)
+        if (f.defId === 'hedge' && f.variant === CS.garden.bracketVariant)
+          expect(f.islandId, ctx).toBe(isl.id);
+    }
+    expect(kites / SEEDS.length).toBeGreaterThanOrEqual(0.9);
+  });
+
+  it('culture defs stay on the Coding island; hedge rolls never pick the bracket', () => {
+    for (const seed of SEEDS.slice(0, 6)) {
+      const w = world(seed);
+      const id = codingOf(w).id;
+      for (const f of w.fixtures)
+        if (CULTURE_DEFS.has(f.defId)) expect(f.islandId, `seed ${seed}`).toBe(id);
+      const { props } = appendSettlementProps(w);
+      const hedge = PROP_DEFS.findIndex((d) => d.id === 'hedge');
+      const brackets = w.fixtures.filter(
+        (f) => f.defId === 'hedge' && f.variant === CS.garden.bracketVariant,
+      ).length;
+      let n = 0;
+      for (let i = 0; i < props.count; i++)
+        if (props.defId[i] === hedge && props.variant[i] === CS.garden.bracketVariant) n++;
+      expect(n, `seed ${seed}`).toBe(brackets);
+    }
   });
 });

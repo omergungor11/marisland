@@ -154,6 +154,15 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   hedge: 1.1,
   bikeRack: 0.8,
   reflectingPoolEdge: 0.5,
+  // Coding Wind Gardens (TASK-421; pergola, hammock and rack also block their full rect)
+  rubberDuck: 0.35,
+  kite: 0.7,
+  pergolaDesk: 1.9,
+  hammock: 2.0,
+  kiteRack: 1.9,
+  giantDuck: 1.6,
+  whiteboardA: 0.8,
+  mugStack: 0.5,
   // DevOps
   coolingTower: 2.6,
   rackRow: 1.6,

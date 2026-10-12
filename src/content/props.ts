@@ -21,6 +21,11 @@ export interface PropDef {
   /** First tier at which it appears (0–3). */
   tier: 0 | 1 | 2 | 3;
   variants: number;
+  /**
+   * Random variant rolls (settlement decor, plaza seats) pick among the first `rollVariants` only;
+   * later variants are culture pieces placed (pinned) on purpose. Default `variants`.
+   */
+  rollVariants?: number;
   /** Footprint radius in u (occupancy + contact blob). */
   footprint: number;
   flags: number;

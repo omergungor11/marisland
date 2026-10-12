@@ -201,6 +201,7 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
     fields: rawLand.fields,
     fieldColor,
     districts: [...patchDistricts(islands, rawLand.fields), ...sites.districts],
+    storySpots: sites.storySpots,
     waterfalls: [],
     props: createPropStore(0),
     chunkFlags,

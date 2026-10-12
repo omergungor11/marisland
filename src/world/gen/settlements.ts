@@ -33,6 +33,7 @@ import type {
   PathGraph,
   Polyline,
   SettlementData,
+  StorySpot,
   StreamData,
   XZ,
 } from '../types.ts';
@@ -962,6 +963,8 @@ export interface SettlementResult {
   pathGraph: PathGraph;
   /** Theme districts of every plan, in plan order. */
   districts: DistrictData[];
+  /** Culture story spots of every plan, in plan order (y on the final ground). */
+  storySpots: StorySpot[];
   /** Obstacles per island (occupancy marking). */
   shapes: Shape[][];
 }
@@ -1144,6 +1147,12 @@ export function buildSettlements(input: SettlementInput, rng: Rng): SettlementRe
     paths: built.paths,
     pathGraph: built.graph,
     districts: plans.flatMap((p) => p.districts),
+    storySpots: plans.flatMap((p) =>
+      (p.stories ?? []).map((st) => ({
+        ...st,
+        pos: { x: st.pos.x, y: heightAt(input.h, st.pos.x, st.pos.z), z: st.pos.z },
+      })),
+    ),
     shapes: ctx.shapes,
   };
 }

@@ -46,9 +46,26 @@ export const TURBINE_HEIGHTS = [24, 19, 16] as const;
 
 export const CODING_PROP_DEFS: readonly PropDef[] = [
   // T0 signature: white tapered tower, slim blades with blue tips; blades turn via aSpin
-  { id: 'windTurbine', geo: 'windTurbine', tier: 0, variants: 4, footprint: 1.3, flags: grounded },
+  // v3 windChimeTower and hedge v2 bracketHedge are Wind Gardens pieces (TASK-421): never rolled
+  {
+    id: 'windTurbine',
+    geo: 'windTurbine',
+    tier: 0,
+    variants: 4,
+    rollVariants: 3,
+    footprint: 1.3,
+    flags: grounded,
+  },
   { id: 'solarRow', geo: 'solarRow', tier: 1, variants: 2, footprint: 2.3, flags: grounded },
-  { id: 'hedge', geo: 'hedge', tier: 2, variants: 3, footprint: 1.1, flags: grounded },
+  {
+    id: 'hedge',
+    geo: 'hedge',
+    tier: 2,
+    variants: 3,
+    rollVariants: 2,
+    footprint: 1.1,
+    flags: grounded,
+  },
   { id: 'bikeRack', geo: 'bikeRack', tier: 3, variants: 2, footprint: 0.8, flags: grounded },
   {
     id: 'reflectingPoolEdge',

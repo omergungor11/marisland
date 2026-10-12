@@ -149,6 +149,8 @@ export interface WorldData {
   fieldColor: Uint8Array;
   /** Theme districts (M14b): solar fields, quads, yards, gardens… Filled by the theme plans. */
   districts: DistrictData[];
+  /** Culture story spots (M19): T3 mini scenes emitted by the theme plans, in plan order. */
+  storySpots: StorySpot[];
   /** Waterfalls off the bluff lips (M17b TASK-395; gen/waterfalls.ts). Not hashed. */
   waterfalls: WaterfallData[];
   /** Scattered props (scatter runs inside generateWorld, after settlements). */
@@ -405,8 +407,8 @@ export function zoneAt(h: Heightfield, zone: Uint8Array, x: number, z: number): 
 }
 
 /**
- * A culture story spot (M19, TASK-408): a quiet T3 mini scene on an island. Type only for now —
- * worldgen does not emit these yet. `kind` is a content key (content/cultures StorySpotDef.kind),
+ * A culture story spot (M19, TASK-408): a quiet T3 mini scene on an island, emitted by the theme
+ * plans (`SitePlan.stories`, y = final ground height) into `world.storySpots`. `kind` is a content key (content/cultures StorySpotDef.kind),
  * `defs` the prop def ids placed at the spot (same ids `appendSettlementProps.push` takes).
  */
 export interface StorySpot {

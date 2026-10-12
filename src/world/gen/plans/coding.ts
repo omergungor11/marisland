@@ -10,15 +10,28 @@
  * - Server Yard (serverShed row on concrete) and Hack Garden (hedged outdoor desks);
  * - Solar farm: every profile patch rectangle trimmed to the clean ground left over, as a `solar`
  *   district (render lays the panel rows) on gravel; the remaining patch ground becomes lawn;
- * - a lee dock.
+ * - a lee dock;
+ * - the Wind Gardens culture (M19 TASK-421, `windGardens`): pergola desks, whiteboards and mug
+ *   crates on the lawn, a giant duck and rubber ducks in the pools, hammocks at the turbine feet
+ *   (the first is the nap), a kite field on the windward side, `{ }` hedges round the Hack
+ *   Garden with a kite stuck on them, the chime pagoda on the tallest turbine, and story spots.
  * The campus frame is the patch grid: `u` along the patch axis, `v` across it. Numbers live in
  * content/themes/coding.ts (`CODING_PLAN`); every random draw comes from `rng` forks.
  */
+import { CODING_CULTURE_SITES as CS } from '../../../content/cultures/coding.ts';
 import { CODING_PLAN as P } from '../../../content/themes/coding.ts';
 import { THEMES } from '../../../content/themes/index.ts';
-import { FLATTEN, LOT_FOOTPRINT, PATHS } from '../../../content/settlements.ts';
+import { FIXTURE_RADIUS, FLATTEN, LOT_FOOTPRINT, PATHS } from '../../../content/settlements.ts';
+import type { Rng } from '../../../core/rng.ts';
 import { smoothstep } from '../../../core/math/index.ts';
-import type { DistrictData, DistrictKind, FieldPatchData, IslandData, XZ } from '../../types.ts';
+import type {
+  DistrictData,
+  DistrictKind,
+  FieldPatchData,
+  IslandData,
+  StorySpot,
+  XZ,
+} from '../../types.ts';
 import { PATCHWORK } from '../../../content/islands.ts';
 import { heightAt, Zone } from '../../types.ts';
 import { cellX, cellZ, gridRange } from '../grid.ts';
@@ -522,6 +535,7 @@ export const planCoding: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   }
 
   // ---- Hack Garden: hedged outdoor desks (bench pairs) with a bike rack at the entrance
+  let gardenSite: GardenSite | null = null;
   const gr = rng.fork('garden');
   const G = P.garden;
   const gf = siteOnRing(ctx, isl, f, G.size, G.ring, G.maxRelief, G.minShore, gr.range(0, 6.28));
@@ -529,15 +543,21 @@ export const planCoding: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
     const [gu, gv] = [G.size[0] / 2, G.size[1] / 2];
     const garden = frameRect(gf, 0, 0, gu, gv);
     paint(ctx, isl, garden, Zone.meadow);
-    const hedge = (p: XZ, rotY: number): void => {
+    const hedge = (p: XZ, rotY: number, variant = 0): void => {
       pushFixture(ctx, isl, 'hedge', p, rotY);
-      ctx.fixtures[ctx.fixtures.length - 1].variant = 0;
+      ctx.fixtures[ctx.fixtures.length - 1].variant = variant;
     };
     for (const sv of [-1, 1])
       for (const u of [-3.4, -1.15, 1.15, 3.4]) hedge(at(gf, u, sv * (gv - 0.4)), facing(gf, 1));
     // closed end away from the park, entrance toward it
     const entrance = (f.o.x - gf.o.x) * gf.U.x + (f.o.z - gf.o.z) * gf.U.z >= 0 ? 1 : -1;
-    for (const v of [-1.2, 1.2]) hedge(at(gf, -entrance * (gu - 0.4), v), facing(gf, 0));
+    // Wind Gardens: the closed end is a `{` (bracketHedge, opening into the garden), the entrance
+    // is flanked by two `}` (TASK-421); the bracket's open side is its local +x
+    const B = CS.garden;
+    hedge(at(gf, -entrance * (gu - 0.4), 0), facing(gf, entrance > 0 ? 1 : 3), B.bracketVariant);
+    for (const v of [-B.gateV, B.gateV])
+      hedge(at(gf, entrance * (gu - 0.4), v), facing(gf, entrance > 0 ? 3 : 1), B.bracketVariant);
+    gardenSite = { f: gf, entrance, gu };
     for (const u of [-2.2, 1.4])
       for (const sv of [-1, 1])
         pushFixture(ctx, isl, 'bench', at(gf, u, sv * 1.0), facing(gf, sv > 0 ? 3 : 1));
@@ -574,6 +594,13 @@ export const planCoding: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
     .forEach((li, r) => {
       ctx.landmarks[li].variant = variants[Math.min(r, variants.length - 1)] ?? 0;
     });
+  // Wind Gardens: the tallest turbine wears the chime pagoda (same tower, same LOD1)
+  for (const li of turbines)
+    if (ctx.landmarks[li].variant === 0) {
+      const m = ctx.landmarks[li];
+      m.variant = CS.chimeVariant;
+      addShape(ctx, isl, discShape(m.x, m.z, CS.chimeRadius), true);
+    }
 
   // ---- lot floor: devPods around the park
   for (let tries = 0; lots.length < P.minLots && tries < P.minLots; tries++) {
@@ -607,6 +634,15 @@ export const planCoding: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
       if (!solar.some((sh) => shapeDist(sh, x, z) <= 0.5)) ctx.zone[i] = Zone.grass;
     }
 
+  // ---- Wind Gardens culture (M19 TASK-421): before the links, so the paths route round it
+  plan.stories = windGardens(ctx, isl, rng.fork('culture'), {
+    f,
+    hubEnd: endU,
+    garden: gardenSite,
+    turbines,
+    sheds: lots.filter((li) => ctx.lots[li].defId === 'serverShed'),
+  });
+
   // ---- links: turbines (service paths), lots nearest the park first
   for (const li of turbines) linkLandmark(ctx, plan, li, f.o);
   lots.sort((x, y) => dist(ctx.lots[x], f.o) - dist(ctx.lots[y], f.o) || x - y);
@@ -637,4 +673,212 @@ function bestSampleHigh(ctx: SiteCtx, isl: IslandData, turbines: number[], park:
       best = p;
     }
   return best;
+}
+
+/** The Hack Garden frame and which end (±U) is its entrance. */
+interface GardenSite {
+  f: Frame;
+  entrance: number;
+  gu: number;
+}
+
+interface CultureSite {
+  /** Tech Park frame. */
+  f: Frame;
+  /** Quad end (±1 along U) of the hub; the nap hammock hangs at the other end. */
+  hubEnd: number;
+  garden: GardenSite | null;
+  turbines: readonly number[];
+  sheds: readonly number[];
+}
+
+/**
+ * Wind Gardens (M19 TASK-421, ISLAND_CULTURES §2.2): the culture kit placed round the Tech Park,
+ * the turbines and the Hack Garden, plus its story spots. Every number is CODING_CULTURE_SITES;
+ * every draw comes from a sub-fork of `rng` (one per kit piece / story).
+ */
+function windGardens(ctx: SiteCtx, isl: IslandData, rng: Rng, s: CultureSite): StorySpot[] {
+  const { f } = s;
+  const K = P.park;
+  const stories: StorySpot[] = [];
+  const story = (kind: string, p: XZ, rotY: number, defs: readonly string[]): void => {
+    stories.push({ kind, islandId: isl.id, pos: { x: p.x, y: 0, z: p.z }, rotY, defs });
+  };
+  const rects: Readonly<Record<string, readonly [number, number]>> = CS.rect;
+  /** Rect obstacle of a rect def at `p` (local x × local z). */
+  const rectOf = (defId: string, p: XZ, rotY: number): Shape =>
+    rectShape(p.x, p.z, rotY, rects[defId][0], rects[defId][1]);
+  /** Fixture with its obstacle (a rect for the rect defs, else a disc). */
+  const place = (defId: string, p: XZ, rotY: number, variant: number): void => {
+    ctx.fixtures.push({ defId, x: p.x, z: p.z, rotY, islandId: isl.id, variant });
+    const sh = rects[defId] ? rectOf(defId, p, rotY) : discShape(p.x, p.z, FIXTURE_RADIUS[defId]);
+    addShape(ctx, isl, sh, true);
+  };
+
+  // ---- lawn strips: two pergola desks each, a mug crate between them, a whiteboard at the end
+  const L = CS.lawn;
+  [1, -1].forEach((sv, si) => {
+    const front = facing(f, sv > 0 ? 3 : 1); // toward the paved spine
+    L.pergolaU.forEach((u, k) =>
+      place('pergolaDesk', at(f, u, sv * L.pergolaV), front, (si + k) % 2),
+    );
+    place('mugStack', at(f, L.mugU, sv * L.pergolaV), front, 0);
+    // the board faces the spine like the desks (read from the paving and the park's walks)
+    const bu = sv * L.boardU;
+    place('whiteboardA', at(f, bu, sv * L.pergolaV), front, L.boards[si]);
+    if (L.boards[si] === 1) {
+      // rubber-duck debugging: a duck sits in front of the bug doodle, looking at it
+      const duck = at(f, bu, sv * (L.pergolaV - L.boardDuck));
+      place('rubberDuck', duck, front + Math.PI, rng.fork('boardDuck').int(0, 2));
+      story('bugDoodle', duck, front + Math.PI, ['whiteboardA', 'rubberDuck']);
+    }
+  });
+
+  // ---- pools: the giant duck in one, rubber ducks afloat in the other
+  const pr = rng.fork('pools');
+  const giant = pr.int(0, 1);
+  const su = [-1, 1];
+  const gp = at(f, su[giant] * K.poolU, 0);
+  // along the pool's long side (the 3.9 u duck fits the 5.2 u pool that way), beak either end
+  const gYaw = facing(f, pr.chance(0.5) ? 0 : 2) + pr.range(-0.15, 0.15);
+  place('giantDuck', gp, gYaw, 0);
+  story('gullOnDuck', gp, gYaw, ['giantDuck']);
+  const other = frameAt(at(f, su[1 - giant] * K.poolU, 0), f.a);
+  const nd = pr.int(CS.pool.ducks[0], CS.pool.ducks[1]);
+  for (let k = 0; k < nd; k++) {
+    const [du, dv] = CS.pool.duckAt[k];
+    place('rubberDuck', at(other, du, dv), pr.range(0, Math.PI * 2), pr.int(0, 2));
+  }
+  // the duck family crossing the walk beside that pool (a bot waits for them)
+  const cv = (pr.chance(0.5) ? 1 : -1) * (K.lawn[1] + K.walk);
+  story('duckCrossing', at(f, su[1 - giant] * K.poolU, cv), facing(f, 0), [
+    'bikeRack',
+    'reflectingPoolEdge',
+  ]);
+
+  // ---- hammocks at the turbine feet, the chime tower's first: the first one is the nap (sleeper
+  // with a laptop, the toppled mug crate beside it). With no room at any mast the nap hangs
+  // between the two quad-end trees far from the hub (under their canopies: a T3 find)
+  const H = CS.hammock;
+  const hr = rng.fork('hammocks');
+  const chime = (li: number): number => (ctx.landmarks[li].variant === CS.chimeVariant ? 0 : 1);
+  let napped = false;
+  const nap = (p: XZ, rotY: number, mug: XZ): void => {
+    place('hammock', p, rotY, 0);
+    place('mugStack', mug, rotY, 1);
+    story('hammockNap', p, rotY, ['hammock', 'mugStack']);
+    napped = true;
+  };
+  for (const li of [...s.turbines].sort((x, y) => chime(x) - chime(y) || x - y)) {
+    const m = ctx.landmarks[li];
+    const phase = hr.range(0, Math.PI * 2);
+    const toPark = Math.atan2(f.o.z - m.z, f.o.x - m.x);
+    let best: { p: XZ; rotY: number } | null = null;
+    let bs = -Infinity;
+    for (let r = H.ring[0]; r <= H.ring[1]; r += 0.8)
+      for (let j = 0; j < H.samples; j++) {
+        const ang = phase + (j / H.samples) * Math.PI * 2;
+        if (Math.cos(ang - toPark) > H.parkCos) continue;
+        const p = add(m, { x: Math.cos(ang), z: Math.sin(ang) }, r);
+        // rotY = ang: local z along the radius, the hammock's length (local x) tangent to the ring
+        const sh = rectOf('hammock', p, ang);
+        if (!onLand(ctx, isl, sh, H.minShore) || relief(ctx, sh) > H.maxRelief) continue;
+        if (!clear(ctx, isl, sh, H.gap)) continue;
+        // the lee side of the mast (sheltered), close in
+        const sc = Math.cos(ang - ctx.windDir) - 0.1 * r;
+        if (sc > bs) {
+          bs = sc;
+          best = { p, rotY: ang };
+        }
+      }
+    if (!best) continue;
+    addPad(ctx, isl, rectOf('hammock', best.p, best.rotY), FLATTEN.discMargin);
+    const out = { x: Math.cos(best.rotY), z: Math.sin(best.rotY) };
+    if (!napped) nap(best.p, best.rotY, add(best.p, out, H.napMug));
+    else place('hammock', best.p, best.rotY, 1);
+  }
+  if (!napped) {
+    const endU = -s.hubEnd * (K.lawn[0] - K.treeInset);
+    const hv = (hr.chance(0.5) ? 1 : -1) * H.treeV;
+    nap(at(f, endU, hv), facing(f, 2), at(f, endU + s.hubEnd * H.napMug, hv));
+  }
+
+  // ---- kite field on the windward side: poles across the windward edge, the rack at the lee edge
+  const KF = CS.kites;
+  const kr = rng.fork('kites');
+  const W = { x: Math.cos(ctx.windDir), z: Math.sin(ctx.windDir) };
+  const centre = { x: isl.cx, z: isl.cz };
+  let field: { g: Frame; su: number; sv: number } | null = null;
+  let fs = -Infinity;
+  const [x0, x1] = gridRange(isl.minX, isl.maxX);
+  const [z0, z1] = gridRange(isl.minZ, isl.maxZ);
+  for (const [minWindward, su, sv] of KF.tries) {
+    for (let iz = z0; iz <= z1; iz += KF.step)
+      for (let ix = x0; ix <= x1; ix += KF.step) {
+        const i = iz * ctx.n + ix;
+        if (ctx.islandMap[i] !== isl.id + 1 || ctx.sdf[i] < KF.minShore) continue;
+        const p = { x: cellX(ix), z: cellZ(iz) };
+        const proj = -((p.x - centre.x) * W.x + (p.z - centre.z) * W.z);
+        if (proj / (dist(p, centre) || 1) < minWindward || proj <= fs) continue;
+        // U points into the wind (windward), V across it
+        const g = frameAt(p, ctx.windDir + Math.PI);
+        const sh = frameRect(g, 0, 0, su / 2, sv / 2);
+        if (!onLand(ctx, isl, sh, KF.minShore) || relief(ctx, sh) > KF.maxRelief) continue;
+        if (!clear(ctx, isl, sh, KF.gap)) continue;
+        fs = proj;
+        field = { g, su, sv };
+      }
+    if (field) break;
+  }
+  if (field) {
+    const { g, su, sv } = field;
+    // smaller fields scale the layout (poles, spread and rack keep inside the rect)
+    const ku = su / KF.tries[0][1];
+    const kv = sv / KF.tries[0][2];
+    const n = Math.min(
+      kr.int(KF.count[0], KF.count[1]),
+      1 + Math.floor((2 * KF.spread * kv) / KF.minGap),
+    );
+    // the kite hangs off the pole's local +x: point it downwind (rotY = wind + π/2)
+    const downwind = ctx.windDir + Math.PI / 2;
+    for (let k = 0; k < n; k++) {
+      const v = n > 1 ? kv * (-KF.spread + (2 * KF.spread * k) / (n - 1)) : 0;
+      const j = (): number => kr.range(-KF.jitter, KF.jitter);
+      place('kite', at(g, ku * KF.poleU + j(), v + j()), downwind + kr.range(-0.25, 0.25), k % 3);
+    }
+    addPad(ctx, isl, frameRect(g, 0, 0, su / 2, sv / 2), FLATTEN.discMargin);
+    const rack = at(g, ku * KF.rackU, 0);
+    place('kiteRack', rack, facing(g, 0), KF.rackVariant);
+    const rd = at(g, ku * KF.rackU + KF.rackDuck[1], KF.rackDuck[0]);
+    place('rubberDuck', rd, facing(g, 0), kr.int(0, 2));
+    story('kiteDay', rack, facing(g, 0), ['kiteRack', 'kite']);
+  }
+
+  // ---- the kite stuck on the Hack Garden's `{`: its pole outside the closed end, kite over it
+  // (no garden: on a lawn-edge hedge, the pole on the lawn strip)
+  const B = CS.garden;
+  const side = rng.fork('stuckKite').chance(0.5) ? 1 : -1;
+  let stuck: { p: XZ; rotY: number } | null = null;
+  if (s.garden) {
+    const { f: gf, entrance, gu } = s.garden;
+    const p = at(gf, -entrance * (gu + B.stuckKiteU), side * B.stuckKiteV);
+    const disc = discShape(p.x, p.z, FIXTURE_RADIUS.kite);
+    // local +x (the kite) into the garden
+    if (onLand(ctx, isl, disc, 1.5) && relief(ctx, disc) < 0.6)
+      stuck = { p, rotY: facing(gf, entrance > 0 ? 1 : 3) };
+  }
+  if (!stuck)
+    stuck = {
+      p: at(f, -s.hubEnd * B.lawnStuck[0], side * B.lawnStuck[1]),
+      rotY: facing(f, side > 0 ? 1 : 3),
+    };
+  place('kite', stuck.p, stuck.rotY, 1);
+  story('stuckKite', stuck.p, stuck.rotY, ['kite', 'hedge']);
+
+  // ---- the cat asleep on the warm rack of the first server shed
+  if (s.sheds.length) {
+    const lot = ctx.lots[s.sheds[0]];
+    story('warmRackCat', lot, lot.rotY, ['serverShed']);
+  }
+  return stories;
 }

@@ -79,6 +79,9 @@ export function fixtureEmitters(
   }));
 }
 
+/** Variants a random roll may pick (`PropDef.rollVariants`: later ones are placed on purpose). */
+const rolls = (def: (typeof PROP_DEFS)[number]): number => def.rollVariants ?? def.variants;
+
 export function appendSettlementProps(world: WorldData): {
   props: PropStore;
   emitters: SettlementEmitters;
@@ -141,7 +144,7 @@ export function appendSettlementProps(world: WorldData): {
     if (defIndex === undefined) return -1;
     const def = PROP_DEFS[defIndex];
     if (s.count >= s.defId.length - 1) return -1;
-    const v = variant ?? r.int(0, def.variants - 1);
+    const v = variant ?? r.int(0, rolls(def) - 1);
     return s.push(
       defIndex,
       v,
@@ -225,7 +228,7 @@ export function appendSettlementProps(world: WorldData): {
     if (!m || !def) continue;
     const yaw = Math.atan2(Math.cos(lm.rotY), Math.sin(lm.rotY));
     // rolled even when the theme overrides it: keeps the island's decor stream stable
-    const rolled = decorOf(lm.islandId).int(0, def.variants - 1);
+    const rolled = decorOf(lm.islandId).int(0, rolls(def) - 1);
     const ov = THEMES[world.islands[lm.islandId].theme].landmarkVariant[lm.kind];
     push(
       m.def,
@@ -336,7 +339,7 @@ export function appendSettlementProps(world: WorldData): {
     if (!def) continue;
     const y = FLOATING_FIXTURES.includes(fx.defId) ? 0 : undefined;
     // rolled even when the planner chose one: keeps the island's decor stream stable
-    const rolled = decorOf(fx.islandId).int(0, def.variants - 1);
+    const rolled = decorOf(fx.islandId).int(0, rolls(def) - 1);
     const v = fx.variant !== undefined && fx.variant < def.variants ? fx.variant : rolled;
     propEmitters(push(fx.defId, fx.x, fx.z, yaw, 1, fx.islandId, y, v), fx.defId);
   }
@@ -377,9 +380,11 @@ export function appendSettlementProps(world: WorldData): {
         );
     }
   }
-  // lantern posts along paths (every ~5th node, per-theme density)
+  // lantern posts along paths (every ~5th node of each island, per-theme density). Counted per
+  // island (TASK-421): a path change on one island no longer shifts the others' lantern nodes
   const nodes = world.pathGraph.nodes;
-  for (let i = 0; i < nodes.length / 2; i += 5) {
+  const nth = new Map<number, number>();
+  for (let i = 0; i < nodes.length / 2; i++) {
     const x = nodes[i * 2];
     const z = nodes[i * 2 + 1];
     if (!Number.isFinite(x)) continue;
@@ -388,6 +393,9 @@ export function appendSettlementProps(world: WorldData): {
         Math.round((z - h.originZ) / h.cellSize) * h.n + Math.round((x - h.originX) / h.cellSize)
       ] - 1;
     if (isl < 0) continue;
+    const k = nth.get(isl) ?? 0;
+    nth.set(isl, k + 1);
+    if (k % 5 !== 0) continue;
     const theme = world.islands[isl]?.theme;
     const p = theme ? THEMES[theme].pathLanterns : 0;
     const rng = decorOf(isl);
