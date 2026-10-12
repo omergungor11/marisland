@@ -16,6 +16,7 @@ import {
   VILLAGE,
 } from '../../content/settlements.ts';
 import { OFFICE_DEFS } from '../../content/offices.ts';
+import { PROP_DEFS, PROP_DEF_INDEX } from '../../content/props.ts';
 import { ARCHETYPES } from '../../content/islands.ts';
 import { THEMES } from '../../content/themes/index.ts';
 import type {
@@ -882,7 +883,9 @@ function assignLotVariants(
     const li = local.get(l.islandId) ?? 0;
     local.set(l.islandId, li + 1);
     const key = l.islandId * 4096 + li;
-    const k = LOT_ROOFS[l.defId]?.length ?? 1;
+    // culture variants past `rollVariants` are pinned on purpose, never drawn (TASK-425)
+    const def = PROP_DEFS[PROP_DEF_INDEX[l.defId]];
+    const k = def?.rollVariants ?? LOT_ROOFS[l.defId]?.length ?? 1;
     const vs = Array.from({ length: k }, (_, v) => v);
     const h = vs.map((v) => hashInts(seed, key, v));
     const pin = pins[i];

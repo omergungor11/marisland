@@ -72,6 +72,15 @@ const TARGET: Record<string, number> = {
   ...Object.fromEntries(THEME_GEO.map((d) => [d.id, 3500])),
 };
 
+/**
+ * Culture variants of existing defs with their own budget (`id:variant`; placed since TASK-425):
+ * the glass chime line (glass drops on cords) and the Atelier Tree's canopy vitray.
+ */
+const VARIANT_TARGET: Record<string, number> = {
+  'bunting:3': 1500,
+  'giantTree:3': 2400,
+};
+
 /** Props from the buildings/coastal/decor/landmarks families: carry an `emissive` attribute. */
 const NEW_IDS = new Set([...Object.keys(TARGET).slice(10), ...THEME_GEO.map((d) => d.id)]);
 /** Props whose LOD0 must actually glow somewhere (windows, lamps, lava). */
@@ -208,7 +217,8 @@ describe('prop geometry', () => {
           const h = def.heights?.[v] ?? def.height;
           expect(bb.max.y).toBeGreaterThanOrEqual(h * 0.65);
           expect(bb.max.y).toBeLessThanOrEqual(h * 1.35);
-          if (lod === 0 && TARGET[def.id]) expect(tris(g)).toBeLessThanOrEqual(TARGET[def.id]);
+          const target = VARIANT_TARGET[`${def.id}:${v}`] ?? TARGET[def.id];
+          if (lod === 0 && target) expect(tris(g)).toBeLessThanOrEqual(target);
           if (lod === 1)
             expect(tris(g)).toBeLessThanOrEqual(0.3 * tris(buildProp(def.id, 7, v, 0)));
         });

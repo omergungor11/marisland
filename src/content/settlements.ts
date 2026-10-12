@@ -86,7 +86,8 @@ export const LOT_ROOFS: Readonly<Record<string, readonly number[]>> = {
   inspectionTower: [1, 3],
   testLabStilt: [2, 6],
   atelier: [4, 1],
-  galleryPavilion: [3, 6],
+  // v2 = glass-roof gallery (TASK-425; a pavilion: open canopy, not in the roof rule)
+  galleryPavilion: [3, 6, 6],
   dataCenter: [2, 5],
   rackShed: [0, 3],
   antennaMast: [1, 4],
@@ -242,6 +243,20 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   sculptureTorus: 1.6,
   easel: 0.6,
   giantMushroom: 0.8,
+  // Design Glass & Light kit (TASK-425; the hot shop also blocks its full rect). Caustics are
+  // walkable light, the chime cord spans a lane and the rainbow stands on two legs: their poles /
+  // legs are separate worldgen discs
+  hotShop: 1.6,
+  prismSculpture: 0.7,
+  stainedScreen: 1.0,
+  gatherRing: 1.5,
+  glassOrb: 0.5,
+  culletCrate: 0.5,
+  sampleShelf: 0.65,
+  blowpipeRack: 0.65,
+  causticDecal: 0.05,
+  bunting: 0.05,
+  rainbowArc: 0.05,
   // Research
   weatherMast: 0.8,
   // campus (TASK-402a): circles around the footprints of the PropDefs
@@ -297,6 +312,8 @@ export const FLOATING_FIXTURES: readonly string[] = [
   'inspectionBuoy',
   'instrumentBuoy',
   'researchVessel',
+  // the Design spray rainbow stands in the sea off the bluff foot (TASK-425)
+  'rainbowArc',
 ];
 
 /** Flatten pads (plateau with smooth falloff). */

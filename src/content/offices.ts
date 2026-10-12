@@ -38,7 +38,8 @@ export const OFFICE_DEFS: Readonly<Record<string, OfficeDef>> = {
   inspectionTower: { theme: 'qa', kind: 'tower', w: 2.5, d: 2.5, variants: 2 },
   testLabStilt: { theme: 'qa', kind: 'hut', w: 3, d: 3, variants: 2 },
   atelier: { theme: 'design', kind: 'studio', w: 5, d: 4, variants: 2 },
-  galleryPavilion: { theme: 'design', kind: 'pavilion', w: 4, d: 4, variants: 2 },
+  // v2 = glass-roof gallery (M19 TASK-425; the Design plan pins it on one lot)
+  galleryPavilion: { theme: 'design', kind: 'pavilion', w: 4, d: 4, variants: 3 },
   dataCenter: { theme: 'devops', kind: 'office', w: 7, d: 4, variants: 2 },
   rackShed: { theme: 'devops', kind: 'shed', w: 3, d: 2.5, variants: 2 },
   antennaMast: { theme: 'devops', kind: 'tower', w: 2, d: 2, variants: 2 },
@@ -307,6 +308,9 @@ export const FIXTURE_EMITTERS: Readonly<Record<string, readonly (readonly Emitte
   // Ember Smiths bath house (TASK-422): steam from the copper vent chimney (geo hook
   // culture-devops.ts onsenHouse `userData.hooks.emitter`)
   onsenHouse: [[{ x: 1.0, y: 2.9, z: -0.3, preset: 'vent' }]],
+  // Glass & Light hot shop (TASK-425): smoke off the copper stack top, every heat variant (geo
+  // hook culture-design.ts hotShop `userData.hooks.emitter`)
+  hotShop: [[{ x: -0.7, y: 2.68, z: -0.58, preset: 'chimney' }]],
   // Star Academy mini volcano terrariums (TASK-426): steam from the crater (geo hook
   // culture-research.ts miniVolcanoTerrarium `userData.hooks.emitter`, per variant)
   miniVolcanoTerrarium: [

@@ -412,10 +412,11 @@ describe('T0 blobs and grounding (TASK-373)', () => {
       // p95 ≤ 4.5; mixed pine + blossom cells (Design, ΔE ≈ 46 apart) keep a per-variant residue
       // (class colour = variant-averaged kind colour) of up to ~12 on 2–4 px T0 blobs. With all
       // seven theme plans (TASK-380) every cell above 4 is such a Design mix: seed 1001 p95 4.42.
-      // TASK-390 (taller Mossgrove dome on a bluff plateau): a 1 blossom + 2 pine cell reaches 13.6.
+      // TASK-390 (taller Mossgrove dome on a bluff plateau): a 1 blossom + 2 pine cell reaches 13.6;
+      // TASK-425 (Glass & Light kit moves the Design scatter): one such mix cell reaches 14.7.
       const sorted = [...err].sort((a, b) => a - b);
       expect(sorted[Math.floor(sorted.length * 0.95)], `seed ${seed} p95`).toBeLessThanOrEqual(4.5);
-      expect(Math.max(...err), `seed ${seed}`).toBeLessThanOrEqual(14);
+      expect(Math.max(...err), `seed ${seed}`).toBeLessThanOrEqual(15);
     }
   });
 

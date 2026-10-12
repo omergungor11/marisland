@@ -1427,6 +1427,56 @@ function glassPavilion({ rng, lod }: BuildOpts): THREE.BufferGeometry {
   const hi = lod === 0;
   const acc = cultureAcc(rng, lod);
   const PH = 2.5;
+  const hue = [G.ruby, G.orange, G.amber, G.sky, G.violet, G.mint, G.pink, G.sun];
+  if (!hi) {
+    // far proxy (TASK-425): slab, back wall, posts, eaves and the hip roof as the LOD0 lattice of
+    // glass panes, flat (same hues per pane, so the far colour matches)
+    bx(acc, 4, 0.16, 4, 0, 0, 0, K.paper);
+    bx(acc, 3.6, 2.3, 0.14, 0, 0.16, -1.85, K.cream);
+    for (const x of [-1.8, 1.8])
+      for (const z of [-1.8, 1.8]) put(acc, cylB(0.1, 0.1, PH, 4), [x, 0.16, z], K.plumDeep);
+    const e = 2.4;
+    const apex = V(0, PH + 1.15, 0);
+    const cs = [V(-e, PH, e), V(e, PH, e), V(e, PH, -e), V(-e, PH, -e)];
+    const n = 3;
+    let k = 0;
+    for (let f = 0; f < 4; f++) {
+      const p0 = cs[f];
+      const p1 = cs[(f + 1) % 4];
+      const at = (i: number, j: number): THREE.Vector3 =>
+        p0
+          .clone()
+          .lerp(p1, j / Math.max(1, n - i))
+          .lerp(apex, i / n);
+      const pane = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3): void => {
+        const g = new THREE.BufferGeometry();
+        g.setAttribute(
+          'position',
+          new THREE.Float32BufferAttribute(
+            [a, b, c].flatMap((p) => [p.x, p.y, p.z]),
+            3,
+          ),
+        );
+        put(acc, g, [0, 0, 0], hue[k++ % hue.length], { ...lit(1), double: true });
+      };
+      for (let i = 0; i < n; i++)
+        for (let j = 0; j < n - i; j++) {
+          pane(at(i, j), at(i, j + 1), at(i + 1, j));
+          if (j < n - i - 1) pane(at(i, j + 1), at(i + 1, j + 1), at(i + 1, j));
+        }
+      const mid = p0.clone().add(p1).multiplyScalar(0.5);
+      put(
+        acc,
+        baseBox(p0.distanceTo(p1) + 0.2, 0.14, 0.16),
+        [mid.x, PH - 0.12, mid.z],
+        K.plumDeep,
+        {
+          q: qEuler(0, Math.atan2(p1.x - p0.x, p1.z - p0.z) - Math.PI / 2, 0),
+        },
+      );
+    }
+    return acc.finish(rng, false, true);
+  }
   bx(acc, 4, 0.16, 4, 0, 0, 0, K.paper, { aoAmt: 0.15 });
   if (hi) bx(acc, 4.2, 0.08, 4.2, 0, 0, 0, K.cream, { aoAmt: 0.2 });
   for (const x of [-1.8, 1.8])
@@ -1465,7 +1515,6 @@ function glassPavilion({ rng, lod }: BuildOpts): THREE.BufferGeometry {
     },
   );
   const nSub = hi ? 3 : 1;
-  const hue = [G.ruby, G.orange, G.amber, G.sky, G.violet, G.mint, G.pink, G.sun];
   let k = 0;
   for (let f = 0; f < 4; f++) {
     const p0 = corners[f];
@@ -1522,11 +1571,14 @@ function glassPavilion({ rng, lod }: BuildOpts): THREE.BufferGeometry {
   return acc.finish(rng, false, true);
 }
 
-/** `galleryPavilion` variant `v` = the glass-roof pavilion; LOD1 = the base's variant 1. */
+/**
+ * `galleryPavilion` variant `v` = the glass-roof pavilion, both LODs (TASK-425: the shared v1 LOD1
+ * kept the plain roof colour, a ΔE 43 pop at the T2 swap once the gallery was placed).
+ */
 export function withGlassPavilion(base: PropBuilder, glassVariant = 2): PropBuilder {
   return (o) => {
     if (o.variant !== glassVariant) return base(o);
-    return o.lod === 1 ? base({ ...o, variant: 1 }) : glassPavilion(o);
+    return glassPavilion(o);
   };
 }
 

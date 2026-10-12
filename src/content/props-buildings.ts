@@ -54,7 +54,8 @@ export const PROP_DEFS_BUILDINGS: PropDef[] = [
   d('fence', 2, 2, 0.8, grounded),
   d('lanternPost', 2, 3, 0.4, grounded),
   d('laundryLine', 2, 3, 2.0, grounded | windy),
-  d('bunting', 2, 3, 3.0, grounded | windy),
+  // v3 = Design glass chime line (TASK-425): only where the Design plan pins it
+  d('bunting', 2, 4, 3.0, grounded | windy, undefined, { rollVariants: 3 }),
   d('bench', 2, 2, 0.7, grounded),
   d('barrel', 2, 2, 0.3, grounded),
   d('crate', 2, 2, 0.4, grounded),
@@ -65,7 +66,8 @@ export const PROP_DEFS_BUILDINGS: PropDef[] = [
   d('lighthouse', 0, 3, 2.4, grounded),
   d('clocktower', 0, 3, 1.9, grounded),
   // canopy carries wind weights (sway); trunk/house stay rigid
-  d('giantTree', 0, 3, 3.2, grounded | windy),
+  // v3 = canopy vitray (TASK-425): the Atelier Tree (THEMES.design.landmarkVariant)
+  d('giantTree', 0, 4, 3.2, grounded | windy, undefined, { rollVariants: 3 }),
   d('sunkenShip', 1, 2, 5.0, underwater),
   d('hotSpring', 1, 1, 3.4, grounded),
   d('volcanoCrater', 0, 1, 5.2, grounded),
@@ -86,7 +88,8 @@ export const PROP_DEFS_BUILDINGS: PropDef[] = [
   // stands in shallow water like stiltHut: pivot = water level, no contact blob
   d('testLabStilt', 0, 2, 2.1, 0),
   d('atelier', 0, 2, 2.9, grounded),
-  d('galleryPavilion', 0, 2, 2.6, grounded),
+  // v2 = glass roof (TASK-425): only the gallery the Design plan pins
+  d('galleryPavilion', 0, 3, 2.6, grounded, undefined, { rollVariants: 2 }),
   d('dataCenter', 0, 2, 3.6, grounded),
   d('rackShed', 0, 2, 1.9, grounded),
   d('antennaMast', 0, 2, 1.2, grounded),

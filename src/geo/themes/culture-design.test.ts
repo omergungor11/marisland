@@ -173,19 +173,24 @@ describe('TASK-415 Glass & Light kit: geometry', () => {
 });
 
 describe('TASK-415 variants of existing defs', () => {
+  // TASK-425 placed them: `variants` bumped by one, random rolls keep the old range
+  // (`rollVariants`); the glass pavilion has its own LOD1 (the shared v1 one popped colour)
   const cases = [
-    { id: 'giantTree', variant: 3, lod1: 2, count: 3 },
-    { id: 'galleryPavilion', variant: 2, lod1: 1, count: 2 },
-    { id: 'bunting', variant: 3, lod1: 2, count: 3 },
+    { id: 'giantTree', variant: 3, lod1: 2, count: 4 },
+    { id: 'galleryPavilion', variant: 2, lod1: null, count: 3 },
+    { id: 'bunting', variant: 3, lod1: 2, count: 4 },
   ];
   for (const c of cases) {
-    it(`${c.id} v${c.variant}: LOD1 == v${c.lod1}, variants count unchanged, LOD0 adds glass`, () => {
+    it(`${c.id} v${c.variant}: LOD1 == v${c.lod1 ?? 'own'}, rolls keep the old range, LOD0 adds glass`, () => {
       expect(PROP_GEO[c.id].variants).toBe(c.count);
       expect(defOf(c.id)?.variants).toBe(c.count);
-      for (const seed of [1, 42, 1001])
-        expect(same(buildProp(c.id, seed, c.variant, 1), buildProp(c.id, seed, c.lod1, 1))).toBe(
-          true,
-        );
+      expect(defOf(c.id)?.rollVariants).toBe(c.count - 1);
+      for (const seed of [1, 42, 1001]) {
+        const far = buildProp(c.id, seed, c.variant, 1);
+        if (c.lod1 !== null) expect(same(far, buildProp(c.id, seed, c.lod1, 1))).toBe(true);
+        else expect(verts(far)).toBeLessThan(verts(buildProp(c.id, seed, c.variant, 0)) * 0.3);
+      }
+      if (c.lod1 === null) return;
       const g = buildProp(c.id, 3, c.variant, 0);
       expect(verts(g)).toBeGreaterThan(verts(buildProp(c.id, 3, c.lod1, 0)) * 0.8);
       expect(size(g).y).toBeLessThan(PROP_GEO[c.id].height * 1.3);

@@ -868,6 +868,30 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     quality: 'medium',
     sets: ['dev'],
   },
+  {
+    id: 'D-culture-design',
+    title: 'Prism Hour · Design',
+    // TASK-425: T2 (~60 u) from the north-east over the Atelier Glade at 17:30 golden hour: the
+    // Atelier Tree's canopy vitray, the glass-roof gallery, the hot shop behind the quad, the
+    // sculpture garden below and the spray rainbow off the west bluff; raw cam (seed 1001)
+    seed: 1001,
+    cam: '-112,46,118,-150,19,74',
+    time: 17.5,
+    simt: 4,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-culture-design-night',
+    title: 'Jewel Tree · Design',
+    // TASK-425: the Atelier Tree's canopy vitray lit from inside at night, the glade below
+    seed: 1001,
+    cam: '-110,40,112,-143,30,88',
+    time: 21,
+    simt: 4,
+    quality: 'medium',
+    sets: ['dev'],
+  },
   // ---- living close-up (M14c, TASK-383/384): `pnpm shots live [--assert]`. A 0.5 s `deltaT` pair per
   // campus at T3 on medium (16 workers + drones + animated surfaces); the harness measures the motion
   // inside LIVE_CROP over solid pixels (the mask frame drops water / sky: foam and swell are not campus

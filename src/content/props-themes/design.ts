@@ -183,13 +183,15 @@ export const DESIGN_CULTURE_PROP_DEFS: readonly PropDef[] = [
     footprint: 0.7,
     flags: grounded | noShadow,
   },
-  // the one tier-1 def: the waterfall rainbow (time-gated by the culture mover)
+  // the one tier-1 def: the glade rainbow (time-gated by the culture mover). TASK-425: not
+  // `grounded` and a 1 u footprint — the arc stands on two legs 13.7 u apart, its pivot is open
+  // ground (no 13 u contact blob, no 14 u edit keep-out)
   {
     id: 'rainbowArc',
     geo: 'rainbowArc',
     tier: 1,
     variants: 1,
-    footprint: 14,
-    flags: grounded | noShadow,
+    footprint: 1,
+    flags: noShadow,
   },
 ];

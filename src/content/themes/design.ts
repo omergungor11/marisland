@@ -85,7 +85,8 @@ export const DESIGN_THEME: ThemeDef = {
   crown: null,
   // the log cabin is gone (plan §2.6): the planner never asks for it, so no swap is needed
   defSwap: {},
-  landmarkVariant: { giantTree: 2 },
+  // v3 = the canopy vitray (Glass & Light, TASK-425; LOD1 = v2)
+  landmarkVariant: { giantTree: 3 },
   decor: [
     ['flowerBed', 3],
     ['paintPotPlanter', 2],
@@ -129,7 +130,7 @@ export const DESIGN_THEME: ThemeDef = {
   // open the dome a little: meadow clearings for the sheep and the garden, forest still dominant
   zoneRules: { forestThreshold: -0.4, meadowThreshold: -0.05 },
   patchwork: 'off',
-  landmarks: { giantTree: { kind: 'giantTree', variant: 2 } },
+  landmarks: { giantTree: { kind: 'giantTree', variant: 3 } },
   scatter: [
     // blossom round trees replace the green round trees (same rule shape)
     {
