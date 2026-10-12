@@ -18,6 +18,8 @@ export const PropFlag = {
    * Scatter props are only ever hidden this way; edit-added props may also be popped.
    */
   removed: 32,
+  /** Def flag (TASK-408): the batcher draws no shadow-pass copy of this def (micro props). */
+  noShadow: 64,
 } as const;
 
 /** Alias used by the Phase 2 spec. */

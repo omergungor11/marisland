@@ -403,3 +403,16 @@ export function zoneAt(h: Heightfield, zone: Uint8Array, x: number, z: number): 
   if (ix < 0 || iz < 0 || ix >= h.n || iz >= h.n) return Zone.deep;
   return zone[iz * h.n + ix];
 }
+
+/**
+ * A culture story spot (M19, TASK-408): a quiet T3 mini scene on an island. Type only for now —
+ * worldgen does not emit these yet. `kind` is a content key (content/cultures StorySpotDef.kind),
+ * `defs` the prop def ids placed at the spot (same ids `appendSettlementProps.push` takes).
+ */
+export interface StorySpot {
+  kind: string;
+  islandId: number;
+  pos: { x: number; y: number; z: number };
+  rotY: number;
+  defs: readonly string[];
+}
