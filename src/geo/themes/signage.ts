@@ -109,7 +109,7 @@ function pennantSlab(cut: PennantCut, w: number, h: number, hi: boolean): THREE.
 /* ------------------------------- pennantLine ------------------------------- */
 
 const LINE_HALF = 3;
-const LINE_TOP = 3.1;
+const LINE_TOP = 2.2;
 const PENNANTS = 7;
 
 /**
@@ -188,9 +188,9 @@ export interface SignBoard {
 }
 
 const BOARD_LEN = 1.5;
-const BOARD_H = 0.42;
-const BOARD_STEP = 0.47;
-const POST_H = 3.5;
+const BOARD_H = 0.3;
+const BOARD_STEP = 0.32;
+const POST_H = 2.35;
 
 function arrowShape(len: number, h: number, tip: number): THREE.Shape {
   const hh = h / 2;
@@ -244,7 +244,7 @@ export function buildPierSignpost(
       const at = V(0.3, 0, side * (SIGN_THICK / 2)).applyQuaternion(q);
       addGlyph(acc, GLYPH_OF_THEME[b.culture], at.add(V(0, y, 0)), {
         q: gq,
-        size: 0.3,
+        size: 0.24,
         color: CREAM,
         depth: 0.03,
       });
@@ -349,7 +349,14 @@ export function sailStripe(o: SailStripeOpts): THREE.BufferGeometry {
 }
 
 export const SIGNAGE_GEO: readonly PropGeoDef[] = [
-  { id: 'pennantLine', variants: 7, build: pennantLine, footprint: 3.2, height: 4, windy: true },
-  { id: 'pierSignpost', variants: 3, build: pierSignpost, footprint: 1.0, height: 4, windy: false },
+  { id: 'pennantLine', variants: 7, build: pennantLine, footprint: 3.2, height: 2.9, windy: true },
+  {
+    id: 'pierSignpost',
+    variants: 3,
+    build: pierSignpost,
+    footprint: 1.0,
+    height: 2.8,
+    windy: false,
+  },
   { id: 'cargoCrate', variants: 7, build: cargoCrate, footprint: 0.5, height: 0.72, windy: false },
 ];

@@ -5,6 +5,7 @@ import { createRng } from '../../core/rng.ts';
 import { SIGNAGE_PROP_DEFS } from '../../content/props-themes/signage.ts';
 import { THEME_IDS } from '../../world/types.ts';
 import { PropFlag } from '../../world/prop-store.ts';
+import { isLargeStructure } from '../../render/props/batcher.ts';
 import { PROP_GEO, buildProp } from '../registry.ts';
 import { GLYPH_IDS, glyphShapes } from './glyphs.ts';
 import {
@@ -28,6 +29,12 @@ const size = (g: THREE.BufferGeometry): THREE.Vector3 =>
 const MAX_VERTS = 4500;
 
 describe('TASK-409 signage kit', () => {
+  it('no def is promoted to tier 0 by size (W11 calls)', () => {
+    for (const d of SIGNAGE_PROP_DEFS)
+      for (let v = 0; v < d.variants; v++)
+        expect(isLargeStructure(d, size(buildProp(d.geo, 1, v, 0))), `${d.id} v${v}`).toBe(false);
+  });
+
   it('geo and PropDefs line up', () => {
     expect(SIGNAGE_PROP_DEFS.map((d) => d.id).sort()).toEqual(SIGNAGE_GEO.map((d) => d.id).sort());
     for (const d of SIGNAGE_PROP_DEFS) {
