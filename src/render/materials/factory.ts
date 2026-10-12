@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { ALWAYS_APPEAR, APPEAR_OUT_GLSL } from '../props/appear.ts';
 import { BLOOM_IN, TREE_SWAY, WINDMILL } from '../../content/anim.ts';
-import { SHARED } from '../uniforms.ts';
+import { CULTURE_SLOTS, SHARED } from '../uniforms.ts';
 import { FIELDS_GLSL } from '../shaders/chunks/fields.glsl.ts';
 import { SHARED_LIT_GLSL } from '../shaders/chunks/lit.glsl.ts';
 import { NIGHT, SHADE } from '../../content/lighting.ts';
+import { RELAY } from '../../content/cultures/rhythm.ts';
 import { CLOUD_SHADOW_GLSL } from '../shaders/chunks/cloud-shadow.glsl.ts';
 import { NIGHT_GLSL, POOL_GAIN } from '../shaders/chunks/night.glsl.ts';
 import { HOVER_RADIUS, HOVER_UNIFORMS } from './hover.ts';
@@ -65,7 +66,12 @@ export interface LitOptions {
    * lamps ramp (hash of the instance origin); `lateOff` = NIGHT.lateOffFraction of them go dark
    * late. Off for moving meshes (their origin hash would change as they move).
    */
-  lamps?: { stagger?: boolean; lateOff?: boolean };
+  lamps?: { stagger?: boolean; lateOff?: boolean; culture?: boolean };
+  /**
+   * Culture gate (TASK-430, render/culture-clock.ts GATES): a shared 0..1 visibility that
+   * dither-fades the whole material (colour + depth) in and out with the time of day.
+   */
+  gate?: THREE.IUniform<number>;
   /**
    * Far structure merge (TASK-407): the geometry is pre-transformed instances (`uMarMerged`;
    * per-vertex origin in `aSpin.xyz`, scale in `aAppear`, yaw code in `floor(aSeed)`).
@@ -159,6 +165,7 @@ uniform float uFadeNear;
 uniform float uFadeFar;
 uniform float uMarBloomIn;
 uniform float uMarMerged;
+uniform float uMarGate;
 ${ACTIVITY_VERTEX_PARS}
 ${marAttr('float', 'wind')}
 ${marAttr('float', 'aSeed')}
@@ -262,6 +269,7 @@ ${ACTIVITY_DISPLACE}  #ifdef MAR_BLOOM_IN
   #ifdef MAR_BLOOM_IN
     vFade *= marBloomD;
   #endif
+  vFade *= uMarGate;
 `;
 
 const VERTEX_COLOR_PARS = /* glsl */ `
@@ -276,7 +284,26 @@ varying float vMarHover;
 ${ACTIVITY_VARYINGS}
 uniform vec4 uHover;
 uniform vec3 uLamps;
-uniform vec2 uLampMode;
+uniform vec3 uLampMode;
+uniform vec4 uCultureIsle[${CULTURE_SLOTS}];
+uniform vec2 uCultureLamps[${CULTURE_SLOTS}];
+uniform vec3 uFestival;
+// culture clock (TASK-430): the island whose disc (distance / reach) is nearest → (lamp set,
+// relay boost, distance / reach); vec3(0, 0, 1) without islands
+vec3 marCulture(vec2 p) {
+  vec3 r = vec3(0.0, 0.0, 1.0);
+  float best = 1e9;
+  for (int i = 0; i < ${CULTURE_SLOTS}; i++) {
+    vec4 c = uCultureIsle[i];
+    if (c.w < 0.5) continue;
+    float d = length(p - c.xy) * c.z;
+    if (d < best) {
+      best = d;
+      r = vec3(uCultureLamps[i], d);
+    }
+  }
+  return r;
+}
 `;
 
 /**
@@ -292,6 +319,11 @@ const VERTEX_CLOUD = /* glsl */ `
   // hover / click flash (TASK-162): the instance whose origin matches uHover.xyz
   vMarHover = (uHover.w > 0.0 && distance(marOrigin, uHover.xyz) < ${f(HOVER_RADIUS)}) ? uHover.w : 0.0;
   #ifdef MAR_EMISSIVE
+  // culture clock (TASK-430): static props read their island's lamp set and relay boost
+  vec3 marCu = vec3(0.0, 0.0, 1.0);
+  bool marFlood = vMarEmissive <= 0.0 && wind <= 0.0;
+  if (uLampMode.x > 0.5 && uCultureIsle[0].w > 0.5 && (vMarEmissive > 0.0 || (marFlood && uFestival.z > 0.5)))
+    marCu = marCulture(marOrigin.xz);
   if (vMarEmissive >= 1.5) {
     // screen class (TASK-305): mask = emissive − 1; dim by day, full with the lamps ramp (no
     // stagger, never off late) + a slow flicker and a soft band scrolling down the screen.
@@ -306,6 +338,9 @@ const VERTEX_CLOUD = /* glsl */ `
     float marOn = uLampMode.x > 0.5
       ? smoothstep(marLh * 0.85, marLh * 0.85 + 0.15, uLamps.x)
       : uLamps.x;
+    // a culture lamp set switches on in rings from its island's centre outward
+    float marRing = clamp(marCu.z, 0.0, 1.0) * 0.7;
+    if (uLampMode.z > 0.5) marOn = smoothstep(marRing, marRing + 0.3, marCu.x);
     // late night: a fraction of the windows goes dark, staggered over the switch-off ramp
     float marLo = marHash12(marOrigin.xz * 1.37 + 11.1);
     if (uLampMode.y > 0.5 && marLo < ${f(NIGHT.lateOffFraction)}) {
@@ -316,6 +351,12 @@ ${ACTIVITY_OCCUPANCY}    float marFw1 = ${f((2 * Math.PI) / NIGHT.flickerPeriod[
     float marFl = 1.0 + ${f(NIGHT.flickerAmp)} * (0.6 * sin(uTime * marFw1 + marLh * 37.0) + 0.4 * sin(uTime * marFw1 * 1.618 + marLh * 71.0));
     vMarEmissive *= marOn * marFl;
   }
+  vMarEmissive *= 1.0 + marCu.y;
+  // Launch Day Relay: the island's structures (not foliage) light up warm with its boost
+  // (a far read only: close up the windows and culture lamps carry the relay, the night stays dark)
+  if (marFlood)
+    vMarEmissive = marCu.y * ${f(RELAY.flood)}
+      * smoothstep(${f(RELAY.floodFrom[0])}, ${f(RELAY.floodFrom[1])}, distance(uCameraPos, marOrigin));
   #endif
 ${ACTIVITY_VARY}`;
 
@@ -428,7 +469,12 @@ function defineMap(): Record<string, string> {
 export interface FadeUniforms {
   uFadeNear: THREE.IUniform<number>;
   uFadeFar: THREE.IUniform<number>;
+  /** Culture gate (TASK-430); absent = always visible. */
+  uMarGate?: THREE.IUniform<number>;
 }
+
+/** `uMarGate` of ungated materials (never written). */
+const GATE_OPEN: THREE.IUniform<number> = { value: 1 };
 
 function sharedVertexUniforms(
   fade: FadeUniforms,
@@ -446,6 +492,7 @@ function sharedVertexUniforms(
     uCameraPos: SHARED.uCameraPos,
     uFadeNear: fade.uFadeNear,
     uFadeFar: fade.uFadeFar,
+    uMarGate: fade.uMarGate ?? GATE_OPEN,
   };
 }
 
@@ -467,8 +514,13 @@ export class LitMaterial extends THREE.MeshLambertMaterial {
     this.fade = {
       uFadeNear: { value: opts.fadeNear ?? 1e6 },
       uFadeFar: { value: opts.fadeFar ?? 2e6 },
+      ...(opts.gate ? { uMarGate: opts.gate } : {}),
     };
-    const lampMode = new THREE.Vector2(opts.lamps?.stagger ? 1 : 0, opts.lamps?.lateOff ? 1 : 0);
+    const lampMode = new THREE.Vector3(
+      opts.lamps?.stagger ? 1 : 0,
+      opts.lamps?.lateOff ? 1 : 0,
+      opts.lamps?.culture ? 1 : 0,
+    );
     const defines = defineMap();
     const uniforms: Record<string, THREE.IUniform> = {
       ...sharedVertexUniforms(this.fade, variant, opts.merged),
@@ -479,6 +531,9 @@ export class LitMaterial extends THREE.MeshLambertMaterial {
       uDebugMask: SHARED.uDebugMask,
       uLamps: SHARED.uLamps,
       uLampMode: { value: lampMode },
+      uCultureIsle: SHARED.uCultureIsle,
+      uCultureLamps: SHARED.uCultureLamps,
+      uFestival: SHARED.uFestival,
       uPoolTex: SHARED.uPoolTex,
       uPoolMap: SHARED.uPoolMap,
       uPoolColor: SHARED.uPoolColor,

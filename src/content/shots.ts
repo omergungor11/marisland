@@ -892,6 +892,39 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     quality: 'medium',
     sets: ['dev'],
   },
+  // ---- culture clock (TASK-430): the Launch Day Relay from the postcard pose (W15 candidate) —
+  // frozen at 21:00 the relay runs on `simt`: 5 s = HQ's flash, 45 s = Marketing's (HQ, DevOps,
+  // QA, Coding still glowing); and the time-gated rainbow, absent at noon (cf. D-culture-design)
+  {
+    id: 'D-relay-night',
+    title: 'Launch Day Relay · 21:00:05 (HQ)',
+    seed: 1001,
+    cam: 'postcard',
+    time: 21,
+    simt: 5,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-relay-night-b',
+    title: 'Launch Day Relay · 21:00:45 (Marketing)',
+    seed: 1001,
+    cam: 'postcard',
+    time: 21,
+    simt: 45,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-rainbow-noon',
+    title: 'Design at noon · rainbow gated off',
+    seed: 1001,
+    cam: '-112,46,118,-150,19,74',
+    time: 13,
+    simt: 4,
+    quality: 'medium',
+    sets: ['dev'],
+  },
   // ---- living close-up (M14c, TASK-383/384): `pnpm shots live [--assert]`. A 0.5 s `deltaT` pair per
   // campus at T3 on medium (16 workers + drones + animated surfaces); the harness measures the motion
   // inside LIVE_CROP over solid pixels (the mask frame drops water / sky: foam and swell are not campus
