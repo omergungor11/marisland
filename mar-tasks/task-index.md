@@ -249,7 +249,7 @@ Details in `phases/phase-3.md`.
 | TASK-415 | Design Glass & Light kit (hot shop, prism sculpture, stained screen, glass orbs, rainbow arc, canopy vitray …) | props | M | COMPLETED | 408, 414 |
 | TASK-416 | Research Star Academy kit (chalkboards, tea trolley, tripod telescopes, orrery, owl box, observatory slit …) | props | M | COMPLETED | 408 |
 | TASK-420…426 | Culture placement per island (fixtures, story spots, routes): 420 HQ (ferry routes with dwell, guild hall), 421 Coding (rollVariants, story-spot plumbing, per-island lanterns), 422 DevOps (onsen, forge-bell foundry), 423 Marketing (fair, mascot, SHOW fix), 424 QA (Hall of Checks, Bug Zoo, UV track), 425 Design (hot shop, prisms, vitray tree, rainbow in the shallows), 426 Research (comet-night observatory, orrery, tea, pennants). Follow-ups: Emberpeak steam-main pipes float over the cone slope; Research only 0–3 pennant lines and lecture on 1/3 of seeds (seed 1001 lacks lecture/comet board/balloon cart); Design hot-shop smoke shows 0 particles; life Sailboats must put ferries on 'ferry' routes | worldgen | M ×7 | COMPLETED | 410…416 |
-| TASK-430 | Culture clock + Launch Day Relay (rhythm table, lamp sets, variant swaps, festival) | engine | M | PENDING | 420…426 |
+| TASK-430 | Culture clock + Launch Day Relay (rhythm table, lamp sets, variant swaps, festival) | engine | M | COMPLETED | 420…426 |
 | TASK-431 | Culture movers (bell, crane lift, kites, confetti, caustics, weather balloon …) | life | M | PENDING | 420…426 |
 | TASK-432 | Bot culture: carried items, accessories, poses, itineraries, tableau bots | life | M | COMPLETED | 420…426 |
 | TASK-433 | Critter culture: ladybug, owl, pigeon, cats, capybara, mascot crab | life | M | PENDING | 432 |
