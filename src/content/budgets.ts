@@ -70,5 +70,8 @@ export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
   },
 };
 
+/** M19 (TASK-408): max new prop defs one island culture may add (content/cultures). */
+export const cultureDefsPerIsland = 10;
+
 /** SwiftShader is ~20–50× slower; time budgets are scaled by this when headless. */
 export const HEADLESS_TIME_FACTOR = 40;

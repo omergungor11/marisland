@@ -434,7 +434,11 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
     mesh.count = n;
     const depth = d.depthMaterialFor?.(def, lod, gc);
     if (depth) mesh.customDepthMaterial = depth;
-    mesh.castShadow = d.castShadows && !gc && (!def.interior || (d.interiorShadows ?? false));
+    mesh.castShadow =
+      d.castShadows &&
+      !gc &&
+      (def.flags & PropFlag.noShadow) === 0 &&
+      (!def.interior || (d.interiorShadows ?? false));
     mesh.receiveShadow = true;
     mesh.frustumCulled = true;
     const tmp = { x: 0, y: 0, z: 0, rotY: 0, scale: 1 };
