@@ -30,6 +30,7 @@ import {
   windowAt,
 } from '../parts.ts';
 import type { BuildOpts, PropGeoDef } from '../types.ts';
+import { addGlyph } from './glyphs.ts';
 import { addHook } from './hq.ts';
 
 const Y = V(0, 1, 0);
@@ -84,6 +85,9 @@ function steps(
  * Summit observatory: stone drum with pilasters, lit windows and a balcony ring, a white dome with
  * a wide open shutter slit and a chunky silver telescope tube pointing out of it. v0: slit and tube
  * face +z (door side) at 63 deg; v1: slit turned 40 deg to the right, tube lower (54 deg).
+ * v2 (M19 TASK-416 "comet night", ISLAND_CULTURES §2.7): slit wide open towards +z like v0 (so the
+ * far LOD1 of v0 stands in for it) with the tube raised to 74 deg, the dome interior glowing teal
+ * (emissive) with a glowing star-chart ring, and a small brass tripod telescope out on the balcony.
  */
 function observatory({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const acc = jitterAcc(rng, 0.01);
@@ -91,7 +95,8 @@ function observatory({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const R = 3.3;
   const seg = hi ? 20 : 10;
   const psi = variant === 1 ? 0.7 : 0;
-  const elev = variant === 1 ? 0.95 : 1.1;
+  const elev = variant === 1 ? 0.95 : variant === 2 ? 1.3 : 1.1;
+  const comet = variant === 2;
   const y0 = 0.5;
   const drumH = 3.9;
   const rd = R + 0.1;
@@ -105,7 +110,7 @@ function observatory({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   put(acc, cylB(R + 0.3, R + 0.3, 0.3, seg), [0, y0 + drumH, 0], K.trim, { aoAmt: 0.1 });
 
   // dome with an open shutter slit (a wedge missing at azimuth psi), dark inner shell behind it
-  const g = 0.5;
+  const g = comet ? 0.78 : 0.5;
   const q = qEuler(0, psi, 0);
   put(
     acc,
@@ -118,10 +123,8 @@ function observatory({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
     acc,
     new THREE.SphereGeometry(rd - 0.12, hi ? 12 : 8, hi ? 5 : 3, 0, TAU, 0, PI / 2),
     [0, dy, 0],
-    K.shutterInside,
-    {
-      aoAmt: 0,
-    },
+    comet ? K.roofTeal : K.shutterInside,
+    comet ? { aoAmt: 0, emissive: 0.75, ao: () => 1 } : { aoAmt: 0 },
   );
   put(acc, cylB(rd + 0.1, rd + 0.1, 0.16, seg), [0, dy - 0.06, 0], K.domeRib, { aoAmt: 0 });
   const arc = (a: number, r: number, tube: number, color: string): void =>
@@ -215,6 +218,49 @@ function observatory({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
       q: qEuler(PI / 2, 0, 0),
       aoAmt: 0,
     });
+  }
+  if (comet && hi) {
+    // glowing star-chart ring on the inner rim (seen through the slit) + a brass tripod telescope
+    // on the balcony, aimed at the same patch of sky
+    put(acc, new THREE.TorusGeometry(rd - 0.45, 0.07, 3, 18), [0, dy + 0.2, 0], K.tubeBand, {
+      q: qEuler(PI / 2, 0, 0),
+      emissive: 1,
+      ao: () => 1,
+      aoAmt: 0,
+    });
+    const tp = V(Math.sin(-0.8) * (R + 0.5), by + 0.15, Math.cos(-0.8) * (R + 0.5));
+    for (let k = 0; k < 3; k++) {
+      const a = (k * TAU) / 3 + 0.4;
+      const foot = tp.clone().add(V(Math.sin(a) * 0.5, 0, Math.cos(a) * 0.5));
+      const top = tp.clone().add(V(0, 1.15, 0));
+      put(acc, cylB(0.045, 0.032, top.distanceTo(foot), 5), foot, K.wood, {
+        q: qFromTo(Y, top.clone().sub(foot)),
+        aoAmt: 0.1,
+      });
+    }
+    const dir = V(0.35, 0.8, -0.35).normalize();
+    const hub = tp.clone().add(V(0, 1.2, 0));
+    put(
+      acc,
+      new THREE.CylinderGeometry(0.075, 0.062, 0.8, 8),
+      hub.clone().addScaledVector(dir, 0.25),
+      K.tubeBand,
+      {
+        q: qFromTo(Y, dir),
+        aoAmt: 0.05,
+      },
+    );
+    put(
+      acc,
+      new THREE.CylinderGeometry(0.095, 0.085, 0.16, 8),
+      hub.clone().addScaledVector(dir, 0.6),
+      K.tube,
+      {
+        q: qFromTo(Y, dir),
+        aoAmt: 0,
+      },
+    );
+    put(acc, new THREE.SphereGeometry(0.1, 6, 4), hub, K.gold, { aoAmt: 0 });
   }
   // door + steps on +z
   doorAt(acc, V(0, y0, R), 0, K.door, K.trim, 1.5, 2.1);
@@ -544,7 +590,8 @@ function campusTower({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const hi = lod === 0;
   const y0 = 0.3;
   const shaftTop = 4.3;
-  const hrs = [10.1, 1.6, 4.4][variant % 3];
+  const hrs = [10.1, 1.6, 4.4, 6.0][variant % 4];
+  const cupola = variant === 3 && hi;
   put(acc, baseBox(2.6, y0, 2.6), [0, 0, 0], K.stoneDark, { aoAmt: 0.25 });
   put(acc, baseBox(1.9, shaftTop - y0, 1.9), [0, y0, 0], K.brick, { aoAmt: 0.2 });
   if (hi) {
@@ -616,13 +663,57 @@ function campusTower({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
     put(acc, baseBox(2.0, 0.1, 0.12), [0, by + 0.82, 0], K.stoneDark, { aoAmt: 0 });
   }
   put(acc, baseBox(2.35, 0.16, 2.35), [0, by + 1.05, 0], K.trim, { aoAmt: 0.05 });
-  // spire (square pyramid) + finial
   const sy = by + 1.21;
-  put(acc, new THREE.ConeGeometry(1.55, 1.9, 4).rotateY(PI / 4), [0, sy + 0.95, 0], K.roofTeal, {
-    aoAmt: 0.1,
-  });
-  put(acc, new THREE.SphereGeometry(0.1, 6, 4), [0, sy + 1.95, 0], K.gold, { aoAmt: 0 });
-  put(acc, new THREE.ConeGeometry(0.05, 0.4, 4), [0, sy + 2.2, 0], K.gold, { aoAmt: 0 });
+  if (cupola) {
+    // v3 bell cupola (M19 TASK-416): a big brass bell shows in the belfry opening (hung just
+    // proud of the dark core), the spire is replaced by a stone drum + eight copper posts around
+    // a second small bell, a green-copper dome, a lit lantern and a star vane; the clock shows six
+    for (const sz of [-1, 1])
+      put(
+        acc,
+        new THREE.SphereGeometry(0.3, 10, 5, 0, TAU, 0, PI * 0.82),
+        [0, by + 0.62, sz * 0.7],
+        K.gold,
+        {
+          aoAmt: 0,
+        },
+      );
+    put(acc, cylB(0.9, 0.82, 0.3, 8), [0, sy, 0], K.stone, { aoAmt: 0.1 });
+    for (let k = 0; k < 8; k++) {
+      const a = ((k + 0.5) / 8) * TAU;
+      put(
+        acc,
+        baseBox(0.11, 0.6, 0.11),
+        [Math.sin(a) * 0.72, sy + 0.3, Math.cos(a) * 0.72],
+        K.copperLight,
+        {
+          aoAmt: 0,
+        },
+      );
+    }
+    put(acc, new THREE.SphereGeometry(0.19, 8, 4, 0, TAU, 0, PI * 0.8), [0, sy + 0.62, 0], K.gold, {
+      aoAmt: 0,
+    });
+    put(acc, cylB(0.86, 0.86, 0.1, 8), [0, sy + 0.9, 0], K.copper, { aoAmt: 0 });
+    put(acc, new THREE.SphereGeometry(0.86, 12, 6, 0, TAU, 0, PI / 2), [0, sy + 1.0, 0], K.copper, {
+      s: [1, 1.05, 1],
+      aoAmt: 0.08,
+    });
+    put(acc, cylB(0.11, 0.11, 0.26, 6), [0, sy + 1.9, 0], K.copperLight, { aoAmt: 0 });
+    put(acc, new THREE.OctahedronGeometry(0.12, 0), [0, sy + 2.03, 0], K.window, {
+      emissive: 1,
+      aoAmt: 0,
+      ao: () => 1,
+    });
+    addGlyph(acc, 'star', V(0, sy + 2.3, -0.02), { size: 0.34, color: K.gold, depth: 0.04 });
+  } else {
+    // spire (square pyramid) + finial
+    put(acc, new THREE.ConeGeometry(1.55, 1.9, 4).rotateY(PI / 4), [0, sy + 0.95, 0], K.roofTeal, {
+      aoAmt: 0.1,
+    });
+    put(acc, new THREE.SphereGeometry(0.1, 6, 4), [0, sy + 1.95, 0], K.gold, { aoAmt: 0 });
+    put(acc, new THREE.ConeGeometry(0.05, 0.4, 4), [0, sy + 2.2, 0], K.gold, { aoAmt: 0 });
+  }
   const g = acc.finish(rng, false, true);
   return addHook(g, 'door', { center: [0, y0 + 0.75, 0.95], normal: [0, 0, 1] });
 }
@@ -902,12 +993,14 @@ function terrarium({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
 export const CAMPUS_GEO: readonly PropGeoDef[] = [
   {
     id: 'observatory',
-    variants: 2,
+    variants: 3,
     build: observatory,
     footprint: 4.0,
     height: 10.6,
-    heights: [10.85, 10.6],
+    heights: [10.85, 10.6, 11.3],
     windy: false,
+    // v2 (comet night, TASK-416) is a LOD0-only variant: its far look is v0's (no new LOD1 group)
+    lod1Of: { 2: 0 },
   },
   {
     id: 'facultyHall',
@@ -926,7 +1019,16 @@ export const CAMPUS_GEO: readonly PropGeoDef[] = [
     height: 7,
     windy: false,
   },
-  { id: 'campusTower', variants: 3, build: campusTower, footprint: 1.6, height: 9.3, windy: false },
+  {
+    id: 'campusTower',
+    variants: 4,
+    build: campusTower,
+    footprint: 1.6,
+    height: 9.3,
+    windy: false,
+    // v3 = bell cupola (TASK-416): LOD0-only, far look = v0's spire
+    lod1Of: { 3: 0 },
+  },
   {
     id: 'terrarium',
     variants: 2,

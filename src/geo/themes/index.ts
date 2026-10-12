@@ -13,6 +13,7 @@ import { RESEARCH_GEO } from './research.ts';
 import { SIGNAGE_GEO } from './signage.ts';
 import { CULTURE_HQ_GEO } from './culture-hq.ts';
 import { MARKETING_CULTURE_GEO } from './culture-marketing.ts';
+import { RESEARCH_CULTURE_GEO } from './culture-research.ts';
 
 export const THEME_GEO: readonly PropGeoDef[] = [
   ...HQ_GEO,
@@ -25,4 +26,5 @@ export const THEME_GEO: readonly PropGeoDef[] = [
   ...SIGNAGE_GEO,
   ...CULTURE_HQ_GEO,
   ...MARKETING_CULTURE_GEO,
+  ...RESEARCH_CULTURE_GEO,
 ];
