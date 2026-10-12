@@ -11,6 +11,7 @@ import {
 } from '../content/palette.ts';
 import { Acc, blob, col, createNoise, frustum, mat, qEuler } from './kit.ts';
 import { TAU, TINT, V, V2, baseBox, cylB, jitterAcc, lathe, put, tubeAlong } from './parts.ts';
+import { THEMES } from '../content/themes.ts';
 import type { BuildOpts } from './types.ts';
 
 const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
@@ -398,8 +399,214 @@ function ferry({ rng, lod }: BuildOpts): THREE.BufferGeometry {
   return acc.finish(rng, true, true);
 }
 
+/** Half-width of the inspection-boat hull (`hullShape(5.5, 2)`) at z, for fenders and rails. */
+function inspectionHalf(z: number): number {
+  if (z < -1.1) return 0.7 + ((z + 2.75) / 1.65) * 0.3;
+  if (z < 0.9625) return 1 - ((z + 1.1) / 2.0625) * 0.06;
+  return Math.max(0, 0.94 * (1 - (z - 0.9625) / 1.7875));
+}
+
+/** Window-light plate (warm at night). */
+function litPane(acc: Acc, w: number, h: number, d: number, at: [number, number, number]): void {
+  put(acc, new THREE.BoxGeometry(w, h, d), at, col(EMISSIVE.window), {
+    emissive: 1,
+    aoAmt: 0,
+    ao: () => 1,
+  });
+}
+
+/**
+ * Inspectors' patrol boat (sailboat variant 3, M19 TASK-414): 5.5 u white hull with QA-green boot-top
+ * and sheer stripe and a magnifier badge on each side, aft wheelhouse with lit windows, green roof,
+ * a tick shield on each cabin side, a bridge deck with an amber beacon (hook `beacon`) and a chevron
+ * pennant mast, fenders, a rope rail and a stack of ticked "approved" crates on the foredeck.
+ * Bow +z, keel at y = 0. LOD1: hull, cabin, roof, bridge, beacon, pennant.
+ */
+function inspectionBoat({ rng, lod }: BuildOpts): THREE.BufferGeometry {
+  const acc = jitterAcc(rng);
+  const hi = lod === 0;
+  const hullH = 0.74;
+  const G = THEMES.qa.accent;
+  const GD = '#2E9E74';
+  const L = 5.5;
+  const W = 2.0;
+  const ext = (depth: number): THREE.BufferGeometry =>
+    new THREE.ExtrudeGeometry(hullShape(L, W), { depth, bevelEnabled: false }).rotateX(Math.PI / 2);
+  const bands: ReadonlyArray<readonly [number, number, string]> = hi
+    ? [
+        [0, 0.22, GD],
+        [0.22, 0.5, WALLS[1]],
+        [0.5, 0.62, G],
+        [0.62, hullH, WALLS[1]],
+      ]
+    : [
+        [0, 0.3, GD],
+        [0.3, hullH, WALLS[1]],
+      ];
+  for (const [y0, y1, c] of bands)
+    put(
+      acc,
+      ext(y1 - y0),
+      [0, y1, 0],
+      (p) => (y1 === hullH && p.y > hullH - 0.01 ? col(WOOD.planks) : col(c)),
+      { aoAmt: 0.2, noJitter: true },
+    );
+  const deck = hullH;
+  // aft wheelhouse, green roof, bridge deck
+  put(
+    acc,
+    new THREE.BoxGeometry(1.45, 1.0, 1.7).translate(0, 0.5, 0),
+    [0, deck, -1.25],
+    col(WALLS[0]),
+    { aoAmt: 0.15 },
+  );
+  put(
+    acc,
+    new THREE.BoxGeometry(1.7, 0.1, 1.95).translate(0, 0.05, 0),
+    [0, deck + 1.0, -1.25],
+    col(G),
+    { aoAmt: 0.05 },
+  );
+  put(
+    acc,
+    new THREE.BoxGeometry(1.0, 0.55, 0.9).translate(0, 0.275, 0),
+    [0, deck + 1.1, -1.0],
+    col(WALLS[1]),
+    { aoAmt: 0.1 },
+  );
+  put(
+    acc,
+    new THREE.BoxGeometry(1.2, 0.08, 1.1).translate(0, 0.04, 0),
+    [0, deck + 1.65, -1.0],
+    col(GD),
+    { aoAmt: 0.05 },
+  );
+  // beacon on the bridge roof: dark base, amber lens (lit at night)
+  const by = deck + 1.73;
+  put(acc, cylB(0.17, 0.14, 0.1, hi ? 8 : 5), [0.28, by, -1.15], col(ROCK[2]), { aoAmt: 0 });
+  put(
+    acc,
+    new THREE.IcosahedronGeometry(0.14, hi ? 1 : 0),
+    [0.28, by + 0.22, -1.15],
+    col(EMISSIVE.lantern),
+    { emissive: 1, aoAmt: 0, ao: () => 1 },
+  );
+  // pennant mast aft of the bridge, QA chevron streaming aft
+  const mTop = by + 1.05;
+  put(acc, cylB(0.045, 0.035, 1.05, hi ? 5 : 3, true), [-0.28, by, -1.3], col(WALLS[1]), {
+    aoAmt: 0,
+  });
+  const pen = new THREE.ShapeGeometry(
+    new THREE.Shape([
+      new THREE.Vector2(0, 0.17),
+      new THREE.Vector2(0.78, 0.17),
+      new THREE.Vector2(0.55, 0),
+      new THREE.Vector2(0.78, -0.17),
+      new THREE.Vector2(0, -0.17),
+    ]),
+  );
+  put(acc, pen, [-0.28, mTop - 0.2, -1.3], col(G), {
+    q: qEuler(0, -Math.PI / 2, 0),
+    double: true,
+    aoAmt: 0,
+    ao: () => 1,
+    windAbs: (p) => clamp01((-1.3 - p.z) / 0.78) * 0.9 + 0.1,
+  });
+  if (hi) {
+    // windows: bridge front and sides, cabin front
+    litPane(acc, 0.9, 0.3, 0.05, [0, deck + 1.38, -0.54]);
+    litPane(acc, 0.95, 0.3, 0.05, [0, deck + 0.62, -0.39]);
+    for (const sx of [-1, 1]) litPane(acc, 0.05, 0.32, 0.5, [sx * 0.52, deck + 1.38, -1.0]);
+    for (const sx of [-1, 1]) {
+      const q = qEuler(0, (sx * Math.PI) / 2, 0);
+      // cabin side: green tick plate with a white tick (bars)
+      put(acc, new THREE.BoxGeometry(0.66, 0.66, 0.05), [sx * 0.74, deck + 0.52, -1.5], col(G), {
+        q,
+        aoAmt: 0,
+      });
+      const tk = (ax: number, ay: number, bx: number, by2: number): void => {
+        const len = Math.hypot(bx - ax, by2 - ay) + 0.07;
+        put(
+          acc,
+          new THREE.BoxGeometry(len, 0.075, 0.04),
+          [sx * 0.78, deck + 0.52 + (ay + by2) / 2, -1.5 - sx * ((ax + bx) / 2)],
+          col(WALLS[1]),
+          { q: q.clone().multiply(qEuler(0, 0, Math.atan2(by2 - ay, bx - ax))), aoAmt: 0 },
+        );
+      };
+      tk(-0.18, 0.0, -0.05, -0.14);
+      tk(-0.05, -0.14, 0.2, 0.16);
+      // magnifier badge on the white hull band: ring + handle
+      const mz = 0.25;
+      const hx = sx * (inspectionHalf(mz) + 0.01);
+      put(acc, new THREE.TorusGeometry(0.1, 0.035, 4, 10), [hx, 0.4, mz], col(G), { q, aoAmt: 0 });
+      put(acc, new THREE.BoxGeometry(0.2, 0.05, 0.04), [hx, 0.3, mz - 0.14], col(G), {
+        q: q.clone().multiply(qEuler(0, 0, 0.9)),
+        aoAmt: 0,
+      });
+    }
+    // fenders and a rope rail on the foredeck
+    for (const sx of [-1, 1]) {
+      for (const z of [-0.6, 0.8, 1.4])
+        put(
+          acc,
+          new THREE.IcosahedronGeometry(0.09, 0),
+          [sx * (inspectionHalf(z) + 0.02), 0.52, z],
+          col(ROCK[2]),
+          { aoAmt: 0 },
+        );
+      const pts: THREE.Vector3[] = [];
+      for (const z of [0.1, 1.0, 1.9]) {
+        const x = sx * inspectionHalf(z) * 0.92;
+        put(acc, cylB(0.025, 0.025, 0.34, 3, true), [x, deck, z], col(WOOD.dark), { aoAmt: 0 });
+        pts.push(V(x, deck + 0.34, z));
+      }
+      put(acc, tubeAlong(pts, 0.022, 3), [0, 0, 0], col(WALLS[1]), { aoAmt: 0 });
+    }
+    // ticked crates on the foredeck
+    for (const [x, y, z, r] of [
+      [-0.3, 0, 0.75, 0.1],
+      [0.28, 0, 0.8, -0.15],
+      [0.0, 0.3, 0.78, 0.05],
+    ] as const) {
+      put(
+        acc,
+        new THREE.BoxGeometry(0.46, 0.3, 0.42).translate(0, 0.15, 0),
+        [x, deck + y, z],
+        col(WOOD.planks),
+        { q: qEuler(0, r, 0), aoAmt: 0.15 },
+      );
+      put(acc, new THREE.BoxGeometry(0.2, 0.2, 0.02), [x, deck + y + 0.17, z + 0.22], col(G), {
+        q: qEuler(0, r, 0),
+        aoAmt: 0,
+      });
+    }
+    // bow bollard + lantern
+    put(acc, cylB(0.1, 0.09, 0.22, 6), [0, deck, 2.35], col(ROCK[2]), { aoAmt: 0.1 });
+    put(
+      acc,
+      new THREE.IcosahedronGeometry(0.09, 0),
+      [0, deck + 0.34, 2.35],
+      col(EMISSIVE.lantern),
+      {
+        emissive: 1,
+        aoAmt: 0,
+        ao: () => 1,
+      },
+    );
+  } else {
+    put(acc, new THREE.BoxGeometry(0.6, 0.6, 0.6), [0, deck + 0.3, 0.8], col(WOOD.planks), {
+      aoAmt: 0.15,
+    });
+  }
+  const g = acc.finish(rng, true, true);
+  g.userData.hooks = { beacon: { pivot: [0.28, by + 0.22, -1.15] } };
+  return g;
+}
+
 export function sailboat({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   if (variant === 2) return ferry({ rng, lod, variant });
+  if (variant === 3) return inspectionBoat({ rng, lod, variant });
   const acc = jitterAcc(rng);
   const sailHex = variant % 2 === 0 ? WALLS[1] : ROOFS[3];
   const hullH = 0.75;

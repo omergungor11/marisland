@@ -28,12 +28,45 @@ function beam(acc: Acc, a: THREE.Vector3, b: THREE.Vector3, th: number, color: s
 /* --------------------------------- testHangar --------------------------------- */
 
 /**
+ * hallOfChecks front: 12 round green badges with a white tick in one row above the door, each on a
+ * white ring so the row reads from afar (spacing 0.72 u, 0.62 u across).
+ */
+function hallBadges(acc: Acc, y: number, zWall: number): void {
+  for (let i = 0; i < 12; i++) {
+    const x = (i - 5.5) * 0.72;
+    put(acc, new THREE.CylinderGeometry(0.34, 0.34, 0.07, 10), [x, y, zWall + 0.1], '#FAFAF5', {
+      q: qEuler(Math.PI / 2, 0, 0),
+      aoAmt: 0,
+    });
+    put(acc, new THREE.CylinderGeometry(0.28, 0.28, 0.07, 10), [x, y, zWall + 0.13], '#3FBF8F', {
+      q: qEuler(Math.PI / 2, 0, 0),
+      aoAmt: 0,
+    });
+    for (const [ax, ay, bx, by] of [
+      [-0.14, 0.0, -0.04, -0.12],
+      [-0.04, -0.12, 0.16, 0.12],
+    ] as const) {
+      const len = Math.hypot(bx - ax, by - ay) + 0.07;
+      put(
+        acc,
+        new THREE.BoxGeometry(len, 0.07, 0.04),
+        [x + (ax + bx) / 2, y + (ay + by) / 2, zWall + 0.18],
+        '#FAFAF5',
+        { q: qEuler(0, 0, Math.atan2(by - ay, bx - ax)), aoAmt: 0 },
+      );
+    }
+  }
+}
+
+/**
  * Chunky test hangar, door (+z) to the factory yard: plinth, pastel walls, a 3-row sawtooth roof
  * with warm north-light glazing, big yellow door with a hazard band, window rows, short candy
  * chimneys (FIXTURE_EMITTERS steam), a QA check over the door.
  */
-export function testHangar({ rng, lod }: BuildOpts): THREE.BufferGeometry {
+export function testHangar({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const H = F.hangar;
+  /** Variant 1 = hallOfChecks (M19 TASK-414): a row of 12 tick badges instead of fans and door glyph. */
+  const hall = variant === 1;
   const acc = jitterAcc(rng, 0.012);
   const hi = lod === 0;
   const { w, d, h } = H;
@@ -55,7 +88,7 @@ export function testHangar({ rng, lod }: BuildOpts): THREE.BufferGeometry {
   });
   // two extractor fans high on the front wall, either side of the door
   const spin = new Spin();
-  if (hi)
+  if (hi && !hall)
     for (const sx of [-1, 1])
       fan(acc, spin, V(sx * 3.2, y0 + h - 0.75, d / 2 + 0.06), H.fanR, H.trim, H.blade, lod);
   // big door (yellow) with a hazard band and a check over it
@@ -75,7 +108,8 @@ export function testHangar({ rng, lod }: BuildOpts): THREE.BufferGeometry {
     // door panel seams
     for (const x of [-dw / 4, 0, dw / 4])
       put(acc, baseBox(0.05, dh - 0.4, 0.03), [x, y0 + 0.35, d / 2 + 0.115], H.trim, { aoAmt: 0 });
-    glyph(acc, 'qa', V(0, y0 + dh + 0.55, d / 2 + 0.08), 0, 0.55, H.trim);
+    if (!hall) glyph(acc, 'qa', V(0, y0 + dh + 0.55, d / 2 + 0.08), 0, 0.55, H.trim);
+    else hallBadges(acc, y0 + dh + 0.55, d / 2);
     // front windows either side of the door, side and back rows
     for (const x of [-3.2, 3.2])
       windowAt(acc, {

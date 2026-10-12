@@ -12,6 +12,7 @@ import { DEVOPS_GEO } from './devops.ts';
 import { RESEARCH_GEO } from './research.ts';
 import { SIGNAGE_GEO } from './signage.ts';
 import { CULTURE_HQ_GEO } from './culture-hq.ts';
+import { CULTURE_QA_GEO, withBugZoo } from './culture-qa.ts';
 
 export const THEME_GEO: readonly PropGeoDef[] = [
   ...HQ_GEO,
@@ -20,7 +21,9 @@ export const THEME_GEO: readonly PropGeoDef[] = [
   ...QA_GEO,
   ...DESIGN_GEO,
   ...DEVOPS_GEO,
-  ...RESEARCH_GEO,
+  // M19 culture variants of existing defs wrap the def in place (terrarium v2 = Bug Zoo, TASK-414)
+  ...RESEARCH_GEO.map((d) => (d.id === 'terrarium' ? withBugZoo(d) : d)),
   ...SIGNAGE_GEO,
   ...CULTURE_HQ_GEO,
+  ...CULTURE_QA_GEO,
 ];
