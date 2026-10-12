@@ -16,9 +16,11 @@
   seed 2024 / 5005 layouts re-rolled (W4 cam re-pinned by the Beacon Rock delta). Space on the island is the
   binding constraint: districts are placed garden → glasshouses (beside the garden) → dishes → base, each
   with fallbacks; moving an anchor or the order re-balances which district shrinks (`scripts` probes were
-  temporary). W12 no longer shows a viaduct (pair changed; retire with D-045). Medium call budget 300
-  (W11 289 with the campus in front). Open: the library often hides behind the observatory from the
-  east; pergolas only in ~45 % of seeds; the rocket monument rarely fits; seed 8101 Coding has no solar.
+  temporary). Viaducts are gone (D-045, W12 removed). Medium call budget 300; W11 is at 298 after
+  TASK-403/405, so a Research polish must not add draw groups visible in W11. Next (proposed, not
+  started): break the round "cake" silhouette (coves/headlands), clean the merged paving blobs between
+  quad and garden, guarantee scholarStatue / rocketMonument / a few trees per seed. Also open: the library
+  often hides behind the observatory from the east; pergolas ~45 % of seeds; seed 8101 Coding has no solar.
 - **2026-10-10 evening**: M17b wave 2 + island redesigns merged (TASK-393/394/395/400/401).
   Research = crater + biodomes (`ARCHETYPES.lonelypalm.crater`), QA = factory plateau (palmlagoon
   bluff). Crater islands get no waterfalls and no viaduct ends (too small). Seed 1001's only viaduct
