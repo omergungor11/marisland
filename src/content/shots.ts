@@ -114,6 +114,38 @@ const STORY_SHOTS: readonly (readonly [string, string, string, number, number])[
   ['onsenCapybara', 'Onsen · DevOps', '-80.13,11.23,-74.59,-83.11,8.53,-78.85', 14, 6],
 ] as const;
 
+/**
+ * D-critter-* cameras (raw `eye → target`, seed 1001; TASK-433): the animals of the story spots at T3
+ * (life-spot-critters.ts SPOT_CRITTERS): [id, title, cam, game hour, warm-up s].
+ */
+const CRITTER_SHOTS: readonly (readonly [string, string, string, number, number])[] = [
+  ['cat-timetable', 'Cat on the timetable · HQ', '73.99,5.6,-178.89,78.04,3.35,-181.76', 14, 6],
+  [
+    'capybara-onsen',
+    'Capybara in the onsen · DevOps',
+    '-80.46,8.77,-81.57,-82.12,7.93,-79.83',
+    14,
+    6,
+  ],
+  ['fox-orb', 'Fox and the glass orb · Design', '-156,23,76,-160,21.5,72.6', 14, 6],
+  ['owl-night', 'Owl at the box · Research', '-112.23,9.76,229.2,-115.38,8.89,227.67', 22, 6],
+  ['ladybugs-zoo', 'Ladybugs at the Bug Zoo · QA', '-173.81,12.4,-195.89,-177,9.01,-202.12', 14, 6],
+  [
+    'gull-bowl',
+    'Gull in the seconds bowl · Design',
+    '-145.04,24.57,68.31,-148.54,22.65,68.26',
+    14,
+    6,
+  ],
+  [
+    'duck-crossing',
+    'Duck family crossing · Coding',
+    '107.67,13.99,19.22,105.27,9.59,11.58',
+    14,
+    10,
+  ],
+] as const;
+
 /** W7 camera (raw, seed 1001 Coding; TASK-380), re-pin when that layout changes. */
 const W7_CAM = '45,20,3.46,95,13,23.46';
 
@@ -1035,6 +1067,18 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     quality: 'medium',
     sets: ['dev'],
   },
+  // ---- culture critters (M19 wave 3, TASK-433): the story-spot animals at T3, seed 1001 raw cams
+  ...CRITTER_SHOTS.map(([id, title, cam, time, simt]): ShotPreset => ({
+    id: `D-critter-${id}`,
+    title: `Critter · ${title}`,
+    seed: 1001,
+    cam,
+    time,
+    simt,
+    quality: 'medium',
+    deltaT: 2,
+    sets: ['dev'],
+  })),
   // ---- living close-up (M14c, TASK-383/384): `pnpm shots live [--assert]`. A 0.5 s `deltaT` pair per
   // campus at T3 on medium (16 workers + drones + animated surfaces); the harness measures the motion
   // inside LIVE_CROP over solid pixels (the mask frame drops water / sky: foam and swell are not campus
