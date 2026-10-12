@@ -4,7 +4,15 @@
  * seats, quotas and spawn points. Seats come from `content/offices.ts` WORK_SPOTS through
  * `world/lot-frame.ts`, i.e. exactly where the interior geometry builds its desks.
  */
-import { ACTIVITY, STILT_SPUR, VILLAGERS, WORKERS } from '../content/life.ts';
+import {
+  ACTIVITY,
+  STILT_SPUR,
+  TABLEAU,
+  tableauMax,
+  VILLAGERS,
+  WORKERS,
+  type ItineraryStep,
+} from '../content/life.ts';
 import {
   INTERIOR_OF,
   OFFICE_DEFS,
@@ -215,6 +223,73 @@ export interface WorkerSpawn {
   anchor: number;
   /** Near-focus ambient slot (M14c): asleep until the camera focuses its island. */
   ambient?: boolean;
+  /** A story-spot tableau bot (TASK-432): an ambient slot that stands (or lies) at its spot. */
+  tableau?: TableauBot;
+}
+
+/** One fixed bot of a story-spot tableau, in world space. */
+export interface TableauBot {
+  kind: string;
+  island: number;
+  x: number;
+  z: number;
+  /** World y of the feet, NaN = on the terrain. */
+  y: number;
+  /** World heading (xz angle, atan2(dz, dx)). */
+  hd: number;
+  pose: string;
+  item?: ItineraryStep['item'];
+  /** Bots sharing a story spot: `group` is the spot, `k` the bot's rank in it (chat partners alternate). */
+  group: number;
+  k: number;
+}
+
+/**
+ * The fixed bots of the world's story spots (`TABLEAU` by `kind`), at most `max` per
+ * island (`max`), in story order. Pure data: offsets map through the spot frame (lot-frame), `look` resolves
+ * to the nearest fixture of that def within 6 u.
+ */
+export function planTableaus(
+  world: Pick<WorldData, 'storySpots' | 'fixtures'>,
+  max: number,
+): TableauBot[] {
+  const out: TableauBot[] = [];
+  const per = new Map<number, number>();
+  (world.storySpots ?? []).forEach((sp, group) => {
+    const bots = TABLEAU[sp.kind];
+    if (!bots) return;
+    const have = per.get(sp.islandId) ?? 0;
+    if (have + bots.length > max) return;
+    per.set(sp.islandId, have + bots.length);
+    bots.forEach((b, k) => {
+      const p = lotLocalToWorld({ x: sp.pos.x, z: sp.pos.z, rotY: sp.rotY }, b.dx, b.dz);
+      let hd = sp.rotY + (b.turn ?? 0);
+      if (b.look) {
+        let best = 36;
+        for (const f of world.fixtures ?? []) {
+          if (f.defId !== b.look || f.islandId !== sp.islandId) continue;
+          const d = (f.x - p.x) ** 2 + (f.z - p.z) ** 2;
+          if (d < best) {
+            best = d;
+            hd = Math.atan2(f.z - p.z, f.x - p.x);
+          }
+        }
+      }
+      out.push({
+        kind: sp.kind,
+        island: sp.islandId,
+        x: p.x,
+        z: p.z,
+        y: b.atSpot ? sp.pos.y + (b.dy ?? 0) : NaN,
+        hd,
+        pose: b.pose,
+        item: b.item,
+        group,
+        k,
+      });
+    });
+  });
+  return out;
 }
 
 export interface WorkerPlan {
@@ -358,6 +433,7 @@ export function planAmbient(
 ): WorkerSpawn[] {
   const out: WorkerSpawn[] = [];
   if (!(scale > 0)) return out;
+  const tableaus = planTableaus(ctx.world, tableauMax(scale));
   ctx.world.islands.forEach((isl, id) => {
     const comp = comps[id] ?? -1;
     if (comp < 0 && (base.anchors[id]?.length ?? 0) < 1) return;
@@ -365,6 +441,18 @@ export function planAmbient(
     const room = Math.min(want, comp < 0 ? ACTIVITY.outpostSlots : want);
     // at least 4 where the island can host them: a thin campus is still a campus at low quality
     const n = Math.max(Math.round(room * scale), Math.min(room, 4));
+    // tableau bots first (they wake before the walkers when the campus is short of awake slots)
+    for (const t of tableaus.filter((o) => o.island === id))
+      out.push({
+        island: id,
+        theme: isl.theme,
+        comp,
+        node: -1,
+        seat: -1,
+        anchor: -1,
+        ambient: true,
+        tableau: t,
+      });
     for (let k = 0; k < n; k++)
       out.push({
         island: id,

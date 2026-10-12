@@ -3,6 +3,8 @@ import {
   ACTIVITY,
   LAND,
   LAND_COLORS,
+  NAP,
+  POSES,
   WORKERS,
   type ItineraryStep,
   type LifePlan,
@@ -21,6 +23,7 @@ import {
   planAmbient,
   planWorkers,
   type Anchor,
+  type TableauBot,
   type Seat,
   type WorkerSpawn,
 } from './workers-world.ts';
@@ -43,6 +46,8 @@ const W_USE = 8;
 /** Walk back from a stop (or a chat) to the node. */
 const W_BACK = 9;
 const W_CHAT = 10;
+/** A fixed tableau bot at a story spot (TASK-432). */
+const W_TABLEAU = 11;
 
 // goal kinds (itinerary step in progress)
 const G_NONE = 0;
@@ -59,6 +64,10 @@ const ITEM_CODE: Record<string, number> = {
   clipboard: CARRIED_ITEM_SLOT.clipboard - 6,
   crate: CARRIED_ITEM_SLOT.crate - 6,
   paintPot: CARRIED_ITEM_SLOT.paintPot - 6,
+  satchel: CARRIED_ITEM_SLOT.satchel - 6,
+  megaphone: CARRIED_ITEM_SLOT.megaphone - 6,
+  blowpipe: CARRIED_ITEM_SLOT.blowpipe - 6,
+  books: CARRIED_ITEM_SLOT.books - 6,
 };
 
 const WP = 2; // waypoints per trip inside a lot (entrance, seat / entrance, door)
@@ -144,6 +153,14 @@ export class Workers extends LandKind {
   /** Outpost walking mask: the tight work-spot margins (bots may brush props), skip nothing. */
   private readonly tight: Mask;
   private readonly stopMaskFn: (x: number, z: number, skip: number) => boolean;
+  // ---- M19 culture poses (TASK-432)
+  /** Tableau bot of each slot (undefined = a walker). */
+  private readonly tab: (TableauBot | undefined)[];
+  /** Latched arm-pose code of the typing amount (0 = typing), its lean (rad) and the lying-down amount 0..1. */
+  private readonly poseK: Uint8Array;
+  private readonly leanV: Float32Array;
+  private readonly napAmt: Float32Array;
+  private readonly chatHubs: ReadonlySet<string>;
 
   constructor(
     o: LandOpts,
@@ -217,6 +234,11 @@ export class Workers extends LandKind {
     this.byGoal = new Uint8Array(n);
     this.rankOf = new Uint8Array(n);
     this.wakes = new Uint8Array(n);
+    this.tab = spawns.map((sp) => sp.tableau);
+    this.poseK = new Uint8Array(n);
+    this.leanV = new Float32Array(n);
+    this.napAmt = new Float32Array(n);
+    this.chatHubs = new Set(ACTIVITY.chatHubs);
     {
       const seen = new Map<number, number>();
       for (let i = 0; i < n; i++) {
@@ -595,7 +617,13 @@ export class Workers extends LandKind {
     const m = this.motionScale;
     this.cool[i] -= dt;
     let s = this.state[i];
-    const idle = s === W_WALK || s === W_PAUSE || s === W_LOOP || s === W_WORK || s === W_USE;
+    const idle =
+      s === W_WALK ||
+      s === W_PAUSE ||
+      s === W_LOOP ||
+      s === W_WORK ||
+      s === W_USE ||
+      (s === W_TABLEAU && this.napAmt[i] < 0.3 && this.leanV[i] >= 0);
     if (idle && this.cool[i] <= 0 && this.tier >= V.wave.minTier && this.near(i)) {
       this.prev[i] = s;
       this.state[i] = s = W_WAVE;
@@ -613,6 +641,10 @@ export class Workers extends LandKind {
     let talkWave = 0;
     let talkSq = 0;
     let talkNod = 0;
+    // culture pose of this step (arm code, lean, lie), see POSES
+    let poseCode = 0;
+    let lean = 0;
+    let lie = 0;
 
     if (s === W_WAVE) {
       this.timer[i] += dt;
@@ -791,6 +823,14 @@ export class Workers extends LandKind {
       const pose = st ? st.pose : 'stand';
       want = st ? st.hd : this.look[i];
       typeTarget = V.typeAmount[pose] ?? 0;
+      const ps = POSES[pose];
+      if (ps) {
+        typeTarget = 1;
+        poseCode = ps.code;
+        lean = ps.lean ?? 0;
+        lie = ps.lie ?? 0;
+        if (lie > 0 && st) this.restAt(i, st.x, st.z, want);
+      }
       if (pose === 'look' || pose === 'inspect' || pose === 'rack')
         want += A.scan.yaw * Math.sin(TAU * (A.scan.hz * this.timer[i] + this.phase[i]));
       if (st && st.slot >= 0) {
@@ -839,6 +879,31 @@ export class Workers extends LandKind {
         }
         if (t >= this.chatLen[i]) this.endChat(i);
       }
+    } else if (s === W_TABLEAU) {
+      const tb = this.tab[i] as TableauBot;
+      const ps = POSES[tb.pose];
+      this.timer[i] += dt;
+      const t = this.timer[i];
+      want = tb.hd;
+      if (ps) {
+        typeTarget = 1;
+        poseCode = ps.code;
+        lean = ps.lean ?? 0;
+        lie = ps.lie ?? 0;
+      } else if (tb.pose === 'wave') {
+        typeTarget = 1;
+        wave = clamp(this.typeAmt[i], 0, 1.15);
+      } else if (tb.pose === 'chat' || tb.pose === 'speak') {
+        const swap = 1.7 + 0.2 * (tb.group % 3);
+        const speaker = tb.pose === 'speak' || (Math.floor(t / swap) + tb.k) % 2 === 0;
+        talkSq = this.talkSquash(t, speaker);
+        if (speaker) talkWave = this.talkGesture(t, i);
+        else talkNod = this.talkNodding(t);
+        turn = 8;
+      }
+      if (tb.pose === 'stand' || tb.pose === 'gaze' || tb.pose === 'peer')
+        want += A.scan.yaw * 0.6 * Math.sin(TAU * (A.scan.hz * t + this.phase[i]));
+      if (lie > 0) this.restAt(i, tb.x, tb.z, tb.hd);
     }
 
     // sit / stand easing and the typing spring (substeps keep k = 160 stable at the far-LOD step)
@@ -855,14 +920,26 @@ export class Workers extends LandKind {
     if (typeTarget === 0 && Math.abs(this.typeAmt[i]) < 5e-3 && Math.abs(this.typeVel[i]) < 5e-2) {
       this.typeAmt[i] = 0;
       this.typeVel[i] = 0;
+      this.poseK[i] = 0;
+      this.leanV[i] = 0;
     }
+    // culture pose latches while its amount springs in and back out (typing reuses the spring)
+    if (typeTarget > 0) {
+      this.poseK[i] = poseCode;
+      this.leanV[i] = lean;
+    }
+    this.napAmt[i] += (lie - this.napAmt[i]) * damp(dt, NAP.lambda);
+    if (Math.abs(this.napAmt[i] - lie) < 1e-3) this.napAmt[i] = lie;
 
     // feet
     const seated = this.seatOf[i] >= 0 && this.sitAmt[i] > 0;
     const a = this.na[i];
     const b = this.nb[i];
     const held = this.seatOf[i];
-    if (held >= 0 && (s === W_ENTER || s === W_EXIT || s === W_WORK || s === W_WAVE)) {
+    const tbl = this.tab[i];
+    if (tbl) {
+      this.y[i] = Number.isNaN(tbl.y) ? this.ground(this.x[i], this.z[i]) : tbl.y;
+    } else if (held >= 0 && (s === W_ENTER || s === W_EXIT || s === W_WORK || s === W_WAVE)) {
       // at / walking to a desk: on the shell's floor (raised on the stilt lab), ramped at the door
       const seat = this.seats[held];
       const floor = this.floorY(held);
@@ -896,6 +973,7 @@ export class Workers extends LandKind {
       }
     }
     if (seated) this.y[i] -= this.seats[this.seatOf[i]].sit * this.sitAmt[i];
+    this.y[i] += NAP.lift * this.napAmt[i];
 
     // turn, gait, hop
     this.hd[i] += wrapAngle(want - this.hd[i]) * damp(dt, turn);
@@ -903,7 +981,10 @@ export class Workers extends LandKind {
     this.gMove[i] += (moving - this.gMove[i]) * damp(dt, 8);
     const poseWave = wave > 0 ? wave : Math.max(stretch * 0.7, talkWave);
     const poseType = this.typeAmt[i] > 1e-3 && wave <= 0 ? this.typeAmt[i] : 0;
-    this.gPose[i] = poseWave > 0 ? poseWave : poseType > 0 ? 2 + clamp(poseType, 0, 1.4) : 0;
+    // typing 2 + amount; culture arm poses 4 * code + amount (life-material.ts mode 7)
+    const pk = this.poseK[i];
+    this.gPose[i] =
+      poseWave > 0 ? poseWave : poseType > 0 ? (pk > 0 ? 4 * pk : 2) + clamp(poseType, 0, 1.4) : 0;
     this.gPhase[i] += ((Math.PI * 2) / (2 * V.stepPeriod)) * dt * this.gMove[i];
     const hop = Math.abs(Math.sin(this.gPhase[i]));
     const k = this.gMove[i] * m;
@@ -912,8 +993,19 @@ export class Workers extends LandKind {
     this.sy[i] = sq;
     this.sx[i] = this.sz[i] = 1 / Math.sqrt(sq);
     this.roll[i] = V.sway * Math.sin(this.gPhase[i]) * k;
-    this.pitch[i] = 0.14 * stretch * m + talkNod * m;
+    this.pitch[i] =
+      0.14 * stretch * m +
+      talkNod * m +
+      this.leanV[i] * clamp(this.typeAmt[i], 0, 1) +
+      NAP.pitch * this.napAmt[i];
     this.setGait(i);
+  }
+
+  /** Lying on a hammock / roof: the feet pivot slides ahead along the heading so the body rests on the spot. */
+  private restAt(i: number, x: number, z: number, hd: number): void {
+    const a = this.napAmt[i] * NAP.shift;
+    this.x[i] = x + Math.cos(hd) * a;
+    this.z[i] = z + Math.sin(hd) * a;
   }
 
   /** End of the ENTER / EXIT waypoints. */
@@ -1184,7 +1276,15 @@ export class Workers extends LandKind {
     } else {
       const [lo, hi] = ACTIVITY.use[st.pose] ?? ACTIVITY.use.stand;
       this.dur[i] = this.range(i, lo, hi);
+      // the gathering places (gather ring, lecture steps, coffee cart): linger and talk
+      if (this.chatHubs.has(st.def)) this.tryChat(i);
     }
+  }
+
+  /** Is `j` standing at one of the culture gathering places? */
+  private atChatHub(j: number): boolean {
+    const k = this.gStop[j];
+    return this.gKind[j] === G_SPOT && k >= 0 && this.chatHubs.has(this.stops[k].def);
   }
 
   private startOrder(i: number): void {
@@ -1286,7 +1386,7 @@ export class Workers extends LandKind {
     const gk = this.gKind[j];
     const free =
       (s === W_PAUSE && this.timer[j] < this.dur[j] - 0.8 && (gk === G_NONE || gk === G_DOCK)) ||
-      (s === W_USE && gk === G_HUB);
+      (s === W_USE && (gk === G_HUB || this.atChatHub(j)));
     if (!free) return false;
     if (this.compOf[j] >= 0 && !Number.isNaN(this.graph.deckY[this.na[j]])) return false;
     return Math.hypot(this.x[j] - this.x[i], this.z[j] - this.z[i]) < ACTIVITY.chat.range;
@@ -1324,7 +1424,7 @@ export class Workers extends LandKind {
         this.bx[me] = this.x[me];
         this.bz[me] = this.z[me];
       }
-      this.gKind[me] = G_NONE;
+      this.releaseGoal(me);
     }
   }
 
@@ -1465,7 +1565,42 @@ export class Workers extends LandKind {
   }
 
   /** (Re)place a slot that wakes: seated, busy at a stop, or walking an errand; hashed per bot. */
+  /** A tableau bot (a story spot's person): fixed at its spot, posed, never leaves. */
+  private placeTableau(i: number, t: TableauBot): void {
+    this.spawned[i] = 1;
+    this.releaseGoal(i);
+    this.setItem(i, t.item ? ITEM_CODE[t.item] : 0);
+    this.partner[i] = -1;
+    this.chatCool[i] = 1e9;
+    this.cool[i] = this.range(i, 0, WORKERS.wave.cooldown[1]);
+    this.seatOf[i] = -1;
+    this.sitAmt[i] = this.typeAmt[i] = this.typeVel[i] = 0;
+    this.stretchT[i] = -1;
+    this.byGoal[i] = 1;
+    this.useMove[i] = this.phaseUse[i] = 0;
+    this.gMove[i] = 0;
+    this.poseK[i] = 0;
+    this.leanV[i] = 0;
+    this.napAmt[i] = POSES[t.pose]?.lie ? 1 : 0;
+    this.x[i] = t.x;
+    this.z[i] = t.z;
+    this.hd[i] = t.hd;
+    this.y[i] = Number.isNaN(t.y) ? this.ground(t.x, t.z) : t.y;
+    this.yaw[i] = -this.hd[i];
+    this.look[i] = this.hd[i];
+    this.state[i] = W_TABLEAU;
+    this.timer[i] = this.draw(i) * 2;
+    this.dur[i] = 1e9;
+    this.gPose[i] = 0;
+    this.setGait(i);
+  }
+
   private place(i: number): void {
+    const tb = this.tab[i];
+    if (tb) {
+      this.placeTableau(i, tb);
+      return;
+    }
     const isl = this.islandOf[i];
     const c = this.compOf[i];
     this.spawned[i] = 1;
@@ -1478,6 +1613,9 @@ export class Workers extends LandKind {
     this.sitAmt[i] = this.typeAmt[i] = this.typeVel[i] = 0;
     this.stretchT[i] = -1;
     this.byGoal[i] = 0;
+    this.poseK[i] = 0;
+    this.leanV[i] = 0;
+    this.napAmt[i] = 0;
     this.useMove[i] = 0;
     this.phaseUse[i] = 0;
     this.gMove[i] = 0;

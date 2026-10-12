@@ -100,6 +100,20 @@ const LIVE_SIMT: Partial<Record<(typeof CAMPUS_THEMES)[number][0], number>> = { 
 /** The campus crop of the live pairs: the target sits at the frame centre (normalised x0, y0, x1, y1). */
 const LIVE_CROP: [number, number, number, number] = [0.15, 0.1, 0.85, 0.9];
 
+/**
+ * D-story-* cameras (raw `eye → target`, seed 1001; TASK-432): [id, title, cam, game hour, warm-up s].
+ * Each looks at a story spot whose person is a tableau bot (content/life.ts TABLEAU).
+ */
+const STORY_SHOTS: readonly (readonly [string, string, string, number, number])[] = [
+  ['signpostDebate', 'Signpost debate · HQ', '88.80,4.77,-179.47,83.62,2.07,-179.97', 14, 6],
+  ['hammockNap', 'Hammock nap · Coding', '103.98,13.30,39.26,104.76,10.60,34.11', 14, 6],
+  ['containerNap', 'Container nap · DevOps', '-91.04,8.93,-56.71,-86.00,6.23,-58.00', 14, 6],
+  ['lighthouseSelfie', 'Selfie · Marketing', '9.88,28.37,145.39,14.99,25.67,144.38', 14, 6],
+  ['gafferTurn', 'Gaffer · Design', '-147.73,24.75,66.77,-149.70,22.05,71.59', 14, 6],
+  ['teaTime', 'Tea time · Research', '-134.26,11.18,208.30,-134.66,8.48,213.48', 14, 6],
+  ['onsenCapybara', 'Onsen · DevOps', '-80.13,11.23,-74.59,-83.11,8.53,-78.85', 14, 6],
+] as const;
+
 /** W7 camera (raw, seed 1001 Coding; TASK-380), re-pin when that layout changes. */
 const W7_CAM = '45,20,3.46,95,13,23.46';
 
@@ -938,6 +952,51 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     seed: 1001,
     cam: '-110,40,112,-143,30,88',
     time: 21,
+    simt: 4,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  // ---- culture tableaus (M19 wave 3, TASK-432): the story-spot bots (TABLEAU) at T3, seed 1001 raw
+  // cams (re-pin when a layout changes). Medium quality: the campus wakes 4 tableau bots + walkers.
+  ...STORY_SHOTS.map(([id, title, cam, time, simt]): ShotPreset => ({
+    id: `D-story-${id}`,
+    title: `Story · ${title}`,
+    seed: 1001,
+    cam,
+    time,
+    simt,
+    quality: 'medium',
+    sets: ['dev'],
+  })),
+  // ---- culture clock (TASK-430): the Launch Day Relay from the postcard pose (W15 candidate) —
+  // frozen at 21:00 the relay runs on `simt`: 5 s = HQ's flash, 45 s = Marketing's (HQ, DevOps,
+  // QA, Coding still glowing); and the time-gated rainbow, absent at noon (cf. D-culture-design)
+  {
+    id: 'D-relay-night',
+    title: 'Launch Day Relay · 21:00:05 (HQ)',
+    seed: 1001,
+    cam: 'postcard',
+    time: 21,
+    simt: 5,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-relay-night-b',
+    title: 'Launch Day Relay · 21:00:45 (Marketing)',
+    seed: 1001,
+    cam: 'postcard',
+    time: 21,
+    simt: 45,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-rainbow-noon',
+    title: 'Design at noon · rainbow gated off',
+    seed: 1001,
+    cam: '-112,46,118,-150,19,74',
+    time: 13,
     simt: 4,
     quality: 'medium',
     sets: ['dev'],

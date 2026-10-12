@@ -60,6 +60,7 @@ function rig(
   return { life, w: life.kinds.workers as Workers, tier: t, cam, counters };
 }
 
+const THEME_OF = ['hq', 'coding', 'marketing', 'qa', 'design', 'devops', 'research'] as const;
 const run = (r: Rig, n: number, each?: () => void): void => {
   for (let i = 0; i < n; i++) {
     r.life.fixedUpdate(FIXED_STEP);
@@ -411,5 +412,33 @@ describe('workers: cost', () => {
     );
     expect(step).toBeLessThan(perfLimit(0.5));
     expect(upd).toBeLessThan(perfLimit(0.2));
+  });
+});
+
+describe('workers: bot culture (TASK-432)', () => {
+  it('plans tableau bots from the story spots, capped per island and quality, deterministically', async () => {
+    const { planTableaus } = await import('./workers-world.ts');
+    const { tableauMax, TABLEAU } = await import('../content/life.ts');
+    const a = planTableaus(world(1001), 5);
+    expect(a).toEqual(planTableaus(world(1001), 5));
+    expect(a.length).toBeGreaterThan(8);
+    for (const t of a) expect(TABLEAU[t.kind]).toBeDefined();
+    for (const q of [0.5, 0.75, 1]) {
+      const per = new Map<number, number>();
+      for (const t of planTableaus(world(1001), tableauMax(q)))
+        per.set(t.island, (per.get(t.island) ?? 0) + 1);
+      for (const n of per.values()) expect(n).toBeLessThanOrEqual(tableauMax(q));
+    }
+  });
+
+  it('keeps the agent cap and the aSeed encoding with tableau bots awake', () => {
+    const r = rig(1001, 'high', 2, new THREE.Vector3(105, 12, 35));
+    run(r, 120);
+    const seed = r.w.mesh.geometry.getAttribute('aSeed');
+    expect(r.w.awake).toBeLessThanOrEqual(LIFE_PLAN.high.workers);
+    for (let i = 0; i < r.w.capacity; i++) {
+      if (!r.w.active[i]) continue;
+      expect(Math.floor(seed.getX(i)) % 100).toBe(THEMES[THEME_OF[r.w.themeOf[i]]].accessory);
+    }
   });
 });

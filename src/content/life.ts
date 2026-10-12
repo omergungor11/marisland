@@ -1,6 +1,7 @@
 /** Life catalog numbers (ART_BIBLE §7 rows 3, 4, 8–15, 26, 28). Data only. */
 import { Zone } from '../world/types.ts';
 import type { WorkPose } from './offices.ts';
+import type { CarriedItem } from './themes/index.ts';
 
 /** Per-quality agent plan; totals stay ≤ QUALITY_PRESETS[q].agentCap (fish/dolphins only live at T3/T1+). */
 export interface LifePlan {
@@ -422,7 +423,7 @@ export type GoalSpec =
 export interface ItineraryStep {
   goal: GoalSpec;
   /** Carried while travelling to the goal, using it and walking away (until the next step). */
-  item?: 'laptop' | 'clipboard' | 'crate' | 'paintPot';
+  item?: CarriedItem;
 }
 
 export const ACTIVITY = {
@@ -444,7 +445,17 @@ export const ACTIVITY = {
     look: [6, 12],
     rack: [10, 18],
     stand: [5, 9],
+    // M19 culture poses (TASK-432)
+    hammer: [10, 18],
+    stamp: [8, 14],
+    selfie: [6, 10],
+    light: [8, 14],
+    gaze: [8, 14],
+    bell: [4, 7],
+    nap: [14, 24],
   } as Record<string, readonly [number, number]>,
+  /** Spots where a bot who stops may start a chat with another idle bot (the culture gathering places). */
+  chatHubs: ['gatherRing', 'lectureSteps', 'coffeeCart'] as readonly string[],
   order: [2.6, 4.4] as const,
   loiter: [5, 10] as const,
   /** Spot-leg walking speed (u/s) and the micro step along a queue. */
@@ -476,28 +487,38 @@ export const ACTIVITY = {
   scan: { yaw: 0.35, hz: 0.18 },
   /** Per theme: the cycle each bot walks (start offset hashed per bot). */
   itinerary: {
+    // TASK-420/432 Harbour Guild: desks, the timetable, the morning bell, the coffee cart and kiosk,
+    // the notice board, a post bag along the pier
     hq: [
       { goal: { kind: 'seat', defs: ['hqOffice'] }, item: 'laptop' },
+      { goal: { kind: 'spot', defs: ['timetableBoard'] }, item: 'satchel' },
       { goal: { kind: 'hub' } },
       { goal: { kind: 'queue', def: 'coffeeKiosk' } },
+      { goal: { kind: 'spot', defs: ['bellPost'] } },
       { goal: { kind: 'seat', defs: ['meetingPavilion'] }, item: 'laptop' },
-      { goal: { kind: 'hub' } },
+      { goal: { kind: 'spot', defs: ['coffeeCart'] } },
+      { goal: { kind: 'spot', defs: ['guildNoticeBoard'] }, item: 'satchel' },
       { goal: { kind: 'seat', defs: ['hqOffice', 'hqAnnex'] } },
       { goal: { kind: 'queue', def: 'coffeeKiosk' } },
-      { goal: { kind: 'dock' } },
+      { goal: { kind: 'dock' }, item: 'satchel' },
     ],
+    // TASK-421/432 Wind Gardens: outdoor pergola desks, solar rounds, a nap in the hammock, the whiteboard
     coding: [
       { goal: { kind: 'seat', defs: ['devOffice', 'devPod'] }, item: 'laptop' },
+      { goal: { kind: 'spot', defs: ['pergolaDesk'] }, item: 'laptop' },
       {
         goal: { kind: 'spot', defs: ['solarRow', 'windTurbine', 'solarField'] },
         item: 'clipboard',
       },
       { goal: { kind: 'seat', defs: ['serverShed'] } },
+      { goal: { kind: 'spot', defs: ['hammock'] } },
       { goal: { kind: 'hub' } },
+      { goal: { kind: 'spot', defs: ['whiteboardA', 'kiteRack'] } },
       { goal: { kind: 'seat', defs: ['devOffice', 'devPod'] }, item: 'laptop' },
       { goal: { kind: 'dock' } },
     ],
-    // TASK-403 Media Rock: desks, the boulevard screen, the campus ledges, the fair, the pier
+    // TASK-403/432 Media Rock: desks, the boulevard screen, the campus ledges, the fair, the pier,
+    // popcorn and the megaphone stand, the selfie platform
     marketing: [
       { goal: { kind: 'seat', defs: ['broadcastStudio'] }, item: 'laptop' },
       { goal: { kind: 'spot', defs: ['giantScreen'] } },
@@ -505,48 +526,172 @@ export const ACTIVITY = {
         goal: { kind: 'spot', defs: ['antennaTower', 'mediaOffice', 'mediaShop'] },
         item: 'clipboard',
       },
+      { goal: { kind: 'spot', defs: ['megaphoneStand', 'marqueeSign'] }, item: 'megaphone' },
       { goal: { kind: 'hub' } },
       { goal: { kind: 'seat', defs: ['billboard'] }, item: 'paintPot' },
+      { goal: { kind: 'spot', defs: ['popcornCart', 'prizeBooth'] } },
       { goal: { kind: 'spot', defs: ['stage', 'fairBooth', 'fairTent'] } },
+      { goal: { kind: 'spot', defs: ['selfieSpot', 'mascotStatue'] } },
       { goal: { kind: 'spot', defs: ['ferrisWheel'] } },
       { goal: { kind: 'dock' } },
     ],
+    // TASK-423/432 Inspectors' Island: gates, the stamp desk, the clipboard wall, the scoreboard
     qa: [
       { goal: { kind: 'spot', defs: ['barrierGate'] }, item: 'clipboard' },
-      { goal: { kind: 'spot', defs: ['checklistBoard'] }, item: 'clipboard' },
+      { goal: { kind: 'spot', defs: ['stampDesk'] }, item: 'clipboard' },
+      { goal: { kind: 'spot', defs: ['checklistBoard', 'clipboardWall'] }, item: 'clipboard' },
       { goal: { kind: 'seat', defs: ['testLab', 'testLabStilt'] }, item: 'clipboard' },
       { goal: { kind: 'hub' } },
       { goal: { kind: 'seat', defs: ['inspectionTower'] } },
+      { goal: { kind: 'spot', defs: ['scoreboard', 'dummyBench'] } },
       { goal: { kind: 'spot', defs: ['barrierGate', 'checklistBoard'] }, item: 'clipboard' },
     ],
+    // TASK-425/432 Glass & Light: easel walk, the hot shop, the gather ring, the stained screens
     design: [
       { goal: { kind: 'spot', defs: ['easel'] }, item: 'paintPot' },
+      { goal: { kind: 'spot', defs: ['hotShop'] }, item: 'blowpipe' },
+      { goal: { kind: 'spot', defs: ['gatherRing'] }, item: 'blowpipe' },
+      { goal: { kind: 'spot', defs: ['stainedScreen', 'glassOrb', 'sampleShelf'] } },
       { goal: { kind: 'seat', defs: ['atelier'] }, item: 'paintPot' },
       { goal: { kind: 'spot', defs: ['sculptureTorus', 'sculptureArch', 'sculptureStack'] } },
       { goal: { kind: 'hub' } },
-      { goal: { kind: 'spot', defs: ['easel'] }, item: 'paintPot' },
+      { goal: { kind: 'spot', defs: ['blowpipeRack', 'hotShop'] }, item: 'blowpipe' },
       { goal: { kind: 'seat', defs: ['galleryPavilion'] } },
     ],
+    // TASK-422/432 Ember Smiths: racks, cooling, the anvil, the incident board, crates to the quay
     devops: [
       { goal: { kind: 'seat', defs: ['dataCenter'] } },
+      { goal: { kind: 'spot', defs: ['anvil'] }, item: 'crate' },
       { goal: { kind: 'spot', defs: ['rackRow'] }, item: 'crate' },
       { goal: { kind: 'spot', defs: ['coolingTower'] }, item: 'clipboard' },
+      { goal: { kind: 'spot', defs: ['incidentSign', 'signalHorn', 'pagerRock'] } },
       { goal: { kind: 'seat', defs: ['rackShed', 'antennaMast'] } },
       { goal: { kind: 'dock' }, item: 'crate' },
       { goal: { kind: 'hub' } },
     ],
-    // TASK-402b Observatory University: glasshouses, the observatory, the lab pods, samples to the
-    // research vessel's pier, the garden and the sculptures
+    // TASK-402b/426/432 Stargazer Academy: glasshouses, the observatory, the telescopes, lectures,
+    // tea, books; samples to the research vessel's pier, the garden and the sculptures
     research: [
       { goal: { kind: 'spot', defs: ['terrarium', 'biodomeHero'] }, item: 'clipboard' },
       { goal: { kind: 'spot', defs: ['observatory'] }, item: 'laptop' },
+      { goal: { kind: 'spot', defs: ['tripodTelescope', 'orrery'] }, item: 'books' },
+      { goal: { kind: 'spot', defs: ['lectureSteps', 'chalkboard'] }, item: 'books' },
       { goal: { kind: 'spot', defs: ['labPod', 'radioDish', 'weatherMast'] }, item: 'clipboard' },
+      { goal: { kind: 'spot', defs: ['teaTrolley', 'bookCart'] } },
       { goal: { kind: 'dock' }, item: 'crate' },
       { goal: { kind: 'spot', defs: ['hedgeParterre', 'armillarySphere', 'atomSculpture'] } },
       { goal: { kind: 'hub' } },
     ],
   } as Record<string, readonly ItineraryStep[]>,
 } as const;
+
+/**
+ * Culture poses (M19, TASK-432). `code` is the arm pose of the life shader (aGait.y = 4 * code +
+ * amount, life-material.ts mode 7): 1 hammer, 2 stamp, 3 selfie, 4 hold to light, 5 gaze, 6 bell,
+ * 7 rest. `lean` pitches the whole bot (rad, + = back / looking up, − = bowing over a desk), `lie`
+ * lays it on its back on a hammock / a roof (`NAP`).
+ */
+export const POSES: Readonly<Record<string, { code: number; lean?: number; lie?: number }>> = {
+  hammer: { code: 1 },
+  stamp: { code: 2 },
+  selfie: { code: 3 },
+  light: { code: 4 },
+  gaze: { code: 5, lean: 0.3 },
+  bell: { code: 6 },
+  nap: { code: 7, lie: 1 },
+  // tableau-only
+  slump: { code: 7, lean: -0.85 },
+  peer: { code: 5, lean: -0.5 },
+};
+
+/** Lying on a hammock: pitch (rad), lift of the feet pivot (u) and shift along the heading (u), ease rate (1/s). */
+export const NAP = { pitch: 1.5, lift: 0.75, shift: 1.05, lambda: 3 } as const;
+
+/** One fixed bot of a story-spot tableau (spot frame: +z = rotY direction, +x = right hand). */
+export interface TableauBotSpec {
+  dx: number;
+  dz: number;
+  /** Faces the nearest world fixture of this def; else heading = rotY + `turn`. */
+  look?: string;
+  turn?: number;
+  /** A `POSES` / work pose, or 'chat' (talks with the next / previous bot of the spot), 'speak', 'wave', 'stand'. */
+  pose: string;
+  item?: CarriedItem;
+  /** Feet on the story spot's own y (+ `dy`) instead of the terrain (platforms, decks, roofs). */
+  atSpot?: boolean;
+  dy?: number;
+}
+
+/**
+ * Story spots (`world.storySpots` kind) that need a person: the tableau bots are taken from the
+ * island's ambient worker slots (no extra agents), placed once when the campus wakes and then held.
+ * Offsets are tuned against `D-story-*` shots (seed 1001).
+ */
+export const TABLEAU: Readonly<Record<string, readonly TableauBotSpec[]>> = {
+  // HQ
+  signpostDebate: [
+    { dx: -0.95, dz: 1.0, turn: -Math.PI / 2, pose: 'chat', item: 'satchel' },
+    { dx: 0.95, dz: 1.0, turn: Math.PI / 2, pose: 'chat' },
+  ],
+  coffeeQueue: [
+    { dx: 0, dz: 1.7, turn: Math.PI, pose: 'stand' },
+    { dx: 0.2, dz: 2.7, turn: Math.PI, pose: 'stand', item: 'satchel' },
+  ],
+  morningBell: [{ dx: 1.0, dz: 0, turn: Math.PI / 2, pose: 'bell' }],
+  // Coding
+  hammockNap: [{ dx: 0, dz: 0, turn: 0, pose: 'nap', item: 'laptop' }],
+  stuckKite: [{ dx: 1.6, dz: 1.2, look: 'kite', pose: 'gaze' }],
+  duckCrossing: [{ dx: 2.0, dz: 0.2, turn: Math.PI / 2, pose: 'stand' }],
+  // DevOps
+  anvilHammer: [{ dx: 0, dz: 0, look: 'anvil', pose: 'hammer' }],
+  incidentWatch: [
+    { dx: -0.7, dz: 0, look: 'incidentSign', pose: 'gaze' },
+    { dx: 0.7, dz: 0.3, look: 'incidentSign', pose: 'stand', item: 'clipboard' },
+  ],
+  containerNap: [{ dx: 0, dz: 0, turn: 0, pose: 'nap', atSpot: true }],
+  onsenCapybara: [{ dx: 1.2, dz: 0.7, turn: Math.PI, pose: 'stand', atSpot: true }],
+  // Marketing
+  lighthouseSelfie: [{ dx: 0, dz: 0, turn: 0, pose: 'selfie', atSpot: true }],
+  mascotWave: [{ dx: 0, dz: 2.6, turn: Math.PI, pose: 'wave', atSpot: true }],
+  wheelNap: [{ dx: 1.5, dz: 1.0, turn: Math.PI, pose: 'slump' }],
+  posterCrew: [
+    { dx: 0, dz: 0, look: 'billboardV2', pose: 'paint', item: 'paintPot', atSpot: true },
+  ],
+  // QA
+  dummyCoffee: [{ dx: 0, dz: 0, look: 'dummyBench', pose: 'stand', item: 'clipboard' }],
+  sleepyStamp: [{ dx: 0, dz: -1.0, look: 'stampDesk', pose: 'slump', item: 'clipboard' }],
+  scoreboardDrop: [{ dx: 0, dz: 0, look: 'scoreboard', pose: 'gaze' }],
+  antTrail: [{ dx: 0, dz: 0, turn: 0, pose: 'peer', item: 'clipboard' }],
+  // Design
+  gafferTurn: [{ dx: 0, dz: 0, look: 'hotShop', pose: 'light', item: 'blowpipe' }],
+  vaseToSun: [{ dx: 0, dz: 0, turn: 0, pose: 'light' }],
+  critique: [
+    { dx: 2.1, dz: 0, turn: Math.PI / 2, pose: 'chat', item: 'blowpipe' },
+    { dx: -2.1, dz: 0, turn: -Math.PI / 2, pose: 'chat' },
+    { dx: 0, dz: -2.1, turn: 0, pose: 'light' },
+  ],
+  prismRainbow: [{ dx: 0.8, dz: 0, turn: Math.PI, pose: 'light', atSpot: true }],
+  // Research
+  bookStepGazer: [{ dx: 0.9, dz: 0.6, look: 'tripodTelescope', pose: 'gaze', item: 'books' }],
+  teaTime: [
+    { dx: -0.6, dz: 0, look: 'teaTrolley', pose: 'stand' },
+    { dx: 0.7, dz: 0.2, look: 'teaTrolley', pose: 'stand', item: 'books' },
+  ],
+  lecture: [
+    { dx: -1.1, dz: 0, turn: 0, pose: 'stand', item: 'books' },
+    { dx: 1.1, dz: 0, turn: 0, pose: 'stand' },
+    { dx: 0, dz: 2.6, turn: Math.PI, pose: 'speak' },
+  ],
+  cometWatch: [{ dx: 0.9, dz: 0.9, look: 'tripodTelescope', pose: 'gaze' }],
+};
+
+/**
+ * Most tableau bots a campus keeps (the first story spots in plan order win), by the quality's
+ * `ambientScale` (low 0.5, medium 0.75, high 1): the awake workers never exceed `LIFE_PLAN.workers`,
+ * so a small plan keeps most of its slots for the walkers.
+ */
+export const tableauMax = (ambientScale: number): number =>
+  ambientScale >= 1 ? 5 : ambientScale >= 0.75 ? 4 : 2;
 
 /** Ground workers may stand on outside the path graph (outpost loops). */
 export const WORKER_ZONES = [
@@ -660,27 +805,48 @@ export const WORKER_COLORS = {
   eye: '#BDF7FF',
   blush: '#FF9EB5',
   antenna: '#FFD54A',
+  /**
+   * Department accessories, culture-coloured (M19 TASK-432): every hex is a hue of that island's
+   * `content/cultures/<theme>.ts` palette (walls / roofs / trims) or of its team tints.
+   */
   acc: {
     headsetBand: '#2F3340',
     headsetCup: '#FF8A6A',
-    hood: '#6F7FA3',
+    // HQ captain's cap: cream crown, blue band, coral peak, gold badge
+    capCrown: '#FFF4E0',
+    capBand: '#5DA9E9',
+    capPeak: '#E8735A',
+    capBadge: '#F5C84C',
+    // Coding: teal hoodie, duck-yellow headphones, clear cream-framed glasses
+    hood: '#3FB8AF',
     phoneBand: '#2F3340',
-    phoneCup: '#7CFFB2',
+    phoneCup: '#FFE45C',
+    glasses: '#FAFAF5',
     cap: '#FFF4E0',
     capBrim: '#E35D6A',
     badge: '#F5C84C',
     badgeIcon: '#FFF8E8',
+    stripe: '#FAFAF5',
     visor: '#2E9E74',
+    safety: '#F5C84C',
     monocle: '#F5C84C',
     beret: '#D6477D',
     beretNub: '#8E2E58',
+    gogStrap: '#6B4A33',
+    gogRim: '#8A5A3B',
+    amber: '#F5C84C',
+    apron: '#8A5A3B',
+    apronBelt: '#6B4A33',
     hat: '#FFD23F',
     hatRidge: '#E0A800',
-    strap: '#6B4A33',
-    rim: '#C9A24B',
-    lens: '#7DE8F2',
+    reflect: '#FFF4E0',
+    capBase: '#2B2B36',
+    board: '#383C4C',
+    tassel: '#F5C84C',
+    gown: '#666C7A',
+    gownTrim: '#E0B050',
   },
-  /** Carried items (CARRIED_ITEM_SLOT 7..10, TASK-383). None is pure white: the tint must not catch them. */
+  /** Carried items (CARRIED_ITEM_SLOT 7..14). None is pure white: the tint must not catch them. */
   item: {
     laptopBase: '#C4CAD8',
     laptopLid: '#383C4C',
@@ -695,6 +861,17 @@ export const WORKER_COLORS = {
     pot: '#EFE9DC',
     paint: '#FF6FA3',
     brush: '#8A5A38',
+    bag: '#5DA9E9',
+    bagFlap: '#FFF4E0',
+    bagClasp: '#F5C84C',
+    mega: '#E35D6A',
+    megaGrip: '#383C4C',
+    megaRim: '#FFB347',
+    pipe: '#A9AEB8',
+    pipeMouth: '#C9754A',
+    ember: '#FF6A3D',
+    books: ['#C29A74', '#3FB8AF', '#E0B050'],
+    pages: '#FBF3DC',
   },
 } as const;
 
