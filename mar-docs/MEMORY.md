@@ -136,6 +136,15 @@
 - Shot presets are data in `src/content/shots.ts`; both the harness (`scripts/shots.ts`) and the app read them — keep them in sync
 
 ## Known Issues / Gotchas
+- Gulls are sized for T0 specks but now fly through T2 cams (TASK-399): the TASK-151 model (3.4 u
+  span of near-rectangular 1.5 u wing slabs) read as long planks when the flock passes 10–25 u from the
+  camera heading toward it (chord foreshortened), and the old flap SHEARED (`y += a·|z|`, wing 33 %
+  longer at the stroke peak). Now 2.2 u span, inner arm + swept dark-tipped hand (M silhouette), flap
+  is a hinge rotation at |z| 0.12. Shader inputs were all nominal (limb w −1, aGait, matrices unit).
+- "Orphan rotors" beside wind turbines (W7) were gulls, not a prop/LOD bug: flock altitude 12–25 u
+  is turbine hub height, white raised wings next to a tower read as small rotors. Identify unknown
+  shapes by projecting every InstancedMesh instance to screen (hook `__THREE_DEVTOOLS__` for the
+  scene/renderer, catch the camera in `renderer.render`) before suspecting the batcher.
 - Island size changes move the archipelago: `place()` attaches islands by decreasing reach, so an island
   that stays the smallest keeps every other dart, and the layout only re-centres (all islands translate
   by one delta) unless a gap / extent check fails. Check with a layout probe before picking a size

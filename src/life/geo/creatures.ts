@@ -3,24 +3,27 @@ import { LIFE_COLORS as C } from '../../content/life.ts';
 import { hex, TriBuilder, v3 } from './builder.ts';
 
 /**
- * Gull, forward = +x, up = +y, right = +z, origin at the body centre. Wings are flat quads in the
- * y = 0 plane (double-sided); the vertex shader flaps them from |z|. ≈ 42 tris, span ≈ 3.2 u.
+ * Gull, forward = +x, up = +y, right = +z, origin at the body centre. Each wing is two flat
+ * double-sided panels: an inner arm raised to the elbow and a swept, pointed, dark-tipped hand
+ * dropping to the tip (the gull "M" seen head-on); the vertex shader hinges them at |z| = 0.12.
+ * ≈ 53 tris, span ≈ 2.2 u, nose to tail ≈ 1.4 u. (TASK-399: the old 3.4 u span of near-rectangular
+ * 1.5 u slabs read as planks at T2 range and as stray rotors next to wind turbines.)
  */
 export function buildGull(): THREE.BufferGeometry {
   const b = new TriBuilder();
   const body = hex(C.gullBody);
   const wing = hex(C.gullWing);
   const tip = hex(C.gullTip);
-  b.ellipsoid(v3(0, 0, 0), 0.55, 0.22, 0.2, 6, 3, () => body);
-  b.ellipsoid(v3(0.55, 0.1, 0), 0.2, 0.17, 0.17, 4, 2, () => body);
+  b.ellipsoid(v3(0, 0, 0), 0.42, 0.18, 0.17, 6, 3, () => body);
+  b.ellipsoid(v3(0.42, 0.09, 0), 0.15, 0.13, 0.13, 4, 2, () => body);
   // beak
-  b.tri(v3(0.72, 0.1, 0.07), v3(0.72, 0.1, -0.07), v3(0.98, 0.06, 0), hex(C.gullBeak));
+  b.tri(v3(0.54, 0.08, 0.05), v3(0.54, 0.08, -0.05), v3(0.74, 0.05, 0), hex(C.gullBeak));
   // tail
   b.quad(
-    v3(-0.5, 0.02, 0.1),
-    v3(-0.5, 0.02, -0.1),
-    v3(-0.9, 0.0, -0.18),
-    v3(-0.9, 0.0, 0.18),
+    v3(-0.36, 0.02, 0.08),
+    v3(-0.36, 0.02, -0.08),
+    v3(-0.66, 0.0, -0.14),
+    v3(-0.66, 0.0, 0.14),
     wing,
     wing,
     wing,
@@ -28,13 +31,21 @@ export function buildGull(): THREE.BufferGeometry {
     true,
   );
   for (const side of [1, -1]) {
-    const q = (x: number, z: number): THREE.Vector3 => v3(x, 0.02, z * side);
-    const a = q(0.3, 0.15);
-    const bb = q(-0.35, 0.15);
-    const c = q(-0.4, 1.65);
-    const d = q(0.0, 1.7);
-    if (side > 0) b.quad(a, bb, c, d, wing, wing, tip, tip, true);
-    else b.quad(a, d, c, bb, wing, tip, tip, wing, true);
+    const q = (x: number, y: number, z: number): THREE.Vector3 => v3(x, y, z * side);
+    // root (front, back), elbow (front, back), tip (front, back)
+    const r0 = q(0.22, 0.03, 0.12);
+    const r1 = q(-0.22, 0.03, 0.12);
+    const e0 = q(0.16, 0.13, 0.6);
+    const e1 = q(-0.24, 0.13, 0.55);
+    const t0 = q(-0.28, 0.0, 1.08);
+    const t1 = q(-0.52, 0.0, 0.98);
+    if (side > 0) {
+      b.quad(r0, r1, e1, e0, wing, wing, wing, wing, true);
+      b.quad(e0, e1, t1, t0, wing, wing, tip, tip, true);
+    } else {
+      b.quad(r0, e0, e1, r1, wing, wing, wing, wing, true);
+      b.quad(e0, t0, t1, e1, wing, tip, tip, wing, true);
+    }
   }
   return b.finish();
 }
