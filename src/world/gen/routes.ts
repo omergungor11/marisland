@@ -1,6 +1,7 @@
 import type { Rng } from '../../core/rng.ts';
 import { smoothPolyline } from '../../core/math/catmull-rom.ts';
 import { DOCK, ROUTES } from '../../content/settlements.ts';
+import { HQ_FERRY } from '../../content/cultures/hq.ts';
 import type { DockData, Heightfield, IslandData, Polyline, XZ } from '../types.ts';
 import { heightAt, sampleGrid } from '../types.ts';
 import { gridAStar, resample } from './paths.ts';
@@ -11,6 +12,8 @@ import { gridAStar, resample } from './paths.ts';
  * edge (depth 3–10 u) so boats pass islands closely. Each loop visits 2–3
  * docks or circles an island. Catmull-Rom smoothed and resampled at 2 u;
  * every sample is verified ≥ ROUTES.minDepth deep and ≥ ROUTES.minShore from land.
+ * Harbour Guild ferries (kind 'ferry', M19 TASK-420) are built last: loops from HQ's pier through
+ * one pier per other island, with a dwell at each stop.
  */
 
 export interface RouteInput {
@@ -240,7 +243,7 @@ export function buildRoutes(input: RouteInput, rng: Rng): Polyline[] {
     x: ps.reduce((a, p) => a + p.x, 0) / ps.length,
     z: ps.reduce((a, p) => a + p.z, 0) / ps.length,
   });
-  const emit = (wps: number[], stopDocks: number[]): boolean => {
+  const emit = (wps: number[], stopDocks: number[], kind = 'route', dwell?: number): boolean => {
     const nodes = loopThrough(c, wps, c.k * h.cellSize);
     if (!nodes || nodes.length < 4) return false;
     const pts = nodes.map((i) => posOf(h, c, i));
@@ -250,10 +253,11 @@ export function buildRoutes(input: RouteInput, rng: Rng): Polyline[] {
     });
     routes.push({
       islandId: -1,
-      kind: 'route',
+      kind,
       closed: true,
       points: smoothLoop(h, sdf, pts, keep),
       stops: stopDocks,
+      ...(dwell !== undefined ? { dwell } : {}),
     });
     return true;
   };
@@ -318,6 +322,60 @@ export function buildRoutes(input: RouteInput, rng: Rng): Polyline[] {
     }
     if (wps.length < 4) continue;
     emit(wps, []);
+  }
+
+  // Harbour Guild ferries: HQ's pier → one pier of every other island, the islands ordered by
+  // bearing from HQ (starting after the widest empty sector) and split into HQ_FERRY.lines
+  // loops. A pier the open-sea graph does not reach (closed bay) is served from the nearest node
+  // within HQ_FERRY.reach. Built last, so the loops above are untouched.
+  const ferryStop = (islandId: number): (typeof stops)[number] | undefined => {
+    const s = stops.find((x) => x.islandId === islandId);
+    if (s) return s;
+    for (const [i, d] of docks.entries()) {
+      if (d.islandId !== islandId) continue;
+      const L = d.segments * DOCK.segment;
+      const end = { x: d.x + Math.cos(d.rotY) * L, z: d.z + Math.sin(d.rotY) * L };
+      const node = nearestNode(h, c, end, HQ_FERRY.reach);
+      if (node >= 0) return { dock: i, node, p: posOf(h, c, node), islandId };
+    }
+    return undefined;
+  };
+  const hqIsl = islands.find((isl) => isl.theme === 'hq');
+  const hq = hqIsl ? ferryStop(hqIsl.id) : undefined;
+  if (hq) {
+    const dest: typeof stops = [];
+    for (const isl of islands) {
+      const s = isl.id !== hq.islandId ? ferryStop(isl.id) : undefined;
+      if (s) dest.push(s);
+    }
+    const bearing = (s: (typeof stops)[number]): number =>
+      Math.atan2(s.p.z - hq.p.z, s.p.x - hq.p.x);
+    dest.sort((a, b) => bearing(a) - bearing(b) || a.dock - b.dock);
+    let cut = 0;
+    let widest = -1;
+    dest.forEach((s, i) => {
+      const prev = dest[(i + dest.length - 1) % dest.length];
+      const gap = (bearing(s) - bearing(prev) + 2 * Math.PI) % (2 * Math.PI) || 2 * Math.PI;
+      if (gap > widest) {
+        widest = gap;
+        cut = i;
+      }
+    });
+    const ring = [...dest.slice(cut), ...dest.slice(0, cut)];
+    const lines = Math.min(HQ_FERRY.lines, ring.length);
+    for (let k = 0; k < lines; k++) {
+      const part = ring.slice(
+        Math.round((k * ring.length) / lines),
+        Math.round(((k + 1) * ring.length) / lines),
+      );
+      const leg = [hq, ...part];
+      emit(
+        leg.map((s) => s.node),
+        leg.map((s) => s.dock),
+        'ferry',
+        HQ_FERRY.dwell,
+      );
+    }
   }
   return routes;
 }

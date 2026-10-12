@@ -16,7 +16,7 @@ const d = (
   footprint: number,
   flags: number,
   fade?: [number, number],
-  extra: Pick<PropDef, 'interior'> = {},
+  extra: Pick<PropDef, 'interior' | 'rollVariants'> = {},
 ): PropDef => ({
   id,
   geo: id,
@@ -72,7 +72,8 @@ export const PROP_DEFS_BUILDINGS: PropDef[] = [
   // phase-3 office shells (TASK-303): tier 0 since M14b (TASK-378, D-031/D-032): every shell has its own
   // coloured LOD1 built from its LOD0 palette (geo/offices.ts), so no shared `lod1` proxy any more
   d('hqOffice', 0, 2, 3.2, grounded),
-  d('hqAnnex', 0, 2, 1.8, grounded),
+  // v2 = Harbour Guild hall (TASK-420): only where the HQ plan pins it
+  d('hqAnnex', 0, 3, 1.8, grounded, undefined, { rollVariants: 2 }),
   d('meetingPavilion', 0, 2, 2.6, grounded),
   d('coffeeKiosk', 0, 2, 1.3, grounded),
   d('devOffice', 0, 2, 3.6, grounded),

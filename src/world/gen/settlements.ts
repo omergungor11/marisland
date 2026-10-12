@@ -868,20 +868,25 @@ export function roofNeighbours(lots: readonly LotData[]): number[][] {
  * stuck (bounded); on exhaustion that group falls back to the least-conflicting variants (an
  * odd ring of 2-variant office defs cannot alternate — it must not spoil the other groups).
  */
-function assignLotVariants(lots: LotData[], seed: number): void {
+function assignLotVariants(
+  lots: LotData[],
+  seed: number,
+  pins: readonly (number | undefined)[],
+): void {
   const nb = roofNeighbours(lots);
   // TASK-403: the hash key is the lot's index within its island (+ islandId · 4096), so one
   // island's lot count no longer reshuffles the roofs of the islands after it (the first island
   // keeps its global indices)
   const local = new Map<number, number>();
-  const order = lots.map((l) => {
+  const order = lots.map((l, i) => {
     const li = local.get(l.islandId) ?? 0;
     local.set(l.islandId, li + 1);
     const key = l.islandId * 4096 + li;
     const k = LOT_ROOFS[l.defId]?.length ?? 1;
     const vs = Array.from({ length: k }, (_, v) => v);
     const h = vs.map((v) => hashInts(seed, key, v));
-    return vs.sort((x, y) => h[x] - h[y]);
+    const pin = pins[i];
+    return pin !== undefined ? [pin] : vs.sort((x, y) => h[x] - h[y]);
   });
   const set = new Uint8Array(lots.length);
   const ok = (i: number, v: number): boolean => {
@@ -1041,10 +1046,12 @@ export function buildSettlements(input: SettlementInput, rng: Rng): SettlementRe
   // drop lots that could not be connected; remap settlement indices
   const lotMap = new Int32Array(ctx.lots.length).fill(-1);
   const lots: LotData[] = [];
+  const pins: (number | undefined)[] = [];
   ctx.lots.forEach((l, i) => {
     const node = l.key >= 0 ? built.nodeOf.get(l.key) : undefined;
     if (node === undefined) return;
     lotMap[i] = lots.length;
+    pins.push(l.pin);
     lots.push({
       defId: l.defId,
       x: l.x,
@@ -1059,7 +1066,7 @@ export function buildSettlements(input: SettlementInput, rng: Rng): SettlementRe
       role: OFFICE_DEFS[l.defId] ? (LOT_ROLE_BY_KIND[l.kind] ?? 'office') : 'legacy',
     });
   });
-  assignLotVariants(lots, rng.fork('roofs').nextU32());
+  assignLotVariants(lots, rng.fork('roofs').nextU32(), pins);
   const docks: DockData[] = ctx.docks.map((d) => ({
     x: d.x,
     z: d.z,

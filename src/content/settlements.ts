@@ -73,7 +73,8 @@ export const LOT_ROOFS: Readonly<Record<string, readonly number[]>> = {
   // themed lots: 2 variants each (OFFICE_DEFS.variants); the defs of one theme use different
   // pairs so mixed neighbours have room to differ
   hqOffice: [0, 3],
-  hqAnnex: [5, 1],
+  // v2 = Guild Hall (hqAnnex v1 + bell cote): v1's roof
+  hqAnnex: [5, 1, 1],
   meetingPavilion: [2, 6],
   coffeeKiosk: [0, 4],
   devOffice: [5, 2],
@@ -230,6 +231,19 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   biodomeHero: 3.2,
   biodome: 1.8,
   researchVessel: 1.2,
+  // HQ Harbour Guild (TASK-420): the obstacle discs of the culture kit (worldgen + life solids)
+  ferryAwning: 1.5,
+  timetableBoard: 0.7,
+  mailbag: 0.55,
+  pierSignpost: 0.5,
+  bellPost: 0.6,
+  harbourCrane: 1.3,
+  cargoCrate: 0.4,
+  gullPerch: 0.45,
+  coffeeCart: 1.0,
+  guildNoticeBoard: 0.9,
+  // the cord spans the lane (bots walk under it); its two poles are separate worldgen discs
+  pennantLine: 0.05,
 };
 
 /** Fixtures that float at the waterline (render pivot y = 0, not the seabed). */

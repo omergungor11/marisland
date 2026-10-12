@@ -131,6 +131,10 @@ const DESK_CAM = '94.1,13,0.5,91.5,10.2,3.46';
  */
 const MACRO_CAM = '91.8,7.4,-186.3,82.3,2,-182.2';
 
+/** D-culture-hq cameras (raw, seed 1001 Harbour Guild; TASK-420), re-pin when HQ's layout changes. */
+const HQ_CULTURE_CAM = '104.5,33,-147.5,86,1.2,-184';
+const HQ_CULTURE_NIGHT_CAM = '98,12,-165,87,1.2,-184';
+
 export const SHOT_PRESETS: readonly ShotPreset[] = [
   // ---- bible wow shots (1920×1080, medium quality)
   {
@@ -737,6 +741,29 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     cam: '113,20,-6,106,9.8,5',
     time: 15,
     simt: 3,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-culture-hq',
+    title: 'Harbour Guild morning · HQ',
+    // TASK-420: T2 from the bay over the ferry pier: awning + timetable at the pier root, crane,
+    // seven-colour crates, signpost, pennant lines up the harbour lane
+    seed: 1001,
+    cam: HQ_CULTURE_CAM,
+    time: 8,
+    simt: 4,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-culture-hq-night',
+    title: 'Harbour Guild evening · HQ',
+    // TASK-420: closer over the pier root at 20:30 (lit timetable, awning lantern, the quad beyond)
+    seed: 1001,
+    cam: HQ_CULTURE_NIGHT_CAM,
+    time: 20.5,
+    simt: 4,
     quality: 'medium',
     sets: ['dev'],
   },

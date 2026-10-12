@@ -114,10 +114,10 @@ describe('TASK-410 HQ culture kit: geometry', () => {
 });
 
 describe('TASK-410 hqAnnex v2 (guildHall)', () => {
-  it('stays a 2-variant def everywhere until wave 2 places it', () => {
-    expect(PROP_GEO.hqAnnex.variants).toBe(2);
-    expect(OFFICE_DEFS.hqAnnex.variants).toBe(2);
-    expect(PROP_DEFS[PROP_DEF_INDEX.hqAnnex].variants).toBe(2);
+  it('is a 3-variant def everywhere since TASK-420 placed it (the HQ crown pins v2)', () => {
+    expect(PROP_GEO.hqAnnex.variants).toBe(3);
+    expect(OFFICE_DEFS.hqAnnex.variants).toBe(3);
+    expect(PROP_DEFS[PROP_DEF_INDEX.hqAnnex].variants).toBe(3);
     expect(GUILD_HALL_VARIANT).toBe(2);
   });
 

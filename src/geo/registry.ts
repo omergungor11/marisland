@@ -181,9 +181,8 @@ defs.push(
   D('volcanoCrater', 1, volcanoCrater, 5.4, 0.34),
   // phase-3 office shells (footprints from content/offices.ts), far proxy, interiors, fixtures
   D('hqOffice', 2, hqOffice, 3.6, 5.4),
-  // variant 2 = Harbour Guild hall (M19 TASK-410): buildable, but `variants` stays 2 until wave 2
-  // places it and bumps OFFICE_DEFS / LOT_ROOFS / props-buildings together
-  { ...D('hqAnnex', 2, withGuildHall(hqAnnex), 2.2, 7.9), lod1Of: { 2: 1 } },
+  // variant 2 = Harbour Guild hall (M19 TASK-410), placed by the HQ plan on the crown lot (TASK-420)
+  { ...D('hqAnnex', 3, withGuildHall(hqAnnex), 2.2, 7.9), lod1Of: { 2: 1 } },
   D('meetingPavilion', 2, meetingPavilion, 2.8, 4.1),
   D('coffeeKiosk', 2, coffeeKiosk, 1.5, 2.75),
   D('devOffice', 2, devOffice, 4.0, 3.9, false, [4.1, 3.7]),

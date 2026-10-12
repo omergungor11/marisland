@@ -190,7 +190,7 @@ export interface XZ {
 
 /**
  * Polyline in world xz. `islandId` −1 = spans islands (boat routes).
- * `kind`: 'path' | 'stair' | 'boardwalk' (paths), 'route', 'fence'.
+ * `kind`: 'path' | 'stair' | 'boardwalk' (paths), 'route' | 'ferry' (boat routes), 'fence'.
  */
 export interface Polyline {
   islandId: number;
@@ -199,6 +199,8 @@ export interface Polyline {
   points: XZ[];
   /** Boat routes: indices into `docks` the loop passes (within 6 u of the dock end). */
   stops?: number[];
+  /** Ferry routes (M19 TASK-420): seconds the boat rests at each stop. */
+  dwell?: number;
 }
 
 export interface PathGraph {

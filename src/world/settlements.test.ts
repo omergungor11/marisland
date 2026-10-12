@@ -13,6 +13,7 @@ import { PROP_DEFS, PROP_DEF_INDEX } from '../content/props.ts';
 import { OFFICE_DEFS } from '../content/offices.ts';
 import { THEMES } from '../content/themes/index.ts';
 import { HQ_PLAN } from '../content/themes/hq.ts';
+import { HQ_FERRY } from '../content/cultures/hq.ts';
 import {
   generateWorld,
   heightAt,
@@ -358,14 +359,16 @@ describe('settlements — 20-seed sweep', () => {
     expect(solar / SEEDS.length).toBeGreaterThanOrEqual(0.9);
   });
 
-  it('boat routes: 2–4 closed loops, every sample ≥ 1.5 u deep and ≥ 2 u from land, docks visited', () => {
+  it('boat routes: 2–4 closed loops (+ ferries), every sample ≥ 1.5 u deep and ≥ 2 u from land, docks visited', () => {
     let samples = 0;
     let visited = 0;
     let docks = 0;
     for (const seed of SEEDS) {
       const w = world(seed);
-      expect(w.boatRoutes.length, `seed ${seed}`).toBeGreaterThanOrEqual(2);
-      expect(w.boatRoutes.length, `seed ${seed}`).toBeLessThanOrEqual(4);
+      // TASK-420: the Harbour Guild ferries ride along (kind 'ferry', counted in plans-hq.test)
+      const loops = w.boatRoutes.filter((r) => r.kind === 'route').length;
+      expect(loops, `seed ${seed}`).toBeGreaterThanOrEqual(2);
+      expect(loops, `seed ${seed}`).toBeLessThanOrEqual(4);
       const seen = new Set<number>();
       for (const r of w.boatRoutes) {
         expect(r.closed).toBe(true);
@@ -385,7 +388,9 @@ describe('settlements — 20-seed sweep', () => {
         for (const di of r.stops ?? []) {
           const e = dockEnd(w.docks[di]);
           const near = Math.min(...pts.map((p) => Math.hypot(p.x - e.x, p.z - e.z)));
-          expect(near, `seed ${seed} stop ${di}`).toBeLessThanOrEqual(6);
+          // a ferry serves a pier in a closed bay from open water (HQ_FERRY.reach)
+          const reach = r.kind === 'ferry' ? HQ_FERRY.reach + 6 : 6;
+          expect(near, `seed ${seed} stop ${di}`).toBeLessThanOrEqual(reach);
           seen.add(di);
         }
       }

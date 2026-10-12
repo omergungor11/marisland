@@ -52,7 +52,7 @@ const BRASS = C.gold;
 const HQ_CUT = CUT_OF_THEME.hq;
 const HQ_GLYPH = GLYPH_OF_THEME.hq;
 
-/** The hqAnnex variant index of the guild hall (the def keeps `variants: 2` until wave 2 places it). */
+/** The hqAnnex variant index of the guild hall (content HQ_CULTURE_SITE.guildHallVariant pins it). */
 export const GUILD_HALL_VARIANT = 2;
 
 /* --------------------------------- helpers --------------------------------- */

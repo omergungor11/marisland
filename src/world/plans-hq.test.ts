@@ -5,6 +5,14 @@ import { THEMES } from '../content/themes/index.ts';
 import { HQ_PLAN } from '../content/themes/hq.ts';
 import { generateWorld, heightAt, zoneAt, Zone, type WorldData } from './index.ts';
 import { StageHash } from './gen/hash.ts';
+import { HQ_CULTURE, HQ_CULTURE_SITE, HQ_FERRY } from '../content/cultures/hq.ts';
+import { THEME_IDS } from './types.ts';
+
+/** Shared signage kit pieces the HQ plan places (TASK-420). */
+const SIGNAGE = ['pierSignpost', 'pennantLine', 'cargoCrate'];
+const cellIndex = (w: WorldData, x: number, z: number): number =>
+  Math.round((z - w.height.originZ) / w.height.cellSize) * w.height.n +
+  Math.round((x - w.height.originX) / w.height.cellSize);
 
 /**
  * HQ island plan (M14b §2.1, TASK-362): theme-first campus on Hearthholm, 30-seed acceptance
@@ -157,9 +165,95 @@ describe('HQ island plan (TASK-362)', () => {
     },
   );
 
+  it(
+    '30 seeds: Harbour Guild kit placed on dry ground, guild hall, story spots, ferries',
+    { timeout: 120_000 },
+    () => {
+      const S = HQ_CULTURE_SITE;
+      // the awning and its timetable need room at the pier root: a few cramped harbours lack it
+      let awnings = 0;
+      let timetables = 0;
+      const once = ['pierSignpost', 'harbourCrane', 'bellPost', 'coffeeCart', 'guildNoticeBoard'];
+      const quayDefs = ['harbourCrane', 'gullPerch', 'cargoCrate'];
+      for (const seed of SEEDS) {
+        const w = world(seed);
+        const { isl, s } = hqOf(w);
+        const ctx = `seed ${seed}`;
+        if (!s) throw new Error(ctx);
+        const fx = w.fixtures.filter((f) => f.islandId === isl.id);
+        const n = (def: string): number => fx.filter((f) => f.defId === def).length;
+        for (const def of once) expect(n(def), `${ctx} ${def}`).toBe(1);
+        expect(n('ferryAwning'), ctx).toBeLessThanOrEqual(1);
+        awnings += n('ferryAwning');
+        timetables += n('timetableBoard');
+        // a signpost on every HQ pier, seven crate colours, perches / bags / pennant lines in range
+        expect(n('pierSignpost'), ctx).toBe(s.docks.length);
+        const crates = fx.filter((f) => f.defId === 'cargoCrate').map((f) => f.variant);
+        expect(new Set(crates).size, `${ctx} crate colours`).toBe(THEME_IDS.length);
+        expect(n('gullPerch'), ctx).toBeGreaterThanOrEqual(S.perches.count[0]);
+        expect(n('gullPerch'), ctx).toBeLessThanOrEqual(S.perches.count[1]);
+        expect(n('mailbag'), ctx).toBeGreaterThanOrEqual(S.mailbag.count[0]);
+        expect(n('mailbag'), ctx).toBeLessThanOrEqual(S.mailbag.count[1]);
+        expect(n('pennantLine'), ctx).toBeGreaterThanOrEqual(2);
+        expect(n('pennantLine'), ctx).toBeLessThanOrEqual(S.pennants.count[1]);
+        const lines = fx.filter((f) => f.defId === 'pennantLine');
+        expect(lines[0].variant, `${ctx} first line is HQ's`).toBe(THEME_IDS.indexOf('hq'));
+        expect(new Set(lines.map((f) => f.variant)).size, ctx).toBe(lines.length);
+        // on this island's dry land: never in the water, quay props at most at the waterline
+        for (const f of fx) {
+          const def = PROP_DEFS[PROP_DEF_INDEX[f.defId]];
+          if (!HQ_CULTURE.kit.some((k) => k.id === f.defId) && !SIGNAGE.includes(f.defId)) continue;
+          expect(def, f.defId).toBeDefined();
+          const y = heightAt(w.height, f.x, f.z);
+          const min = quayDefs.includes(f.defId) ? S.quayY[0] - 0.05 : S.minY - 0.15;
+          expect(y, `${ctx} ${f.defId} at ${f.x.toFixed(1)},${f.z.toFixed(1)}`).toBeGreaterThan(
+            min,
+          );
+          expect(w.islandMap[cellIndex(w, f.x, f.z)], `${ctx} ${f.defId}`).toBe(isl.id + 1);
+        }
+        // levelled props stand on flat ground (their pad, or near-flat ground beside a plateau)
+        for (const def of ['ferryAwning', 'timetableBoard', 'bellPost']) {
+          const f = fx.find((x) => x.defId === def);
+          if (!f) continue;
+          const ys = [0, 1, 2, 3].map((k) =>
+            heightAt(w.height, f.x + Math.cos(k * 1.57) * 0.6, f.z + Math.sin(k * 1.57) * 0.6),
+          );
+          expect(Math.max(...ys) - Math.min(...ys), `${ctx} ${def} level`).toBeLessThan(0.6);
+        }
+        // the crown is the Guild Hall
+        const crown = s.lots.map((i) => w.lots[i]).find((l) => l.defId === 'hqAnnex');
+        expect(crown?.variant, ctx).toBe(S.guildHallVariant);
+        // story spots: one per kind, each on its anchor def, above the ground
+        const st = w.storySpots.filter((x) => x.islandId === isl.id);
+        expect(st.length, `${ctx} story spots`).toBeGreaterThanOrEqual(5);
+        expect(new Set(st.map((x) => x.kind)).size, ctx).toBe(st.length);
+        for (const x of st) {
+          expect(x.pos.y, `${ctx} ${x.kind}`).toBeGreaterThan(HQ_PLAN.ferry.depth[0] - 0.3);
+          const anchor = [...fx, ...w.lots].some(
+            (f) => x.defs.includes(f.defId) && Math.hypot(f.x - x.pos.x, f.z - x.pos.z) < 0.01,
+          );
+          expect(anchor, `${ctx} ${x.kind} anchor`).toBe(true);
+        }
+        // ferries: HQ_FERRY.lines loops from HQ's pier, every island with a pier served once
+        const ferries = w.boatRoutes.filter((r) => r.kind === 'ferry');
+        expect(ferries.length, ctx).toBe(HQ_FERRY.lines);
+        const served = new Set<number>();
+        for (const r of ferries) {
+          expect(r.dwell, ctx).toBe(HQ_FERRY.dwell);
+          expect(r.stops?.[0], ctx).toBe(s.docks[0]);
+          for (const d of (r.stops ?? []).slice(1)) served.add(w.docks[d].islandId);
+        }
+        const withPier = new Set(w.docks.map((d) => d.islandId).filter((id) => id !== isl.id));
+        expect([...served].sort(), ctx).toEqual([...withPier].sort());
+      }
+      expect(awnings).toBeGreaterThanOrEqual(Math.ceil(SEEDS.length * 0.9));
+      expect(timetables).toBeGreaterThanOrEqual(Math.ceil(SEEDS.length * 0.9));
+    },
+  );
+
   it('per-theme snapshot: HQ settlement data is pinned and deterministic', () => {
     const got = [1, 42, 1001].map((seed) => hqHash(world(seed)));
-    expect(got).toEqual(['1f0642823b33f846', '52b7d53c33d68417', '06544a3e5f3b1d14']);
+    expect(got).toEqual(['ed1bcdbdc44a2457', '57f9bf5a3054a5e4', '04937f20418b31b8']);
     expect(hqHash(generateWorld(1001))).toBe(got[2]);
   });
 });

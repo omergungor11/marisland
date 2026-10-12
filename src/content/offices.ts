@@ -25,7 +25,8 @@ export interface OfficeDef {
 /** Themed lot defs. Worldgen merges these into LOT_FOOTPRINT / LOT_KIND (TASK-302). */
 export const OFFICE_DEFS: Readonly<Record<string, OfficeDef>> = {
   hqOffice: { theme: 'hq', kind: 'office', w: 6, d: 5, variants: 2 },
-  hqAnnex: { theme: 'hq', kind: 'tower', w: 3, d: 3, variants: 2 },
+  // v2 = Harbour Guild hall (M19 TASK-420; the HQ plan pins it on the crown lot)
+  hqAnnex: { theme: 'hq', kind: 'tower', w: 3, d: 3, variants: 3 },
   meetingPavilion: { theme: 'hq', kind: 'pavilion', w: 4, d: 4, variants: 2 },
   coffeeKiosk: { theme: 'hq', kind: 'kiosk', w: 2, d: 1.5, variants: 2 },
   devOffice: { theme: 'coding', kind: 'office', w: 7, d: 4, variants: 2 },
