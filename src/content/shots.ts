@@ -139,6 +139,56 @@ const MACRO_CAM = '91.8,7.4,-186.3,82.3,2,-182.2';
 const HQ_CULTURE_CAM = '104.5,33,-147.5,86,1.2,-184';
 const HQ_CULTURE_NIGHT_CAM = '98,12,-165,87,1.2,-184';
 
+/**
+ * D-move-* (TASK-431 culture movers): close frames with a deltaT pair so the ambient motion (rings,
+ * flutter, ants, confetti tumble) shows between the two frames; the ritual pose (kites, flag,
+ * container, balloon) comes from the game hour. Raw cameras, seed 1001 (Research: 2024, the seed
+ * 1001 academy has no cart). Re-pin when the layouts change.
+ */
+const MOVE_SHOTS: readonly ShotPreset[] = (
+  [
+    ['hq', 'Harbour Guild · 06:06 bell fanfare', 1001, '96,9,-182,81,2,-181.5', 6.1],
+    ['hq-crane', 'Harbour Guild · crane sack', 1001, '75.1,5.5,-175.3,82.1,2,-175.3', 9],
+    ['coding', 'Wind Gardens · 14:15 Kite Day', 1001, '108,18,12,106,17,37', 14.25],
+    [
+      'devops',
+      'Ember Works · 21:06 Release Night lift + horn',
+      1001,
+      '-92.6,8,-22.7,-81,4,-39',
+      21.1,
+    ],
+    ['marketing', 'Carnival · 17:36 confetti show', 1001, '-52,9,174,-40,6,158', 17.6],
+    ['marketing-night', 'Carnival · 20:30 searchlights', 1001, '-62,12,140,-38,16,158', 20.5],
+    ['qa', 'Inspectors · 16:12 green-light flag', 1001, '-149,11.5,-193.7,-142,9.5,-193.7', 16.2],
+    ['qa-ants', 'Inspectors · ant trail', 1001, '-170.5,10.2,-199.2,-173,8,-201.7', 12],
+    [
+      'design-noon',
+      'Glass & Light · 12:00 prism patches',
+      1001,
+      '-128,17,63.8,-119.5,8.5,63.8',
+      12,
+    ],
+    [
+      'design-golden',
+      'Glass & Light · 17:30 prism patches',
+      1001,
+      '-128,17,63.8,-119.5,8.5,63.8',
+      17.5,
+    ],
+    ['research', 'Star Academy · 06:09 weather balloon', 2024, '95,14,-218,81.3,12,-234.4', 6.15],
+  ] as const
+).map(([id, title, seed, cam, time]) => ({
+  id: `D-move-${id}`,
+  title,
+  seed,
+  cam,
+  time,
+  simt: id === 'marketing-night' ? 6 : 4,
+  deltaT: id === 'marketing-night' ? 1 : 0.7,
+  quality: 'medium' as const,
+  sets: ['dev' as const],
+}));
+
 export const SHOT_PRESETS: readonly ShotPreset[] = [
   // ---- bible wow shots (1920×1080, medium quality)
   {
@@ -1035,6 +1085,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
       },
     ];
   }),
+  ...MOVE_SHOTS,
 ];
 
 export const SET_DEFAULTS: Record<
