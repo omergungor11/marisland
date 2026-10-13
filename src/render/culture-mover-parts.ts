@@ -3,7 +3,8 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 /**
  * Part shapes of the culture movers (TASK-431): ONE merged geometry, drawn with the shared creature
- * material. Every vertex carries `limb = (kind, 0, 0, 6)` and every instance `aGait.y = kind`; the
+ * material. Every vertex carries `limb = (kind, 0, cut, 6)` and every instance `aGait.y = kind`
+ * (`cut` 0..1 = dither-out share, life-material mode 6: the light patch's soft rim); the
  * shader's click-burst branch (mode 6) collapses all kinds but the instance's own, so a handful of
  * shapes cost one draw call and no program. White vertices take the instance colour, the rest
  * keep their own.
@@ -30,6 +31,8 @@ interface Piece {
   /** Vertex colour (null = white, takes the instance colour). */
   color: string | null;
   emissive: number;
+  /** Dither-out share per vertex (limb.z; default 0 = solid). */
+  cut?: (p: THREE.Vector3) => number;
 }
 
 /** Non-indexed copy with the attribute set every piece shares. */
@@ -42,9 +45,11 @@ function finish(p: Piece): THREE.BufferGeometry {
   const col: number[] = [];
   const limb: number[] = [];
   const em: number[] = [];
+  const pos = g.getAttribute('position');
+  const v = new THREE.Vector3();
   for (let i = 0; i < n; i++) {
     col.push(c.r, c.g, c.b);
-    limb.push(p.kind, 0, 0, 6);
+    limb.push(p.kind, 0, p.cut ? p.cut(v.fromBufferAttribute(pos, i)) : 0, 6);
     em.push(p.emissive);
   }
   const out = new THREE.BufferGeometry();
@@ -184,12 +189,18 @@ export function buildPartsGeometry(): THREE.BufferGeometry {
       color: '#3A3F4D',
       emissive: 0,
     });
-  // 6 patch: unit disc lying flat, a little emissive
+  // 6 patch: unit disc lying flat, a little emissive; dithered out toward the rim (a pool of
+  // light, not a painted slab; TASK-453b)
   pieces.push({
-    geo: new THREE.CircleGeometry(1, 14).rotateX(-Math.PI / 2),
+    // rings at r 0 / 0.5 / 1: a near-solid core, the stipple only in the outer half
+    geo: new THREE.RingGeometry(0, 1, 14, 2).rotateX(-Math.PI / 2),
     kind: PART.patch,
     color: null,
     emissive: 0.3,
+    cut: (p) => {
+      const t = Math.min(1, Math.max(0, (Math.hypot(p.x, p.z) - 0.3) / 0.7));
+      return t * t * (3 - 2 * t);
+    },
   });
   // 7 blob: unit ball (balloons, sacks)
   pieces.push({

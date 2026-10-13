@@ -176,6 +176,12 @@ const BODY = /* glsl */ `
   }
 `;
 
+// mode 6 parts: limb.z = dither-out share (culture-mover light patches' soft rim, TASK-453b);
+// after the factory's vFade (written behind begin_vertex)
+const CUT = /* glsl */ `
+  if (limb.w > 5.5 && limb.w < 6.5) vFade *= 1.0 - clamp(limb.z, 0.0, 1.0);
+`;
+
 const DEFAULTS = {
   wind: [0],
   ao: [1],
@@ -205,7 +211,8 @@ export function makeLifeMaterial(name: string, tintAll: boolean): LitMaterial {
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>' + PARS)
       .replace('#include <color_vertex>', '#include <color_vertex>' + TINT)
-      .replace('#include <begin_vertex>', '#include <begin_vertex>' + BODY);
+      .replace('#include <begin_vertex>', '#include <begin_vertex>' + BODY)
+      .replace('#include <project_vertex>', '#include <project_vertex>' + CUT);
   };
   mat.customProgramCacheKey = (): string => LIFE_PROGRAM_KEY;
   return mat;

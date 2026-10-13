@@ -17,6 +17,13 @@ export const WATER_SHADER = {
   alpha: { lagoon: 0.55, shallow: 0.8, deep: 0.97 },
   /** Seabed depth (u) range over which a steep drop forces deep alpha. */
   alphaDepth: [6, 16] as const,
+  /**
+   * Horizontal run (u) of the view ray under water before it meets the seabed, over which the
+   * water turns opaque (TASK-453b). A low camera looking past a shelf drop sees nothing below
+   * (deep chunks are skipped, TERRAIN_LOD.skipBelow) except the odd meshed chunk — a straight-edged
+   * dark wedge in the shallow ring. Probed at the doubling steps below; no hit = beyond the last.
+   */
+  alphaRun: [24, 56] as const,
   /** Darkening (× colour) of near-shore bands where the seabed is actually deep. */
   depthDarken: { amount: 0.14, from: 4, to: 20 },
   /** Swell is 0 for shore distance < flatUntil and ramps to full by fullAt. */
@@ -86,6 +93,11 @@ export const WATER_SHADER = {
   moon: {
     /** How much of the swell / ripple normal tilts the path (low → a straight streak). */
     normal: [0.35, 0.1] as const,
+    /**
+     * Pixel footprint (u / px) over which the swell share fades out (TASK-453b): far away the
+     * sharp `across` lobe traced the swell normal's contours — looped chalk streaks (W15).
+     */
+    swellFade: [0.17, 0.4] as const,
     lobe: { across: 900, along: 40 },
     sparkle: { density: 1.3, fraction: 0.6, radius: 0.11, rate: 0.6, gain: 2.4 },
     glow: 0.06,

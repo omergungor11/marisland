@@ -34,12 +34,13 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { DESIGN_CULTURE_KIT as K } from '../../content/props-themes/design.ts';
-import { Acc, col, qEuler, type ColorFn } from '../kit.ts';
+import { Acc, blob, col, qEuler, type ColorFn } from '../kit.ts';
 import { TAU, V, baseBox, bevBox, cylB, lathe, put, tubeAlong } from '../parts.ts';
 import type { BuildOpts, Lod, PropBuilder, PropGeoDef } from '../types.ts';
 import { addGlyph } from './glyphs.ts';
 import { tagStained } from './surface-tags.ts';
 import { cultureAcc } from './culture-devops.ts';
+import { GIANT_CANOPY, giantCanopyNoise } from '../landmarks.ts';
 
 /** Thickness of every glass slab (u): Design glass is chunky, never a thin pane. */
 export const GLASS_T = 0.16;
@@ -1265,15 +1266,6 @@ function rainbowArc({ rng, lod }: BuildOpts): THREE.BufferGeometry {
 
 /* ============================== giantTree v3 (vitray) ========================= */
 
-/** Canopy blobs of geo/landmarks.ts giantTree (x, y, z, radius) — the panels sit on their shells. */
-const TREE_BLOBS = [
-  [0, 14.0, 0, 4.2],
-  [3.4, 12.4, 0.6, 3.1],
-  [-3.2, 12.8, 1.4, 3.1],
-  [0.4, 13.0, -3.3, 3.0],
-  [1.0, 16.0, 0.6, 2.8],
-] as const;
-
 /** Panel placements: [blob, azimuth, elevation, size, colour index]. */
 const VITRAY: ReadonlyArray<readonly [number, number, number, number, number]> = [
   [0, 1.5, 0.3, 1.5, 0],
@@ -1301,25 +1293,111 @@ const KITE: Pt[] = [
   [-0.36, 0.05],
 ];
 
-export function canopyVitrayInto(acc: Acc): void {
+/** Lift (u) of the pane mid plane off the canopy facets (clears the facet vertices it spans). */
+const SHELL_LIFT = 0.03;
+
+/**
+ * Wrap a pane built in its tangent frame (local +z = outward along `q`, blob centre at z = −r0)
+ * onto the blob's displaced shell `shell(dir)` (TASK-453b): flat 2–3.4 u panes at 0.99 × the
+ * nominal radius ignored the canopy's ±10 % noise and the sphere's curvature — buried where the
+ * blob bulges, standing off it (slivers on the silhouette) where it dips. In-plane (x, y) maps
+ * along the shell, z stays the radial thickness.
+ */
+function wrapToShell(
+  g: THREE.BufferGeometry,
+  r0: number,
+  q: THREE.Quaternion,
+  shell: (dir: THREE.Vector3) => number,
+): THREE.BufferGeometry {
+  const src = (g.index ? g.toNonIndexed() : g).getAttribute('position');
+  // the front face gets one midpoint split (×4 triangles): a pane spans 1–2 canopy facets, and
+  // a chord across a facet ridge would dip under it (sides / back stay: tri budget)
+  let zMax = -Infinity;
+  for (let i = 0; i < src.count; i++) zMax = Math.max(zMax, src.getZ(i));
+  const tri: THREE.Vector3[] = [];
+  const out: number[] = [];
+  const u = new THREE.Vector3();
+  const w = new THREE.Vector3();
+  const emit = (p: THREE.Vector3): void => {
+    u.set(p.x, p.y, r0).normalize();
+    const rs = shell(w.copy(u).applyQuaternion(q)) + SHELL_LIFT + p.z;
+    out.push(u.x * rs, u.y * rs, u.z * rs - r0);
+  };
+  for (let i = 0; i < src.count; i++) {
+    tri.push(new THREE.Vector3().fromBufferAttribute(src, i));
+    if (tri.length < 3) continue;
+    const [a, b, c] = tri;
+    tri.length = 0;
+    if (Math.min(a.z, b.z, c.z) < zMax - 1e-6) {
+      for (const t of [a, b, c]) emit(t);
+      continue;
+    }
+    const ab = a.clone().lerp(b, 0.5);
+    const bc = b.clone().lerp(c, 0.5);
+    const ca = c.clone().lerp(a, 0.5);
+    for (const t of [a, ab, ca, ab, b, bc, ca, bc, c, ab, bc, ca]) emit(t);
+  }
+  g.dispose();
+  const res = new THREE.BufferGeometry();
+  res.setAttribute('position', new THREE.Float32BufferAttribute(out, 3));
+  return res;
+}
+
+/** Radius of the faceted blob mesh `g` (centred at the origin) along unit `dir` (ray cast). */
+function facetRadius(g: THREE.BufferGeometry, dir: THREE.Vector3): number {
+  const p = g.getAttribute('position');
+  const ray = new THREE.Ray(new THREE.Vector3(), dir);
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const c = new THREE.Vector3();
+  const hit = new THREE.Vector3();
+  for (let i = 0; i + 2 < p.count; i += 3) {
+    a.fromBufferAttribute(p, i);
+    b.fromBufferAttribute(p, i + 1);
+    c.fromBufferAttribute(p, i + 2);
+    if (ray.intersectTriangle(a, b, c, false, hit)) return hit.length();
+  }
+  return a.length(); // unreachable for a closed blob
+}
+
+export function canopyVitrayInto(acc: Acc, noise: ReturnType<typeof giantCanopyNoise>): void {
+  const C = GIANT_CANOPY;
+  // the canopy's own faceted shells (landmarks.ts giantTree, LOD0 detail 1)
+  const shells = C.blobs.map(([, , , br], bi) => {
+    const g = blob(br, 1, noise, C.amp, C.freq, bi * C.offStep);
+    return (dir: THREE.Vector3): number => facetRadius(g, dir);
+  });
   VITRAY.forEach(([bi, az, el, size, ci]) => {
-    const [bx0, by0, bz0, br] = TREE_BLOBS[bi];
+    const [bx0, by0, bz0, br] = C.blobs[bi];
+    const shell = shells[bi];
     const d = V(Math.cos(az) * Math.cos(el), Math.sin(el), Math.sin(az) * Math.cos(el));
-    const at = V(bx0, by0, bz0).addScaledVector(d, br * 0.99);
+    const R = br;
+    const at = V(bx0, by0, bz0).addScaledVector(d, R);
     const q = new THREE.Quaternion().setFromRotationMatrix(
       new THREE.Matrix4().lookAt(d, V(0, 0, 0), V(0, 1, 0)),
     );
     const s = size * 1.9;
     const pts = KITE.map(([x, y]) => [x * s, y * s] as const);
     const sway = (p: THREE.Vector3): number => clamp01((p.y / 18.2) ** 2);
-    put(acc, polyGeo(offsetPoly(pts, 0.05), 0.12), at, K.came, { q, aoAmt: 0, windAbs: sway });
+    put(acc, wrapToShell(polyGeo(offsetPoly(pts, 0.05), 0.12), R, q, shell), at, K.came, {
+      q,
+      aoAmt: 0,
+      windAbs: sway,
+    });
     // two-tone leaf: a lower and an upper half in neighbouring hues
     const c0 = GLASS_WHEEL[ci % GLASS_WHEEL.length];
     const c1 = GLASS_WHEEL[(ci + 2) % GLASS_WHEEL.length];
     const up: Pt[] = [pts[0], pts[1], [0, 0.0], pts[3]];
     const dn: Pt[] = [pts[3], [0, 0.0], pts[1], pts[2]];
-    put(acc, polyGeo(offsetPoly(up, -0.025), 0.2), at, c0, { q, ...lit(1), windAbs: sway });
-    put(acc, polyGeo(offsetPoly(dn, -0.025), 0.2), at, c1, { q, ...lit(1), windAbs: sway });
+    for (const [half, c] of [
+      [up, c0],
+      [dn, c1],
+    ] as const)
+      put(acc, wrapToShell(polyGeo(offsetPoly(half, -0.025), 0.2), R, q, shell), at, c, {
+        q,
+        ...lit(1),
+        windAbs: sway,
+      });
   });
   // studio window in the trunk hollow: arched warm window with a roundel above
   const zf = 1.38;
@@ -1356,7 +1434,7 @@ export function withCanopyVitray(base: PropBuilder, vitrayVariant = 3): PropBuil
     const g = base({ ...o, variant: 2 });
     if (o.lod === 1) return g;
     const acc = new Acc();
-    canopyVitrayInto(acc);
+    canopyVitrayInto(acc, giantCanopyNoise(o.rng));
     const extra = acc.finish(o.rng.fork('vitray'), false, true);
     const merged = mergeGeometries([g, extra], false);
     tagStained(merged, g.getAttribute('position').count); // the vitray panels (TASK-440)

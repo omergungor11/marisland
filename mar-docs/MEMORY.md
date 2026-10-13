@@ -154,6 +154,20 @@
   now guards it (`FRAG_FLAT_NORMAL`). Also avoid `pow(x, y)` with x < 0 (undefined in GLSL). To find the
   culprit: read the composer `inputBuffer` with `readRenderTargetPixels` (Uint16, exponent 31 = NaN/Inf)
   and hide meshes one by one (temporary `window.__DBG = { scene, backend, ctx }` in app.ts + dev server).
+  Hide with `o.layers.set(31)` + `__marisland.step()`: LOD/fade code rewrites `visible` every frame.
+- **Shot artefacts that were not what QA named** (TASK-453b): the W14/W16 "water wedge" was ONE meshed
+  deep-seabed chunk seen through the shallow ring's 0.8 alpha (its neighbours are skipped below
+  `skipBelow`, so the rest shows sky) — water now goes opaque by the view ray's underwater run
+  (`alphaRun`). The W15 "boat wake loops" were the moon glitter's sharp across-lobe tracing swell-normal
+  contours far off (swell share now fades with footprint; the foam trail only gets fish-arc splats).
+  The W13 "beige slabs" were mid-cliff terrain vertices with an UP normal: `sampleSurface` zeroed the
+  gradient where the Catmull-Rom clamp is active, the wall shader gates strata on the smooth normal → the
+  plain albedo showed through; clamped samples now carry the cell's bilinear gradient (`clamped` flag).
+  A failed program just drops its mesh (water gone, no black frame): grep the page console for
+  `Shader Error` after every GLSL edit.
+- Canopy vitray panes sit on the giantTree blobs' DISPLACED, faceted shells (`GIANT_CANOPY` in
+  landmarks.ts, ray cast per vertex + front-face subdivision): flat panes at 0.99 × the nominal radius
+  were buried where the ±10 % noise bulged and stood off (silhouette slivers) where it dipped.
 - Shadow pass: prop groups wholly past their half fade cast nothing (depth material discards
   `vFade < 0.5`), so `batcher.update(cam)` turns their `castShadow` off (`Group.casts` keeps the base).
   Boat kinds share ONE `WakeFoam` (life/index.ts, slot offsets) — a mesh per kind cost a call each.

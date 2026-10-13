@@ -142,18 +142,27 @@ export const CULTURE_SURFACE = /* glsl */ `if (marK > ${f(SURFACE.stained - 0.5)
  * TS twin of the stained-glass day term in ACTIVITY_GLOW (× pane colour × sun colour): the light
  * a low sun sends through a pane with world normal `n` (unit), `s` = unit direction to the sun —
  * wrapped (diffusing glass): full on the face turned away from the sun, half edge-on, 0 facing it.
+ * With `v` (unit, toward the camera) the sunlit-face glint round the half vector is added.
  */
 export function stainedDayGlow(
   n: { x: number; y: number; z: number },
   s: { x: number; y: number; z: number },
+  v?: { x: number; y: number; z: number },
 ): number {
   if (s.y <= 0) return 0;
   const low = 1 - Math.min(1, Math.max(0, s.y));
   const t = Math.min(1, s.y / 0.06);
-  const fade = t * t * (3 - 2 * t);
-  return (
-    (0.5 - 0.5 * (n.x * s.x + n.y * s.y + n.z * s.z)) * low ** STAINED.lowSun * fade * STAINED.day
-  );
+  const ls = low ** STAINED.lowSun * (t * t * (3 - 2 * t));
+  let g = (0.5 - 0.5 * (n.x * s.x + n.y * s.y + n.z * s.z)) * ls * STAINED.day;
+  if (v) {
+    const hx = v.x + s.x;
+    const hy = v.y + s.y;
+    const hz = v.z + s.z;
+    const hl = Math.max(Math.hypot(hx, hy, hz), 1e-5);
+    const nh = Math.max((n.x * hx + n.y * hy + n.z * hz) / hl, 1e-4);
+    g += nh ** STAINED.glintPower * ls * STAINED.glint;
+  }
+  return g;
 }
 
 /** Declarations of the culture kinds' outputs (in front of ACTIVITY_SURFACE's body). */
@@ -458,9 +467,16 @@ export const ACTIVITY_GLOW = /* glsl */ `
     vec3 marWn = (vec4(normal, 0.0) * viewMatrix).xyz;
     marWn /= max(length(marWn), 1e-5);
     float marLow = max(1.0 - clamp(uSunSkyDir.y, 0.0, 1.0), 1e-4);
-    float marTr = clamp(0.5 - 0.5 * dot(marWn, uSunSkyDir), 0.0, 1.0) * pow(marLow, ${f(STAINED.lowSun)})
-      * smoothstep(0.0, 0.06, uSunSkyDir.y);
+    float marLs = pow(marLow, ${f(STAINED.lowSun)}) * smoothstep(0.0, 0.06, uSunSkyDir.y);
+    float marTr = clamp(0.5 - 0.5 * dot(marWn, uSunSkyDir), 0.0, 1.0) * marLs * ${f(STAINED.day)};
+    // sunlit face (TASK-453b): with the sun behind the camera no pane is lit through, so the low
+    // sun also glints off the glass — broad lobe round the half vector, pane by pane
+    vec3 marWv = (vec4(vViewPosition, 0.0) * viewMatrix).xyz;
+    marWv /= max(length(marWv), 1e-5);
+    vec3 marH = marWv + uSunSkyDir;
+    marH /= max(length(marH), 1e-5);
+    marTr += pow(max(dot(marWn, marH), 1e-4), ${f(STAINED.glintPower)}) * marLs * ${f(STAINED.glint)};
     vec3 marSc = mix(vec3(dot(uSunColor, vec3(0.2126, 0.7152, 0.0722))), uSunColor, ${f(STAINED.sunHue)});
-    outgoingLight += diffuseColor.rgb * marSc * (marTr * ${f(STAINED.day)});
+    outgoingLight += diffuseColor.rgb * marSc * marTr;
   }
 `;

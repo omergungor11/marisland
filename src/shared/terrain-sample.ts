@@ -15,9 +15,15 @@ import { SEABED_Y, type Heightfield } from '../world/types.ts';
 export interface SurfaceSample {
   /** Height in u. */
   y: number;
-  /** ∂y/∂x and ∂y/∂z (rise per u). Zero where the clamp is active. */
+  /**
+   * ∂y/∂x and ∂y/∂z (rise per u). Where the clamp is active: the cell's bilinear gradient
+   * (TASK-453b) — a zero there gave mid-cliff mesh vertices an up normal, read by the terrain
+   * shader as flat ground (pale plain-albedo "slabs" in the strata, W13).
+   */
   dydx: number;
   dydz: number;
+  /** True where the clamp is active (y = the cell's min / max sample). */
+  clamped?: boolean;
 }
 
 const wx = new Float64Array(4);
@@ -53,6 +59,7 @@ export function sampleSurface(
     out.y = SEABED_Y;
     out.dydx = 0;
     out.dydz = 0;
+    out.clamped = false;
     return out;
   }
   const x0 = Math.min(Math.floor(fx), n - 2);
@@ -84,11 +91,15 @@ export function sampleSurface(
   const lo = Math.min(a, b, c, e);
   const hi = Math.max(a, b, c, e);
   if (y < lo || y > hi) {
+    const tx = fx - x0;
+    const tz = fz - z0;
     out.y = y < lo ? lo : hi;
-    out.dydx = 0;
-    out.dydz = 0;
+    out.dydx = ((b - a) * (1 - tz) + (e - c) * tz) / h.cellSize;
+    out.dydz = ((c - a) * (1 - tx) + (e - b) * tx) / h.cellSize;
+    out.clamped = true;
     return out;
   }
+  out.clamped = false;
   out.y = y;
   out.dydx = gx / h.cellSize;
   out.dydz = gz / h.cellSize;

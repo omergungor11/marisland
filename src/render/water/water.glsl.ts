@@ -33,6 +33,8 @@ export function waterDefines(): string {
     `#define MAR_A_DEEP ${f(W.alpha.deep)}`,
     `#define MAR_A_DEPTH0 ${f(W.alphaDepth[0])}`,
     `#define MAR_A_DEPTH1 ${f(W.alphaDepth[1])}`,
+    `#define MAR_A_RUN0 ${f(W.alphaRun[0])}`,
+    `#define MAR_A_RUN1 ${f(W.alphaRun[1])}`,
     `#define MAR_DARKEN ${f(W.depthDarken.amount)}`,
     `#define MAR_DARKEN0 ${f(W.depthDarken.from)}`,
     `#define MAR_DARKEN1 ${f(W.depthDarken.to)}`,
@@ -83,6 +85,8 @@ export function waterDefines(): string {
     `#define MAR_GLINT_TH1 ${f(g.maskThreshold[1])}`,
     `#define MAR_GLITTER_SWELL ${f(W.moon.normal[0])}`,
     `#define MAR_GLITTER_RIPPLE ${f(W.moon.normal[1])}`,
+    `#define MAR_GLITTER_FADE0 ${f(W.moon.swellFade[0])}`,
+    `#define MAR_GLITTER_FADE1 ${f(W.moon.swellFade[1])}`,
     `#define MAR_MOON_LOBE vec2(${f(W.moon.lobe.across)}, ${f(W.moon.lobe.along)})`,
     `#define MAR_MOON_SPARK ${glitterVec(W.moon.sparkle)}`,
     `#define MAR_MOON_GAIN ${f(W.moon.sparkle.gain)}`,
@@ -242,6 +246,29 @@ vec2 marGlitter(vec3 Ld, vec3 V, vec3 nS, vec2 xz, float t, float cpx, vec2 lobe
   return vec2(spark, lobe);
 }
 
+// Horizontal run (u) of the view ray under water until it meets the seabed (d0 = depth here):
+// probes at 8/16/32/64 u, crossing interpolated between probes (continuous); no hit = 128.
+// All four taps always run (no texture fetch in divergent flow).
+float marUnderRun(vec2 xz, vec3 V, float d0) {
+  float hl = max(length(V.xz), 1e-3);
+  vec2 dir = -V.xz / hl;
+  float k = V.y / hl;
+  float sa = 0.0;
+  float ga = d0; // seabed depth - ray depth (> 0: the ray is still above the seabed)
+  float run = 128.0;
+  bool hit = false;
+  for (int i = 0; i < 4; i++) {
+    float sb = 8.0 * exp2(float(i));
+    float gb = max(0.0, -marSampleGrid(uHeightTex, xz + dir * sb)) - sb * k;
+    if (!hit && gb <= 0.0) {
+      run = sa + (sb - sa) * ga / max(ga - gb, 1e-4);
+      hit = true;
+    }
+    if (!hit) { sa = sb; ga = gb; }
+  }
+  return run;
+}
+
 void main() {
   vec2 xz = vWorld.xz;
   float t = uTime;
@@ -276,6 +303,8 @@ void main() {
   alpha = max(alpha, mix(MAR_A_LAGOON, MAR_A_DEEP, smoothstep(MAR_A_DEPTH0, MAR_A_DEPTH1, depth)));
   // open sea is opaque: nothing to see down there, and terrain chunk edges would show through
   alpha = mix(alpha, 1.0, s3);
+  // a low view past a shelf drop runs far under water: nothing to see there either (TASK-453b)
+  alpha = mix(alpha, 1.0, smoothstep(MAR_A_RUN0, MAR_A_RUN1, marUnderRun(xz, V, depth)));
 
   // pixel footprint in u: fades detail that would alias into stripes / pixel snow
   float fp = length(fwidth(xz));
@@ -391,7 +420,9 @@ void main() {
 
   // --- glitter paths (D6/D7): narrow twinkling streaks toward the moon / the low sun
   // damped swell normal + a little ripple: a straight streak whose edge wobbles, no scribbles
-  vec3 nS = normalize(vec3(0.0, 1.0, 0.0) + (nSwell - vec3(0.0, 1.0, 0.0)) * MAR_GLITTER_SWELL + (n - nSwell) * MAR_GLITTER_RIPPLE);
+  // (the swell share fades with the footprint: far off the sharp lobe traced its contours as loops)
+  float glitSw = MAR_GLITTER_SWELL * (1.0 - smoothstep(MAR_GLITTER_FADE0, MAR_GLITTER_FADE1, fp));
+  vec3 nS = normalize(vec3(0.0, 1.0, 0.0) + (nSwell - vec3(0.0, 1.0, 0.0)) * glitSw + (n - nSwell) * MAR_GLITTER_RIPPLE);
   float streak = 0.0;
   float moonOn = uNight * smoothstep(0.0, 0.12, normalize(uMoonDir).y) * (1.0 - uWeather.y);
   // fwidth outside the branches (derivatives are undefined in divergent control flow)
