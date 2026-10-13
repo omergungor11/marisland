@@ -55,6 +55,7 @@ export const MARKETING_THEME: ThemeDef = {
   // rock); steep faces stay rock / cliff by slope
   zoneRules: { rockAboveFrac: 2, meadowThreshold: 0.15 },
   patchwork: 'off',
+  pathSparesSlopes: true,
   // the Broadcast Tower (variant 2 via landmarkVariant) on the summit anchor
   landmarks: { lighthouse: { kind: 'lighthouse', variant: 2 } },
   // flower clumps on the brand lawn: a denser, clustered copy of the global flower rule

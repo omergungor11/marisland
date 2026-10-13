@@ -217,7 +217,8 @@ describe('prop geometry', () => {
             expect(g.getAttribute('emissive')).toBeUndefined();
           }
           const bb = g.boundingBox!;
-          expect(bb.min.y).toBeGreaterThanOrEqual(-0.05);
+          // pipe support posts run down into the slope (TASK-453c), buried on flat ground
+          expect(bb.min.y).toBeGreaterThanOrEqual(def.id === 'pipe' ? -2.7 : -0.05);
           const h = def.heights?.[v] ?? def.height;
           expect(bb.max.y).toBeGreaterThanOrEqual(h * 0.65);
           expect(bb.max.y).toBeLessThanOrEqual(h * 1.35);

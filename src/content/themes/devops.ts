@@ -295,8 +295,9 @@ export const DEVOPS_SITE = {
     /** Paved foundry yard on the upper step (square around each furnace). */
     yardR: 5,
   },
-  /** Steam main: a vent high on the cone above the plant, piped down to a cooling tower. */
-  steam: { ventY: [15, 24] as const, search: 16, furnaceR: 3.2 },
+  /** Steam main: a vent high on the cone above the plant, piped down to a cooling tower (maxSlope: gentler than the pipeline so
+   * the pipe pieces traverse the cone in short steps, TASK-453c). */
+  steam: { ventY: [15, 24] as const, search: 16, furnaceR: 3.2, maxSlope: 0.6 },
   /** Worker lodges (cottage fixtures, variants cycled) beside the ops quad. */
   quadLodges: { count: 2, ring: [7, 13] as const, variants: [0] as const },
 } as const;

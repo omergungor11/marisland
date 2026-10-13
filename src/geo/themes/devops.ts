@@ -167,6 +167,11 @@ function tubeZ(
   );
 }
 
+/** Pipe end stubs this long carry no data pulse: no cyan glow sits on a joint (TASK-453c). */
+const PULSE_MARGIN = 0.14;
+/** Support posts reach this far below the piece origin (buried on flat ground). */
+const PIPE_LEG = 2.6;
+
 export function pipe({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const acc = jitterAcc(rng, 0.02);
   const hi = lod === 0;
@@ -187,8 +192,12 @@ export function pipe({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
     pulses.push([{ first, count: accVerts(acc) - first }, axis]);
   };
   if (elbow) {
-    body('x', () => tubeX(acc, -1, 0, 0, rad, seg, K.pipe));
-    body('z', () => tubeZ(acc, 0, 0, 1, rad, seg, K.pipe));
+    body('x', () => tubeX(acc, -1 + PULSE_MARGIN, 0, 0, rad, seg, K.pipe));
+    body('z', () => tubeZ(acc, 0, 0, 1 - PULSE_MARGIN, rad, seg, K.pipe));
+    if (hi) {
+      tubeX(acc, -1, -1 + PULSE_MARGIN, 0, rad, seg, K.pipe);
+      tubeZ(acc, 0, 1 - PULSE_MARGIN, 1, rad, seg, K.pipe);
+    }
     put(acc, new THREE.IcosahedronGeometry(rad * 1.25, 0), [0, 0.5, 0], K.pipe, { aoAmt: 0 });
     tubeX(acc, -0.62, -0.38, 0, rad * 1.14, seg, K.accent);
     tubeZ(acc, 0, 0.5, 0.74, rad * 1.14, seg, K.accent);
@@ -209,7 +218,11 @@ export function pipe({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
       );
     }
   } else {
-    body('x', () => tubeX(acc, -1, 1, 0, rad, seg, K.pipe));
+    body('x', () => tubeX(acc, -1 + PULSE_MARGIN, 1 - PULSE_MARGIN, 0, rad, seg, K.pipe));
+    if (hi) {
+      tubeX(acc, -1, -1 + PULSE_MARGIN, 0, rad, seg, K.pipe);
+      tubeX(acc, 1 - PULSE_MARGIN, 1, 0, rad, seg, K.pipe);
+    }
     tubeX(acc, -0.62, -0.38, 0, rad * 1.14, seg, K.accent);
     if (variant !== 2) tubeX(acc, 0.38, 0.62, 0, rad * 1.14, seg, K.accent);
   }
@@ -249,6 +262,14 @@ export function pipe({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   for (const [a, b, alongX] of supports) {
     const x = alongX ? a : 0;
     const z = alongX ? 0 : b;
+    // post running down into the ground: reaches the slope when the run is set on a climb
+    put(
+      acc,
+      hi ? baseBox(0.12, PIPE_LEG, 0.12) : cylB(0.07, 0.07, PIPE_LEG, 3, true),
+      [x, -PIPE_LEG, z],
+      K.support,
+      { aoAmt: 0.25 },
+    );
     if (hi) {
       put(acc, baseBox(alongX ? 0.14 : 0.42, 0.3, alongX ? 0.42 : 0.14), [x, 0, z], K.support, {
         aoAmt: 0.2,

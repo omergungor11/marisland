@@ -92,9 +92,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "1e8a657919f5de29",
-          "1001": "78fdbd230c5cadf1",
-          "42": "6b149a295c25a6f8",
+          "1": "0b8103de34a089b2",
+          "1001": "7db3ca5c68600857",
+          "42": "c2a7ac7d4c85daa5",
         }
       `);
     },
@@ -419,9 +419,9 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // and the TASK-405 Emberpeak shelves + Ember Works plan, the TASK-421 Coding Wind Gardens,
       // TASK-420 Harbour Guild, TASK-422 DevOps Ember Smiths and TASK-423 Marketing Carnival
       // placements, TASK-424 QA Inspectors, TASK-426 Research Star Academy and TASK-425 Design
-      // Glass & Light, re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('88081711868073c8');
-      expect(generateWorld(1).hashes.world).toBe('0be23d72fa4141b3');
+      // Glass & Light, TASK-453c Marketing path-spares-slopes + Emberpeak steam-main slope cap, re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('19673c4f75390bea');
+      expect(generateWorld(1).hashes.world).toBe('245895b92ab5bb6e');
     } finally {
       for (const b of saved) b.on = true;
     }
