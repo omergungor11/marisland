@@ -105,7 +105,7 @@ const LIVE_CROP: [number, number, number, number] = [0.15, 0.1, 0.85, 0.9];
  * Each looks at a story spot whose person is a tableau bot (content/life.ts TABLEAU).
  */
 const STORY_SHOTS: readonly (readonly [string, string, string, number, number])[] = [
-  ['signpostDebate', 'Signpost debate · HQ', '88.80,4.77,-179.47,83.62,2.07,-179.97', 14, 6],
+  ['signpostDebate', 'Signpost debate · HQ', '81,8.5,-175,83.8,2,-180.8', 14, 6],
   ['hammockNap', 'Hammock nap · Coding', '103.98,13.30,39.26,104.76,10.60,34.11', 14, 6],
   ['containerNap', 'Container nap · DevOps', '-91.04,8.93,-56.71,-86.00,6.23,-58.00', 14, 6],
   ['lighthouseSelfie', 'Selfie · Marketing', '9.88,28.37,145.39,14.99,25.67,144.38', 14, 6],
@@ -203,7 +203,7 @@ const MOVE_SIMT: Record<string, number> = {
 };
 const MOVE_SHOTS: readonly ShotPreset[] = (
   [
-    ['hq', 'Harbour Guild · 06:00 bell fanfare', 1001, '96,9,-182,81,2,-181.5', 6],
+    ['hq', 'Harbour Guild · 06:00 bell fanfare', 1001, '73,4.5,-191,79.6,2.8,-187.6', 6],
     ['hq-crane', 'Harbour Guild · crane sack', 1001, '75.1,5.5,-175.3,82.1,2,-175.3', 9],
     ['coding', 'Wind Gardens · 14:00 Kite Day', 1001, '108,18,12,106,17,37', 14],
     [
@@ -433,12 +433,12 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   {
     id: 'W15',
     title: 'Relay Night',
-    // TASK-450: the Launch Day Relay from the W11 postcard pose at 21:00 (+45 s of sim: HQ, DevOps,
+    // TASK-450/453a: the Launch Day Relay from the W11 postcard pose at 21:00 (+105 s: the airship has left the top edge, the beam island and QA tick lit; was +45 s, airship 85% cropped; HQ, DevOps,
     // QA and Coding still glowing, Marketing's flash on top); same frame as W11
     seed: 1001,
     cam: 'postcard',
     time: 21,
-    simt: 45,
+    simt: 105,
     quality: 'medium',
     width: 1920,
     height: 1080,
@@ -480,7 +480,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // Hall of Checks with its lit tick badges. The 16:00 green-light framing never read as a postcard
     // (empty lawn, tiny flag), so the QA hero is the night hunt.
     seed: 1001,
-    cam: '-175,22,-185,-160,8,-208',
+    cam: '-174,27,-190,-160,7,-208',
     time: 21.5,
     simt: 4,
     quality: 'medium',
@@ -1071,7 +1071,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // seed 1001: the loop track and the yard rim lit purple by the UV lamp posts, the "BUGS: 1"
     // scoreboard and its jar, the Bug Zoo beyond
     seed: 1001,
-    cam: '-175,22,-185,-160,8,-208',
+    cam: '-174,27,-190,-160,7,-208',
     time: 21.5,
     simt: 4,
     quality: 'medium',
