@@ -195,14 +195,16 @@ void main() {
   } else {
     vec3 n = normalize(vN);
     float cover = vFade;
-    float th = marBayer4(gl_FragCoord.xy);
     if (vKind > 0.5) {
-      // soft steam (D5): radial alpha (view-facing) × life opacity, as ordered dither — no sorting
+      // soft steam (D5): radial alpha (view-facing) × life opacity
       float facing = clamp(dot(n, normalize(uCameraPos - vW)), 0.0, 1.0);
       cover *= vOpacity * smoothstep(0.0, uSoft.x, facing);
-      th = fract(th + vDither);
     }
-    if (cover < th) discard;
+    // TASK-462: blended coverage (the old ordered dither left a 4 px dot lattice that tilt-shift /
+    // DOF smeared into stippled discs over roofs and ground); the debug mask keeps the dither
+    if (uDebugMask > 0.5) {
+      if (cover < fract(marBayer4(gl_FragCoord.xy) + (vKind > 0.5 ? vDither : 0.0))) discard;
+    } else if (cover < 0.004) discard;
     // chimney smoke a touch greyer than steam
     float g = (0.3 + 0.7 * (0.5 + 0.5 * n.y)) * (vKind < 0.5 ? 0.55 : 1.0);
     gl_FragColor = marSoftShade(clamp(g, 0.0, 1.0), n, vW);
@@ -211,6 +213,7 @@ void main() {
       float young = clamp((vOpacity - uSoft.z) / max(uSoft.y - uSoft.z, 1e-3), 0.0, 1.0);
       gl_FragColor.rgb += uSteamGlow * (uNight * young * young * (0.6 + 0.4 * max(-n.y, 0.0)));
     }
+    gl_FragColor.a = uDebugMask > 0.5 ? 1.0 : cover;
   }
 ${FRAG_OUT}
 }

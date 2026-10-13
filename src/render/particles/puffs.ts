@@ -11,9 +11,9 @@ import { hash32 } from '../clouds/cloud-field.ts';
 /**
  * TASK-153 — stateless GPU smoke / steam puffs (ART_BIBLE §7 #20/#21, ARCHITECTURE §5).
  * One InstancedMesh of a smooth icosphere; every instance is a puff slot whose
- * position/scale/fade are `f(uTime, aSeed)` in the vertex shader. Opaque with
- * Bayer-dither fade (no blending, no sorting). One draw call, one program — which the rain
- * streaks (weather/rain.ts, kind 4) reuse with their own mesh.
+ * position/scale/fade are `f(uTime, aSeed)` in the vertex shader. Alpha-blended coverage, no
+ * depth write (TASK-462; was a Bayer-dither fade). One draw call, one program — which the rain
+ * streaks (weather/rain.ts, kind 4, still dithered and depth-writing) reuse with their own mesh.
  */
 export const PUFF_CHIMNEY = 0;
 export const PUFF_STEAM = 1;
@@ -151,11 +151,16 @@ export function createPuffs(
       },
       fog: false,
       lights: false,
+      // TASK-462: blended (was opaque + Bayer dither, a dot lattice under tilt-shift / DOF);
+      // no depth write so overlapping puffs of one column never cut each other
+      transparent: true,
+      depthWrite: false,
     }),
   );
 
   const mesh = new THREE.InstancedMesh(geo, mat, capacity);
   mesh.name = 'puffs';
+  mesh.renderOrder = 12; // after the water (10): steam over the sea tests against its depth
   mesh.count = 0;
   mesh.frustumCulled = false; // positions come from the vertex shader
   mesh.castShadow = false;

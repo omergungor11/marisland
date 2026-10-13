@@ -67,8 +67,13 @@ export function createRain(
   for (let i = 0; i < drops.length; i++) drops[i] = rng.next();
   geo.setAttribute('aDrop', new THREE.InstancedBufferAttribute(drops, 4));
 
+  // own material object on the same program (same source, defines and `transparent`): the puffs
+  // blend without depth write (TASK-462), the dithered streaks keep writing depth; uniforms shared
+  const rainMat = scope.add(material.clone());
+  rainMat.uniforms = material.uniforms;
+  rainMat.depthWrite = true;
   const u = material.uniforms as unknown as RainUniforms;
-  const mesh = new THREE.InstancedMesh(geo, material, capacity);
+  const mesh = new THREE.InstancedMesh(geo, rainMat, capacity);
   mesh.name = 'rain';
   mesh.count = 0;
   mesh.visible = false;
