@@ -373,7 +373,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     drones.update(time);
     movers.update(time, _camPos);
     cultureMovers.update(time, env.hour, env, _camPos, culture.state);
-    skyCraft.update(time);
+    skyCraft.update(time, culture.state, _camPos);
     water.update(_camPos, d.getTime());
     terrain.update(d.getTime());
     clouds.update(d.getTime(), env, _camPos, tier, fx);

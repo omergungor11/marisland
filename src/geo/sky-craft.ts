@@ -1,10 +1,15 @@
 import * as THREE from 'three';
 import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { createRng } from '../core/rng.ts';
 import { SKY_CRAFT as C } from '../content/sky-craft.ts';
+import { CULTURES, type PennantCut } from '../content/cultures/index.ts';
+import { THEME_IDS, type ThemeId } from '../world/types.ts';
 import { Acc, col, frustum, qEuler, type PartOpts } from './kit.ts';
 import { Spin, finishSpin } from './office-kit.ts';
-import { baseBox, bevBox, lathe, put, TAU, V } from './parts.ts';
+import { baseBox, bevBox, lathe, put, ropePoints, TAU, tubeAlong, V } from './parts.ts';
+import { SIGN_THICK, cutShape } from './themes/signage.ts';
+import { GLYPH_OF_THEME, addGlyph } from './themes/glyphs.ts';
 
 /**
  * Sky craft, steampunk (TASK-404): patched-gore hot-air balloons with brass hoops, rope seams, a
@@ -93,6 +98,71 @@ function stud(
   acc.add(geo, { windMul: 0, aoAmt: 0, color: toCol(color), m });
 }
 
+/** Hang length (u) of a culture pennant cut drawn at `w` x `h` (mirrors signage pennantLine). */
+function pennantHang(cut: PennantCut, w: number, h: number): number {
+  return cut === 'streamer' ? h * 1.55 : cut === 'kite' ? h * 1.05 : cut === 'square' ? w : h;
+}
+
+interface PennantOpts {
+  theme: ThemeId;
+  /** Hoist (top edge) centre. */
+  at: THREE.Vector3;
+  w: number;
+  h: number;
+  /** Emblem on both faces: size (u) and position along the hang (fraction); null = none. */
+  glyph: { size: number; at: number } | null;
+}
+
+/**
+ * Culture pennant slab (cut + accent + emblem on both faces). Flag mode `dir` = +-1 trails along
+ * +-x (the cut's hanging axis turned about z; emblem stays upright); dir 0 hangs down (-y) facing
+ * +-x (tail string). Wind ramps from the hoist (steady) to the fly (flutters).
+ */
+function culturePennant(acc: Acc, o: PennantOpts, dir: -1 | 0 | 1): void {
+  const P = CULTURES[o.theme].pennant;
+  const hang = pennantHang(P.cut, o.w, o.h);
+  const slab = new THREE.ExtrudeGeometry(cutShape(P.cut, o.w, o.h, false), {
+    depth: SIGN_THICK,
+    bevelEnabled: false,
+    curveSegments: 1,
+  }).translate(0, 0, -SIGN_THICK / 2);
+  const yaw = dir === 0 ? Math.PI / 2 : 0;
+  const q = dir === 0 ? qEuler(0, yaw, 0) : qEuler(0, 0, (dir * Math.PI) / 2);
+  const wind =
+    dir === 0
+      ? (p: THREE.Vector3): number => 0.1 + 0.6 * Math.min(1, Math.max(0, (o.at.y - p.y) / hang))
+      : (p: THREE.Vector3): number =>
+          0.05 + 0.5 * Math.min(1, Math.max(0, Math.abs(p.x - o.at.x) / hang));
+  // flags face +-z / +-x, away from the sun for most of the day: the flank shade would turn warm
+  // accents maroon, so the baked colour is lightened a touch (hue kept)
+  const hsl = { h: 0, s: 0, l: 0 };
+  col(P.accent).getHSL(hsl);
+  const flag = new THREE.Color().setHSL(hsl.h, hsl.s, Math.min(0.8, hsl.l * C.fleet.flagLift));
+  put(acc, slab, o.at, flag, { q, aoAmt: 0, ao: () => 1, windAbs: wind });
+  if (!o.glyph || P.cut === 'streamer') return;
+  const g =
+    dir === 0
+      ? V(o.at.x, o.at.y - hang * o.glyph.at, o.at.z)
+      : V(o.at.x + dir * hang * o.glyph.at, o.at.y, o.at.z);
+  const T = SIGN_THICK / 2;
+  const opt = { size: o.glyph.size, color: C.fleet.cream, depth: 0.04 };
+  for (const side of [1, -1]) {
+    // front faces +z (flag) / +x (string), the back one the opposite way
+    const base = dir === 0 ? Math.PI / 2 : 0;
+    const off = dir === 0 ? V(side * T, 0, 0) : V(0, 0, side * T);
+    addGlyph(acc, GLYPH_OF_THEME[o.theme], g.clone().add(off), {
+      ...opt,
+      q: qEuler(0, base + (side === 1 ? 0 : Math.PI), 0),
+    });
+  }
+}
+
+/** Hype Fleet livery of one balloon (TASK-441): its culture and the culture of its secondary gores. */
+export interface BalloonLivery {
+  theme: ThemeId;
+  alt: ThemeId;
+}
+
 // ---------------------------------------------------------------------------------------------
 // Balloon
 // ---------------------------------------------------------------------------------------------
@@ -115,7 +185,7 @@ const ENVELOPE: Array<[number, number]> = [
  * y ≈ −9.3). Patched pastel gores, rope seams, brass hoops with rivets, load ring on eight lines,
  * brass burner with an emissive flame, wicker basket with sandbags and a copper-piped fuel tank.
  */
-export function buildBalloonGeometry(lod = 0): THREE.BufferGeometry {
+export function buildBalloonGeometry(lod = 0, livery?: BalloonLivery): THREE.BufferGeometry {
   const B = C.balloon;
   const acc = new Acc();
   const gores = lod > 0 ? B.goresLod : B.gores;
@@ -141,8 +211,27 @@ export function buildBalloonGeometry(lod = 0): THREE.BufferGeometry {
 
   // patched fabric: a few (gore, row-band) cells become a darker patch; every cell gets a small
   // lightness offset so the quads read as cloth panels (no per-triangle jitter: `noJitter`)
-  const stripes = C.stripes.map(col);
-  const patches = B.patches.map(col);
+  let stripes = C.stripes.map(col);
+  let patches = B.patches.map(col);
+  if (livery) {
+    // Hype Fleet: dominant culture accent, cream, and the next member's accent; patches are darker
+    // cuts of the same fabrics
+    const F = C.fleet;
+    // fabric = the accent eased toward cream (the pennants keep the pure accent)
+    const fabric = (t: ThemeId): THREE.Color =>
+      col(CULTURES[t].pennant.accent).lerp(col(F.cream), F.fabricMix);
+    const dom = fabric(livery.theme);
+    const alt = fabric(livery.alt);
+    const cream = col(F.cream);
+    const dark = (c: THREE.Color): THREE.Color => {
+      const h = { h: 0, s: 0, l: 0 };
+      c.getHSL(h);
+      return new THREE.Color().setHSL(h.h, h.s, h.l * F.patchDark);
+    };
+    const pick = { d: dom, c: cream, a: alt };
+    stripes = F.pattern.map((k) => pick[k]);
+    patches = [dark(dom), dark(alt), dark(cream)];
+  }
   const trim = col(C.trim);
   const pr = createRng(7).fork('balloon-patch');
   const bands = Math.ceil(rings / B.patchRows);
@@ -170,7 +259,12 @@ export function buildBalloonGeometry(lod = 0): THREE.BufferGeometry {
       while (ri < rings - 1 && p.y > ys[ri + 1]) ri++;
       const ym = (ys[ri] + ys[ri + 1]) / 2; // ring-cell middle: both triangles of a quad agree
       const k = Math.min(1, Math.max(0, (1.5 - ym) / 6));
-      return lift(cells[g * bands + Math.floor(ri / B.patchRows)], k);
+      const cell = cells[g * bands + Math.floor(ri / B.patchRows)];
+      if (!livery) return lift(cell, k);
+      // culture accents: the warm lift only where the colour is warm (cool accents would turn
+      // green), plus a fixed lift because the envelope's flanks sit in the blue hemisphere fill
+      const warm = Math.min(1, Math.max(0, (cell.r - cell.b) * 2));
+      return lift(cell, (0.65 + 0.35 * k) * warm);
     },
     { aoAmt: 0.06, noJitter: true },
   );
@@ -312,6 +406,37 @@ export function buildBalloonGeometry(lod = 0): THREE.BufferGeometry {
       color: col(C.iron),
       m: new THREE.Matrix4().compose(V(tx * 1.2, -9.3, tz * 1.2), qEuler(0, ta, 0), V(1, 1, 1)),
     });
+  }
+  if (livery) {
+    // the culture pennant flies from a staff on each of two spars off the basket rim
+    const F = C.fleet;
+    const [r0, y0] = F.spar.from;
+    const [r1, y1] = F.spar.to;
+    const P = F.pennant;
+    const mid = y1 + 0.2;
+    for (const s of [1, -1] as const) {
+      bar(acc, V(s * r0, y0, 0), V(s * r1, y1, 0), F.spar.r, C.brass, 4);
+      bar(
+        acc,
+        V(s * r1, mid - P.w / 2 - 0.25, 0),
+        V(s * r1, mid + P.w / 2 + 0.2, 0),
+        0.07,
+        C.brass,
+        4,
+      );
+      stud(acc, octa(0.17), V(s * r1, mid + P.w / 2 + 0.3, 0), C.copper);
+      culturePennant(
+        acc,
+        {
+          theme: livery.theme,
+          at: V(s * r1, mid, 0),
+          w: P.w,
+          h: P.h,
+          glyph: fine ? { size: P.w * P.glyph, at: P.glyphAt } : null,
+        },
+        s,
+      );
+    }
   }
   return acc.finish(createRng(7).fork('balloon-faces'), false, true);
 }
@@ -567,6 +692,34 @@ export function buildAirshipGeometry(lod = 0): THREE.BufferGeometry {
   }
   propeller(acc, spin, V(0, 0, -L - 1.15), 4, 2.3, C.brass, Math.PI / 4);
 
+  // Orchestrator livery (TASK-441): the HQ bell on both flanks, a string of seven culture
+  // pennants (HQ first) trailing from the top fin
+  const O = C.orchestrator;
+  for (const s of [1, -1] as const)
+    addGlyph(acc, GLYPH_OF_THEME.hq, V(s * (hullR(O.emblem.z) - 0.6), 0, O.emblem.z), {
+      size: O.emblem.size,
+      color: O.emblem.color,
+      depth: O.emblem.depth,
+      q: qEuler(0, (s * Math.PI) / 2, 0),
+    });
+  const ts = O.tailString;
+  const cordA = V(0, 5.7, -12.7);
+  const cordB = V(0, 5.7 - ts.drop, -12.7 - ts.len);
+  put(acc, tubeAlong(ropePoints(cordA, cordB, ts.sag, 8), 0.05, 3), [0, 0, 0], C.rope, {
+    aoAmt: 0,
+    ao: () => 1,
+  });
+  THEME_IDS.forEach((theme, i) => {
+    const t = (i + 0.7) / (THEME_IDS.length + 0.2);
+    const p = cordA.clone().lerp(cordB, t);
+    p.y -= ts.sag * 4 * t * (1 - t) + 0.03;
+    culturePennant(
+      acc,
+      { theme, at: p, w: ts.w, h: ts.h, glyph: fine ? { size: ts.w * 0.5, at: 0.42 } : null },
+      0,
+    );
+  });
+
   return finishSpin(acc.finish(createRng(8).fork('airship-faces'), false, true), acc, spin);
 }
 
@@ -589,4 +742,25 @@ function windowAt3(acc: Acc, at: THREE.Vector3, yaw: number, w = 0.7, h = 0.55):
     ao: () => 1,
     emissive: 1,
   });
+}
+
+/** The Hype Fleet as one geometry: balloon i occupies vertices `ranges[i]` (CPU-posed each frame). */
+export interface FleetGeometry {
+  geometry: THREE.BufferGeometry;
+  ranges: Array<{ start: number; count: number }>;
+}
+
+export function buildFleetGeometry(liveries: readonly BalloonLivery[], lod = 0): FleetGeometry {
+  const parts = liveries.map((l) => buildBalloonGeometry(lod, l));
+  const ranges: FleetGeometry['ranges'] = [];
+  let start = 0;
+  for (const p of parts) {
+    const count = p.getAttribute('position').count;
+    ranges.push({ start, count });
+    start += count;
+  }
+  const geometry = parts.length === 1 ? parts[0] : mergeGeometries(parts, false);
+  geometry.userData = { tris: start / 3 };
+  for (const p of parts) if (p !== geometry) p.dispose();
+  return { geometry, ranges };
 }

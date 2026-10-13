@@ -98,4 +98,59 @@ export const SKY_CRAFT = {
     ribs: [-0.82, -0.58, -0.32, -0.06, 0.2, 0.46, 0.7],
     rivetsPerRib: 12,
   },
+  /**
+   * Hype Fleet (TASK-441, ISLAND_CULTURES §3.4): every balloon belongs to one culture. Its gores
+   * are that culture's pennant accent (`pattern`: d = dominant accent, c = cream, a = the next
+   * fleet member's accent), and its basket flies the culture's pennant (cut + accent + emblem)
+   * from two spars. The fleet is ONE mesh: the balloons are baked variants in one geometry,
+   * posed on the CPU each frame (instanced colour is a single multiplier and the pennant cuts
+   * differ per balloon, so a shared instanced geometry cannot carry them).
+   */
+  fleet: {
+    cream: '#FFF1DC',
+    pattern: ['d', 'c', 'd', 'a'] as readonly ('d' | 'c' | 'a')[],
+    /** Culture of fleet balloon 0 = the launch balloon (it rides the Launch Show). */
+    launchTheme: 'marketing',
+    /** Spar: from the basket rim outwards and up (radius, y) → (radius, y). */
+    spar: { from: [1.05, -8.5], to: [4.1, -5.9], r: 0.08 },
+    /** Pennant: hangs from the spar tip, trailing outwards; size in u, emblem as a fraction of w. */
+    pennant: { w: 1.7, h: 2.5, glyph: 0.62, glyphAt: 0.42 },
+    /** Lightness factor on the pennant accent (they hang in the flank shade). */
+    flagLift: 1.2,
+    /** Share of cream mixed into the accent for the envelope fabric (lit flanks are blue-shaded). */
+    fabricMix: 0.2,
+    /** Lightness factor for the patch cells. */
+    patchDark: 0.74,
+  },
+  /**
+   * Launch Show: at the marketing `goldenHourShow` slot the launch balloon is inflated at the
+   * Marketing launch mast, lifts off and joins the fleet's orbit; it comes back to the mast before
+   * the next show (all closed-form in the culture day clock). Times in day seconds.
+   */
+  launch: {
+    slot: 'goldenHourShow',
+    theme: 'marketing',
+    story: 'balloonLaunch',
+    /** Approach (descent to the mast) before the slot, inflation after it, then the lift. */
+    preS: 80,
+    inflateS: 10,
+    liftS: 70,
+    /** Envelope scale while packed on the ground. */
+    packedScale: 0.16,
+    /** Basket stand: distance from the mast (u, along the spot's local +x) and lift above ground. */
+    offset: 2.2,
+    groundLift: 0.2,
+  },
+  /**
+   * Orchestrator (HQ airship): a string of seven pennants (one per culture) from the tail, the HQ
+   * emblem on both hull flanks, and a slow-down where its orbit passes over the HQ island.
+   */
+  orchestrator: {
+    /** Cord from the top fin: length behind it, sag, pennant size, end drop (u). */
+    tailString: { len: 16, sag: 1.0, w: 2.0, h: 2.7, drop: 2.2 },
+    /** Bell emblem on the colour band of both flanks (size u, hull z, colour). */
+    emblem: { size: 3.4, z: 2.2, depth: 1.0, color: '#FFF4E0' },
+    /** Angular-speed factor at the HQ crossing (1 = full speed) and its width (rad of orbit). */
+    slow: { floor: 0.22, sigma: 0.24 },
+  },
 } as const;
