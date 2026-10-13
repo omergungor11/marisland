@@ -10,13 +10,15 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
-- **2026-10-13 (M19 "Seven Cultures", docs TASK-452)**: M19 complete, pending TASK-453 polish (QA 451: W18
-  roof at the lens, W15 airship cut by the top edge, HQ signpost debate under the banner pole; then W2 / W3 /
-  W7 / W19 criteria). Ladder misses left: L-hq drift (30 u 4.45, 21 u 4.03), L-design drift 480 u 4.18,
-  L-research 30 → 21 p95 13.5, pairs 380 IoU 0.915 (research), 140 blob 0.5 %, pairs-marketing 380 blob 0.9 %.
-  Follow-ups: DevOps pipe segments float on the slope; boats overlap at piers; capybara reads as a turtle
-  from above; Research 0–3 pennant lines, seed 1001 lacks lecture / comet board; Design hot-shop smoke 0
-  particles. Culture plan: `mar-plans/ISLAND_CULTURES.md`; ART_BIBLE §12, DECISIONS D-050…D-055.
+- **2026-10-13 (M19 "Seven Cultures" closed, TASK-453 done)**: polish merged — 453a framing (W18 cam
+  `-174,27,-190,-160,7,-208`, W15 simt 105, signpost debate + D-move-hq re-aimed), 453b shader (water wedge,
+  near searchlight fade, vitray shells, caustics, cliff normals, moon glitter), 453c world (pipe posts,
+  `pathSparesSlopes`, duck / ladybug offsets). wow 18/18 `--assert` ok. Open: ladder misses L-hq drift,
+  L-design 480, L-research 30 → 21, pairs-research / pairs-marketing 380; W2 has 1 boat (≥ 3), W3 6 fireflies
+  (≥ 10); pipes still stepped on slopes (needs a real pitched run); boats overlap at piers; capybara reads as
+  a turtle from above; Research 0–3 pennant lines, lecture on ~1/3 of seeds; balloon shadow dither stipple.
+  §4 accent column differs from `CULTURES` (§12 table wins). Culture plan: `mar-plans/ISLAND_CULTURES.md`;
+  ART_BIBLE §12, DECISIONS D-050…D-055.
 - **2026-10-11 (TASK-402b, worldgen)**: Research is "Observatory University" (D-046): 52–58 u campus hill,
   `campusHill` profile + `planResearch` (RESEARCH_SITE). Seed 1001's other islands moved −16.539 u in z
   (raw cams, LIVE_CAMS, EDIT_LOGS translated; the mixed log's removed bush re-mapped, two removals dropped);

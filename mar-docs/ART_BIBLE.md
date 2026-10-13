@@ -372,10 +372,10 @@ Any click or key jumps to the final pose with a 400 ms ease.
 | W11 | **Concept** | 1001 · `postcard` pose (§6) · 15:30 | Horizon at ≈ 0.74 NDC with cloud banks; all 7 islands in frame, walls and landmarks overlapping in depth; earth walls with strata and grass lip visible; no island clipped |
 | W13 | **Falls** | 1001 · raw cam from the sea at a Mossgrove waterfall, ≈ 40 u · 10:30 | Ribbon reads from lip to water; foam disc and mist at the foot; flow streaks move between frames 0.5 s apart |
 | W14 | **Campus Golden Hour** | 1001 · raw cam from the east, ≈ 85 u · 17:45 | Observatory, quad (fountain, ≥ 2 halls, library) and the parterre garden all in frame; terrariums and lab pods read; nothing floating or on a slope; no other island in frame (calls) |
-| W15 | **Relay Night** | 1001 · `postcard` pose (W11 frame) · 21:00 +45 s | ≥ 5 of 7 islands show lit windows or festival light, Marketing's marquee / searchlights brightest; no island clipped; sky craft lit, not cut by the top edge more than half; land L ≥ 0.12 |
+| W15 | **Relay Night** | 1001 · `postcard` pose (W11 frame) · 21:00 +105 s | ≥ 5 of 7 islands show lit windows or festival light, Marketing's marquee / searchlights brightest; no island clipped; sky craft lit, not cut by the top edge more than half; land L ≥ 0.12 |
 | W16 | **Harbour Guild Morning** | 1001 · raw `100,14,-150,86,9,-186` · 09:00 +15 s | Clear sky and saturated sea (fog gone); pier root with awning, timetable, crates and ≥ 3 banners / bunting lines is the subject; clock tower whole behind it; ≤ 230 calls |
 | W17 | **Jewel Tree Night** | 1001 · raw `-168,52,98,-142,33,88` · 21:00 +4 s | Atelier Tree canopy whole in frame with ≥ 6 lit vitray panels in ≥ 4 hues; treehouse windows lit; ≥ 3 warm lantern pools on the glade; canopy against the night sky (no island behind) |
-| W18 | **UV Bug Hunt** | 1001 · raw `-175,22,-185,-160,8,-208` · 21:30 +4 s | Violet UV pools under ≥ 3 lamp posts on the track/yard; scoreboard digit and Hall of Checks tick badges lit and readable; dummy bench + clipboard wall visible; no prop clipping the lens |
+| W18 | **UV Bug Hunt** | 1001 · raw `-174,27,-190,-160,7,-208` · 21:30 +4 s | Violet UV pools under ≥ 3 lamp posts on the track/yard; scoreboard digit and Hall of Checks tick badges lit and readable; dummy bench + clipboard wall visible; no prop clipping the lens |
 | W19 | **Prism Hour** | 1001 · raw `-108,44,120,-150,24,76` · 17:30 +4 s | Atelier Tree canopy whole in frame with ≥ 4 lit panes; spray rainbow arc ≥ 4 bands left of the tree; warm light on the glade, long shadows to the west; ≤ 270 calls |
 
 **Global fail (any shot):**
@@ -470,7 +470,7 @@ M19 QA: every island has P on at least four of the five layers; the checklist fo
 Every game day at 21:00 the seven islands take their turn in relay order (table above), 10 s apart. Each
 island flashes (×4 emissive, 0.6 s attack, 6 s decay), holds a 0.6 glow for 70 s in total, then fades over 15 s.
 Structures self-light at 0.12 between 180 and 380 u so the relay reads at T0 / T1. Live, the relay runs on day
-seconds; in a frozen capture it is `time=21` with `simt` 0–70 (W15 at `simt` 45). No new programs or agents (D-052).
+seconds; in a frozen capture it is `time=21` with `simt` 0–110 (W15 at `simt` 105). No new programs or agents (D-052).
 
 ### 12.3 Sky: Hype Fleet and the Orchestrator
 
