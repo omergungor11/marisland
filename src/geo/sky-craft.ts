@@ -133,12 +133,15 @@ function culturePennant(acc: Acc, o: PennantOpts, dir: -1 | 0 | 1): void {
       ? (p: THREE.Vector3): number => 0.1 + 0.6 * Math.min(1, Math.max(0, (o.at.y - p.y) / hang))
       : (p: THREE.Vector3): number =>
           0.05 + 0.5 * Math.min(1, Math.max(0, Math.abs(p.x - o.at.x) / hang));
+  // Balloon flags carry no wind weight: the fleet is anchor-relative (4096 u off), and the lit
+  // program's gust squash scales x/z about the object origin, which would smear any wind-weighted
+  // vertex tens of units across the sky (W11 streaks). Only the tail string (true origin) sways.
   // flags face +-z / +-x, away from the sun for most of the day: the flank shade would turn warm
   // accents maroon, so the baked colour is lightened a touch (hue kept)
   const hsl = { h: 0, s: 0, l: 0 };
   col(P.accent).getHSL(hsl);
   const flag = new THREE.Color().setHSL(hsl.h, hsl.s, Math.min(0.8, hsl.l * C.fleet.flagLift));
-  put(acc, slab, o.at, flag, { q, aoAmt: 0, ao: () => 1, windAbs: wind });
+  put(acc, slab, o.at, flag, { q, aoAmt: 0, ao: () => 1, ...(dir === 0 ? { windAbs: wind } : {}) });
   if (!o.glyph || P.cut === 'streamer') return;
   const g =
     dir === 0
