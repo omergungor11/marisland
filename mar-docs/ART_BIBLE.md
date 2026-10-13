@@ -372,6 +372,11 @@ Any click or key jumps to the final pose with a 400 ms ease.
 | W11 | **Concept** | 1001 · `postcard` pose (§6) · 15:30 | Horizon at ≈ 0.74 NDC with cloud banks; all 7 islands in frame, walls and landmarks overlapping in depth; earth walls with strata and grass lip visible; no island clipped |
 | W13 | **Falls** | 1001 · raw cam from the sea at a Mossgrove waterfall, ≈ 40 u · 10:30 | Ribbon reads from lip to water; foam disc and mist at the foot; flow streaks move between frames 0.5 s apart |
 | W14 | **Campus Golden Hour** | 1001 · raw cam from the east, ≈ 85 u · 17:45 | Observatory, quad (fountain, ≥ 2 halls, library) and the parterre garden all in frame; terrariums and lab pods read; nothing floating or on a slope; no other island in frame (calls) |
+| W15 | **Relay Night** | 1001 · `postcard` pose (W11 frame) · 21:00 +45 s | ≥ 5 of 7 islands show lit windows or festival light, Marketing's marquee / searchlights brightest; no island clipped; sky craft lit, not cut by the top edge more than half; land L ≥ 0.12 |
+| W16 | **Harbour Guild Morning** | 1001 · raw `130,30,-150,86,5,-186` · 06:05 +25 s | Clock tower whole in frame with its face lit; pier with awning + timetable and ≥ 3 pennant / bunting lines read; ≥ 2 gulls in the sky; horizon in the top third; ≤ 230 calls |
+| W17 | **Jewel Tree Night** | 1001 · raw `-168,52,98,-142,33,88` · 21:00 | Atelier Tree canopy whole in frame with ≥ 6 lit vitray panels in ≥ 4 hues; treehouse windows lit; ≥ 3 warm lantern pools on the glade; canopy against the night sky (no island behind) |
+| W18 | **Green Light** | 1001 · raw `-157,16,-197,-143,10.5,-193` · 16:00 +12 s | Green check flag at the mast top beside the scoreboard (base ring visible); check tower and ≥ 2 Hall of Checks badges in frame; sea horizon in the top quarter; no prop clipping the lens |
+| W19 | **Prism Hour** | 1001 · raw `-108,44,120,-150,24,76` · 17:30 | Atelier Tree canopy whole in frame with ≥ 4 lit panes; spray rainbow arc ≥ 4 bands left of the tree; warm light on the glade, long shadows to the west; ≤ 270 calls |
 
 **Global fail (any shot):**
 - Land pixel with L < 12 %.

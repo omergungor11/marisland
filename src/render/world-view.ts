@@ -132,6 +132,8 @@ export interface WorldViewDeps {
   beforeBuild?: (world: WorldData) => void;
   /** Orbit target (writes `out`): life wakes the campus being looked at (M14c). */
   getCameraTarget?: (out: THREE.Vector3) => void;
+  /** Capture `craft=0`: no sky craft (default true). */
+  skyCraft?: boolean;
 }
 
 const _focus = new THREE.Vector3();
@@ -192,7 +194,10 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   const cultureMovers = createCultureMovers(settlement.props, world, d.scope);
   group.add(cultureMovers.group);
   // hot-air balloons + airship over the archipelago (TASK-335)
-  const skyCraft = createSkyCraft(world, d.quality, d.scope, seed);
+  const skyCraft =
+    d.skyCraft === false
+      ? { meshes: [], update: () => undefined }
+      : createSkyCraft(world, d.quality, d.scope, seed);
   for (const m of skyCraft.meshes) group.add(m);
   const clouds = createClouds(world, d.quality, d.scope);
   group.add(clouds.group);

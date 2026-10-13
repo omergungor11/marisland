@@ -430,6 +430,76 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     height: 1080,
     sets: ['wow'],
   },
+  {
+    id: 'W15',
+    title: 'Relay Night',
+    // TASK-450: the Launch Day Relay from the W11 postcard pose at 21:00 (+45 s of sim: HQ, DevOps,
+    // QA and Coding still glowing, Marketing's flash on top); same frame as W11
+    seed: 1001,
+    cam: 'postcard',
+    time: 21,
+    simt: 45,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  {
+    id: 'W16',
+    title: 'Harbour Guild Morning',
+    // TASK-450: the Harbour Guild at the 06:05 bell fanfare, from the bay (raw): the whole clock
+    // tower with its lit face, the ferry pier with awning + timetable, crates, pennant lines, gulls
+    // up in the dawn mist (08:00 is greyer: the same pose at 8 u lost the tower's warm face)
+    seed: 1001,
+    cam: '130,30,-150,86,5,-186',
+    time: 6.08,
+    simt: 25,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  {
+    id: 'W17',
+    title: 'Jewel Tree Night',
+    // TASK-450: Design at night, the Atelier Tree's canopy vitray lit from inside (D-stained-night pose)
+    seed: 1001,
+    cam: '-168,52,98,-142,33,88',
+    time: 21,
+    simt: 4,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  {
+    id: 'W18',
+    title: 'Green Light',
+    // TASK-450: QA's 16:00 green-light ritual from the west lawn (raw): the check flag run up beside
+    // its scoreboard, the check tower, the Hall of Checks badges and a hangar roof flanking, sea behind
+    seed: 1001,
+    cam: '-157,16,-197,-143,10.5,-193',
+    time: 16,
+    simt: 12,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  {
+    id: 'W19',
+    title: 'Prism Hour',
+    // TASK-450: Design at 17:30 from the north-east (raw): the Atelier Tree's vitray canopy whole in
+    // frame, the glade, the pergola + hot shop and the spray rainbow off the west bluff
+    seed: 1001,
+    cam: '-108,44,120,-150,24,76',
+    time: 17.5,
+    simt: 4,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
 
   // ---- dev set (960×540) + ci subset (640×360)
   {

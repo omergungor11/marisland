@@ -178,6 +178,6 @@ export const FRAMING = {
      * village anchor — the near frames dollied into its canopy and its parallax failed 42 → 21 u.
      * The target slides toward the camera along the ladder heading until it is this far away.
      */
-    avoid: { giantTree: 22 } as Readonly<Record<string, number>>,
+    avoid: { giantTree: 22, lighthouse: 26 } as Readonly<Record<string, number>>,
   },
 } as const;

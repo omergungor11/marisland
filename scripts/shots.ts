@@ -176,6 +176,8 @@ function shotUrl(base: string, p: ShotPreset, extra = ''): string {
   if (p.panel) q.set('panel', p.panel);
   if (p.edit) q.set('edit', p.edit);
   if (p.introt !== undefined) q.set('introt', String(p.introt));
+  // zoom-ladder frames: no sky craft crossing the parallax measurement (TASK-450)
+  if (p.ladder) q.set('craft', '0');
   return `${base}?${q.toString()}${extra}`;
 }
 

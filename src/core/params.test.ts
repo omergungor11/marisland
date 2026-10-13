@@ -33,6 +33,8 @@ describe('params', () => {
     expect(Number.isNaN(d.introt)).toBe(true);
     expect(d.intro).toBe(true);
     expect(d.rm).toBe(false);
+    expect(d.craft).toBe(true);
+    expect(parseParams('?craft=0').craft).toBe(false);
     const p = parseParams('?panel=photo&introt=4.5&intro=0&rm=1');
     expect(p.panel).toBe('photo');
     expect(p.introt).toBeCloseTo(4.5);

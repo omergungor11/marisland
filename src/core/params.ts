@@ -48,6 +48,8 @@ export interface Params {
   panelTool: EditToolKind | '';
   /** Capture: freeze the opening sequence at this time (s); NaN = off. Needs `freeze=1`. */
   introt: number;
+  /** Capture: `craft=0` leaves the hot-air balloons / airship out (zoom-ladder frames, TASK-450). */
+  craft: boolean;
 }
 
 export type HudPanel = '' | 'photo' | 'settings' | 'edit';
@@ -118,5 +120,6 @@ export function parseParams(search: string): Params {
     panel: panel === 'photo' || panel === 'settings' || panel === 'edit' ? panel : '',
     panelTool: panel === 'edit' ? panelTool : '',
     introt: Number.isFinite(introt) && introt >= 0 ? introt : NaN,
+    craft: parseBool(q.get('craft'), true),
   };
 }
