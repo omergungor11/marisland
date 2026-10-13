@@ -145,6 +145,7 @@ export function createPuffs(
           ),
         },
         uSoftFreq: { value: PUFFS.soft.turbFreq * Math.PI * 2 },
+        uNearFade: { value: new THREE.Vector2(...PUFFS.soft.nearFade) },
         uSteamGlow: {
           value: new THREE.Color(CRATER_GLOW.color).multiplyScalar(PUFFS.soft.nightGlow),
         },

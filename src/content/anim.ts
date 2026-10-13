@@ -74,6 +74,8 @@ export const PUFFS = {
     turbulence: 2.2,
     turbFreq: 0.23,
     nightGlow: 0.35,
+    /** Camera distance (u) over which puffs fade in: a puff at the lens is a veil (W8+dt). */
+    nearFade: [1.5, 5] as const,
   },
   capacity: { low: 240, medium: 600, high: 900 },
 } as const;

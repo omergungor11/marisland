@@ -185,6 +185,7 @@ varying float vKind;
 varying float vOpacity;
 varying float vDither;
 uniform vec4 uSoft;
+uniform vec2 uNearFade; // fade puffs out between x and y u from the camera
 uniform vec3 uSteamGlow;
 ${RAIN_FRAG_PARS}
 void main() {
@@ -194,7 +195,8 @@ void main() {
     gl_FragColor = vec4(uRainColor, 1.0);
   } else {
     vec3 n = normalize(vN);
-    float cover = vFade;
+    // a puff at the lens reads as a pale veil over the frame: fade it out near the camera
+    float cover = vFade * smoothstep(uNearFade.x, uNearFade.y, distance(uCameraPos, vW));
     if (vKind > 0.5) {
       // soft steam (D5): radial alpha (view-facing) × life opacity
       float facing = clamp(dot(n, normalize(uCameraPos - vW)), 0.0, 1.0);
