@@ -262,6 +262,16 @@ Details in `phases/phase-3.md`.
 | TASK-452 | Docs: ART_BIBLE §12 Cultures (+ §11 W7 / W17 / W19 fixed to shots.ts), DECISIONS D-050…D-055 (D-049 already present), MEMORY, task-index | docs | S | COMPLETED | 451 |
 | TASK-453 | M19 polish from QA 451: (a) shots framing: W18 roof at the lens, W15 airship cut, W7 reads as midday, `D-story-signpostDebate` banner pole; (b) shader: W19 panes unlit at golden hour, W13 beige slabs on the cliff, W14 / W16 water wedge, golden caustic strips, Marketing searchlights in `D-culture-marketing-night`, balloon stipple; (c) world: W2 needs ≥ 3 boats, W3 ≥ 10 fireflies, DevOps pipe segments float on the slope, Research ladder 30 → 21, L-hq drift, L-design 480 drift | (a) engine, (b) shader, (c) life / worldgen | M | COMPLETED | 451 |
 
+### M19b — Culture polish
+*Open defects left after TASK-453 (MEMORY "where I left off" 2026-10-13). 460–462 parallel, 463 after them.*
+
+| ID | Task | Agent | Complexity | Status | Dependencies |
+|----|------|-------|------------|--------|--------------|
+| TASK-460 | Life polish: W2 ≥ 3 boats, W3 ≥ 10 fireflies, boats don't overlap at piers, capybara reads as a capybara from above | life | M | IN_PROGRESS | — |
+| TASK-461 | World polish: DevOps steam main as a real pitched run on slopes (no steps), Research ≥ 4 pennant lines + lecture on every seed | worldgen | M | IN_PROGRESS | — |
+| TASK-462 | Balloon shadow dither stipple | shader | S | IN_PROGRESS | — |
+| TASK-463 | Ladder misses: L-hq drift, L-design 480, L-research 30 → 21, L-pairs-research, L-pairs-marketing 380; wow + ladder `--assert` + sheet | engine | M | PENDING | 460–462 |
+
 ### M17 — Graphics II: decor & nature
 *Flower fields, fences, lanterns, benches, signs, rocks*
 
