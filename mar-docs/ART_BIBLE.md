@@ -365,7 +365,7 @@ Any click or key jumps to the final pose with a 400 ms ease.
 | W4 | **Beacon** | 2024 · T1 160 u, Beacon Rock in the left third · 21:30 | Beam cone visible in fog; cliff vs sky ΔL ≥ 0.1; ≥ 2 sea stacks; foam at the cliff base |
 | W5 | **Steam & Spring** | 3003 · T1 140 u Emberpeak · 10:00 | Steam column continuous for ≥ 15 u; black sand contrasts with the turquoise ring; crater glow visible; no land pixel < L 12 % |
 | W6 | **QA Test Factory** | 4004 · village view of the QA plateau (`village:qa`) · 12:00 | Earth walls and the plateau read against the sea; ≥ 2 sawtooth hangars with a conveyor bridge; loop track and check tower visible; crates on the belt |
-| W7 | **Mill Morning** | 5005 · T2 90 u Millbrook · 06:45 | Blade angle differs between frames 0.5 s apart; ≥ 4 field colours; mist band below 6 u; ≥ 5 sheep |
+| W7 | **Turbine Morning** | 1001 · raw `45,20,3.46,95,13,23.46` (over Coding toward the turbines and solar rows) · 06:45, frames 0.5 s apart | Blade angle differs between the two frames; ≥ 2 turbines (yaw + spin tags) and ≥ 1 solar row in frame; morning haze behind the tech park; land never below L 12 % |
 | W8 | **Macro Shore** | 1001 · T3 18 u, Hearthholm beach · 14:00 | Foam line moves between frames 2 s apart; crab + ≥ 3 shells + grass tufts visible; during a 3 s dolly-in from 60 u, nothing appears without a bloom-in |
 | W9 | **Observatory University** | 1001 · raw cam low from the east, ≈ 60 u · 18:45 | The observatory dome and telescope stand against the evening sky above the horizon; walls, lawn and ≥ 3 other campus pieces (halls, dish, pods, glasshouses) read in front; no other island behind it |
 | W10 | **Rainy Grove** | 6006 · T1 120 u Mossgrove, rain · 13:00 | Ripples on water; treehouse windows lit; foliage saturation ≥ 40 %; sky not neutral grey |
@@ -374,9 +374,9 @@ Any click or key jumps to the final pose with a 400 ms ease.
 | W14 | **Campus Golden Hour** | 1001 · raw cam from the east, ≈ 85 u · 17:45 | Observatory, quad (fountain, ≥ 2 halls, library) and the parterre garden all in frame; terrariums and lab pods read; nothing floating or on a slope; no other island in frame (calls) |
 | W15 | **Relay Night** | 1001 · `postcard` pose (W11 frame) · 21:00 +45 s | ≥ 5 of 7 islands show lit windows or festival light, Marketing's marquee / searchlights brightest; no island clipped; sky craft lit, not cut by the top edge more than half; land L ≥ 0.12 |
 | W16 | **Harbour Guild Morning** | 1001 · raw `100,14,-150,86,9,-186` · 09:00 +15 s | Clear sky and saturated sea (fog gone); pier root with awning, timetable, crates and ≥ 3 banners / bunting lines is the subject; clock tower whole behind it; ≤ 230 calls |
-| W17 | **Jewel Tree Night** | 1001 · raw `-168,52,98,-142,33,88` · 21:00 | Atelier Tree canopy whole in frame with ≥ 6 lit vitray panels in ≥ 4 hues; treehouse windows lit; ≥ 3 warm lantern pools on the glade; canopy against the night sky (no island behind) |
+| W17 | **Jewel Tree Night** | 1001 · raw `-168,52,98,-142,33,88` · 21:00 +4 s | Atelier Tree canopy whole in frame with ≥ 6 lit vitray panels in ≥ 4 hues; treehouse windows lit; ≥ 3 warm lantern pools on the glade; canopy against the night sky (no island behind) |
 | W18 | **UV Bug Hunt** | 1001 · raw `-175,22,-185,-160,8,-208` · 21:30 +4 s | Violet UV pools under ≥ 3 lamp posts on the track/yard; scoreboard digit and Hall of Checks tick badges lit and readable; dummy bench + clipboard wall visible; no prop clipping the lens |
-| W19 | **Prism Hour** | 1001 · raw `-108,44,120,-150,24,76` · 17:30 | Atelier Tree canopy whole in frame with ≥ 4 lit panes; spray rainbow arc ≥ 4 bands left of the tree; warm light on the glade, long shadows to the west; ≤ 270 calls |
+| W19 | **Prism Hour** | 1001 · raw `-108,44,120,-150,24,76` · 17:30 +4 s | Atelier Tree canopy whole in frame with ≥ 4 lit panes; spray rainbow arc ≥ 4 bands left of the tree; warm light on the glade, long shadows to the west; ≤ 270 calls |
 
 **Global fail (any shot):**
 - Land pixel with L < 12 %.
@@ -384,3 +384,107 @@ Any click or key jumps to the final pose with a 400 ms ease.
 - Any island without a visible shallow ring.
 - Two same-type creatures animating in perfect sync.
 - A zoom-ladder step or boundary pair over its threshold (§6, D-031 / D-035), for a judged step.
+
+## 12. Cultures (M19 "Seven Cultures")
+
+Every island is a profession micro-culture (`mar-plans/ISLAND_CULTURES.md`). Five layers per island:
+silhouette and colour (T0), architecture (T1), kit, rhythm and ritual (T2), ambient stories (T3).
+Code: `src/content/cultures/` (contract, kit ledger, rhythm, movers, boats), `src/geo/themes/culture-<theme>.ts`
+(kit geometry), `src/world/gen/plans/*` (placement). Decisions: D-049 (far merge), D-050 … D-055.
+
+**Rules**
+- ≤ 10 new defs per island (`budgets.cultureDefsPerIsland`), ≥ 70 % at tier 2–3, no tier 0, at most one tier 1.
+  Variants of existing defs are not ledger entries.
+- Colours come from the existing palette tables only (checked by the culture validator).
+- A culture's accent is its pennant and label colour. The §4 accent column predates the cultures and differs
+  for DevOps (`#FF9F43` here, `#FF7A5C` in §4), Design, QA and Research; the table below wins.
+
+### 12.1 Islands
+
+**Identity** (accent, pennant cut and glyph are the same everywhere in the world, D-051)
+
+| Island (theme) | Culture (TR / EN) | Accent | Pennant cut | Glyph | Relay step |
+|---|---|---|---|---|---|
+| HQ · Hearthholm (`hq`) | Liman Loncası / Harbour Guild | `#E8735A` | swallowtail | bell | 1 · ferryFanfare |
+| Coding · Millbrook (`coding`) | Rüzgâr Bahçeleri / Wind Gardens | `#5B9BE6` | kite | code `</>` | 4 · kiteDay |
+| DevOps · Emberpeak (`devops`) | Kor Demircileri / Ember Smiths | `#FF9F43` | square | hammer | 2 · releaseNight |
+| Marketing · Beacon Rock (`marketing`) | Karnaval Yayıncıları / Carnival Broadcasters | `#E35D6A` | streamer | megaphone | 5 · goldenHourShow |
+| QA · Palmlagoon (`qa`) | Müfettişler Adası / Inspectors' Island | `#3FBF8F` | chevron | check | 3 · greenLightCeremony |
+| Design · Mossgrove (`design`) | Cam ve Işık Stüdyosu / Glass & Light Studio | `#B07CE0` | scallop | prism | 6 · lanternNight |
+| Research · Lonely Palm (`research`) | Yıldız Akademisi / Star Academy | `#4FC3C9` | star | telescope | 7 · cometNight |
+
+**Signature kit** (new defs, by tier; `noShadow` on every tier-3 micro prop)
+
+| Island | Tier 1 | Tier 2 | Tier 3 |
+|---|---|---|---|
+| HQ | — | timetableBoard, ferryAwning, guildNoticeBoard, bellPost, harbourCrane, coffeeCart | gullPerch, mailbag |
+| Coding | giantDuck | kite, pergolaDesk, hammock, kiteRack | rubberDuck, whiteboardA, mugStack |
+| DevOps | onsenHouse | lavaLantern, onsenDeck, ingotStack, incidentSign, pipeValveWheel, signalHorn, serverShrine | anvil, pagerRock |
+| Marketing | mascotStatue | marqueeSign, popcornCart, balloonMast, confettiCannon, searchlightPair, prizeBooth, selfieSpot | posterRoll, megaphoneStand |
+| QA | — | dummyBench, inspectionBooth, uvLampPost, scoreboard, flagMast | bugJar, conePyramid, stampDesk, clipboardWall |
+| Design | rainbowArc (time-gated) | hotShop, prismSculpture, stainedScreen, gatherRing | causticDecal, glassOrb, culletCrate, sampleShelf, blowpipeRack |
+| Research | — | tripodTelescope, chalkboard, orrery, lectureSteps, teaTrolley, weatherBalloonCart, owlBox | pigeonPerch, bookCart, miniVolcanoTerrarium |
+
+**Rhythm and ritual** (game hours; ritual length in real seconds; lamp set = the island's own lights)
+
+| Island | Daily slots | Rituals | Lamp set (on → off) |
+|---|---|---|---|
+| HQ | 12:00 coffee queue · 17:45 ferries home · 20:00 pier lanterns | Ferry Fanfare 06:00 and 18:00 (40 s) | timetable board 20:00 → 06:00 |
+| Coding | 06:30 ducks out · 17:30 hammock hour · 19:30 fairy lights | Kite Day 14:00 (60 s, wind-gated) | pergola desks 19:30 → 05:30 |
+| DevOps | 10:00 hammer hours · 17:30 shift end | Shift siren 06:00 (10 s) · Release Night 21:00 (40 s) | lava lanterns 18:30 → 06:00 |
+| Marketing | 09:00 poster crew · 12:00 fair opens · 19:30 neon night | Golden Hour Launch Show 17:30 (60 s) | marquee 17:24 → 01:00 |
+| QA | 08:00 hangars open · 20:30 bug hunt | Siren test 12:00 (10 s) · Green light 16:00 (30 s) | UV posts + bug jars 20:30 → 05:00 |
+| Design | 06:00 dawn glass · 09:00 hot shop · 16:30 prism hour | Light Night 20:00 (60 s) | stained screens + glass orbs 20:00 → 06:00 |
+| Research | 09:00 lectures · 17:45 golden reading | Weather balloon 06:00 (60 s) · Comet night 22:00 (60 s) | chalkboard + owl box 21:45 → 05:00 |
+
+Design's rainbow arc is gated to 06:00–07:30 and 16:30–18:30 (dither, rain fades it out).
+
+**Ambient stories** (T3; a fixed tableau bot or a spot animal at each story spot, D-053)
+
+| Island | Stories |
+|---|---|
+| HQ | cat asleep on the timetable; gull fed on the perch; umbrella forgotten under the ferry awning; two bots arguing at the pier signpost; bottle shelf; kitten in the mail sack; coffee queue; bell post |
+| Coding | warm-rack cat; hammock nap beside a mug crate; kite caught in the hedge; duck crossing by the bike rack; bug doodle on the whiteboard; gull on the giant duck |
+| DevOps | capybara in the onsen beside a hard-hat bot; container nap; crane-cab cat; flower in an ore cart; incident sign watchers; pager crab; anvil and smithy |
+| Marketing | mascot crab waves; popcorn gulls; selfie by the lighthouse; ferris-wheel operator asleep; balloon snagged on the antenna; prize duck; poster crew; balloon launch |
+| QA | dummy with coffee on the bench; gull on the cone pyramid; ant trail with a magnifier bot; scoreboard drop with an escaped ladybug; sleepy stamp desk; crab inspected by cones |
+| Design | annealer cat on the warm oven; gaffer turning a blowpipe; gull on the seconds shelf; rainbow from broken cullet; vase held to the sun; fox looking into an orb; prism rainbow; critique ring |
+| Research | owl at night; tea time; lecture steps; balloon cart; pigeon on the statue; volcano terrarium steam; comet watch; book step gazer |
+
+**What reads at each tier, and the M19 QA result** (`mar-docs/qa/`, TASK-451; P present, W weak)
+
+| Island | T0 silhouette | T1 architecture | T2 kit and rhythm | T3 stories | QA 451 |
+|---|---|---|---|---|---|
+| HQ | coral hilal, clock tower, white ferry wakes | bell-gable roofs, awnings, seven pennant lines | timetable, queue, perches | cat, signpost debate, bottles | rhythm W (06:00 fanfare unframed); signpost debate hidden by the banner pole |
+| Coding | pale green plateau, three white turbines, blue pool | flat roofs, pergola rows, giant duck | kites, hammocks, bikes | nap, stuck kite, duck crossing | all P |
+| DevOps | black cone, steam plume, orange glow, cooling tower | steel roofs, crane, train, ship | lanterns, ingots, onsen | capybara onsen, container nap | T2 W (pipe segments float on the slope) |
+| Marketing | red/white stack, ferris wheel, screen glow | striped tents, marquee, mascot | popcorn, confetti, balloon mast | mascot wave, selfie, snagged balloon | all P (searchlight beams wash the night frame) |
+| QA | mint plateau, check tower | hazard stripes, flag mast | booths, dummy bench, UV lamps | dummy coffee, ant trail, scoreboard | rhythm W (UV pools faint) |
+| Design | pink-green dome, purple giant tree | faceted glass roofs, hot-shop chimney, rainbow arc | prisms, screens, glass ring, caustics | annealer cat, glass fox, rainbow shards | all P (golden caustics read as slabs) |
+| Research | white dome, green parterre, dish | domes, bell tower, amphitheatre | tripods, orrery, tea, balloon cart | owl, comet watch, tea | rhythm W (balloon reads as a lollipop); 0–3 pennant lines |
+
+M19 QA: every island has P on at least four of the five layers; the checklist for a new island is the same five rows.
+
+### 12.2 Launch Day Relay
+
+Every game day at 21:00 the seven islands take their turn in relay order (table above), 10 s apart. Each
+island flashes (×4 emissive, 0.6 s attack, 6 s decay), holds a 0.6 glow for 70 s in total, then fades over 15 s.
+Structures self-light at 0.12 between 180 and 380 u so the relay reads at T0 / T1. Live, the relay runs on day
+seconds; in a frozen capture it is `time=21` with `simt` 0–70 (W15 at `simt` 45). No new programs or agents (D-052).
+
+### 12.3 Sky: Hype Fleet and the Orchestrator
+
+| Craft (count low / medium / high) | Culture | Look | Behaviour |
+|---|---|---|---|
+| Hype Fleet balloons (2 / 4 / 5) | Marketing's fleet: one balloon per department | gores in the culture's accent (dominant), cream and the next member's accent; basket pennant (cut + accent + glyph) on two spars | orbit in the 34–60 u band; the launch balloon lifts off the Marketing mast at the 17:30 Launch Show (80 s approach, 10 s inflate, 70 s lift) and joins the orbit |
+| Orchestrator airship (0 / 1 / 1) | HQ | cream and orange hull, seven culture pennants on a 16 u tail string, bell emblem on both flanks | slows down where its orbit passes over HQ |
+
+### 12.4 Trade and ferry routes
+
+| Route | Boat | Built as | Carries |
+|---|---|---|---|
+| HQ ↔ every island | Ferry (sailboat variant 2) | HQ `ferry` loops through one pier per island; 8 s dwell at each stop; 3.4 u/s cruise, 0.45 u/s² braking (D-054) | passengers, mail sacks |
+| Around QA | Inspection boat (sailboat variant 3) | ring 22 u outside the island, 2.2 u/s | inspection |
+| Around Design | Lantern boat (sailboat variant 4) | ring 30 u outside the island, 1.4 u/s | glass lanterns (lit at night) |
+| DevOps → HQ, Marketing, QA | Cargo ships and ore trains | movers on the harbour loop (`render/harbour-routes.ts`), not agents | containers (orange = deploy), ore |
+| Other plan §3.1 rows (Coding → QA, QA → DevOps, Design → HQ / Marketing / Research, Research → Design / Coding) | — | not in the built set (TASK-434) | — |

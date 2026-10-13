@@ -2,6 +2,99 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-055: NaN guard on the lit flat normal (TASK-435) — 2026-10-13
+
+**Context**: `D-sky-basket` rendered black on main. One NaN pixel on a far sliver triangle (Bug Zoo, 351 u)
+came from three's flat-shaded normal `normalize(cross(dFdx(p), dFdy(p)))` = 0/0. The HalfFloat composer input
+and the bloom mip chain spread that single NaN over the whole frame.
+
+**Decision**: the lit factory guards the flat normal (`FRAG_FLAT_NORMAL`, `render/materials/factory.ts`): a
+degenerate, Inf or NaN cross product falls back to a camera-facing normal. The guard reuses three's `fdx` / `fdy`,
+and `factory.test.ts` fails if an upgrade renames them. GLSL `pow(x, y)` is never called with x < 0. Also in the
+same fix: the wake mesh is shared between boat kinds, and shadows are skipped past half fade (D-sky-craft 297 → 282).
+
+**Consequences**: a new prop placement can no longer turn a frame black. The gotcha lives in MEMORY (one NaN
+pixel = black frame).
+
+## D-054: Harbour Guild ferries with dwell; culture boats on rings (TASK-420, TASK-434) — 2026-10-13
+
+**Context**: the Harbour Guild is the harbour every other island sends boats to (ISLAND_CULTURES §3.1). Ferries
+must stop at each pier, and the culture boats must do it without agents or per-frame steering.
+
+**Decision**: `world/gen/routes.ts` builds the HQ `ferry` loops last: from HQ's pier through one pier per other
+island, with a dwell at each stop (`HQ_FERRY`: 2 lines, 8 s dwell, stop = nearest open-water node within 60 u of
+the pier). `life/ferry.ts` plays the timetable as a closed-form function of time: stand at a stop for the dwell,
+accelerate, cruise at 3.4 u/s, brake at 0.45 u/s². Culture boats circle their island on a ring: the QA inspection
+boat (sailboat variant 3, 22 u outside, 2.2 u/s) and the Design lantern boat (sailboat variant 4, 30 u outside,
+1.4 u/s). The DevOps cargo ships and ore trains stay movers (`render/harbour-routes.ts`), not agents.
+
+**Consequences**: boats are pure functions of sim time, so a capture and a seek agree. Open: boats can overlap at
+piers (TASK-434 follow-up); the other §3.1 trade rows are not in the built set.
+
+## D-053: Story spots become tableau bots and spot animals (TASK-432, TASK-433) — 2026-10-13
+
+**Context**: the T3 ambient stories (ISLAND_CULTURES §2) must read as a still scene. A new agent per story would
+break the medium agent cap (60), and a 17th attribute would fail to link under SwiftShader (D-013).
+
+**Decision**: placement emits `world.storySpots` (`StorySpot{kind, pos, rotY, defs}`, one plan per island in
+`world/gen/plans/*`). A spot's person is a tableau bot (`TABLEAU` in `content/life.ts`, `planTableaus`, capped per
+island and quality by `tableauMax`): a fixed ambient-pool worker that stands or lies at its spot and never leaves.
+The spot animals (`SPOT_CRITTERS` in `life/critters.ts`: cats, a fox, a capybara, gulls, owls, pigeons, ladybugs)
+are not agents. Bot looks use the existing `aSeed` decode: department accessories 0–6, carried items 7–14 (laptop,
+clipboard, crate, paint pot, satchel, megaphone, blowpipe, books). No attribute is added.
+
+**Consequences**: tableau bots count against the agent cap like ambient workers; `workers.test.ts` checks the cap
+and the encoding with tableaus awake. Open: the capybara reads like a turtle from above (TASK-433 follow-up).
+
+## D-052: Culture clock, per-island lamp sets and the Launch Day Relay (TASK-430, TASK-441) — 2026-10-13
+
+**Context**: each island's day must differ (lights, rituals) with no new programs or agents, and the seven cultures
+need one shared ritual (ISLAND_CULTURES §3.2) that still reads in a frozen capture.
+
+**Decision**: `content/cultures/rhythm.ts` is the table. Per island it lists rhythm slots (game hour, optional ritual
+length in real seconds) and a lamp set (defs, on / off hour, ring ramp) that replaces the global dusk ramp for
+those defs. `CULTURE_GATES` shows the Design waterfall rainbow at 06:00–07:30 and 16:30–18:30 by dither, and rain
+fades it out. The Launch Day Relay starts at 21:00 and gives each island its step, 10 s apart, in relay order
+(1 HQ, 2 DevOps, 3 QA, 4 Coding, 5 Marketing, 6 Design, 7 Research): a ×4 flash (0.6 s attack, 6 s decay), a 0.6
+glow held to 70 s, a 15 s fade. Structures self-light at 0.12 with distance fade 180–380 u. In capture the clock
+runs on `simt` (`time=21&simt=25` is 25 s into the relay). The Hype Fleet and the Orchestrator airship carry the sky side of the
+culture look (TASK-441: balloon accents, the 17:30 launch, the pennant string).
+
+**Consequences**: 0 new programs and 0 agents; swaps dither, so `hardPops` stays 0. The relay is the W15 frame
+(`simt` 45).
+
+## D-051: Pennant and signage system (TASK-409) — 2026-10-12
+
+**Context**: the seven cultures must read as one world. Direction and identity need one visual language that still
+reads at T1 and T2.
+
+**Decision**: each culture owns one pennant cut and accent (`CultureDef.pennant`): swallowtail (HQ), kite (Coding),
+square (DevOps), streamer (Marketing), chevron (QA), scallop (Design), star (Research). The same cut and colour mean
+the same island everywhere: pennant lines, sail stripes, origin-coloured crates, balloon basket flags, and the
+Orchestrator's seven-pennant tail string. One emblem per culture comes from a shared glyph set
+(`geo/themes/glyphs.ts`, `GLYPH_OF_THEME`: bell, code, megaphone, check, prism, hammer, telescope), drawn in bars of
+about 40 triangles. The `pierSignpost` (seven arrows, bearing as a parameter) is part of the same kit.
+
+**Consequences**: a new culture needs a free cut and glyph. The M19 QA found the HQ banner pole covering the signpost
+debate story (TASK-453 polish).
+
+## D-050: Culture contract, per-island def cap and pinned variants (TASK-408, TASK-421) — 2026-10-12
+
+**Context**: the cultures must add character without raising the W11 draw-call count (medium budget 300, W11 298
+before M19, D-048). The count has to be predictable per island, so each island gets a fixed kit ledger.
+
+**Decision**: `content/cultures/types.ts` defines `CultureDef` (theme, id, EN and TR name, palette, pennant, `kit`
+of new defs with tier and flags, `storySpots`, `rhythm`, `relay`). `budgets.cultureDefsPerIsland = 10`. The
+validator (`validate.ts`, `cultures.test.ts`) enforces ≤ 10 new defs per island, ≥ 70 % at tier 2–3, no tier 0,
+at most one tier 1, colours taken from existing palette tables, and `PropFlag.noShadow` on tier 3. Ledger order is
+priority: a lowered cap cuts the kit from the end. Culture variants are pinned, never rolled: `PropDef.rollVariants`
+limits random decor rolls to the first N variants, and `PendingLot.pin` (`world/gen/sites.ts`) makes the plan
+require a geometry variant, which skips the roof-colour pick.
+
+**Consequences**: the kits hold 8–10 defs per island (HQ 8, Coding 8, DevOps 10, Marketing 10, QA 9, Design 10,
+Research 10). Tier 1 appears on four islands only (Coding giant duck, DevOps onsen house, Marketing mascot, Design
+rainbow arc).
+
 ## D-049: Far structure merge — one pre-transformed LOD1 mesh per island at T0–T1 (TASK-407) — 2026-10-12
 
 **Decision**: at tiers 0–1 the LOD1 groups (one InstancedMesh per (def, variant) across islands, D-022)
