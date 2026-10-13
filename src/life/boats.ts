@@ -178,6 +178,11 @@ export interface BoatSpec {
   speed: number;
   /** Ferries follow a closed-form timetable (`ferry.ts`) instead of the integrated loop. */
   ferry?: boolean;
+  /**
+   * Berths of the other boats (every route's dock-end stops): the hull is pushed out to
+   * `SAILBOAT.berthClear` u from each, so a sailing boat slowing at a pier never sits in a docked ferry.
+   */
+  avoid?: Vec2[];
 }
 const SAIL_SPEC: BoatSpec = { name: 'sailboat', variant: 0, speed: SAILBOAT.speed };
 
@@ -289,8 +294,20 @@ export class Sailboats extends AgentKind {
     const len = Math.hypot(dx, dz) || 1;
     const fx = dx / len;
     const fz = dz / len;
-    const x = p.x;
-    const z = p.y;
+    let x = p.x;
+    let z = p.y;
+    if (this.spec.avoid) {
+      for (const s of this.spec.avoid) {
+        const ex = x - s.x;
+        const ez = z - s.y;
+        const dd = Math.hypot(ex, ez);
+        if (dd >= SAILBOAT.berthClear) continue;
+        // out along the radial (the track's right-hand normal when dead centre)
+        const k = (SAILBOAT.berthClear - dd) / (dd || 1);
+        x += dd > 1e-3 ? ex * k : -fz * SAILBOAT.berthClear;
+        z += dd > 1e-3 ? ez * k : fx * SAILBOAT.berthClear;
+      }
+    }
     // turn rate: heading change over ±3 u
     const h1 = at(d + dir * 3, this.a);
     const h0x = h1.x;
@@ -360,9 +377,14 @@ export interface Mooring {
 
 /** Parked boats exactly at `world.moorings` (heading = rotY, convention (cos, sin)). */
 export function mooringsOf(ctx: LifeCtx, defId: 'rowboat' | 'sailboat', count: number): Mooring[] {
-  const all = (ctx.world.moorings ?? []).filter((m) => m.defId === defId);
+  const every = ctx.world.moorings ?? [];
+  const all = every.filter((m) => m.defId === defId);
   const rng = ctx.rngFor(`moorings:${defId}`);
   rng.shuffle(all);
+  // a pier with several berths fills first (a little harbour, not one lone boat per pier);
+  // stable sort: ties keep the seeded shuffle order
+  const crowd = (m: { dock: number }): number => every.filter((o) => o.dock === m.dock).length;
+  all.sort((a, b) => crowd(b) - crowd(a) || a.dock - b.dock);
   return all.slice(0, count).map((m) => ({ x: m.x, z: m.z, rotY: m.rotY }));
 }
 

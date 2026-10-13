@@ -4,6 +4,7 @@ import {
   CATS,
   CRABS,
   CULTURE_BOATS,
+  SAILBOAT,
   GULLS,
   LIFE_PLAN,
   SHEEP,
@@ -119,7 +120,15 @@ export function createLife(deps: LifeDeps): LifeSystem {
     return slot;
   };
   if (sailing > 0) {
-    kinds.sailboats = new Sailboats(base, ctx, routes, sailing, undefined, wakeSlot(sailing));
+    const avoid = allRoutes.flatMap((r) => r.stops);
+    kinds.sailboats = new Sailboats(
+      base,
+      ctx,
+      routes,
+      sailing,
+      { name: 'sailboat', variant: 0, speed: SAILBOAT.speed, avoid },
+      wakeSlot(sailing),
+    );
     all.push(kinds.sailboats);
   }
   if (ferrying > 0) {

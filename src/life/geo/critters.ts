@@ -37,9 +37,10 @@ export function buildDuck(): THREE.BufferGeometry {
 }
 
 /**
- * Capybara ≈ 190 tris, origin on the ground, forward +x: a round brown barrel (white = instance
- * tint), a big blunt head with a dark nose, small ears and eyes, stubby legs and a yellow hard hat
- * with a band. The head and hat nod about the neck (mode 4) so it can doze off.
+ * Capybara ≈ 110 tris, origin on the ground, forward +x: a long square-ish brown barrel (white =
+ * instance tint, 2:1 from above), a blunt box head with a squared snout and dark nose, small dark ears,
+ * stubby legs and a flat yellow cap with a band (a dome here read as a turtle shell from above).
+ * The head and cap nod about the neck (mode 4) so it can doze off.
  */
 export function buildCapybara(): THREE.BufferGeometry {
   const K = SPOT_LIFE.colors;
@@ -50,27 +51,26 @@ export function buildCapybara(): THREE.BufferGeometry {
   const band = hex(K.hatBand);
   const eye = hex('#22222C');
   b.clearLimb();
-  b.ellipsoid(v3(-0.05, 0.27, 0), 0.38, 0.23, 0.25, 8, 5, (t) => (t < 0.3 ? belly : WHITE));
+  b.box(v3(-0.1, 0.27, 0), 0.4, 0.17, 0.19, WHITE);
+  b.box(v3(-0.1, 0.12, 0), 0.36, 0.05, 0.17, belly);
   for (const [x, z] of [
-    [0.2, 0.14],
-    [0.2, -0.14],
-    [-0.28, 0.14],
-    [-0.28, -0.14],
+    [0.18, 0.14],
+    [0.18, -0.14],
+    [-0.36, 0.14],
+    [-0.36, -0.14],
   ])
     b.box(v3(x, 0.05, z), 0.06, 0.06, 0.055, dark);
-  // head + hat nod about the neck (pivot x 0.28, y 0.3)
+  // head + cap nod about the neck (pivot x 0.28, y 0.3)
   b.setLimb(0.55, 0.3, 0.28, 4);
-  b.ellipsoid(v3(0.42, 0.34, 0), 0.2, 0.17, 0.16, 8, 4, () => WHITE);
-  b.ellipsoid(v3(0.58, 0.29, 0), 0.1, 0.1, 0.12, 6, 3, () => WHITE);
-  b.ellipsoid(v3(0.67, 0.31, 0), 0.04, 0.045, 0.06, 5, 3, () => dark);
+  b.box(v3(0.44, 0.33, 0), 0.15, 0.14, 0.13, WHITE);
+  b.box(v3(0.62, 0.29, 0), 0.07, 0.1, 0.115, WHITE);
+  b.box(v3(0.695, 0.31, 0), 0.015, 0.055, 0.09, dark);
   for (const s of [1, -1]) {
-    b.ellipsoid(v3(0.33, 0.49, 0.1 * s), 0.035, 0.04, 0.03, 4, 2, () => dark);
-    b.ellipsoid(v3(0.52, 0.4, 0.1 * s), 0.025, 0.03, 0.025, 4, 2, () => eye);
+    b.ellipsoid(v3(0.34, 0.49, 0.11 * s), 0.03, 0.035, 0.03, 4, 2, () => dark);
+    b.ellipsoid(v3(0.54, 0.38, 0.125 * s), 0.022, 0.026, 0.022, 4, 2, () => eye);
   }
-  // hard hat: a round brim, the dome and a coloured band round its foot
-  b.frustum(v3(0.4, 0.485, 0), 0.17, 0.15, 0.025, 10, hat);
-  b.frustum(v3(0.4, 0.508, 0), 0.135, 0.125, 0.035, 10, band);
-  b.ellipsoid(v3(0.4, 0.535, 0), 0.125, 0.09, 0.125, 8, 3, () => hat);
+  b.frustum(v3(0.42, 0.465, 0), 0.115, 0.105, 0.018, 10, band);
+  b.frustum(v3(0.42, 0.483, 0), 0.1, 0.075, 0.04, 10, hat);
   b.clearLimb();
   return b.finish();
 }

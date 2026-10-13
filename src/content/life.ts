@@ -55,13 +55,13 @@ export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
     cats: 1,
     sheep: 2,
     crabs: 1,
-    fireflies: 12,
+    fireflies: 27,
     ducks: 0,
     butterflies: 6,
   },
   medium: {
     sailboats: 2,
-    rowboats: 1,
+    rowboats: 3,
     parked: 0,
     ferries: 1,
     patrolBoats: 1,
@@ -76,9 +76,9 @@ export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
     workers: 16,
     ambientScale: 0.75,
     cats: 2,
-    sheep: 8,
+    sheep: 6,
     crabs: 2,
-    fireflies: 18,
+    fireflies: 54,
     ducks: 4,
     butterflies: 10,
   },
@@ -101,7 +101,7 @@ export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
     cats: 4,
     sheep: 12,
     crabs: 5,
-    fireflies: 24,
+    fireflies: 72,
     ducks: 5,
     butterflies: 16,
   },
@@ -124,8 +124,8 @@ export const FIREFLIES = {
   /** Fraction of the ramp over which one firefly fades in (the rest is per-firefly stagger). */
   stagger: 0.6,
   /** Fireflies per swarm and swarm radius, u. */
-  perSwarm: 6,
-  swarmRadius: 3,
+  perSwarm: 9,
+  swarmRadius: 4.5,
   /** Lissajous half-extents (u), periods (s) and height above the ground (u). */
   extent: [0.9, 2.4] as const,
   period: [7, 13] as const,
@@ -152,6 +152,8 @@ export const SAILBOAT = {
   /** Speed within `stopRadius` u of a route stop dock end (eased in). */
   stopSpeed: 1.2,
   stopRadius: 12,
+  /** Sailing boats keep this far (u, centre to centre) from every pier-end berth: a ferry dwells there. */
+  berthClear: 12,
   heelDeg: 8,
   /** Yaw rate (rad/s) at which the heel saturates. */
   heelRate: 0.25,
