@@ -11,7 +11,9 @@
  * - pipe: `pulse` = { r, segments: [[x0,y,z0,x1,y,z1], ...] }: the tube centre-lines; the body is the
  *   `pipe` colour (DEVOPS_COLORS.pipe) so a shader can lay a data pulse along each segment.
  *   Connection points: straight / valve: (-1, 0.5, 0) <-> (1, 0.5, 0); elbow (variant 1):
- *   (-1, 0.5, 0) <-> (0, 0.5, 1).
+ *   (-1, 0.5, 0) <-> (0, 0.5, 1); pitched (PIPE_RUN.pitched, TASK-461): (-1, 0.5 - r/2, 0) <->
+ *   (1, 0.5 + r/2, 0), r = k * pitchStep; riser: (0, 0.5, 0) <-> (0, 0.5 + riserUnit, 0);
+ *   knuckle: the ball at (0, 0.5, 0).
  * - rackRow: LED faces carry emissive 2 (screen / LED class), so the blink pattern can key on it.
  */
 import * as THREE from 'three';
@@ -19,6 +21,7 @@ import {
   COOLING_TOWER_HEIGHTS,
   COOLING_TOWER_RISE,
   DEVOPS_COLORS as K,
+  PIPE_RUN,
 } from '../../content/props-themes/devops.ts';
 import type { Rng } from '../../core/rng.ts';
 import { Acc, blob, col, createNoise, qEuler } from '../kit.ts';
@@ -129,6 +132,7 @@ export function coolingTower({ rng, lod, variant }: BuildOpts): THREE.BufferGeom
   return g;
 }
 
+/** Tube along x from x0 to x1, its centre-line at height y + g·x (g: pitch slope, TASK-461). */
 function tubeX(
   acc: Acc,
   x0: number,
@@ -138,14 +142,13 @@ function tubeX(
   seg: number,
   color: string,
   y = 0.5,
+  g = 0,
 ): void {
-  put(
-    acc,
-    new THREE.CylinderGeometry(rad, rad, Math.abs(x1 - x0), seg, 1, true).rotateZ(Math.PI / 2),
-    [(x0 + x1) / 2, y, z],
-    color,
-    { aoAmt: 0.1 },
-  );
+  const len = Math.abs(x1 - x0) * Math.hypot(1, g);
+  const c = new THREE.CylinderGeometry(rad, rad, len, seg, 1, true).rotateZ(Math.PI / 2);
+  if (g !== 0) c.rotateZ(Math.atan(g));
+  const xm = (x0 + x1) / 2;
+  put(acc, c, [xm, y + g * xm, z], color, { aoAmt: 0.1 });
 }
 
 function tubeZ(
@@ -170,23 +173,29 @@ function tubeZ(
 /** Pipe end stubs this long carry no data pulse: no cyan glow sits on a joint (TASK-453c). */
 const PULSE_MARGIN = 0.14;
 /** Support posts reach this far below the piece origin (buried on flat ground). */
-const PIPE_LEG = 2.6;
+const PIPE_LEG = 4.2;
 
 export function pipe({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const acc = jitterAcc(rng, 0.02);
   const hi = lod === 0;
   const seg = hi ? 8 : 5;
   const rad = 0.17;
-  const elbow = variant % 3 === 1;
+  if (variant === PIPE_RUN.riser || variant === PIPE_RUN.knuckle)
+    return pipeJoint(acc, rng, hi, seg, rad, variant === PIPE_RUN.riser);
+  const elbow = variant === 1;
+  // TASK-461: pitched straights climb k · pitchStep over the piece (slope g along +x)
+  const pitched: readonly number[] = PIPE_RUN.pitched;
+  const g = (pitched.indexOf(variant) + 1) * (PIPE_RUN.pitchStep / 2);
   const segments: number[][] = elbow
     ? [
         [-1, 0.5, 0, 0, 0.5, 0],
         [0, 0.5, 0, 0, 0.5, 1],
       ]
-    : [[-1, 0.5, 0, 1, 0.5, 0]];
+    : [[-1, 0.5 - g, 0, 1, 0.5 + g, 0]];
   // TASK-384: the pipe-colour tube bodies carry the data-pulse tag (axis in object space)
-  const pulses: Array<[VertexRange, 'x' | 'z']> = [];
-  const body = (axis: 'x' | 'z', draw: () => void): void => {
+  type Axis = 'x' | 'z' | readonly [number, number, number];
+  const pulses: Array<[VertexRange, Axis]> = [];
+  const body = (axis: Axis, draw: () => void): void => {
     const first = accVerts(acc);
     draw();
     pulses.push([{ first, count: accVerts(acc) - first }, axis]);
@@ -218,13 +227,15 @@ export function pipe({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
       );
     }
   } else {
-    body('x', () => tubeX(acc, -1 + PULSE_MARGIN, 1 - PULSE_MARGIN, 0, rad, seg, K.pipe));
+    const n = Math.hypot(1, g);
+    const axis: Axis = g === 0 ? 'x' : [1 / n, g / n, 0];
+    body(axis, () => tubeX(acc, -1 + PULSE_MARGIN, 1 - PULSE_MARGIN, 0, rad, seg, K.pipe, 0.5, g));
     if (hi) {
-      tubeX(acc, -1, -1 + PULSE_MARGIN, 0, rad, seg, K.pipe);
-      tubeX(acc, 1 - PULSE_MARGIN, 1, 0, rad, seg, K.pipe);
+      tubeX(acc, -1, -1 + PULSE_MARGIN, 0, rad, seg, K.pipe, 0.5, g);
+      tubeX(acc, 1 - PULSE_MARGIN, 1, 0, rad, seg, K.pipe, 0.5, g);
     }
-    tubeX(acc, -0.62, -0.38, 0, rad * 1.14, seg, K.accent);
-    if (variant !== 2) tubeX(acc, 0.38, 0.62, 0, rad * 1.14, seg, K.accent);
+    tubeX(acc, -0.62, -0.38, 0, rad * 1.14, seg, K.accent, 0.5, g);
+    if (variant !== 2) tubeX(acc, 0.38, 0.62, 0, rad * 1.14, seg, K.accent, 0.5, g);
   }
   if (hi) {
     const flangeAt: Array<[number, number, boolean]> = elbow
@@ -240,10 +251,10 @@ export function pipe({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
       put(
         acc,
         new THREE.CylinderGeometry(rad * 1.38, rad * 1.38, 0.07, 8),
-        [alongX ? a : 0, 0.5, alongX ? 0 : b],
+        [alongX ? a : 0, 0.5 + g * a, alongX ? 0 : b],
         K.flange,
         {
-          q: alongX ? qEuler(0, 0, Math.PI / 2) : qEuler(Math.PI / 2, 0, 0),
+          q: alongX ? qEuler(0, 0, Math.PI / 2 + Math.atan(g)) : qEuler(Math.PI / 2, 0, 0),
           aoAmt: 0,
         },
       );
@@ -262,23 +273,29 @@ export function pipe({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   for (const [a, b, alongX] of supports) {
     const x = alongX ? a : 0;
     const z = alongX ? 0 : b;
+    // (a pitched piece: the saddle follows the tube, the post still ends at −PIPE_LEG)
+    const dy = g * x;
     // post running down into the ground: reaches the slope when the run is set on a climb
     put(
       acc,
-      hi ? baseBox(0.12, PIPE_LEG, 0.12) : cylB(0.07, 0.07, PIPE_LEG, 3, true),
+      hi ? baseBox(0.12, PIPE_LEG + dy, 0.12) : cylB(0.07, 0.07, PIPE_LEG + dy, 3, true),
       [x, -PIPE_LEG, z],
       K.support,
       { aoAmt: 0.25 },
     );
     if (hi) {
-      put(acc, baseBox(alongX ? 0.14 : 0.42, 0.3, alongX ? 0.42 : 0.14), [x, 0, z], K.support, {
+      put(acc, baseBox(alongX ? 0.14 : 0.42, 0.3, alongX ? 0.42 : 0.14), [x, dy, z], K.support, {
         aoAmt: 0.2,
       });
-      put(acc, baseBox(alongX ? 0.16 : 0.34, 0.06, alongX ? 0.34 : 0.16), [x, 0.3, z], K.flange, {
-        aoAmt: 0,
-      });
+      put(
+        acc,
+        baseBox(alongX ? 0.16 : 0.34, 0.06, alongX ? 0.34 : 0.16),
+        [x, dy + 0.3, z],
+        K.flange,
+        { aoAmt: 0 },
+      );
     } else {
-      put(acc, cylB(0.14, 0.12, 0.34, 3, true), [x, 0, z], K.support, { aoAmt: 0.1 });
+      put(acc, cylB(0.14, 0.12, 0.34, 3, true), [x, dy, z], K.support, { aoAmt: 0.1 });
     }
   }
   if (variant === 2) {
@@ -300,10 +317,46 @@ export function pipe({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
       put(acc, baseBox(0.28, 0.1, 0.28), [0, 0.9, 0], K.valve, { aoAmt: 0 });
     }
   }
-  const g = finish(acc, rng);
-  g.userData.hooks = { pulse: { r: rad, segments } };
-  for (const [r, axis] of pulses) tagPulse(g, r, axis);
-  return g;
+  const geo = finish(acc, rng);
+  geo.userData.hooks = { pulse: { r: rad, segments } };
+  for (const [r, axis] of pulses) tagPulse(geo, r, axis);
+  return geo;
+}
+
+/**
+ * Riser pieces (TASK-461): `riser` = one `PIPE_RUN.riserUnit` length of vertical tube from the
+ * tube height (0.5) up (a coupling ring at its foot), stacked over a climb too steep for the
+ * pitched pieces; `knuckle` = the bend ball where a run turns up or down into a riser.
+ */
+function pipeJoint(
+  acc: Acc,
+  rng: Rng,
+  hi: boolean,
+  seg: number,
+  rad: number,
+  riser: boolean,
+): THREE.BufferGeometry {
+  const u = PIPE_RUN.riserUnit;
+  const pulses: VertexRange[] = [];
+  if (riser) {
+    const first = accVerts(acc);
+    put(acc, new THREE.CylinderGeometry(rad, rad, u, seg, 1, true), [0, 0.5 + u / 2, 0], K.pipe, {
+      aoAmt: 0.1,
+    });
+    pulses.push({ first, count: accVerts(acc) - first });
+    if (hi)
+      put(acc, new THREE.CylinderGeometry(rad * 1.3, rad * 1.3, 0.06, 8), [0, 0.53, 0], K.flange, {
+        aoAmt: 0,
+      });
+  } else {
+    put(acc, new THREE.IcosahedronGeometry(rad * 1.3, hi ? 1 : 0), [0, 0.5, 0], K.pipe, {
+      aoAmt: 0,
+    });
+  }
+  const geo = finish(acc, rng);
+  geo.userData.hooks = { pulse: { r: rad, segments: riser ? [[0, 0.5, 0, 0, 0.5 + u, 0]] : [] } };
+  for (const r of pulses) tagPulse(geo, r, [0, 1, 0]);
+  return geo;
 }
 
 export function cableSpool({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
@@ -609,11 +662,11 @@ export const DEVOPS_GEO: readonly PropGeoDef[] = [
   },
   {
     id: 'pipe',
-    variants: 3,
+    variants: 8,
     build: pipe,
     footprint: 1.0,
     height: 1.0,
-    heights: [0.7, 0.95, 1.05],
+    heights: [0.7, 0.95, 1.05, 0.9, 1.05, 1.2, 1.1, 0.75],
     windy: false,
   },
   {

@@ -202,9 +202,14 @@ export function tagRange(
   s.needsUpdate = true;
 }
 
-/** Pipe pulse tag: tube axis (object space, unit) + kind. */
-export function tagPulse(g: THREE.BufferGeometry, r: VertexRange, axis: 'x' | 'z'): void {
-  tagRange(g, r, axis === 'x' ? [1, 0, 0, -SURFACE.pulse] : [0, 0, 1, -SURFACE.pulse]);
+/** Pipe pulse tag: tube axis (object space, unit; or a unit vector, TASK-461 pitch) + kind. */
+export function tagPulse(
+  g: THREE.BufferGeometry,
+  r: VertexRange,
+  axis: 'x' | 'z' | readonly [number, number, number],
+): void {
+  const v = axis === 'x' ? [1, 0, 0] : axis === 'z' ? [0, 0, 1] : axis;
+  tagRange(g, r, [v[0], v[1], v[2], -SURFACE.pulse]);
 }
 
 /** Turbine head: spinning vertices → yaw + spin, the rest of the range → yaw. */

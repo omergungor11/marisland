@@ -16,6 +16,8 @@
 import type { Rng } from '../../../core/rng.ts';
 import { FLATTEN, LOT_FOOTPRINT, VILLAGE } from '../../../content/settlements.ts';
 import { DEVOPS_SITE } from '../../../content/themes/devops.ts';
+import { PIPE_RUN } from '../../../content/props-themes/devops.ts';
+import { snapPipeLine } from '../../pipe-run.ts';
 import { heightAt, Zone } from '../../types.ts';
 import type { DistrictData, IslandData, StorySpot, XZ } from '../../types.ts';
 import { cellX, cellZ, gridRange } from '../grid.ts';
@@ -498,7 +500,7 @@ function steamMain(
   const tower = towers.reduce((a, b) => (dist(b, vent) < dist(a, vent) ? b : a));
   const start = add(vent, unit(vent, tower), 1);
   const end = add(tower, unit(tower, vent), endR + 0.6);
-  const line = routeLine(ctx, isl, start, end, V.maxSlope);
+  const line = routeLine(ctx, isl, start, end, tower, V.maxSlope);
   if (!line) return null;
   ctx.fixtures.push({ defId: 'steamVent', x: vent.x, z: vent.z, rotY: 0, islandId: isl.id });
   addShape(ctx, isl, discShape(vent.x, vent.z, 0.6), true);
@@ -526,15 +528,19 @@ function routePipe(
   const cu = Math.max(-lot.w / 2 - 0.8, Math.min(lot.w / 2 + 0.8, dx * t.x + dz * t.z));
   const cv = Math.max(-lot.d / 2 - 0.8, Math.min(lot.d / 2 + 0.8, dx * f.x + dz * f.z));
   const end = add(add(lot, t, cu), f, cv);
-  return routeLine(ctx, isl, start, end);
+  return routeLine(ctx, isl, start, end, lot);
 }
 
-/** A pipe run from `start` to `end` (see routePipe); null when no route stands. */
+/**
+ * A pipe run from `start` to `end` (see routePipe) feeding the building / tower centred at
+ * `into`; null when no route stands.
+ */
 function routeLine(
   ctx: SiteCtx,
   isl: IslandData,
   start: XZ,
   end: XZ,
+  into: XZ,
   maxSlope: number = S.pipeline.maxSlope,
 ): XZ[] | null {
   const P = S.pipeline;
@@ -579,14 +585,26 @@ function routeLine(
     }
     return true;
   };
-  const out: XZ[] = [raw[0]];
+  const straight: XZ[] = [raw[0]];
   let i = 0;
   while (i < raw.length - 1) {
     let j = raw.length - 1;
     while (j > i + 1 && !sight(raw[i], raw[j])) j--;
-    out.push(raw[j]);
+    straight.push(raw[j]);
     i = j;
   }
+  // TASK-461: whole pipe pieces fill every leg (the pieces meet at the bends); a slid vertex
+  // keeps the legs valid (the pitched pieces and risers take the grade)
+  const open = (a: XZ, b: XZ): boolean => {
+    const L = dist(a, b);
+    const k = Math.max(1, Math.ceil(L / 0.5));
+    for (let j = 0; j <= k; j++) {
+      const q = add(a, unit(a, b), (L * j) / k);
+      if (!valid(q.x, q.z)) return false;
+    }
+    return true;
+  };
+  const out = snapPipeLine(straight, PIPE_RUN.piece, PIPE_RUN.elbowTolerance, open, into);
   for (let k = 1; k < out.length; k++) {
     const a = out[k - 1];
     const b = out[k];

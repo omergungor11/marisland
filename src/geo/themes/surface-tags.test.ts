@@ -47,7 +47,8 @@ describe('animated-surface tags (TASK-384)', () => {
   });
 
   it('pipes pulse along a unit axis; rack rows blink; turbines yaw; solar rows track', () => {
-    for (let v = 0; v < 3; v++) {
+    // (TASK-461: the pitched pieces and the riser too; the knuckle ball, 7, carries none)
+    for (let v = 0; v < 7; v++) {
       const s = buildProp('pipe', 7, v, 0).getAttribute('aSpin');
       let n = 0;
       for (let i = 0; i < s.count; i++)

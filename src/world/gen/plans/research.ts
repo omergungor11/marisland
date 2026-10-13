@@ -879,16 +879,17 @@ function academy(ctx: SiteCtx, isl: IslandData, rng: Rng, s: AcademySite): Story
   /** The footprint lies inside one existing pad's flat core. */
   // (a terraced island's pad leaves ground more than `padBreak` u off its level alone)
   const brk = (ARCHETYPES[isl.archetype].terraces?.padBreak ?? Infinity) - CS.level.breakKeep;
-  const inPadCore = (sh: Shape, cell = 0): boolean => {
+  const inPadCore = (sh: Shape, cell = 0, group: number = LEVEL.quad): boolean => {
     const pts =
       sh.r > 0
         ? [sh, ...[0, 1, 2, 3, 4, 5, 6, 7].map((k) => add(sh, dirOf((k / 8) * TAU), sh.r))]
         : [sh, ...shapeCorners(sh)];
     // every core the footprint touches: overlapping cores blend their levels, so they must be one
-    // pad or the quad terrace's group (one flat level; the slope districts' groups are not)
+    // pad or `group` (the quad terrace / the garden lawn: one flat level; the slope districts'
+    // groups are not)
     const touch = padsHere().filter((p) => shapesOverlap(p.shape, sh, p.margin));
     if (touch.length === 0) return false;
-    if (touch.length > 1 && !touch.every((p) => p.group === LEVEL.quad)) return false;
+    if (touch.length > 1 && !touch.every((p) => p.group === group)) return false;
     const p = touch.find((q) =>
       sh.r > 0
         ? shapeDist(q.shape, sh.x, sh.z) + sh.r <= q.margin - cell
@@ -929,6 +930,8 @@ function academy(ctx: SiteCtx, isl: IslandData, rng: Rng, s: AcademySite): Story
     /** Ground already flat enough next to a footprint (default `level.flat`). */
     flat?: number;
     ok?: (sh: Shape) => boolean;
+    /** Level ground test instead of `groundOf` (off the plaza). */
+    ground?: (sh: Shape) => 'core' | 'pad' | null;
   }
   /** Place `defId` at the first free candidate (its FIXTURE_RADIUS disc); on the lawn with a pad. */
   const placeFirst = (
@@ -942,7 +945,7 @@ function academy(ctx: SiteCtx, isl: IslandData, rng: Rng, s: AcademySite): Story
       const sh = discShape(c.p.x, c.p.z, r);
       const gap = o.gap ?? (o.plaza ? CS.gap.plaza : CS.gap.lawn);
       if (!free(sh, gap, !!o.plaza, NaN)) continue;
-      const g = o.plaza ? 'core' : groundOf(sh, o.flat);
+      const g = o.plaza ? 'core' : (o.ground ?? ((q: Shape) => groundOf(q, o.flat)))(sh);
       if (!g || (o.ok && !o.ok(sh))) continue;
       put(ctx, isl, defId, c.p, c.rot, { sh, variant, pad: g === 'pad' ? CS.pad : undefined });
       return c;
@@ -957,6 +960,43 @@ function academy(ctx: SiteCtx, isl: IslandData, rng: Rng, s: AcademySite): Story
     phase: number,
     rot: (p: XZ) => number,
   ): Cand[] => ring(c, r0, r1, 0.5, n, phase).map((p) => ({ p, rot: rot(p) }));
+
+  /**
+   * A parterre plot of the formal garden cleared for a site (TASK-461 lecture fallback): the plot
+   * nearest the quad whose square, its hedge gone, holds `site(p, rot)` centred on it (grid-
+   * aligned turns, the one looking away from the quad first) inside the garden's level core.
+   * The hedge fixture and its obstacle are removed (its pad stays: the site keeps its level).
+   * `ahead`: site centre − pivot along the facing.
+   */
+  const gardenPlot = (
+    ahead: number,
+    site: (p: XZ, rot: number) => Shape,
+  ): { p: XZ; rot: number; core: boolean } | null => {
+    const shapes = ctx.shapes[isl.id];
+    const plots = ctx.fixtures
+      .map((f, i) => ({ f, i }))
+      .filter(({ f }) => f.islandId === isl.id && f.defId === 'hedgeParterre')
+      .sort((a, b) => dist(a.f, quad) - dist(b.f, quad));
+    for (const { f, i } of plots) {
+      const si = shapes.findIndex((o) => o.r === 0 && o.x === f.x && o.z === f.z);
+      if (si < 0) continue;
+      const [hedge] = shapes.splice(si, 1);
+      const away = face(quad, f);
+      const turns = [0, 1, 2, 3]
+        .map((k) => f.rotY + (k * Math.PI) / 2)
+        .sort((a, b) => angGap(a, away) - angGap(b, away));
+      for (const rot of turns) {
+        const p = add(f, dirOf(rot), -ahead);
+        const all = site(p, rot);
+        if (!free(all, CS.lecture.gap, false, NaN, CS.lecture.minShore) || !offWalks(all)) continue;
+        if (!inPadCore(all, 0, LEVEL.garden)) continue;
+        ctx.fixtures.splice(i, 1);
+        return { p, rot, core: true };
+      }
+      shapes.splice(si, 0, hedge);
+    }
+    return null;
+  };
 
   // ---- lecture steps facing a chalkboard on the lawn (first: the biggest footprint)
   {
@@ -983,7 +1023,8 @@ function academy(ctx: SiteCtx, isl: IslandData, rng: Rng, s: AcademySite): Story
       }
       return Infinity;
     });
-    const b = best as { p: XZ; rot: number } | null;
+    let b = best as { p: XZ; rot: number; core?: boolean } | null;
+    if (!b) b = gardenPlot(len / 2 - st.back - st.d / 2, (p, rot) => siteOf(p, rot));
     if (b) {
       const f = dirOf(b.rot);
       const sp = add(b.p, f, -st.back);
@@ -996,8 +1037,9 @@ function academy(ctx: SiteCtx, isl: IslandData, rng: Rng, s: AcademySite): Story
         sh: rectShape(bp.x, bp.z, b.rot, bd.w, bd.d),
         variant: bd.variant,
       });
-      // one pad levels the steps, the lecturer's spot and the board together
-      addPad(ctx, isl, siteOf(b.p, b.rot), CS.pad, S.padStep);
+      // one pad levels the steps, the lecturer's spot and the board together (a garden plot is
+      // level already)
+      if (!b.core) addPad(ctx, isl, siteOf(b.p, b.rot), CS.pad, S.padStep);
       story('lecture', add(b.p, f, bd.at - 0.9), b.rot + Math.PI, ['lectureSteps', 'chalkboard']);
     }
   }
@@ -1049,7 +1091,10 @@ function academy(ctx: SiteCtx, isl: IslandData, rng: Rng, s: AcademySite): Story
   }
   // a cord crosses a walk: no pad of its own (a terrace step on a ramp breaks the climb), so the
   // whole strip must lie inside one district core (the rigid cord needs both poles level)
-  pennants(ctx, isl, quad, lib, s.avenues, (sh) => (inPadCore(sh) ? 'core' : null), opensPins);
+  pennants(ctx, isl, quad, lib, s.avenues, (sh) => (inPadCore(sh) ? 'core' : null), opensPins, {
+    ground: (sh) => groundOf(sh),
+    ok: offWalks,
+  });
 
   // ---- summit: the comet watch (telescope + book-pile stool + the comet board) and the owl box,
   // on the flat terrace round the dome (inside the observatory pad's core: no pads of their own)
@@ -1112,14 +1157,26 @@ function academy(ctx: SiteCtx, isl: IslandData, rng: Rng, s: AcademySite): Story
       // the comet board on the terrace next to it, its face outward (a slim rect along the rim,
       // inside the flat core with a sample cell to spare), nearest the telescope
       const B = SM.board;
-      const near = terrace(B.d / 2, out, SM.slimDrop).sort((a, b) => dist(a.p, at) - dist(b.p, at));
+      // the passes (TASK-461): the flat rim first; then ground a little farther off the level
+      // (the pads level it, the sample cells kept), more bearings, the door sector narrowed
       let board = false;
-      for (const c of near) {
-        const sh = rectShape(c.p.x, c.p.z, c.rot, B.w, B.d);
-        if (!free(sh, SM.gap, false, NaN) || !inPadCore(sh, B.cell)) continue;
-        put(ctx, isl, 'chalkboard', c.p, c.rot, { sh, variant: B.variant });
-        board = true;
-        break;
+      for (const pass of B.passes) {
+        const r0 = S.observatory.radius + SM.gap + B.d / 2;
+        const rim = ringAt(obs, r0, flatR, pass.angles, phase, out)
+          .filter(
+            (c) =>
+              angGap(face(obs, c.p), door) >= pass.doorKeepDeg * DEG &&
+              Math.abs(heightAt(ctx.h, c.p.x, c.p.z) - obsY) <= pass.drop,
+          )
+          .sort((a, b) => dist(a.p, at) - dist(b.p, at));
+        for (const c of rim) {
+          const sh = rectShape(c.p.x, c.p.z, c.rot, B.w, B.d);
+          if (!free(sh, SM.gap, false, NaN) || !inPadCore(sh, pass.cell)) continue;
+          put(ctx, isl, 'chalkboard', c.p, c.rot, { sh, variant: B.variant });
+          board = true;
+          break;
+        }
+        if (board) break;
       }
       story(
         'cometWatch',
@@ -1162,12 +1219,39 @@ function academy(ctx: SiteCtx, isl: IslandData, rng: Rng, s: AcademySite): Story
     );
     cart = placeFirst('weatherBalloonCart', cands, B.variant, { ok: offWalks });
   }
+  const late = !cart;
+  if (!cart) {
+    // TASK-461: the flattest free lawn round the quad on its own pad (a steeper notch allowed)
+    const L = B.lawn;
+    const cands = islandCells(ctx, isl)
+      .map((i) => cellPos(ctx, i))
+      .filter((p) => dist(p, quad) >= L.ring[0] && dist(p, quad) <= L.ring[1])
+      .map((p) => ({
+        p,
+        rot: face(p, quad),
+        rel: reliefAround(discShape(p.x, p.z, radiusOf('weatherBalloonCart'))),
+      }))
+      .filter((c) => c.rel <= L.relief)
+      .sort((a, b) => a.rel - b.rel || dist(a.p, quad) - dist(b.p, quad));
+    cart = placeFirst('weatherBalloonCart', cands, B.variant, {
+      ground: (sh) => (padClear(sh) ? 'pad' : null),
+      ok: offWalks,
+    });
+  }
+  if (!cart) {
+    // …else on the quad paving round the fountain, off the avenue mouths
+    const Q = B.quad;
+    const cands = ringAt(quad, Q.ring[0], Q.ring[1], Q.angles, 0, (p) => face(p, quad)).filter(
+      (c) => Math.min(...s.avenues.map((v) => angGap(face(quad, c.p), v))) >= Q.avenueKeepDeg * DEG,
+    );
+    cart = placeFirst('weatherBalloonCart', cands, B.variant, { plaza: true });
+  }
   if (cart)
     story(
       'balloonLaunch',
       cart.p,
       cart.rot,
-      mast ? ['weatherBalloonCart', 'weatherMast'] : ['weatherBalloonCart'],
+      mast && !late ? ['weatherBalloonCart', 'weatherMast'] : ['weatherBalloonCart'],
     );
 
   // ---- glasshouses: a row of mini volcano terrariums in front of the terrarium row
@@ -1277,6 +1361,7 @@ function pennants(
   avenues: readonly number[],
   ground: (sh: Shape) => 'core' | 'pad' | null,
   opens: (sh: Shape) => boolean,
+  lawn: { ground: (sh: Shape) => 'core' | 'pad' | null; ok: (sh: Shape) => boolean },
 ): void {
   const P = CS.pennants;
   const R = S.quad.radius;
@@ -1290,18 +1375,46 @@ function pennants(
   }
   for (let t = 0; t <= P.reach; t += P.step)
     for (const a of avenues) cands.push({ p: add(quad, dirOf(a), R + P.start + t), rot: a });
+  // TASK-461 fallback (only while fewer than `min` lines stand): chords across the quad paving,
+  // their poles off the avenue mouths, the chords between the avenues first
+  const C = P.chords;
+  const avGap = (b: number): number => Math.min(...avenues.map((v) => angGap(b, v)));
+  const chords: (Cand & { gap: number })[] = [];
+  for (const d of C.d)
+    for (let k = 0; k < C.angles; k++) {
+      const b = (k / C.angles) * TAU;
+      const pb = Math.atan2(P.half, d);
+      const gap = Math.min(avGap(b + pb), avGap(b - pb));
+      if (gap < C.avenueKeepDeg * DEG) continue;
+      chords.push({ p: add(quad, dirOf(b), d), rot: b, gap: avGap(b) });
+    }
+  chords.sort((a, b) => b.gap - a.gap);
+  const primary = cands.length;
+  cands.push(...chords);
+  // …then lines on the lawn round the quad, the cord along the contour (a low pad levels the
+  // strip; off the walks, clear of everything), nearest the quad first
+  const lawnFrom = cands.length;
+  const L = P.lawn;
+  const lawnCands = islandCells(ctx, isl)
+    .map((i) => cellPos(ctx, i))
+    .filter((p) => dist(p, quad) >= L.ring[0] && dist(p, quad) <= L.ring[1])
+    .map((p) => {
+      const e = ctx.h.cellSize;
+      const gx = heightAt(ctx.h, p.x + e, p.z) - heightAt(ctx.h, p.x - e, p.z);
+      const gz = heightAt(ctx.h, p.x, p.z + e) - heightAt(ctx.h, p.x, p.z - e);
+      // the strip's depth axis down the slope: the cord runs along the contour
+      return { p, rot: Math.hypot(gx, gz) > 1e-6 ? ang(gx, gz) : face(quad, p), d: dist(p, quad) };
+    })
+    .sort((a, b) => a.d - b.d);
+  cands.push(...lawnCands);
   const lines: XZ[] = [];
-  const pole = (q: XZ): boolean => {
-    const sh = discShape(q.x, q.z, P.poleR);
-    return (
-      onIsland(ctx, isl, q.x, q.z) &&
-      heightAt(ctx.h, q.x, q.z) > 0.5 &&
-      clear(ctx, isl, sh, 0.2, true) &&
-      opens(sh)
-    );
-  };
-  for (const c of cands) {
-    if (lines.length >= P.count) break;
+  // (the pins' flood fill last: every test is pure, the cheap ones go first)
+  const pole = (q: XZ): boolean =>
+    onIsland(ctx, isl, q.x, q.z) &&
+    heightAt(ctx.h, q.x, q.z) > 0.5 &&
+    clear(ctx, isl, discShape(q.x, q.z, P.poleR), 0.2, true);
+  for (const [i, c] of cands.entries()) {
+    if (lines.length >= (i < primary ? P.count : P.min)) break;
     if (lines.some((q) => dist(q, c.p) < P.spacing - 0.1)) continue;
     const nrm = perp(dirOf(c.rot));
     const a = add(c.p, nrm, P.half);
@@ -1313,8 +1426,14 @@ function pennants(
     const big = (o: Shape): boolean => (o.r > 0 ? o.r : Math.max(o.hw, o.hd)) > P.bigR;
     if (ctx.shapes[isl.id].some((o) => o.tag !== 'plaza' && big(o) && shapesOverlap(o, strip, 0.2)))
       continue;
-    const g = ground(strip);
-    if (!g) continue;
+    let g: 'core' | 'pad' | null;
+    if (i < lawnFrom) g = ground(strip);
+    else {
+      if (!clear(ctx, isl, strip, 0.2) || !lawn.ok(strip)) continue;
+      g = lawn.ground(strip);
+    }
+    if (!g || !opens(discShape(a.x, a.z, P.poleR)) || !opens(discShape(b.x, b.z, P.poleR)))
+      continue;
     ctx.fixtures.push({
       defId: 'pennantLine',
       x: c.p.x,

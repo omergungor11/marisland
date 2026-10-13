@@ -4,6 +4,7 @@ import { PROP_DEFS, PROP_DEF_INDEX } from '../../content/props.ts';
 import { THEMES } from '../../content/themes.ts';
 import { EMITTERS, FIXTURE_EMITTERS, INTERIOR_OF, OFFICE_DEFS } from '../../content/offices.ts';
 import { FLOATING_FIXTURES } from '../../content/settlements.ts';
+import { PIPE_RUN } from '../../content/props-themes/devops.ts';
 import { PropFlag, type PropStore } from '../../world/prop-store.ts';
 import { heightAt } from '../../world/types.ts';
 import { lotLocalToWorld, lotYaw } from '../../world/lot-frame.ts';
@@ -295,14 +296,18 @@ describe('settlement props: districts and pipes (TASK-373)', () => {
     it('pipe polylines draw pipe segments (2 u), fences stay fences', () => {
       const world = make();
       const { props } = appendSettlementProps(world);
-      const pipes = ofDef(props, 'pipe');
+      // (the riser stacks of a steep stretch aside, TASK-461)
+      const joint: number[] = [PIPE_RUN.riser, PIPE_RUN.knuckle];
+      const pipes = ofDef(props, 'pipe').filter((i) => !joint.includes(props.variant[i]));
       expect(pipes).toHaveLength(5);
       const lot = world.fences[world.fences.length - 1].points[0];
       expect(pipes.map((i) => props.x[i] - lot.x)).toEqual(
         [1, 3, 5, 7, 9].map((v) => expect.closeTo(v, 4)),
       );
-      // straight variants only (variant 1 is an elbow)
-      expect(pipes.map((i) => props.variant[i])).toEqual([0, 2, 0, 2, 0]);
+      // straight variants only (variant 1 is an elbow): level pieces cycle plain / valve, a
+      // piece on a slope takes a pitched variant (TASK-461)
+      const pitched: readonly number[] = PIPE_RUN.pitched;
+      pipes.forEach((i, k) => expect([[0, 2, 0, 2, 0][k], ...pitched]).toContain(props.variant[i]));
       const fenceRuns = world.fences.filter((f) => f.kind !== 'pipe').length;
       if (fenceRuns) expect(ofDef(props, 'fence').length).toBeGreaterThan(0);
     });

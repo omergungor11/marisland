@@ -10,10 +10,12 @@ import {
   type EmitterSpot,
 } from '../../content/offices.ts';
 import { FLOATING_FIXTURES } from '../../content/settlements.ts';
+import { PIPE_RUN } from '../../content/props-themes/devops.ts';
 import { createPropStore, PropFlag, type PropStore } from '../../world/prop-store.ts';
 import { heightAt, type DistrictKind, type WorldData } from '../../world/types.ts';
 import { lotLocalToWorld, lotPivotY, lotYaw } from '../../world/lot-frame.ts';
 import { chunkIdAt } from '../../world/gen/scatter.ts';
+import { elbowTurn, levelPipeRun, type PipeSpan } from '../../world/pipe-run.ts';
 
 /**
  * Settlement geometry as prop instances: lots, landmarks, dock segments, fence
@@ -285,16 +287,9 @@ export function appendSettlementProps(world: WorldData): {
         ),
       );
   }
-  // pipe pieces: level at the highest of their end points' ground (arms reach 1 u)
-  const perchY = (x: number, z: number, yaw: number, arms: readonly [number, number][]): number => {
-    const [cx, cz] = [Math.cos(yaw), -Math.sin(yaw)]; // local +x in the world
-    const [sx, sz] = [Math.sin(yaw), Math.cos(yaw)]; // local +z in the world
-    let top = heightAt(h, x, z);
-    for (const [ax, az] of arms)
-      top = Math.max(top, heightAt(h, x + cx * ax + sx * az, z + cz * ax + sz * az));
-    return top;
-  };
-  // fences (and M14b pipes, kind 'pipe') along polylines: segments span local +x
+  // fences (and M14b pipes, kind 'pipe') along polylines: segments span local +x. Pipe runs
+  // (TASK-461) are levelled as a whole by world/pipe-run.ts: pitched pieces up and down the
+  // slope, joints continuous, risers (knuckle + riser segments + knuckle) where it is too steep
   for (const f of world.fences) {
     const seg = LINE_SEGMENT[f.kind] ?? LINE_SEGMENT.fence;
     const pts = f.points;
@@ -304,19 +299,33 @@ export function appendSettlementProps(world: WorldData): {
       if (seg.elbow === undefined || f.closed || i === 0 || i === pts.length - 1) return NaN;
       const p = pts[i - 1];
       const b = pts[i + 1];
+      const turn = elbowTurn(p, a, b, PIPE_RUN.elbowTolerance);
+      if (Number.isNaN(turn)) return NaN;
       const li = Math.hypot(a.x - p.x, a.z - p.z);
       const lo = Math.hypot(b.x - a.x, b.z - a.z);
-      if (li < 2 || lo < 2) return NaN;
       const [ux, uz] = [(a.x - p.x) / li, (a.z - p.z) / li];
       const [ox, oz] = [(b.x - a.x) / lo, (b.z - a.z) / lo];
-      const turn = Math.atan2(ux * oz - uz * ox, ux * ox + uz * oz);
-      if (Math.abs(Math.abs(turn) - Math.PI / 2) > ELBOW_TOLERANCE) return NaN;
       // the elbow joins local −x → +z (its arms reach 1 u): local +x along the way in for a
       // left turn, along the reversed way out for a right turn (walked +z → −x)
       return turn > 0 ? Math.atan2(-uz, ux) : Math.atan2(oz, -ox);
     });
+    const pieces: (PipeSpan & { x: number; z: number; yaw: number; v?: number })[] = [];
     let carry = 0;
     let made = 0;
+    let arc = 0;
+    let end = NaN;
+    const piece = (
+      x: number,
+      z: number,
+      yaw: number,
+      v: number | undefined,
+      span: Omit<PipeSpan, 'joined'>,
+      s0: number,
+      s1: number,
+    ): void => {
+      pieces.push({ ...span, x, z, yaw, v, joined: Math.abs(s0 - end) < 1e-3 });
+      end = s1;
+    };
     for (let i = 0; i < n; i++) {
       const a = pts[i];
       const b = pts[(i + 1) % pts.length];
@@ -326,14 +335,22 @@ export function appendSettlementProps(world: WorldData): {
       if (len < 1e-3) continue;
       const yaw = Math.atan2(-dz, dx); // fence rails span local +x
       if (!Number.isNaN(elbowYaw[i])) {
-        const ey =
-          seg.perch === undefined
-            ? undefined
-            : perchY(a.x, a.z, elbowYaw[i], [
-                [-1, 0],
-                [0, 1],
-              ]) - seg.perch;
-        push(seg.def, a.x, a.z, elbowYaw[i], 1, f.islandId, ey, seg.elbow);
+        const p = pts[i - 1];
+        const li = Math.hypot(a.x - p.x, a.z - p.z);
+        piece(
+          a.x,
+          a.z,
+          elbowYaw[i],
+          seg.elbow,
+          {
+            from: { x: a.x + ((p.x - a.x) / li) * 1, z: a.z + ((p.z - a.z) / li) * 1 },
+            via: a,
+            to: { x: a.x + (dx / len) * 1, z: a.z + (dz / len) * 1 },
+            level: true,
+          },
+          arc - 1,
+          arc + 1,
+        );
         carry = 1;
       }
       const stop = len - (Number.isNaN(elbowYaw[i + 1]) ? 0 : 1);
@@ -342,18 +359,59 @@ export function appendSettlementProps(world: WorldData): {
         const z = a.z + (dz / len) * (t + seg.len / 2);
         // fences roll their variant from the decor stream (unchanged); listed variants cycle
         const v = seg.variants ? seg.variants[made++ % seg.variants.length] : undefined;
-        const py =
-          seg.perch === undefined
-            ? undefined
-            : perchY(x, z, yaw, [
-                [-seg.len / 2, 0],
-                [seg.len / 2, 0],
-              ]) - seg.perch;
-        push(seg.def, x, z, yaw, 1, f.islandId, py, v);
+        const from = { x: a.x + (dx / len) * t, z: a.z + (dz / len) * t };
+        const to = { x: a.x + (dx / len) * (t + seg.len), z: a.z + (dz / len) * (t + seg.len) };
+        piece(x, z, yaw, v, { from, to, level: false }, arc + t, arc + t + seg.len);
         carry = t + seg.len - len;
       }
       if (carry < 0) carry = 0;
+      arc += len;
     }
+    const levels = seg.run ? levelPipeRun(h, pieces, PIPE_RUN) : null;
+    pieces.forEach((p, k) => {
+      if (!levels) {
+        push(seg.def, p.x, p.z, p.yaw, 1, f.islandId, undefined, p.v);
+        return;
+      }
+      const { a, b, riser } = levels[k];
+      if (riser !== 0) {
+        // knuckle – riser segments – knuckle, standing at the joint (tube centre at local 0.5)
+        const y0 = Math.min(a, a - riser) - 0.5;
+        const m = Math.round(Math.abs(riser) / PIPE_RUN.riserUnit);
+        push(seg.def, p.from.x, p.from.z, p.yaw, 1, f.islandId, y0, PIPE_RUN.knuckle);
+        for (let j = 0; j < m; j++)
+          push(
+            seg.def,
+            p.from.x,
+            p.from.z,
+            p.yaw,
+            1,
+            f.islandId,
+            y0 + j * PIPE_RUN.riserUnit,
+            PIPE_RUN.riser,
+          );
+        push(
+          seg.def,
+          p.from.x,
+          p.from.z,
+          p.yaw,
+          1,
+          f.islandId,
+          y0 + Math.abs(riser),
+          PIPE_RUN.knuckle,
+        );
+      } else if (p.joined && k > 0 && !p.via && !pieces[k - 1].via) {
+        // a bend without an elbow: a knuckle covers the joint of the two legs
+        const turn = Math.abs(Math.sin(p.yaw - pieces[k - 1].yaw));
+        if (turn > 0.05 || Math.cos(p.yaw - pieces[k - 1].yaw) < 0)
+          push(seg.def, p.from.x, p.from.z, p.yaw, 1, f.islandId, a - 0.5, PIPE_RUN.knuckle);
+      }
+      // a climb: the pitched variant along +x; a fall: the same piece turned round
+      const k1 = Math.round(Math.abs(b - a) / PIPE_RUN.pitchStep);
+      const v = k1 === 0 ? p.v : PIPE_RUN.pitched[k1 - 1];
+      const yaw = b < a && k1 > 0 ? p.yaw + Math.PI : p.yaw;
+      push(seg.def, p.x, p.z, yaw, 1, f.islandId, (a + b) / 2 - 0.5, v);
+    });
   }
   // fixtures (well, buoy, tidePool, messageBottle …)
   for (const fx of world.fixtures) {
@@ -483,18 +541,16 @@ export function appendSettlementProps(world: WorldData): {
 const LINE_SEGMENT: Readonly<
   Record<
     string,
-    { def: string; len: number; variants?: readonly number[]; elbow?: number; perch?: number }
+    { def: string; len: number; variants?: readonly number[]; elbow?: number; run?: boolean }
   >
 > = {
   fence: { def: 'fence', len: 1.5 },
-  // perch: pieces sit level on their highest end's ground minus this (TASK-453c; the support
-  // posts of the pipe geo run down to the slope), instead of hanging off the centre's height
-  pipe: { def: 'pipe', len: 2, variants: [0, 2], elbow: 1, perch: 0.35 },
+  // run: the pieces are levelled as one run over the ground (TASK-461, world/pipe-run.ts; the
+  // support posts of the pipe geo run down to the slope)
+  pipe: { def: 'pipe', len: PIPE_RUN.piece, variants: [0, 2], elbow: 1, run: true },
   // TASK-405: the foundry rail line (geo/themes/devops-works.ts railTrack spans x ∈ [−1, 1])
   rail: { def: 'railTrack', len: 2 },
 };
-/** A polyline bend within this of 90° (rad) gets the line's elbow variant. */
-const ELBOW_TOLERANCE = 0.45;
 
 /**
  * District kind → lattice of row segments: `pitch` between rows (across `w`), `len` per segment
