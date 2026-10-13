@@ -715,10 +715,10 @@ export const TABLEAU: Readonly<Record<string, readonly TableauBotSpec[]>> = {
 /**
  * Most tableau bots a campus keeps (the first story spots in plan order win), by the quality's
  * `ambientScale` (low 0.5, medium 0.75, high 1): the awake workers never exceed `LIFE_PLAN.workers`,
- * so a small plan keeps most of its slots for the walkers.
+ * so a small plan keeps most of its slots for the walkers. Medium = high so Research fits its
+ * lecture (3) and tea time (2).
  */
-export const tableauMax = (ambientScale: number): number =>
-  ambientScale >= 1 ? 5 : ambientScale >= 0.75 ? 4 : 2;
+export const tableauMax = (ambientScale: number): number => (ambientScale >= 0.75 ? 5 : 2);
 
 /** Ground workers may stand on outside the path graph (outpost loops). */
 export const WORKER_ZONES = [
