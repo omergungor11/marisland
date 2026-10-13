@@ -686,6 +686,62 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     quality: 'medium',
     sets: ['dev'],
   },
+  // TASK-441 sky culture: every balloon belongs to a culture (gores = its accent, basket flies its
+  // pennant); cams are on the balloon's local +z flank (pennants face +-z) at 30 u, seed 1001 t = 2.
+  // Re-pin if `skyCraftPaths` or the seed layout changes.
+  {
+    id: 'D-sky-hype',
+    title: 'Hype Fleet · Star Academy balloon, star pennant',
+    seed: 1001,
+    cam: '-2.9,46.1,166,2.3,44,129.5',
+    time: 12,
+    simt: 2,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-sky-hype-hq',
+    title: 'Hype Fleet · Harbour Guild balloon, swallowtail pennant',
+    seed: 1001,
+    cam: '-162,37,-117,-131.5,35,-92.5',
+    time: 12,
+    simt: 2,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-sky-orchestrator',
+    title: 'Orchestrator airship · seven-pennant tail string (day)',
+    seed: 1001,
+    cam: '-132.9,97.6,18.6,-151.8,99.6,32.4',
+    time: 15,
+    simt: 2,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-sky-fleet',
+    title: 'Hype Fleet · four balloons over the archipelago',
+    seed: 1001,
+    cam: 'overview',
+    time: 12,
+    simt: 2,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  // Launch Show: 17:30 + 8 s the launch balloon inflates beside the Carnival mast; 24 s later it is
+  // lifting off toward the fleet orbit (culture clock runs on sim time under freeze).
+  {
+    id: 'D-sky-launch',
+    title: 'Launch Show · balloon inflating at the mast, then lifting off',
+    seed: 1001,
+    cam: '-30,5,205,-40,19,177',
+    time: 17.5,
+    simt: 8,
+    deltaT: 24,
+    quality: 'medium',
+    sets: ['dev'],
+  },
   {
     id: 'D-qa-night',
     title: 'Test Factory night · QA',
