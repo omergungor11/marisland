@@ -447,13 +447,13 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   {
     id: 'W16',
     title: 'Harbour Guild Morning',
-    // TASK-450: the Harbour Guild at the 06:05 bell fanfare, from the bay (raw): the whole clock
-    // tower with its lit face, the ferry pier with awning + timetable, crates, pennant lines, gulls
-    // up in the dawn mist (08:00 is greyer: the same pose at 8 u lost the tower's warm face)
+    // TASK-450: the Harbour Guild at 09:00 (the fog burns off after 08:30; earlier it greys the
+    // frame), low over the bay (raw): the pier root with awning + timetable, crates, pennant
+    // lines and banners as the subject, the whole clock tower behind it
     seed: 1001,
-    cam: '130,30,-150,86,5,-186',
-    time: 6.08,
-    simt: 25,
+    cam: '100,14,-150,86,9,-186',
+    time: 9,
+    simt: 15,
     quality: 'medium',
     width: 1920,
     height: 1080,
@@ -475,10 +475,11 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   {
     id: 'W18',
     title: 'Green Light',
-    // TASK-450: QA's 16:00 green-light ritual from the west lawn (raw): the check flag run up beside
-    // its scoreboard, the check tower, the Hall of Checks badges and a hangar roof flanking, sea behind
+    // TASK-450: QA's 16:00 green-light ritual from the west, up high (raw): the check flag run up
+    // beside its scoreboard on the lawn, the Hall of Checks badges and a conveyor bottom-left, the
+    // hangars flanking and the check tower as the backdrop
     seed: 1001,
-    cam: '-157,16,-197,-143,10.5,-193',
+    cam: '-157,20.5,-193,-145,10,-194',
     time: 16,
     simt: 12,
     quality: 'medium',
