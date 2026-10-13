@@ -375,7 +375,7 @@ Any click or key jumps to the final pose with a 400 ms ease.
 | W15 | **Relay Night** | 1001 · `postcard` pose (W11 frame) · 21:00 +45 s | ≥ 5 of 7 islands show lit windows or festival light, Marketing's marquee / searchlights brightest; no island clipped; sky craft lit, not cut by the top edge more than half; land L ≥ 0.12 |
 | W16 | **Harbour Guild Morning** | 1001 · raw `100,14,-150,86,9,-186` · 09:00 +15 s | Clear sky and saturated sea (fog gone); pier root with awning, timetable, crates and ≥ 3 banners / bunting lines is the subject; clock tower whole behind it; ≤ 230 calls |
 | W17 | **Jewel Tree Night** | 1001 · raw `-168,52,98,-142,33,88` · 21:00 | Atelier Tree canopy whole in frame with ≥ 6 lit vitray panels in ≥ 4 hues; treehouse windows lit; ≥ 3 warm lantern pools on the glade; canopy against the night sky (no island behind) |
-| W18 | **Green Light** | 1001 · raw `-157,20.5,-193,-145,10,-194` · 16:00 +12 s | Green check flag at the mast top beside its scoreboard, both clear of the tower; check tower as backdrop (not centre); ≥ 3 Hall of Checks badges bottom-left; no prop clipping the lens |
+| W18 | **UV Bug Hunt** | 1001 · raw `-175,22,-185,-160,8,-208` · 21:30 +4 s | Violet UV pools under ≥ 3 lamp posts on the track/yard; scoreboard digit and Hall of Checks tick badges lit and readable; dummy bench + clipboard wall visible; no prop clipping the lens |
 | W19 | **Prism Hour** | 1001 · raw `-108,44,120,-150,24,76` · 17:30 | Atelier Tree canopy whole in frame with ≥ 4 lit panes; spray rainbow arc ≥ 4 bands left of the tree; warm light on the glade, long shadows to the west; ≤ 270 calls |
 
 **Global fail (any shot):**

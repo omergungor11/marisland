@@ -474,14 +474,15 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   },
   {
     id: 'W18',
-    title: 'Green Light',
-    // TASK-450: QA's 16:00 green-light ritual from the west, up high (raw): the check flag run up
-    // beside its scoreboard on the lawn, the Hall of Checks badges and a conveyor bottom-left, the
-    // hangars flanking and the check tower as the backdrop
+    title: 'UV Bug Hunt',
+    // QA at night (21:30): the loop track and yard rim lit violet by the UV lamp posts (UV pools,
+    // TASK-440), the "BUGS: 0" scoreboard, dummy on its bench, stamp desk and clipboard wall at the
+    // Hall of Checks with its lit tick badges. The 16:00 green-light framing never read as a postcard
+    // (empty lawn, tiny flag), so the QA hero is the night hunt.
     seed: 1001,
-    cam: '-157,20.5,-193,-145,10,-194',
-    time: 16,
-    simt: 12,
+    cam: '-175,22,-185,-160,8,-208',
+    time: 21.5,
+    simt: 4,
     quality: 'medium',
     width: 1920,
     height: 1080,
