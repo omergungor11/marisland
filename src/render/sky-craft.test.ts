@@ -108,6 +108,9 @@ describe('sky culture (TASK-441)', () => {
     const f = buildFleetGeometry(liv);
     expect(f.ranges).toHaveLength(5);
     expect(f.ranges[4].start + f.ranges[4].count).toBe(f.geometry.getAttribute('position').count);
+    // no wind weight anywhere: the anchor-relative fleet must not enter the shader's gust squash
+    const wind = f.geometry.getAttribute('wind');
+    for (let i = 0; i < wind.count; i++) expect(wind.getX(i)).toBe(0);
     const solo = buildFleetGeometry([liv[0]]);
     expect(f.geometry.userData.tris).toBeLessThan(5 * 4400);
     // a livery balloon is the plain one plus spars and pennants, in different colours
