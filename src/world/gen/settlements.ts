@@ -1101,7 +1101,20 @@ export function buildSettlements(input: SettlementInput, rng: Rng): SettlementRe
       if (d < (z === Zone.field ? 1 : FLATTEN.lotMargin)) ctx.zone[i] = Zone.grass;
     });
   }
+  // steep-face zones of `pathSparesSlopes` themes survive the path paint (TASK-453c)
+  const spared: Array<[number, number]> = [];
+  for (let i = 0; i < ctx.zone.length; i++) {
+    const z = ctx.zone[i];
+    const id = ctx.islandMap[i] - 1;
+    if (
+      (z === Zone.rock || z === Zone.cliff) &&
+      id >= 0 &&
+      THEMES[input.islands[id].theme].pathSparesSlopes
+    )
+      spared.push([i, z]);
+  }
   writePaths(ctx.h, ctx.zone, ctx.sdf, built.paths, protect);
+  for (const [i, z] of spared) ctx.zone[i] = z;
 
   const fences: Polyline[] = [];
   for (const plan of plans) {

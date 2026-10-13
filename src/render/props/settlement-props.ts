@@ -285,6 +285,15 @@ export function appendSettlementProps(world: WorldData): {
         ),
       );
   }
+  // pipe pieces: level at the highest of their end points' ground (arms reach 1 u)
+  const perchY = (x: number, z: number, yaw: number, arms: readonly [number, number][]): number => {
+    const [cx, cz] = [Math.cos(yaw), -Math.sin(yaw)]; // local +x in the world
+    const [sx, sz] = [Math.sin(yaw), Math.cos(yaw)]; // local +z in the world
+    let top = heightAt(h, x, z);
+    for (const [ax, az] of arms)
+      top = Math.max(top, heightAt(h, x + cx * ax + sx * az, z + cz * ax + sz * az));
+    return top;
+  };
   // fences (and M14b pipes, kind 'pipe') along polylines: segments span local +x
   for (const f of world.fences) {
     const seg = LINE_SEGMENT[f.kind] ?? LINE_SEGMENT.fence;
@@ -317,7 +326,14 @@ export function appendSettlementProps(world: WorldData): {
       if (len < 1e-3) continue;
       const yaw = Math.atan2(-dz, dx); // fence rails span local +x
       if (!Number.isNaN(elbowYaw[i])) {
-        push(seg.def, a.x, a.z, elbowYaw[i], 1, f.islandId, undefined, seg.elbow);
+        const ey =
+          seg.perch === undefined
+            ? undefined
+            : perchY(a.x, a.z, elbowYaw[i], [
+                [-1, 0],
+                [0, 1],
+              ]) - seg.perch;
+        push(seg.def, a.x, a.z, elbowYaw[i], 1, f.islandId, ey, seg.elbow);
         carry = 1;
       }
       const stop = len - (Number.isNaN(elbowYaw[i + 1]) ? 0 : 1);
@@ -326,7 +342,14 @@ export function appendSettlementProps(world: WorldData): {
         const z = a.z + (dz / len) * (t + seg.len / 2);
         // fences roll their variant from the decor stream (unchanged); listed variants cycle
         const v = seg.variants ? seg.variants[made++ % seg.variants.length] : undefined;
-        push(seg.def, x, z, yaw, 1, f.islandId, undefined, v);
+        const py =
+          seg.perch === undefined
+            ? undefined
+            : perchY(x, z, yaw, [
+                [-seg.len / 2, 0],
+                [seg.len / 2, 0],
+              ]) - seg.perch;
+        push(seg.def, x, z, yaw, 1, f.islandId, py, v);
         carry = t + seg.len - len;
       }
       if (carry < 0) carry = 0;
@@ -458,10 +481,15 @@ export function appendSettlementProps(world: WorldData): {
  * TODO(content): move to src/content.
  */
 const LINE_SEGMENT: Readonly<
-  Record<string, { def: string; len: number; variants?: readonly number[]; elbow?: number }>
+  Record<
+    string,
+    { def: string; len: number; variants?: readonly number[]; elbow?: number; perch?: number }
+  >
 > = {
   fence: { def: 'fence', len: 1.5 },
-  pipe: { def: 'pipe', len: 2, variants: [0, 2], elbow: 1 },
+  // perch: pieces sit level on their highest end's ground minus this (TASK-453c; the support
+  // posts of the pipe geo run down to the slope), instead of hanging off the centre's height
+  pipe: { def: 'pipe', len: 2, variants: [0, 2], elbow: 1, perch: 0.35 },
   // TASK-405: the foundry rail line (geo/themes/devops-works.ts railTrack spans x ∈ [−1, 1])
   rail: { def: 'railTrack', len: 2 },
 };

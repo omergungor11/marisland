@@ -98,6 +98,11 @@ export interface ThemeDef {
   zoneRules?: Readonly<Partial<ZoneRuleParams>>;
   patchwork: ThemePatchwork;
   /**
+   * Footpaths do not repaint steep-face zones (Zone.rock / Zone.cliff) on this theme's island: the
+   * path stays a ground paint on the shelves (Marketing's red carpet no longer drapes down the cliff).
+   */
+  pathSparesSlopes?: boolean;
+  /**
    * On a 'districts' patchwork theme: the kind every raw profile patch rectangle becomes in
    * `world.districts` (world/index.ts). Unset = the theme planner emits its own districts from the
    * patches (Coding trims them to clean ground around its campus).

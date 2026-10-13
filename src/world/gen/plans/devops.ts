@@ -498,7 +498,7 @@ function steamMain(
   const tower = towers.reduce((a, b) => (dist(b, vent) < dist(a, vent) ? b : a));
   const start = add(vent, unit(vent, tower), 1);
   const end = add(tower, unit(tower, vent), endR + 0.6);
-  const line = routeLine(ctx, isl, start, end);
+  const line = routeLine(ctx, isl, start, end, V.maxSlope);
   if (!line) return null;
   ctx.fixtures.push({ defId: 'steamVent', x: vent.x, z: vent.z, rotY: 0, islandId: isl.id });
   addShape(ctx, isl, discShape(vent.x, vent.z, 0.6), true);
@@ -530,7 +530,13 @@ function routePipe(
 }
 
 /** A pipe run from `start` to `end` (see routePipe); null when no route stands. */
-function routeLine(ctx: SiteCtx, isl: IslandData, start: XZ, end: XZ): XZ[] | null {
+function routeLine(
+  ctx: SiteCtx,
+  isl: IslandData,
+  start: XZ,
+  end: XZ,
+  maxSlope: number = S.pipeline.maxSlope,
+): XZ[] | null {
   const P = S.pipeline;
   const ends = [start, end];
   const shapes = ctx.shapes[isl.id];
@@ -552,7 +558,7 @@ function routeLine(ctx: SiteCtx, isl: IslandData, start: XZ, end: XZ): XZ[] | nu
       const p = cellPos(ctx, b);
       if (!valid(p.x, p.z)) return Infinity;
       const slope = Math.abs(ctx.h.data[b] - ctx.h.data[a]) / (d * run);
-      if (slope > P.maxSlope) return Infinity;
+      if (slope > maxSlope) return Infinity;
       return d * run * (1 + 3 * slope);
     },
     hScale: run,
@@ -568,7 +574,7 @@ function routeLine(ctx: SiteCtx, isl: IslandData, start: XZ, end: XZ): XZ[] | nu
       const q = add(a, unit(a, b), (L * j) / k);
       if (!valid(q.x, q.z)) return false;
       const y = heightAt(ctx.h, q.x, q.z);
-      if (Math.abs(y - yPrev) / (L / k) > P.maxSlope) return false;
+      if (Math.abs(y - yPrev) / (L / k) > maxSlope) return false;
       yPrev = y;
     }
     return true;

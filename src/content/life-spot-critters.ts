@@ -80,9 +80,9 @@ export const SPOT_CRITTERS: Readonly<Record<string, readonly SpotCritter[]>> = {
   // on the giant duck's head: 1.95 x (z 0.42, top y 1.44)
   gullOnDuck: [c('bird', 'peck', 1.0, '#FFFFFF', { dz: 0.82, dy: 2.95 })],
   duckCrossing: [
-    c('duck', 'cross', 1.9, '#FFF4D2', { dz: 1.2, reach: 2.4, period: 16 }),
-    c('duck', 'cross', 1.2, '#FFE06A', { dz: 1.2, reach: 2.4, period: 16 }),
-    c('duck', 'cross', 1.2, '#FFE06A', { dz: 1.2, reach: 2.4, period: 16 }),
+    c('duck', 'cross', 1.9, '#FFF4D2', { dz: 2.6, reach: 2.4, period: 16 }),
+    c('duck', 'cross', 1.2, '#FFE06A', { dz: 2.6, reach: 2.4, period: 16 }),
+    c('duck', 'cross', 1.2, '#FFE06A', { dz: 2.6, reach: 2.4, period: 16 }),
   ],
   // DevOps
   onsenCapybara: [c('capybara', 'doze', 1.7, '#B07A4C', { y: 'spot', dx: -0.25 })],

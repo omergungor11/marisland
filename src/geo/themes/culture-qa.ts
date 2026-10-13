@@ -929,19 +929,29 @@ function bugZoo(base: PropBuilder, { rng, lod }: BuildOpts): THREE.BufferGeometr
   const acc = jitterAcc(rng, 0.015);
   const L = 5;
   const ridge = 2.5;
-  // giant ladybug on the roof (middle bay, between the hatches)
-  put(acc, blobGeo(0.5, 1), [0, ridge + 0.1, -2.0], RED, { s: [1, 0.62, 1.2], aoAmt: 0.05 });
-  put(acc, blobGeo(0.24, 0), [0, ridge + 0.12, -1.34], INK, { aoAmt: 0 });
-  put(acc, baseBox(0.07, 0.07, 1.1), [0, ridge + 0.4, -2.05], INK, { aoAmt: 0 });
+  // giant ladybug on the roof (middle bay, between the hatches), `zs` in from the gable end so
+  // its tail stays on the roof (TASK-453c: it hung past the end)
+  const zs = 0.3;
+  put(acc, blobGeo(0.5, 1), [0, ridge + 0.1, -2.0 + zs], RED, { s: [1, 0.62, 1.2], aoAmt: 0.05 });
+  put(acc, blobGeo(0.24, 0), [0, ridge + 0.12, -1.34 + zs], INK, { aoAmt: 0 });
+  put(acc, baseBox(0.07, 0.07, 1.1), [0, ridge + 0.4, -2.05 + zs], INK, { aoAmt: 0 });
   for (const [sx, sz] of [
     [-0.27, -0.25],
     [0.27, -0.25],
     [-0.25, 0.25],
     [0.25, 0.25],
   ] as const)
-    put(acc, blobGeo(0.09), [sx, ridge + 0.34, sz - 2], INK, { s: [1, 0.5, 1], aoAmt: 0 });
+    put(acc, blobGeo(0.09), [sx, ridge + 0.34, sz - 2 + zs], INK, { s: [1, 0.5, 1], aoAmt: 0 });
   for (const sx of [-1, 1])
-    rod(acc, V(sx * 0.1, ridge + 0.2, -1.2), V(sx * 0.25, ridge + 0.45, -0.9), 0.03, INK, 3, true);
+    rod(
+      acc,
+      V(sx * 0.1, ridge + 0.2, -1.2 + zs),
+      V(sx * 0.25, ridge + 0.45, -0.9 + zs),
+      0.03,
+      INK,
+      3,
+      true,
+    );
   // shield plaque over the door arch (front, +z), standing on the step
   shield(acc, V(0, 3.05, L / 2 + 0.1), 0.9, 1.0, CREAM, GREEN, true);
   // hazard strip along the step lip, ladybugs on leaves flanking the door
