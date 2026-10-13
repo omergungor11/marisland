@@ -35,7 +35,7 @@ const DEG = THREE.MathUtils.DEG2RAD;
  */
 export function createSkyProgramMaterial(
   mode: 'sky' | 'beam',
-  beam: { flareRadius?: number; flarePull?: number } = {},
+  beam: { flareRadius?: number; flarePull?: number; dip?: readonly [number, number] } = {},
 ): THREE.ShaderMaterial {
   const isBeam = mode === 'beam';
   return new THREE.ShaderMaterial({
@@ -110,6 +110,7 @@ export function createSkyProgramMaterial(
       uBeamLook: {
         value: new THREE.Vector4(BEAM.opacity, BEAM.backOpacity, BEAM.edgePower, BEAM.fadeIn),
       },
+      uBeamNear: { value: new THREE.Vector4(...BEAM.nearFade, ...(beam.dip ?? BEAM.dip)) },
       uBeamFx: {
         value: new THREE.Vector4(
           BEAM.fadeOut[0],

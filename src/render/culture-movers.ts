@@ -424,7 +424,10 @@ function patchScene(
   variant: number,
 ): Scene['run'] {
   const P = M.patches;
-  const fam = P.families[variant % P.families.length];
+  const white = new THREE.Color(1, 1, 1);
+  const fam = P.families[variant % P.families.length].map(
+    (h) => `#${new THREE.Color(h).lerp(white, P.lighten).getHexString()}`,
+  );
   return (w, c) => {
     const sun = c.sun;
     const elev = Math.asin(Math.min(1, Math.max(-1, sun.y)));
@@ -564,6 +567,7 @@ export function createCultureMovers(
           createSkyProgramMaterial('beam', {
             flareRadius: BEAM.flareRadius * B.scale * B.flare,
             flarePull: BEAM.flarePull * B.scale,
+            dip: B.dip,
           }),
         );
         const mesh = new THREE.Mesh(beamGeo, beamMat);

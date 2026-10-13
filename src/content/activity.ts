@@ -159,6 +159,13 @@ export const MARQUEE = { group: 3, rate: 5, off: 0.3, offAlbedo: 0.7 } as const;
 export const STAINED = {
   day: 1.4,
   lowSun: 1,
+  /**
+   * Sunlit-face glint (TASK-453b): × (n·h)^`glintPower` × the same low-sun ramp (h = half vector
+   * of view and sun). A camera with the sun at its back (W19) sees no pane lit through; the glint
+   * lights the panes turned between it and the sun, a broad lobe so several of them catch it.
+   */
+  glint: 2,
+  glintPower: 4,
   /** Share of the sun's hue kept (0 = its luminance only): an orange golden sun would turn every
    * pane coral; half keeps the warm cast and the pane hues apart. */
   sunHue: 0.5,

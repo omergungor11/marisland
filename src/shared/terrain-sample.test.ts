@@ -58,6 +58,21 @@ describe('terrain-sample (clamped Catmull-Rom)', () => {
     }
   });
 
+  it('keeps a cliff steep where the clamp is active (bilinear gradient, TASK-453b)', () => {
+    const cliff = field((i) => (i < 8 ? 0 : 10));
+    let clamped = 0;
+    for (let k = 0; k < 400; k++) {
+      const x = ORIGIN + CS * rng.range(6.5, 8.5);
+      const s = sampleSurface(cliff, x, ORIGIN + CS * rng.range(1, N - 2));
+      if (!s.clamped) continue;
+      clamped++;
+      if (x < ORIGIN + 7 * CS || x >= ORIGIN + 8 * CS)
+        expect(s.dydx).toBe(0); // flat cells
+      else expect(s.dydx).toBeCloseTo(10 / CS, 6); // the cliff cell
+    }
+    expect(clamped).toBeGreaterThan(20);
+  });
+
   it('analytic gradient matches finite differences where unclamped', () => {
     const smooth = field((i, j) => 4 * Math.sin(i * 0.4) * Math.cos(j * 0.3));
     const eps = 1e-3;
@@ -75,7 +90,7 @@ describe('terrain-sample (clamped Catmull-Rom)', () => {
       const az = sampleSurface(smooth, x, z + eps);
       const bz = sampleSurface(smooth, x, z - eps);
       // skip samples where the clamp is active nearby
-      if ([s, ax, bx, az, bz].some((t) => t.dydx === 0 && t.dydz === 0)) continue;
+      if ([s, ax, bx, az, bz].some((t) => t.clamped)) continue;
       expect(s.dydx).toBeCloseTo((ax.y - bx.y) / (2 * eps), 3);
       expect(s.dydz).toBeCloseTo((az.y - bz.y) / (2 * eps), 3);
       checked++;

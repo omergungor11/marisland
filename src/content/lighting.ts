@@ -271,6 +271,13 @@ export const BEAM = {
   /** Along-axis fade-in from the lamp and fade-out toward the tip (fractions of length). */
   fadeIn: 0.04,
   fadeOut: [0.35, 1.0] as const,
+  /**
+   * Cone fade by apparent radius (rad, world radius / view distance; TASK-453b): a beam swept
+   * past the lens (Marketing searchlights) would fill the frame; mid/far beams stay < 0.05.
+   */
+  nearFade: [0.03, 0.09] as const,
+  /** Axis elevation (sin) fade-in [gone, full]; the lighthouse's 3 deg dip never fades. */
+  dip: [-2, -1.5] as const,
   /** Lamp flare billboard: radius (u), HDR intensity, extra when the beam faces the camera. */
   flareRadius: 2.6,
   flareIntensity: 2.2,

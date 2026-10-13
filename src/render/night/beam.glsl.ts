@@ -10,6 +10,9 @@ export const BEAM_VERT_PARS = /* glsl */ `
 uniform float uTime;
 // x = rad/s, y = tilt (rad), z = flare radius (u), w = flare view-space pull toward camera (u)
 uniform vec4 uBeamMotion;
+// xy = apparent-radius fade (fragment), zw = axis elevation (sin) fade-in: a sweep that dips
+// below it fades out (searchlights light the sky, not the lawn; TASK-453b)
+uniform vec4 uBeamNear;
 attribute vec2 aBeam;
 varying float vBT;
 varying float vBKind;
@@ -18,6 +21,8 @@ varying vec3 vBV;
 varying vec2 vBCorner;
 varying float vBFacing;
 varying float vBDist;
+varying float vBApp;
+varying float vBDip;
 
 vec3 marBeamRot(vec3 p, float ang, float tilt) {
   // tilt the +x axis down (about z), then spin about y
@@ -33,6 +38,8 @@ void marBeamVertex() {
   vBT = aBeam.x;
   vec3 axis = marBeamRot(vec3(1.0, 0.0, 0.0), ang, uBeamMotion.y);
   vec4 originW = modelMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+  vec3 axW = mat3(modelMatrix) * axis; // |axW| = mesh scale > 0
+  vBDip = smoothstep(uBeamNear.z, uBeamNear.w, (aBeam.y > 0.5 ? -axW.y : axW.y) / length(axW));
   vec3 toCam = normalize(cameraPosition - originW.xyz);
   vBFacing = max(dot(axis, toCam), 0.0) + max(-dot(axis, toCam), 0.0) * 0.45;
   vec4 mv;
@@ -53,6 +60,8 @@ void marBeamVertex() {
     mv = viewMatrix * wp;
   }
   vBDist = length(mv.xyz);
+  // apparent cone radius (rad): world radius of this ring over its view distance (TASK-453b)
+  vBApp = length(mat3(modelMatrix) * vec3(0.0, position.yz)) / max(vBDist, 0.1);
   gl_Position = projectionMatrix * mv;
 }
 `;
@@ -65,6 +74,9 @@ uniform vec3 uBeamColor;
 uniform vec4 uBeamLook;
 // xy = fade-out band (fractions of the length), z = flare intensity, w = flare facing boost
 uniform vec4 uBeamFx;
+// xy = apparent cone radius (rad) over which the cone fades out: a beam swept at the lens fills
+// the frame (zw: vertex elevation gate)
+uniform vec4 uBeamNear;
 varying float vBT;
 varying float vBKind;
 varying vec3 vBN;
@@ -72,6 +84,8 @@ varying vec3 vBV;
 varying vec2 vBCorner;
 varying float vBFacing;
 varying float vBDist;
+varying float vBApp;
+varying float vBDip;
 
 /** Additive beam colour (linear HDR); discards where nothing is added. */
 vec3 marBeamFrag() {
@@ -95,7 +109,8 @@ vec3 marBeamFrag() {
     float op = vBKind > 0.5 ? uBeamLook.x * uBeamLook.y : uBeamLook.x;
     // brighter close to the lamp (the light spreads over a wider section further out)
     float spread = mix(1.6, 0.7, vBT);
-    col = uBeamColor * (op * edge * along * haze * spread);
+    float near = (1.0 - smoothstep(uBeamNear.x, uBeamNear.y, vBApp)) * vBDip;
+    col = uBeamColor * (op * edge * along * haze * spread * near);
   }
   // the beam lives in the fog: far beams soften but never vanish (they light the fog)
   float fogF = 1.0 - exp(-pow(uFogDensity * vBDist, 2.0));

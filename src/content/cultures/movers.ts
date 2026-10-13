@@ -116,6 +116,9 @@ export const CULTURE_MOVERS = {
     pivot: [1.05, 1.3] as const,
     lensAt: 0.52,
     lean: [0.38, 0.06] as const,
+    /** Beam axis elevation (sin) fade-in [gone, full]: the low half of the sweep would rake the
+     *  lawn and the lens (TASK-453b), so the cone fades out as it dips below the horizon. */
+    dip: [-0.3, 0.0] as const,
   },
   confetti: {
     ritual: 'goldenHourShow',
@@ -185,6 +188,8 @@ export const CULTURE_MOVERS = {
     ] as readonly (readonly string[])[],
     pulse: 0.05,
     pulsePeriod: 4.5,
+    /** Share of white mixed into the family colour: the patch is tinted light, not paint (TASK-453b). */
+    lighten: 0.45,
   },
 
   /** Research Star Academy: the 06:00 weather balloon leaves the cart and rises out of view. */

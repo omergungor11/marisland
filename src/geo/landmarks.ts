@@ -387,6 +387,27 @@ export function clocktower({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
 const ATELIER = { ...OFFICE_PAL.design[0], blossom: '#FF8FB1' } as const;
 const BUNTING = ['#FF8FB1', '#FFE45C', '#7FD8B3', '#B39DFF', '#5DA9E9'] as const;
 
+/**
+ * giantTree canopy: blobs (x, y, z, radius) and their `blob` noise (amp, freq, offset per blob).
+ * The canopy vitray (themes/culture-design.ts) wraps its panes onto these displaced shells.
+ */
+export const GIANT_CANOPY = {
+  blobs: [
+    [0, 14.0, 0, 4.2],
+    [3.4, 12.4, 0.6, 3.1],
+    [-3.2, 12.8, 1.4, 3.1],
+    [0.4, 13.0, -3.3, 3.0],
+    [1.0, 16.0, 0.6, 2.8],
+  ] as ReadonlyArray<readonly [number, number, number, number]>,
+  amp: 0.1,
+  freq: 1.1,
+  offStep: 2.7,
+} as const;
+
+/** The canopy noise of giantTree for `rng` (the builder's own rng: label forks only). */
+export const giantCanopyNoise = (rng: BuildOpts['rng']): ReturnType<typeof createNoise> =>
+  createNoise(rng.fork('giant').fork('n'));
+
 export function giantTree({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const r = rng.fork('giant');
   const acc = new Acc();
@@ -501,16 +522,11 @@ export function giantTree({ rng, lod, variant }: BuildOpts): THREE.BufferGeometr
     const i = Math.min(1, Math.floor(t));
     return col(cg[i]).lerp(col(cg[i + 1]), t - i);
   };
-  const blobs: Array<[number, number, number, number]> = [
-    [0, 14.0, 0, 4.2],
-    [3.4, 12.4, 0.6, 3.1],
-    [-3.2, 12.8, 1.4, 3.1],
-    [0.4, 13.0, -3.3, 3.0],
-    [1.0, 16.0, 0.6, 2.8],
-  ];
+  const blobs = GIANT_CANOPY.blobs;
+  const B = GIANT_CANOPY;
   const used = blobs;
   used.forEach(([x, y, z, rad], i) => {
-    put(acc, blob(rad, lod === 0 ? 1 : 0, noise, 0.1, 1.1, i * 2.7), [x, y, z], fn, {
+    put(acc, blob(rad, lod === 0 ? 1 : 0, noise, B.amp, B.freq, i * B.offStep), [x, y, z], fn, {
       windMul: 1,
       aoAmt: 0.2,
       ao: (p) => 0.78 + 0.22 * clamp01((p.y - (y - rad)) / (rad * 1.6)),
