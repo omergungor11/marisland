@@ -221,6 +221,11 @@
 - Agent worktrees were created from `origin/main` (not the orchestrator's HEAD) on 2026-10-04: every
   worktree agent must `git fetch` + `git reset --hard <orchestrator-branch>` (not merge) when its base has
   unrelated history, then verify `git log -1`
+- Worktree agents can't commit as-is: the pre-commit hook needs `node_modules`. `ln -s <main>/node_modules
+  node_modules` in a separate command, commit, then remove the link (2026-10-13). The `docs` agent has no Bash:
+  it writes files, the orchestrator commits them.
+- `pnpm shots --assert` only checks budgets and blank frames; it passed with pennant lines across the sky and a
+  roof at the lens. Always open contact.jpg and the full PNGs of changed shots (2026-10-13).
 - `renderer.info.memory.geometries` counts a geometry from its FIRST DRAW: leak checks must draw every
   scene object once (forced visible, culling off) before counting, or hidden/culled life meshes read ±1
 - Zones are generated before settlements terrace lots / carve docks, so `world.zone` is stale there (20–80
