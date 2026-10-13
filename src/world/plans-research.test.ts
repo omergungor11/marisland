@@ -144,7 +144,11 @@ describe('Research Observatory University plan (TASK-402b) — 30 seeds', () => 
       expect(d.of('topiary').length, ctx).toBeGreaterThanOrEqual(6);
       expect(d.settlement?.plaza, `${ctx} paved quad`).toBeTruthy();
       if (d.of('facultyHall').length >= 3) halls3++;
-      if (d.of('hedgeParterre').length >= 8) gardens8++;
+      // (the lecture may take a plot: TASK-461)
+      const plot = d
+        .of('lectureSteps')
+        .some((l) => d.of('hedgeParterre').some((h) => Math.hypot(h.x - l.x, h.z - l.z) < 6.5));
+      if (d.of('hedgeParterre').length + (plot ? 1 : 0) >= 8) gardens8++;
       if (d.of('terrarium').length >= 2) glass++;
       if (d.of('labPod').length >= 1 && d.of('weatherMast').length === 1) base++;
       const sc = ['atomSculpture', 'dnaHelix', 'rocketMonument', 'armillarySphere'];
@@ -296,16 +300,17 @@ describe('Research Observatory University plan (TASK-402b) — 30 seeds', () => 
 /** Count range per Star Academy def on the Research island (30 seeds). */
 const KIT_COUNTS: Record<string, readonly [number, number]> = {
   tripodTelescope: [1, 3],
-  chalkboard: [0, 2],
+  // the lecture board + the comet board (TASK-461: both on every seed)
+  chalkboard: [2, 2],
   orrery: [0, 1],
-  lectureSteps: [0, 1],
+  lectureSteps: [1, 1],
   teaTrolley: [0, 1],
-  weatherBalloonCart: [0, 1],
+  weatherBalloonCart: [1, 1],
   owlBox: [0, 2],
   pigeonPerch: [0, 2],
   bookCart: [0, 3],
   miniVolcanoTerrarium: [0, 3],
-  pennantLine: [0, CS.pennants.count],
+  pennantLine: [CS.pennants.min, CS.pennants.count],
 };
 const CULTURE_DEFS = new Set(RESEARCH_CULTURE_PROP_DEFS.map((d) => d.id));
 
@@ -388,15 +393,26 @@ describe('Research Star Academy culture (TASK-426) — 30 seeds', { timeout: 120
       rate((d) => kinds(d).has('volcanoSteam')),
       'volcanoes',
     ).toBeGreaterThanOrEqual(0.8);
-    // space is the binding constraint (garden → glasshouses → base first): the lecture often drops
-    expect(
-      rate((d) => kinds(d).has('lecture')),
-      'lecture',
-    ).toBeGreaterThanOrEqual(0.3);
-    expect(
-      rate((d) => d.of('pennantLine').length >= 1),
-      'pennants',
-    ).toBeGreaterThanOrEqual(0.75);
+  });
+
+  it('TASK-461: every campus (+ the shot seed 1001) has ≥ 4 pennant lines, the lecture, the comet board and the balloon launch', () => {
+    for (const seed of [1001, ...SEEDS]) {
+      const d = research(seed);
+      if (!d) continue;
+      const ctx = `seed ${seed}`;
+      expect(d.of('pennantLine').length, `${ctx} pennants`).toBeGreaterThanOrEqual(CS.pennants.min);
+      const st = d.w.storySpots.filter((s) => s.islandId === d.isl.id);
+      const kind = (k: string) => st.find((s) => s.kind === k);
+      expect(kind('lecture')?.defs, `${ctx} lecture`).toEqual(['lectureSteps', 'chalkboard']);
+      expect(kind('cometWatch')?.defs, `${ctx} comet board`).toContain('chalkboard');
+      expect(kind('balloonLaunch')?.defs, `${ctx} balloon`).toContain('weatherBalloonCart');
+      // the comet board on the summit rim (flat, beside the dome), the other one at the lecture
+      const obs = d.observatory;
+      const boards = d.of('chalkboard').map((f) => Math.hypot(f.x - obs.x, f.z - obs.z));
+      expect(Math.min(...boards), `${ctx} comet board on the rim`).toBeLessThan(
+        RESEARCH_SITE.observatory.radius + CS.summit.flat + 0.1,
+      );
+    }
   });
 
   it('culture defs stay on the Research island', () => {

@@ -227,6 +227,30 @@ export const COOLING_TOWER_RISE = 1.6;
 /** Cooling tower nominal heights per variant (u). */
 export const COOLING_TOWER_HEIGHTS = [13, 11.5] as const;
 
+/**
+ * Pipe runs on slopes (TASK-461, world/pipe-run.ts + geo/themes/devops.ts `pipe`). A 2 u piece
+ * climbs `pitchStep` × k (k = 1…`pitched.length`, at most `maxRise`, ≈ 24°) through its pitched
+ * variants (a fall is the climb turned round); steeper ground takes a vertical riser of
+ * `riserUnit` segments between two knuckles. The tube centre keeps `clearance` u over the ground
+ * under it, and a run that floats more than `float` u drops by a riser.
+ * Pipe polylines are snapped so whole pieces fill every leg (world/pipe-run.ts snapPipeLine):
+ * pieces meet at the bends, a knuckle covers a bend without an elbow.
+ * Variants: 0 straight, 1 elbow, 2 valve (level pieces), then `pitched`, `riser`, `knuckle`.
+ */
+export const PIPE_RUN = {
+  /** Piece length (u) and the bend within this of 90° (rad) that takes the elbow variant. */
+  piece: 2,
+  elbowTolerance: 0.45,
+  clearance: 0.15,
+  pitchStep: 0.3,
+  maxRise: 0.9,
+  riserUnit: 0.6,
+  float: 0.5,
+  pitched: [3, 4, 5] as const,
+  riser: 6,
+  knuckle: 7,
+} as const;
+
 export const DEVOPS_PROP_DEFS: readonly PropDef[] = [
   // T0 geothermal plant landmark: hyperboloid tower, steam emitter above the lip
   {
@@ -237,7 +261,16 @@ export const DEVOPS_PROP_DEFS: readonly PropDef[] = [
     footprint: 2.6,
     flags: grounded,
   },
-  { id: 'pipe', geo: 'pipe', tier: 2, variants: 3, footprint: 1.0, flags: grounded },
+  // (TASK-461: variants 3–7 are the pitched pieces, the riser and the knuckle; never rolled)
+  {
+    id: 'pipe',
+    geo: 'pipe',
+    tier: 2,
+    variants: 8,
+    rollVariants: 3,
+    footprint: 1.0,
+    flags: grounded,
+  },
   { id: 'cableSpool', geo: 'cableSpool', tier: 2, variants: 2, footprint: 0.7, flags: grounded },
   { id: 'steamVent', geo: 'steamVent', tier: 2, variants: 2, footprint: 0.5, flags: grounded },
   { id: 'warningSign', geo: 'warningSign', tier: 3, variants: 2, footprint: 0.4, flags: grounded },

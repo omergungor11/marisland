@@ -116,10 +116,20 @@ export const RESEARCH_CULTURE_SITES = {
     cordDepth: 0.6,
     /** The cord strip keeps clear of every obstacle bigger than this (u radius / half side). */
     bigR: 1.5,
+    /**
+     * At least this many lines (TASK-461): when the library front and the avenues hold fewer,
+     * chords across the quad paving fill up (cord centre `d` u from the fountain, `angles`
+     * bearings, the poles `avenueKeepDeg` off every avenue mouth), between the avenues first.
+     */
+    min: 4,
+    chords: { d: [4.2, 3.7, 3.2] as const, angles: 36, avenueKeepDeg: 18 },
+    /** …then on the lawn `ring` u from the quad centre, the cord along the contour on a low pad. */
+    lawn: { ring: [7, 22] as const },
   },
   /**
    * Lecture steps + chalkboard on the lawn round the quad (`ring` u from its centre): the board
-   * `boardAt` u in front of the steps, facing them; the class looks away from the quad.
+   * `boardAt` u in front of the steps, facing them; the class looks away from the quad. No lawn
+   * site (the campus fills the hill, TASK-461): it takes a parterre plot of the formal garden.
    */
   lecture: {
     ring: [8, 30] as const,
@@ -149,8 +159,23 @@ export const RESEARCH_CULTURE_SITES = {
     tripodVariant: 0,
     /** The book-pile stool (bookCart v2): beside the eyepiece, `side` across, `back` behind. */
     stool: { side: 0.8, back: 0.35, r: 0.32, variant: 2 },
-    /** The comet board (v0: comet + "?"), nearest the telescope, facing it. */
-    board: { variant: 0, w: 1.6, d: 1.0, cell: 0.5 },
+    /**
+     * The comet board (v0: comet + "?") on the rim, nearest the telescope, its face outward. Rim
+     * search passes (TASK-461), the first with a spot wins: `angles` bearings, the door sector
+     * `doorKeepDeg` kept open, ground before the pads within `drop` of the dome's level, the
+     * footprint inside the pad core with `cell` u to spare.
+     */
+    board: {
+      variant: 0,
+      w: 1.6,
+      d: 1.0,
+      passes: [
+        { angles: 28, doorKeepDeg: 50, drop: 0.5, cell: 0.5 },
+        { angles: 56, doorKeepDeg: 50, drop: 0.5, cell: 0.5 },
+        { angles: 56, doorKeepDeg: 25, drop: 0.5, cell: 0.5 },
+        { angles: 56, doorKeepDeg: 12, drop: 0.65, cell: 0.5 },
+      ],
+    },
     owlVariant: 1,
   },
   /**
@@ -168,6 +193,13 @@ export const RESEARCH_CULTURE_SITES = {
     variant: 0,
     owlVariant: 0,
     fallback: [7, 12] as const,
+    /**
+     * Last resorts (TASK-461): the flattest free lawn `lawn.ring` u from the quad centre on its
+     * own pad (relief round the grown disc ≤ `lawn.relief`), then the quad paving `quad.ring` u
+     * from the fountain centre, `avenueKeepDeg` off the avenue mouths.
+     */
+    lawn: { ring: [7, 24] as const, relief: 2.8 },
+    quad: { ring: [2.9, 3.9] as const, angles: 24, avenueKeepDeg: 20 },
   },
   /** Pigeon perches beside the statues (scholar statues first, then the sculptures). */
   pigeons: {
