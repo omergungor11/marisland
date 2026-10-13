@@ -267,10 +267,10 @@ Details in `phases/phase-3.md`.
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|------------|--------|--------------|
-| TASK-460 | Life polish: W2 ≥ 3 boats, W3 ≥ 10 fireflies, boats don't overlap at piers, capybara reads as a capybara from above | life | M | IN_PROGRESS | — |
+| TASK-460 | Life polish: W2 ≥ 3 boats, W3 ≥ 10 fireflies, boats don't overlap at piers, capybara reads as a capybara from above | life | M | COMPLETED (6e86fa5) | — |
 | TASK-461 | World polish: DevOps steam main as a real pitched run on slopes (no steps), Research ≥ 4 pennant lines + lecture on every seed; medium tableau cap 4 → 5 so tea time keeps its bots | worldgen | M | COMPLETED (89bbae9, d7abd62) | — |
 | TASK-462 | Balloon shadow dither stipple — really the Bayer-dithered steam under the balloons: blended puffs + near-camera fade | shader | S | COMPLETED (537fb7c) | — |
-| TASK-463 | Ladder misses: L-hq drift, L-design 480, L-research 30 → 21, L-pairs-research, L-pairs-marketing 380; wow + ladder `--assert` + sheet | engine | M | PENDING | 460–462 |
+| TASK-463 | Ladder misses: L-hq drift, L-design 480, L-research 30 → 21, L-pairs-research, L-pairs-marketing 380; wow + ladder `--assert` + sheet | engine | M | IN_PROGRESS | 460–462 |
 
 ### M17 — Graphics II: decor & nature
 *Flower fields, fences, lanterns, benches, signs, rocks*
