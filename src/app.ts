@@ -261,12 +261,19 @@ export async function boot(): Promise<void> {
         enumerable: true,
         get: () => Math.round(part(gpuMemory()) * 10) / 10,
       });
+    const dofFocus = new THREE.Vector3();
     const render = (): void => {
       const r = backend.renderer;
       r.info.reset();
       gpuTimer?.begin();
-      if (ctx.post) ctx.post.render(1 / 60);
-      else r.render(scene, camera);
+      // debug=mask skips the post chain: its tone mapping (−0.04 linear offset), bloom, tilt-shift
+      // and DOF moved the flat mask colours off the ladder's classes on medium / high (TASK-463)
+      if (ctx.post && SHARED.uDebugMask.value < 0.5) {
+        // DOF focus (high, T3) on the orbit target: the composer's fallback, the screen-centre ray
+        // ∩ sea plane, lies 15–25 u past an elevated campus and blurred it whole (TASK-463)
+        if (ctx.cam) ctx.post.setFocus(ctx.cam.controls.getTarget(dofFocus));
+        ctx.post.render(1 / 60);
+      } else r.render(scene, camera);
       gpuTimer?.end();
       readInfo(r, ctx.info);
       const mem = (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory;

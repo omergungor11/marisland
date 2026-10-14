@@ -179,5 +179,15 @@ export const FRAMING = {
      * The target slides toward the camera along the ladder heading until it is this far away.
      */
     avoid: { giantTree: 22, lighthouse: 26 } as Readonly<Record<string, number>>,
+    /**
+     * Per-island target shift (u, in the ladder heading's frame: `right` across the view, `back`
+     * toward the camera), applied before `avoid`. Research (TASK-463): the village anchor is the
+     * quad fountain, ringed within ~10 u by 10–14 u halls and the clock tower; from 30 / 21 u the
+     * camera sits at their roof line, so they slide several cells off the target plane between
+     * steps (30 → 21 p95 12.9, parallax, not a pop). The parterre garden beside the quad is low.
+     */
+    shift: { research: { right: 20, back: 8 } } as Readonly<
+      Record<string, { right: number; back: number }>
+    >,
   },
 } as const;

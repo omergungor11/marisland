@@ -37,6 +37,12 @@ export const LADDER_THRESHOLDS = {
   shadowL: 15,
   /** … while they are at most this fraction of the region. */
   shadowMaxFrac: 0.35,
+  /**
+   * Drift also skips cells that are ground in one frame and structure (≥ 50 % lit props) in the
+   * other — a tall prop's roof / walls over ground it hides from the other view (TASK-463) — while
+   * they are at most this fraction of the region.
+   */
+  classMaxFrac: 0.35,
   pairMean: 2.5,
   pairBlob: 0.005,
   pairIou: 0.92,
@@ -443,12 +449,18 @@ export function regionDrift(
   const both: number[] = [];
   for (let k = 0; k < mA.solid.length; k++)
     if (mA.solid[k] >= T.cellSolid && mB.solid[k] >= T.cellSolid) both.push(k);
+  // parallax / occlusion: a tall prop covers more of the ground in a near perspective view than in
+  // the reference, so cells whose class (ground vs structure) differs are left out, unless that is
+  // most of the region (a structure appearing region-wide stays judged; steps judge blobs)
+  const st = (m: MaskCells, k: number): boolean => m.struct[k] >= 0.5;
+  const same = both.filter((k) => st(mA, k) === st(mB, k));
+  const region = same.length >= both.length * (1 - T.classMaxFrac) ? same : both;
   // cast shadows come and go with the shadow camera's range: cells whose lightness differs by
   // more than `shadowL` are left out, unless that is most of the region (a real shift stays judged)
   const L = (m: ArrayLike<number>, k: number): number =>
     linearToLab(m[k * 3], m[k * 3 + 1], m[k * 3 + 2])[0];
-  const lit = both.filter((k) => Math.abs(L(a, k) - L(b, k)) <= T.shadowL);
-  const cells = lit.length >= both.length * (1 - T.shadowMaxFrac) ? lit : both;
+  const lit = region.filter((k) => Math.abs(L(a, k) - L(b, k)) <= T.shadowL);
+  const cells = lit.length >= region.length * (1 - T.shadowMaxFrac) ? lit : region;
   const sa = [0, 0, 0];
   const sb = [0, 0, 0];
   for (const k of cells)

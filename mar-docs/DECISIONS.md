@@ -2,6 +2,37 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-056: Ladder fixes — exact masks on medium / high, class-consistent drift, DOF focus (TASK-463) — 2026-10-14
+
+**Context**: five ladder misses were left after TASK-453. The re-run showed that on medium and high the
+`debug=mask` frames went through the post chain. Its NEUTRAL tone mapping subtracts 0.04 (linear), so land
+`#50C878` came out as (57, 194, 107). Every pixel then classified as "structure" and water counted as solid:
+the medium / high ladders were judging whole frames, sea included (`landFrac` 1.00).
+
+**Decision**:
+- `debug=mask` renders straight to the canvas, skipping the composer (`app.ts`). Medium and high masks
+  are now exact, like low.
+- `regionDrift` leaves out cells whose class differs between the two frames (ground in one, structure in
+  the other). These are tall props that cover more ground in a near perspective view. The cells are kept
+  if they make up more than `classMaxFrac` = 35 % of the region. Same pattern as D-037's shadow rule.
+  On L-hq (low) the ground-only drift at 30 / 21 u was 0.5 / 0.4, but the structure share rose from 0.40
+  to 0.52, which gave 4.45 / 4.06.
+- `FRAMING.ladder.shift`: the Research ladder target moves 20 u right and 8 u back, from the quad fountain
+  (ringed by 10–14 u halls at the camera's roof line from 30 / 21 u) to the low parterre garden.
+- `TIER_FADE[1]` stays at [320, 420] for now. Real defect: at T1 the T0 tree blobs are already off while tier-1
+  trees dither out beyond 320 u, so far forests in a T1 frame thin to stipple (the Design island from the
+  Research / Marketing ladders, the far islands in W11). [500, 620] fixed the stipple, but it exposed
+  the next defect: the T0 blobs of Design's mixed pine / blossom cells do not match the trees (pair 380
+  blob 0.7–1.4 % on L-pairs-design / -marketing / -research, all qualities). Both changes go together in a
+  props task.
+- `solarRow` moves to tier 0. At T1 the Coding solar fields popped from grey gravel pads to blue rows at 380 u
+  (real pop).
+- High DOF focuses on the orbit target. Nothing called `setFocus`. The fallback (screen-centre ray ∩ sea
+  plane) sat 15–25 u past an elevated campus and blurred the whole T3 frame (pair 45 mean 3.0).
+
+**Consequences**: ladder numbers on medium / high are not comparable with runs before 2026-10-14 (water is no
+longer compared). See `mar-docs/qa/ladder-2026-10-13.md`.
+
 ## D-055: NaN guard on the lit flat normal (TASK-435) — 2026-10-13
 
 **Context**: `D-sky-basket` rendered black on main. One NaN pixel on a far sliver triangle (Bug Zoo, 351 u)

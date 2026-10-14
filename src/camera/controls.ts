@@ -261,7 +261,8 @@ export function createCameraSystem(
           const L = FRAMING.ladder;
           const cut = arg.lastIndexOf(':');
           const d = cut < 0 ? NaN : Number(arg.slice(cut + 1));
-          const isl = findIsland(world, cut < 0 ? arg : arg.slice(0, cut)) ?? world.islands[0];
+          const key = cut < 0 ? arg : arg.slice(0, cut);
+          const isl = findIsland(world, key) ?? world.islands[0];
           const dist = Number.isFinite(d) && d > 0 ? d : L.dists[0];
           const frame = isl?.frames?.village;
           let x = frame?.x ?? isl?.cx ?? world.centerX;
@@ -271,8 +272,14 @@ export function createCameraSystem(
           // it toward the camera along the heading, so the dolly axis keeps its direction
           const ux = Math.sin(az * DEG);
           const uz = Math.cos(az * DEG);
-          for (const [key, r] of Object.entries(L.avoid)) {
-            const a = isl?.anchors[key];
+          // per-island shift (right = (uz, −ux) across the view, back = toward the camera)
+          const sh = L.shift[key.toLowerCase()];
+          if (sh) {
+            x += uz * sh.right + ux * sh.back;
+            z += -ux * sh.right + uz * sh.back;
+          }
+          for (const [anchor, r] of Object.entries(L.avoid)) {
+            const a = isl?.anchors[anchor];
             if (!a) continue;
             const dx = x - a.x;
             const dz = z - a.z;

@@ -150,6 +150,23 @@ describe('ladder metrics: steps', () => {
       LADDER_THRESHOLDS.drift,
     );
   });
+
+  it('island drift leaves parallax cells (structure over reference ground) out, not a region-wide one', () => {
+    const far = img(meadow);
+    const roof: [number, number, number] = [238, 112, 79];
+    const view = (inRoof: (u: number, v: number) => boolean): [Img, Img] => [
+      img((u, v) => (inRoof(u, v) ? roof : meadow(u, v))),
+      img((u, v) => (inRoof(u, v) ? roof : rgb(TERRAIN_MASK.land))),
+    ];
+    // a roof leaning over a fifth of the ground (near perspective)
+    const [lean, leanMask] = view((u) => u < 0.2);
+    expect(regionDrift(lean, leanMask, far, landMask, identityMap)).toBeLessThan(0.5);
+    // a structure over most of the region stays judged
+    const [cover, coverMask] = view((u) => u < 0.6);
+    expect(regionDrift(cover, coverMask, far, landMask, identityMap)).toBeGreaterThan(
+      LADDER_THRESHOLDS.drift,
+    );
+  });
 });
 
 describe('ladder metrics: mapping', () => {
