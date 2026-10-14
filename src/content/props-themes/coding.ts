@@ -56,7 +56,9 @@ export const CODING_PROP_DEFS: readonly PropDef[] = [
     footprint: 1.3,
     flags: grounded,
   },
-  { id: 'solarRow', geo: 'solarRow', tier: 1, variants: 2, footprint: 2.3, flags: grounded },
+  // T0 (TASK-463): a solar field is a district-sized blue block; at tier 1 its gravel pads read grey
+  // from T0 and the rows popped in at 380 u (L-pairs-marketing 380 blob)
+  { id: 'solarRow', geo: 'solarRow', tier: 0, variants: 2, footprint: 2.3, flags: grounded },
   {
     id: 'hedge',
     geo: 'hedge',
