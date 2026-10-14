@@ -263,14 +263,15 @@ Details in `phases/phase-3.md`.
 | TASK-453 | M19 polish from QA 451: (a) shots framing: W18 roof at the lens, W15 airship cut, W7 reads as midday, `D-story-signpostDebate` banner pole; (b) shader: W19 panes unlit at golden hour, W13 beige slabs on the cliff, W14 / W16 water wedge, golden caustic strips, Marketing searchlights in `D-culture-marketing-night`, balloon stipple; (c) world: W2 needs ≥ 3 boats, W3 ≥ 10 fireflies, DevOps pipe segments float on the slope, Research ladder 30 → 21, L-hq drift, L-design 480 drift | (a) engine, (b) shader, (c) life / worldgen | M | COMPLETED | 451 |
 
 ### M19b — Culture polish
-*Open defects left after TASK-453 (MEMORY "where I left off" 2026-10-13). 460–462 parallel, 463 after them.*
+*Open defects left after TASK-453 (MEMORY "where I left off" 2026-10-13). 460–462 parallel, 463 after them; 464 found by 463.*
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|------------|--------|--------------|
 | TASK-460 | Life polish: W2 ≥ 3 boats, W3 ≥ 10 fireflies, boats don't overlap at piers, capybara reads as a capybara from above | life | M | COMPLETED (6e86fa5) | — |
 | TASK-461 | World polish: DevOps steam main as a real pitched run on slopes (no steps), Research ≥ 4 pennant lines + lecture on every seed; medium tableau cap 4 → 5 so tea time keeps its bots | worldgen | M | COMPLETED (89bbae9, d7abd62) | — |
 | TASK-462 | Balloon shadow dither stipple — really the Bayer-dithered steam under the balloons: blended puffs + near-camera fade | shader | S | COMPLETED (537fb7c) | — |
-| TASK-463 | Ladder misses: L-hq drift, L-design 480, L-research 30 → 21, L-pairs-research, L-pairs-marketing 380; wow + ladder `--assert` + sheet | engine | M | IN_PROGRESS | 460–462 |
+| TASK-463 | Ladder misses: exact masks on medium/high (composer skipped), class-consistent drift, Research ladder shift, DOF focus on the orbit target, solar rows T0 — low 6→0, medium 4→0, high 10→1 (D-056) | engine | M | COMPLETED (27bfa82, 9c55f1c) | 460–462 |
+| TASK-464 | T1 far forests stipple out (`TIER_FADE[1]` 320–420 u, blobs off at T1) + per-species / blossom T0 blobs so a wider fade doesn't break pair 380 (high L-pairs-design blob 0.7 %) | props → engine | M | PENDING | TASK-463 |
 
 ### M17 — Graphics II: decor & nature
 *Flower fields, fences, lanterns, benches, signs, rocks*

@@ -10,6 +10,17 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-14 (M19b culture polish closed, TASK-460…463)**: W2 3 rowboats (sheep 8 → 6 for the 60-agent cap),
+  fireflies 9/swarm, sailboats kept `SAILBOAT.berthClear` 12 u off pier-end stops, boxy capybara (ellipsoid
+  rounding read as a shell again — leave it). Pipes = `world/pipe-run.ts` (pitched pieces + risers). Research
+  always has ≥ 4 pennant lines + lecture + comet board + cart; medium `tableauMax` 5. The "balloon stipple" was
+  Bayer-dithered steam: puffs are now blended (`depthWrite` off, renderOrder 12) with `PUFFS.soft.nearFade`;
+  rain keeps its own dithered material clone. Ladder: mask frames skip the composer (medium/high numbers before
+  2026-10-14 are not comparable), class-consistent drift, `FRAMING.ladder.shift.research`, DOF focuses the orbit
+  target, solar rows T0 (D-056, `mar-docs/qa/ladder-2026-10-13.md`). Ladder misses low 0 / medium 0 / high 1.
+  Open (→ TASK-464): T1 far forests stipple out (`TIER_FADE[1]` 320–420 u, T0 blobs off at T1); widening to
+  500–620 costs +4 calls but exposes mixed pine/blossom T0 blobs averaging to pale green (high L-pairs-design 380
+  blob 0.7 %). Boats-per-shot depends on the seed's pier berths.
 - **2026-10-13 (M19 "Seven Cultures" closed, TASK-453 done)**: polish merged — 453a framing (W18 cam
   `-174,27,-190,-160,7,-208`, W15 simt 105, signpost debate + D-move-hq re-aimed), 453b shader (water wedge,
   near searchlight fade, vitray shells, caustics, cliff normals, moon glitter), 453c world (pipe posts,
