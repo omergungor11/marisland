@@ -2,7 +2,7 @@ import { FIELDS_GLSL } from '../shaders/chunks/fields.glsl.ts';
 import { CLOUD_SHADOW_GLSL } from '../shaders/chunks/cloud-shadow.glsl.ts';
 import { NIGHT_GLSL, POOL_GAIN } from '../shaders/chunks/night.glsl.ts';
 import { MIST_GLSL } from '../shaders/chunks/mist.glsl.ts';
-import { RIPPLES } from '../../content/weather.ts';
+import { MORNING_MIST, RIPPLES } from '../../content/weather.ts';
 import { GRID_SAMPLE_GLSL } from '../world-textures.ts';
 import { WATER_SHADER as W } from '../../content/water.ts';
 import { bandDefines, glslFloat as f } from './water-bands.ts';
@@ -105,6 +105,31 @@ export function waterDefines(): string {
     `#define MAR_RIP_FP1 ${f(RIPPLES.footprint[1])}`,
     `#define MAR_RIP_BFP0 ${f(RIPPLES.brightFootprint[0])}`,
     `#define MAR_RIP_BFP1 ${f(RIPPLES.brightFootprint[1])}`,
+    // TASK-472 K5: deep-sea texture + high-sun glitter; B4: lingering foam trail; H6: channel mist
+    `#define MAR_DEEP_FREQ ${f(1 / W.deepTexture.wavelength)}`,
+    `#define MAR_DEEP_OCT ${f(W.deepTexture.octave)}`,
+    `#define MAR_ABYSS0 ${f(W.deepTexture.abyss.from)}`,
+    `#define MAR_ABYSS1 ${f(W.deepTexture.abyss.to)}`,
+    `#define MAR_ABYSS_DARK ${f(W.deepTexture.abyss.darken)}`,
+    `#define MAR_CHAN0 ${f(W.deepTexture.channel.from)}`,
+    `#define MAR_CHAN1 ${f(W.deepTexture.channel.to)}`,
+    `#define MAR_CHAN_LIGHT ${f(W.deepTexture.channel.lighten)}`,
+    `#define MAR_CHAN_TINT ${f(W.deepTexture.channel.tint)}`,
+    `#define MAR_DAY_LOBE vec2(${f(W.daySun.lobe.across)}, ${f(W.daySun.lobe.along)})`,
+    `#define MAR_DAY_SPARK ${glitterVec(W.daySun.sparkle)}`,
+    `#define MAR_DAY_GAIN ${f(W.daySun.sparkle.gain)}`,
+    `#define MAR_DAY_GLOW ${f(W.daySun.glow)}`,
+    `#define MAR_DAY_FARGLOW ${f(W.daySun.farGlow)}`,
+    `#define MAR_TRAIL_F0 ${f(W.trail.freshFraction)}`,
+    `#define MAR_TRAIL_GAIN ${f(W.trail.gain)}`,
+    `#define MAR_TRAIL_FADE ${f(W.trail.fadePow)}`,
+    `#define MAR_TRAIL_BREAK ${f(W.trail.breakUp)}`,
+    `#define MAR_TRAIL_MINPX ${f(W.trail.minPx)}`,
+    `#define MAR_TRAIL_R0 ${f(W.trail.refRadius)}`,
+    `#define MAR_TRAIL_NEAR0 ${f(W.trail.nearFade[0])}`,
+    `#define MAR_TRAIL_NEAR1 ${f(W.trail.nearFade[1])}`,
+    `#define MAR_MIST_SDF0 ${f(MORNING_MIST.channelSdf[0])}`,
+    `#define MAR_MIST_SDF1 ${f(MORNING_MIST.channelSdf[1])}`,
   ].join('\n');
 }
 
@@ -293,6 +318,18 @@ void main() {
   vec3 col = mix(uLagoon, uShallow, s1);
   col = mix(col, uMid, s2);
   col = mix(col, uDeep, s3);
+  // deep-sea texture (TASK-472 K5): static low-frequency patches — abyss (darker) and sand
+  // channels (lighter, blue-green) — over the deep band only; ≤ 8 % of L either way
+  if (s3 > 0.0) {
+    float dn = 0.65 * marNoise(xz * MAR_DEEP_FREQ + 3.7)
+             + 0.35 * marNoise(xz * MAR_DEEP_FREQ * MAR_DEEP_OCT + 11.1);
+    float abyss = smoothstep(MAR_ABYSS0, MAR_ABYSS1, dn);
+    float chan = smoothstep(MAR_CHAN0, MAR_CHAN1, dn);
+    vec3 deepTex = col * (1.0 - MAR_ABYSS_DARK * abyss);
+    vec3 chanCol = mix(col, uShallow * dot(col, vec3(0.2126, 0.7152, 0.0722)) / max(dot(uShallow, vec3(0.2126, 0.7152, 0.0722)), 1e-3), MAR_CHAN_TINT) * (1.0 + MAR_CHAN_LIGHT);
+    deepTex = mix(deepTex, chanCol, chan);
+    col = mix(col, deepTex, s3);
+  }
   // real shallows read bright; a near-shore band over a steep drop darkens
   // (gentle over the first few u so carved dock basins / channels blend instead of reading as holes)
   float dk = smoothstep(MAR_DARKEN0, MAR_DARKEN1, depth);
@@ -395,9 +432,20 @@ void main() {
   dots *= 1.0 - smoothstep(0.08, 0.3, cpx);
   foam = max(foam, dots);
 
-  // foam trail (wakes, ripples)
-  float trail = texture2D(uTrailTex, (xz - uTrailMap.xy) * uTrailMap.z).r;
-  foam = max(foam, trail * smoothstep(0.1, 0.4, brk + 0.3));
+  // foam trail (wakes, ripples; TASK-472 B4): R = stamp profile 1 − r²/R², G = age, B = gain.
+  // The visible disc is the profile above a threshold that drops with age (fresh: F0 of the
+  // stamp radius, gone: the whole stamp) → a thin line behind the boat widening into a band
+  // while (1 − age)^k fades it; ≥ MINPX half width at any scale; old bands break into patches
+  vec3 tr = texture2D(uTrailTex, (xz - uTrailMap.xy) * uTrailMap.z).rgb;
+  float trSoft = max(fwidth(tr.r), 0.015);
+  float trLife = 1.0 - tr.g;
+  float trFrac = sqrt(1.0 - (1.0 - MAR_TRAIL_F0 * MAR_TRAIL_F0) * trLife);
+  trFrac = min(max(trFrac, MAR_TRAIL_MINPX * fp / MAR_TRAIL_R0), 1.0);
+  float trTh = 1.0 - trFrac * trFrac;
+  float trail = smoothstep(trTh - trSoft, trTh + trSoft, tr.r) * pow(trLife, MAR_TRAIL_FADE) * tr.b;
+  trail *= mix(1.0, smoothstep(0.2, 0.6, brk), MAR_TRAIL_BREAK * tr.g) * MAR_TRAIL_GAIN;
+  trail *= mix(1.0, smoothstep(MAR_TRAIL_NEAR0, MAR_TRAIL_NEAR1, fp), tr.g);
+  foam = max(foam, trail);
   foam = clamp(foam, 0.0, 1.0);
 
   col = mix(col, uFoam * light, foam);
@@ -446,6 +494,16 @@ void main() {
     warm = (sg.x * MAR_SUN_GAIN + sg.y * glowW) * lowSun * (1.0 - foam) * (1.0 - uWeather.y);
   }
   vec3 warmCol = mix(uSunColor, uSunColor * vec3(1.0, 0.82, 0.6), 0.5);
+#ifdef MAR_DETAIL
+  // high-sun glitter on the open sea (TASK-472 K5): wide short lobe toward the sun, deep band only
+  float dayCpx = fp * MAR_DAY_SPARK.x;
+  float dayOn = smoothstep(MAR_LOWSUN_Y0, MAR_LOWSUN_Y1, L.y) * (1.0 - lowSun) * (1.0 - uNight) * dayK * (1.0 - uWeather.y) * s3;
+  if (dayOn > 0.0) {
+    vec2 dg = marGlitter(L, V, nS, xz, t * uMotionScale, dayCpx, MAR_DAY_LOBE, MAR_DAY_SPARK, 29.0);
+    float glowW = mix(MAR_DAY_GLOW, MAR_DAY_FARGLOW, smoothstep(0.22, 0.5, dayCpx));
+    glint += (dg.x * MAR_DAY_GAIN + dg.y * glowW) * dayOn * (1.0 - foam);
+  }
+#endif
 
   col += uSunColor * (glint + streak) + warmCol * warm;
   alpha = max(alpha, min(1.0, glint + streak + warm));
@@ -475,7 +533,8 @@ void main() {
   alpha = mix(alpha, 1.0, fogF);
   // low mist band (TASK-172)
   if (uMist.x > 0.0) {
-    float mi = marMist(vWorld, uCameraPos);
+    // channel mist (TASK-472 H6): only past the shore ring
+    float mi = marMistK(vWorld, uCameraPos, marMistMask(smoothstep(MAR_MIST_SDF0, MAR_MIST_SDF1, d)));
     col = mix(col, uMistColor, mi);
     alpha = mix(alpha, 1.0, mi);
   }

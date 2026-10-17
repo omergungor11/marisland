@@ -22,8 +22,8 @@ export interface WaterView {
   trail: FoamTrail;
   /** Re-centre the radial grid on the camera (snapped) and push time. */
   update(cameraPos: THREE.Vector3, time: number): void;
-  /** Splat a wake/ripple into the foam-trail texture (M6). */
-  splat(x: number, z: number, radius: number, strength: number): void;
+  /** Splat a wake/ripple into the foam-trail texture (M6; TASK-472: `life` s, start age 0..1). */
+  splat(x: number, z: number, radius: number, strength: number, life?: number, age0?: number): void;
 }
 
 export function createWater(
@@ -35,7 +35,15 @@ export function createWater(
   void world; // wind comes in through SHARED.uWind (setWind(world.windDir))
   const cfg = WATER_SHADER;
   const geo = scope.add(createRadialGrid(cfg.grid));
-  const trail = createFoamTrail(cfg.trail, scope);
+  const trail = createFoamTrail(
+    {
+      size: cfg.trail.size,
+      extent: cfg.trail.extent,
+      stepSec: cfg.trail.stepSec,
+      life: cfg.trail.defaultLife,
+    },
+    scope,
+  );
 
   const defines: Record<string, string> = {};
   if (quality === 'low') defines.MAR_DIRECT = '';
@@ -87,6 +95,6 @@ export function createWater(
       mesh.updateMatrix();
       trail.step(time);
     },
-    splat: (x, z, r, s) => trail.splat(x, z, r, s),
+    splat: (x, z, r, s, life, age0) => trail.splat(x, z, r, s, life, age0),
   };
 }

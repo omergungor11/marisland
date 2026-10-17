@@ -85,27 +85,51 @@ describe('radial grid', () => {
 });
 
 describe('foam trail', () => {
-  const o = { size: 64, extent: 64, decayPerStep: 0.98, stepSec: 1 / 30 };
-  it('splats a disc and decays with time, not frames', () => {
+  const o = { size: 64, extent: 64, stepSec: 1 / 30, life: 2 };
+  it('splats a disc that ages with time, not frames, and dies after its life', () => {
     const t = createFoamTrail(o);
     t.splat(10, -5, 6, 1);
     expect(t.active).toBe(true);
     expect(t.sample(10, -5)).toBeGreaterThan(0.9);
     expect(t.sample(30, 30)).toBe(0);
-    const v0 = t.sample(10, -5);
+    expect(t.ageAt(10, -5)).toBe(0);
     t.step(0);
-    t.step(1); // 30 steps
-    const v1 = t.sample(10, -5);
-    expect(v1 / v0).toBeCloseTo(Math.pow(0.98, 30), 2);
-    // same elapsed time split into many frames → same decay
+    t.step(1); // 30 steps = half the life
+    expect(t.ageAt(10, -5)).toBeCloseTo(0.5, 2);
+    expect(t.sample(10, -5)).toBeCloseTo(0.5, 1);
+    // same elapsed time split into many frames → same age
     const u = createFoamTrail(o);
     u.splat(10, -5, 6, 1);
     u.step(0);
     for (let i = 1; i <= 60; i++) u.step(i / 60);
-    expect(u.sample(10, -5)).toBeCloseTo(v1, 3);
-    t.step(60);
+    expect(u.ageAt(10, -5)).toBeCloseTo(t.ageAt(10, -5), 3);
+    // texture: R = profile, G = age, B = gain
+    const bytes = t.texture.image.data as Uint8Array;
+    const k = (Math.floor((-5 + 64) / 2) * 64 + Math.floor((10 + 64) / 2)) * 4;
+    expect(bytes[k]).toBeGreaterThan(200);
+    expect(bytes[k + 1]).toBeCloseTo(128, -1);
+    expect(bytes[k + 2]).toBe(255);
+    t.step(3);
     expect(t.active).toBe(false);
-    expect((t.texture.image.data as Uint8Array)[0]).toBe(0);
+    expect(bytes[k]).toBe(0);
+  });
+  it('a stamp with its own life and a starting age (track history); the brighter stamp owns the texel', () => {
+    const t = createFoamTrail(o);
+    t.splat(0, 0, 4, 1, 40, 0.75);
+    expect(t.ageAt(0, 0)).toBe(0.75);
+    t.step(0);
+    t.step(5); // 5 s of a 40 s life → +0.125
+    expect(t.ageAt(0, 0)).toBeCloseTo(0.875, 3);
+    // an old faint stamp does not overwrite a fresh bright one
+    const u = createFoamTrail(o);
+    u.splat(0, 0, 4, 1);
+    u.splat(0, 0, 4, 1, 40, 0.9);
+    expect(u.ageAt(0, 0)).toBe(0);
+    // but a fresh one overwrites an old one
+    u.step(0);
+    u.step(1.9);
+    u.splat(0, 0, 4, 1, 40, 0);
+    expect(u.ageAt(0, 0)).toBe(0);
   });
 });
 

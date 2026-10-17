@@ -4,7 +4,9 @@ import { BEAM_FRAG_PARS, BEAM_VERT_PARS } from '../night/beam.glsl.ts';
  * Sky dome shaders (TASK-171). Uniforms: SHARED env colours (linear) + sky constants from
  * content/lighting SKY. Output is HDR (sun disc > 1 so bloom catches it; moon slightly).
  * One draw call: gradient → sun (disc + glow, grows near the horizon) → moon (soft crescent +
- * halo, earthshine blocks stars) → hashed twinkling stars.
+ * halo, earthshine blocks stars) → hashed twinkling stars → comet (TASK-472 G2: a distance-field
+ * head + fan tail during the Star Academy's Comet Night) → shooting star (one 0.6 s streak at a
+ * seeded time; both off with their uniform's w ≤ 0, no math).
  *
  * `uMode` = 1 turns the same program into the lighthouse beam (night/beam.glsl.ts): a second
  * material with identical source / flags (BackSide, non-"opaque" blending) shares the program,
@@ -53,6 +55,20 @@ uniform vec4 uStarFx;
 uniform vec2 uBands;
 // TASK-172: y = overcast veil (hides the sun disc), z = fog-band widening (w = beam boost, beam.glsl)
 uniform vec4 uWeather;
+// comet (TASK-472 G2): xyz = head direction, w = intensity 0..1 (≤ 0 = off)
+uniform vec4 uComet;
+// xyz = tail direction (unit, ⟂ head), w = tail length (rad)
+uniform vec4 uCometTail;
+// x = head radius (rad), y = head HDR intensity, z = tail half width at the head (rad), w = fan
+uniform vec4 uCometLook;
+uniform vec3 uCometColor;
+// shooting star: xyz = start direction, w = progress 0..1 (< 0 = off)
+uniform vec4 uMeteor;
+// xyz = streak direction (unit, ⟂ start), w = streak length (rad)
+uniform vec4 uMeteorDir;
+// x = half width (rad), y = HDR intensity, z = fade envelope
+uniform vec3 uMeteorLook;
+uniform vec3 uMeteorColor;
 varying vec3 vDir;
 ${BEAM_FRAG_PARS}
 
@@ -158,6 +174,48 @@ void main() {
       vec3 sc = mix(vec3(1.0, 0.92, 0.8), vec3(0.85, 0.9, 1.0), skyHash12(cell + 9.7));
       col += sc * star * uStars.z * starA * fade;
     }
+  }
+
+  // --- comet (TASK-472 G2): distance field in the head's tangent frame — soft HDR head with a
+  // glow, a fan tail (width grows along it) with a brighter core and two wavy rays
+  if (uComet.w > 0.0) {
+    vec3 cd = normalize(uComet.xyz);
+    float cosC = dot(d, cd);
+    vec3 off = d - cd * cosC;
+    vec3 ta = uCometTail.xyz;
+    vec3 tb = cross(cd, ta);
+    float along = dot(off, ta);
+    float across = dot(off, tb);
+    float ang = acos(clamp(cosC, -1.0, 1.0));
+    float rH = uCometLook.x;
+    float head = exp(-ang * ang / (rH * rH) * 2.0);
+    float glow = exp(-ang / (rH * 2.5)) * 0.25;
+    float L = uCometTail.w;
+    float u = clamp(along / L, 0.0, 1.0);
+    float w = uCometLook.z + uCometLook.w * max(along, 0.0);
+    float prof = exp(-across * across / (w * w) * 2.0) * 0.7 + exp(-across * across / (w * w * 0.12)) * 0.5;
+    float rays = 0.8 + 0.2 * sin(across / w * 5.0 + along * 30.0) * sin(along * 55.0 + 1.3);
+    float tail = prof * rays * (1.0 - u) * (1.0 - u) * smoothstep(-rH, rH * 0.6, along) * (1.0 - smoothstep(L, L * 1.15, along));
+    float k = uComet.w * above * (1.0 - uWeather.y) * smoothstep(0.0, 0.08, cosC);
+    col += uCometColor * ((head + glow) * uCometLook.y + tail) * k;
+  }
+
+  // --- shooting star: a short streak whose head runs along uMeteorDir, trail fading behind
+  if (uMeteor.w >= 0.0) {
+    vec3 m0 = normalize(uMeteor.xyz);
+    float cosH = dot(d, m0);
+    vec3 off = d - m0 * cosH;
+    vec3 ma = uMeteorDir.xyz;
+    vec3 mb = cross(m0, ma);
+    float along = dot(off, ma);
+    float across = dot(off, mb);
+    float len = uMeteorDir.w * uMeteor.w;
+    float a = clamp(along, 0.0, len);
+    float da = along - a;
+    float dd = across * across + da * da;
+    float w = uMeteorLook.x;
+    float body = exp(-dd / (w * w) * 2.0) * pow(a / max(len, 1e-4), 2.0);
+    col += uMeteorColor * uMeteorLook.y * uMeteorLook.z * body * above * smoothstep(0.0, 0.08, cosH);
   }
 
   gl_FragColor = vec4(col, 1.0);

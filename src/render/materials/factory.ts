@@ -563,6 +563,7 @@ export class LitMaterial extends THREE.MeshLambertMaterial {
       uMist: SHARED.uMist,
       uMistColor: SHARED.uMistColor,
       uMistMax: SHARED.uMistMax,
+      uMistChannel: SHARED.uMistChannel,
     };
     this.onBeforeCompile = (shader) => {
       Object.assign(shader.uniforms, uniforms);

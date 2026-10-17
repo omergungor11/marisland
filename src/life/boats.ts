@@ -194,6 +194,9 @@ export class Sailboats extends AgentKind {
   private readonly dir: Float32Array;
   /** Travelled distance at the last wake stamp (NaN = none yet). */
   private readonly wakeAt: Float64Array;
+  /** Travelled distance at the last lingering-trail stamp (TASK-472 B4; NaN = none yet). */
+  private readonly trailAt: Float64Array;
+  private readonly trailRadius: number;
   readonly routes: Route[];
   readonly spec: BoatSpec;
   /** Ferry timetable per route (ferries only) and start offset per boat, s. */
@@ -237,6 +240,8 @@ export class Sailboats extends AgentKind {
     this.dist = new Float64Array(count);
     this.dir = new Float32Array(count).fill(1);
     this.wakeAt = new Float64Array(count).fill(Number.NaN);
+    this.trailAt = new Float64Array(count).fill(Number.NaN);
+    this.trailRadius = SAILBOAT.trail.radius[spec.name] ?? SAILBOAT.trail.radius.sailboat;
     this.foam = wake?.foam ?? new WakeFoam(o, ctx, this.capacity);
     this.wakeBase = wake?.base ?? 0;
     this.ownsFoam = !wake;
@@ -257,6 +262,7 @@ export class Sailboats extends AgentKind {
       this.active[i] = 1;
       this.stepAgent(i, 0, 0);
       this.snap(i);
+      this.prefillTrail(i);
     }
   }
 
@@ -350,12 +356,66 @@ export class Sailboats extends AgentKind {
   /** One foam-dot pair at the stern per `spacing` u of travel; none at T0 (boats are specks there). */
   private stampWake(i: number, x: number, z: number, fx: number, fz: number): void {
     const w = SAILBOAT.wake;
-    if (this.ctx.getTier() < w.minTier) return;
     const d = this.dist[i];
+    this.stampTrail(i, d, x, z, fx, fz, 0);
+    if (this.ctx.getTier() < w.minTier) return;
     const last = this.wakeAt[i];
     if (!Number.isNaN(last) && Math.abs(d - last) < w.spacing) return;
     this.wakeAt[i] = d;
     this.foam.stamp(this.wakeBase + i, x - fx * w.back, z - fz * w.back, -fz, fx, this.simT);
+  }
+
+  /** Lingering trail stamp (TASK-472 B4) into the water's foam-trail texture, every tier. */
+  private stampTrail(
+    i: number,
+    d: number,
+    x: number,
+    z: number,
+    fx: number,
+    fz: number,
+    age0: number,
+  ): void {
+    const T = SAILBOAT.trail;
+    const last = this.trailAt[i];
+    if (!Number.isNaN(last) && Math.abs(d - last) < T.spacing) return;
+    this.trailAt[i] = d;
+    this.ctx.water.splat(
+      x - fx * T.back,
+      z - fz * T.back,
+      this.trailRadius,
+      T.strength,
+      T.life,
+      age0,
+    );
+  }
+
+  /**
+   * Stamp the last `trail.life` s of boat `i`'s track with their ages, so the routes are drawn
+   * from the first frame: ferries by their closed-form timetable, the others at cruise speed
+   * along the loop (stop slow-downs ignored — the path is the same, only the age spacing differs).
+   */
+  private prefillTrail(i: number): void {
+    const T = SAILBOAT.trail;
+    const R = this.routes[this.route[i]];
+    const sp = this.spec.speed;
+    const dir = this.dir[i];
+    const dt = T.spacing / Math.max(sp, 1e-3);
+    this.trailAt[i] = Number.NaN;
+    for (let age = T.life - dt; age > 0; age -= dt) {
+      const t = -age;
+      const trav = this.spec.ferry
+        ? ferryDist(this.schedules[this.route[i]], t + this.tOff[i])
+        : dir * sp * t;
+      const d = this.d0[i] + trav;
+      const p = pointAtLength(R.pts, R.lens, d, true, this.p);
+      const a = pointAtLength(R.pts, R.lens, d + dir * 1.5, true, this.a);
+      const b = pointAtLength(R.pts, R.lens, d - dir * 1.5, true, this.b);
+      const dx = a.x - b.x;
+      const dz = a.y - b.y;
+      const len = Math.hypot(dx, dz) || 1;
+      this.stampTrail(i, trav, p.x, p.y, dx / len, dz / len, age / T.life);
+    }
+    this.trailAt[i] = Number.NaN;
   }
 
   override fixedUpdate(dt?: number): void {

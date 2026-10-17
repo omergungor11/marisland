@@ -55,6 +55,7 @@ export function blobMaterial(): THREE.ShaderMaterial {
       uMist: SHARED.uMist,
       uMistColor: SHARED.uMistColor,
       uMistMax: SHARED.uMistMax,
+      uMistChannel: SHARED.uMistChannel,
     },
     vertexShader: /* glsl */ `
       ${FIELDS_GLSL}

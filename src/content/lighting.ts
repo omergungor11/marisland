@@ -124,20 +124,69 @@ export const SKY = {
   /** Halo: tight glow (strength, power) + wide bluish glow (strength, power). */
   moonHalo: [0.22, 900, 0.1, 60] as const,
   moonHaloColor: '#9FB4FF',
-  /** Stars: grid cells per radian, fraction of lit cells, peak brightness. */
+  /** Stars: grid cells per radian, fraction of lit cells. */
   starCells: 70,
   starDensity: 0.06,
-  starBrightness: 1.4,
-  /** Max star radius in cells (min = 55 %); ≈ 1.5–2.5 px at 540p, never sub-pixel. */
-  starSize: 0.2,
   /** Twinkle: relative depth (±) and base rate (rad/s, varied per star). */
   starTwinkle: 0.22,
   starTwinkleRate: 1.6,
-  /** Stars fade in over this elevation band (sin) above the fog band. */
-  starHorizonFade: [0.1, 0.32] as const,
+  /**
+   * Star look per quality (TASK-472 G5). The night wow frames (postcard, Beacon) look down 13°
+   * with a 35° FOV: their sky is the 0–4.5° strip above the horizon, so the stars must survive
+   * right down into the fog band — `horizonFade` [gone, full] in sin elevation (0.012 ≈ 0.7°,
+   * 0.05 ≈ 2.9°). Low has no bloom: brighter, bigger dots; medium / high let bloom add the glow.
+   * `size` = max star radius in cells (min = 55 %); ≈ 1.5–2.5 px at 540p, never sub-pixel.
+   */
+  stars: {
+    low: { horizonFade: [0.012, 0.05] as const, brightness: 1.9, size: 0.24 },
+    medium: { horizonFade: [0.012, 0.05] as const, brightness: 1.6, size: 0.2 },
+    high: { horizonFade: [0.012, 0.05] as const, brightness: 1.6, size: 0.2 },
+  },
   /** Elevation (sin) where the fog colour hands over to the horizon colour, and horizon → zenith. */
   fogBand: 0.06,
   horizonBand: 0.45,
+} as const;
+
+/**
+ * Comet Night (TASK-472 G2; the Star Academy's 22:00 ritual, `CULTURE_RHYTHM.research`
+ * `cometNight`, 60 s). A comet rises in the sky dome as a distance field in the dome shader
+ * (not a sprite): a soft HDR head plus a fan tail pointing away from the sun (below the horizon
+ * at night, so the tail streams up and away). Elevation runs `elevation[0] → [1]` deg over the
+ * ritual's phase; `azimuthDeg` is the bearing (0 = +x, 90 = +z). Fades over the first `fadeIn`
+ * and last `fadeOut` of the phase. Visible on every quality (one branch, 0 programs).
+ */
+export const COMET = {
+  color: '#CFF4F7',
+  azimuthDeg: 160,
+  elevation: [4, 38] as const,
+  fadeIn: 0.08,
+  fadeOut: 0.12,
+  /** Head radius (deg) and HDR intensity (> 1 so bloom catches it on medium / high). */
+  headDeg: 0.8,
+  headIntensity: 2.6,
+  /** Tail length (deg), half width at the head (deg), fan (extra half width per deg of length). */
+  tailDeg: 22,
+  tailWidthDeg: 0.55,
+  tailFan: 0.14,
+  tailIntensity: 1.1,
+} as const;
+
+/**
+ * Shooting stars (TASK-472 G2): on clear nights one every `interval` s (seeded, closed form of
+ * the clock), each `seconds` long: a bright head running `lengthDeg` along a random downward
+ * slant, the trail fading behind it. Random sky position within `elevation` (deg). Hidden while
+ * the overcast veil is above `veilCut` or outside full night (star alpha).
+ */
+export const METEORS = {
+  interval: [40, 90] as const,
+  seconds: 0.6,
+  lengthDeg: [9, 15] as const,
+  elevation: [14, 55] as const,
+  /** Half width of the streak (deg), HDR intensity. */
+  widthDeg: 0.16,
+  intensity: 2.6,
+  color: '#F2F6FF',
+  veilCut: 0.4,
 } as const;
 
 /**
@@ -150,7 +199,8 @@ export const SKY = {
 export const MOON = {
   rise: 17.5,
   set: 6.5,
-  peakDeg: 50,
+  /** 45 (was 50, TASK-472 G5): the moon sits 33–40° high through the relay hours 21:00–22:00. */
+  peakDeg: 45,
   /** Azimuth yaw of the whole path (deg, about +y). */
   yawDeg: 45,
   /**

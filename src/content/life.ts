@@ -182,6 +182,20 @@ export const SAILBOAT = {
     lift: 0.12,
     minTier: 1,
   },
+  /**
+   * Lingering wake trail (TASK-472 B4): on every tier each boat also stamps the water's foam-trail
+   * texture (content/water `trail`) `back` u behind its origin every `spacing` u of travel, a disc of
+   * `radius` u per kind that lingers `life` s, widening and fading (the route "draws itself" at T0).
+   * At build the last `life` s of each boat's track are stamped with their ages, so the routes are
+   * drawn from the first frame (ferries by their timetable, the others at cruise speed).
+   */
+  trail: {
+    spacing: 0.5,
+    back: 1.6,
+    life: 40,
+    radius: { sailboat: 1.0, ferry: 1.6, patrol: 0.9, lanternBoat: 0.75 } as Record<string, number>,
+    strength: 1,
+  },
   /** Fallback route: ring radius beyond the island, minimum depth, loop spacing. */
   route: { margin: 25, minDepth: 2, spacing: 2, count: 2, pushStep: 2, pushMax: 80 },
 } as const;
@@ -255,7 +269,7 @@ export const ARCS = {
     length: 2,
     duration: 0.6,
     spin: 1,
-    splash: { radius: 0.8, strength: 0.6 },
+    splash: { radius: 0.8, strength: 0.6, life: 2.2 },
     scale: 1,
   },
   dolphin: {
@@ -267,7 +281,7 @@ export const ARCS = {
     pairOffset: 1.6,
     pairLag: 0.1,
     scale: 3,
-    splash: { radius: 1.4, strength: 0.7 },
+    splash: { radius: 1.4, strength: 0.7, life: 3 },
   },
   /** Jump search near a coast, radius around the focus (u). */
   fishRadius: 80,
