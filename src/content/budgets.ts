@@ -73,5 +73,11 @@ export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
 /** M19 (TASK-408): max new prop defs one island culture may add (content/cultures). */
 export const cultureDefsPerIsland = 10;
 
+/** M20 remade islands (D-057): their own def cap and tier-1 cap instead of the shared ones. */
+export const cultureCapOverride: Readonly<Record<string, { defs: number; tier1: number }>> = {
+  hq: { defs: 12, tier1: 1 },
+  design: { defs: 15, tier1: 2 },
+};
+
 /** SwiftShader is ~20–50× slower; time budgets are scaled by this when headless. */
 export const HEADLESS_TIME_FACTOR = 40;

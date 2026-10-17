@@ -2,6 +2,34 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-057: HQ "Seven Gates" + Design "Glass Conservatory" remake; per-island culture caps — 2026-10-17
+
+**Context**: the user asked for HQ and Design to be reworked with more visual elements and more
+island-specific places. The 2026-10-17 ladder shots: HQ's village fills only the west tip of the
+crescent while the east hill (over half the island) is empty forest, and every building is the same
+orange box. Design is mostly pine filler, and "Glass & Light" reads only on the Atelier Tree and two or
+three small buildings. The user chose from three directions per island (static comparison page):
+HQ **C · Seven Gates Crossroads**, Design **A · Glass Conservatory**.
+
+**Decision**:
+- HQ becomes the archipelago crossroads. A round compass plaza (archipelago map mosaic) replaces the
+  quad. Seven streets run from it, each aimed at its real island (`ctx.islands`); HQ's own street is the
+  harbour lane to the pier. Each street ends in a gate in that culture's accent, pennant cut and
+  glyph, with goods stalls selling that island's wares along it. There is a post sorting yard with a
+  mail line (sacks sliding from the hill to the pier), and on the east hill a semaphore tower whose
+  arms point at the island whose turn it is in the 21:00 relay.
+- Design gets a large faceted glass conservatory (tier 1) on the central glade, glasshouse rows in
+  pane colours, a glass bridge over the waterfall stream, prism arches that throw coloured light
+  pools onto the path, and a windmill with stained-glass sails. Pine filler thins out around these.
+- `budgets.cultureCapOverride`: HQ 12 defs / 1 tier-1; Design 15 defs / 2 tier-1 (rainbowArc +
+  conservatory). Every other island keeps 10 / 1. The ≥ 70 % tier ≥ 2 rule and the palette rule are
+  unchanged.
+
+**Why**: the cap exists to stop kit sprawl across all seven cultures. Here the user explicitly asked
+for more on two islands. Overriding the cap for those two only keeps the guard in place for the rest.
+
+**Cost**: up to +4 / +5 instanced defs. Draw calls are still gated by `shots --assert`.
+
 ## D-056: Ladder fixes — exact masks on medium / high, class-consistent drift, DOF focus (TASK-463) — 2026-10-14
 
 **Context**: five ladder misses were left after TASK-453. The re-run showed that on medium and high the

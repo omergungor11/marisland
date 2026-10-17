@@ -2,7 +2,7 @@ import * as palette from '../palette.ts';
 import * as paletteOffices from '../palette-offices.ts';
 import * as skyCraft from '../sky-craft.ts';
 import { THEMES } from '../themes.ts';
-import { cultureDefsPerIsland } from '../budgets.ts';
+import { cultureCapOverride, cultureDefsPerIsland } from '../budgets.ts';
 import type { CultureDef } from './types.ts';
 
 const HEX = /^#[0-9a-f]{6}$/i;
@@ -29,7 +29,7 @@ export function paletteHexes(): ReadonlySet<string> {
 
 /**
  * Checks the culture ledger rules (B4/B5): ≤ `cultureDefsPerIsland` new defs per island, ≥ 70 %
- * of them tier ≥ 2, ≤ 1 tier-1, no tier-0, unique ids, colours only from the palette tables.
+ * of them tier ≥ 2, ≤ 1 tier-1 (both caps per island from `cultureCapOverride`, D-057), no tier-0, unique ids, colours only from the palette tables.
  * Returns human-readable problems; empty = valid.
  */
 export function validateCultures(
@@ -41,12 +41,13 @@ export function validateCultures(
   for (const c of cultures) {
     const at = `${c.theme}/${c.id}`;
     const n = c.kit.length;
-    if (n > cultureDefsPerIsland) errors.push(`${at}: ${n} defs > cap ${cultureDefsPerIsland}`);
+    const cap = cultureCapOverride[c.theme] ?? { defs: cultureDefsPerIsland, tier1: 1 };
+    if (n > cap.defs) errors.push(`${at}: ${n} defs > cap ${cap.defs}`);
     const t0 = c.kit.filter((k) => k.tier === 0).length;
     const t1 = c.kit.filter((k) => k.tier === 1).length;
     const hi = c.kit.filter((k) => k.tier >= 2).length;
     if (t0 > 0) errors.push(`${at}: ${t0} tier-0 def(s)`);
-    if (t1 > 1) errors.push(`${at}: ${t1} tier-1 defs > 1`);
+    if (t1 > cap.tier1) errors.push(`${at}: ${t1} tier-1 defs > ${cap.tier1}`);
     if (n > 0 && hi / n < 0.7) errors.push(`${at}: only ${hi}/${n} defs tier >= 2 (< 70 %)`);
     for (const k of c.kit) {
       if (seen.has(k.id)) errors.push(`${at}: duplicate def id ${k.id}`);

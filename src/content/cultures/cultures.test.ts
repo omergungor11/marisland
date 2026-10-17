@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { CULTURES } from './index.ts';
 import { paletteHexes, validateCultures } from './validate.ts';
 import { THEME_IDS } from '../../world/types.ts';
-import { cultureDefsPerIsland } from '../budgets.ts';
+import { cultureCapOverride, cultureDefsPerIsland } from '../budgets.ts';
 import type { CultureDef, KitEntry } from './types.ts';
 
 const all = (): CultureDef[] => THEME_IDS.map((t) => CULTURES[t]);
 const entry = (id: string, tier: KitEntry['tier']): KitEntry => ({ id, tier, flags: 0 });
-const withKit = (kit: KitEntry[]): CultureDef => ({ ...CULTURES.hq, kit });
+const withKit = (kit: KitEntry[], base: CultureDef = CULTURES.coding): CultureDef => ({
+  ...base,
+  kit,
+});
 
 describe('culture contract (TASK-408)', () => {
   it('one culture per theme, with unique ids and relay steps 1..7', () => {
@@ -23,7 +26,10 @@ describe('culture contract (TASK-408)', () => {
 
   it('ledgers obey the cap and tier mix; colours come only from the palette tables', () => {
     expect(validateCultures(all())).toEqual([]);
-    for (const c of all()) expect(c.kit.length).toBeLessThanOrEqual(cultureDefsPerIsland);
+    for (const c of all())
+      expect(c.kit.length).toBeLessThanOrEqual(
+        cultureCapOverride[c.theme]?.defs ?? cultureDefsPerIsland,
+      );
     expect(paletteHexes().has('#E8735A')).toBe(true);
   });
 
@@ -50,5 +56,17 @@ describe('culture contract (TASK-408)', () => {
       palette: { ...CULTURES.hq.palette, trims: ['#123456'] },
     };
     expect(validateCultures([bad]).join()).toMatch(/#123456/);
+  });
+
+  it('remade islands use their own caps (D-057)', () => {
+    const design = cultureCapOverride.design!;
+    const kit = [
+      ...Array.from({ length: design.defs - design.tier1 }, (_, i) => entry(`d${i}`, 2)),
+      ...Array.from({ length: design.tier1 }, (_, i) => entry(`t${i}`, 1)),
+    ];
+    expect(validateCultures([withKit(kit, CULTURES.design)])).toEqual([]);
+    expect(validateCultures([withKit(kit)]).join()).toMatch(/cap/);
+    const over = [...kit, entry('x', 3)];
+    expect(validateCultures([withKit(over, CULTURES.design)]).join()).toMatch(/cap/);
   });
 });

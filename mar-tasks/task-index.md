@@ -273,6 +273,18 @@ Details in `phases/phase-3.md`.
 | TASK-463 | Ladder misses: exact masks on medium/high (composer skipped), class-consistent drift, Research ladder shift, DOF focus on the orbit target, solar rows T0 — low 6→0, medium 4→0, high 10→1 (D-056) | engine | M | COMPLETED (27bfa82, 9c55f1c) | 460–462 |
 | TASK-464 | T1 far forests stipple out (`TIER_FADE[1]` 320–420 u, blobs off at T1) + per-species / blossom T0 blobs so a wider fade doesn't break pair 380 (high L-pairs-design blob 0.7 %) | props → engine | M | PENDING | TASK-463 |
 
+### M20 — HQ Seven Gates + Design Glass Conservatory
+*User-chosen remake (D-057, 2026-10-17). 465 first; 466 ∥ 467 after it; 468 ∥ 469 after both; 470 last.*
+
+| ID | Task | Agent | Complexity | Status | Dependencies |
+|----|------|-------|------------|--------|--------------|
+| TASK-465 | New defs, both islands: HQ `cultureGate` (7 culture variants), `goodsStall` (7 goods variants), `semaphoreTower` (arm hooks), `mailLine` (pylon + cable); Design `conservatory` (T1), `glasshouse` (pane variants), `glassBridge`, `prismArch`, `stainedWindmill` (rotor hook); LOD1, FIXTURE_RADIUS, culture ledgers | props | L | PENDING | — |
+| TASK-466 | HQ plan rewrite: compass plaza, 7 streets aimed at real islands (own = harbour lane), gates at street ends, stalls along them, post yard + mail line anchors, semaphore on the east hill; east hill no longer empty | worldgen | L | PENDING | TASK-465 |
+| TASK-467 | Design plan: conservatory on the central glade, glasshouse rows, glass bridge on the waterfall stream, prism-arch path, windmill on the ridge; pine filler thinned around them | worldgen | M | PENDING | TASK-465 |
+| TASK-468 | Shader: HQ compass mosaic ground surface kind + street tints; Design prism-arch light pools, conservatory glass | shader | M | PENDING | TASK-466, TASK-467 |
+| TASK-469 | Life: semaphore arms follow the 21:00 relay, gates light up in relay order, mail sacks slide down the line, stall keepers; windmill rotor | life | M | PENDING | TASK-466, TASK-467 |
+| TASK-470 | QA + framing: new wow shots (HQ compass star from above, conservatory prism hour), ladder L-hq / L-design, wow `--assert` | qa | S | PENDING | TASK-468, TASK-469 |
+
 ### M17 — Graphics II: decor & nature
 *Flower fields, fences, lanterns, benches, signs, rocks*
 
