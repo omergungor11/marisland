@@ -279,12 +279,21 @@ Details in `phases/phase-3.md`.
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|------------|--------|--------------|
 | TASK-465 | New defs, both islands: HQ `cultureGate` (7 culture variants), `goodsStall` (7 goods variants), `semaphoreTower` (arm hooks), `mailLine` (pylon + cable); Design `conservatory` (T1), `glasshouse` (pane variants), `glassBridge`, `prismArch`, `stainedWindmill` (rotor hook); LOD1, FIXTURE_RADIUS, culture ledgers | props | L | COMPLETED (9598fcb) | — |
-| TASK-471 | M20-pre (D-058): HQ = island nearest the cluster centroid on every seed (`W:K2`); 3–6 skerries + one Lonely Palm islet (`W:D2/K6`) in the same layout change; one-time re-pin of seeds, raw cams, wow / ladder | worldgen | M | PENDING | — |
+| TASK-471 | M20-pre (D-058): HQ = island nearest the cluster centroid on every seed (`W:K2`); 3–6 skerries + one Lonely Palm islet (`W:D2/K6`) in the same layout change; one-time re-pin of seeds, raw cams, wow / ladder | worldgen | M | COMPLETED (245d348) | — |
 | TASK-466 | HQ plan rewrite (D-057/D-058, `hq-design.md` §1.2 zones): compass plaza, 7 streets aimed at real islands (own = harbour lane; water-bound streets end in a shore gate + mooring post), gates, stalls, post yard + mail line, Guild Terrace above the plaza, semaphore on the summit, quay around the pier + beach rest of the bay | worldgen | L | PENDING | TASK-465, TASK-471 |
 | TASK-467 | Design plan (D-057/D-058, `hq-design.md` §2.2 zones): conservatory replaces the glade quad (ateliers ring it, 4 bays → 4 paths), glasshouse rows, glass bridge on the waterfall stream, prism-arch path pier → conservatory, windmill ridge; pine filler −35 % | worldgen | M | PENDING | TASK-465, TASK-471 |
 | TASK-468 | Shader: HQ compass mosaic ground surface kind + street tints; Design prism-arch light pools, conservatory glass | shader | M | PENDING | TASK-466, TASK-467 |
 | TASK-469 | Life: semaphore arms follow the 21:00 relay, gates light up in relay order, mail sacks slide down the line, stall keepers; windmill rotor | life | M | PENDING | TASK-466, TASK-467 |
 | TASK-470 | QA + framing: new wow shots (HQ compass star from above, conservatory prism hour), ladder L-hq / L-design, wow `--assert` | qa | S | PENDING | TASK-468, TASK-469 |
+
+### M21 — World P1 (quick wins)
+*D-059, `mar-plans/WORLD_PLAN.md` §4.8 / `study/world.md`. 472 ∥ 473 now (parallel to M20); 474 after TASK-471.*
+
+| ID | Task | Agent | Complexity | Status | Dependencies |
+|----|------|-------|------------|--------|--------------|
+| TASK-472 | Sky + sea shader quick wins: night sky fix (stars, moon height; `W:G5`), deep-band texture ≤ 8 % L (`W:K5`), lingering ferry wakes (`W:B4`), morning channel mist (`W:H6`), comet on Comet Night + seeded meteors (`W:G2`) | shader | M | PENDING | — |
+| TASK-473 | Tour mode (`W:C1`): idle → wow-preset chain with eased flights and time scrub, HUD toggle, any input stops it | engine | S | PENDING | — |
+| TASK-474 | Channel buoys along ferry routes with night lamps (`W:D8`); sea-stack fields + one arch (`W:D3`) | worldgen | S | PENDING | TASK-471 |
 
 ### M17 — Graphics II: decor & nature
 *Flower fields, fences, lanterns, benches, signs, rocks*

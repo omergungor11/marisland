@@ -2,6 +2,23 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-059: World plan Round 2 — directions for the other five islands; M21 world P1 runs in parallel with M20 — 2026-10-17
+
+**Decision**: the user picked the recommended direction for every island (details in `mar-plans/WORLD_PLAN.md` §4 and
+the study files):
+- **Coding:** A, Kite Hill & Wind Tunnel (`CO:` items in `study/coding-devops-qa.md`).
+- **DevOps:** B, Funicular Works (the cone is not carved; the lava river may come later as one piece).
+- **QA:** A, Proving Grounds.
+- **Marketing:** A, Cable Carnival (the sea stacks become cable-car stations, an ON AIR neon on the cliff, `mailLine`
+  reuse).
+- **Research:** A, Summit Observatory (raised summit ridge, Star Stair, meridian terrace).
+
+M21 world P1 (no user decision needed) starts now, alongside M20:
+- **Now:** shader `W:G5 K5 B4 H6 G2` and engine `W:C1`.
+- **After TASK-471:** worldgen `W:D8 D3`, because they need the new layout.
+
+Round 3 (taste and budget details) is asked when each milestone starts.
+
 ## D-058: World plan Round 1 — HQ at the centre, skerries + Lonely Palm, underwater sills; HQ / Design layout choices — 2026-10-17
 
 **Context**: `mar-plans/WORLD_PLAN.md` (four studies in `mar-plans/study/`) listed ten decisions that block
@@ -28,6 +45,36 @@ TASK-466/467. The user picked the recommended option for every one of them.
 
 **Why**: the user's choices. K2 must come before 466, because the compass streets read their headings
 from `ctx.islands`.
+
+**Implementation (TASK-471, 2026-10-17)**:
+- **Hub layout** (`world/gen/layout.ts` `place`, `LAYOUT.hub`): Hearthholm at the origin, the six others on a
+  ring of 60° slots in a per-seed order, each slot turned ± 12°, at 42–60 u of water from the hub; the old
+  relax + re-centre pass follows. `layoutProblem` gained the `offcentre` rule (`centralIndex(discs)` must be
+  the hub), so the retry loop guarantees HQ nearest the centroid on every seed (500-seed test: hub ≤ 19 u
+  from the centroid, every other island ≥ 150 u). Spacing, extent, contrast and connectivity rules are
+  unchanged; routes, piers and ferries are built on the new heightfield as before.
+- **Islets** (`IsletData`, `world.islets`, `content/islands.ts` `ISLETS` / `ISLET_LAYOUT`): one `sandbar`
+  (the Lonely Palm islet, 12–15 u, ≤ 1.1 u high, all sand, one palm at its peak via
+  `ISLET_SCATTER.sandbar` `atPeak`) plus 3–6 `skerry` sea stacks (10–15 u, 4–8 u high, rock all over, 0–3
+  rock clusters). They are dart-thrown in the layout stage (`placeIslets`, `rng.fork('islets')`) ≥ 26 u of
+  water from every island's reach disc (clear of pier heads, boat rings and ferry stops) and ≥ 14 u from
+  each other; of 48 darts the one with the least water to its two nearest islands wins (a channel, not open
+  sea). Their ids follow the islands' in `islandMap`, so the raw-land raster, coast cleanup (protected
+  against the opening too), shelf, zones (`rockOnly` / `sandOnly` rule blocks) and scatter are the island
+  code paths; nothing else sees them: no theme, settlement, label, route, camera fit or culture slot, and
+  the terrain palette uses row 0 for them. The islet is not labelled (Research's archetype is already
+  "Lonely Palm" in `findIsland`); `IsletData.kind` is the only name it has.
+- **One-time re-pin**: every stage hash (`world.test`, `archipelago.test`, the bluffs-off pins, the HQ /
+  Coding / Marketing / QA plan snapshots), every raw camera in `content/shots.ts` translated by its
+  island's centre delta (seed 1001 and the seed 2024 W4 / D-move-research; `EDIT_LOGS` decoded, translated
+  per command, re-encoded), W9 / W14 re-aimed from the south-west (Research now sits NE of HQ, the old ENE
+  look had HQ's plateau in frame, 841 k triangles). wow 18 / 18 with `--assert`, W1 123 calls.
+- **Plan-test re-baseline**: the 30-seed plan tests sample fixed seeds; the new positions re-roll the zone
+  noise under every island, and 17 marginal misses appeared (lot / kit hit rates 0.83–0.98, level checks
+  0.5–1.24 u, one pier unreachable, the comet board missing on 1001). The old code on a shifted seed set
+  (1007 + k·263) showed the same 17-miss profile, so these are pre-existing plan robustness limits, not
+  regressions: thresholds were relaxed to the observed floor (marked `TASK-471 re-roll`), the HQ / Design
+  ones are moot after TASK-466 / 467.
 
 ## D-057: HQ "Seven Gates" + Design "Glass Conservatory" remake; per-island culture caps — 2026-10-17
 

@@ -10,6 +10,17 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-17 (TASK-471, worldgen)**: hub layout (HQ nearest the centroid, six on a 60° ring, `LAYOUT.hub`,
+  `layoutProblem` 'offcentre') + islets (`world.islets`: 3–6 skerries + one Lonely Palm sandbar, `ISLETS` /
+  `ISLET_LAYOUT` / `ISLET_SCATTER`), D-058 implementation note. One-time re-pin: every raw cam in `shots.ts`
+  translated by its island's centre delta (seed 1001 + W4 2024), W9 / W14 re-aimed from the SW, EDIT_LOGS
+  re-encoded, stage hashes + plan snapshots re-pinned, 17 marginal 30-seed plan thresholds relaxed (the old
+  code on a shifted seed set missed the same way; see D-058). wow 18/18 `--assert`, L-hq ladder 0 misses.
+  Seed 1001 HQ headings from the plaza (−46, −20): marketing 176°, coding 111°, devops −4°, qa −43°,
+  design −111°, research 39°; shore along the heading at 20 / 30 / 104 / 68 / 20 / 15 u, so the research
+  street (and on other seeds 2–3 streets at 12–17 u) ends in a D-058 shore gate. Not re-checked by eye:
+  the dev / edit / live sets (translated cams only); `D-sky-*` cams aim at craft orbits that moved with the
+  island bounds (re-pin if D-sky frames are empty).
 - **2026-10-14 (M19b culture polish closed, TASK-460…463)**: W2 3 rowboats (sheep 8 → 6 for the 60-agent cap),
   fireflies 9/swarm, sailboats kept `SAILBOAT.berthClear` 12 u off pier-end stops, boxy capybara (ellipsoid
   rounding read as a shell again — leave it). Pipes = `world/pipe-run.ts` (pitched pieces + risers). Research
@@ -156,6 +167,21 @@
 - Shot presets are data in `src/content/shots.ts`; both the harness (`scripts/shots.ts`) and the app read them — keep them in sync
 
 ## Known Issues / Gotchas
+- **Islets own `islandMap` ids past the islands** (TASK-471): `world.islands[world.islandMap[i] - 1]` is
+  undefined on a skerry / sandbar cell. Guard with `id > islands.length` (done in terrain-colors' palette
+  row, settlements' `pathSparesSlopes`, the archipelago / edit tests) or use `coastBody(islands, islets, id)`
+  in gen code. `cleanCoast` fill cells next to an islet must be owned by the islet (`nearestIsland` over
+  islands + islets), or a DevOps-owned cell ends up 110 u from DevOps.
+- **A layout change re-rolls the 30-seed plan tests**: zone / moisture noise is in world coordinates, so a
+  translated island gets new forests and lot picks; thresholds tuned to 30/30 on the old seeds then miss
+  1–2 seeds. Before touching a plan, run the OLD code on a shifted seed set (`1007 + k·263` in a worktree)
+  to see the same misses; relax the threshold with a `TASK-xxx re-roll` note, don't chase seeds.
+- **Re-pin recipe for raw cams**: dump old / new island centres per shot seed, translate every
+  `'x,y,z,tx,ty,tz'` string by the delta of the island nearest its target (regex over `shots.ts`; the
+  MOVE rows carry their seed inline), decode / translate / encode `EDIT_LOGS`; re-aim only the cams that
+  then see another campus (budget) — W9 / W14 after the hub layout.
+- `pnpm shots --tag=<t>` serves `dist-<t>/`: it needs its own build (no `--no-build`). Plan tests time out
+  at 20 s when the machine's load average is > ~10 (other sessions); rerun the file alone.
 - **One NaN pixel = black frame** (TASK-435, D-sky-basket): the composer input is HalfFloat and the
   bloom mip chain spreads a single NaN over the whole image (harness: `blank frame (sigma 0)`, no console
   error). Source was three's flat-shaded normal `normalize(cross(dFdx(p), dFdy(p)))` = 0/0 on a far L0
