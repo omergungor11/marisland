@@ -2,6 +2,20 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-060: Round 3 details for HQ / Design and the morning mist — 2026-10-17
+
+The user took the recommended option for each item:
+- **HQ buildings:** both fixes. Add existing defs to the lot mix (barn, cottage, towerHouse), and give `hqOffice` geometry
+  variants (bell niche, arcade, balcony, cream walls).
+- **HQ mail line:** sacks run in two 20 s bursts, at 09:00 and 17:45.
+- **HQ streets:** a full culture-colour tint along each street, using the existing paint-zone mechanism. No new stripe layer.
+- **Design:**
+  - glasshouses in a 2×3 rainbow row
+  - the stained windmill on the east ridge
+  - a second rainbow arc (+2 calls)
+  - the mirror pond waits for water reflections (TASK-353)
+- **Morning channel mist (TASK-472):** lighter, at about half the density, so the deep sea reads under it.
+
 ## D-059: World plan Round 2 — directions for the other five islands; M21 world P1 runs in parallel with M20 — 2026-10-17
 
 **Decision**: the user picked the recommended direction for every island (details in `mar-plans/WORLD_PLAN.md` §4 and
