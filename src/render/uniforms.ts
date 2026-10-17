@@ -78,6 +78,8 @@ export const SHARED = {
   uMistColor: { value: new THREE.Color(1, 1, 1) },
   /** Mist cap 0..1. */
   uMistMax: { value: 0 },
+  /** Share of the mist band that is the morning channel mist (shore-SDF masked, TASK-472 H6). */
+  uMistChannel: { value: 0 },
   /** Post-grade weather saturation delta (read by the composer in JS; not a shader uniform). */
   uWeatherGrade: { value: 0 },
   // ---- culture clock (TASK-430, render/culture-clock.ts; slot i = world.islands[i])
@@ -136,10 +138,13 @@ export function writeWeatherUniforms(
   SHARED.uWeather.value.set(fx.rain, fx.veil, fx.fogBand, fx.beam);
   // morning ground mist (W7): a thin band in clear / cloudy mornings; the weather mist wins
   const mm = morningMist(env.hour, fx.weights);
-  const morning = mm * MORNING_MIST.density > fx.mist;
-  const density = morning ? mm * MORNING_MIST.density : fx.mist;
+  const morningD = mm * MORNING_MIST.density;
+  const morning = morningD > fx.mist;
+  const density = morning ? morningD : fx.mist;
   const height = morning ? MORNING_MIST.height : fx.mistHeight;
   const mistOn = density > 0;
+  // channel share (H6): the morning mist is masked to the channels, the weather mist is not
+  SHARED.uMistChannel.value = mistOn ? morningD / (morningD + fx.mist) : 0;
   const drift = time * MIST.drift;
   SHARED.uMist.value.set(
     density,

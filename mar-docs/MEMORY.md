@@ -156,6 +156,19 @@
 - Shot presets are data in `src/content/shots.ts`; both the harness (`scripts/shots.ts`) and the app read them — keep them in sync
 
 ## Known Issues / Gotchas
+- **Shore SDF sign differs by consumer** (TASK-472): the water shader's `sdfRing.x` is NEGATIVE into the
+  sea (`d = -sdf` is the shore distance), the terrain's `uTerrainSdf` is positive inland — a "channel"
+  mask (`MORNING_MIST.channelSdf`) needs `-sdf` on both; the first try masked the mist to 0 everywhere.
+- The night wow frames (postcard / Beacon, pitch ≈ 13°, FOV 35°) see only the 0–4.5° strip of sky above
+  the horizon: stars must survive into the fog band (`SKY.stars[q].horizonFade` 0.7°–2.9°) and the moon
+  (33–40° high at 21–22 h) can never be in those frames — check it with a raw cam looking up.
+- Foam-trail texture is RGBA (R profile, G age, B gain; `foam-trail.ts`), 512² over 768 u = 1.5 u texels:
+  stamps closer than a texel (`SAILBOAT.trail.spacing` 0.5) keep the fresh line continuous, the shader
+  widens by threshold with age. `splat` no longer uploads per call — once per `step`. Aged stamps fade
+  out close up (`trail.nearFade`); the foam-dot V-wake is the T2/T3 wake.
+- GLSL in template literals: a backtick inside a shader comment ends the TS string (TS1005 ',' expected).
+- `((h % 24) + 24) % 24` leaves a float residue (5.3 → 5.300000000000001) that breaks `h <= edge` tests at
+  non-integer window edges — use `h - 24 * Math.floor(h / 24)`.
 - **One NaN pixel = black frame** (TASK-435, D-sky-basket): the composer input is HalfFloat and the
   bloom mip chain spreads a single NaN over the whole image (harness: `blank frame (sigma 0)`, no console
   error). Source was three's flat-shaded normal `normalize(cross(dFdx(p), dFdy(p)))` = 0/0 on a far L0

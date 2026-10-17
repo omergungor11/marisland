@@ -344,7 +344,8 @@ export function mistAmount(
  */
 export function morningMist(hour: number, w: Weights): number {
   const [a, b, c, d] = MORNING_MIST.hours;
-  const h = ((hour % 24) + 24) % 24;
+  // floor-wrap: `((h % 24) + 24) % 24` leaves a float residue at a non-integer window edge
+  const h = hour - 24 * Math.floor(hour / 24);
   if (h <= a || h >= d) return 0;
   const env = h < b ? smooth((h - a) / (b - a)) : h > c ? 1 - smooth((h - c) / (d - c)) : 1;
   let k = 0;

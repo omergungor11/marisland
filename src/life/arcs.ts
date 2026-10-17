@@ -15,7 +15,7 @@ export interface ArcCfg {
   duration: number;
   spin: number;
   scale: number;
-  splash: { radius: number; strength: number };
+  splash: { radius: number; strength: number; life: number };
   /** Arcs per trigger and the underwater gap between them (s). */
   arcs: number;
   gap: number;
@@ -109,7 +109,7 @@ export class ArcKind extends AgentKind {
       this.state[i] = 2;
       this.timer[i] = 0;
       this.scale[i] = c.scale;
-      this.ctx.water.splat(this.x0[i], this.z0[i], sp.radius, sp.strength * 0.6);
+      this.ctx.water.splat(this.x0[i], this.z0[i], sp.radius, sp.strength * 0.6, sp.life);
     }
     this.timer[i] += dt;
     const u = Math.min(1, this.timer[i] / c.duration);
@@ -117,7 +117,7 @@ export class ArcKind extends AgentKind {
     if (u < 1) return;
     const ex = this.x0[i] + this.dx[i] * c.length;
     const ez = this.z0[i] + this.dz[i] * c.length;
-    this.ctx.water.splat(ex, ez, sp.radius, sp.strength);
+    this.ctx.water.splat(ex, ez, sp.radius, sp.strength, sp.life);
     if (--this.left[i] > 0) {
       const gapLen = (c.length / c.duration) * c.gap;
       this.x0[i] = ex + this.dx[i] * gapLen;

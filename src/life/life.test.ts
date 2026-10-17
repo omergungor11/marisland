@@ -24,7 +24,7 @@ const world = (): WorldData => (cached ??= generateWorld(7));
 
 interface Rig {
   life: LifeSystem;
-  splats: { x: number; z: number; r: number; s: number }[];
+  splats: { x: number; z: number; r: number; s: number; life?: number; age0?: number }[];
   scope: Scope;
   cam: THREE.Vector3;
   tier: { v: number };
@@ -41,7 +41,7 @@ function rig(seed = 7, quality: Quality = 'medium', cam = new THREE.Vector3(0, 4
     scope,
     seed,
     quality,
-    water: { splat: (x, z, r, s) => splats.push({ x, z, r, s }) },
+    water: { splat: (x, z, r, s, life, age0) => splats.push({ x, z, r, s, life, age0 }) },
     counters: counters as never,
     getTier: () => tier.v,
     cameraPos: cam,
@@ -162,23 +162,30 @@ describe('life: boats', () => {
     expect(minDepth).toBeGreaterThan(1.2);
   });
 
-  it('wake: foam-dot pairs stamped by distance travelled, none at T0, no water-texture splats', () => {
+  it('wake: foam-dot pairs stamped by distance travelled, none at T0; the lingering trail on every tier', () => {
     const r = rig();
     const sb = r.life.kinds.sailboats!;
     const foam = sb.foam;
+    // build: the last `trail.life` s of every boat's track are stamped with their ages (TASK-472 B4)
+    const T = SAILBOAT.trail;
+    const history = r.splats.filter((p) => p.life === T.life);
+    expect(history.length).toBeGreaterThan(sb.capacity * 10);
+    expect(history.every((p) => p.age0! > 0 && p.age0! < 1)).toBe(true);
+    expect(history.every((p) => p.r <= T.radius.ferry)).toBe(true);
     run(r, 3);
     r.life.update(FIXED_STEP, 1);
     r.splats.length = 0;
-    // T0: boats are specks, no wake is laid
+    // T0: boats are specks, no wake is laid — but the lingering trail is
     run(r, 90);
     r.life.update(FIXED_STEP, 1);
     expect(foam.alive(sb.simT)).toBe(0);
     expect(foam.mesh.count).toBe(0);
+    const t0Trail = r.splats.filter((p) => p.life === T.life);
+    expect(t0Trail.length).toBeGreaterThan(0);
+    expect(t0Trail.every((p) => (p.age0 ?? 0) === 0)).toBe(true);
     r.tier.v = 1;
     run(r, 30 * 20);
     r.life.update(FIXED_STEP, 1);
-    // the 256² foam-trail texture has 3 u texels: any splat there is a smear, so none are made
-    expect(r.splats.length).toBe(0);
     const alive = foam.alive(sb.simT);
     expect(alive).toBeGreaterThan(sb.capacity * 4);
     // the foam is shared by every boat kind (TASK-435), so the ceiling counts all of them

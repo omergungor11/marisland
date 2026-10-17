@@ -8,7 +8,8 @@ import { createRng, type Rng } from '../core/rng.ts';
 import { heightAt, zoneAt, type WorldData } from '../world/types.ts';
 
 export interface WaterSplat {
-  splat(x: number, z: number, radius: number, strength: number): void;
+  /** Stamp a foam disc: `life` s until gone, `age0` = starting age 0..1 (track history at build). */
+  splat(x: number, z: number, radius: number, strength: number, life?: number, age0?: number): void;
 }
 export interface CountersLike {
   agents: number;

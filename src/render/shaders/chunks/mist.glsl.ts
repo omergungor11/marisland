@@ -11,12 +11,19 @@ const f = (v: number): string => v.toFixed(6);
  * no mesh, no extra program. `uMist.x == 0` (every non-mist frame) returns before any math.
  *
  * Uniforms (SHARED): uMist x = density (1/u), y = 1/height, zw = noise drift offset (u);
- * uMistColor (linear, at the fog colour's luminance); uMistMax = cap.
+ * uMistColor (linear, at the fog colour's luminance); uMistMax = cap; uMistChannel = share of
+ * the band that is the morning channel mist (TASK-472 H6): programs with the shore SDF pass
+ * `marMistMask(smoothstep(sdf0, sdf1, sdf))` to `marMistK`, so the channel share lives only
+ * over the channels between the islands; programs without it (`marMist`) get the unmasked
+ * share only.
  */
 export const MIST_GLSL = /* glsl */ `
 uniform vec4 uMist;
 uniform vec3 uMistColor;
 uniform float uMistMax;
+uniform float uMistChannel;
+/* channel-mist mask from a shore ramp 0..1 (1 = open channel) */
+float marMistMask(float channel) { return mix(1.0, channel, uMistChannel); }
 float marMistHash(vec2 p) {
   vec3 p3 = fract(vec3(p.xyx) * 0.1031);
   p3 += dot(p3, p3.yzx + 33.33);
@@ -32,9 +39,9 @@ float marMistNoise(vec2 x) {
   float d = marMistHash(i + vec2(1.0, 1.0));
   return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
 }
-/* mist amount 0..uMistMax between the camera and world point p */
-float marMist(vec3 p, vec3 cam) {
-  if (uMist.x <= 0.0) return 0.0;
+/* mist amount 0..uMistMax between the camera and world point p, density × k */
+float marMistK(vec3 p, vec3 cam, float k) {
+  if (uMist.x * k <= 0.0) return 0.0;
   float y0 = max(cam.y, 0.0) * uMist.y;
   float y1 = max(p.y, 0.0) * uMist.y;
   float dy = y1 - y0;
@@ -43,7 +50,8 @@ float marMist(vec3 p, vec3 cam) {
   float mean = abs(dy) > 1e-3 ? (e0 - e1) / dy : e0;
   vec2 q = (p.xz + uMist.zw) * ${f(MIST.noiseScale)};
   float n = 1.0 + ${f(MIST.noiseAmount * 2)} * (0.65 * marMistNoise(q) + 0.35 * marMistNoise(q * 2.7 + 5.3) - 0.5);
-  float tau = uMist.x * length(p - cam) * mean * n;
+  float tau = uMist.x * k * length(p - cam) * mean * n;
   return min(1.0 - exp(-tau), uMistMax);
 }
+float marMist(vec3 p, vec3 cam) { return marMistK(p, cam, marMistMask(0.0)); }
 `;

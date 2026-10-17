@@ -295,10 +295,18 @@ export const MIST = {
  * (density at sea level 1/u, e-folding height u, cap) — no mesh, no program.
  */
 export const MORNING_MIST = {
-  hours: [5.0, 6.0, 8.5, 9.0] as const,
-  density: 0.09,
-  height: 3.2,
-  max: 0.5,
+  /** TASK-472 H6: 05:30–07:30 (was 05:00–09:00), a channel mist the islands rise out of. */
+  hours: [5.3, 5.6, 7.3, 7.6] as const,
+  density: 0.055,
+  height: 4,
+  max: 0.55,
   /** Weather states that keep it (weights summed). */
   weathers: ['clear', 'cloudy'] as readonly WeatherName[],
+  /**
+   * Channel mask (H6): the band lives only over the channels between the islands — shore SDF
+   * (u into the sea) ramps the mist in over [gone, full]; beaches, rings and the islands stay
+   * clear, so they rise out of a "cloud sea". Programs without the SDF (props, contact blobs)
+   * get none of it. The weather fog's mist band is unmasked (`uMistChannel` blends by density).
+   */
+  channelSdf: [6, 16] as const,
 } as const;

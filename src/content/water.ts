@@ -104,5 +104,56 @@ export const WATER_SHADER = {
     farGlow: 0.25,
     far: [160, 520] as const,
   },
-  trail: { size: 256, extent: 384, decayPerStep: 0.98, stepSec: 1 / 30 },
+  /**
+   * Deep-sea texture (TASK-472 K5): two octaves of static value noise (base wavelength
+   * `wavelength` u ≥ 60, second octave × `octave`) over the deep band only. Where the noise is
+   * high an "abyss" darkens the band by `abyss.darken` of L; where it is low a "sand channel"
+   * lifts it by `channel.lighten` and leans the hue toward the shallow blue-green (`channel.tint`
+   * toward uShallow, luminance kept by the lift). L delta stays ≤ 8 % so it never reads as marble.
+   */
+  deepTexture: {
+    wavelength: 95,
+    octave: 2.3,
+    abyss: { from: 0.56, to: 0.76, darken: 0.08 },
+    channel: { from: 0.42, to: 0.26, lighten: 0.06, tint: 0.22 },
+  },
+  /**
+   * High-sun glitter on the open sea (TASK-472 K5, the TASK-353 sun-glint debt): the same glitter
+   * model as the moon path with a wide, short lobe, so by day the deep water carries a loose field
+   * of sparkles toward the sun that folds into a faint sheen at map scale. Medium / high only
+   * (`MAR_DETAIL`); fades out as the low-sun path takes over.
+   */
+  daySun: {
+    lobe: { across: 28, along: 14 },
+    sparkle: { density: 0.9, fraction: 0.22, radius: 0.12, rate: 0.7, gain: 1.6 },
+    glow: 0.05,
+    farGlow: 0.09,
+  },
+  /**
+   * Foam trail (TASK-472 B4): RG8 texture over the archipelago — R = stamp profile (1 − r²/R²),
+   * G = age 0..1 of the stamp's own life. Boats stamp their track into it on every tier (the
+   * foam-dot V-wake is the close-up); each stamp lingers `life` s (per splat), the visible disc
+   * growing from `freshFraction` of the stamp radius to the whole of it (threshold widening) while
+   * `gain` × (1 − age)^`fadePow` fades it out, so the ferry routes "draw themselves" at T0 as thin
+   * white arcs that widen into soft bands. Old stamps are broken up by the shore-foam noise
+   * (`breakUp`). `minPx` = minimum half width in pixels (sub-pixel arcs alias into dashes), judged
+   * against `refRadius` u (the ferry's stamp). 512 texels over 768 u = 1.5 u per texel: stamps
+   * closer than a texel (`SAILBOAT.trail.spacing`) keep the fresh line continuous.
+   */
+  trail: {
+    size: 512,
+    extent: 384,
+    stepSec: 1 / 30,
+    /** Stamp life (s) when the splat gives none. */
+    defaultLife: 3,
+    freshFraction: 0.4,
+    gain: 0.75,
+    fadePow: 1.4,
+    breakUp: 0.5,
+    minPx: 0.75,
+    refRadius: 1.6,
+    /** Aged stamps fade out close up (pixel footprint u/px [gone, full]): at T2–T3 the 1.5 u
+     *  texels would bead a thin old trail; the foam-dot V-wake is the close-up wake there. */
+    nearFade: [0.03, 0.1] as const,
+  },
 } as const;

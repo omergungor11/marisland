@@ -160,7 +160,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   group.add(terrain.group);
   const water = createWater(world, textures, d.quality, d.scope);
   group.add(water.mesh);
-  const sky = createSky(d.scene, d.scope);
+  const sky = createSky(d.scene, d.scope, d.quality, seed);
   if (sky.mesh) group.add(sky.mesh);
   const lights = createLightRig(d.quality, d.scope);
   group.add(lights.group);
@@ -373,7 +373,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     sky.fog.density = density;
     SHARED.uFogDensity.value = density;
     lights.update(env, d.camera, _focus);
-    sky.update(env, _camPos);
+    sky.update(env, _camPos, time, culture.state, fx.veil);
     beam.update();
     drones.update(time);
     movers.update(time, _camPos);

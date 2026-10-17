@@ -17,6 +17,7 @@ import { CLOUD_SHADOW_GLSL } from '../shaders/chunks/cloud-shadow.glsl.ts';
 import { NIGHT_GLSL, POOL_GAIN } from '../shaders/chunks/night.glsl.ts';
 import { MIST_GLSL } from '../shaders/chunks/mist.glsl.ts';
 import { BRUSH_RING } from '../../content/edit-ui.ts';
+import { MORNING_MIST } from '../../content/weather.ts';
 
 /**
  * Editor brush ring (TASK-212), shared by every terrain material like `HOVER_UNIFORMS`:
@@ -81,6 +82,7 @@ export function createTerrainMaterial(
     uMist: SHARED.uMist,
     uMistColor: SHARED.uMistColor,
     uMistMax: SHARED.uMistMax,
+    uMistChannel: SHARED.uMistChannel,
     uTerrainSdf: { value: textures.sdf },
     uTerrainZone: { value: textures.zone },
     uTerrainHeight: { value: textures.height },
@@ -264,7 +266,9 @@ ${GROUND_COLOR_GLSL}
 #ifdef USE_FOG
   if (uMist.x > 0.0) {
     // (g) low mist band, same (output) colour space as three's fogColor
-    float marMi = marMist(vMarWorld, cameraPosition);
+    // channel mist (TASK-472 H6): masked by the shore SDF (negative = into the sea), so beaches and hills stay clear
+    float marMistSdf = texture2D(uTerrainSdf, marTerrainUv(vMarWorld.xz)).r;
+    float marMi = marMistK(vMarWorld, cameraPosition, marMistMask(smoothstep(${f(MORNING_MIST.channelSdf[0])}, ${f(MORNING_MIST.channelSdf[1])}, -marMistSdf)));
     gl_FragColor.rgb = mix(gl_FragColor.rgb, linearToOutputTexel(vec4(uMistColor, 1.0)).rgb, marMi);
   }
 #endif`,
