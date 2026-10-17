@@ -35,6 +35,9 @@ describe('params', () => {
     expect(d.rm).toBe(false);
     expect(d.craft).toBe(true);
     expect(parseParams('?craft=0').craft).toBe(false);
+    expect(d.tour).toBe('idle');
+    expect(parseParams('?tour=1').tour).toBe('now');
+    expect(parseParams('?tour=0').tour).toBe('off');
     const p = parseParams('?panel=photo&introt=4.5&intro=0&rm=1');
     expect(p.panel).toBe('photo');
     expect(p.introt).toBeCloseTo(4.5);

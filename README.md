@@ -32,7 +32,7 @@ A cute, cozy, fully procedural 3D archipelago in the browser — built with thre
 - **Sky:** Gradient dome with sun, moon, hashed stars; exponential fog that keeps far islands readable
 
 ### HUD & controls
-- **Dock** (bottom): time dial (drag/scroll to scrub, tap to cycle the bible time stops), weather (clear → cloudy → rain → fog), new seed, edit (brush — the sandbox, see below), photo mode (time + FOV 15–60° sliders, freeze, PNG export), settings (quality, reduce motion, compass, hide HUD)
+- **Dock** (bottom): time dial (drag/scroll to scrub, tap to cycle the bible time stops), weather (clear → cloudy → rain → fog), new seed, tour (the camera flies a chain of wow framings; any input stops it, it also starts by itself after 30 s idle), edit (brush — the sandbox, see below), photo mode (time + FOV 15–60° sliders, freeze, PNG export), settings (quality, reduce motion, compass, hide HUD)
 - **Compass** (top-right): Reset camera to north
 - **Island labels** (at T0): Click to fly to an island; auto-hide at closer zoom
 - **Keyboard shortcuts:** `h` to hide HUD, `e` to edit, `Esc` to exit photo / edit mode, double-click island to fly to it
@@ -104,6 +104,7 @@ Query parameters control the view and capture mode. Example: `?seed=1001&time=17
 | `gallery` | 1 or 0 | 0 | Prop gallery scene instead of the world (for model review) |
 | `panel` | photo, settings, edit, edit:*tool*, or '' | '' | Open that HUD panel at boot (for screenshots); `edit:prop` etc. also picks the edit tool (static under `freeze=1`) |
 | `introt` | seconds | — | With `freeze=1`: freeze the opening sequence at this time |
+| `tour` | 1 or 0 | — | `1` starts the tour at once (with `freeze=1&simt=T` a deterministic frame T seconds in), `0` disables its idle auto-start |
 
 *Capture/debug only:* `freeze`, `shot`, `simt`, `selftest`, `perf`, `panel`, `introt`, `debug`, `gallery`.
 

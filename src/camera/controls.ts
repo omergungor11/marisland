@@ -10,6 +10,7 @@ import { angleDelta, nearestNorth } from '../ui/hud-math.ts';
 import {
   framePose,
   islandPose,
+  ladderPose,
   overviewPose as fitOverview,
   postcardPose as fitPostcard,
   pitchBand,
@@ -17,7 +18,7 @@ import {
   type CameraWorld,
   type Viewport,
 } from './poses.ts';
-import { azimuthToward, type Pose } from './framing.ts';
+import { azimuthToward, type Pose, type View } from './framing.ts';
 
 CameraControls.install({ THREE });
 
@@ -45,10 +46,10 @@ export interface CameraSystem extends System {
   setWorld(world: CameraWorld): void;
   /** Apply a preset instantly (capture) or with a transition. Grammar in ARCHITECTURE §6. */
   applyPreset(preset: string, transition: boolean): void;
-  /** Start / stop the slow idle orbit. `immediate` skips the idle wait (end of the intro). */
-  setIdleOrbit(on: boolean, immediate?: boolean): void;
-  /** Reduced motion: no orbit, cuts instead of fly-tos. */
+  /** Reduced motion: cuts instead of fly-tos (the tour cuts too). */
   setReducedMotion(on: boolean): void;
+  /** What the fitted presets fit against right now (the tour resolves its stops with this). */
+  fitContext(): { world: CameraWorld; view: View; viewport: Viewport };
   /** The T0 default pose — `applyPreset('overview')`. */
   overviewPose(): OrbitPose;
   /** The low 3/4 postcard look (TASK-392) — `applyPreset('postcard')`, the intro's last key. */
@@ -59,12 +60,8 @@ export interface CameraSystem extends System {
   islandAt(clientX: number, clientY: number): string | null;
   /** Spring the heading back to north, the short way round. */
   resetNorth(): void;
-  /** Any user input: restarts the idle timer and stops a running orbit. */
-  poke(): void;
-  /** The intro drives the pose: no orbit, no terrain push. */
+  /** The intro / tour drives the pose: no pitch clamp, no terrain push. */
   setSuspended(on: boolean): void;
-  /** Photo-mode freeze: no idle orbit while on. */
-  setFrozen(on: boolean): void;
   /** Vertical FOV in degrees, clamped to the photo range (photo mode). */
   setFov(deg: number): void;
   /**
@@ -117,21 +114,15 @@ export function createCameraSystem(
     heightAt: () => 0,
   };
   let tier = 0;
-  let idleOrbit = false;
   let reduced = false;
-  let idleTimer = 0;
-  let userActive = false;
   let suspended = false;
-  let frozen = false;
   let flying = false;
-  /** Current orbit speed (deg/s), eased in. */
-  let orbitSpeed = 0;
   let insets: SafeInsets = FRAMING.bareInsets;
   const viewport = (): Viewport => {
     const height = dom.clientHeight || window.innerHeight || 1;
     return { width: height * camera.aspect, height, insets };
   };
-  const view = (): { fov: number; aspect: number } => ({ fov: camera.fov, aspect: camera.aspect });
+  const view = (): View => ({ fov: camera.fov, aspect: camera.aspect });
   const apply = (p: Pose, t: boolean): void =>
     lookFromOrbit(controls, p.tx, p.ty, p.tz, p.dist, p.pitch, p.az, t);
 
@@ -159,15 +150,6 @@ export function createCameraSystem(
     flying = false;
     controls.smoothTime = CAMERA.smoothTime;
   };
-  const poke = (): void => {
-    idleTimer = 0;
-    orbitSpeed = 0;
-  };
-  const markActive = (): void => {
-    userActive = true;
-    poke();
-  };
-
   const cleanups: Array<() => void> = [];
   function listen<K extends keyof WindowEventMap>(
     target: EventTarget,
@@ -258,49 +240,13 @@ export function createCameraSystem(
         case 'ladder': {
           // `ladder:<island>:<dist>` (D-031): fixed pitch, the village frame's heading, the frame
           // anchor as target; the tier is re-derived without hysteresis (a fresh view at `dist`).
-          const L = FRAMING.ladder;
           const cut = arg.lastIndexOf(':');
           const d = cut < 0 ? NaN : Number(arg.slice(cut + 1));
           const key = cut < 0 ? arg : arg.slice(0, cut);
           const isl = findIsland(world, key) ?? world.islands[0];
-          const dist = Number.isFinite(d) && d > 0 ? d : L.dists[0];
-          const frame = isl?.frames?.village;
-          let x = frame?.x ?? isl?.cx ?? world.centerX;
-          let z = frame?.z ?? isl?.cz ?? world.centerZ;
-          const az = frame ? azimuthToward(frame.facing) : L.fallbackAzimuth;
-          // keep the target clear of tall landmarks (the near frames would dolly into them): slide
-          // it toward the camera along the heading, so the dolly axis keeps its direction
-          const ux = Math.sin(az * DEG);
-          const uz = Math.cos(az * DEG);
-          // per-island shift (right = (uz, −ux) across the view, back = toward the camera)
-          const sh = L.shift[key.toLowerCase()];
-          if (sh) {
-            x += uz * sh.right + ux * sh.back;
-            z += -ux * sh.right + uz * sh.back;
-          }
-          for (const [anchor, r] of Object.entries(L.avoid)) {
-            const a = isl?.anchors[anchor];
-            if (!a) continue;
-            const dx = x - a.x;
-            const dz = z - a.z;
-            const c = dx * dx + dz * dz - r * r;
-            if (c >= 0) continue;
-            const b = dx * ux + dz * uz;
-            const s = -b + Math.sqrt(b * b - c);
-            x += ux * s;
-            z += uz * s;
-          }
+          const dist = Number.isFinite(d) && d > 0 ? d : FRAMING.ladder.dists[0];
           controls.maxDistance = Math.max(CAMERA.maxDist, dist);
-          lookFromOrbit(
-            controls,
-            x,
-            Math.max(0, world.heightAt(x, z)),
-            z,
-            dist,
-            L.pitch,
-            az,
-            false,
-          );
+          apply(ladderPose(world, isl, key, dist), false);
           endFly();
           controls.update(0);
           const prev = tier;
@@ -351,14 +297,11 @@ export function createCameraSystem(
       if (!t) controls.update(0);
       updateTier();
     },
-    setIdleOrbit(on, immediate = false) {
-      idleOrbit = on;
-      orbitSpeed = 0;
-      idleTimer = on && immediate ? CAMERA.idleAfter : 0;
-    },
     setReducedMotion(on) {
       reduced = on;
-      orbitSpeed = 0;
+    },
+    fitContext() {
+      return { world, view: view(), viewport: viewport() };
     },
     overviewPose,
     postcardPose,
@@ -372,7 +315,6 @@ export function createCameraSystem(
       if (t) startFly();
       else controls.update(0);
       applyPitchClamp();
-      poke();
       return true;
     },
     islandAt(clientX, clientY) {
@@ -412,16 +354,9 @@ export function createCameraSystem(
     resetNorth() {
       controls.normalizeRotations();
       void controls.rotateAzimuthTo(nearestNorth(controls.azimuthAngle), !reduced);
-      poke();
     },
-    poke,
     setSuspended(on) {
       suspended = on;
-      orbitSpeed = 0;
-    },
-    setFrozen(on) {
-      frozen = on;
-      orbitSpeed = 0;
     },
     setSafeInsets(i) {
       insets = i;
@@ -438,16 +373,6 @@ export function createCameraSystem(
         return;
       }
       applyPitchClamp();
-      // Idle orbit after inactivity (ARCHITECTURE §6): eases in, distance untouched.
-      if (idleOrbit && !reduced && !frozen && !userActive && !flying) {
-        idleTimer += dt;
-        const want = idleTimer >= CAMERA.idleAfter ? CAMERA.idleOrbit : 0;
-        const k = 1 - Math.exp((-3 * Math.min(dt, 0.1)) / CAMERA_MOVE.orbitRampSeconds);
-        orbitSpeed += (want - orbitSpeed) * k;
-        if (orbitSpeed > 1e-4) void controls.rotate(orbitSpeed * DEG * dt, 0, false);
-      } else {
-        orbitSpeed = 0;
-      }
       controls.update(dt);
       // Keep the camera above the terrain.
       controls.getPosition(_pos);
@@ -467,18 +392,8 @@ export function createCameraSystem(
   };
 
   if (interactive) {
-    controls.addEventListener('controlstart', () => {
-      markActive();
-      endFly();
-    });
-    controls.addEventListener('control', markActive);
-    controls.addEventListener('controlend', () => {
-      userActive = false;
-    });
+    controls.addEventListener('controlstart', endFly);
     controls.addEventListener('rest', endFly);
-    // Any input anywhere (HUD included) restarts the idle timer.
-    for (const type of ['pointerdown', 'wheel', 'keydown', 'touchstart'] as const)
-      listen(window, type, poke, { passive: true });
 
     // Two-finger twist → azimuth: the map turns with the fingers.
     const touches = new Map<number, { x: number; y: number }>();
@@ -503,10 +418,7 @@ export function createCameraSystem(
       const a = twistAngle();
       if (Number.isFinite(twist)) {
         const d = angleDelta(twist, a);
-        if (Math.abs(d) > 1e-4) {
-          void controls.rotate(d, 0, false);
-          markActive();
-        }
+        if (Math.abs(d) > 1e-4) void controls.rotate(d, 0, false);
       }
       twist = a;
     });

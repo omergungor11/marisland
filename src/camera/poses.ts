@@ -391,6 +391,49 @@ export function islandPose(
   };
 }
 
+/**
+ * Zoom-ladder pose (D-031, `cam=ladder:<island>:<dist>`; also the tour's `ladder` stops): fixed
+ * pitch, the village frame's heading (camera over the water), target on the frame anchor —
+ * shifted per island (`FRAMING.ladder.shift`) and slid toward the camera along the heading until
+ * it is clear of the tall landmarks in `FRAMING.ladder.avoid` (the near frames would dolly into
+ * them). `azOffset` turns the heading (deg); `pitch` defaults to the ladder pitch.
+ */
+export function ladderPose(
+  world: CameraWorld,
+  isl: CameraIsland | undefined,
+  key: string,
+  dist: number,
+  pitch: number = FRAMING.ladder.pitch,
+  azOffset = 0,
+): Pose {
+  const L = FRAMING.ladder;
+  const frame = isl?.frames?.village;
+  let x = frame?.x ?? isl?.cx ?? world.centerX;
+  let z = frame?.z ?? isl?.cz ?? world.centerZ;
+  const az = (frame ? azimuthToward(frame.facing) : L.fallbackAzimuth) + azOffset;
+  const ux = Math.sin(az * DEG);
+  const uz = Math.cos(az * DEG);
+  // per-island shift (right = (uz, −ux) across the view, back = toward the camera)
+  const sh = L.shift[key.toLowerCase()];
+  if (sh) {
+    x += uz * sh.right + ux * sh.back;
+    z += -ux * sh.right + uz * sh.back;
+  }
+  for (const [anchor, r] of Object.entries(L.avoid)) {
+    const a = isl?.anchors[anchor];
+    if (!a) continue;
+    const dx = x - a.x;
+    const dz = z - a.z;
+    const c = dx * dx + dz * dz - r * r;
+    if (c >= 0) continue;
+    const b = dx * ux + dz * uz;
+    const s = -b + Math.sqrt(b * b - c);
+    x += ux * s;
+    z += uz * s;
+  }
+  return { tx: x, ty: Math.max(0, world.heightAt(x, z)), tz: z, dist, pitch, az };
+}
+
 /** `village` / `dock` (D1): fit the settlement frame from over the water, on the pitch curve. */
 export function framePose(
   frame: CameraFrame,

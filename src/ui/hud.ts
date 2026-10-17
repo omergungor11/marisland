@@ -37,6 +37,8 @@ export interface HudActions {
   onHour(hour: number): void;
   onWeather(weather: WeatherName): void;
   onSound(): void;
+  /** Tour toggle (TASK-473): start / stop the wow-shot chain. */
+  onTour(on: boolean): void;
   /** Compass click: back to north. */
   onCompass(): void;
   onLabel(name: string): void;
@@ -59,6 +61,8 @@ export interface HudState {
   weather: WeatherName;
   fov: number;
   frozen: boolean;
+  /** The tour is running (button lit; any input or the button stops it). */
+  tour: boolean;
 }
 
 export interface Hud {
@@ -112,6 +116,7 @@ const ICONS: Record<string, string> = {
   eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>',
   edit: '<path d="M18.5 3.5l2 2-8.5 8.5-2-2z"/><path d="M9.5 12.5c-2.6 0-4 1.7-4 4 0 1.5-.9 2.7-2.5 3h5.5a4 4 0 0 0 4-4"/>',
   hide: '<path d="M2.5 12S6 5.5 12 5.5c2 0 3.7.7 5 1.6M21.5 12S18 18.5 12 18.5c-2 0-3.7-.7-5-1.6"/><path d="M4 20L20 4"/>',
+  tour: '<circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.2 16.6C13 15 11 9 15.8 7.4"/><path d="M10 5.5l3.5 2-3.5 2z" fill="currentColor"/>',
 };
 
 const icon = (name: string, size = 24): string =>
@@ -146,9 +151,10 @@ export function createHud(
   const state: HudState = { ...initial };
   const el = document.createElement('div');
   el.className = instant ? 'mar-hud mar-hud-instant' : 'mar-hud';
-  const dockButtons = ['weather', 'seed', 'edit', 'photo', 'sound', 'settings'];
+  const dockButtons = ['weather', 'seed', 'tour', 'edit', 'photo', 'sound', 'settings'];
   const tips: Record<string, string> = {
     seed: 'New seed',
+    tour: 'Tour',
     edit: EDIT_PANEL.tips.edit,
     photo: 'Photo mode',
     sound: 'Sound',
@@ -226,6 +232,7 @@ export function createHud(
   const ghost = q<HTMLButtonElement>('.mar-ghost');
   const flash = q<HTMLElement>('.mar-flash');
   const editBtn = q<HTMLButtonElement>('[data-action="edit"]');
+  const tourBtn = q<HTMLButtonElement>('[data-action="tour"]');
   const editPanel = createEditPanel(el, {
     capture: instant,
     onDone: () => hud.openPanel(''),
@@ -270,6 +277,10 @@ export function createHud(
       actions.onWeather(w);
     },
     seed: actions.onNewSeed,
+    tour: () => {
+      hud.setState({ tour: !state.tour });
+      actions.onTour(state.tour);
+    },
     edit: () => hud.openPanel(editing ? '' : 'edit'),
     photo: () => hud.openPanel('photo'),
     sound: actions.onSound,
@@ -547,6 +558,10 @@ export function createHud(
       if (s.frozen !== undefined) {
         freezeBtn.setAttribute('aria-pressed', String(state.frozen));
         freezeBtn.classList.toggle('mar-on', state.frozen);
+      }
+      if (s.tour !== undefined) {
+        tourBtn.setAttribute('aria-pressed', String(state.tour));
+        tourBtn.classList.toggle('mar-on', state.tour);
       }
     },
     update(camera, azimuth, tier, h, width, height) {

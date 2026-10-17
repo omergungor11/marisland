@@ -28,6 +28,7 @@ import { SHARED } from './render/uniforms.ts';
 import { createHud, type Hud } from './ui/hud.ts';
 import { createCurtain } from './ui/curtain.ts';
 import { createIntro, type Intro } from './camera/intro.ts';
+import { createTour } from './camera/tour.ts';
 import { ISLAND_ACCENTS } from './content/islands-ui.ts';
 import { HUD, INTRO } from './content/ui.ts';
 import { CAMERA } from './content/tiers.ts';
@@ -542,7 +543,6 @@ export async function boot(): Promise<void> {
     // Fitted presets keep clear of the HUD dock + label row when the HUD is on (D2).
     cam.setSafeInsets(params.hud && !params.gallery ? FRAMING.hudInsets : FRAMING.bareInsets);
     cam.applyPreset(params.cam || 'overview', false);
-    cam.setIdleOrbit(!params.freeze);
 
     // `introt` (capture) renders the intro at a fixed time, curtain included.
     const introCapture = params.freeze && Number.isFinite(params.introt) && !params.gallery;
@@ -583,6 +583,7 @@ export async function boot(): Promise<void> {
       // the old world's edit mode ends with it; the new world's resumes editing (reset, new seed)
       // (capture keeps its static panel binding)
       const wasEditing = editMode?.active ?? false;
+      tour.stop();
       if (!params.freeze) hud?.bindEdit(null);
       const running = loop.isRunning;
       loop.stop();
@@ -660,7 +661,6 @@ export async function boot(): Promise<void> {
     const setFrozen = (on: boolean): void => {
       if (on === photoFrozen) return;
       photoFrozen = on;
-      cam.setFrozen(on);
       if (on) {
         intro?.skip();
         daySpeedBeforeFreeze = loop.clock.daySpeed;
@@ -684,6 +684,11 @@ export async function boot(): Promise<void> {
             events.emit('weatherChanged', { weather });
           },
           onSound: () => {},
+          onTour: (on) => {
+            if (on) tour.start();
+            else tour.stop();
+            hud?.setState({ tour: tour.active }); // a refused start (intro) stays unlit
+          },
           onCompass: () => cam.resetNorth(),
           onLabel: (name) => void cam.flyToIsland(name),
           onQuality: (q) => {
@@ -730,6 +735,7 @@ export async function boot(): Promise<void> {
           weather,
           fov: camera.fov,
           frozen: false,
+          tour: false,
         },
         params.freeze,
       );
@@ -766,6 +772,22 @@ export async function boot(): Promise<void> {
     }
     if (reduced) events.emit('reducedMotionChanged', { reduced, motionScale: motionScale() });
     loader.setProgress(0.6);
+
+    // ---- tour (TASK-473): the wow chain the idle camera flies (replaces the idle orbit); the
+    // HUD toggle / `tour=1` start it, any input hands the camera back. In capture it starts
+    // before the warm-up, so the pose at `simt` is a pure function of time.
+    const tour = createTour({
+      cam,
+      clock: loop.clock,
+      events,
+      listen: !params.freeze,
+      ignoreInput: (t) => t instanceof Element && t.closest('[data-action="tour"]') !== null,
+      onActive: (on) => hud?.setState({ tour: on }),
+    });
+    loop.add(tour);
+    appScope.defer(() => tour.dispose());
+    tour.setIdleStart(params.tour === 'idle' && !params.freeze && !params.perf && !params.gallery);
+    if (params.freeze && params.tour === 'now' && !params.gallery) tour.start();
 
     if (params.debug === 'wire') {
       scene.traverse((o) => {
@@ -824,6 +846,7 @@ export async function boot(): Promise<void> {
     let perfRun: Promise<PerfResult> | null = null;
     api.perf = () => {
       if (perfRun) return perfRun;
+      tour.setBlocked('perf', true);
       const gl = backend.renderer.getContext() as WebGL2RenderingContext;
       gpuTimer = params.freeze ? null : createGpuTimer(gl);
       const run = runPerfPath({
@@ -840,6 +863,7 @@ export async function boot(): Promise<void> {
         gpuTimer?.dispose();
         gpuTimer = null;
         perfRun = null;
+        tour.setBlocked('perf', false);
         ctx.timings.perfP50 = r.p50;
         ctx.timings.perfP95 = r.p95;
         ctx.timings.perfFrames = r.frames;
@@ -1040,12 +1064,13 @@ export async function boot(): Promise<void> {
         onDone: () => {
           loop.remove(it);
           intro = null;
-          cam.setIdleOrbit(true, true);
+          tour.setBlocked('intro', false);
+          if (params.tour === 'now') tour.start();
           for (const [type, fn] of skipListeners) window.removeEventListener(type, fn);
         },
       });
       intro = it;
-      cam.setIdleOrbit(false);
+      tour.setBlocked('intro', true);
       const skip = (): void => it.skip();
       const skipListeners: Array<[string, () => void]> = [
         ['pointerdown', skip],
@@ -1073,6 +1098,7 @@ export async function boot(): Promise<void> {
     }
     await loader.finish();
     if (!params.freeze) loop.start();
+    if (!params.freeze && !runIntro && params.tour === 'now') tour.start();
     if (!runIntro && !introCapture) hud?.show();
     else if (!hudShownByIntro) hud?.showWordmark();
     // (`editMode` is assigned inside buildWorld: widen the narrowed `null`)
