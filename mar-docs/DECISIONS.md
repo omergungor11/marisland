@@ -2,6 +2,33 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-058: World plan Round 1 — HQ at the centre, skerries + Lonely Palm, underwater sills; HQ / Design layout choices — 2026-10-17
+
+**Context**: `mar-plans/WORLD_PLAN.md` (four studies in `mar-plans/study/`) listed ten decisions that block
+TASK-466/467. The user picked the recommended option for every one of them.
+
+**Decision**:
+- World:
+  - **Layout `W:K2`:** HQ is the island nearest the cluster's centroid on every seed.
+  - **`W:D2/K6`:** 3–6 skerries plus one Lonely Palm islet on every seed. They land in the same layout
+    change as K2, so the world re-pins only once.
+  - **Connections:** inter-island links are underwater sand sills (`W:K3`, later in M23). No cable car or
+    zip line between islands; D-045 stays for anything above water.
+- HQ:
+  - Streets whose real heading meets water within 12 u end in a shore gate with a mooring post.
+  - The semaphore stands on the summit even though it is taller than the clock tower (lattice vs mass).
+  - The Guild Hall sits on a terrace above the compass plaza, reached by stairs.
+  - Inside the bay, the area around the pier becomes a stone quay and the rest stays beach (bottles,
+    tide pools).
+- Design:
+  - The conservatory replaces the glade quad, with the ateliers in a ring around it and 4 bays leading
+    to 4 paths.
+  - Pine filler is cut by 35 % now; the inner dome turns to blossom and meadow after TASK-464.
+  - The prism-arch path runs pier → conservatory.
+
+**Why**: the user's choices. K2 must come before 466, because the compass streets read their headings
+from `ctx.islands`.
+
 ## D-057: HQ "Seven Gates" + Design "Glass Conservatory" remake; per-island culture caps — 2026-10-17
 
 **Context**: the user asked for HQ and Design to be reworked with more visual elements and more

@@ -274,13 +274,14 @@ Details in `phases/phase-3.md`.
 | TASK-464 | T1 far forests stipple out (`TIER_FADE[1]` 320–420 u, blobs off at T1) + per-species / blossom T0 blobs so a wider fade doesn't break pair 380 (high L-pairs-design blob 0.7 %) | props → engine | M | PENDING | TASK-463 |
 
 ### M20 — HQ Seven Gates + Design Glass Conservatory
-*User-chosen remake (D-057, 2026-10-17). 465 first; 466 ∥ 467 after it; 468 ∥ 469 after both; 470 last.*
+*User-chosen remake (D-057, D-058, 2026-10-17; master plan `mar-plans/WORLD_PLAN.md`). 465 done; 471 (layout) next; 466 ∥ 467; 468 ∥ 469; 470 last.*
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|------------|--------|--------------|
 | TASK-465 | New defs, both islands: HQ `cultureGate` (7 culture variants), `goodsStall` (7 goods variants), `semaphoreTower` (arm hooks), `mailLine` (pylon + cable); Design `conservatory` (T1), `glasshouse` (pane variants), `glassBridge`, `prismArch`, `stainedWindmill` (rotor hook); LOD1, FIXTURE_RADIUS, culture ledgers | props | L | COMPLETED (9598fcb) | — |
-| TASK-466 | HQ plan rewrite: compass plaza, 7 streets aimed at real islands (own = harbour lane), gates at street ends, stalls along them, post yard + mail line anchors, semaphore on the east hill; east hill no longer empty | worldgen | L | PENDING | TASK-465 |
-| TASK-467 | Design plan: conservatory on the central glade, glasshouse rows, glass bridge on the waterfall stream, prism-arch path, windmill on the ridge; pine filler thinned around them | worldgen | M | PENDING | TASK-465 |
+| TASK-471 | M20-pre (D-058): HQ = island nearest the cluster centroid on every seed (`W:K2`); 3–6 skerries + one Lonely Palm islet (`W:D2/K6`) in the same layout change; one-time re-pin of seeds, raw cams, wow / ladder | worldgen | M | PENDING | — |
+| TASK-466 | HQ plan rewrite (D-057/D-058, `hq-design.md` §1.2 zones): compass plaza, 7 streets aimed at real islands (own = harbour lane; water-bound streets end in a shore gate + mooring post), gates, stalls, post yard + mail line, Guild Terrace above the plaza, semaphore on the summit, quay around the pier + beach rest of the bay | worldgen | L | PENDING | TASK-465, TASK-471 |
+| TASK-467 | Design plan (D-057/D-058, `hq-design.md` §2.2 zones): conservatory replaces the glade quad (ateliers ring it, 4 bays → 4 paths), glasshouse rows, glass bridge on the waterfall stream, prism-arch path pier → conservatory, windmill ridge; pine filler −35 % | worldgen | M | PENDING | TASK-465, TASK-471 |
 | TASK-468 | Shader: HQ compass mosaic ground surface kind + street tints; Design prism-arch light pools, conservatory glass | shader | M | PENDING | TASK-466, TASK-467 |
 | TASK-469 | Life: semaphore arms follow the 21:00 relay, gates light up in relay order, mail sacks slide down the line, stall keepers; windmill rotor | life | M | PENDING | TASK-466, TASK-467 |
 | TASK-470 | QA + framing: new wow shots (HQ compass star from above, conservatory prism hour), ladder L-hq / L-design, wow `--assert` | qa | S | PENDING | TASK-468, TASK-469 |
