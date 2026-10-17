@@ -278,7 +278,7 @@ Details in `phases/phase-3.md`.
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|------------|--------|--------------|
-| TASK-465 | New defs, both islands: HQ `cultureGate` (7 culture variants), `goodsStall` (7 goods variants), `semaphoreTower` (arm hooks), `mailLine` (pylon + cable); Design `conservatory` (T1), `glasshouse` (pane variants), `glassBridge`, `prismArch`, `stainedWindmill` (rotor hook); LOD1, FIXTURE_RADIUS, culture ledgers | props | L | PENDING | — |
+| TASK-465 | New defs, both islands: HQ `cultureGate` (7 culture variants), `goodsStall` (7 goods variants), `semaphoreTower` (arm hooks), `mailLine` (pylon + cable); Design `conservatory` (T1), `glasshouse` (pane variants), `glassBridge`, `prismArch`, `stainedWindmill` (rotor hook); LOD1, FIXTURE_RADIUS, culture ledgers | props | L | COMPLETED (9598fcb) | — |
 | TASK-466 | HQ plan rewrite: compass plaza, 7 streets aimed at real islands (own = harbour lane), gates at street ends, stalls along them, post yard + mail line anchors, semaphore on the east hill; east hill no longer empty | worldgen | L | PENDING | TASK-465 |
 | TASK-467 | Design plan: conservatory on the central glade, glasshouse rows, glass bridge on the waterfall stream, prism-arch path, windmill on the ridge; pine filler thinned around them | worldgen | M | PENDING | TASK-465 |
 | TASK-468 | Shader: HQ compass mosaic ground surface kind + street tints; Design prism-arch light pools, conservatory glass | shader | M | PENDING | TASK-466, TASK-467 |
