@@ -2,20 +2,21 @@ import { createNoise } from '../../core/noise.ts';
 import type { Rng } from '../../core/rng.ts';
 import { clamp01, lerp, smax, smoothstep } from '../../core/math/index.ts';
 import { WATER_BANDS } from '../../content/palette.ts';
-import type { FieldPatchData, Heightfield, IslandData, StreamData } from '../types.ts';
+import type { FieldPatchData, Heightfield, IslandData, IsletData, StreamData } from '../types.ts';
 import { CELL_SIZE, GRID_N, heightAt, SEABED_Y } from '../types.ts';
 import { cellX, cellZ, GRID_ORIGIN, gridRange } from './grid.ts';
 import {
   ARCHETYPES,
   BEACH,
   BLUFF,
+  ISLETS,
   LAGOON,
   RAW_FLOOR,
   SHELF,
   WINDWARD_CLIFF,
   type BluffParams,
 } from '../../content/islands.ts';
-import { PROFILES, Tag } from './profiles.ts';
+import { ISLET_PROFILES, PROFILES, Tag } from './profiles.ts';
 
 /** Smooth-max width where two islands' land overlaps. */
 const ISLAND_BLEND = 3;
@@ -40,8 +41,50 @@ export interface RawLand {
   fields: FieldPatchData[];
   /** Field colour per sample (1 + FIELDS index, 0 = none); masked to Zone.field later. */
   fieldColor: Uint8Array;
-  /** Bluff wall height per island id (u; 0 = no bluff). */
+  /** Bluff wall height per island id (u; 0 = no bluff; islet ids 0). */
   bluffWall: Float32Array;
+}
+
+/** Coast parameters of a land body (island or islet) by `islandMap` value. */
+export interface CoastBody {
+  cx: number;
+  cz: number;
+  shelfWidth: number;
+  beachWidth: number;
+  beachMax: number;
+  /** The island, or null for an islet (no bluff, no windward cliff). */
+  island: IslandData | null;
+}
+
+/** `islandMap` value → its island's / islet's coast parameters (ids follow the islands'). */
+export function coastBody(
+  islands: readonly IslandData[],
+  islets: readonly IsletData[],
+  id1: number,
+): CoastBody {
+  const k = id1 - 1;
+  if (k < islands.length) {
+    const isl = islands[k];
+    const p = ARCHETYPES[isl.archetype];
+    return {
+      cx: isl.cx,
+      cz: isl.cz,
+      shelfWidth: p.shelfWidth,
+      beachWidth: p.beachWidth,
+      beachMax: p.beachMax ?? BEACH.max,
+      island: isl,
+    };
+  }
+  const it = islets[k - islands.length];
+  const p = ISLETS[it.kind];
+  return {
+    cx: it.cx,
+    cz: it.cz,
+    shelfWidth: p.shelfWidth,
+    beachWidth: p.beachWidth,
+    beachMax: p.beachMax ?? BEACH.max,
+    island: null,
+  };
 }
 
 /** The island's bluff block when it is switched on, else null. */
@@ -103,7 +146,12 @@ function terrace(h: number, step: number, strength: number): number {
  * peak to the archetype range, add terraces, and combine (max; smooth-max
  * where two islands' land overlaps). Mutates `anchors` on each island.
  */
-export function buildRawLand(islands: IslandData[], windDir: number, rng: Rng): RawLand {
+export function buildRawLand(
+  islands: IslandData[],
+  islets: IsletData[],
+  windDir: number,
+  rng: Rng,
+): RawLand {
   const n = GRID_N;
   const raw = new Float32Array(n * n).fill(RAW_FLOOR);
   const islandMap = new Uint8Array(n * n);
@@ -111,7 +159,7 @@ export function buildRawLand(islands: IslandData[], windDir: number, rng: Rng): 
   const streams: StreamData[] = [];
   const fields: FieldPatchData[] = [];
   const fieldColor = new Uint8Array(n * n);
-  const bluffWall = new Float32Array(islands.length);
+  const bluffWall = new Float32Array(islands.length + islets.length);
   for (const isl of islands) {
     const p = ARCHETYPES[isl.archetype];
     const shapeRng = rng.fork('island:shape', isl.id);
@@ -160,12 +208,51 @@ export function buildRawLand(islands: IslandData[], windDir: number, rng: Rng): 
       }
     }
   }
+  // islets (TASK-471): the same raster, own profile + peak range, no bluff / terraces; their
+  // streams are forked by islet id so an island change never reshapes a skerry
+  for (const it of islets) {
+    const p = ISLETS[it.kind];
+    const profile = ISLET_PROFILES[it.kind]({
+      islet: it,
+      rng: rng.fork('islet:shape', it.id),
+      noise: createNoise(rng.fork('islet:noise', it.id)),
+    });
+    const [x0, x1] = gridRange(it.minX, it.maxX);
+    const [z0, z1] = gridRange(it.minZ, it.maxZ);
+    const w = x1 - x0 + 1;
+    const local = new Float32Array(w * (z1 - z0 + 1));
+    let max = 0;
+    for (let iz = z0; iz <= z1; iz++) {
+      const z = cellZ(iz);
+      for (let ix = x0; ix <= x1; ix++) {
+        const v = profile.sample(cellX(ix), z);
+        local[(iz - z0) * w + ix - x0] = v;
+        if (v > max) max = v;
+        if (profile.tag && v > 0) tags[iz * n + ix] |= profile.tag(cellX(ix), z);
+      }
+    }
+    const target = rng.fork('islet:peak', it.id).range(p.peak[0], p.peak[1]);
+    const scale = max > 0 ? target / max : 1;
+    for (let iz = z0; iz <= z1; iz++) {
+      for (let ix = x0; ix <= x1; ix++) {
+        const v = local[(iz - z0) * w + ix - x0] * scale;
+        const i = iz * n + ix;
+        const cur = raw[i];
+        if (v > 0 && v >= cur) islandMap[i] = it.id + 1;
+        raw[i] = cur > 0 && v > 0 ? smax(cur, v, ISLAND_BLEND) : Math.max(cur, v);
+      }
+    }
+  }
   return { raw, islandMap, tags, streams, fields, fieldColor, bluffWall };
 }
 
-/** Nearest island by radius-normalised centre distance. */
-export function nearestIsland(islands: IslandData[], x: number, z: number): IslandData | null {
-  let best: IslandData | null = null;
+/** Nearest land body (island or islet) by radius-normalised centre distance. */
+export function nearestIsland<T extends { cx: number; cz: number; radius: number }>(
+  islands: readonly T[],
+  x: number,
+  z: number,
+): T | null {
+  let best: T | null = null;
   let bd = Infinity;
   for (const isl of islands) {
     const d = Math.hypot(x - isl.cx, z - isl.cz) / isl.radius;
@@ -177,8 +264,13 @@ export function nearestIsland(islands: IslandData[], x: number, z: number): Isla
   return best;
 }
 
-/** 0 on the windward side → 1 on the leeward side of an island. */
-export function leewardness(isl: IslandData, windDir: number, x: number, z: number): number {
+/** 0 on the windward side → 1 on the leeward side of an island (or islet: centre only). */
+export function leewardness(
+  isl: { cx: number; cz: number },
+  windDir: number,
+  x: number,
+  z: number,
+): number {
   const dx = x - isl.cx;
   const dz = z - isl.cz;
   const len = Math.hypot(dx, dz) || 1;
@@ -228,6 +320,7 @@ export function finalizeHeight(
   sdf: Float32Array,
   owner: Uint8Array,
   islands: IslandData[],
+  islets: IsletData[],
   windDir: number,
   rng: Rng,
 ): Heightfield {
@@ -243,10 +336,9 @@ export function finalizeHeight(
       const s = sdf[i];
       const x = cellX(ix);
       if (s > 0) {
-        const isl = islands[islandMap[i] - 1];
-        const p = ARCHETYPES[isl.archetype];
-        const bw = p.beachWidth;
-        const bMax = p.beachMax ?? BEACH.max;
+        const body = coastBody(islands, islets, islandMap[i]);
+        const bw = body.beachWidth;
+        const bMax = body.beachMax;
         const beach = BEACH.min + (bMax - BEACH.min) * clamp01(s / bw);
         const low =
           tags[i] & Tag.cliff
@@ -256,14 +348,13 @@ export function finalizeHeight(
       } else if (-s > OPEN_SEA) {
         data[i] = SEABED_Y;
       } else {
-        const isl = owner[i] > 0 ? islands[owner[i] - 1] : null;
+        const body = owner[i] > 0 ? coastBody(islands, islets, owner[i]) : null;
         let width = 8;
         let dropLen: number = SHELF.dropLen;
-        if (isl) {
-          const base = ARCHETYPES[isl.archetype].shelfWidth;
-          const lee = leewardness(isl, windDir, x, z);
-          width = base * lerp(1, WATER_BANDS.leewardRingScale, lee);
-          const cliff = windwardCliffness(isl, windDir, x, z);
+        if (body) {
+          const lee = leewardness(body, windDir, x, z);
+          width = body.shelfWidth * lerp(1, WATER_BANDS.leewardRingScale, lee);
+          const cliff = body.island ? windwardCliffness(body.island, windDir, x, z) : 0;
           if (cliff > 0) {
             width = lerp(width, WINDWARD_CLIFF.shelfWidth, cliff);
             dropLen = lerp(dropLen, WINDWARD_CLIFF.dropLen, cliff);
@@ -484,8 +575,12 @@ function smoothShelfSeams(
     }
 }
 
-/** Fill peakX/Y/Z per island from the final grid (label + landmark anchor). */
-export function measurePeaks(h: Heightfield, islandMap: Uint8Array, islands: IslandData[]): void {
+/** Fill peakX/Y/Z per land body (islands then islets, in id order) from the final grid. */
+export function measurePeaks(
+  h: Heightfield,
+  islandMap: Uint8Array,
+  islands: Pick<IslandData, 'peakX' | 'peakY' | 'peakZ'>[],
+): void {
   for (const isl of islands) {
     isl.peakY = -Infinity;
   }

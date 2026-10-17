@@ -28,7 +28,11 @@ describe('albedo grid + ground palette (TASK-372)', () => {
 
   it('is deterministic and stores the island id in alpha', () => {
     expect(buildAlbedoGrid(world).rgba).toEqual(albedo.rgba);
-    for (let i = 0; i < n * n; i += 97) expect(albedo.rgba[i * 4 + 3]).toBe(world.islandMap[i]);
+    // islets (TASK-471, ids past the islands) use palette row 0
+    for (let i = 0; i < n * n; i += 97)
+      expect(albedo.rgba[i * 4 + 3]).toBe(
+        world.islandMap[i] <= world.islands.length ? world.islandMap[i] : 0,
+      );
   });
 
   it('earth walls (TASK-391): per-zone weight / kind and the island wall colour', () => {

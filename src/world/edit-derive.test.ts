@@ -120,6 +120,7 @@ describe('local zone re-derivation', () => {
       islandMap: w.islandMap,
       tags: w.genAux.tags,
       islands: w.islands,
+      islets: w.islets,
       windDir: w.windDir,
       noise: zoneNoise(createRng(w.seed).fork('zones')),
     };

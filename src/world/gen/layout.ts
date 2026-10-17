@@ -1,8 +1,8 @@
 import type { Rng } from '../../core/rng.ts';
 import { TAU } from '../../core/math/index.ts';
-import type { ArchetypeId, IslandData } from '../types.ts';
+import type { ArchetypeId, IslandData, IsletData, IsletKind } from '../types.ts';
 import { WORLD_SIZE } from '../types.ts';
-import { ARCHETYPES, LAYOUT, NAME_SYLLABLES } from '../../content/islands.ts';
+import { ARCHETYPES, ISLET_LAYOUT, ISLETS, LAYOUT, NAME_SYLLABLES } from '../../content/islands.ts';
 import { THEME_BY_ARCHETYPE } from '../../content/themes.ts';
 
 export interface LayoutOptions {
@@ -13,6 +13,8 @@ export interface LayoutOptions {
 export interface Layout {
   windDir: number;
   islands: IslandData[];
+  /** Skerries + the Lonely Palm sandbar (TASK-471); empty in single-island mode. */
+  islets: IsletData[];
 }
 
 /** Keep every island's evaluation bounds this far inside the world edge. */
@@ -218,57 +220,128 @@ export function layoutProblem(
   if (seen.some((v) => v === 0)) return 'disconnected';
   for (const [i, j] of adjacentPairs(discs))
     if (!contrasts(roster[i].archetype, roster[j].archetype)) return 'contrast';
+  if (centralIndex(discs) !== hubIndex(roster)) return 'offcentre';
   return null;
 }
 
+/** Index of the hub island (Hearthholm; the largest reach when it is absent). */
+export function hubIndex(roster: readonly RosterEntry[]): number {
+  const hero = roster.findIndex((e) => e.archetype === 'hearthholm');
+  if (hero >= 0) return hero;
+  return roster.map((_, i) => i).sort((a, b) => roster[b].reach - roster[a].reach || a - b)[0];
+}
+
+/** Index of the disc nearest the centroid of the disc centres (D-058 `W:K2`). */
+export function centralIndex(discs: readonly Disc[]): number {
+  let cx = 0;
+  let cz = 0;
+  for (const d of discs) {
+    cx += d.x / discs.length;
+    cz += d.z / discs.length;
+  }
+  let best = 0;
+  let bd = Infinity;
+  discs.forEach((d, i) => {
+    const dist = Math.hypot(d.x - cx, d.z - cz);
+    if (dist < bd) {
+      bd = dist;
+      best = i;
+    }
+  });
+  return best;
+}
+
 /**
- * Dart-throw: hero at the origin, then by decreasing reach each island is
- * attached to a random placed one at gap ∈ LAYOUT.attachGap; of
- * LAYOUT.candidates valid darts the one nearest the centroid wins. Then
- * relax (push overlapping pairs apart, pull loners in) and re-centre.
+ * Hub layout (D-058 `W:K2`): the hub at the origin, the others on a ring of LAYOUT.hub.slotDeg
+ * slots in a per-seed order, each slot turned by ± jitterDeg, at `hub.gap` u of water from
+ * the hub. Then relax (push overlapping pairs apart, pull loners in) and re-centre; the
+ * `offcentre` rule of `layoutProblem` keeps the hub nearest the centroid.
  */
 function place(roster: readonly RosterEntry[], rng: Rng): Disc[] | null {
   const discs: (Disc | null)[] = roster.map(() => null);
-  const order = roster.map((_, i) => i).sort((a, b) => roster[b].reach - roster[a].reach || a - b);
-  const placed: Disc[] = [];
-  for (const i of order) {
+  const hub = hubIndex(roster);
+  discs[hub] = { x: 0, z: 0, r: roster[hub].reach };
+  const ring = rng.fork('ring').shuffle(roster.map((_, i) => i).filter((i) => i !== hub));
+  const H = LAYOUT.hub;
+  const base = rng.fork('ring:base').range(0, TAU);
+  const slot = (TAU * H.slotDeg) / 360;
+  for (let k = 0; k < ring.length; k++) {
+    const i = ring[k];
     const r = roster[i].reach;
-    if (placed.length === 0) {
-      const d = { x: 0, z: 0, r };
-      discs[i] = d;
-      placed.push(d);
-      continue;
-    }
-    let cx = 0;
-    let cz = 0;
-    for (const p of placed) {
-      cx += p.x;
-      cz += p.z;
-    }
-    cx /= placed.length;
-    cz /= placed.length;
+    const dr = rng.fork('slot', i);
+    const a = base + k * slot + dr.range(-H.jitterDeg, H.jitterDeg) * (Math.PI / 180);
+    const dist = roster[hub].reach + r + dr.range(H.gap[0], H.gap[1]);
+    discs[i] = { x: Math.cos(a) * dist, z: Math.sin(a) * dist, r };
+  }
+  const out = discs as Disc[];
+  relax(out);
+  recentre(out);
+  return out;
+}
+
+// ---------------------------------------------------------------- islets
+
+/** Islet bounding disc from a kind + rolled diameter. */
+function isletDisc(kind: IsletKind, rng: Rng): { radius: number; reach: number } {
+  const p = ISLETS[kind];
+  const radius = rng.range(p.diameter[0], p.diameter[1]) / 2;
+  return { radius, reach: radius * p.reachScale };
+}
+
+/**
+ * Skerries + one sandbar (D-058 `W:D2/K6`) in the channels: each islet is dart-thrown off a
+ * random island at ISLET_LAYOUT.gap u of water; a dart must keep that gap from every island's
+ * reach disc, `isletGap` from the other islets and stay inside the extent; of the valid darts
+ * the one with the least water to its two nearest islands wins (between islands, not out at
+ * sea). An islet with no valid dart is skipped (never on a sane layout; the test counts them).
+ */
+export function placeIslets(discs: readonly Disc[], rng: Rng): Omit<IsletData, 'id'>[] {
+  const L = ISLET_LAYOUT;
+  const kinds: IsletKind[] = ['sandbar'];
+  const nSkerry = rng.fork('count').int(L.skerries[0], L.skerries[1]);
+  for (let k = 0; k < nSkerry; k++) kinds.push('skerry');
+  const out: Omit<IsletData, 'id'>[] = [];
+  const placed: Disc[] = [];
+  const lim = WORLD_SIZE / 2 - EDGE_MARGIN;
+  kinds.forEach((kind, k) => {
+    const dr = rng.fork('islet', k);
+    const { radius, reach } = isletDisc(kind, dr);
     let best: Disc | null = null;
     let bestScore = Infinity;
-    const dr = rng.fork('dart', i);
-    for (let c = 0; c < LAYOUT.candidates; c++) {
-      const anchor = dr.pick(placed);
+    for (let c = 0; c < L.candidates; c++) {
+      const anchor = dr.pick(discs);
       const a = dr.range(0, TAU);
-      const dist = anchor.r + r + dr.range(LAYOUT.attachGap[0], LAYOUT.attachGap[1]);
-      const cand = { x: anchor.x + Math.cos(a) * dist, z: anchor.z + Math.sin(a) * dist, r };
-      if (placed.some((p) => gapOf(p, cand) < LAYOUT.minGap)) continue;
-      const score = Math.hypot(cand.x - cx, cand.z - cz) + dr.range(0, 20);
+      const dist = anchor.r + reach + dr.range(L.gap[0], L.gap[1]);
+      const cand = { x: anchor.x + Math.cos(a) * dist, z: anchor.z + Math.sin(a) * dist, r: reach };
+      if (Math.abs(cand.x) + reach > LAYOUT.extent || Math.abs(cand.z) + reach > LAYOUT.extent)
+        continue;
+      const gaps = discs.map((d) => gapOf(d, cand)).sort((p, q) => p - q);
+      if (gaps[0] < L.gap[0]) continue;
+      if (placed.some((p) => gapOf(p, cand) < L.isletGap)) continue;
+      const score = gaps[0] + gaps[1];
       if (score < bestScore) {
         bestScore = score;
         best = cand;
       }
     }
-    if (!best) return null;
-    discs[i] = best;
+    if (!best) return;
     placed.push(best);
-  }
-  const out = discs as Disc[];
-  relax(out);
-  recentre(out);
+    const half = radius * ISLETS[kind].boundsScale;
+    out.push({
+      kind,
+      cx: best.x,
+      cz: best.z,
+      radius,
+      reach,
+      peakY: 0,
+      peakX: best.x,
+      peakZ: best.z,
+      minX: Math.max(-lim, best.x - half),
+      minZ: Math.max(-lim, best.z - half),
+      maxX: Math.min(lim, best.x + half),
+      maxZ: Math.min(lim, best.z + half),
+    });
+  });
   return out;
 }
 
@@ -390,7 +463,7 @@ export function archipelago(rng: Rng): { roster: RosterEntry[]; discs: Disc[] } 
  */
 export function generateLayout(rng: Rng, opts: LayoutOptions): Layout {
   const windDir = rng.fork('wind').range(0, TAU);
-  if (opts.islands === 1) return { windDir, islands: singleIsland(rng) };
+  if (opts.islands === 1) return { windDir, islands: singleIsland(rng), islets: [] };
   const { roster, discs } = archipelago(rng);
   const names = nameIslands(
     roster.map((e) => e.archetype),
@@ -401,5 +474,9 @@ export function generateLayout(rng: Rng, opts: LayoutOptions): Layout {
     isl.name = names[id];
     return isl;
   });
-  return { windDir, islands };
+  const islets = placeIslets(discs, rng.fork('islets')).map((it, k) => ({
+    id: islands.length + k,
+    ...it,
+  }));
+  return { windDir, islands, islets };
 }

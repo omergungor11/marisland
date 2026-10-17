@@ -2,6 +2,7 @@ import { createRng, type Rng } from '../../core/rng.ts';
 import { createNoise } from '../../core/noise.ts';
 import { poissonDisc } from '../../core/math/poisson.ts';
 import {
+  ISLET_SCATTER,
   PLACEMENT_RULES,
   BLOCKED_ZONES,
   OCCUPANCY_CELL,
@@ -20,6 +21,7 @@ import {
   WORLD_SIZE,
   CHUNK_SIZE,
   CHUNKS_PER_SIDE,
+  type IslandData,
   type WorldData,
 } from '../types.ts';
 import { slopeAtCell } from './zones.ts';
@@ -154,16 +156,19 @@ export function scatterProps(
   const noise = createNoise(root.fork('scatter-noise'));
   let groundCoverTotal = 0;
 
-  for (const island of world.islands) {
-    const theme = THEMES[island.theme];
-    // global rules first (same indices as before M14b), then the theme's own rules
-    const rules = PLACEMENT_RULES.concat(theme.scatter);
+  /**
+   * One land body (island or islet): every rule in order, `rng.fork('props', id, ruleIndex)`.
+   * A candidate on another body's land is rejected (TASK-471: an islet inside an island's
+   * scatter square must not get that island's trees, nor the island the islet's rocks).
+   */
+  const scatterBody = (
+    island: Pick<IslandData, 'id' | 'minX' | 'maxX' | 'minZ' | 'maxZ' | 'peakX' | 'peakZ'>,
+    rules: readonly PlacementRule[],
+    skip: (rule: PlacementRule, r: number) => boolean,
+  ): void => {
     for (let r = 0; r < rules.length; r++) {
       const rule = rules[r];
-      if (r < PLACEMENT_RULES.length) {
-        if (rule.archetypes && !rule.archetypes.includes(island.archetype)) continue;
-        if (theme.scatterOff.includes(rule.def)) continue;
-      }
+      if (skip(rule, r)) continue;
       const defIndex = PROP_DEF_INDEX[rule.def];
       const def = PROP_DEFS[defIndex];
       if (!def) continue;
@@ -179,6 +184,8 @@ export function scatterProps(
       const accept = (x: number, z: number): boolean => {
         const zone = zoneAt(h, world.zone, x, z);
         if (!rule.zones.includes(zone) || BLOCKED_ZONES.includes(zone)) return false;
+        const o = ownerAt(world, x, z);
+        if (o !== 0 && o !== island.id + 1) return false;
         if (rule.fieldColors) {
           const c = fieldColorAt(world, x, z) - 1;
           if (!rule.fieldColors.includes(c)) return false;
@@ -206,16 +213,9 @@ export function scatterProps(
         }
         return true;
       };
-      const pts = poissonDisc(
-        rng,
-        minX,
-        minZ,
-        maxX,
-        maxZ,
-        rule.minDist,
-        accept,
-        isGround ? 12000 : 6000,
-      );
+      const pts = rule.atPeak
+        ? [island.peakX, island.peakZ]
+        : poissonDisc(rng, minX, minZ, maxX, maxZ, rule.minDist, accept, isGround ? 12000 : 6000);
       let placed = 0;
       const max = rule.maxPerIsland ?? Infinity;
       for (let i = 0; i < pts.length && placed < max; i += 2) {
@@ -253,8 +253,28 @@ export function scatterProps(
       }
       counts[rule.def] = (counts[rule.def] ?? 0) + placed;
     }
+  };
+
+  for (const island of world.islands) {
+    const theme = THEMES[island.theme];
+    // global rules first (same indices as before M14b), then the theme's own rules
+    scatterBody(island, PLACEMENT_RULES.concat(theme.scatter), (rule, r) => {
+      if (r >= PLACEMENT_RULES.length) return false;
+      if (rule.archetypes && !rule.archetypes.includes(island.archetype)) return true;
+      return theme.scatterOff.includes(rule.def);
+    });
   }
+  for (const islet of world.islets) scatterBody(islet, ISLET_SCATTER[islet.kind], () => false);
   return { props: store, occupancy, counts };
+}
+
+/** `islandMap` value at a world position (nearest sample; 0 outside the grid). */
+function ownerAt(world: WorldData, x: number, z: number): number {
+  const h = world.height;
+  const ix = Math.round((x - h.originX) / h.cellSize);
+  const iz = Math.round((z - h.originZ) / h.cellSize);
+  if (ix < 0 || iz < 0 || ix >= h.n || iz >= h.n) return 0;
+  return world.islandMap[iz * h.n + ix];
 }
 
 function slopeAt(

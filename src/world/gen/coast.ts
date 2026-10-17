@@ -196,7 +196,10 @@ export function cleanCoast(
     if (protect && protect[i] !== 0) sub[j] = 0;
     else added.push(i);
   }
-  const removed = morph(sub, w, h, openRadius, 'open').map(toFull);
+  // protected cells survive the opening too (TASK-471: a skerry is thinner than 2 × openRadius)
+  const removed = morph(sub, w, h, openRadius, 'open')
+    .map(toFull)
+    .filter((i) => !protect || protect[i] === 0);
   for (const i of added) land[i] = 1;
   for (const i of removed) land[i] = 0;
   return { added, removed };

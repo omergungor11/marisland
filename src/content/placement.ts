@@ -2,7 +2,7 @@
  * Prop placement rules (ARCHITECTURE §2 step 7, ART_BIBLE §4/§5). Data only.
  * Layers run in priority order: landmarks → buildings → trees → rocks → bushes → micro → ground cover.
  */
-import type { ArchetypeId } from '../world/types.ts';
+import type { ArchetypeId, IsletKind } from '../world/types.ts';
 import { Zone } from '../world/types.ts';
 
 export interface PlacementRule {
@@ -38,6 +38,8 @@ export interface PlacementRule {
    * patches and face along them, so rows read as tilled rows, not scattered sticks.
    */
   fieldRows?: number;
+  /** One instance at the body's peak sample instead of a Poisson set (the Lonely Palm). */
+  atPeak?: boolean;
 }
 
 const {
@@ -231,6 +233,49 @@ export const PLACEMENT_RULES: readonly PlacementRule[] = [
     scale: [0.8, 1.3],
   },
 ];
+
+/**
+ * Islet scatter (TASK-471, D-058 `W:D2/K6`): the skerries carry a few rock clusters on their
+ * rock / cliff; the Lonely Palm sandbar gets exactly one palm (`maxPerIsland` 1, the islet's
+ * own `rng.fork('props', isletId, ruleIndex)`) and a rock or two at the waterline.
+ */
+export const ISLET_SCATTER: Readonly<Record<IsletKind, readonly PlacementRule[]>> = {
+  skerry: [
+    {
+      def: 'rockCluster',
+      zones: [rock, cliff],
+      minDist: 4,
+      density: 0.8,
+      slopeMax: 2.5,
+      heights: [0.3, 60],
+      scale: [0.8, 1.3],
+      maxPerIsland: 3,
+    },
+  ],
+  sandbar: [
+    {
+      def: 'palm',
+      zones: [sandDry, sandWet],
+      minDist: 3,
+      density: 1,
+      slopeMax: 2,
+      heights: [0, 3],
+      scale: [1.1, 1.3],
+      maxPerIsland: 1,
+      atPeak: true,
+    },
+    {
+      def: 'rockCluster',
+      zones: [sandWet],
+      minDist: 4,
+      density: 0.5,
+      slopeMax: 1,
+      heights: [0, 1],
+      scale: [0.5, 0.8],
+      maxPerIsland: 2,
+    },
+  ],
+};
 
 /** Keep props out of the crater floor etc. */
 export const BLOCKED_ZONES: number[] = [crater, path, plaza];

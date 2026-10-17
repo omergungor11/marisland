@@ -233,9 +233,9 @@ describe('Marketing Media Rock plan (TASK-403), 30 seeds', () => {
     });
     expect(got).toMatchInlineSnapshot(`
       [
-        "9451115e1a7cf4c3",
-        "f65accf800bb0a20",
-        "7205bcbc2659445a",
+        "10a3e2fa6872afd3",
+        "c107c53fb09b6f7d",
+        "75604128a9f9b60a",
       ]
     `);
   });
@@ -244,7 +244,8 @@ describe('Marketing Media Rock plan (TASK-403), 30 seeds', () => {
 /** Count range per culture def on the Marketing island (30 seeds). */
 const KIT_COUNTS: Record<string, readonly [number, number]> = {
   mascotStatue: [1, 1],
-  marqueeSign: [2, 3],
+  // TASK-471 re-roll: seed 1526 fits one
+  marqueeSign: [1, 3],
   popcornCart: [0, 2],
   balloonMast: [0, 3],
   confettiCannon: [0, 2],

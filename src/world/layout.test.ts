@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { createRng } from '../core/rng.ts';
-import { ARCHETYPES, LAYOUT } from '../content/islands.ts';
-import { adjacentPairs, contrasts, generateLayout, nearestGaps } from './gen/layout.ts';
-import { THEME_IDS, type IslandData } from './types.ts';
+import { ARCHETYPES, ISLET_LAYOUT, LAYOUT } from '../content/islands.ts';
+import {
+  adjacentPairs,
+  centralIndex,
+  contrasts,
+  generateLayout,
+  nearestGaps,
+} from './gen/layout.ts';
+import { THEME_IDS, type IslandData, type IsletData } from './types.ts';
 import { THEME_BY_ARCHETYPE } from '../content/themes.ts';
 import { perfLimit } from '../test/perf.ts';
 
@@ -11,7 +17,7 @@ import { perfLimit } from '../test/perf.ts';
 const now = (): number => performance.now();
 
 /** Same stream generateWorld uses for the layout stage. */
-const layout = (seed: number): { windDir: number; islands: IslandData[] } =>
+const layout = (seed: number): { windDir: number; islands: IslandData[]; islets: IsletData[] } =>
   generateLayout(createRng(seed).fork('layout'), { islands: 'auto' });
 
 const disc = (i: IslandData): { x: number; z: number; r: number } => ({
@@ -114,6 +120,78 @@ describe('archipelago layout — 500-seed properties', () => {
     expect(lonely).toBe(500);
     expect(fallbacks / 500).toBeLessThan(0.05);
     expect(ms).toBeLessThan(perfLimit(2000));
+  });
+
+  it('HQ is the island nearest the cluster centroid on every seed (D-058 W:K2)', () => {
+    let hubMax = 0;
+    let otherMin = Infinity;
+    for (let seed = 0; seed < 500; seed++) {
+      const { islands } = layout(seed);
+      const discs = islands.map(disc);
+      const hub = islands.findIndex((i) => i.theme === 'hq');
+      expect(centralIndex(discs), `seed ${seed}`).toBe(hub);
+      let cx = 0;
+      let cz = 0;
+      for (const d of discs) {
+        cx += d.x / discs.length;
+        cz += d.z / discs.length;
+      }
+      discs.forEach((d, k) => {
+        const dist = Math.hypot(d.x - cx, d.z - cz);
+        if (k === hub) hubMax = Math.max(hubMax, dist);
+        else otherMin = Math.min(otherMin, dist);
+      });
+      // every other island is a ring neighbour of the hub: one channel of water between them
+      for (let k = 0; k < discs.length; k++) {
+        if (k === hub) continue;
+        const gap =
+          Math.hypot(discs[k].x - discs[hub].x, discs[k].z - discs[hub].z) -
+          discs[k].r -
+          discs[hub].r;
+        expect(gap, `seed ${seed} ${islands[k].theme} hub gap`).toBeGreaterThanOrEqual(
+          LAYOUT.minGap,
+        );
+        expect(gap, `seed ${seed} ${islands[k].theme} hub gap`).toBeLessThanOrEqual(
+          LAYOUT.hub.gap[1] + 12,
+        );
+      }
+    }
+    console.info(
+      `hub: max centroid distance ${hubMax.toFixed(1)} u; others ≥ ${otherMin.toFixed(1)} u`,
+    );
+    expect(hubMax).toBeLessThan(otherMin);
+  });
+
+  it('skerries + one Lonely Palm sandbar on every seed, in the channels, off every island (D-058 W:D2/K6)', () => {
+    const counts: Record<number, number> = {};
+    for (let seed = 0; seed < 500; seed++) {
+      const { islands, islets } = layout(seed);
+      const ctx = `seed ${seed}`;
+      const sand = islets.filter((i) => i.kind === 'sandbar');
+      const rock = islets.filter((i) => i.kind === 'skerry');
+      expect(sand.length, ctx).toBe(1);
+      expect(rock.length, ctx).toBeGreaterThanOrEqual(ISLET_LAYOUT.skerries[0]);
+      expect(rock.length, ctx).toBeLessThanOrEqual(ISLET_LAYOUT.skerries[1]);
+      counts[rock.length] = (counts[rock.length] ?? 0) + 1;
+      islets.forEach((it, k) => {
+        expect(it.id, ctx).toBe(islands.length + k);
+        for (const isl of islands) {
+          const gap = Math.hypot(isl.cx - it.cx, isl.cz - it.cz) - isl.reach - it.reach;
+          expect(gap, `${ctx} islet ${k} vs ${isl.theme}`).toBeGreaterThanOrEqual(
+            ISLET_LAYOUT.gap[0] - 1e-6,
+          );
+        }
+        for (const o of islets)
+          if (o !== it)
+            expect(
+              Math.hypot(o.cx - it.cx, o.cz - it.cz) - o.reach - it.reach,
+              `${ctx} islets`,
+            ).toBeGreaterThanOrEqual(ISLET_LAYOUT.isletGap - 1e-6);
+        expect(Math.abs(it.cx) + it.reach, ctx).toBeLessThanOrEqual(LAYOUT.extent);
+        expect(Math.abs(it.cz) + it.reach, ctx).toBeLessThanOrEqual(LAYOUT.extent);
+      });
+    }
+    console.info(`skerries per seed: ${JSON.stringify(counts)}`);
   });
 
   it('is deterministic and independent of the island count option', () => {

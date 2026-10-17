@@ -54,13 +54,13 @@ export interface ShotPreset {
 
 /** Encoded edit logs (seed 1001) of the `edit` set; regenerate with `encodeLog` when the codec changes. */
 export const EDIT_LOGS = {
-  hill: 'AekHAAgA5HbaJoAFgA4AwAE_AAAAwAFAAAAA_wFAAAAAgAEfAAAAPz-_Av8FAwAggAL_BQQAH58CAQ',
+  hill: 'AekHAAgA4lXAUYAFgA4AwAE_AAAAwAFAAAAA_wFAAAAAgAEfAAAAPz-_Av8FAwAggAL_BQQAH58CAQ',
   flood:
-    'AekHABAB5H6aNcADgAwBgAKAAgAAAYABvwIAAAH_AYAFAAABwAP_AQAAAb8IwAcAAAHAAkAAAAHAAr8BAAABf_8IAAABgAKAAgAAAYABvwIAAAH_AYAFAAABwAP_AQAAAb8IwAcAAAHAAkAAAAHAAr8BAAA',
+    'AekHABAB4l2AYMADgAwBgAKAAgAAAYABvwIAAAH_AYAFAAABwAP_AQAAAb8IwAcAAAHAAkAAAAHAAr8BAAABf_8IAAABgAKAAgAAAYABvwIAAAH_AYAFAAABwAP_AQAAAb8IwAcAAAHAAkAAAAHAAr8BAAA',
   meadow:
-    'AekHBQRwaW5lC3JvY2tDbHVzdGVyBmZsb3dlcgRidXNoDWdpYW50TXVzaHJvb20VA_BukmWABLQCBAAAAAEEgAKgAb8BATUAAMUBlwGxEYoCATUCAL8BmQH1B_cBATUAAGxlkAKGAgE1AAClAo4D3g-eAgA1AAGOBLsD_RfpAQA1AAGZApQEiBztAQE1AAF88QPrDvwBATUAASuWA60Z3wEBNQACJN0B8ASMAgA1AAKGAQTGEIYCADUAAgc8zxr7AQA1AAIid-cX2gEBNQACUWLJEPQBATUAA1Nl3RX7AQE1AAPqAZABsRKKAgA1AAPFAUyJGJMCADUAA64B2wG9Bo8CATUABEfmAf4ajgIA',
+    'AekHBQRwaW5lC3JvY2tDbHVzdGVyBmZsb3dlcgRidXNoDWdpYW50TXVzaHJvb20VA6I61IgBgAS0AgQAAAABBIACoAG_AQE1AADFAZcBsRGKAgE1AgC_AZkB9Qf3AQE1AABsZZAChgIBNQAApQKOA94PngIANQABjgS7A_0X6QEANQABmQKUBIgc7QEBNQABfPED6w78AQE1AAErlgOtGd8BATUAAiTdAfAEjAIANQAChgEExhCGAgA1AAIHPM8a-wEANQACInfnF9oBATUAAlFiyRD0AQE1AANTZd0V-wEBNQAD6gGQAbESigIANQADxQFMiRiTAgA1AAOuAdsBvQaPAgE1AARH5gH-Go4CAA',
   mixed:
-    'AekHBQdjb3R0YWdlBHBhbG0GZmxvd2VyC2xhbnRlcm5Qb3N0BWJlbmNoFgatzn8CgD7uK6ACgCACAAAAAAMAAGDLHQQAAJ8BAQLAAYACX8wTAmAAAP8JAgAAAAACYAAAmQcCAAAAAAJQAB_LAQIAAAAAA68BAGCZAQQgAD8DFQAA3wKvAocDgAIVAAHAAXDjDpoCFQABvwLPAewSjQIVAALgAfABxAGAAhUAAj8QzwaAAhUAAj8f2wuAAhUAA6ABTwCAAhUABM8BMIcDgAI',
+    'AekHBQdjb3R0YWdlBHBhbG0GZmxvd2VyC2xhbnRlcm5Qb3N0BWJlbmNoFgatzn8CpH76NKACgCACAAAAAAMAAGDLHQQAAJ8BAQLAAYACX8wTAmAAAP8JAgAAAAACYAAAmQcCAAAAAAJQAB_LAQIAAAAAA68BAGCZAQQgAD8DFQAA3wKvAocDgAIVAAHAAXDjDpoCFQABvwLPAewSjQIVAALgAfABxAGAAhUAAj8QzwaAAhUAAj8f2wuAAhUAA6ABTwCAAhUABM8BMIcDgAI',
 } as const;
 
 /** Department themes on seed 1001 (findIsland matches the theme id) with their display names. */
@@ -84,14 +84,14 @@ const CAMPUS_THEMES = [
  * container yard, yard bots (the old west-shore rack yard moved onto the harbour shelf).
  */
 const LIVE_CAMS: Record<(typeof CAMPUS_THEMES)[number][0], string> = {
-  hq: '66,14,-184.54,86,1.4,-187.54',
-  qa: '-167.7,23,-205.84,-156,9,-193.54',
-  design: '-144,30,65.46,-151,17,83.46',
-  coding: '105,17,-3.54,94,11,6.46',
+  hq: '-66.04,14,-13.36,-46.04,1.4,-16.36',
+  qa: '89.4,23,-169.44,101.1,9,-157.14',
+  design: '-93.87,30,-177.26,-100.87,17,-159.26',
+  coding: '-105.43,17,138.51,-116.43,11,148.51',
   // TASK-402b: over the glasshouse row and the base pods (bots at the terrariums, mast and pods)
-  research: '-104,15,236,-118,8,226',
-  devops: '-80,7.5,-24,-70,2.6,-36',
-  marketing: '-60,15,179.46,-36,6,171.46',
+  research: '137.71,15,118.1,123.71,8,108.1',
+  devops: '164.75,7.5,21.63,174.75,2.6,9.63',
+  marketing: '-259.02,15,12.2,-235.02,6,4.2',
 };
 
 /** Warm-up per live campus (s; default 6): picked for the most bots in motion near the target. */
@@ -105,13 +105,13 @@ const LIVE_CROP: [number, number, number, number] = [0.15, 0.1, 0.85, 0.9];
  * Each looks at a story spot whose person is a tableau bot (content/life.ts TABLEAU).
  */
 const STORY_SHOTS: readonly (readonly [string, string, string, number, number])[] = [
-  ['signpostDebate', 'Signpost debate · HQ', '81,8.5,-175,83.8,2,-180.8', 14, 6],
-  ['hammockNap', 'Hammock nap · Coding', '103.98,13.30,39.26,104.76,10.60,34.11', 14, 6],
-  ['containerNap', 'Container nap · DevOps', '-91.04,8.93,-56.71,-86.00,6.23,-58.00', 14, 6],
-  ['lighthouseSelfie', 'Selfie · Marketing', '9.88,28.37,145.39,14.99,25.67,144.38', 14, 6],
-  ['gafferTurn', 'Gaffer · Design', '-147.73,24.75,66.77,-149.70,22.05,71.59', 14, 6],
-  ['teaTime', 'Tea time · Research', '-134.26,11.18,208.30,-134.66,8.48,213.48', 14, 6],
-  ['onsenCapybara', 'Onsen · DevOps', '-80.13,11.23,-74.59,-83.11,8.53,-78.85', 14, 6],
+  ['signpostDebate', 'Signpost debate · HQ', '-51.04,8.5,-3.82,-48.24,2,-9.62', 14, 6],
+  ['hammockNap', 'Hammock nap · Coding', '-106.45,13.3,181.31,-105.67,10.6,176.16', 14, 6],
+  ['containerNap', 'Container nap · DevOps', '153.71,8.93,-11.08,158.75,6.23,-12.37', 14, 6],
+  ['lighthouseSelfie', 'Selfie · Marketing', '-189.14,28.37,-21.87,-184.03,25.67,-22.88', 14, 6],
+  ['gafferTurn', 'Gaffer · Design', '-97.6,24.75,-175.95,-99.57,22.05,-171.13', 14, 6],
+  ['teaTime', 'Tea time · Research', '107.45,11.18,90.4,107.05,8.48,95.58', 14, 6],
+  ['onsenCapybara', 'Onsen · DevOps', '164.62,11.23,-28.96,161.64,8.53,-33.22', 14, 6],
 ] as const;
 
 /**
@@ -119,52 +119,57 @@ const STORY_SHOTS: readonly (readonly [string, string, string, number, number])[
  * (life-spot-critters.ts SPOT_CRITTERS): [id, title, cam, game hour, warm-up s].
  */
 const CRITTER_SHOTS: readonly (readonly [string, string, string, number, number])[] = [
-  ['cat-timetable', 'Cat on the timetable · HQ', '73.99,5.6,-178.89,78.04,3.35,-181.76', 14, 6],
+  ['cat-timetable', 'Cat on the timetable · HQ', '-58.05,5.6,-7.71,-54,3.35,-10.58', 14, 6],
   [
     'capybara-onsen',
     'Capybara in the onsen · DevOps',
-    '-80.46,8.77,-81.57,-82.12,7.93,-79.83',
+    '164.29,8.77,-35.94,162.63,7.93,-34.2',
     14,
     6,
   ],
-  ['fox-orb', 'Fox and the glass orb · Design', '-156,23,76,-160,21.5,72.6', 14, 6],
-  ['owl-night', 'Owl at the box · Research', '-112.23,9.76,229.2,-115.38,8.89,227.67', 22, 6],
-  ['ladybugs-zoo', 'Ladybugs at the Bug Zoo · QA', '-173.81,12.4,-195.89,-177,9.01,-202.12', 14, 6],
+  ['fox-orb', 'Fox and the glass orb · Design', '-105.87,23,-166.72,-109.87,21.5,-170.12', 14, 6],
+  ['owl-night', 'Owl at the box · Research', '129.48,9.76,111.3,126.33,8.89,109.77', 22, 6],
+  ['ladybugs-zoo', 'Ladybugs at the Bug Zoo · QA', '83.29,12.4,-159.49,80.1,9.01,-165.72', 14, 6],
   [
     'gull-bowl',
     'Gull in the seconds bowl · Design',
-    '-145.04,24.57,68.31,-148.54,22.65,68.26',
+    '-94.91,24.57,-174.41,-98.41,22.65,-174.46',
     14,
     6,
   ],
   [
     'duck-crossing',
     'Duck family crossing · Coding',
-    '107.67,13.99,19.22,105.27,9.59,11.58',
+    '-102.76,13.99,161.27,-105.16,9.59,153.63',
     14,
     10,
   ],
 ] as const;
 
 /** W7 camera (raw, seed 1001 Coding; TASK-380), re-pin when that layout changes. */
-const W7_CAM = '45,20,3.46,95,13,23.46';
+const W7_CAM = '-165.43,20,145.51,-115.43,13,165.51';
 
 /** D-devops-* (raw, seed 1001 Ember Works; TASK-405), re-pin when that layout changes. */
-const DEVOPS_CAM = '-128,92,21.46,-56,2,-66.54';
+const DEVOPS_CAM = '116.75,92,67.09,188.75,2,-20.91';
 /** D-devops-terraces (raw, seed 1001): the data center terraces from the sea north-west of them. */
-const DEVOPS_TERRACE_CAM = '-122,30,-128.54,-80,8,-100.54';
+const DEVOPS_TERRACE_CAM = '122.75,30,-82.91,164.75,8,-54.91';
 /** D-devops-harbour (raw, seed 1001): the container yard, CI/CD belt, pier and a cargo ship. */
-const DEVOPS_HARBOUR_CAM = '-54,20,-10.54,-80,2,-40.54';
+const DEVOPS_HARBOUR_CAM = '190.75,20,35.09,164.75,2,5.09';
 /** D-culture-devops (raw, seed 1001; TASK-422): the onsen, quay and gate from the lee sea. */
-const DEVOPS_CULTURE_CAM = '-128,36,-104,-80,6,-70';
+const DEVOPS_CULTURE_CAM = '116.75,36,-58.37,164.75,6,-24.37';
 /** D-culture-devops-onsen (raw, seed 1001; TASK-422): the onsen deck and bath house close up. */
-const DEVOPS_ONSEN_CAM = '-101,13,-74,-83,7.5,-81';
+const DEVOPS_ONSEN_CAM = '143.75,13,-28.37,161.75,7.5,-35.37';
 
-/** W9 Research hero (raw, seed 1001 Observatory University; TASK-402b), re-pin when the layout changes. */
-const W9_CAM = '-66,21,203,-126,15,221';
+/**
+ * W9 Research hero (raw, seed 1001 Observatory University; TASK-402b), re-pin when the layout
+ * changes. TASK-471 (hub layout): Research now sits NE of HQ, so the look comes from the
+ * south-west (the channel off HQ) toward the open sea behind the summit; the old ENE look had
+ * HQ's plateau in frame (841 k triangles > 800 k).
+ */
+const W9_CAM = '72,21,52,116,15,100';
 
-/** W14 campus at golden hour (raw, seed 1001; TASK-402b): observatory, quad and gardens. */
-const W14_CAM = '-72,46,252,-131,5,226';
+/** W14 campus at golden hour (raw, seed 1001; TASK-402b, re-aimed from the SW in TASK-471): pier, quad, gardens and the summit observatory, open sea behind. */
+const W14_CAM = '59,46,70,112,5,108';
 
 /**
  * D-desk camera (raw `x,y,z,tx,ty,tz`), re-pin when the seed 1001 layout changes (TASK-396: +4 u
@@ -172,18 +177,18 @@ const W14_CAM = '-72,46,252,-131,5,226';
  * devPod and desks) — the old look had the Media Rock's fair and trees at the frame's edge, and
  * every per-island LOD0 group whose bounds touch the frustum costs a call (202 > the low 170).
  */
-const DESK_CAM = '94.1,13,0.5,91.5,10.2,3.46';
+const DESK_CAM = '-116.33,13,142.55,-118.93,10.2,145.51';
 
 /**
  * Hearthholm beach macro (raw, seed 1001; D-macro and W8, TASK-396): the `macro-beach` orbit now
  * faces the clocktower's wall (TASK-393 height), so a fixed T3 look west from the HQ quad over the
  * coffee kiosk, flower bed and crab to the reeds, foam line and sea. Re-pin when the layout changes.
  */
-const MACRO_CAM = '91.8,7.4,-186.3,82.3,2,-182.2';
+const MACRO_CAM = '-40.24,7.4,-15.12,-49.74,2,-11.02';
 
 /** D-culture-hq cameras (raw, seed 1001 Harbour Guild; TASK-420), re-pin when HQ's layout changes. */
-const HQ_CULTURE_CAM = '104.5,33,-147.5,86,1.2,-184';
-const HQ_CULTURE_NIGHT_CAM = '98,12,-165,87,1.2,-184';
+const HQ_CULTURE_CAM = '-27.54,33,23.68,-46.04,1.2,-12.82';
+const HQ_CULTURE_NIGHT_CAM = '-34.04,12,6.18,-45.04,1.2,-12.82';
 
 /**
  * D-move-* (TASK-431 culture movers): close frames with a deltaT pair so the ambient motion (rings,
@@ -203,35 +208,47 @@ const MOVE_SIMT: Record<string, number> = {
 };
 const MOVE_SHOTS: readonly ShotPreset[] = (
   [
-    ['hq', 'Harbour Guild · 06:00 bell fanfare', 1001, '73,4.5,-191,79.6,2.8,-187.6', 6],
-    ['hq-crane', 'Harbour Guild · crane sack', 1001, '75.1,5.5,-175.3,82.1,2,-175.3', 9],
-    ['coding', 'Wind Gardens · 14:00 Kite Day', 1001, '108,18,12,106,17,37', 14],
+    ['hq', 'Harbour Guild · 06:00 bell fanfare', 1001, '-59.04,4.5,-19.82,-52.44,2.8,-16.42', 6],
+    ['hq-crane', 'Harbour Guild · crane sack', 1001, '-56.94,5.5,-4.12,-49.94,2,-4.12', 9],
+    ['coding', 'Wind Gardens · 14:00 Kite Day', 1001, '-102.43,18,154.05,-104.43,17,179.05', 14],
     [
       'devops',
       'Ember Works · 21:00 Release Night lift + horn',
       1001,
-      '-92.6,8,-22.7,-81,4,-39',
+      '152.15,8,22.93,163.75,4,6.63',
       21,
     ],
-    ['marketing', 'Carnival · 17:30 confetti show', 1001, '-52,9,174,-40,6,158', 17.5],
-    ['marketing-night', 'Carnival · 20:30 searchlights', 1001, '-62,12,140,-38,16,158', 20.5],
-    ['qa', 'Inspectors · 16:00 green-light flag', 1001, '-149,11.5,-193.7,-142,9.5,-193.7', 16],
-    ['qa-ants', 'Inspectors · ant trail', 1001, '-170.5,10.2,-199.2,-173,8,-201.7', 12],
+    ['marketing', 'Carnival · 17:30 confetti show', 1001, '-251.02,9,6.74,-239.02,6,-9.26', 17.5],
+    [
+      'marketing-night',
+      'Carnival · 20:30 searchlights',
+      1001,
+      '-261.02,12,-27.26,-237.02,16,-9.26',
+      20.5,
+    ],
+    ['qa', 'Inspectors · 16:00 green-light flag', 1001, '108.1,11.5,-157.3,115.1,9.5,-157.3', 16],
+    ['qa-ants', 'Inspectors · ant trail', 1001, '86.6,10.2,-162.8,84.1,8,-165.3', 12],
     [
       'design-noon',
       'Glass & Light · 12:00 prism patches',
       1001,
-      '-128,17,63.8,-119.5,8.5,63.8',
+      '-77.87,17,-178.92,-69.37,8.5,-178.92',
       12,
     ],
     [
       'design-golden',
       'Glass & Light · 17:30 prism patches',
       1001,
-      '-128,17,63.8,-119.5,8.5,63.8',
+      '-77.87,17,-178.92,-69.37,8.5,-178.92',
       17.5,
     ],
-    ['research', 'Star Academy · 06:00 weather balloon', 2024, '95,14,-218,81.3,12,-234.4', 6],
+    [
+      'research',
+      'Star Academy · 06:00 weather balloon',
+      2024,
+      '-138.85,14,-77.71,-152.55,12,-94.11',
+      6,
+    ],
   ] as const
 ).map(([id, title, seed, cam, time]) => ({
   id: `D-move-${id}`,
@@ -292,7 +309,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // raw T1 look from the north-west at 140 u: Beacon Rock in the left third, the whole lighthouse
     // against the night sky, two sea stacks and the lit landing; `simt` 3 puts the beam broadside
     seed: 2024,
-    cam: '65.21,57.5,13.6,152.91,26,-90.9',
+    cam: '108.6,57.5,4.27,196.3,26,-100.23',
     time: 21.5,
     simt: 3,
     quality: 'medium',
@@ -406,7 +423,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // and mist (seed 1001, raw `eye → target`; re-pin when the layout changes); the flow scrolls
     // between the two frames
     seed: 1001,
-    cam: '-82.2,13,96.56,-114,4.1,74.46',
+    cam: '-32.07,13,-146.16,-63.87,4.1,-168.26',
     time: 10.5,
     simt: 5,
     quality: 'medium',
@@ -451,7 +468,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // frame), low over the bay (raw): the pier root with awning + timetable, crates, pennant
     // lines and banners as the subject, the whole clock tower behind it
     seed: 1001,
-    cam: '100,14,-150,86,9,-186',
+    cam: '-32.04,14,21.18,-46.04,9,-14.82',
     time: 9,
     simt: 15,
     quality: 'medium',
@@ -464,7 +481,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     title: 'Jewel Tree Night',
     // TASK-450: Design at night, the Atelier Tree's canopy vitray lit from inside (D-stained-night pose)
     seed: 1001,
-    cam: '-168,52,98,-142,33,88',
+    cam: '-117.87,52,-144.72,-91.87,33,-154.72',
     time: 21,
     simt: 4,
     quality: 'medium',
@@ -480,7 +497,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // Hall of Checks with its lit tick badges. The 16:00 green-light framing never read as a postcard
     // (empty lawn, tiny flag), so the QA hero is the night hunt.
     seed: 1001,
-    cam: '-174,27,-190,-160,7,-208',
+    cam: '83.1,27,-153.6,97.1,7,-171.6',
     time: 21.5,
     simt: 4,
     quality: 'medium',
@@ -494,7 +511,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // TASK-450: Design at 17:30 from the north-east (raw): the Atelier Tree's vitray canopy whole in
     // frame, the glade, the pergola + hot shop and the spray rainbow off the west bluff
     seed: 1001,
-    cam: '-108,44,120,-150,24,76',
+    cam: '-57.87,44,-122.72,-99.87,24,-166.72',
     time: 17.5,
     simt: 4,
     quality: 'medium',
@@ -547,7 +564,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     seed: 1001,
     // TASK-396: the `shore` orbit looks through the taller clocktower; a raw 40 u look west over
     // the kiosk sandbar, its foam bands and the ferry pier (tower just out of frame, right)
-    cam: '116.6,21,-171.54,82,1,-171.54',
+    cam: '-15.44,21,-0.36,-50.04,1,-0.36',
     time: 14,
     simt: 2,
     deltaT: 2,
@@ -698,7 +715,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     seed: 1001,
     // seed 1001: the family paddles on the pool centred (110.4, 4.6), not its twin at (101.5, -4); steep T3 look down
     // (TASK-402b: the seed 1001 layout moved 16.54 u in −z)
-    cam: '110.4,15,8.96,110.4,5.4,4.56',
+    cam: '-100.03,15,151.01,-100.03,5.4,146.61',
     time: 11,
     simt: 3,
     // low has no ducks (LIFE_PLAN.low.ducks = 0), the dev set defaults to low
@@ -712,7 +729,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-sky-craft',
     title: 'Sky craft · steampunk balloon (day)',
     seed: 1001,
-    cam: '90.4,63,19,66.4,58,-7.1',
+    cam: '-120.03,63,161.05,-144.03,58,134.95',
     time: 12,
     simt: 2,
     quality: 'medium',
@@ -722,7 +739,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-sky-basket',
     title: 'Sky craft · basket, burner and sandbags',
     seed: 1001,
-    cam: '86,67,16,66.4,51.5,-7.1',
+    cam: '-124.43,67,158.05,-144.03,51.5,134.95',
     time: 12,
     simt: 2,
     quality: 'medium',
@@ -732,7 +749,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-sky-airship',
     title: 'Sky craft · steampunk airship (day)',
     seed: 1001,
-    cam: '-161.6,88,90,-146,94,54',
+    cam: '-111.47,88,-152.72,-95.87,94,-188.72',
     time: 15,
     simt: 2,
     quality: 'medium',
@@ -742,7 +759,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-sky-night',
     title: 'Sky craft · lit windows and burner flame (night)',
     seed: 1001,
-    cam: '-161.6,88,90,-146,94,54',
+    cam: '-111.47,88,-152.72,-95.87,94,-188.72',
     time: 22,
     simt: 2,
     quality: 'medium',
@@ -752,7 +769,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-sky-balloon-night',
     title: 'Sky craft · burner flame (night)',
     seed: 1001,
-    cam: '90.4,63,19,66.4,58,-7.1',
+    cam: '-120.03,63,161.05,-144.03,58,134.95',
     time: 22,
     simt: 2,
     quality: 'medium',
@@ -765,7 +782,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-sky-hype',
     title: 'Hype Fleet · Star Academy balloon, star pennant',
     seed: 1001,
-    cam: '-2.9,46.1,166,2.3,44,129.5',
+    cam: '-201.92,46.1,-1.26,-196.72,44,-37.76',
     time: 12,
     simt: 2,
     quality: 'medium',
@@ -775,7 +792,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-sky-hype-hq',
     title: 'Hype Fleet · Harbour Guild balloon, swallowtail pennant',
     seed: 1001,
-    cam: '-162,37,-117,-131.5,35,-92.5',
+    cam: '82.75,37,-71.37,113.25,35,-46.87',
     time: 12,
     simt: 2,
     quality: 'medium',
@@ -785,7 +802,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-sky-orchestrator',
     title: 'Orchestrator airship · seven-pennant tail string (day)',
     seed: 1001,
-    cam: '-132.9,97.6,18.6,-151.8,99.6,32.4',
+    cam: '-82.77,97.6,-224.12,-101.67,99.6,-210.32',
     time: 15,
     simt: 2,
     quality: 'medium',
@@ -807,7 +824,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-sky-launch',
     title: 'Launch Show · balloon inflating at the mast, then lifting off',
     seed: 1001,
-    cam: '-30,5,205,-40,19,177',
+    cam: '-229.02,5,37.74,-239.02,19,9.74',
     time: 17.5,
     simt: 8,
     deltaT: 24,
@@ -872,7 +889,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // the campus ledges (antenna, offices, shops), the fair ground with the ferris wheel. Raw
     // cam on the seed 1001 layout; re-pin when it changes.
     seed: 1001,
-    cam: '-70,46,189.46,-14,8,163.46',
+    cam: '-269.02,46,22.2,-213.02,8,-3.8',
     time: 10.5,
     simt: 4,
     sets: ['dev'],
@@ -883,7 +900,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // TASK-403: fair lights, the wheel's pods and rim bulbs, tent lanterns, the giant screen and
     // the antenna lamps on the window / emissive path
     seed: 1001,
-    cam: '-58,24,185.46,-32,6,169.46',
+    cam: '-257.02,24,18.2,-231.02,6,2.2',
     time: 21.5,
     simt: 4,
     sets: ['dev'],
@@ -986,7 +1003,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // seed 1001 Millbrook (TASK-421): the Tech Park lawn (pergola desks, giant duck), the chime
     // pagoda turbine with its hammock and the kite field north of it, from the south-east
     seed: 1001,
-    cam: '150,46,30,104,9.5,20',
+    cam: '-60.43,46,172.05,-106.43,9.5,162.05',
     time: 14,
     simt: 3,
     quality: 'medium',
@@ -998,7 +1015,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // seed 1001: a lawn strip's pergola desks, mug crate and the bug whiteboard with its rubber
     // duck (story `bugDoodle`), seen from the paved spine over the pool with the rubber ducks
     seed: 1001,
-    cam: '113,20,-6,106,9.8,5',
+    cam: '-97.43,20,136.05,-104.43,9.8,147.05',
     time: 15,
     simt: 3,
     quality: 'medium',
@@ -1023,7 +1040,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // confetti cannons and searchlights at the stage, prize booths and balloon masts by the wheel,
     // the SHOW sign at the pier side, the media campus ledges above
     seed: 1001,
-    cam: '-84,32,186,-32,8,160',
+    cam: '-283.02,32,18.74,-231.02,8,-7.26',
     time: 17.5,
     simt: 4,
     quality: 'medium',
@@ -1046,7 +1063,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // seed 1001: from the pier side, the lit SHOW marquee, the popcorn carts, the prize booth and
     // the searchlights behind the stage, the wheel's bulbs and the balloon bunch beyond
     seed: 1001,
-    cam: '-62,18,138,-38,5,160',
+    cam: '-261.02,18,-29.26,-237.02,5,-7.26',
     time: 21.5,
     simt: 4,
     quality: 'medium',
@@ -1059,7 +1076,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // stamp desk, clipboard wall), the dummy benches, the scoreboards and UV lamps round the loop
     // track, the cone pyramid; the check tower with its flag mast behind
     seed: 1001,
-    cam: '-190,38,-176,-156,8,-204',
+    cam: '67.1,38,-139.6,101.1,8,-167.6',
     time: 12,
     simt: 4,
     quality: 'medium',
@@ -1071,7 +1088,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // seed 1001: the loop track and the yard rim lit purple by the UV lamp posts, the "BUGS: 1"
     // scoreboard and its jar, the Bug Zoo beyond
     seed: 1001,
-    cam: '-174,27,-190,-160,7,-208',
+    cam: '83.1,27,-153.6,97.1,7,-171.6',
     time: 21.5,
     simt: 4,
     quality: 'medium',
@@ -1084,7 +1101,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // faculty pennants and the tea trolley at the library, the comet-night observatory with its
     // telescope terrace, the bell-cupola tower
     seed: 1001,
-    cam: '-127,22,238,-136,8,215',
+    cam: '114.71,22,120.1,105.71,8,97.1',
     time: 17.75,
     simt: 4,
     quality: 'medium',
@@ -1096,7 +1113,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // seed 1001: the observatory with its slit open, the telescope + book-pile stool and the
     // comet board on its terrace, the owl box behind the dome
     seed: 1001,
-    cam: '-146,24,207,-123,9,216',
+    cam: '95.71,24,89.1,118.71,9,98.1',
     time: 22,
     simt: 4,
     quality: 'medium',
@@ -1109,7 +1126,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // Atelier Tree's canopy vitray, the glass-roof gallery, the hot shop behind the quad, the
     // sculpture garden below and the spray rainbow off the west bluff; raw cam (seed 1001)
     seed: 1001,
-    cam: '-112,46,118,-150,19,74',
+    cam: '-61.87,46,-124.72,-99.87,19,-168.72',
     time: 17.5,
     simt: 4,
     quality: 'medium',
@@ -1120,7 +1137,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     title: 'Jewel Tree · Design',
     // TASK-425: the Atelier Tree's canopy vitray lit from inside at night, the glade below
     seed: 1001,
-    cam: '-110,40,112,-143,30,88',
+    cam: '-59.87,40,-130.72,-92.87,30,-154.72',
     time: 21,
     simt: 4,
     quality: 'medium',
@@ -1165,7 +1182,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-rainbow-noon',
     title: 'Design at noon · rainbow gated off',
     seed: 1001,
-    cam: '-112,46,118,-150,19,74',
+    cam: '-61.87,46,-124.72,-99.87,19,-168.72',
     time: 13,
     simt: 4,
     quality: 'medium',
@@ -1178,7 +1195,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-ferry-dock',
     title: 'Ferry at the pier (dwell, then departure)',
     seed: 1001,
-    cam: '-72,10,116,-62,1.5,146',
+    cam: '-271.02,10,-51.26,-261.02,1.5,-21.26',
     time: 10,
     simt: 30,
     quality: 'medium',
@@ -1189,7 +1206,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-lantern-boat-night',
     title: 'Lantern boat · night',
     seed: 1001,
-    cam: '-212,5.5,139,-200,3,136.5',
+    cam: '-161.87,5.5,-103.72,-149.87,3,-106.22',
     time: 21,
     simt: 20,
     quality: 'medium',
@@ -1215,7 +1232,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-ground-terrazzo',
     title: 'Terrazzo · Design hot-shop yard (T3, 14:00)',
     seed: 1001,
-    cam: '-152,33,63,-147.4,21.5,77',
+    cam: '-101.87,33,-179.72,-97.27,21.5,-165.72',
     time: 14,
     simt: 4,
     quality: 'medium',
@@ -1225,7 +1242,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-stained-dawn',
     title: 'Stained glass · dawn through the canopy vitray (06:15)',
     seed: 1001,
-    cam: '-116,40,96,-142,36,90',
+    cam: '-65.87,40,-146.72,-91.87,36,-152.72',
     time: 6.25,
     simt: 4,
     quality: 'medium',
@@ -1235,7 +1252,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-stained-golden',
     title: 'Stained glass · Prism Hour from the east (17:45)',
     seed: 1001,
-    cam: '-168,52,98,-142,33,88',
+    cam: '-117.87,52,-144.72,-91.87,33,-154.72',
     time: 17.75,
     simt: 4,
     quality: 'medium',
@@ -1245,7 +1262,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-stained-night',
     title: 'Stained glass · Jewel Tree close (21:00)',
     seed: 1001,
-    cam: '-168,52,98,-142,33,88',
+    cam: '-117.87,52,-144.72,-91.87,33,-154.72',
     time: 21,
     simt: 4,
     quality: 'medium',
@@ -1255,7 +1272,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-marquee-show',
     title: 'Marquee chase · SHOW sign at the Launch Show (17:30, 0.4 s pair)',
     seed: 1001,
-    cam: '-45.6,6.2,147.2,-39.4,5.3,149.1',
+    cam: '-244.62,6.2,-20.06,-238.42,5.3,-18.16',
     time: 17.5,
     simt: 4,
     deltaT: 0.4,
@@ -1266,7 +1283,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-ground-uv-night',
     title: 'UV lamp pools · QA night bug hunt (21:30)',
     seed: 1001,
-    cam: '-170.5,17.8,-191.9,-160,8,-208',
+    cam: '86.6,17.8,-155.5,97.1,8,-171.6',
     time: 21.5,
     simt: 4,
     quality: 'medium',
@@ -1304,7 +1321,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'E-panel',
     title: 'Edit panel · place',
     seed: 1001,
-    cam: '109.1,70,-103.14,95.1,6,-203.14',
+    cam: '-22.94,70,68.04,-36.94,6,-31.96',
     time: 15,
     simt: 2,
     width: 1280,
@@ -1318,7 +1335,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'E-hill',
     title: 'Hill behind the village',
     seed: 1001,
-    cam: '109.1,70,-103.14,95.1,6,-203.14',
+    cam: '-22.94,70,68.04,-36.94,6,-31.96',
     time: 15,
     simt: 2,
     edit: EDIT_LOGS.hill,
@@ -1338,7 +1355,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'E-meadow',
     title: 'Meadow + 19 props',
     seed: 1001,
-    cam: '71.5,23,52.56,59.5,6,20.56',
+    cam: '-138.93,23,194.61,-150.93,6,162.61',
     time: 14,
     simt: 2,
     edit: EDIT_LOGS.meadow,
@@ -1348,7 +1365,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'E-mixed',
     title: 'Plateau garden + slipway',
     seed: 1001,
-    cam: '-90.1,30,-210.74,-131,6,-203.54',
+    cam: '167,30,-174.34,126.1,6,-167.14',
     time: 15,
     simt: 2,
     edit: EDIT_LOGS.mixed,

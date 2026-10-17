@@ -1,6 +1,6 @@
 import { hashString, mix32 } from '../../core/hash.ts';
 import type { PropStore } from '../prop-store.ts';
-import type { IslandData, Polyline, WorldData } from '../types.ts';
+import type { IslandData, IsletData, Polyline, WorldData } from '../types.ts';
 
 /** Floats are quantised to this step before hashing (ARCHITECTURE §2). */
 const Q = 1e4;
@@ -51,13 +51,17 @@ export class StageHash {
 export const hashFloats = (arr: Float32Array): string => new StageHash().floats(arr).hex();
 export const hashBytes = (arr: Uint8Array): string => new StageHash().bytes(arr).hex();
 
-/** Layout hash: wind + every layout-stage island field (not peaks/anchors). */
-export function hashLayout(windDir: number, islands: IslandData[]): string {
+/** Layout hash: wind + every layout-stage island and islet field (not peaks/anchors). */
+export function hashLayout(windDir: number, islands: IslandData[], islets: IsletData[]): string {
   const h = new StageHash().float(windDir).u32(islands.length);
   for (const isl of islands) {
     h.u32(isl.id).str(isl.archetype).str(isl.theme).str(isl.name);
     h.float(isl.cx).float(isl.cz).float(isl.radius);
     h.float(isl.minX).float(isl.minZ).float(isl.maxX).float(isl.maxZ);
+  }
+  h.u32(islets.length);
+  for (const it of islets) {
+    h.u32(it.id).str(it.kind).float(it.cx).float(it.cz).float(it.radius);
   }
   return h.hex();
 }

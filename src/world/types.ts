@@ -93,6 +93,29 @@ export interface IslandData {
   anchors: Record<string, { x: number; z: number; rotY: number }>;
 }
 
+export type IsletKind = 'skerry' | 'sandbar';
+
+/**
+ * An islet (TASK-471, D-058): a skerry (sea stack) or the Lonely Palm sandbar. Ids continue
+ * after the islands' (`islandMap` value = id + 1), so the heightfield, zone and scatter stages
+ * treat it as a land body; nothing else (themes, settlements, labels, routes, cameras) sees it.
+ */
+export interface IsletData {
+  id: number;
+  kind: IsletKind;
+  cx: number;
+  cz: number;
+  radius: number;
+  reach: number;
+  peakY: number;
+  peakX: number;
+  peakZ: number;
+  minX: number;
+  minZ: number;
+  maxX: number;
+  maxZ: number;
+}
+
 export interface Heightfield {
   /** GRID_N × GRID_N heights in u, row-major (z then x). */
   data: Float32Array;
@@ -114,12 +137,14 @@ export interface WorldData {
   /** Wind direction in radians (y-up, angle in the xz plane). */
   windDir: number;
   islands: IslandData[];
+  /** Skerries + the Lonely Palm sandbar (TASK-471); ids follow the islands'. */
+  islets: IsletData[];
   height: Heightfield;
   /** Uint8 zone id per sample (same grid as height). */
   zone: Uint8Array;
   /** Signed distance to the coastline in u: >0 on land, <0 in water. Same grid. */
   shoreSdf: Float32Array;
-  /** Island id + 1 per sample (0 = open sea). */
+  /** Island (or islet) id + 1 per sample (0 = open sea). */
   islandMap: Uint8Array;
   /** Carved streams (optional; Mossgrove). */
   streams?: StreamData[];

@@ -345,7 +345,8 @@ export function fillAlbedoGrid(
       out[i * 4] = Math.round((r / ws) * 255);
       out[i * 4 + 1] = Math.round((g / ws) * 255);
       out[i * 4 + 2] = Math.round((b / ws) * 255);
-      out[i * 4 + 3] = world.islandMap[i];
+      // palette row = island id + 1; islets (ids past the islands) use the default row 0
+      out[i * 4 + 3] = world.islandMap[i] <= world.islands.length ? world.islandMap[i] : 0;
     }
 }
 

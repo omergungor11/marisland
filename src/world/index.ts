@@ -111,19 +111,20 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
     t = t1;
   };
 
-  const { windDir, islands } = generateLayout(root.fork('layout'), {
+  const { windDir, islands, islets } = generateLayout(root.fork('layout'), {
     islands: opts.islands ?? 'auto',
   });
   lap('layout');
 
-  const rawLand = buildRawLand(islands, windDir, root.fork('height'));
+  const rawLand = buildRawLand(islands, islets, windDir, root.fork('height'));
   const land = new Uint8Array(GRID_N * GRID_N);
   for (let i = 0; i < land.length; i++) land[i] = rawLand.raw[i] > 0 ? 1 : 0;
   const protect = new Uint8Array(GRID_N * GRID_N);
   for (let i = 0; i < protect.length; i++) protect[i] = rawLand.tags[i] & Tag.noFill;
   const cleanup = cleanCoast(land, GRID_N, COAST.closeRadius, COAST.openRadius, protect);
+  const bodies = [...islands, ...islets];
   for (const i of cleanup.added) {
-    const isl = nearestIsland(islands, cellX(i % GRID_N), cellZ(Math.floor(i / GRID_N)));
+    const isl = nearestIsland(bodies, cellX(i % GRID_N), cellZ(Math.floor(i / GRID_N)));
     rawLand.islandMap[i] = isl ? isl.id + 1 : 0;
   }
   for (const i of cleanup.removed) rawLand.islandMap[i] = 0;
@@ -134,13 +135,22 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
   const { sdf, owner } = shoreSdfOwners(land, GRID_N, rawLand.islandMap);
   lap('sdf');
 
-  const height = finalizeHeight(rawLand, sdf, owner, islands, windDir, root.fork('height'));
-  measurePeaks(height, rawLand.islandMap, islands);
+  const height = finalizeHeight(rawLand, sdf, owner, islands, islets, windDir, root.fork('height'));
+  measurePeaks(height, rawLand.islandMap, bodies);
   finalAnchors(height, owner, rawLand.tags, islands);
   lap('height');
 
   const zone = buildZones(
-    { h: height, sdf, islandMap: rawLand.islandMap, owner, tags: rawLand.tags, islands, windDir },
+    {
+      h: height,
+      sdf,
+      islandMap: rawLand.islandMap,
+      owner,
+      tags: rawLand.tags,
+      islands,
+      islets,
+      windDir,
+    },
     root.fork('zones'),
   );
   lap('zones');
@@ -183,6 +193,7 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
     seed,
     windDir,
     islands,
+    islets,
     height,
     zone,
     shoreSdf: sdf,
@@ -219,7 +230,7 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
   lap('props');
   world.waterfalls = placeWaterfalls(world, root.fork('waterfalls'));
 
-  hashes.layout = hashLayout(windDir, islands);
+  hashes.layout = hashLayout(windDir, islands, islets);
   hashes.height = hashFloats(height.data);
   hashes.sdf = hashFloats(sdf);
   hashes.islandMap = hashBytes(rawLand.islandMap);

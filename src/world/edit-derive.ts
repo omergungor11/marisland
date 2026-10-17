@@ -120,6 +120,7 @@ export function editState(world: WorldData): EditState {
       islandMap: world.islandMap,
       tags: world.genAux.tags,
       islands: world.islands,
+      islets: world.islets,
       windDir: world.windDir,
       noise: zoneNoise(createRng(world.seed).fork('zones')),
     },

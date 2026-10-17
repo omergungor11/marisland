@@ -45,6 +45,8 @@ export interface ZoneRuleParams {
   patchwork?: boolean;
   /** Every land cell is sand (Lonely Palm). */
   sandOnly?: boolean;
+  /** Every land cell is rock (cliff above `cliffSlope`): the skerries (TASK-471). */
+  rockOnly?: boolean;
   /** Wet sand only below this height (TASK-400: the crater rim tops near the shore stay dry land). */
   wetSandMaxY?: number;
 }
@@ -546,6 +548,95 @@ export const LAYOUT = {
   pull: 0.35,
   /** Placement attempts before giving up (deterministic: fork('place', attempt)). */
   attempts: 60,
+  /**
+   * Hub layout (D-058 `W:K2`, TASK-471): Hearthholm at the centre, the six others on a ring of
+   * `slotDeg` slots (shuffled per seed, each turned by ± `jitterDeg`) at `gap` u of coast-to-coast
+   * water from the hub. `layoutProblem` rejects a layout whose hub is not the island nearest the
+   * centroid, so every seed keeps HQ in the middle (the compass streets read their headings
+   * from it).
+   */
+  hub: { slotDeg: 60, jitterDeg: 12, gap: [42, 60] as const },
+} as const;
+
+export type IsletKind = 'skerry' | 'sandbar';
+
+/**
+ * Islets (D-058 `W:D2/K6`, TASK-471): tiny unsettled land in the channels between the islands.
+ * They share the heightfield / zone / scatter machinery of the islands (`IsletData`, same
+ * `islandMap` id space after the seven islands) but no theme, settlement, label or route.
+ */
+export interface IsletParams {
+  /** Diameter range (u). */
+  diameter: readonly [number, number];
+  /** Bounding-disc radius as a multiple of radius (the lobes stay inside it). */
+  reachScale: number;
+  /** Evaluation bounds half-extent as a multiple of radius. */
+  boundsScale: number;
+  /** Peak height range (u). */
+  peak: readonly [number, number];
+  shelfWidth: number;
+  beachWidth: number;
+  beachMax?: number;
+  zones: ZoneRuleParams;
+}
+
+export const ISLETS: Readonly<Record<IsletKind, IsletParams>> = {
+  /** Sea stacks: one rock tower with 0–2 lower lobes, no beach, a thin shallow ring. */
+  skerry: {
+    diameter: [10, 15],
+    reachScale: 1.5,
+    boundsScale: 1.9,
+    peak: [4, 8],
+    shelfWidth: 5,
+    beachWidth: 1,
+    beachMax: 0.4,
+    // grey rock all over (the default cliff zone is tan earth); only the sheerest faces are cliff
+    zones: {
+      forestThreshold: 2,
+      meadowThreshold: 2,
+      rockMinFrac: 0,
+      sand: 'sandDry',
+      cliff: 'slope',
+      cliffSlope: 3,
+      forcedCliffSlope: 3,
+      rockOnly: true,
+    },
+  },
+  /** The Lonely Palm islet: a low warped sand disc (≤ 1 u) with a wide turquoise shelf. */
+  sandbar: {
+    diameter: [12, 15],
+    reachScale: 1.25,
+    boundsScale: 1.6,
+    peak: [0.9, 1.1],
+    shelfWidth: 12,
+    beachWidth: 5,
+    beachMax: 0.9,
+    zones: {
+      forestThreshold: 2,
+      meadowThreshold: 2,
+      rockMinFrac: 2,
+      sand: 'sandDry',
+      cliff: 'slope',
+      forcedCliffSlope: 2,
+      sandOnly: true,
+    },
+  },
+};
+
+/** Islet placement (layout stage, `rng.fork('islets')`). */
+export const ISLET_LAYOUT = {
+  /** Skerries per seed (inclusive); plus exactly one sandbar. */
+  skerries: [3, 6] as const,
+  /**
+   * Water between an islet's reach disc and every island's reach disc (u): clear of the pier
+   * heads (≤ 16 u off the coast), the culture boat rings (`SAILBOAT.route.margin` beyond the
+   * radius) and the ferry stops (≤ 60 u of a pier, over open water).
+   */
+  gap: [26, 44] as const,
+  /** Water between two islets' reach discs (u). */
+  isletGap: 14,
+  /** Darts per islet; the one with the least water to its two nearest islands wins (a channel). */
+  candidates: 48,
 } as const;
 
 /** Seeded syllable bank for island names (2–3 syllables). */

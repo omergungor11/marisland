@@ -503,7 +503,7 @@ describe('T0 blobs and grounding (TASK-373)', () => {
       g.mesh.getMatrixAt(Array.from(g.members).indexOf(i), m4);
       return v3.setFromMatrixPosition(m4).y;
     };
-    expect(yOf(a)).toBeCloseTo(smoothHeightAt(h, px, pz), 5);
+    expect(yOf(a)).toBeCloseTo(smoothHeightAt(h, px, pz), 4); // float32 instance matrix at y ≈ 27
     expect(yOf(deck)).toBeCloseTo(yb + 0.5, 5);
     expect(s.y[a]).toBe(Math.fround(yb));
     // edits re-ground through the same rule
@@ -512,7 +512,7 @@ describe('T0 blobs and grounding (TASK-373)', () => {
     expect(yOf(a)).toBeCloseTo(0, 5);
     s.y[a] = heightAt(h, px, pz);
     b.rewrite([a], 2);
-    expect(yOf(a)).toBeCloseTo(smoothHeightAt(h, px, pz), 5);
+    expect(yOf(a)).toBeCloseTo(smoothHeightAt(h, px, pz), 4);
     // without world context nothing moves
     const plain = make(s);
     const g = plain.groups.find((x) => x.lod === 0 && Array.from(x.members).includes(a))!;

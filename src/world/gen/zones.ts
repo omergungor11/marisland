@@ -2,13 +2,14 @@ import { createNoise, type Noise } from '../../core/noise.ts';
 import type { Rng } from '../../core/rng.ts';
 import { lerp } from '../../core/math/index.ts';
 import { WATER_BANDS } from '../../content/palette.ts';
-import type { Heightfield, IslandData } from '../types.ts';
+import type { Heightfield, IslandData, IsletData } from '../types.ts';
 import { Zone } from '../types.ts';
 import { cellX, cellZ } from './grid.ts';
-import { leewardness, windwardCliffness } from './heightfield.ts';
+import { coastBody, leewardness, windwardCliffness } from './heightfield.ts';
 import { Tag } from './profiles.ts';
 import {
   ARCHETYPES,
+  ISLETS,
   WINDWARD_CLIFF,
   ZONE_RULES,
   type ZoneRuleParams,
@@ -36,6 +37,7 @@ export interface ZoneInputs {
   owner: Uint8Array;
   tags: Uint8Array;
   islands: IslandData[];
+  islets: IsletData[];
   windDir: number;
 }
 
@@ -46,6 +48,7 @@ export interface ZoneCellContext {
   islandMap: Uint8Array;
   tags: Uint8Array;
   islands: IslandData[];
+  islets: IsletData[];
   windDir: number;
   noise: Noise;
 }
@@ -63,7 +66,7 @@ export function zoneNoise(rng: Rng): Noise {
  * (`zoneRulesOf`: archetype rules + theme overrides) and profile tags.
  */
 export function buildZones(inp: ZoneInputs, rng: Rng): Uint8Array {
-  const { h, sdf, islandMap, owner, tags, islands, windDir } = inp;
+  const { h, sdf, islandMap, owner, tags, islands, islets, windDir } = inp;
   const n = h.n;
   const zone = new Uint8Array(n * n);
   const ctx: ZoneCellContext = {
@@ -72,6 +75,7 @@ export function buildZones(inp: ZoneInputs, rng: Rng): Uint8Array {
     islandMap,
     tags,
     islands,
+    islets,
     windDir,
     noise: zoneNoise(rng),
   };
@@ -138,15 +142,15 @@ function deriveNear(
   tag: number,
   owner: number,
 ): number {
-  const { h, islandMap, islands, windDir, noise } = ctx;
+  const { h, islandMap, islands, islets, windDir, noise } = ctx;
   const x = cellX(ix);
   const z = cellZ(iz);
   if (s <= 0) {
     const dist = -s;
-    const isl = owner > 0 ? islands[owner - 1] : null;
-    let k = isl ? lerp(1, WATER_BANDS.leewardRingScale, leewardness(isl, windDir, x, z)) : 1;
+    const body = owner > 0 ? coastBody(islands, islets, owner) : null;
+    let k = body ? lerp(1, WATER_BANDS.leewardRingScale, leewardness(body, windDir, x, z)) : 1;
     let midMax: number = WATER_BANDS.midMax;
-    const cliff = isl ? windwardCliffness(isl, windDir, x, z) : 0;
+    const cliff = body?.island ? windwardCliffness(body.island, windDir, x, z) : 0;
     if (cliff > 0) {
       k = lerp(k, WINDWARD_CLIFF.bandScale, cliff);
       midMax = lerp(midMax, midMax * WINDWARD_CLIFF.midScale, cliff);
@@ -159,11 +163,15 @@ function deriveNear(
           ? Zone.mid
           : Zone.deep;
   }
-  const isl = islands[islandMap[i] - 1];
-  const rules = zoneRulesOf(isl);
+  const k = islandMap[i] - 1;
+  const isl = k < islands.length ? islands[k] : null;
+  const rules = isl ? zoneRulesOf(isl) : ISLETS[islets[k - islands.length].kind].zones;
+  const peakY = isl ? isl.peakY : islets[k - islands.length].peakY;
   const y = h.data[i];
   if (rules.sandOnly) return s <= ZONE_RULES.wetSand ? Zone.sandWet : Zone.sandDry;
   const slope = slopeAtCell(h, ix, iz);
+  if (rules.rockOnly)
+    return slope > (rules.cliffSlope ?? ZONE_RULES.cliffSlope) ? Zone.cliff : Zone.rock;
   const forced = (tag & Tag.cliff) !== 0 && slope > rules.forcedCliffSlope;
   const slopeCliff =
     slope > (rules.cliffSlope ?? ZONE_RULES.cliffSlope) &&
@@ -178,8 +186,8 @@ function deriveNear(
   if (y < ZONE_RULES.sandMaxY && !pond) return sandZone;
   if (
     (tag & Tag.cliff) !== 0 ||
-    (slope > ZONE_RULES.rockSlope && y >= rules.rockMinFrac * isl.peakY) ||
-    (rules.rockAboveFrac !== undefined && y >= rules.rockAboveFrac * isl.peakY) ||
+    (slope > ZONE_RULES.rockSlope && y >= rules.rockMinFrac * peakY) ||
+    (rules.rockAboveFrac !== undefined && y >= rules.rockAboveFrac * peakY) ||
     (rules.rockBands !== undefined &&
       y >= rules.rockBands.from &&
       (y - rules.rockBands.from) % rules.rockBands.step < rules.rockBands.width)
@@ -193,7 +201,7 @@ function deriveNear(
     forest > rules.forestThreshold &&
     slope < (rules.forestMaxSlope ?? ZONE_RULES.forestMaxSlope) &&
     s > (rules.forestMinShore ?? ZONE_RULES.forestMinShore) &&
-    y < (rules.forestMaxFrac ?? ZONE_RULES.forestMaxFrac) * isl.peakY
+    y < (rules.forestMaxFrac ?? ZONE_RULES.forestMaxFrac) * peakY
   )
     return Zone.forest;
   if (moist > rules.meadowThreshold) return Zone.meadow;

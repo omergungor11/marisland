@@ -2,7 +2,7 @@ import type { Noise } from '../../core/noise.ts';
 import type { Rng } from '../../core/rng.ts';
 import { hashInts } from '../../core/hash.ts';
 import { clamp01, lerp, smax, smoothstep } from '../../core/math/index.ts';
-import type { ArchetypeId, FieldPatchData, IslandData } from '../types.ts';
+import type { ArchetypeId, FieldPatchData, IslandData, IsletData, IsletKind } from '../types.ts';
 import {
   ARCHETYPES,
   PATCHWORK,
@@ -752,6 +752,85 @@ const lonelypalm: ProfileFactory = ({ island, rng, noise, windDir }) => {
     },
   };
 };
+
+// ---------------------------------------------------------------- islets (TASK-471)
+
+export interface IsletProfileContext {
+  islet: IsletData;
+  /** Islet-private stream: rng.fork('islet:shape', id). */
+  rng: Rng;
+  noise: Noise;
+}
+
+/** Islet profiles only shape and tag (no anchors, streams or fields). */
+export type IsletProfileFactory = (
+  ctx: IsletProfileContext,
+) => Pick<IslandProfile, 'sample' | 'tag'>;
+
+/**
+ * Skerry: a rock stack (steep gaussian-ish tower) with 0–2 lower side lobes, the coast warped;
+ * every cell is `Tag.cliff` (no beach blend, rock / cliff zones) and `Tag.noFill` (the coast
+ * cleanup must not open it away). Local units are radius-normalised; the lobes stay inside
+ * `reachScale`.
+ */
+const skerry: IsletProfileFactory = ({ islet, rng, noise }) => {
+  const inv = 1 / islet.radius;
+  const main = { x: 0, z: 0, r: rng.range(0.8, 0.95), h: 1 };
+  const lobes: (Lobe & { h: number })[] = [main];
+  const n = rng.int(0, 2);
+  const a0 = rng.range(0, Math.PI * 2);
+  for (let i = 0; i < n; i++) {
+    const a = a0 + (i * Math.PI * 2) / 3 + rng.range(-0.4, 0.4);
+    const dist = rng.range(0.75, 1.0);
+    lobes.push({
+      x: Math.cos(a) * dist,
+      z: Math.sin(a) * dist,
+      r: rng.range(0.3, 0.45),
+      h: rng.range(0.3, 0.55),
+    });
+  }
+  const w: [number, number] = [0, 0];
+  const sample = (x: number, z: number): number => {
+    const lx = (x - islet.cx) * inv;
+    const lz = (z - islet.cz) * inv;
+    warpAt(noise, lx * 1.6, lz * 1.6, w);
+    let v = 0;
+    for (const l of lobes) {
+      const d = Math.hypot((lx - l.x) / l.r + w[0] * 0.2, (lz - l.z) / l.r + w[1] * 0.2);
+      // steep tower: the mask squared keeps the summit narrow and the flanks cliff-steep
+      const m = radialMask(d);
+      v = smax(v, l.h * m * m * (0.75 + 0.25 * elevation(noise, lx * 2.3, lz * 2.3)), 0.08);
+    }
+    return Math.max(RAW_FLOOR, v - COAST_LEVEL * 0.25);
+  };
+  return { sample, tag: () => Tag.cliff | Tag.noFill };
+};
+
+/**
+ * Sandbar (the Lonely Palm islet): a soft warped disc, never above ~1 u (the heightfield
+ * rescales it to `ISLETS.sandbar.peak`), with a slightly wider lee side. `Tag.noFill` only.
+ */
+const sandbar: IsletProfileFactory = ({ islet, rng, noise }) => {
+  const inv = 1 / islet.radius;
+  const stretch = rng.range(0.8, 1.0);
+  const turn = rng.range(0, Math.PI);
+  const c = Math.cos(turn);
+  const s = Math.sin(turn);
+  const w: [number, number] = [0, 0];
+  const sample = (x: number, z: number): number => {
+    const lx = (x - islet.cx) * inv;
+    const lz = (z - islet.cz) * inv;
+    const u = lx * c + lz * s;
+    const v = (-lx * s + lz * c) / stretch;
+    warpAt(noise, lx * 1.4, lz * 1.4, w);
+    const d = Math.hypot(u + w[0] * 0.18, v + w[1] * 0.18);
+    const m = 1 - smoothstep(0.55, 1.0, d);
+    return Math.max(RAW_FLOOR, m * (0.85 + 0.15 * elevation(noise, lx * 1.5, lz * 1.5)) - 0.25);
+  };
+  return { sample, tag: () => Tag.noFill };
+};
+
+export const ISLET_PROFILES: Readonly<Record<IsletKind, IsletProfileFactory>> = { skerry, sandbar };
 
 /** Profile table keyed by archetype. */
 export const PROFILES: Readonly<Record<ArchetypeId, ProfileFactory>> = {

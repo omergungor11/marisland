@@ -1109,6 +1109,7 @@ export function buildSettlements(input: SettlementInput, rng: Rng): SettlementRe
     if (
       (z === Zone.rock || z === Zone.cliff) &&
       id >= 0 &&
+      id < input.islands.length &&
       THEMES[input.islands[id].theme].pathSparesSlopes
     )
       spared.push([i, z]);

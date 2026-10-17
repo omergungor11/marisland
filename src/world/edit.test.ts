@@ -87,6 +87,8 @@ function findCell(
     const ix = i % N;
     const iz = (i - ix) / N;
     if (ix < 25 || iz < 25 || ix > N - 26 || iz > N - 26) continue;
+    // islets (TASK-471) are not edit targets here: a skerry's rock does not flood
+    if (_w.islandMap[i] > _w.islands.length) continue;
     if (pred(i, ix, iz)) return { x: cellX(ix), z: cellZ(iz), i };
   }
   throw new Error('no cell');
@@ -176,7 +178,12 @@ function roundTrip(w: WorldData, cmd: EditCommand): void {
 const placeable = (w: WorldData, def: string, salt: number): { x: number; z: number } => {
   for (let k = 0; k < 400; k++) {
     const p = inland(w, salt + k);
-    if (canPlace(w, { k: 'propAdd', def, x: p.x, z: p.z, rotY: 0, scale: 1 }).ok) return p;
+    // the spot and its 0.3 u neighbour (the collision probe below) are both free of structures
+    if (
+      canPlace(w, { k: 'propAdd', def, x: p.x, z: p.z, rotY: 0, scale: 1 }).ok &&
+      canPlace(w, { k: 'propAdd', def, x: p.x + 0.3, z: p.z, rotY: 0, scale: 1 }).ok
+    )
+      return p;
   }
   throw new Error('no placeable spot');
 };
