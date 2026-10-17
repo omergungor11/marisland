@@ -39,8 +39,14 @@ const FLAT = new Set(['causticDecal']);
 describe('TASK-415 Glass & Light kit: ledger and defs', () => {
   it('geo, PropDefs and the ledger line up', () => {
     const ids = CULTURE_DESIGN_GEO.map((d) => d.id);
-    expect(DESIGN_CULTURE.kit.map((k) => k.id).sort()).toEqual([...ids].sort());
-    for (const k of DESIGN_CULTURE.kit) {
+    // M20 (TASK-465) appended 5 entries; their own test is culture-m20.test.ts
+    expect(
+      DESIGN_CULTURE.kit
+        .slice(0, 10)
+        .map((k) => k.id)
+        .sort(),
+    ).toEqual([...ids].sort());
+    for (const k of DESIGN_CULTURE.kit.slice(0, 10)) {
       const d = defOf(k.id);
       expect(d?.tier, k.id).toBe(k.tier);
       expect(d?.flags, k.id).toBe(k.flags);
@@ -49,8 +55,8 @@ describe('TASK-415 Glass & Light kit: ledger and defs', () => {
     expect(validateCultures([DESIGN_CULTURE])).toEqual([]);
   });
 
-  it('ordered by priority: cut to 6 stays valid, the tier-1 def is last, tier mix 5/4/1/0', () => {
-    const kit = DESIGN_CULTURE.kit;
+  it('ordered by priority: cut to 6 stays valid, the (original) tier-1 def is last, tier mix 5/4/1/0', () => {
+    const kit = DESIGN_CULTURE.kit.slice(0, 10);
     expect(kit.at(-1)?.id).toBe('rainbowArc');
     expect(validateCultures([{ ...DESIGN_CULTURE, kit: kit.slice(0, 6) }])).toEqual([]);
     expect(kit.filter((k) => k.tier === 1)).toHaveLength(1);
@@ -113,7 +119,7 @@ describe('TASK-415 Glass & Light kit: geometry', () => {
   }
 
   it('no tier-2/3 kit def is a "large structure" (several seeds); rainbowArc is', () => {
-    for (const k of DESIGN_CULTURE.kit) {
+    for (const k of DESIGN_CULTURE.kit.slice(0, 10)) {
       const d = defOf(k.id);
       if (!d) throw new Error(k.id);
       for (const seed of [1, 42, 1001])

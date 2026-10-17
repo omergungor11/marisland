@@ -16,6 +16,8 @@ import { MARKETING_CULTURE_GEO } from './culture-marketing.ts';
 import { CULTURE_QA_GEO, withBugZoo } from './culture-qa.ts';
 import { CULTURE_DESIGN_GEO } from './culture-design.ts';
 import { RESEARCH_CULTURE_GEO } from './culture-research.ts';
+import { M20_HQ_GEO } from './culture-m20-hq.ts';
+import { M20_DESIGN_GEO } from './culture-m20-design.ts';
 
 export const THEME_GEO: readonly PropGeoDef[] = [
   ...HQ_GEO,
@@ -32,4 +34,7 @@ export const THEME_GEO: readonly PropGeoDef[] = [
   ...CULTURE_QA_GEO,
   ...CULTURE_DESIGN_GEO,
   ...RESEARCH_CULTURE_GEO,
+  // M20 (D-057) HQ and Design kits
+  ...M20_HQ_GEO,
+  ...M20_DESIGN_GEO,
 ];

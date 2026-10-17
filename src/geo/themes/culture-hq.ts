@@ -26,7 +26,7 @@ import { THEMES } from '../../content/themes.ts';
 import { THEME_IDS } from '../../world/types.ts';
 import type { PennantCut } from '../../content/cultures/index.ts';
 import type { Acc } from '../kit.ts';
-import { col, qEuler, qFromTo } from '../kit.ts';
+import { col, qEuler, qFromTo, type ColorFn } from '../kit.ts';
 import {
   V,
   baseBox,
@@ -58,12 +58,12 @@ export const GUILD_HALL_VARIANT = 2;
 /* --------------------------------- helpers --------------------------------- */
 
 /** Straight timber/steel member between two points (square section `w` x `d`). */
-function beam(
+export function beam(
   acc: Acc,
   a: THREE.Vector3,
   b: THREE.Vector3,
   w: number,
-  color: string,
+  color: string | ColorFn,
   d = w,
   aoAmt = 0.1,
 ): void {
@@ -75,7 +75,7 @@ function beam(
 }
 
 /** Round rod between two points. */
-function rod(
+export function rod(
   acc: Acc,
   a: THREE.Vector3,
   b: THREE.Vector3,
@@ -94,7 +94,7 @@ function rod(
 }
 
 /** Pennant slab in `cut`, hanging from y = 0, `w` wide and `h` long, 0.08 u thick. */
-function cutSlab(cut: PennantCut, w: number, h: number, hi: boolean): THREE.BufferGeometry {
+export function cutSlab(cut: PennantCut, w: number, h: number, hi: boolean): THREE.BufferGeometry {
   const d =
     cut === 'streamer' ? h / 1.55 : cut === 'kite' ? h / 1.05 : cut === 'star' ? h * 0.5 : h;
   return new THREE.ExtrudeGeometry(cutShape(cut, cut === 'streamer' ? w * 1.7 : w, d, hi), {
@@ -105,7 +105,7 @@ function cutSlab(cut: PennantCut, w: number, h: number, hi: boolean): THREE.Buff
 }
 
 /** Pennant hanging from a cord/bar at `at` (top edge on the bar), front face +z, sways from the tip. */
-function hangingFlag(
+export function hangingFlag(
   acc: Acc,
   at: THREE.Vector3,
   cut: PennantCut,
@@ -122,7 +122,7 @@ function hangingFlag(
 }
 
 /** Pennant flying sideways from a pole at `at` toward +x turned by `yaw`; `len` long, 0.6 `len` wide. */
-function sideFlag(
+export function sideFlag(
   acc: Acc,
   at: THREE.Vector3,
   cut: PennantCut,
@@ -144,7 +144,7 @@ function sideFlag(
  * Striped awning slab centred on `at`: stripes run front to back, the front edge (+z) tilts down by
  * `tilt` rad and carries a chevron valance (LOD0).
  */
-function awning(
+export function awning(
   acc: Acc,
   at: THREE.Vector3,
   w: number,

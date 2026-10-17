@@ -1,5 +1,5 @@
 /**
- * Liman Loncası (Harbour Guild). Kit ledger (TASK-410; new defs, ≤ 10; ≥ 70 % tier ≥ 2, ≤ 1 tier-1,
+ * Liman Loncası (Harbour Guild). Kit ledger (TASK-410; new defs, ≤ 10, M20: 12 for HQ only; ≥ 70 % tier ≥ 2, ≤ 1 tier-1,
  * no tier-0), ORDERED BY PRIORITY: most identity-defining first, so if the budget gate lowers the
  * cap the tail is cut. Variants of existing defs (hqAnnex v2 guildHall, sailboat v2 ferry) are not
  * ledger entries. Story spots, rhythm and relay are filled by waves 2–3.
@@ -30,6 +30,11 @@ export const HQ_CULTURE: CultureDef = {
     { id: 'coffeeCart', tier: 2, flags: grounded },
     { id: 'gullPerch', tier: 3, flags: grounded | noShadow },
     { id: 'mailbag', tier: 3, flags: grounded | noShadow },
+    // M20 Seven Gates Crossroads (D-057, TASK-465): cap 12 (cultureCapOverride.hq)
+    { id: 'cultureGate', tier: 2, flags: windy },
+    { id: 'goodsStall', tier: 2, flags: grounded | windy },
+    { id: 'semaphoreTower', tier: 2, flags: grounded },
+    { id: 'mailLine', tier: 2, flags: grounded },
   ],
   // ISLAND_CULTURES §2.1 ambient stories (T3); plans/hq.ts emits one spot per kind it could anchor
   storySpots: [

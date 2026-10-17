@@ -12,6 +12,7 @@ import { QA_CULTURE_PROP_DEFS, QA_PROP_DEFS } from './props-themes/qa.ts';
 import { DESIGN_CULTURE_PROP_DEFS, DESIGN_PROP_DEFS } from './props-themes/design.ts';
 import { DEVOPS_CULTURE_PROP_DEFS, DEVOPS_PROP_DEFS } from './props-themes/devops.ts';
 import { RESEARCH_CULTURE_PROP_DEFS, RESEARCH_PROP_DEFS } from './props-themes/research.ts';
+import { DESIGN_M20_PROP_DEFS, HQ_M20_PROP_DEFS } from './props-themes/m20.ts';
 import { SIGNAGE_PROP_DEFS } from './props-themes/signage.ts';
 
 export interface PropDef {
@@ -127,6 +128,9 @@ export const PROP_DEFS: readonly PropDef[] = [
   ...QA_CULTURE_PROP_DEFS,
   ...DESIGN_CULTURE_PROP_DEFS,
   ...RESEARCH_CULTURE_PROP_DEFS,
+  // M20 (D-057): HQ seven-gates and Design conservatory kits, again at the very end
+  ...HQ_M20_PROP_DEFS,
+  ...DESIGN_M20_PROP_DEFS,
 ];
 
 export const PROP_DEF_INDEX: Record<string, number> = Object.fromEntries(

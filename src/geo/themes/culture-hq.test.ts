@@ -12,6 +12,8 @@ import { PROP_GEO, buildProp } from '../registry.ts';
 import { CULTURE_HQ_GEO, GUILD_HALL_VARIANT } from './culture-hq.ts';
 
 const KIT_IDS = CULTURE_HQ_GEO.map((d) => d.id);
+/** The M20 additions (TASK-465) have their own test, culture-m20.test.ts. */
+const M20_IDS = ['cultureGate', 'goodsStall', 'semaphoreTower', 'mailLine'];
 const verts = (g: THREE.BufferGeometry): number => g.getAttribute('position').count;
 const size = (g: THREE.BufferGeometry): THREE.Vector3 =>
   (g.boundingBox as THREE.Box3).getSize(new THREE.Vector3());
@@ -43,9 +45,10 @@ describe('TASK-410 HQ culture kit: defs and ledger', () => {
       'coffeeCart',
       'gullPerch',
       'mailbag',
+      ...M20_IDS,
     ]);
-    expect([...kit.map((k) => k.id)].sort()).toEqual([...KIT_IDS].sort());
-    for (const k of kit) {
+    expect([...kit.slice(0, 8).map((k) => k.id)].sort()).toEqual([...KIT_IDS].sort());
+    for (const k of kit.slice(0, 8)) {
       const def = HQ_PROP_DEFS.find((d) => d.id === k.id);
       expect(def?.tier, k.id).toBe(k.tier);
       expect(def?.flags, k.id).toBe(k.flags);

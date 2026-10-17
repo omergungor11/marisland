@@ -10,15 +10,27 @@ export interface GalleryItem {
   z: number;
 }
 
-/** Every def x variant x lod on a grid: one row per def, variant-major then lod. */
-export function buildGalleryScene(): { group: THREE.Group; items: GalleryItem[] } {
+/**
+ * Every def x variant x lod on a grid: one row per def, variant-major then lod. `only` restricts the
+ * rows to those def ids (the prop showcase: `?gallery=1&ids=m20` or `ids=cultureGate,goodsStall`).
+ */
+export function buildGalleryScene(only?: readonly string[]): {
+  group: THREE.Group;
+  items: GalleryItem[];
+} {
   const group = new THREE.Group();
   group.name = 'geo-gallery';
   const material = new THREE.MeshLambertMaterial({ vertexColors: true });
   const items: GalleryItem[] = [];
   let z = 0;
   for (const def of Object.values(PROP_GEO)) {
-    const spacing = Math.max(1.5, 3 * def.footprint);
+    if (only && !only.includes(def.id)) continue;
+    let spacing = Math.max(1.5, 3 * def.footprint);
+    if (only) {
+      // showcase: space by the real plan size (wide gates, 15 u conservatories)
+      const bb = buildProp(def.id, 1, 0, 0).boundingBox;
+      if (bb) spacing = Math.max(spacing, Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) + 1.5);
+    }
     z += spacing / 2;
     let col = 0;
     for (let v = 0; v < def.variants; v++) {

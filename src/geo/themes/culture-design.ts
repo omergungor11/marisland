@@ -1448,7 +1448,7 @@ export function withCanopyVitray(base: PropBuilder, vitrayVariant = 3): PropBuil
 /* ======================== galleryPavilion v2 (glass roof) ===================== */
 
 /** Faceted tri pane: flat slab + a low three-facet cap, saddled on the roof plane. */
-function gemTri(
+export function gemTri(
   acc: Acc,
   a: THREE.Vector3,
   b: THREE.Vector3,

@@ -38,6 +38,13 @@ export const DESIGN_CULTURE: CultureDef = {
     { id: 'blowpipeRack', tier: 3, flags: grounded | noShadow },
     // not `grounded` (TASK-425): a 14 u arc would get a 13 u contact blob at its empty centre
     { id: 'rainbowArc', tier: 1, flags: noShadow },
+    // M20 Glass Conservatory (D-057, TASK-465): cap 15 / 2 tier-1 (cultureCapOverride.design);
+    // the conservatory is the second tier-1 def and, like the rainbow, an effective tier 0 by size
+    { id: 'conservatory', tier: 1, flags: grounded },
+    { id: 'glasshouse', tier: 2, flags: grounded },
+    { id: 'glassBridge', tier: 2, flags: 0 },
+    { id: 'prismArch', tier: 2, flags: grounded },
+    { id: 'stainedWindmill', tier: 2, flags: grounded },
   ],
   // TASK-425: emitted by world/gen/plans/design.ts glassAndLight (world.storySpots)
   storySpots: [

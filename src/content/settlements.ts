@@ -257,6 +257,16 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   causticDecal: 0.05,
   bunting: 0.05,
   rainbowArc: 0.05,
+  // Design Glass Conservatory (TASK-465). The conservatory blocks its full octagon (apothem 7.0 u,
+  // content CONSERVATORY: bays on the four cardinal faces); the glasshouse is 2.5 x 4 u (radius
+  // 2.35); the bridge and the arch are walked through, so their disc is tiny and worldgen blocks the
+  // two bridge pads (GLASS_BRIDGE.pad at x = +-(span / 2 + pad / 2)) and the arch posts
+  // (PRISM_ARCH.postX) as separate discs / rects.
+  conservatory: 7.6,
+  glasshouse: 2.4,
+  glassBridge: 0.05,
+  prismArch: 0.05,
+  stainedWindmill: 1.5,
   // Research
   weatherMast: 0.8,
   // campus (TASK-402a): circles around the footprints of the PropDefs
@@ -303,6 +313,12 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   guildNoticeBoard: 0.9,
   // the cord spans the lane (bots walk under it); its two poles are separate worldgen discs
   pennantLine: 0.05,
+  // HQ Seven Gates (TASK-465): the gate and the mail cable are walked under (posts are separate
+  // discs, CULTURE_GATE.postX / postR), the semaphore and the pylons are solid
+  cultureGate: 0.05,
+  goodsStall: 1.2,
+  semaphoreTower: 1.0,
+  mailLine: 0.8,
 };
 
 /** Fixtures that float at the waterline (render pivot y = 0, not the seabed). */
