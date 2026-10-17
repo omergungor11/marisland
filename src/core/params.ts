@@ -50,6 +50,12 @@ export interface Params {
   introt: number;
   /** Capture: `craft=0` leaves the hot-air balloons / airship out (zoom-ladder frames, TASK-450). */
   craft: boolean;
+  /**
+   * Tour mode (TASK-473): `now` (`tour=1`) starts the wow chain at once (after the intro; before
+   * the `simt` warm-up in capture, so the pose is a function of time), `off` (`tour=0`) never
+   * auto-starts, `idle` (default) starts after `TOUR.idleAfter` seconds without input.
+   */
+  tour: 'off' | 'idle' | 'now';
 }
 
 export type HudPanel = '' | 'photo' | 'settings' | 'edit';
@@ -121,5 +127,6 @@ export function parseParams(search: string): Params {
     panelTool: panel === 'edit' ? panelTool : '',
     introt: Number.isFinite(introt) && introt >= 0 ? introt : NaN,
     craft: parseBool(q.get('craft'), true),
+    tour: q.get('tour') === null ? 'idle' : parseBool(q.get('tour'), true) ? 'now' : 'off',
   };
 }

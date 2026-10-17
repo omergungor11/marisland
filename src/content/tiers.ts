@@ -31,9 +31,6 @@ export const CAMERA = {
   terrainClearance: 3,
   /** T0 default pose. */
   overview: { dist: 450, pitch: 58, azimuthDeg: 25 },
-  /** Idle orbit speed, deg/s. */
-  idleOrbit: 0.6,
-  idleAfter: 30,
   smoothTime: 0.18,
   draggingSmoothTime: 0.08,
   /** Click = pointer moved < px within < ms. */
@@ -50,8 +47,6 @@ export const CAMERA_MOVE = {
   snapSeconds: 0.4,
   /** camera-controls smoothTime for fly-tos (≈ flyToSeconds / 3.5, critically damped). */
   flySmoothTime: 0.45,
-  /** Idle orbit eases in over this many seconds (no sudden start). */
-  orbitRampSeconds: 2.5,
   /** Island fly-to: sphere radius × this, distance clamp (u). */
   islandFitScale: 1.35,
   islandMaxDist: 380,

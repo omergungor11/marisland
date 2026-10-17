@@ -34,7 +34,6 @@ export function runPerfPath(d: PerfRunDeps): Promise<PerfResult> {
   });
   const wasEnabled = controls.enabled;
   controls.enabled = false;
-  cam.setIdleOrbit(false);
   cam.setSuspended(true);
   const pose: OrbitPose = { ...keys[0] };
   const apply = (t: number): void => {

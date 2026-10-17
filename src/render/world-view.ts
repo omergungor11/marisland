@@ -406,6 +406,9 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
       const f = frames[k];
       if (f) anchors[k] = { x: f.x, z: f.z, rotY: f.facing };
     }
+    // the island's first waterfall lip, facing downstream (the tour's `waterfall` stop, TASK-473)
+    const wf = world.waterfalls.find((w) => w.islandId === i.id);
+    if (wf) anchors.waterfall = { x: wf.x, z: wf.z, rotY: wf.rotY };
     return {
       name: i.name,
       archetypeName: i.archetypeName,

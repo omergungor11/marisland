@@ -208,7 +208,7 @@ Hover runs at 10 Hz and shows as a tint.
 **Focus.**
 - Double-clicking an island or tapping its label calls `fitToSphere`.
 - The intro (bible §8) is a keyframed spline plus a cloud-curtain, which New Seed reuses. Any input, `intro=0`, capture mode or reduced motion skips it.
-- After 30 s idle, the camera slowly orbits.
+- **Tour** (TASK-473, `camera/tour.ts`, data in `content/tour.ts`): after 30 s idle (or the HUD "Tour" toggle / `tour=1`) the camera flies a chain of wow-like framings — 4 s easeInOut flight, 8 s hold, the game clock scrubbing forward to each stop's hour. Stops are resolved by island / theme (fitted presets, named anchors), never raw coordinates. Any input hands the camera back; `tour=0` disables the idle start. The pose is a pure function of the tour time, so `tour=1&freeze=1&simt=T` captures deterministically.
 
 ## 7. Day/night & weather
 
@@ -268,7 +268,8 @@ These are worst case across tiers. CI enforces them **as counts**, because fps u
 | `time` | `0.35` or `15:00` |
 | `weather` | weather state |
 | `simt` | sim warm-up time |
-| `freeze=1` | no intro, governor or orbit; RAF stops once ready |
+| `freeze=1` | no intro, governor or tour idle-start; RAF stops once ready |
+| `tour` | `1` start the tour at once (after the intro; before the `simt` warm-up in capture), `0` no idle start |
 | `quality`, `dpr`, `hud` | overrides |
 | `debug` | `stats`, `mask`, `overdraw`, `wire` |
 | `perf` | perf sample run |

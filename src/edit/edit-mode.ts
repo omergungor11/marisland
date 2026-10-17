@@ -47,9 +47,8 @@ export interface EditPicking {
 }
 
 export interface EditCamera {
-  /** Stroke running: no idle orbit / terrain push (`CameraSystem.setSuspended`). */
+  /** Stroke running: no terrain push (`CameraSystem.setSuspended`). */
   setSuspended(on: boolean): void;
-  poke(): void;
   /** Bind (true) / unbind the primary-drag pan (left mouse, one finger). */
   setPrimaryPan(on: boolean): void;
 }
@@ -115,7 +114,6 @@ export function editCameraOf(cam: CameraSystem): EditCamera {
   let bound = true;
   return {
     setSuspended: (on) => cam.setSuspended(on),
-    poke: () => cam.poke(),
     setPrimaryPan(on) {
       if (on === bound) return;
       bound = on;
@@ -291,7 +289,6 @@ export function createEditMode(d: EditModeDeps): EditMode {
       if (!h) return false;
       stroking = true;
       cam.setSuspended(true);
-      cam.poke();
       session.beginStroke();
       sampler.begin(withProp(h, x, y));
       return true;
@@ -305,7 +302,6 @@ export function createEditMode(d: EditModeDeps): EditMode {
       name: 'edit-mode',
       update(dt) {
         if (!active) return;
-        cam.poke(); // no idle orbit while editing
         cursor.update(dt);
         const hit = cursor.hit;
         if (tools.tool === 'prop') {
