@@ -167,6 +167,10 @@
 - Shot presets are data in `src/content/shots.ts`; both the harness (`scripts/shots.ts`) and the app read them — keep them in sync
 
 ## Known Issues / Gotchas
+- Fixture `rotY` is the heading of local **+z** (render yaw = π/2 − rotY), not +x — the TASK-474 stack arch
+  first came out rotated 90°.
+- Sea marks (channel buoys, sea stacks) live in `world.seamarks`, hashed as `hashes.seamarks`, not in
+  `world.fixtures`, so per-island plan snapshots don't move; `settlement-props.ts` renders both.
 - **Islets own `islandMap` ids past the islands** (TASK-471): `world.islands[world.islandMap[i] - 1]` is
   undefined on a skerry / sandbar cell. Guard with `id > islands.length` (done in terrain-colors' palette
   row, settlements' `pathSparesSlopes`, the archipelago / edit tests) or use `coastBody(islands, islets, id)`
