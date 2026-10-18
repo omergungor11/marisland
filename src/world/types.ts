@@ -163,6 +163,12 @@ export interface WorldData {
   moorings: MooringData[];
   /** Single fixed props placed by settlements (well, buoys, tide pools, message bottle). */
   fixtures: FixtureData[];
+  /**
+   * Seamarks (TASK-474; gen/seamarks.ts): channel buoys along the ferry routes and sea-stack
+   * fields off the windward coasts. Fixtures on the water, placed after the routes; `islandId` is
+   * the nearest island (decor stream), not a settlement's. Hashed as `hashes.seamarks`.
+   */
+  seamarks: FixtureData[];
   /** Fence lines (open polylines, 1.5 u spacing) along Millbrook field-patch edges. */
   fences: Polyline[];
   /** Millbrook patchwork: one rectangle per crop field (colour index into palette FIELDS). */

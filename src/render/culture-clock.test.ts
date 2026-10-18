@@ -6,6 +6,7 @@ import {
   CULTURE_GATES,
   CULTURE_RHYTHM,
   RELAY,
+  SEA_LAMPS,
   cultureGateOf,
   cultureLampTheme,
 } from '../content/cultures/rhythm.ts';
@@ -78,6 +79,15 @@ describe('culture clock (TASK-430)', () => {
     expect(at(23).lamps.research).toBe(1);
     expect(at(3).lamps.qa).toBe(1);
     expect(at(12).lamps.qa).toBe(0);
+  });
+
+  it('the sea lamp set (channel buoys) runs 20:00 → 06:00 on every seed (TASK-474)', () => {
+    expect(SEA_LAMPS.defs.every((d) => PROP_DEFS.some((p) => p.id === d))).toBe(true);
+    expect(at(19.9).sea).toBe(0);
+    expect(at(20, SEA_LAMPS.rampS).sea).toBe(1);
+    expect(at(3).sea).toBe(1);
+    expect(at(6.1).sea).toBe(0);
+    expect(at(12).sea).toBe(0);
   });
 
   it('rituals report their phase', () => {

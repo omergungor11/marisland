@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {
   CLIFF_STRATA,
   EMISSIVE,
+  FOLIAGE,
   GRASS,
   ROCK,
   ROOFS,
@@ -13,6 +14,7 @@ import { Acc, blob, col, createNoise, frustum, mat, qEuler } from './kit.ts';
 import { TAU, TINT, V, V2, baseBox, cylB, jitterAcc, lathe, put, tubeAlong } from './parts.ts';
 import { THEMES } from '../content/themes.ts';
 import type { BuildOpts } from './types.ts';
+import type { Rng } from '../core/rng.ts';
 
 const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
 
@@ -694,18 +696,25 @@ export function sailboat({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry
   return acc.finish(rng, false, true);
 }
 
-export function seaStack({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
-  const r = rng.fork('stack');
-  const acc = new Acc();
-  const noise = createNoise(r.fork('n'));
-  const cls = variant % 3;
-  const H = [6, 10, 15][cls];
-  const R = [1.6, 2.1, 2.7][cls] * r.range(0.95, 1.05);
-  const radial = lod === 0 ? 12 : 6;
-  const hseg = lod === 0 ? 8 : 3;
+/**
+ * One rock tower of height H / foot radius R at `at` (strata bands, a grass cap at LOD0; the
+ * `lean` factor tilts the top). `radial` / `hseg` are the cylinder resolutions.
+ */
+function stackTower(
+  acc: Acc,
+  r: Rng,
+  noise: ReturnType<typeof createNoise>,
+  lod: number,
+  H: number,
+  R: number,
+  at: [number, number, number],
+  leanMul: number,
+  radial: number,
+  hseg: number,
+): void {
   const g = new THREE.CylinderGeometry(1, 1, H, radial, hseg, false).translate(0, H / 2, 0);
   const pos = g.getAttribute('position');
-  const lean = r.range(-0.4, 0.4) * (cls + 1) * 0.35;
+  const lean = r.range(-0.4, 0.4) * leanMul;
   const ph = r.range(0, 10);
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
@@ -721,22 +730,63 @@ export function seaStack({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry
     pos.setXYZ(i, x * k * edge + lean * t * t * H * 0.25, y, z * k * edge);
   }
   const bands = (p: THREE.Vector3): THREE.Color => {
-    const t = p.y / H;
+    const t = (p.y - at[1]) / H;
     if (t > 0.9) return col(GRASS[2]);
     if (t < 0.1) return col(ROCK[1]);
     const i = Math.floor(t * 6 + 0.3 * noise.n3(p.x * 0.5, p.y, p.z * 0.5));
     return col(CLIFF_STRATA[((i % 2) + 2) % 2]);
   };
-  acc.add(g, { m: mat([0, 0, 0]), color: bands, windMul: 0, aoAmt: 0.3 });
+  acc.add(g, { m: mat(at), color: bands, windMul: 0, aoAmt: 0.3 });
   if (lod === 0) {
     put(
       acc,
       blob(R * 0.75, 0, noise, 0.15, 1.2, 3),
-      [lean * H * 0.25, H + 0.05, 0],
-      gradYGrass(H),
+      [at[0] + lean * H * 0.25, at[1] + H + 0.05, at[2]],
+      gradYGrass(at[1] + H),
       { aoAmt: 0.1, s: [1, 0.55, 1] },
     );
   }
+}
+
+/**
+ * Sea stack: variants 0–2 are the 6 / 10 / 15 u size classes; variant 3 (TASK-474 `W:D3`) is the
+ * arch — two 9 u towers 2.6 u either side of the pivot (local x) joined by a rock lintel.
+ */
+export function seaStack({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
+  const r = rng.fork('stack');
+  const acc = new Acc();
+  const noise = createNoise(r.fork('n'));
+  if (variant === 3) {
+    const H = 9;
+    const R = 1.9 * r.range(0.95, 1.05);
+    const radial = lod === 0 ? 10 : 6;
+    const hseg = lod === 0 ? 6 : 2;
+    for (const sx of [-2.6, 2.6])
+      stackTower(acc, r.fork('tower', sx), noise, lod, H, R, [sx, 0, 0], 0.15, radial, hseg);
+    // the lintel: a noisy block across the top of both towers, grass on its back at LOD0
+    const lint = new THREE.BoxGeometry(6.6, 1.7, 2.4, lod === 0 ? 4 : 1, 1, 1).translate(0, 7.1, 0);
+    const lp = lint.getAttribute('position');
+    for (let i = 0; i < lp.count; i++) {
+      const x = lp.getX(i);
+      const y = lp.getY(i);
+      const z = lp.getZ(i);
+      const n = 0.22 * noise.n3(x * 0.9 + 5, y * 0.9, z * 0.9 - 5);
+      lp.setXYZ(i, x * (1 + n), y + n * 0.6, z * (1 + n));
+    }
+    acc.add(lint, {
+      m: mat([0, 0, 0]),
+      color: (p) => col(p.y > 7.75 ? GRASS[2] : CLIFF_STRATA[p.y > 6.9 ? 0 : 1]),
+      windMul: 0,
+      aoAmt: 0.25,
+    });
+    return acc.finish(rng, false, true);
+  }
+  const cls = variant % 3;
+  const H = [6, 10, 15][cls];
+  const R = [1.6, 2.1, 2.7][cls] * r.range(0.95, 1.05);
+  const radial = lod === 0 ? 12 : 6;
+  const hseg = lod === 0 ? 8 : 3;
+  stackTower(acc, r, noise, lod, H, R, [0, 0, 0], (cls + 1) * 0.35, radial, hseg);
   return acc.finish(rng, false, true);
 }
 const gradYGrass =
@@ -744,24 +794,58 @@ const gradYGrass =
   (p: THREE.Vector3): THREE.Color =>
     col(GRASS[2]).lerp(col(GRASS[1]), clamp01((p.y - H) / 1.2));
 
-export function buoy({ rng, lod }: BuildOpts): THREE.BufferGeometry {
+/**
+ * Buoy: variant 0 the striped harbour buoy; variants 1 (red, port) / 2 (green, starboard) are the
+ * channel markers of the ferry routes (TASK-474 `W:D8`): a taller banded body, a short mast and a
+ * lamp (emissive 1, the sea lamp set) that reads as a light dot from the overview. The whole body
+ * carries a fixed wind weight: the `windy` sway is its gentle bob. LOD1 is one shared geometry.
+ */
+export function buoy({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const acc = jitterAcc(rng);
-  const cap = new THREE.CapsuleGeometry(0.17, 0.3, lod === 0 ? 2 : 1, lod === 0 ? 8 : 5).translate(
-    0,
-    0.32,
-    0,
-  );
+  const bob = { windAbs: 0.5 };
+  if (lod === 1) {
+    // one LOD1 for every variant (no jitter, same colours → the batcher collapses the variants
+    // into one instanced group, D-032): a red body and the lamp dot
+    const cap = new THREE.CapsuleGeometry(0.2, 0.42, 1, 4).translate(0, 0.38, 0);
+    put(acc, cap, [0, 0, 0], col(ROOFS[1]), { aoAmt: 0.15, noJitter: true, ...bob });
+    // (a big lamp: at LOD1 distances it is the light dot of the W15 dotted lines)
+    put(acc, new THREE.SphereGeometry(0.32, 4, 2), [0, 1.1, 0], col(EMISSIVE.lantern), {
+      aoAmt: 0,
+      emissive: 1,
+      noJitter: true,
+      ...bob,
+    });
+    return acc.finish(rng, false, true);
+  }
+  if (variant === 1 || variant === 2) {
+    const body = variant === 1 ? ROOFS[1] : FOLIAGE.deciduous[1];
+    const cap = new THREE.CapsuleGeometry(0.2, 0.42, 2, 8).translate(0, 0.38, 0);
+    put(acc, cap, [0, 0, 0], (p) => (p.y > 0.3 && p.y < 0.46 ? col(WALLS[1]) : col(body)), {
+      aoAmt: 0.15,
+      ...bob,
+    });
+    put(acc, cylB(0.03, 0.03, 0.34, 3, true), [0, 0.74, 0], col(WOOD.dark), { aoAmt: 0, ...bob });
+    put(acc, new THREE.SphereGeometry(0.2, 7, 4), [0, 1.1, 0], col(EMISSIVE.lantern), {
+      aoAmt: 0,
+      emissive: 1,
+      noJitter: true,
+      ...bob,
+    });
+    return acc.finish(rng, false, true);
+  }
+  const cap = new THREE.CapsuleGeometry(0.17, 0.3, 2, 8).translate(0, 0.32, 0);
   put(
     acc,
     cap,
     [0, 0, 0],
     (p) => (Math.floor(p.y / 0.2) % 2 === 0 ? col(ROOFS[1]) : col(WALLS[1])),
-    { aoAmt: 0.15, cullY: lod === 0 ? 0.0 : 0 },
+    { aoAmt: 0.15, cullY: 0, ...bob },
   );
-  if (lod === 0) {
-    put(acc, cylB(0.025, 0.025, 0.2, 3, true), [0, 0.6, 0], col(WOOD.dark), { aoAmt: 0 });
-    put(acc, new THREE.ConeGeometry(0.08, 0.12, 5), [0, 0.82, 0], col(ROOFS[3]), { aoAmt: 0 });
-  }
+  put(acc, cylB(0.025, 0.025, 0.2, 3, true), [0, 0.6, 0], col(WOOD.dark), { aoAmt: 0, ...bob });
+  put(acc, new THREE.ConeGeometry(0.08, 0.12, 5), [0, 0.82, 0], col(ROOFS[3]), {
+    aoAmt: 0,
+    ...bob,
+  });
   return acc.finish(rng, false, true);
 }
 

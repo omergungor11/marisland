@@ -297,9 +297,10 @@ export const MIST = {
 export const MORNING_MIST = {
   /** TASK-472 H6: 05:30–07:30 (was 05:00–09:00), a channel mist the islands rise out of. */
   hours: [5.3, 5.6, 7.3, 7.6] as const,
-  density: 0.055,
+  /** D-060 (TASK-474): about half the TASK-472 density (0.055 / 0.55): the deep sea reads under it. */
+  density: 0.028,
   height: 4,
-  max: 0.55,
+  max: 0.45,
   /** Weather states that keep it (weights summed). */
   weathers: ['clear', 'cloudy'] as readonly WeatherName[],
   /**

@@ -1,6 +1,6 @@
 import { hashString, mix32 } from '../../core/hash.ts';
 import type { PropStore } from '../prop-store.ts';
-import type { IslandData, IsletData, Polyline, WorldData } from '../types.ts';
+import type { FixtureData, IslandData, IsletData, Polyline, WorldData } from '../types.ts';
 
 /** Floats are quantised to this step before hashing (ARCHITECTURE §2). */
 const Q = 1e4;
@@ -88,6 +88,20 @@ export function hashPolylines(lines: Polyline[], h = new StageHash()): string {
 }
 
 /** Settlements stage: lots, landmarks, docks, moorings, fixtures, paths, graph, fences. */
+/** Seamarks (TASK-474): def, position, heading, variant of every channel buoy / sea stack. */
+export function hashSeamarks(marks: readonly FixtureData[]): string {
+  const h = new StageHash();
+  h.u32(marks.length);
+  for (const f of marks)
+    h.str(f.defId)
+      .float(f.x)
+      .float(f.z)
+      .float(f.rotY)
+      .u32(f.islandId)
+      .u32(f.variant ?? 0);
+  return h.hex();
+}
+
 export function hashSites(w: WorldData): string {
   const h = new StageHash();
   h.u32(w.settlements.length);

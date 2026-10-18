@@ -5,6 +5,7 @@ import {
   CULTURE_GATES,
   CULTURE_RHYTHM,
   RELAY,
+  SEA_LAMPS,
   type CultureGateId,
 } from '../content/cultures/rhythm.ts';
 import { CULTURE_SLOTS, GATES, SHARED } from './uniforms.ts';
@@ -42,6 +43,8 @@ export interface CultureState {
   day: number;
   /** Per theme: culture lamp set 0..1. */
   lamps: Record<ThemeId, number>;
+  /** The sea lamp set (channel buoys, SEA_LAMPS) 0..1. */
+  sea: number;
   /** Per theme: relay emissive boost (0 outside the relay). */
   boost: Record<ThemeId, number>;
   /** Per theme: the ritual running now, or null. */
@@ -97,6 +100,7 @@ export function createCultureState(): CultureState {
   return {
     day: 0,
     lamps: per(() => 0),
+    sea: 0,
     boost: per(() => 0),
     festival: per<CultureFestival | null>(() => null),
     relay: { phase: 0, step: -1 },
@@ -126,6 +130,7 @@ export function evalCulture(day: number, rain: number, out: CultureState): Cultu
     }
     out.festival[t] = fest;
   }
+  out.sea = windowLevel(d, SEA_LAMPS.on * SPH, SEA_LAMPS.off * SPH, SEA_LAMPS.rampS);
   const rt = since(d, RELAY.hour * SPH);
   if (rt < RELAY.lengthS) {
     out.relay.phase = rt / RELAY.lengthS;
@@ -180,12 +185,14 @@ export function createCultureClock(
         if (state.boost[t] > 0) any = 1;
       }
       SHARED.uFestival.value.set(state.relay.phase, state.relay.step, any);
+      SHARED.uSeaLamps.value = state.sea;
       for (const g of Object.keys(GATES) as CultureGateId[]) GATES[g].value = state.gates[g];
     },
     dispose() {
       for (const v of SHARED.uCultureIsle.value) v.set(0, 0, 0, 0);
       for (const v of SHARED.uCultureLamps.value) v.set(0, 0);
       SHARED.uFestival.value.set(0, -1, 0);
+      SHARED.uSeaLamps.value = 0;
       for (const g of Object.keys(GATES) as CultureGateId[]) GATES[g].value = 1;
     },
   };
