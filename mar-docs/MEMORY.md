@@ -23,6 +23,10 @@
   TASK-468 merged: ground art (`render/terrain/ground-art.ts`, `content/ground-art.ts`) paints the compass + prism
   pools in the terrain shader — no derivatives inside branches (use `marDPx/marDPy`). Glasshouses don't carry the
   `stained` tag (unchanged look); street tints > 0.62 look garish from above; seed 6006 has 3 prism arches.
+  TASK-469 merged: semaphore arms are mover parts now (`PART.arm`, tower gallery view is armless); gate halos
+  flare in relay order over an always-on static lantern; stall keepers are closed-form mover parts, not agents;
+  glass-bridge deck nodes join the walk graph (`glassBridgeDeckY`), Design itineraries changed. Dock reachability
+  bug → TASK-477. New worktrees have no `node_modules` (`pnpm install --offline --frozen-lockfile`).
 - **2026-10-18 (TASK-466, worldgen)**: HQ Seven Gates plan (`world/gen/plans/hq.ts`, numbers in
   `content/themes/hq.ts` HQ_PLAN + `content/cultures/hq.ts` HQ_CULTURE_SITE): R 10 compass plaza
   (district kind 'compass'), seven streets aimed at the real islands (A* rays in a 4 u corridor, other
