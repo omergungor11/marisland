@@ -294,7 +294,7 @@ Details in `phases/phase-3.md`.
 | TASK-472 | Sky + sea shader quick wins: night sky fix (stars, moon height; `W:G5`), deep-band texture ≤ 8 % L (`W:K5`), lingering ferry wakes (`W:B4`), morning channel mist (`W:H6`), comet on Comet Night + seeded meteors (`W:G2`) | shader | M | COMPLETED (81a963b) | — |
 | TASK-473 | Tour mode (`W:C1`): idle → wow-preset chain with eased flights and time scrub, HUD toggle, any input stops it | engine | S | COMPLETED (257f171) | — |
 | TASK-474 | Channel buoys along ferry routes with night lamps (`W:D8`); sea-stack fields + one arch (`W:D3`) | worldgen | S | COMPLETED (77408cf) | TASK-471 |
-| TASK-475 | Seamark polish: sea-stack arch lintel reads as one span from afar (not two rocks); buoy night lamps readable at W15 | worldgen | S | IN_PROGRESS | TASK-474 |
+| TASK-475 | Seamark polish: sea-stack arch lintel reads as one span from afar (not two rocks); buoy night lamps readable at W15 | worldgen | S | COMPLETED (9dd7199) | TASK-474 |
 
 ### M17 — Graphics II: decor & nature
 *Flower fields, fences, lanterns, benches, signs, rocks*
