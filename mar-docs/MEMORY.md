@@ -28,7 +28,11 @@
   glass-bridge deck nodes join the walk graph (`glassBridgeDeckY`), Design itineraries changed. Dock reachability
   bug fixed in TASK-477 (dock roots below `minWalkY` forced to `deckY`;
   `dock-reach.test.ts`). Chimney puff kind 0 now shares the steam soft alpha in `cloud.glsl.ts` — any puff alpha
-  change must cover kind 0. Seed 1001 has a land path edge crossing water near (67, −133) (pre-existing, open). New worktrees have no `node_modules` (`pnpm install --offline --frozen-lockfile`).
+  change must cover kind 0. Seed 1001 has a land path edge crossing water near (67, −133) (pre-existing, open).
+  TASK-464 merged: T0 blobs per canopy kind (`ClusterIndex` 8 u × kind), `TREE_FADE` 500–620 for clusterable trees,
+  `BLOB_KIND_SCALE` (blossom 1.5 so pair-380 passes); pine blobs still round; `mixLattice` now unused. Ladder misses
+  not from 464 (already on main): L-marketing drift 700/480/340 ≈ 4.4–4.9, L-devops 30→21 blob 1.8 % → TASK-470.
+  `pnpm shots --port 4186` (space) silently falls back to 4173 — always `--port=NNNN`; `--tag=x` isolates outputs. New worktrees have no `node_modules` (`pnpm install --offline --frozen-lockfile`).
 - **2026-10-18 (TASK-466, worldgen)**: HQ Seven Gates plan (`world/gen/plans/hq.ts`, numbers in
   `content/themes/hq.ts` HQ_PLAN + `content/cultures/hq.ts` HQ_CULTURE_SITE): R 10 compass plaza
   (district kind 'compass'), seven streets aimed at the real islands (A* rays in a 4 u corridor, other

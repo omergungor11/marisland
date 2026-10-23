@@ -271,7 +271,7 @@ Details in `phases/phase-3.md`.
 | TASK-461 | World polish: DevOps steam main as a real pitched run on slopes (no steps), Research ≥ 4 pennant lines + lecture on every seed; medium tableau cap 4 → 5 so tea time keeps its bots | worldgen | M | COMPLETED (89bbae9, d7abd62) | — |
 | TASK-462 | Balloon shadow dither stipple — really the Bayer-dithered steam under the balloons: blended puffs + near-camera fade | shader | S | COMPLETED (537fb7c) | — |
 | TASK-463 | Ladder misses: exact masks on medium/high (composer skipped), class-consistent drift, Research ladder shift, DOF focus on the orbit target, solar rows T0 — low 6→0, medium 4→0, high 10→1 (D-056) | engine | M | COMPLETED (27bfa82, 9c55f1c) | 460–462 |
-| TASK-464 | T1 far forests stipple out (`TIER_FADE[1]` 320–420 u, blobs off at T1) + per-species / blossom T0 blobs so a wider fade doesn't break pair 380 (high L-pairs-design blob 0.7 %) | props → engine | M | IN_PROGRESS | TASK-463 |
+| TASK-464 | T1 far forests stipple out (`TIER_FADE[1]` 320–420 u, blobs off at T1) + per-species / blossom T0 blobs so a wider fade doesn't break pair 380 (high L-pairs-design blob 0.7 %) | props → engine | M | COMPLETED (26206bf) | TASK-463 |
 
 ### M20 — HQ Seven Gates + Design Glass Conservatory
 *User-chosen remake (D-057, D-058, 2026-10-17; master plan `mar-plans/WORLD_PLAN.md`). 465 done; 471 (layout) next; 466 ∥ 467; 468 ∥ 469; 470 last.*
@@ -284,8 +284,8 @@ Details in `phases/phase-3.md`.
 | TASK-467 | Design plan (D-057/D-058, `hq-design.md` §2.2 zones): conservatory replaces the glade quad (ateliers ring it, 4 bays → 4 paths), glasshouse rows, glass bridge on the waterfall stream, prism-arch path pier → conservatory, windmill ridge; pine filler −35 % | worldgen | M | COMPLETED (e49ee29) | TASK-465, TASK-471 |
 | TASK-468 | Shader: HQ compass mosaic ground surface kind + street tints; Design prism-arch light pools, conservatory glass | shader | M | COMPLETED (371227d) | TASK-466, TASK-467 |
 | TASK-469 | Life: semaphore arms follow the 21:00 relay, gates light up in relay order, mail sacks slide down the line, stall keepers; windmill rotor | life | M | COMPLETED (16ba5e3) | TASK-466, TASK-467 |
-| TASK-470 | QA + framing: new wow shots (HQ compass star from above, conservatory prism hour), ladder L-hq / L-design, wow `--assert` | qa | S | PENDING | TASK-468, TASK-469 |
-| TASK-476 | Engine: merge near-tier culture fixture groups (HQ gates / stalls / pennants, Design kit) so medium is back to ≤ 300 calls; lower the D-061 budget raise (340 → 300, 176 MB → 170) | engine | M | PENDING | TASK-466, TASK-467 |
+| TASK-470 | QA + framing: new wow shots (HQ compass star from above, conservatory prism hour), ladder L-hq / L-design, wow `--assert` | qa | S | IN_PROGRESS | TASK-468, TASK-469 |
+| TASK-476 | Engine: merge near-tier culture fixture groups (HQ gates / stalls / pennants, Design kit) so medium is back to ≤ 300 calls; lower the D-061 budget raise (340 → 300, 176 MB → 170) | engine | M | IN_PROGRESS | TASK-466, TASK-467 |
 | TASK-477 | Life fixes: dock roots below `VILLAGERS.minWalkY` drop out of the walk graph so piers are unreachable on ~6/7 islands (every `dock` itinerary goal silently fails) — keep dock roots walkable at h ≥ 0; find the white soft balls floating over HQ in W2/W16 (idle too) and fix or ground them | life | S | COMPLETED (5a708b3) | TASK-469 |
 
 ### M21 — World P1 (quick wins)
