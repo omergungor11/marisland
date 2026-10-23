@@ -479,4 +479,23 @@ export const ACTIVITY_GLOW = /* glsl */ `
     vec3 marSc = mix(vec3(dot(uSunColor, vec3(0.2126, 0.7152, 0.0722))), uSunColor, ${f(STAINED.sunHue)});
     outgoingLight += diffuseColor.rgb * marSc * marTr;
   }
+  if (marStain > 0.5) {
+    // glass body (TASK-468): deeper, saturated, grained panes with a sky sheen — not plastic
+    vec3 marGw = vec3(vMarCloudXZ.x, vMarWorldY, vMarCloudXZ.y);
+    vec3 marGq = marGw / ${f(STAINED.mottleScale)};
+    float marMot = marHf(floor(marGq.xz + marGq.y * 0.7)) + marHf(floor(marGq.zy * 1.7 + 3.1)) - 1.0;
+    float marDay = 1.0 - uNight;
+    float marGl = dot(outgoingLight, vec3(0.2126, 0.7152, 0.0722));
+    outgoingLight = max(mix(vec3(marGl), outgoingLight, mix(1.0, ${f(STAINED.saturation)}, marDay)), 0.0)
+                  * (mix(${f(STAINED.nightBody)}, ${f(STAINED.body)}, marDay) * (1.0 + mix(${f(STAINED.nightMottle)}, ${f(STAINED.mottle)}, marDay) * marMot));
+    vec3 marGn = (vec4(normal, 0.0) * viewMatrix).xyz;
+    marGn /= max(length(marGn), 1e-5);
+    vec3 marGv = cameraPosition - marGw;
+    float marGd = length(marGv);
+    marGv /= max(marGd, 1e-5);
+    float marFr = pow(max(1.0 - abs(dot(marGn, marGv)), 1e-4), ${f(STAINED.skyPower)});
+    float marBand = pow(max(sin(dot(marGw, vec3(0.62, 1.0, 0.41)) * ${f(STAINED.sheenFreq)}), 0.0), 6.0)
+                  * (1.0 - smoothstep(${f(STAINED.sheenFade[0])}, ${f(STAINED.sheenFade[1])}, marGd));
+    outgoingLight += uHorizon * ((marFr * ${f(STAINED.sky)} + marBand * ${f(STAINED.sheen)}) * marDay);
+  }
 `;

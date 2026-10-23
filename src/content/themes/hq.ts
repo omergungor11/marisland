@@ -18,8 +18,8 @@ const { grass, meadow, sandDry, sandWet } = Zone;
 const LAWN = '#8FCB62';
 const ACCENT = '#E8735A';
 /** Plaza paving base; the streets are this paving tinted toward their culture's accent. */
-const PAVING = '#D8B894';
-const GROUT = '#C98A6A';
+export const PAVING = '#D8B894';
+export const GROUT = '#C98A6A';
 
 /** sRGB hex lerp (content only: the street tints are fixed hexes once built). */
 function mixHex(a: string, b: string, t: number): string {
@@ -32,7 +32,7 @@ function mixHex(a: string, b: string, t: number): string {
 }
 
 /** Culture accents in THEME_IDS order (the street / gate / stall of each culture). */
-const ACCENT_OF: Readonly<Record<(typeof THEME_IDS)[number], string>> = {
+export const CULTURE_ACCENT: Readonly<Record<(typeof THEME_IDS)[number], string>> = {
   hq: ACCENT,
   coding: CODING_THEME.accent,
   marketing: MARKETING_THEME.accent,
@@ -45,15 +45,23 @@ const ACCENT_OF: Readonly<Record<(typeof THEME_IDS)[number], string>> = {
 /**
  * Street tint (D-060 S8 b): the plaza paving pulled `STREET_TINT` of the way toward the culture
  * accent, same tiles and grout, so the seven streets read as a seven-colour star from above.
+ * TASK-468: 0.42 → 0.62 (and the grout at 0.7 of it) — at 0.42 the streets read as plain paving at
+ * eye level (W16) once the tile detail and the shade sit on them.
  */
-export const STREET_TINT = 0.42;
+export const STREET_TINT = 0.62;
+const STREET_GROUT_TINT = 0.7;
 const STREET_GROUND = Object.fromEntries(
   THEME_IDS.map((t, k) => [
     streetZone(k),
     {
       material: 'paving' as const,
-      base: mixHex(PAVING, ACCENT_OF[t], STREET_TINT),
-      layer: { tile: { size: 0.9, grout: mixHex(GROUT, ACCENT_OF[t], STREET_TINT * 0.5) } },
+      base: mixHex(PAVING, CULTURE_ACCENT[t], STREET_TINT),
+      layer: {
+        tile: {
+          size: 0.9,
+          grout: mixHex(GROUT, CULTURE_ACCENT[t], STREET_TINT * STREET_GROUT_TINT),
+        },
+      },
     },
   ]),
 ) as ThemeDef['ground'];
