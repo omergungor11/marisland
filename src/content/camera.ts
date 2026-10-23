@@ -186,8 +186,14 @@ export const FRAMING = {
      * camera sits at their roof line, so they slide several cells off the target plane between
      * steps (30 → 21 p95 12.9, parallax, not a pop). The parterre garden beside the quad is low.
      */
-    shift: { research: { right: 20, back: 8 } } as Readonly<
-      Record<string, { right: number; back: number }>
-    >,
+    // DevOps (TASK-470, seed 1001 height probe in the heading frame): the village anchor sits on
+    // the cone's cliff (y 19 between the plateau at 7 and the summit at 29), so 30 → 21 failed on
+    // parallax (p95 13.8, blob 1.8 %); 12 u left, 10 u toward the camera is the flat harbour
+    // plateau (y 7). Design keeps the slid target (windmill slope): targets beside the conservatory
+    // or on the glasshouse row fail on the dome's parallax or a frame-filling roof (TASK-470 QA).
+    shift: {
+      research: { right: 20, back: 8 },
+      devops: { right: -12, back: 10 },
+    } as Readonly<Record<string, { right: number; back: number }>>,
   },
 } as const;
