@@ -34,6 +34,8 @@ export interface Budget {
  * instanced LOD0 group per culture (+ shadow pass); W16 (Harbour Guild, seed 1001) 291 → 328
  * calls, W2 / W3 202 / 206 → 243 / 241. Medium 300 → 340. The new kit geometry adds 1–2 MB on
  * every frame and W4 already stood at the 170 MB line: medium gpuMemoryMB 170 → 176.
+ * TASK-467 (Design Glass Conservatory): conservatory / glasshouse / prism-arch / glass-bridge buffers
+ * add ≈ 2.5 MB (W4 172 MB alone). D-061: TASK-476 wins the calls back.
  */
 export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
   low: {

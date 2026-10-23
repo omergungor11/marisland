@@ -996,6 +996,7 @@ export function buildSettlements(input: SettlementInput, rng: Rng): SettlementRe
     fields: input.fields,
     net: createNetwork(n),
     blocked: new Uint8Array(n * n),
+    passable: new Uint8Array(n * n),
     hasNet: input.islands.map(() => false),
     reach: input.islands.map(() => null),
     pads: [],

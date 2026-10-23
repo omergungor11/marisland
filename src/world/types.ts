@@ -321,7 +321,10 @@ export type DistrictKind =
   | 'sandbox'
   | 'sculpture'
   /** HQ compass plaza (TASK-466): the round plaza the TASK-468 mosaic paints; rotY = the harbour heading, w = d = 2 r. The street rays are the `cultureGate` fixtures' bearings from its centre. */
-  | 'compass';
+  | 'compass'
+  // Design Glass Conservatory (TASK-467): the glasshouse block and the windmill meadow
+  | 'glasshouses'
+  | 'windmill';
 
 /**
  * A theme district (M14b): a rectangle with a purpose (render emits its props, e.g. solar rows on

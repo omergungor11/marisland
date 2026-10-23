@@ -92,9 +92,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "fabe89cfe654af4a",
-          "1001": "ef26ed9f8dcfed0f",
-          "42": "a3797de33b844630",
+          "1": "102e9103d65a3def",
+          "1001": "762f5cea977f1d5e",
+          "42": "624f7d7d1dfa24a4",
         }
       `);
     },
@@ -248,12 +248,15 @@ describe('archipelago — 30-seed full generation', () => {
             expect(isl.anchors.knoll0 && isl.anchors.knoll1 && isl.anchors.pond, ctx).toBeTruthy();
             break;
           case 'mossgrove': {
-            // forest is the dominant zone of the walkable land (the bluff walls are cliff)
+            // forest + meadow are the walkable land (the bluff walls are cliff); the Glass
+            // Conservatory campus opens the dome round its districts (TASK-467, meadow can win)
             const top = land - sum(zc, [Zone.cliff]);
+            const water = new Set<number>([Zone.deep, Zone.mid, Zone.shallow, Zone.lagoon]);
             for (const [z, c] of zc)
-              if (z !== Zone.forest && z !== Zone.cliff)
+              if (z !== Zone.forest && z !== Zone.cliff && z !== Zone.meadow && !water.has(z))
                 expect(zc.get(Zone.forest) ?? 0, ctx).toBeGreaterThan(c);
-            expect(sum(zc, [Zone.forest]), ctx).toBeGreaterThan(top * 0.35);
+            expect(sum(zc, [Zone.forest, Zone.meadow]), ctx).toBeGreaterThan(top * 0.5);
+            expect(sum(zc, [Zone.forest]), ctx).toBeGreaterThan(top * 0.2);
             expect(isl.anchors.giantTree, ctx).toBeDefined();
             expect(
               w.streams?.some((s) => s.islandId === isl.id),
@@ -423,9 +426,9 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // Glass & Light, TASK-453c Marketing path-spares-slopes + Emberpeak steam-main slope cap,
       // TASK-461 snapped pipe legs + Star Academy fallbacks, re-pinned
       // TASK-471 (D-058): hub layout + islets, re-pinned; TASK-474 seamarks stage hash, re-pinned;
-      // TASK-466 HQ Seven Gates, re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('dd9075b1b4cf6114');
-      expect(generateWorld(1).hashes.world).toBe('f668317daefa7101');
+      // TASK-466 HQ Seven Gates + TASK-467 Design Glass Conservatory, re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('4ff3c0665c4a9588');
+      expect(generateWorld(1).hashes.world).toBe('8737f74474e5a241');
     } finally {
       for (const b of saved) b.on = true;
     }

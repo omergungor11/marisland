@@ -230,18 +230,21 @@ export interface PathCostContext {
   islandId: number;
   /** Per-cell blocking (lot cores, landmark discs); 1 = blocked. */
   blocked: Uint8Array;
+  /** Cells walkable although their shore SDF is ≤ 0 (the Design glass bridge deck, TASK-467). */
+  passable?: Uint8Array;
   stair: boolean;
   net: PathNetwork;
 }
 
 /** Slope-cost step function for footpaths. */
 export function pathStep(ctx: PathCostContext): (a: number, b: number, dist: number) => number {
-  const { h, sdf, islandMap, zone, blocked, net } = ctx;
+  const { h, sdf, islandMap, zone, blocked, passable, net } = ctx;
   const id = ctx.islandId + 1;
   const maxSlope = ctx.stair ? PATHS.stairMaxSlope : PATHS.maxSlope;
   const quad = ctx.stair ? PATHS.stairQuad : 0;
   return (a, b, dist) => {
-    if (islandMap[b] !== id || sdf[b] < PATHS.minShore || blocked[b]) return Infinity;
+    if (islandMap[b] !== id || blocked[b]) return Infinity;
+    if (sdf[b] < PATHS.minShore && !passable?.[b]) return Infinity;
     const run = dist * h.cellSize;
     const slope = Math.abs(h.data[b] - h.data[a]) / run;
     if (slope > maxSlope) return Infinity;

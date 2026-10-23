@@ -10,6 +10,16 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-23 (M20 466/467 merged, 475 done)**: TASK-466 HQ Seven Gates, TASK-467 Design Glass Conservatory and
+  TASK-475 (one-span sea arch, SEA_LAMP buoy lamps) on main; wow 18/18 `--assert` (W16 331 calls, W4 ≤ 176 MB).
+  D-061: medium budget 340 calls / 176 MB for now, TASK-476 (engine) merges near-tier culture fixture groups and
+  lowers it back to 300 / 170. TASK-464 (T0 per-species blobs) running in a worktree. Next: TASK-468 shader ∥ 469
+  life (the mail-sack mover with the 09:00 / 17:45 bursts already exists from 466; Design bridge `hooks.walk`
+  unused until 469) → 470 QA (W19 re-frame: the tree hides the conservatory) → M22. Open: HQ compass read is
+  subtle at eye level (468), W2 one gate on grass without a path, low mail pylon sits on plaza paving; Design
+  small domes (~120 u) miss glasshouses / garden on some seeds (thresholds relaxed with TASK-467 notes); far
+  sea stacks read as flat stumps (no grass cap on LOD1). Full `pnpm test` flakes on timeouts while parallel
+  shots run (load > 30): use `--no-file-parallelism` + `MAR_PERF_SCALE=0`, then perf tests alone.
 - **2026-10-18 (TASK-466, worldgen)**: HQ Seven Gates plan (`world/gen/plans/hq.ts`, numbers in
   `content/themes/hq.ts` HQ_PLAN + `content/cultures/hq.ts` HQ_CULTURE_SITE): R 10 compass plaza
   (district kind 'compass'), seven streets aimed at the real islands (A* rays in a 4 u corridor, other
@@ -45,6 +55,22 @@
   directions in D-059; Round 3 details per island in WORLD_PLAN §6). Follow-ups: stack arch lintel reads weak
   (two rocks from afar), buoy lamps faint at W15; no Research dish/telescope → comet hook yet; shots `--port`
   4190 is fetch-blocked (use 4185–4188); subagents run on fable (user request) but it hits session limits fast.
+- **2026-10-18 (TASK-467, worldgen)**: Design "Glass Conservatory" plan (`world/gen/plans/design.ts`): pier in
+  the lee cove beside the stream mouth, Conservatory Square (R 10 terrazzo disc near the dome top, octagon
+  blocked, bay 0 toward the pier, hub at bay 0's pin), four bay lanes (corridor A* round the plaza ring),
+  the Prism Walk arches on straight runs of the pier lane, the glass bridge over a tidal creek cut into the
+  stream's beach reach (`passable` deck cells), the 2 × 3 glasshouse block (split rows fallback), the
+  stained windmill meadow, lots in a ring, the old kit re-homed, two rainbows, pine 0.85 → 0.55. Numbers in
+  `content/themes/design.ts` (`square`, `dock`, `cut`) and `content/cultures/design.ts` (`glasshouses`,
+  `prismWalk`, `bridge`, `windmill`, `rainbows`). Order: pier → square → bridge → bay lanes → arches →
+  ring lots (3–4, before the other sites, else a ≈ 120 u dome loses them) → glasshouses → garden →
+  windmill (fallback passes) → easels → grove → kit. 30 seeds: lots ≥ 3 29/30, six glasshouses 24/30
+  (2 × 3 block 19, seed 1789 none), garden 21/30, bridge 23/30, ≥ 1 arch 27/30, windmill 30/30; the
+  thresholds carry `TASK-467` notes. Left for later (Design+1):
+  the waterfall balcony (Z11), the chime walk (Z12), the mirror pond (after TASK-353); the sea-glass
+  beach speckle (Z9) is in the theme ground table for every Design beach, not only the NE sand. Hooks:
+  the arch fixture position is the TASK-468 light-pool centre (`hooks.pool.at` = local origin); bots
+  crossing the creek path walk at terrain height until TASK-469 reads `glassBridge` `hooks.walk`.
 - **2026-10-17 (TASK-471, worldgen)**: hub layout (HQ nearest the centroid, six on a 60° ring, `LAYOUT.hub`,
   `layoutProblem` 'offcentre') + islets (`world.islets`: 3–6 skerries + one Lonely Palm sandbar, `ISLETS` /
   `ISLET_LAYOUT` / `ISLET_SCATTER`), D-058 implementation note. One-time re-pin: every raw cam in `shots.ts`
@@ -222,6 +248,31 @@
   first came out rotated 90°.
 - Sea marks (channel buoys, sea stacks) live in `world.seamarks`, hashed as `hashes.seamarks`, not in
   `world.fixtures`, so per-island plan snapshots don't move; `settlement-props.ts` renders both.
+- **The Mossgrove stream carve does not reach the heightfield** (TASK-467): the profile's 1.1 u dent is
+  swallowed by the dome's cross-slope and the 2 u grid; `world.streams` is a polyline over plain ground
+  (easels / screens still read it). The only water a bridge can span is the sea, so the Design creek is
+  cut below sea level in the planner (`glassBridge`), and every cut cell gets a NEGATIVE shore SDF: the
+  settlements test holds `h > 0 ⇔ shoreSdf > 0`, `applyPads` skips sdf ≤ 0 cells (else the end pads refill
+  the creek), and `pathStep` refuses sdf < minShore unless `ctx.passable[i]` (the deck cells).
+- **A deep pad near the bluff band steepens the coast face** (TASK-467): the archipelago face test
+  (p95 ≤ 68° over the first 6 u inland) fails when a site levelled over > 3 u has its pad reach
+  (shape + margin + FLATTEN.falloff) inside the band; `onLand` only checks the CENTRE sdf. Design uses
+  `cutOk` (`DESIGN_SITES.cut`) for the garden, glasshouses and windmill. Raising the relaxation sweeps
+  (12 → 48) fixes the lot-corner bumps below but moves every island's pads (QA / DevOps tests): use
+  keep-offs instead (`lotKeepOff` for the kit, `glasshouses.lotGap`, `prismWalk.keepOff`), and kit
+  clutter on another pad's plateau gets no pad of its own (hot shop rack / shelf / crates).
+- **Pad relaxation does not converge in a crowded chain** (12 pairwise sweeps): two overlapping cores
+  with different `T` mix by distance weight and leave a 0.5–0.9 u bump under a prop corner (a glasshouse
+  3.9 u from the windmill pad, a lot pad beside the block). Give a pad that must stay level a non-blocking
+  "keep-off" shape = its core + the neighbour's margin (`glasshouses.keepOff` 4.5 u for lot cores, the
+  windmill / bridge pads + 2 × discMargin), and use `FLATTEN.lotMargin` for rect pads whose corners are
+  checked (the 2 u cells' bilinear phase eats 1.5 u on a slope).
+- **A* lanes traverse steep flanks** (the slope cost is along-path only): a prop astride a lane needs a
+  cross-step check at its posts (the Design pier lane crosses 2–2.6 u over 2 u on small domes, seeds
+  1789 / 4419 / 7312: no arch fits). Put lane props mid-way in ≥ 5 collinear cells: the Catmull-Rom chain
+  smoothing keeps a straight run, so the final path still passes under them after later links split the
+  chain and re-phase the spline (3-cell runs drift up to 1.5 u). Do not smooth the lane yourself —
+  the chains are cut at junctions that do not exist yet.
 - **Islets own `islandMap` ids past the islands** (TASK-471): `world.islands[world.islandMap[i] - 1]` is
   undefined on a skerry / sandbar cell. Guard with `id > islands.length` (done in terrain-colors' palette
   row, settlements' `pathSparesSlopes`, the archipelago / edit tests) or use `coastBody(islands, islets, id)`
