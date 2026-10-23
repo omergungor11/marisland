@@ -10,6 +10,14 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-24 (M20 closed)**: TASK-464…477 all on main; wow 21/21 `--assert` (new W20 Compass Star, W21
+  Conservatory Prism Hour seed 6006, W22 Seven Gates Night; W19 re-framed NNW), 2433 tests, medium 300 calls /
+  176 MB (W16 269 calls, W4 173 MB). QA report `mar-docs/qa/m20-2026-10-23.md`; open items → TASK-478. Next: M22
+  five-island quick wins (WORLD_PLAN §5 row 2; ask Round 3 details per island first), TASK-478 in parallel.
+  Ladder misses depend on quality (default low; L-marketing / L-pairs-hq only on medium) — always state it.
+  `pnpm shots` silently reuses a port another agent serves ("already served (not ours)") — grep the log; give
+  each parallel agent its own port. Framing can be iterated against a running dist with
+  `--base=http://localhost:<port>/ --no-selftest`. Full low ladder: 25 min at load ~4, 99 min at load ~14.
 - **2026-10-23 (M20 466/467 merged, 475 done)**: TASK-466 HQ Seven Gates, TASK-467 Design Glass Conservatory and
   TASK-475 (one-span sea arch, SEA_LAMP buoy lamps) on main; wow 18/18 `--assert` (W16 331 calls, W4 ≤ 176 MB).
   D-061: medium budget 340 calls / 176 MB for now, TASK-476 (engine) merges near-tier culture fixture groups and

@@ -274,7 +274,7 @@ Details in `phases/phase-3.md`.
 | TASK-464 | T1 far forests stipple out (`TIER_FADE[1]` 320–420 u, blobs off at T1) + per-species / blossom T0 blobs so a wider fade doesn't break pair 380 (high L-pairs-design blob 0.7 %) | props → engine | M | COMPLETED (26206bf) | TASK-463 |
 
 ### M20 — HQ Seven Gates + Design Glass Conservatory
-*User-chosen remake (D-057, D-058, 2026-10-17; master plan `mar-plans/WORLD_PLAN.md`). 465 done; 471 (layout) next; 466 ∥ 467; 468 ∥ 469; 470 last.*
+*User-chosen remake (D-057, D-058, 2026-10-17; master plan `mar-plans/WORLD_PLAN.md`). CLOSED 2026-10-24: wow 21/21 `--assert`, QA report `mar-docs/qa/m20-2026-10-23.md`; follow-ups → TASK-478.*
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|------------|--------|--------------|
@@ -284,9 +284,10 @@ Details in `phases/phase-3.md`.
 | TASK-467 | Design plan (D-057/D-058, `hq-design.md` §2.2 zones): conservatory replaces the glade quad (ateliers ring it, 4 bays → 4 paths), glasshouse rows, glass bridge on the waterfall stream, prism-arch path pier → conservatory, windmill ridge; pine filler −35 % | worldgen | M | COMPLETED (e49ee29) | TASK-465, TASK-471 |
 | TASK-468 | Shader: HQ compass mosaic ground surface kind + street tints; Design prism-arch light pools, conservatory glass | shader | M | COMPLETED (371227d) | TASK-466, TASK-467 |
 | TASK-469 | Life: semaphore arms follow the 21:00 relay, gates light up in relay order, mail sacks slide down the line, stall keepers; windmill rotor | life | M | COMPLETED (16ba5e3) | TASK-466, TASK-467 |
-| TASK-470 | QA + framing: new wow shots (HQ compass star from above, conservatory prism hour), ladder L-hq / L-design, wow `--assert` | qa | S | IN_PROGRESS | TASK-468, TASK-469 |
+| TASK-470 | QA + framing: new wow shots (HQ compass star from above, conservatory prism hour), ladder L-hq / L-design, wow `--assert` | qa | S | COMPLETED (caf0f9d, dbe91dd) | TASK-468, TASK-469 |
 | TASK-476 | Engine: merge near-tier culture fixture groups (HQ gates / stalls / pennants, Design kit) so medium is back to ≤ 300 calls; lower the D-061 budget raise (340 → 300, 176 MB → 170) | engine | M | COMPLETED (5d09e59; calls 300, MB stays 176 — W4 173 MB is a T1 view) | TASK-466, TASK-467 |
 | TASK-477 | Life fixes: dock roots below `VILLAGERS.minWalkY` drop out of the walk graph so piers are unreachable on ~6/7 islands (every `dock` itinerary goal silently fails) — keep dock roots walkable at h ≥ 0; find the white soft balls floating over HQ in W2/W16 (idle too) and fix or ground them | life | S | COMPLETED (5a708b3) | TASK-469 |
+| TASK-478 | M20 follow-ups (`mar-docs/qa/m20-2026-10-23.md`): W16 re-frame (pier root out of frame, balloon on the clock-tower crown); W22 gate lanterns faint; tour W19 stop still uses the old NE angle (`content/tour.ts`); `birds=0` URL flag for ladder frames (gulls → L-pairs-hq pair 40); L-marketing medium far drift (cliff strata flat at T0 / far T1, far sea stacks lose caps); L-design near rungs can't show the conservatory (metric/engine decision); W4 Beacon/Design buffers trim so medium MB 176 → 170 | engine / shader / props | M | PENDING | TASK-470, TASK-476 |
 
 ### M21 — World P1 (quick wins)
 *D-059, `mar-plans/WORLD_PLAN.md` §4.8 / `study/world.md`. 472 ∥ 473 now (parallel to M20); 474 after TASK-471.*
