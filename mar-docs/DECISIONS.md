@@ -2,6 +2,18 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-061: Medium budget raised for HQ Seven Gates, to be won back by an engine merge — 2026-10-23
+
+**Context**: TASK-466 puts each culture's gate, stall and pennant line in its own instanced group (+ shadow pass):
+HQ fixture/lot groups 33 → 49. Measured W16 327 calls (limit 300), W2 / W3 243 / 241, W4 171 MB (limit 170).
+TASK-467 (Design) adds more on top.
+
+**Decision** (user, 2026-10-23): raise the medium budget now — calls 300 → 340, gpuMemoryMB 170 → 176
+(`src/content/budgets.ts`) — and merge TASK-466 so M20 keeps moving. A follow-up engine task (TASK-476) merges the
+near-tier culture fixture groups and brings medium back to ≤ 300 calls; the limit is lowered again when it lands.
+
+**Rejected**: a permanent raise (eats the medium FPS margin); holding 466 until the engine merge (blocks 468/469).
+
 ## D-060: Round 3 details for HQ / Design and the morning mist — 2026-10-17
 
 The user took the recommended option for each item:
