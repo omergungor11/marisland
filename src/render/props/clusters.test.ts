@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createPropStore, PropFlag } from '../../world/prop-store.ts';
-import { PROP_DEF_INDEX } from '../../content/props.ts';
+import { PROP_DEFS, PROP_DEF_INDEX } from '../../content/props.ts';
 import { createRng } from '../../core/rng.ts';
 import * as THREE from 'three';
 import { FOLIAGE } from '../../content/palette.ts';
@@ -9,6 +9,8 @@ import {
   ClusterIndex,
   canopyKindOf,
   canopyStats,
+  CANOPY_KINDS,
+  cellKey,
   clusterKey,
   CLUSTER_CELL,
   deltaE,
@@ -54,7 +56,8 @@ describe('T0 cluster cells (TASK-213)', () => {
       total += cell.n;
       let x = 0;
       for (const i of cell.members) {
-        expect(clusterKey(s.x[i], s.z[i])).toBe(cell.key);
+        expect(Math.floor(cell.key / CANOPY_KINDS.length)).toBe(clusterKey(s.x[i], s.z[i]));
+        expect(canopyKindOf(PROP_DEFS[s.defId[i]].id)).toBe(cell.kind);
         expect(s.flags[i] & PropFlag.clusterable).not.toBe(0);
         x += s.x[i];
       }
@@ -102,7 +105,7 @@ describe('T0 cluster cells (TASK-213)', () => {
     const s = createPropStore(8);
     const a = s.push(PROP_DEF_INDEX.pine, 0, 1, 0, 1, 0, 1, 0, 0, TREE);
     const c = new ClusterIndex(s);
-    const key = clusterKey(1, 1);
+    const key = cellKey(s, a);
     s.flags[a] |= PropFlag.removed;
     expect(c.update(s, [a]).map((x) => x.n)).toEqual([0]);
     expect(c.cells.get(key)!.n).toBe(0);
@@ -111,6 +114,17 @@ describe('T0 cluster cells (TASK-213)', () => {
     expect(cell.key).toBe(key);
     expect(cell.n).toBe(1);
     expect(cell.y).toBe(4);
+  });
+
+  it('two species in one grid cell get two single-species cells (TASK-464)', () => {
+    const s = createPropStore(8);
+    const a = s.push(PROP_DEF_INDEX.pine, 0, 1, 0, 1, 0, 1, 0, 0, TREE);
+    const b = s.push(PROP_DEF_INDEX.roundTree, 0, 2, 0, 2, 0, 1, 0, 0, TREE);
+    const c = new ClusterIndex(s);
+    expect(c.cells.size).toBe(2);
+    expect(c.keyOf(a)).not.toBe(c.keyOf(b));
+    expect(c.cells.get(c.keyOf(a)!)!.kind).toBe('pine');
+    expect(c.cells.get(c.keyOf(b)!)!.kind).toBe('deciduous');
   });
 
   it('an unchanged prop keeps the member order (identical mean bits)', () => {

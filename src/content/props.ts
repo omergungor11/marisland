@@ -109,7 +109,7 @@ const VEGETATION_DEFS: readonly PropDef[] = [
  * Vegetation/rocks first (scatter indices stay stable), then buildings/landmarks/decor, then the
  * M14b theme structures (content/props-themes/<theme>.ts) in fixed theme order.
  */
-export const PROP_DEFS: readonly PropDef[] = [
+const ALL_DEFS: readonly PropDef[] = [
   ...VEGETATION_DEFS,
   ...PROP_DEFS_BUILDINGS,
   ...HQ_PROP_DEFS,
@@ -132,6 +132,19 @@ export const PROP_DEFS: readonly PropDef[] = [
   ...HQ_M20_PROP_DEFS,
   ...DESIGN_M20_PROP_DEFS,
 ];
+
+/**
+ * Trees (clusterable) fade out far beyond the tier-1 range (TASK-464): the T0 species blobs take over
+ * at the tier switch (380 u), so the far forests of T1 views stay visible instead of stippling out.
+ */
+/** T0 blob scale per canopy kind (TASK-464): a conifer blob must not out-cover the pines it stands for. */
+export const BLOB_KIND_SCALE = { deciduous: 1, pine: 0.8, palm: 1, blossom: 1.5 } as const;
+
+export const TREE_FADE: [number, number] = [500, 620];
+
+export const PROP_DEFS: readonly PropDef[] = ALL_DEFS.map((d) =>
+  (d.flags & clusterable) !== 0 && !d.fade ? { ...d, fade: TREE_FADE } : d,
+);
 
 export const PROP_DEF_INDEX: Record<string, number> = Object.fromEntries(
   PROP_DEFS.map((d, i) => [d.id, i]),

@@ -22,11 +22,9 @@ import { makeBlobs, writeBlobMatrix } from './contact-blobs.ts';
 import {
   CANOPY_KINDS,
   ClusterIndex,
-  canopyKindOf,
   canopyStats,
   clusterScale,
   isCanopy,
-  mixLattice,
   rampRatio,
   BLOB_MIX_STEPS,
   type CanopyKind,
@@ -341,26 +339,20 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
     const paletteSig: string[] = [];
     const classes = new Map<string, { pal: TreePalette; counts: number[] }>();
     const geos = new Map<string, THREE.BufferGeometry>();
-    const w = CANOPY_KINDS.map(() => 0);
     return {
       /** Colour class of a non-empty cell: `${palette}:${lattice counts}`. */
       classOf(c: ClusterCell): string {
         const theme = d.world?.islands[c.island]?.theme;
         const pal: TreePalette = theme ? THEMES[theme].treePalette : FOLIAGE;
-        const sig = (['deciduous', 'pine', 'palm'] as const).map((k) => pal[k].join(',')).join('|');
+        // only the cell's own species ramp matters: palettes that agree on it share one class
+        const sig = c.kind === 'blossom' ? 'blossom' : pal[c.kind].join(',');
         let pi = paletteSig.indexOf(sig);
         if (pi < 0) {
           pi = paletteSig.push(sig) - 1;
           palettes.push(pal);
         }
-        w.fill(0);
-        for (const i of c.members) {
-          const def = PROP_DEFS[store.defId[i]];
-          const s = store.scale[i];
-          w[CANOPY_KINDS.indexOf(canopyKindOf(def.id))] +=
-            treeStats(def, store.variant[i]).area * s * s;
-        }
-        const counts = mixLattice(w);
+        // one species per cell (clusters.ts): a pure lattice class
+        const counts = CANOPY_KINDS.map((k) => (k === c.kind ? BLOB_MIX_STEPS : 0));
         const key = `${pi}:${counts.join(',')}`;
         if (!classes.has(key)) classes.set(key, { pal: palettes[pi], counts });
         return key;
@@ -612,7 +604,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
           o.y = c.y;
           o.z = c.z;
           o.rotY = cellRotY(c);
-          o.scale = clusterScale(c.n);
+          o.scale = clusterScale(c.n, c.kind);
         },
         members.length,
         blobColors.geometryOf(cls),
@@ -903,7 +895,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
   const writeCell = (g: Group, k: number, c: ClusterCell, rotY: number, time: number): void => {
     _p.set(c.x, c.y, c.z);
     _q.setFromAxisAngle(_axis, rotY);
-    const scale = c.n ? clusterScale(c.n) : 0;
+    const scale = c.n ? clusterScale(c.n, c.kind) : 0;
     _s.setScalar(scale);
     _m.compose(_p, _q, _s);
     g.mesh.setMatrixAt(k, _m);
@@ -958,7 +950,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
             o.y = c.y;
             o.z = c.z;
             o.rotY = rotY;
-            o.scale = clusterScale(c.n);
+            o.scale = clusterScale(c.n, c.kind);
           },
           grownCapacity(1),
           blobColors.geometryOf(cls),
