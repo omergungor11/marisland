@@ -202,6 +202,8 @@ export interface SiteCtx {
   fields: readonly FieldPatchData[];
   net: PathNetwork;
   blocked: Uint8Array;
+  /** Cells footpaths may use although their shore SDF is ≤ 0 (a bridge deck over a creek). */
+  passable: Uint8Array;
   hasNet: boolean[];
   /** Per island: walkable land component of the campus quad (campus lots must stand on it). */
   reach: (Uint8Array | null)[];
@@ -1349,6 +1351,7 @@ export function stepCtx(ctx: SiteCtx, isl: IslandData) {
     zone: ctx.zone,
     islandId: isl.id,
     blocked: ctx.blocked,
+    passable: ctx.passable,
     net: ctx.net,
   };
 }

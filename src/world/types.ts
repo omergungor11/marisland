@@ -293,7 +293,17 @@ export interface FieldPatchData {
 
 /** District kinds (M14b). Extend the union when a theme plan needs a new kind. */
 export type DistrictKind =
-  'solar' | 'quad' | 'yard' | 'garden' | 'terrace' | 'stage' | 'sandbox' | 'sculpture';
+  | 'solar'
+  | 'quad'
+  | 'yard'
+  | 'garden'
+  | 'terrace'
+  | 'stage'
+  | 'sandbox'
+  | 'sculpture'
+  // Design Glass Conservatory (TASK-467): the glasshouse block and the windmill meadow
+  | 'glasshouses'
+  | 'windmill';
 
 /**
  * A theme district (M14b): a rectangle with a purpose (render emits its props, e.g. solar rows on

@@ -9,7 +9,7 @@ import {
   OFFICE_DEFS,
   type EmitterSpot,
 } from '../../content/offices.ts';
-import { FLOATING_FIXTURES } from '../../content/settlements.ts';
+import { BANK_FIXTURES, FLOATING_FIXTURES } from '../../content/settlements.ts';
 import { PIPE_RUN } from '../../content/props-themes/devops.ts';
 import { createPropStore, PropFlag, type PropStore } from '../../world/prop-store.ts';
 import { heightAt, type DistrictKind, type WorldData } from '../../world/types.ts';
@@ -30,6 +30,20 @@ import { elbowTurn, levelPipeRun, type PipeSpan } from '../../world/pipe-run.ts'
  * TASK-380: plaza decor from `THEMES[theme].plazaDecor`, floating fixtures at the waterline,
  * steam on fixtures / scattered props (FIXTURE_EMITTERS), boardwalk paths as dock planks.
  */
+
+/**
+ * Pivot y of a BANK_FIXTURES fixture (TASK-467 glass bridge): the mean ground height at the two
+ * bank points `d` u along local ± x (planner frame: local +x = (sin rotY, −cos rotY)).
+ */
+function bankY(
+  h: WorldData['height'],
+  fx: { x: number; z: number; rotY: number },
+  d: number,
+): number {
+  const ux = Math.sin(fx.rotY) * d;
+  const uz = -Math.cos(fx.rotY) * d;
+  return (heightAt(h, fx.x + ux, fx.z + uz) + heightAt(h, fx.x - ux, fx.z - uz)) / 2;
+}
 
 export interface SettlementEmitters {
   /**
@@ -418,7 +432,12 @@ export function appendSettlementProps(world: WorldData): {
     const yaw = Math.atan2(Math.cos(fx.rotY), Math.sin(fx.rotY));
     const def = PROP_DEFS[PROP_DEF_INDEX[fx.defId]];
     if (!def) continue;
-    const y = FLOATING_FIXTURES.includes(fx.defId) ? 0 : undefined;
+    const bank = BANK_FIXTURES[fx.defId];
+    const y = FLOATING_FIXTURES.includes(fx.defId)
+      ? 0
+      : bank === undefined
+        ? undefined
+        : bankY(h, fx, bank);
     // rolled even when the planner chose one: keeps the island's decor stream stable
     const rolled = decorOf(fx.islandId).int(0, rolls(def) - 1);
     const v = fx.variant !== undefined && fx.variant < def.variants ? fx.variant : rolled;

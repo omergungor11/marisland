@@ -504,7 +504,8 @@ describe('campuses — 50-seed acceptance (TASK-302)', () => {
     coding: 6,
     devops: 4,
     qa: 4,
-    design: 4,
+    // TASK-467: the conservatory campus (square, glasshouse block, windmill) shares the dome
+    design: 3,
     marketing: 2,
     // TASK-400: the Biodome Lab is domes (fixtures) + a pier, no lots
     research: 0,
@@ -606,9 +607,9 @@ describe('campuses — 50-seed acceptance (TASK-302)', () => {
       if (fails.length > 0) console.info(`campus minimum misses: ${fails.join('; ')}`);
       for (const t of THEME_IDS) {
         const rate = (ok[t] ?? 0) / seeds.length;
-        // TASK-471 re-roll: Design 43 / 50 (its plan is reworked in TASK-467)
+        // TASK-467: Design ≥ 3 lots on ≥ 80 % (the ring round the square is the dome flank)
         expect(rate, `${t} minimum hit rate`).toBeGreaterThanOrEqual(
-          t === 'design' ? 0.85 : SOFT.includes(t) ? 0.9 : 1,
+          t === 'design' ? 0.8 : SOFT.includes(t) ? 0.9 : 1,
         );
       }
     },

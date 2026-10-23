@@ -10,6 +10,19 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-18 (TASK-467, worldgen)**: Design "Glass Conservatory" plan (`world/gen/plans/design.ts`): pier in
+  the lee cove beside the stream mouth, Conservatory Square (R 10 terrazzo disc near the dome top, octagon
+  blocked, bay 0 toward the pier, hub at bay 0's pin), four bay lanes (corridor A* round the plaza ring),
+  the Prism Walk arches on straight runs of the pier lane, the glass bridge over a tidal creek cut into the
+  stream's beach reach (`passable` deck cells), the 2 × 3 glasshouse block (split rows fallback), the
+  stained windmill meadow, lots in a ring, the old kit re-homed, two rainbows, pine 0.85 → 0.55. Numbers in
+  `content/themes/design.ts` (`square`, `dock`) and `content/cultures/design.ts` (`glasshouses`,
+  `prismWalk`, `bridge`, `windmill`, `rainbows`). 30-seed thresholds carry `TASK-467` notes (the campus
+  crowds a 40 u dome: lots ≥ 3 on 90 %, ≥ 1 arch on 90 %, bridge on 85 %). Left for later (Design+1):
+  the waterfall balcony (Z11), the chime walk (Z12), the mirror pond (after TASK-353); the sea-glass
+  beach speckle (Z9) is in the theme ground table for every Design beach, not only the NE sand. Hooks:
+  the arch fixture position is the TASK-468 light-pool centre (`hooks.pool.at` = local origin); bots
+  crossing the creek path walk at terrain height until TASK-469 reads `glassBridge` `hooks.walk`.
 - **2026-10-17 (TASK-471, worldgen)**: hub layout (HQ nearest the centroid, six on a 60° ring, `LAYOUT.hub`,
   `layoutProblem` 'offcentre') + islets (`world.islets`: 3–6 skerries + one Lonely Palm sandbar, `ISLETS` /
   `ISLET_LAYOUT` / `ISLET_SCATTER`), D-058 implementation note. One-time re-pin: every raw cam in `shots.ts`
@@ -167,6 +180,24 @@
 - Shot presets are data in `src/content/shots.ts`; both the harness (`scripts/shots.ts`) and the app read them — keep them in sync
 
 ## Known Issues / Gotchas
+- **The Mossgrove stream carve does not reach the heightfield** (TASK-467): the profile's 1.1 u dent is
+  swallowed by the dome's cross-slope and the 2 u grid; `world.streams` is a polyline over plain ground
+  (easels / screens still read it). The only water a bridge can span is the sea, so the Design creek is
+  cut below sea level in the planner (`glassBridge`), and every cut cell gets a NEGATIVE shore SDF: the
+  settlements test holds `h > 0 ⇔ shoreSdf > 0`, `applyPads` skips sdf ≤ 0 cells (else the end pads refill
+  the creek), and `pathStep` refuses sdf < minShore unless `ctx.passable[i]` (the deck cells).
+- **Pad relaxation does not converge in a crowded chain** (12 pairwise sweeps): two overlapping cores
+  with different `T` mix by distance weight and leave a 0.5–0.9 u bump under a prop corner (a glasshouse
+  3.9 u from the windmill pad, a lot pad beside the block). Give a pad that must stay level a non-blocking
+  "keep-off" shape = its core + the neighbour's margin (`glasshouses.keepOff` 4.5 u for lot cores, the
+  windmill / bridge pads + 2 × discMargin), and use `FLATTEN.lotMargin` for rect pads whose corners are
+  checked (the 2 u cells' bilinear phase eats 1.5 u on a slope).
+- **A* lanes traverse steep flanks** (the slope cost is along-path only): a prop astride a lane needs a
+  cross-step check at its posts (the Design pier lane crosses 2–2.6 u over 2 u on small domes, seeds
+  1789 / 4419 / 7312: no arch fits). Put lane props mid-way in ≥ 5 collinear cells: the Catmull-Rom chain
+  smoothing keeps a straight run, so the final path still passes under them after later links split the
+  chain and re-phase the spline (3-cell runs drift up to 1.5 u). Do not smooth the lane yourself —
+  the chains are cut at junctions that do not exist yet.
 - **Islets own `islandMap` ids past the islands** (TASK-471): `world.islands[world.islandMap[i] - 1]` is
   undefined on a skerry / sandbar cell. Guard with `id > islands.length` (done in terrain-colors' palette
   row, settlements' `pathSparesSlopes`, the archipelago / edit tests) or use `coastBody(islands, islets, id)`

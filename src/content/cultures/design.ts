@@ -82,11 +82,11 @@ export const DESIGN_CULTURE_SITE = {
     /** Yard centre offset along local z (the yard runs a little in front of the shop). */
     yardZ: 0.5,
     /** Ring round the quad centre (u past the quad edge), radius step, angle samples. */
-    ring: [3.5, 22] as const,
+    ring: [3.5, 26] as const,
     step: 1,
     samples: 28,
     /** Relief over the yard tried in order (u). */
-    maxRelief: [1.2, 2, 3.2] as const,
+    maxRelief: [1.2, 2, 3.2, 4.5] as const,
     gap: 0.8,
     /** Score: per u from the quad edge, and for the windward side (smoke blows off the glade). */
     distCost: 0.12,
@@ -200,4 +200,127 @@ export const DESIGN_CULTURE_SITE = {
   /** Small kit props: relief cap round the footprint before levelling (u), obstacle gap. */
   smallRelief: 1.0,
   gap: 0.5,
+
+  // ---- M20 Glass Conservatory (D-057 / D-058 / D-060, TASK-467)
+  /**
+   * Glasshouse rows (Z1 / D2): a 2 × 3 block beside the square, doors toward it, one level.
+   * `rows` = GLASSHOUSE_HUES indices, front row (nearest the square) then back row, left → right
+   * seen from the square: read as a serpentine the six are pink → amber → mint → sky → violet →
+   * pink, the spectrum wrapping back to magenta.
+   */
+  glasshouses: {
+    rows: [
+      [2, 4, 1],
+      [0, 3, 2],
+    ] as const,
+    /** Centre spacing along the row and between the two rows (u; the aisle between rows walks). */
+    colGap: 3.4,
+    rowGap: 6.6,
+    /** Block centre: this far from the square centre (u) at these angles off each bay axis
+     * (deg; 45 = the diagonal between two bays); every pair is scored, the best wins. */
+    dist: [17, 19, 21, 23.5, 26] as const,
+    angleOff: [45, 25, 65, 12, 78] as const,
+    /** Relief over the block before levelling (u, tiers); shore floor (u); obstacle gap (u). */
+    maxRelief: [3, 4.5, 6.5, 9] as const,
+    /** Shore floor (u): the block pad (lotMargin + falloff) must stay off the bluff band. */
+    minShore: 12,
+    gap: 1,
+    /** Path pins: in front of the middle front house and at both aisle ends (u past the block). */
+    pin: 1.5,
+    /** Nothing else stands within this of the block (u): a neighbouring lot / kit pad core
+     * overlapping the block pad's core would mix two levels under a house corner. */
+    keepOff: 4.5,
+    /** Forest within this of the block edge becomes meadow (u). */
+    meadow: 5,
+  },
+  /**
+   * Prism Walk (Z4 / D3): prism arches astride the pier bay path, `spacing` u apart from `first`
+   * u past the bay pin, only on straight, level, high-enough cells (an arch on a cross-slope
+   * floats a post). The arch's own position is the TASK-468 light-pool centre (`hooks.pool.at`
+   * = the local origin on the ground) — the pools need no extra fixture.
+   */
+  prismWalk: {
+    first: 6,
+    spacing: 8,
+    count: [3, 5] as const,
+    /** Each arch takes the levellest cell within ± `window` u of its nominal spot (≥ `minSpacing`
+     * past the arch before it) that sits mid-way in a straight run of `run` lane cells (the
+     * smoothed path keeps a straight run). */
+    window: 8,
+    minSpacing: 5,
+    run: [5, 3] as const,
+    /** Post-to-post step caps tried in order (u): the lane traverses the dome flank, so each
+     * arch gets a small levelling pad (`pad` u disc); the second tier is a small shelf. */
+    crossStep: [1.0, 1.4] as const,
+    pad: 1.2,
+    /** Posts off the path edge: PRISM_ARCH.postX; their obstacle disc (u). */
+    postX: 1.0,
+    postR: 0.3,
+    /** Forest within this of the walk becomes meadow (u). */
+    meadow: 5,
+  },
+  /**
+   * Glass bridge (Z10 / D7) over the stream's tidal creek: the Mossgrove stream carve does not
+   * survive into the heightfield (the dome's cross-slope swallows a 1 u dent), so the only water
+   * a bridge can span is the sea. The last reach of the stream across the lee beach is cut
+   * below sea level (`creek*`: the sea fills it), the bridge crosses it where both banks are
+   * beach (`bankY`) and level (`bankStep`), local +x across the water (GLASS_BRIDGE: span 7,
+   * pads at x = ± 3.9). The creek is blocked for paths except at the bridge, so the pier side
+   * reaches the island over it. The render pivot y is the mean bank height
+   * (content/settlements BANK_FIXTURES), not the bed.
+   */
+  bridge: {
+    /** Pad centres along local x (u) = GLASS_BRIDGE.span / 2 + pad / 2; their obstacle disc. */
+    padX: 3.9,
+    padR: 0.9,
+    /** Bank height window at the pads (u above sea; the end pads lift a low bank to
+     * FLATTEN.minHeight) and the step between them, tiers (u). */
+    bankY: [0.5, 1.6] as const,
+    bankStep: [0.3, 0.6] as const,
+    /** Deck axis turned off the stream normal by these (deg, tried in order): the beach is
+     * tilted across the creek, the deck follows the contour. */
+    angles: [0, 15, -15, 30, -30, 45, -45] as const,
+    /** Relief over a 1.3 u disc at each pad before its levelling pad (u); the pad disc (u);
+     * shore distance floor at the pivot (u). */
+    padRelief: 2.2,
+    endPad: 1.1,
+    endPadStep: 5,
+    minShore: 1.5,
+    /** Prefer the site farthest inland (the longest creek); never inside the square pad. */
+    squareClear: 4,
+    /** Path pins this far past the pads (u). */
+    pin: 1.4,
+    /** Creek: bed depth (u, below sea), full-depth core and falloff half-widths (u), how far
+     * upstream of the bridge it is cut (u); its path-blocking band half-width and bridge gap (u). */
+    creekDepth: -0.6,
+    creekCore: 1.1,
+    creekFalloff: 2.0,
+    creekPast: 5,
+    band: 2.0,
+    gapAlong: 3.2,
+    /** No band within this of the pier root (its link needs a free cell). */
+    pierClear: 3.5,
+  },
+  /**
+   * Stained windmill (Z6 / D9): a meadow on the dome's shoulder opposite the tree, the rotor
+   * (local +z) into the wind. Pine filler is cleared: forest in `meadowR` becomes meadow.
+   */
+  windmill: {
+    /** Distance from the island centre (u) and the preferred one; floors / gaps (u). */
+    dist: [16, 36] as const,
+    preferDist: 26,
+    minY: 6,
+    minShore: 10,
+    treeClear: 22,
+    squareClear: 20,
+    streamClear: 9,
+    /** Disc levelled under the mill (u) and its relief tiers (u). */
+    discR: 3.5,
+    maxRelief: [2, 3, 4.5] as const,
+    meadowR: 9,
+    /** Path pin this far from the mill toward the square (u). */
+    pin: 2.8,
+  },
+  /** Two spray rainbows (D-060, +2 calls): the second at least this far from the first (u). */
+  rainbows: { count: 2, minSep: 34 },
 } as const;

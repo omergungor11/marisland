@@ -1,5 +1,5 @@
 /** Design / Art (Mossgrove, forest dome) — M14b plan §2.6 (TASK-367). */
-import { FOLIAGE, ROOFS } from '../palette.ts';
+import { FLOWERS, FOLIAGE, ROOFS, SAND } from '../palette.ts';
 import type { CampusSpec } from '../settlements.ts';
 import { Zone } from '../../world/types.ts';
 import type { ThemeDef } from './index.ts';
@@ -7,30 +7,90 @@ import type { ThemeDef } from './index.ts';
 const { grass, meadow, forest } = Zone;
 
 /**
- * Site layout of the Design island (world/gen/plans/design.ts): an art campus in the forest.
- * - Atelier Glade: ateliers + gallery pavilions around a mosaic quad (lanes + ring fill).
+ * Site layout of the Design island (world/gen/plans/design.ts): the Glass Conservatory campus
+ * (D-057 / D-058 / D-060, TASK-467) in the forest dome.
+ * - Conservatory Square: the conservatory on a terrazzo disc, lots in a ring, 4 bay paths.
+ * - Pier in the lee cove; the Prism Walk (bay 0 → pier) lined with prism arches (cultures/design).
  * - Sculpture Garden: an open, levelled meadow clearing with primary-colour T0 sculptures.
  * - Easel Walk: easels on one bank of the stream, facing the water, linked into a bank path.
  * - Mushroom Grove: a cluster of giant mushrooms in the forest.
  */
 export const DESIGN_SITES = {
+  /**
+   * Lot spec of the Conservatory Square (TASK-467, D-058): `quadR` is the levelled terrazzo disc
+   * round the conservatory; the ateliers / pavilions ring it (`ring` past quadR, facing it). The
+   * lanes are the four bay paths (plans/design.ts `conservatorySquare`), not CampusSpec lanes.
+   */
   glade: {
     lots: [4, 6],
-    quadR: 4.5,
+    quadR: 10,
     quadSearch: 25,
     quadMinShore: 6,
-    quadMaxRelief: 2.5,
+    quadMaxRelief: 4,
     quadLee: 0,
-    minShore: 4,
+    // lot pads (lotMargin + falloff ≈ 7 u) stay off the bluff band (TASK-467; was 4)
+    minShore: 8,
     maxRelief: 2.5,
-    lanes: [0, 75, -75, 140, -140, 35, -35, 108, -108, 160, -160],
-    laneLength: 26,
-    ring: [3, 20],
+    lanes: [],
+    laneLength: 0,
+    ring: [2.5, 18],
     maxFieldSamples: 5,
   } satisfies CampusSpec,
+  /**
+   * Conservatory Square (Z1): the conservatory octagon (FIXTURE_RADIUS.conservatory) at the centre
+   * of a `glade.quadR` terrazzo disc near the dome top, its 4 bays (local +z, +x, −z, −x) each
+   * leading to a path. Bay 0 faces the pier: that path is the Prism Walk (Z4).
+   */
+  square: {
+    /** Search radius round the island centre (u) and shore distance floor for the disc. */
+    search: 30,
+    minShore: 12,
+    /**
+     * Passes tried in order: [gap past the octagon to the tree's landmark disc, relief cap over
+     * the disc] (u); the pad levels the relief. The Mossgrove stream rises beside the summit
+     * opposite the tree, so the square sits between them on the dome top (its pad swallows the
+     * first few u of the invisible upper stream); on a small dome the tree's flat shoulder is
+     * the only level ground, and the square shares it (the octagon still clear of the trunk).
+     */
+    passes: [
+      [3, 4],
+      [3, 6],
+      [3, 9],
+      [0, 6],
+      [0, 9],
+      [0, 13],
+    ] as const,
+    /** Gap past the disc to the stream line (u). */
+    streamClear: 0.5,
+    /** Bay path pins this far past the octagon (u). */
+    bayPin: 1.6,
+    /** Side / back bay lanes: length tried from `laneLength` down to `laneMin` (u). */
+    laneLength: 34,
+    laneMin: 16,
+    /** A* corridor half-width round each bay axis (u); the plaza ring is always allowed. */
+    corridor: [5, 10] as const,
+    /** A bay whose axis is within this of the tree (deg) ends at the tree's access point. */
+    treeBayDeg: 50,
+    /** Forest within this of the square (past quadR) becomes meadow (pine filler cleared). */
+    meadowRing: 6,
+  },
+  /**
+   * The pier in the lee cove beside the stream mouth (Z5): the Prism Walk's far end. Preferred
+   * root `offset` u along the shore from the mouth (either side), at least `streamClear` from
+   * the stream line (the creek under the glass bridge runs there).
+   */
+  dock: {
+    maxDist: 26,
+    offset: 10,
+    streamClear: 7,
+    lee: 2,
+    rowboats: 1,
+  },
   clearing: {
-    /** Disc radius (u): ≥ 6 so the clearing is ≥ 12 u wide (plan §5 TASK-367). */
+    /** Disc radius (u) and the smallest tried when it finds no room: ≥ 6 so the clearing is
+     * ≥ 12 u wide (plan §5 TASK-367; TASK-467 fallback). */
     radius: 7,
+    minRadius: 6,
     /** Max relief over the disc before levelling, tried in order (u). */
     maxRelief: [2, 3, 4.5, 6, 8, 10],
     /** Preferred distance from the quad centre (u); score cost per u off it. */
@@ -59,12 +119,13 @@ export const DESIGN_SITES = {
   },
   grove: {
     mushrooms: [5, 7] as const,
-    radius: 6,
+    /** Grove disc radius (u), the smaller when the campus leaves no room (TASK-467). */
+    radius: [6, 4.5] as const,
     /** Mushroom spacing and obstacle radius (u). */
     spacing: 2.6,
     mushroomR: 1.1,
-    /** Distance from the quad and the clearing (u). */
-    minSep: 14,
+    /** Distance from the quad and the clearing (u), tried in order. */
+    minSep: [14, 10] as const,
     quadDist: 22,
     /** Relief tiers over the grove disc (u); forest ground first, then any green ground. */
     maxRelief: [5, 8] as const,
@@ -114,6 +175,18 @@ export const DESIGN_THEME: ThemeDef = {
       base: '#4E8E4A',
       layer: { layers: ['litter', 'blades'], speckle: ['#E8A0B8', '#C98A3E'] },
     },
+    // sea-glass beach (Z9, TASK-467): cullet chips in the sand — roof teal / violet and a pink
+    // flower glint over the default sand ramp; amplitude ≤ 1.1 keeps the far beach colour
+    [Zone.sandDry]: {
+      material: 'sand',
+      base: SAND.dry,
+      layer: { layers: ['ripples', 'speckle'], speckle: [ROOFS[2], ROOFS[4], FLOWERS[0]] },
+    },
+    [Zone.sandWet]: {
+      material: 'sand',
+      base: SAND.wet,
+      layer: { layers: ['ripples', 'speckle'], speckle: [ROOFS[2], ROOFS[4]], amplitude: 0.9 },
+    },
     // confetti gravel paths
     [Zone.path]: {
       material: 'gravel',
@@ -149,12 +222,14 @@ export const DESIGN_THEME: ThemeDef = {
       cluster: { scale: 26, threshold: -0.1 },
       scale: [0.8, 1.25],
     },
-    // dense pine stands keep the dome wooded between the blossom groves
+    // pine stands between the blossom groves; density 0.85 → 0.55 (−35 %, D-058 / TASK-467) and
+    // the new districts (square, prism walk, glasshouses, windmill meadow) are painted meadow,
+    // so no pine stands there. The inner dome turns to blossom / meadow after TASK-464.
     {
       def: 'pine',
       zones: [forest],
       minDist: 3.4,
-      density: 0.85,
+      density: 0.55,
       // the dome flanks are steep (slope 0.8–1.4 on a third of the forest): pines cover them
       slopeMax: 1.3,
       heights: [2, 40],

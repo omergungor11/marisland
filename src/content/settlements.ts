@@ -332,6 +332,15 @@ export const FLOATING_FIXTURES: readonly string[] = [
   'rainbowArc',
 ];
 
+/**
+ * Fixtures that span a carved channel (TASK-467, the Design glass bridge): the render pivot y is
+ * the mean ground height at the two bank points ± this far along local +x, not the bed under the
+ * pivot (the deck would sink 1 u into the stream). Value = GLASS_BRIDGE.span / 2 + pad / 2.
+ */
+export const BANK_FIXTURES: Readonly<Record<string, number>> = {
+  glassBridge: 3.9,
+};
+
 /** Flatten pads (plateau with smooth falloff). */
 export const FLATTEN = {
   /** Core extends this far past a lot footprint (≥ 2√2 so bilinear corners only see the plateau). */
