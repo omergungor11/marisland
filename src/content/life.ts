@@ -609,6 +609,8 @@ export const ACTIVITY = {
       { goal: { kind: 'hub' } },
       { goal: { kind: 'spot', defs: ['blowpipeRack', 'hotShop'] }, item: 'blowpipe' },
       { goal: { kind: 'seat', defs: ['galleryPavilion'] } },
+      // TASK-469: a look at the creek from the bank beside the glass bridge (one bank is across it)
+      { goal: { kind: 'spot', defs: ['glassBridge'] } },
     ],
     // TASK-422/432 Ember Smiths: racks, cooling, the anvil, the incident board, crates to the quay
     devops: [

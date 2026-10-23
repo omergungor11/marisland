@@ -425,9 +425,9 @@ export function buildSemaphoreArm(rng: Rng, lod: Lod): THREE.BufferGeometry {
 
 /**
  * Coastal semaphore: four white lattice legs with coral bands, horizontal rings and X braces,
- * a platform with rail, a mast and cross bar, the two signal arms on pins at the bar ends, and a
- * night lamp on top. Hooks (local frame): `arms[0|1]` = { first, count, pivot, axis: [0,0,1],
- * restAngle (rad from +y), length }, `lamp` = { at, first, count }.
+ * a platform with rail, a mast and cross bar, pins at the bar ends for the two signal arms (drawn
+ * by the culture mover, not part of this mesh), and a night lamp on top. Hooks (local frame):
+ * `arms[0|1]` = { pivot, axis: [0,0,1], restAngle (rad from +y), length }, `lamp` = { at, first, count }.
  */
 function semaphoreTower({ rng, lod }: BuildOpts): THREE.BufferGeometry {
   const hi = lod === 0;
@@ -541,21 +541,14 @@ function semaphoreTower({ rng, lod }: BuildOpts): THREE.BufferGeometry {
       C.steel,
       { aoAmt: 0 },
     );
-  // the two arms, each a contiguous vertex range
-  const arms = SEMA.pivotX.map((sx, i) => {
-    const first = accVerts(acc);
-    const pivot = V(sx, barY, SEMA.pivotZ);
-    const rest = (SEMA.restDeg[i] * Math.PI) / 180;
-    armParts(acc, pivot, rest, SEMA.armLength, hi);
-    return {
-      first,
-      count: accVerts(acc) - first,
-      pivot: through(acc, pivot),
-      axis: [0, 0, 1],
-      restAngle: rest,
-      length: SEMA.armLength,
-    };
-  });
+  // The two signal arms are NOT in this mesh (TASK-469): render/culture-movers.ts draws them
+  // (PART.arm, a copy of `armParts`) so they can follow the 21:00 relay; only the hooks remain.
+  const arms = SEMA.pivotX.map((sx, i) => ({
+    pivot: through(acc, V(sx, barY, SEMA.pivotZ)),
+    axis: [0, 0, 1],
+    restAngle: (SEMA.restDeg[i] * Math.PI) / 180,
+    length: SEMA.armLength,
+  }));
   // lamp on the mast top
   const lampY = barY + 0.62;
   if (hi) put(acc, cylB(0.04, 0.04, 0.35, 4, true), [0, barY, 0], C.steel, { aoAmt: 0 });

@@ -2,7 +2,10 @@ import * as THREE from 'three';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { Scope } from '../core/scope.ts';
 import { PROP_DEFS } from '../content/props.ts';
+import { CULTURES } from '../content/cultures/index.ts';
 import { CULTURE_MOVERS as M } from '../content/cultures/movers.ts';
+import { RELAY } from '../content/cultures/rhythm.ts';
+import { SEMAPHORE } from '../content/props-themes/m20.ts';
 import { createEnvState, sampleEnv, type EnvState } from '../env/env-state.ts';
 import { generateWorld } from '../world/index.ts';
 import { THEME_IDS, type ThemeId, type WorldData } from '../world/types.ts';
@@ -91,9 +94,10 @@ describe('culture movers', () => {
   it('rituals follow the culture clock: bell rings only in the fanfare, kites only on kite day', () => {
     const bell = firstOf(world, props, 'bellPost')!;
     view.update(3, 12, env(12), bell, fest());
-    const noon = view.stats().instances;
+    const noon = ofKind(view, PART.ring).length;
+    expect(noon).toBe(0);
     view.update(3, 6, env(6), bell, fest('hq', 'ferryFanfare'));
-    expect(view.stats().instances).toBeGreaterThan(noon);
+    expect(ofKind(view, PART.ring).length).toBeGreaterThanOrEqual(M.bell.rings);
     const rack = firstOf(world, props, 'kiteRack');
     if (rack) {
       view.update(3, 9, env(9), rack, fest());
@@ -155,6 +159,107 @@ describe('culture movers', () => {
     view.update(3, 6, env(6), mast, fest('hq', 'ferryFanfare'));
     const n = view.stats().instances;
     expect(n).toBeGreaterThan(0);
+    SHARED.uMotionScale.value = 1;
+  });
+
+  /** Culture-clock state at `simt` s into the relay (frozen capture: time = 21 + simt). */
+  const relay = (simt: number) => ({
+    ...fest(),
+    day: RELAY.hour * M.secondsPerHour + simt,
+  });
+  /** World positions of every instance of a part kind. */
+  function ofKind(v: CultureMoversView, kind: number): THREE.Matrix4[] {
+    const m = v.mesh!;
+    const gait = m.geometry.getAttribute('aGait');
+    const out: THREE.Matrix4[] = [];
+    for (let i = 0; i < m.count; i++)
+      if (gait.getY(i) === kind)
+        out.push(new THREE.Matrix4().fromArray(m.instanceMatrix.array, i * 16));
+    return out;
+  }
+  const zAngleDeg = (m: THREE.Matrix4): number => {
+    const q = new THREE.Quaternion().setFromRotationMatrix(m);
+    const d = THREE.MathUtils.radToDeg(2 * Math.atan2(q.z, q.w));
+    return d > 180 ? d - 360 : d < -180 ? d + 360 : d;
+  };
+
+  it('HQ semaphore arms follow the relay: V rest, one spring pose per step, back to rest', () => {
+    const tower = firstOf(world, props, 'semaphoreTower');
+    expect(tower).not.toBeNull();
+    const arms = (day: { day: number }, hour: number, time = 3): number[] => {
+      view.update(time, hour, env(hour), tower!, { ...fest(), ...day });
+      return ofKind(view, PART.arm).map(zAngleDeg);
+    };
+    const [rl, rr] = SEMAPHORE.restDeg;
+    const noon = arms({ day: 12 * 25 }, 12);
+    expect(noon).toHaveLength(2);
+    expect(Math.abs(noon[0] - rl)).toBeLessThan(3);
+    expect(Math.abs(noon[1] - rr)).toBeLessThan(3);
+    // settled at the end of each 10 s step, the pose of that step
+    M.semaphore.poses.forEach(([l, r], k) => {
+      const a = arms(relay(k * 10 + 9), 21);
+      expect(Math.abs(a[0] - l), `step ${k} left`).toBeLessThan(3);
+      expect(Math.abs(a[1] - r), `step ${k} right`).toBeLessThan(3);
+    });
+    // the spring overshoots right after a step (0.4 s in: past the target, toward the new pose)
+    const [l1] = M.semaphore.poses[1];
+    const early = arms(relay(10.35), 21);
+    expect(early[0]).toBeGreaterThan(rl); // on its way from the rest V (38) to the T pose (90) …
+    expect(early[0]).not.toBeCloseTo(l1, 0); // … not there yet
+    // after the relay (+ spring time) the arms are back at rest
+    const after = arms(relay(70 + 8), 22);
+    expect(Math.abs(after[0] - rl)).toBeLessThan(3);
+    expect(Math.abs(after[1] - rr)).toBeLessThan(3);
+    // deterministic in (time, day)
+    expect(arms(relay(23.3), 21)).toEqual(arms(relay(23.3), 21));
+  });
+
+  it('HQ gate lanterns light up one after another in relay order', () => {
+    const tower = firstOf(world, props, 'semaphoreTower')!;
+    const gateDef = PROP_DEFS.findIndex((d) => d.id === 'cultureGate');
+    const orders: number[] = [];
+    for (let i = 0; i < props.count; i++)
+      if (props.defId[i] === gateDef)
+        orders.push(CULTURES[THEME_IDS[props.variant[i] % THEME_IDS.length]].relay.order);
+    expect(orders.length).toBeGreaterThanOrEqual(4);
+    const glows = (simt: number): number => {
+      view.update(3, 21, env(21), tower, relay(simt));
+      return ofKind(view, PART.glow).length;
+    };
+    // +3 = the semaphore lamp and its two arm tips (lit through the relay)
+    expect(glows(-5)).toBe(0);
+    let prev = 0;
+    for (let step = 0; step < 7; step++) {
+      const lit = orders.filter((o) => o <= step + 1).length;
+      expect(glows(step * 10 + 5), `step ${step + 1}`).toBe(lit + 3);
+      expect(lit).toBeGreaterThanOrEqual(prev);
+      prev = lit;
+    }
+    // the glow holds to the end of the relay and is gone after the fade
+    expect(glows(70 + 2)).toBeGreaterThan(0);
+    expect(glows(70 + RELAY.fadeS + 3)).toBe(0);
+  });
+
+  it('stall keepers: one per goods stall, awake from 06:30, closed form', () => {
+    const stall = firstOf(world, props, 'goodsStall')!;
+    const stallDef = PROP_DEFS.findIndex((d) => d.id === 'goodsStall');
+    let stalls = 0;
+    for (let i = 0; i < props.count; i++) if (props.defId[i] === stallDef) stalls++;
+    expect(stalls).toBeGreaterThanOrEqual(4);
+    view.update(3, 4, env(4), stall, fest());
+    expect(ofKind(view, PART.keeper)).toHaveLength(0);
+    view.update(3, 12, env(12), stall, fest());
+    expect(ofKind(view, PART.keeper)).toHaveLength(stalls);
+    expect(ofKind(view, PART.limb)).toHaveLength(stalls * 2);
+    const a = snapshot(view);
+    view.update(3.5, 12, env(12), stall, fest());
+    expect(snapshot(view)).not.toEqual(a);
+    view.update(3, 12, env(12), stall, fest());
+    expect(snapshot(view)).toEqual(a);
+    // everything finite, also with reduced motion
+    SHARED.uMotionScale.value = 0;
+    view.update(3, 21, env(21), stall, relay(31));
+    expect(snapshot(view).every(Number.isFinite)).toBe(true);
     SHARED.uMotionScale.value = 1;
   });
 });

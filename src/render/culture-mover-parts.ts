@@ -1,5 +1,10 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { SEMAPHORE } from '../content/props-themes/m20.ts';
+import { ROCK, WALLS } from '../content/palette.ts';
+import { OFFICE_COLORS } from '../content/palette-offices.ts';
+import { WORKER_COLORS as WC } from '../content/life.ts';
+import { THEMES } from '../content/themes.ts';
 
 /**
  * Part shapes of the culture movers (TASK-431): ONE merged geometry, drawn with the shared creature
@@ -20,6 +25,14 @@ export const PART = {
   blob: 7,
   quad: 8,
   beacon: 9,
+  /** HQ semaphore signal arm: pivot at the origin, pointing +y, its plane facing +z (TASK-469). */
+  arm: 10,
+  /** Stall keeper bot: feet at the origin, facing +z, worker proportions (TASK-469). */
+  keeper: 11,
+  /** The keeper's arm: shoulder pivot at the origin, hanging down -y. */
+  limb: 12,
+  /** Tintable emissive ball (gate lamp halo, semaphore lamp flash), unit radius. */
+  glow: 13,
 } as const;
 export type PartKind = (typeof PART)[keyof typeof PART];
 
@@ -233,6 +246,72 @@ export function buildPartsGeometry(): THREE.BufferGeometry {
     geo: new THREE.IcosahedronGeometry(1, 0),
     kind: PART.beacon,
     color: '#FFE9B0',
+    emissive: 1,
+  });
+  // 10 arm: the semaphore signal arm (geo/themes/culture-m20-hq.ts armParts, hi LOD): white beam,
+  // coral end panel with a cream bar, counterweight tail, brass pivot pin
+  const L = SEMAPHORE.armLength;
+  const box = (w: number, h: number, d: number, y: number): THREE.BufferGeometry =>
+    new THREE.BoxGeometry(w, h, d).translate(0, y + h / 2, 0);
+  for (const [geo, color] of [
+    [box(0.15, L + 0.45, 0.1, -0.45), WALLS[1]],
+    [box(0.42, 0.85, 0.09, L - 0.85), THEMES.hq.accent],
+    [box(0.46, 0.14, 0.11, L - 0.5), WALLS[0]],
+    [box(0.26, 0.26, 0.16, -0.62), ROCK[2]],
+    [new THREE.CylinderGeometry(0.13, 0.13, 0.14, 8).rotateX(Math.PI / 2), OFFICE_COLORS.gold],
+  ] as const)
+    pieces.push({ geo, kind: PART.arm, color, emissive: 0 });
+  // 11 keeper: worker bot (life/geo/workers.ts proportions, no bevels), body tinted, facing +z
+  const bot = (
+    w: number,
+    h: number,
+    d: number,
+    at: readonly [number, number, number],
+    color: string | null,
+    emissive = 0,
+  ): void => {
+    pieces.push({
+      geo: new THREE.BoxGeometry(w, h, d).translate(at[0], at[1], at[2]),
+      kind: PART.keeper,
+      color,
+      emissive,
+    });
+  };
+  for (const s of [-1, 1]) {
+    bot(0.12, 0.2, 0.12, [0.1 * s, 0.12, 0], WC.metal);
+    bot(0.15, 0.07, 0.2, [0.1 * s, 0.035, 0.04], WC.foot);
+    bot(0.06, 0.15, 0.06, [0.285 * s, 0.78, 0], null); // ear pads
+  }
+  bot(0.38, 0.34, 0.3, [0, 0.39, 0], null); // body (tint)
+  bot(0.2, 0.14, 0.012, [0, 0.38, 0.152], WC.plate);
+  bot(0.5, 0.38, 0.34, [0, 0.78, 0], WC.shell); // head
+  bot(0.4, 0.29, 0.02, [0, 0.775, 0.172], WC.screen);
+  for (const s of [-1, 1]) bot(0.068, 0.1, 0.024, [0.085 * s, 0.805, 0.186], WC.eye, 1);
+  bot(0.028, 0.15, 0.028, [0, 1.04, -0.03], WC.metal);
+  pieces.push({
+    geo: new THREE.IcosahedronGeometry(0.05, 0).translate(0, 1.17, -0.03),
+    kind: PART.keeper,
+    color: WC.antenna,
+    emissive: 1,
+  });
+  // 12 limb: shoulder at the origin, tinted upper arm and a pale hand (worker arm)
+  pieces.push({
+    geo: new THREE.BoxGeometry(0.09, 0.26, 0.09).translate(0, -0.13, 0),
+    kind: PART.limb,
+    color: null,
+    emissive: 0,
+  });
+  pieces.push({
+    geo: new THREE.BoxGeometry(0.11, 0.09, 0.11).translate(0, -0.28, 0),
+    kind: PART.limb,
+    color: WC.hand,
+    emissive: 0,
+  });
+  // 13 glow: unit lamp ball, white (takes the instance tint), fully emissive
+  pieces.push({
+    geo: new THREE.IcosahedronGeometry(1, 1),
+    kind: PART.glow,
+    color: null,
     emissive: 1,
   });
   const done = pieces.map((p) => finish(p));

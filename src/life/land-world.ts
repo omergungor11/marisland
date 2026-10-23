@@ -4,7 +4,9 @@
  * flocks, homes and spawn points.
  */
 import { CATS, CRABS, LAND, SHEEP, VILLAGERS, lifeWeight } from '../content/life.ts';
+import { DESIGN_CULTURE_SITE } from '../content/cultures/design.ts';
 import { PROP_DEFS } from '../content/props.ts';
+import { GLASS_BRIDGE, glassBridgeDeckY } from '../content/props-themes/m20.ts';
 import { FIXTURE_RADIUS, LANDMARKS } from '../content/settlements.ts';
 import type { Rng } from '../core/rng.ts';
 import { PropFlag } from '../world/prop-store.ts';
@@ -277,6 +279,40 @@ export function buildWalkGraph(ctx: LifeCtx): WalkGraph {
     }
     kind[prev] = NodeKind.dockEnd;
     dockEnds.push([prev, di]);
+  }
+  // Design glass bridge (TASK-469, hooks.walk): the creek under it is sea, so the two bank paths
+  // are separate components. A chain of deck nodes (feet on the arched deck top) joins the pin
+  // nodes on both banks and bots cross on the deck instead of the creek bed.
+  for (const f of w.fixtures ?? []) {
+    if (f.defId !== 'glassBridge') continue;
+    const B = DESIGN_CULTURE_SITE.bridge;
+    const ux = Math.sin(f.rotY);
+    const uz = -Math.cos(f.rotY);
+    const pin = (s: number): number => {
+      const d = s * (B.padX + B.padR + B.pin);
+      const k = nearest(f.x + ux * d, f.z + uz * d, 1.5);
+      return k >= 0 && ctx.h(xs[k], zs[k]) >= VILLAGERS.minWalkY ? k : -1;
+    };
+    const a = pin(-1);
+    const b = pin(1);
+    if (a < 0 || b < 0 || a === b) continue;
+    const bank =
+      (ctx.h(f.x + ux * B.padX, f.z + uz * B.padX) + ctx.h(f.x - ux * B.padX, f.z - uz * B.padX)) /
+      2;
+    const half = GLASS_BRIDGE.length / 2;
+    const steps = Math.ceil((2 * half) / VILLAGERS.dockStep);
+    let prev = a;
+    for (let k = 0; k <= steps; k++) {
+      const lx = -half + (k / steps) * 2 * half;
+      const id = xs.length;
+      xs.push(f.x + ux * lx);
+      zs.push(f.z + uz * lx);
+      ys.push(bank + glassBridgeDeckY(lx));
+      kind.push(0);
+      edges.push([prev, id]);
+      prev = id;
+    }
+    edges.push([prev, b]);
   }
   const n = xs.length;
   const x = Float32Array.from(xs);
