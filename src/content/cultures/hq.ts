@@ -61,6 +61,8 @@ export const HQ_CULTURE: CultureDef = {
 export const HQ_CULTURE_SITE = {
   /** No culture prop within this of the pier root (the dock link and the banner gate). */
   apron: 2.4,
+  /** Plaza furniture (cart, awning fallback) keeps this far off the street centrelines crossing the plaza (u). */
+  plazaLaneGap: 0.9,
   /** Lowest ground (u) a land prop may stand on; quay props (perches, crane) use `quayY`. */
   minY: 0.3,
   quayY: [0.08, 1.6] as const,
@@ -150,34 +152,80 @@ export const HQ_CULTURE_SITE = {
   /** Coffee cart on the quad (ring radii from the quad centre), serving side to the centre. */
   cart: {
     rings: [3.8, 4.6, 3],
-    /** Crowded quad: just outside its rim instead (levelled). */
+    /** Crowded plaza centre: on its rim paving instead. */
     outer: [8.6, 9.8],
     angles: [100, -100, 130, -130, 70, -70, 160, -160, 45, -45, 20, -20, 180],
     variant: 0,
   },
-  /** Guild notice board just outside the quad rim (clear of the plaza decor), facing the centre. */
+  /** Guild notice board on the plaza rim paving (clear of the plaza decor), facing the centre. */
   notice: {
     rings: [8.4, 9.6],
     angles: [-75, 75, -115, 115, -140, 140, -50, 50, -160, 160, -25, 25],
     variant: 0,
   },
   /**
-   * Pennant lines (6 u span, poles ±3 u) across the lanes: lane 0 (to the pier) first, every
-   * `spacing` u from `start` past the quad edge, then the first gate of the next lanes.
+   * M20 Seven Gates (TASK-466): per street (frame = the street lane from the plaza rim outward,
+   * `along` u past the rim, `side` u off the centreline) the culture's goods stalls, a crate or two
+   * in its colour beside each stall, and a pennant line of its cut across the street.
    */
-  pennants: {
-    count: [3, 4] as const,
-    start: 3.5,
-    spacing: 5,
-    half: 3,
-    poleR: 0.3,
-    /** Keep-out strip under the cord (u along the lane; walkable, no lamps or trees). */
-    cordDepth: 0.8,
-    /** Keep the cord this far from the banner gates (u). */
-    bannerClear: 2.5,
-    /** The first line is HQ's; the others are other cultures drawn without repeats. */
-    first: 'hq' as const,
+  streets: {
+    stalls: {
+      /** Full streets draw this many; shore streets (gate on the beach) get one. */
+      count: [1, 3] as const,
+      shoreCount: 1,
+      along: [3.6, 6.4, 9.2, 12],
+      side: [2.9, -2.9, 3.5, -3.5],
+      /** Unpadded stalls (next to the plaza pad) tolerate this much relief under their deck. */
+      relief: 0.7,
+      /** Crates behind the stall (away from the street) and along it. */
+      crates: [1, 2] as const,
+      crateBack: 1.2,
+      crateAlong: [0.5, -0.6],
+    },
+    /** `along`: distances past the rim tried in order (the first with both poles free wins). */
+    pennant: { along: [1.6, 3, 4.5, 6], half: 3, poleR: 0.3, cordDepth: 0.8 },
+    /** The HQ gate on the harbour lane stands this far inland of the pier apron. */
+    harbourGateBack: 2.5,
   },
+  /** Z5 post yard: the high pylon at the seaward rim, the parcels stall and the sacks behind it. */
+  yard: {
+    /** Pylon this far from the yard centre toward the pier (u); the stall / bags / crates in the yard frame (along toward the pier, side). */
+    pylonOut: 2.4,
+    stall: { along: [-1.6, -0.8], side: [1.4, -1.4], variant: 0 },
+    bags: {
+      count: [2, 3] as const,
+      slots: [
+        [-2.4, 0.6],
+        [-2.6, -0.6],
+        [-1.4, 1.9],
+        [-2.8, 1.6],
+      ],
+    },
+    crates: {
+      count: [3, 5] as const,
+      slots: [
+        [0.2, 2.6],
+        [1.1, 2.6],
+        [0.2, -2.6],
+        [1.1, -2.6],
+        [2, 2.4],
+        [2, -2.4],
+      ],
+    },
+    bench: { along: -0.2, side: [-2.9, 2.9] },
+  },
+  /** Mail line (hq-design H13 / H14): v0 = high end (yard), v1 = low end by the pier root. */
+  mailLine: {
+    /** Low pylon beside the lane leaving the pier root (`steps` u up it, `side` u off it), else the pier frame. */
+    low: {
+      steps: [4, 3, 5, 6, 7, 8, 2, 10],
+      side: [3.2, -3.2, 4, -4, 5, -5],
+      along: [-4, -5.5, -3, -7, -2, -9],
+      pierSide: [4.5, -4.5, 6, -6, 7.5, -7.5, 9, -9],
+    },
+  },
+  /** Z7 semaphore: faces the plaza (its arms turn toward the relay island in TASK-469). */
+  semaphore: { variant: 0 },
 } as const;
 
 /**

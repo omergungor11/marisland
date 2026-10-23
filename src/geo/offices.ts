@@ -40,6 +40,12 @@ import { TAU, V, V2, baseBox, cylB, jitterAcc, prism, put } from './parts.ts';
 import type { BuildOpts, Lod } from './types.ts';
 
 const pal = (theme: ThemeId, variant: number): OfficePal => OFFICE_PAL[theme][variant % 2];
+/** HQ blue shutters / rails (HQ_CULTURE.palette.trims) and the cream trim (WALLS[0]). */
+const HQ_SHUTTER = '#5DA9E9';
+const CREAM_TRIM = '#FFF4E0';
+/** hqOffice v2 loggia columns: x positions and the z in front of the facade (D / 2 + 0.55). */
+const LOGGIA_X = [-2.6, -0.9, 0.9, 2.6];
+const LOGGIA_Z = 2.5 + 0.55;
 const accentOf = (theme: ThemeId): string => THEMES[theme].accent;
 const lighten = (hex: string, k: number): string =>
   `#${col(hex).lerp(new THREE.Color('#FFFFFF'), k).getHexString()}`;
@@ -182,15 +188,25 @@ function roofFlat(acc: Acc, o: Parameters<typeof flatRoof>[1]): void {
 
 /* ----------------------------------- HQ ----------------------------------- */
 
+/**
+ * HQ office, 4 variants (TASK-466, D-060 H8): v0 cream / coral (planters), v1 white / salmon (flag
+ * pole), v2 cream arcade (a loggia of columns along the front, blue shutters), v3 white with a
+ * bell niche on the parapet and a blue-railed balcony. LOD1 of v2 / v3 = v0 / v1 (registry
+ * `lod1Of`): the far proxies fold into two groups, the variety is in the near details only.
+ */
 export function hqOffice({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const acc = jitterAcc(rng, 0.015);
   const p = pal('hq', variant);
   const acc1 = accentOf('hq');
+  const shutter = HQ_SHUTTER;
   const hi = lod === 0;
+  const v = variant % 4;
   const W = 6;
   const D = 5;
   const H = 3.2;
   const t = 0.16;
+  const sideWins = [win(-1.2, 1.0, 0.8, 2.2), win(1.2, 1.0, 0.8, 2.2)];
+  const frontWins = [win(-2.4, 0.8, 0.8, 2.2), win(0, 3.0, 0, 2.4), win(2.4, 0.8, 0.8, 2.2)];
   shell(
     acc,
     {
@@ -200,10 +216,10 @@ export function hqOffice({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry
       outer: p.wall,
       inner: C.inner,
       frame: p.roof,
-      front: [win(-2.4, 0.8, 0.8, 2.2), win(0, 3.0, 0, 2.4), win(2.4, 0.8, 0.8, 2.2)],
+      front: frontWins,
       back: winRow(-2.3, 2.3, 3, 0.5, 0.8, 2.2),
-      left: [win(-1.2, 1.0, 0.8, 2.2), win(1.2, 1.0, 0.8, 2.2)],
-      right: [win(-1.2, 1.0, 0.8, 2.2), win(1.2, 1.0, 0.8, 2.2)],
+      left: sideWins,
+      right: sideWins,
     },
     lod,
   );
@@ -211,20 +227,102 @@ export function hqOffice({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry
   const ry = H + 0.18;
   if (hi) {
     mullions(acc, D / 2 - t / 2 + 0.02, [-0.75, 0, 0.75], FLOOR_Y, 2.4, p.roof);
-    // entrance canopy + glyph sign
-    put(acc, baseBox(3.4, 0.1, 0.9), [0, 2.5, D / 2 + 0.3], acc1, { aoAmt: 0.05 });
-    for (const x of [-1.6, 1.6])
-      put(acc, cylB(0.05, 0.05, 2.5, 4, true), [x, 0, D / 2 + 0.68], C.white, { aoAmt: 0 });
-    glyph(acc, 'hq', V(0, 2.88, D / 2 + 0.05), 0, 0.5, acc1);
-    put(acc, baseBox(3.2, 0.1, 0.5), [0, 0, D / 2 + 0.25], C.plinth, { aoAmt: 0.2 });
+    if (v === 2) {
+      // loggia details (slab + columns below, at both LODs): capitals, lintels, glyph, plinth
+      for (const x of LOGGIA_X)
+        put(acc, baseBox(0.34, 0.1, 0.34), [x, 2.25, LOGGIA_Z], CREAM_TRIM, { aoAmt: 0 });
+      for (const x of [-1.8, 0, 1.8])
+        put(acc, baseBox(1.5, 0.22, 0.08), [x, 2.03, LOGGIA_Z], CREAM_TRIM, { aoAmt: 0 });
+      glyph(acc, 'hq', V(0, 2.9, D / 2 + 0.05), 0, 0.5, acc1);
+      put(acc, baseBox(5.8, 0.1, 0.8), [0, 0, D / 2 + 0.3], C.plinth, { aoAmt: 0.2 });
+    } else {
+      // entrance canopy + glyph sign
+      put(acc, baseBox(3.4, 0.1, 0.9), [0, 2.5, D / 2 + 0.3], acc1, { aoAmt: 0.05 });
+      for (const x of [-1.6, 1.6])
+        put(acc, cylB(0.05, 0.05, 2.5, 4, true), [x, 0, D / 2 + 0.68], C.white, { aoAmt: 0 });
+      glyph(acc, 'hq', V(0, 2.88, D / 2 + 0.05), 0, 0.5, acc1);
+      put(acc, baseBox(3.2, 0.1, 0.5), [0, 0, D / 2 + 0.25], C.plinth, { aoAmt: 0.2 });
+    }
+    if (v >= 2) {
+      // blue shutters either side of the small windows (front + both sides)
+      const sh = (x: number, z: number, yaw: number): void =>
+        put(acc, baseBox(0.3, 1.3, 0.06), [x, 0.85 + FLOOR_Y, z], shutter, {
+          q: qEuler(0, yaw, 0),
+          aoAmt: 0,
+        });
+      const fz = D / 2 + 0.04;
+      for (const cx of [-2.4, 2.4]) for (const s of [-1, 1]) sh(cx + s * 0.6, fz, 0);
+      for (const side of [-1, 1])
+        for (const cz of [-1.2, 1.2])
+          for (const s of [-1, 1])
+            put(
+              acc,
+              baseBox(0.06, 1.3, 0.3),
+              [side * (W / 2 + 0.03), 0.85 + FLOOR_Y, cz + s * 0.7],
+              shutter,
+              {
+                aoAmt: 0,
+              },
+            );
+    }
+    if (v === 3) {
+      // balcony over the big front opening: slab, posts and a blue rail
+      const bz = D / 2 + 0.3;
+      put(acc, baseBox(3.2, 0.1, 0.6), [0, 2.45, bz], CREAM_TRIM, { aoAmt: 0.05 });
+      for (const x of [-1.5, 0, 1.5])
+        put(acc, baseBox(0.07, 0.62, 0.07), [x, 2.55, bz + 0.25], shutter, { aoAmt: 0 });
+      put(acc, baseBox(3.2, 0.07, 0.07), [0, 3.15, bz + 0.25], shutter, { aoAmt: 0 });
+      for (const s of [-1, 1])
+        put(acc, baseBox(0.07, 0.07, 0.56), [s * 1.57, 3.15, bz], shutter, { aoAmt: 0 });
+      for (const x of [-1.1, 1.1]) plant(acc, V(x, 2.55, bz + 0.05), 0.9, 0);
+    }
   }
-  // penthouse + beacon
-  put(acc, baseBox(2.2, 0.8, 1.6), [variant === 0 ? 0 : -1.4, ry, -0.6], p.trim, { aoAmt: 0.15 });
-  put(acc, baseBox(2.4, 0.12, 1.8), [variant === 0 ? 0 : -1.4, ry + 0.8, -0.6], acc1, { aoAmt: 0 });
-  beacon(acc, V(variant === 0 ? 0 : -1.4, ry + 0.92, -0.6), 0.9, lighten(acc1, 0.3), lod);
+  if (v === 2) {
+    // loggia: four columns carry a coral slab along the whole front (LOD1 too: v2 keeps its own
+    // far proxy so the T1 top view matches)
+    for (const x of LOGGIA_X)
+      put(
+        acc,
+        hi ? cylB(0.13, 0.11, 2.25, 6, true) : baseBox(0.24, 2.25, 0.24),
+        [x, 0, LOGGIA_Z],
+        C.white,
+        {
+          aoAmt: 0.1,
+        },
+      );
+    put(acc, baseBox(6.0, 0.14, 0.85), [0, 2.4, D / 2 + 0.28], acc1, { aoAmt: 0.05 });
+    put(acc, baseBox(6.1, 0.06, 0.92), [0, 2.54, D / 2 + 0.28], CREAM_TRIM, { aoAmt: 0 });
+  }
+  // penthouse + beacon (every variant: the LOD1 proxy of v3 is v1)
+  const px = variant % 2 === 0 ? 0 : -1.4;
+  put(acc, baseBox(2.2, 0.8, 1.6), [px, ry, -0.6], p.trim, { aoAmt: 0.15 });
+  put(acc, baseBox(2.4, 0.12, 1.8), [px, ry + 0.8, -0.6], acc1, { aoAmt: 0 });
+  beacon(acc, V(px, ry + 0.92, -0.6), 0.9, lighten(acc1, 0.3), lod);
+  if (v === 3) {
+    // bell niche on the front parapet: cream arch block, brass bell, coral cap
+    const nz = D / 2 - 0.3;
+    put(acc, baseBox(1.1, 0.9, 0.5), [0, ry, nz], CREAM_TRIM, { aoAmt: 0.1 });
+    put(acc, baseBox(0.56, 0.6, 0.3), [0, ry + 0.12, nz + 0.18], C.inner, { aoAmt: 0.3 });
+    if (hi) {
+      put(acc, cylB(0.09, 0.16, 0.26, 6), [0, ry + 0.2, nz + 0.2], C.gold, { aoAmt: 0 });
+      put(acc, new THREE.IcosahedronGeometry(0.05, 0), [0, ry + 0.17, nz + 0.2], C.gold, {
+        aoAmt: 0,
+      });
+    }
+    put(
+      acc,
+      new THREE.ConeGeometry(0.72, 0.42, 4).translate(0, 0.21, 0),
+      [0, ry + 0.9, nz],
+      p.roof,
+      {
+        q: qEuler(0, Math.PI / 4, 0),
+        aoAmt: 0,
+      },
+    );
+  }
   if (hi) {
     band(acc, V(0, H - 0.25, D / 2 + 0.01), 0, 5.6, 0.12, lighten(acc1, 0.4), 0.6);
-    if (variant === 1) {
+    if (v === 1) {
       // flag pole + rooftop planters
       put(acc, cylB(0.04, 0.04, 1.6, 4, true), [2.5, ry, 1.9], C.steelLight, { aoAmt: 0 });
       put(acc, new THREE.PlaneGeometry(0.7, 0.4), [2.86, ry + 1.35, 1.9], acc1, {
@@ -234,7 +332,7 @@ export function hqOffice({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry
       });
       for (const x of [0.6, 1.4, 2.2])
         put(acc, baseBox(0.6, 0.2, 0.4), [x, ry, -1.8], C.plantDark, { aoAmt: 0.1 });
-    } else {
+    } else if (v === 0) {
       for (const x of [-2.4, 2.4]) plant(acc, V(x, ry, 1.9), 1.2, 0);
     }
   }

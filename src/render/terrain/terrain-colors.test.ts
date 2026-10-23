@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { generateWorld } from '../../world/index.ts';
-import { Zone } from '../../world/types.ts';
+import { Zone, ZONE_COUNT } from '../../world/types.ts';
 import { THEMES } from '../../content/themes/index.ts';
 import {
   DEFAULT_GROUND,
@@ -20,7 +20,7 @@ describe('albedo grid + ground palette (TASK-372)', () => {
   const world = generateWorld(1001);
   const n = world.height.n;
   const albedo = buildAlbedoGrid(world);
-  const width = 16 * PALETTE_TEXELS;
+  const width = ZONE_COUNT * PALETTE_TEXELS;
   const texel = (pal: Uint8Array, row: number, zone: number, t: number): number[] => {
     const o = (row * width + zone * PALETTE_TEXELS + t) * 4;
     return Array.from(pal.subarray(o, o + 4));

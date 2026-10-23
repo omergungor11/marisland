@@ -23,7 +23,7 @@ import {
   type WorldData,
   type XZ,
 } from './index.ts';
-import { THEME_IDS, type ThemeId } from './types.ts';
+import { isStreetZone, THEME_IDS, type ThemeId } from './types.ts';
 import { PropFlag } from './prop-store.ts';
 import { lotRoof, roofNeighbours } from './gen/settlements.ts';
 import {
@@ -143,15 +143,17 @@ describe('settlements — 20-seed sweep', () => {
       if (s.plaza) expect(zoneAt(w.height, w.zone, s.plaza.x, s.plaza.z), ctx).toBe(Zone.plaza);
       const count = (def: string): number => s.lots.filter((i) => w.lots[i].defId === def).length;
       expect(s.theme, ctx).toBe('hq');
-      expect(s.lots.length, ctx).toBeGreaterThanOrEqual(8);
-      expect(count('hqOffice') + count('meetingPavilion'), ctx).toBeGreaterThanOrEqual(3);
+      // TASK-466: short-street seeds (3 shore headings) hold fewer lots
+      expect(s.lots.length, ctx).toBeGreaterThanOrEqual(6);
+      // Seven Gates (TASK-466, D-060): the street lots mix offices, cottages, barns and tower houses
+      expect(
+        count('hqOffice') + count('meetingPavilion') + count('cottage') + count('barn'),
+        ctx,
+      ).toBeGreaterThanOrEqual(3);
       expect(count('hqAnnex'), ctx).toBe(1);
       expect(count('coffeeKiosk'), ctx).toBeGreaterThanOrEqual(1);
-      // theme-first HQ (D-029): no cozy-village leftovers; the ferry office replaces the stilt huts
-      expect(
-        count('cottage') + count('towerHouse') + count('marketStall') + count('stiltHut'),
-        ctx,
-      ).toBe(0);
+      // theme-first HQ (D-029): the ferry office replaces the stilt huts, no market stalls
+      expect(count('marketStall') + count('stiltHut'), ctx).toBe(0);
       const fx = (def: string): number =>
         w.fixtures.filter((f) => f.defId === def && f.islandId === hh.id).length;
       expect(fx('well'), ctx).toBe(0);
@@ -350,9 +352,14 @@ describe('settlements — 20-seed sweep', () => {
       const coding = w.islands.find((i) => i.theme === 'coding');
       if (w.districts.some((d) => d.islandId === coding?.id && d.kind === 'solar')) solar++;
       // fences are farm-only: no theme plans field fences any more (pipes and the DevOps
-      // foundry rail, TASK-405, are their own kinds)
+      // foundry rail, TASK-405, are their own kinds; HQ's ridge lookouts, TASK-466, keep a
+      // two-post rail at the bluff edge)
+      const hq = w.islands.find((i) => i.theme === 'hq')?.id;
       expect(
-        w.fences.filter((f) => f.kind !== 'pipe' && f.kind !== 'rail').length,
+        w.fences.filter(
+          (f) =>
+            f.kind !== 'pipe' && f.kind !== 'rail' && !(f.islandId === hq && f.points.length === 2),
+        ).length,
         `seed ${seed} fences`,
       ).toBe(0);
     }
@@ -457,7 +464,8 @@ describe('settlements — 20-seed sweep', () => {
         for (const q of pl.points) {
           total++;
           const z = zoneAt(w.height, w.zone, q.x, q.z);
-          if (z === Zone.path || z === Zone.plaza) onPath++;
+          // HQ streets are paths painted in their culture's zone (TASK-466)
+          if (z === Zone.path || z === Zone.plaza || isStreetZone(z)) onPath++;
         }
       }
       expect(onPath / total, `seed ${seed}`).toBeGreaterThan(0.85);
@@ -510,8 +518,9 @@ describe('campuses — 50-seed acceptance (TASK-302)', () => {
     research: 0,
   };
   /** Themes whose minimum may miss in ≤ 10 % of seeds (plan §8 TASK-302). */
-  // TASK-471 re-roll: Coding misses its minimum on 1 of 50 seeds
-  const SOFT: ThemeId[] = ['coding', 'devops', 'qa', 'design', 'marketing', 'research'];
+  // TASK-471 re-roll: Coding misses its minimum on 1 of 50 seeds. TASK-466: HQ's Seven Gates
+  // streets trade lots for gates / stalls; a plaza on a narrow tip (1526) holds 6
+  const SOFT: ThemeId[] = ['hq', 'coding', 'devops', 'qa', 'design', 'marketing', 'research'];
 
   it(
     'every island has its themed campus: quad, lot minimums, roles, research outpost',

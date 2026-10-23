@@ -278,7 +278,18 @@ export const ISLET_SCATTER: Readonly<Record<IsletKind, readonly PlacementRule[]>
 };
 
 /** Keep props out of the crater floor etc. */
-export const BLOCKED_ZONES: number[] = [crater, path, plaza];
+export const BLOCKED_ZONES: number[] = [
+  crater,
+  path,
+  plaza,
+  Zone.streetHq,
+  Zone.streetCoding,
+  Zone.streetMarketing,
+  Zone.streetQa,
+  Zone.streetDesign,
+  Zone.streetDevops,
+  Zone.streetResearch,
+];
 
 /** Occupancy grid resolution in u (ARCHITECTURE §2). */
 export const OCCUPANCY_CELL = 1;

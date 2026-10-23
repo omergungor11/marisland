@@ -127,6 +127,18 @@ export interface Vec3Like {
   z: number;
 }
 
+/**
+ * World position of a mailLine pylon's cable anchor (`MAIL_LINE.anchor[variant]`) for a pylon at
+ * `p` (ground pivot) with worldgen yaw `rotY`: local +z = (cos rotY, sin rotY), local +x =
+ * (sin rotY, -cos rotY) (the fixture yaw convention of render/props/settlement-props.ts).
+ */
+export function mailAnchorWorld(variant: number, p: Vec3Like, rotY: number): Vec3Like {
+  const [ax, ay, az] = MAIL_LINE.anchor[variant % 2];
+  const c = Math.cos(rotY);
+  const s = Math.sin(rotY);
+  return { x: p.x + ax * s + az * c, y: p.y + ay, z: p.z - ax * c + az * s };
+}
+
 /** Sag (u) of a mail cable of horizontal-ish length `len`. */
 export function mailCableSag(len: number): number {
   const M = MAIL_LINE;

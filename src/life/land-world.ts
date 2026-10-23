@@ -8,7 +8,7 @@ import { PROP_DEFS } from '../content/props.ts';
 import { FIXTURE_RADIUS, LANDMARKS } from '../content/settlements.ts';
 import type { Rng } from '../core/rng.ts';
 import { PropFlag } from '../world/prop-store.ts';
-import { Zone, type SettlementData } from '../world/types.ts';
+import { Zone, type SettlementData, ZONE_COUNT } from '../world/types.ts';
 import { THEMES } from '../content/themes/index.ts';
 import type { LifeCtx } from './ctx.ts';
 
@@ -142,7 +142,7 @@ export function makeMask(
   zones: readonly number[],
   maxDepth?: number,
 ): Mask {
-  const ok = new Uint8Array(16);
+  const ok = new Uint8Array(ZONE_COUNT);
   for (const z of zones) ok[z] = 1;
   return (x, z) => {
     if (!ok[ctx.zone(x, z)]) return false;
@@ -158,7 +158,7 @@ export function makeStopMask(
   zones: readonly number[],
   maxDepth?: number,
 ): (x: number, z: number, skip: number) => boolean {
-  const ok = new Uint8Array(16);
+  const ok = new Uint8Array(ZONE_COUNT);
   for (const z of zones) ok[z] = 1;
   return (x, z, skip) => {
     if (!ok[ctx.zone(x, z)]) return false;
@@ -431,7 +431,7 @@ export function islandCells(
 ): IslandCells {
   const h = ctx.world.height;
   const isl = ctx.world.islands[id];
-  const ok = new Uint8Array(16);
+  const ok = new Uint8Array(ZONE_COUNT);
   for (const z of zones) ok[z] = 1;
   const out: IslandCells = { x: [], z: [] };
   const i0 = Math.max(0, Math.floor((isl.minX - 6 - h.originX) / h.cellSize));

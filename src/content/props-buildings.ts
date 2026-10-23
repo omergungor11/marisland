@@ -76,7 +76,8 @@ export const PROP_DEFS_BUILDINGS: PropDef[] = [
   d('volcanoCrater', 0, 1, 5.2, grounded),
   // phase-3 office shells (TASK-303): tier 0 since M14b (TASK-378, D-031/D-032): every shell has its own
   // coloured LOD1 built from its LOD0 palette (geo/offices.ts), so no shared `lod1` proxy any more
-  d('hqOffice', 0, 2, 3.2, grounded),
+  // v2 arcade, v3 bell niche + balcony (TASK-466): v3 far proxy = v1 (geo registry lod1Of)
+  d('hqOffice', 0, 4, 3.2, grounded),
   // v2 = Harbour Guild hall (TASK-420): only where the HQ plan pins it
   d('hqAnnex', 0, 3, 1.8, grounded, undefined, { rollVariants: 2 }),
   d('meetingPavilion', 0, 2, 2.6, grounded),

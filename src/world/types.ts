@@ -34,9 +34,22 @@ export const Zone = {
   path: 13,
   plaza: 14,
   crater: 15,
+  // HQ Seven Gates street tints (TASK-466, D-060): paving in one culture's colour per street,
+  // THEME_IDS order (`streetZone(k)`); painted by plans/hq.ts, kept by the path write-back
+  streetHq: 16,
+  streetCoding: 17,
+  streetMarketing: 18,
+  streetQa: 19,
+  streetDesign: 20,
+  streetDevops: 21,
+  streetResearch: 22,
 } as const;
 export type ZoneId = (typeof Zone)[keyof typeof Zone];
-export const ZONE_COUNT = 16;
+export const ZONE_COUNT = 23;
+/** Street zone of the culture at THEME_IDS index `k` (0 = HQ). */
+export const streetZone = (k: number): number => Zone.streetHq + k;
+/** True for the seven culture-tinted street zones (paving, walkable, path class). */
+export const isStreetZone = (z: number): boolean => z >= Zone.streetHq && z <= Zone.streetResearch;
 
 export type ArchetypeId =
   | 'hearthholm'
@@ -299,7 +312,16 @@ export interface FieldPatchData {
 
 /** District kinds (M14b). Extend the union when a theme plan needs a new kind. */
 export type DistrictKind =
-  'solar' | 'quad' | 'yard' | 'garden' | 'terrace' | 'stage' | 'sandbox' | 'sculpture';
+  | 'solar'
+  | 'quad'
+  | 'yard'
+  | 'garden'
+  | 'terrace'
+  | 'stage'
+  | 'sandbox'
+  | 'sculpture'
+  /** HQ compass plaza (TASK-466): the round plaza the TASK-468 mosaic paints; rotY = the harbour heading, w = d = 2 r. The street rays are the `cultureGate` fixtures' bearings from its centre. */
+  | 'compass';
 
 /**
  * A theme district (M14b): a rectangle with a purpose (render emits its props, e.g. solar rows on

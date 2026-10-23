@@ -1,7 +1,7 @@
 import { smoothPolyline, type Vec2 } from '../../core/math/catmull-rom.ts';
 import { PATHS } from '../../content/settlements.ts';
 import type { Heightfield, PathGraph, Polyline, XZ } from '../types.ts';
-import { Zone } from '../types.ts';
+import { isStreetZone, Zone } from '../types.ts';
 import { cellX, cellZ } from './grid.ts';
 
 /**
@@ -468,7 +468,8 @@ export function writePaths(
   }
   for (let i = 0; i < mark.length; i++) {
     if (!mark[i]) continue;
-    if (zone[i] !== Zone.plaza) zone[i] = Zone.path;
+    // plaza paving and the HQ culture streets (TASK-466) keep their tint under the path
+    if (zone[i] !== Zone.plaza && !isStreetZone(zone[i])) zone[i] = Zone.path;
     if (protect[i]) continue;
     const y = h.data[i];
     h.data[i] = Math.max(y - PATHS.carve, Math.min(y, 0.3));

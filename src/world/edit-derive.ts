@@ -36,6 +36,7 @@ import {
   CHUNK_CELLS,
   CHUNKS_PER_SIDE,
   WORLD_SIZE,
+  isStreetZone,
   Zone,
   ZONE_COUNT,
   type WorldData,
@@ -542,7 +543,11 @@ export function rederiveZones(
     }
     if (zonePainted[i]) continue;
     const z0 = zone[i];
-    if (!touched && hd[i] > 0 && (z0 === Zone.path || z0 === Zone.plaza || z0 === Zone.field))
+    if (
+      !touched &&
+      hd[i] > 0 &&
+      (z0 === Zone.path || z0 === Zone.plaza || z0 === Zone.field || isStreetZone(z0))
+    )
       continue;
     const ix = i % n;
     const iz = (i - ix) / n;
