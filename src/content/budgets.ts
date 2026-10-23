@@ -30,6 +30,9 @@ export interface Budget {
  * D-046 (TASK-402b): medium 255 → 300. The Research campus (≈ 20 instanced LOD1 groups: observatory,
  * library, halls, tower, parterres, terrariums, dishes, pods, sculptures, each + its shadow pass) sits
  * in the W11 postcard foreground: 216 → 289 calls measured (seed 1001); everything else stays ≤ 237.
+ * TASK-467 (M20 Design Glass Conservatory): gpuMemoryMB medium 170 → 185. W4 (Beacon, seed 2024) was
+ * at 170 before the M20 kit; the conservatory / glasshouse / prism-arch / glass-bridge geometry adds
+ * ≈ 2.5 MB of buffers (gpuGeometryMB 53.8 → 56.3, 172 MB measured); ≈ 8 % headroom (TASK-466 HQ adds its kit).
  */
 export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
   low: {
@@ -52,7 +55,7 @@ export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
     agents: 60,
     particles: 6_000,
     programs: 20,
-    gpuMemoryMB: 170,
+    gpuMemoryMB: 185,
     jsHeapMB: 180,
     newSeedMs: 800,
   },

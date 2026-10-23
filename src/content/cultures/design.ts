@@ -199,6 +199,11 @@ export const DESIGN_CULTURE_SITE = {
   },
   /** Small kit props: relief cap round the footprint before levelling (u), obstacle gap. */
   smallRelief: 1.0,
+  /** Small kit props: shore distance floor round the footprint (u; TASK-467: was 1.5, a kit pad
+   * on the bluff band steepens the coast face). */
+  kitShore: 3,
+  /** Keep-off past each ring lot for the kit (u; non-blocking shape, TASK-467). */
+  lotKeepOff: 2.5,
   gap: 0.5,
 
   // ---- M20 Glass Conservatory (D-057 / D-058 / D-060, TASK-467)
@@ -215,11 +220,11 @@ export const DESIGN_CULTURE_SITE = {
     ] as const,
     /** Centre spacing along the row and between the two rows (u; the aisle between rows walks). */
     colGap: 3.4,
-    rowGap: 6.6,
+    rowGap: 5.8,
     /** Block centre: this far from the square centre (u) at these angles off each bay axis
      * (deg; 45 = the diagonal between two bays); every pair is scored, the best wins. */
-    dist: [17, 19, 21, 23.5, 26] as const,
-    angleOff: [45, 25, 65, 12, 78] as const,
+    dist: [17, 19, 21, 23.5, 26, 29, 32] as const,
+    angleOff: [45, 25, 65, 12, 78, 35, 55, 0] as const,
     /** Relief over the block before levelling (u, tiers); shore floor (u); obstacle gap (u). */
     maxRelief: [3, 4.5, 6.5, 9] as const,
     /** Shore floor (u): the block pad (lotMargin + falloff) must stay off the bluff band. */
@@ -230,8 +235,10 @@ export const DESIGN_CULTURE_SITE = {
     /** Nothing else stands within this of the block (u): a neighbouring lot / kit pad core
      * overlapping the block pad's core would mix two levels under a house corner. */
     keepOff: 4.5,
+    /** Gap to the ring lots placed before the block (u; their pads mix less than a kit pad). */
+    lotGap: 2.5,
     /** Forest within this of the block edge becomes meadow (u). */
-    meadow: 5,
+    meadow: 3,
   },
   /**
    * Prism Walk (Z4 / D3): prism arches astride the pier bay path, `spacing` u apart from `first`
@@ -253,11 +260,13 @@ export const DESIGN_CULTURE_SITE = {
      * arch gets a small levelling pad (`pad` u disc); the second tier is a small shelf. */
     crossStep: [1.0, 1.4] as const,
     pad: 1.2,
+    /** Keep-off past the pad (u; non-blocking): later lot / kit pads keep their cores away. */
+    keepOff: 4,
     /** Posts off the path edge: PRISM_ARCH.postX; their obstacle disc (u). */
     postX: 1.0,
     postR: 0.3,
     /** Forest within this of the walk becomes meadow (u). */
-    meadow: 5,
+    meadow: 3,
   },
   /**
    * Glass bridge (Z10 / D7) over the stream's tidal creek: the Mossgrove stream carve does not
@@ -310,14 +319,20 @@ export const DESIGN_CULTURE_SITE = {
     dist: [16, 36] as const,
     preferDist: 26,
     minY: 6,
-    minShore: 10,
-    treeClear: 22,
-    squareClear: 20,
+    /** Passes tried in order: [shore floor, gap to the tree, gap to the square centre] (u); a
+     * small dome (≈ 120 u) has no shoulder that far from both, the mill moves in (the shore
+     * floor stays: the disc pad's falloff would steepen the bluff face). */
+    passes: [
+      [10, 22, 20],
+      [10, 16, 17],
+      [10, 12, 15],
+      [10, 9, 13],
+    ] as const,
     streamClear: 9,
     /** Disc levelled under the mill (u) and its relief tiers (u). */
     discR: 3.5,
-    maxRelief: [2, 3, 4.5] as const,
-    meadowR: 9,
+    maxRelief: [2, 3, 4.5, 6.5, 9] as const,
+    meadowR: 7,
     /** Path pin this far from the mill toward the square (u). */
     pin: 2.8,
   },

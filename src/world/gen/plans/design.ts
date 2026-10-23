@@ -42,6 +42,7 @@ import {
   landmarkAccess,
   linkLandmark,
   linkLot,
+  lotShape,
   mixPicker,
   nearestPathCell,
   newPlan,
@@ -70,6 +71,17 @@ import {
 import type { ThemePlanner } from './types.ts';
 
 const S = DESIGN_SITES;
+
+/**
+ * A levelling pad that cuts / fills more than `S.cut.relief` keeps its whole reach (shape +
+ * margin + falloff) off the coast face band (TASK-467: the campus fills a small dome; a deep
+ * pad on the bluff band steepens the face past the archipelago's face p95 cap).
+ */
+function cutOk(ctx: SiteCtx, sh: Shape, margin: number, r: number): boolean {
+  if (r <= S.cut.relief) return true;
+  const extent = sh.r > 0 ? sh.r : Math.hypot(sh.hw, sh.hd);
+  return sdfAt(ctx, sh.x, sh.z) >= extent + margin + FLATTEN.falloff + S.cut.band;
+}
 
 /** A fixture with its own obstacle radius (pushFixture uses FIXTURE_RADIUS, unset for these). */
 function fixture(
@@ -128,11 +140,12 @@ function sculptureGarden(
   for (; R >= C.minRadius && !centre; R--) {
     const Rr = R;
     centre = bestSample(ctx, isl, quad, isl.reach, (p, i) => {
-      if (ctx.sdf[i] < Rr + 2) return Infinity;
+      if (ctx.sdf[i] < Rr + C.shoreGap) return Infinity;
       const sh = discShape(p.x, p.z, Rr);
       const r = relief(ctx, sh);
       const tier = tiers.findIndex((m) => r <= m);
-      if (tier < 0 || !onLand(ctx, isl, sh, Rr + 2) || !clear(ctx, isl, sh, C.gap)) return Infinity;
+      if (tier < 0 || !onLand(ctx, isl, sh, Rr + C.shoreGap)) return Infinity;
+      if (!cutOk(ctx, sh, FLATTEN.discMargin, r) || !clear(ctx, isl, sh, C.gap)) return Infinity;
       if (lineDist(stream, p) < Rr + C.streamClear) return Infinity;
       return tier * 1000 + r + C.quadDistCost * Math.abs(dist(p, quad) - C.quadDist);
     });
@@ -532,6 +545,8 @@ function prismWalk(
     addShape(ctx, isl, discShape(a.x, a.z, P.postR), true);
     addShape(ctx, isl, discShape(b.x, b.z, P.postR), true);
     addPad(ctx, isl, discShape(p.x, p.z, P.pad), FLATTEN.discMargin);
+    // keep-off: a later lot / kit pad core must not mix its level into the arch's
+    addShape(ctx, isl, discShape(p.x, p.z, P.pad + P.keepOff), false);
     out.push(p);
   }
   return out;
@@ -665,6 +680,7 @@ function glasshouseRows(
   const G = C.glasshouses;
   const w = 2 * G.colGap + 2.5 + 0.6;
   const quadrants = rng.shuffle([0, 1, 2, 3]);
+  const ringLots = plan.lots.map((li) => ctx.lots[li]);
   /** Best site for a block of `nRows` rows: the levelled tier first, then relief, distance. */
   const site = (nRows: number, near: XZ | null): { c: XZ; rotY: number } | null => {
     const d = (nRows - 1) * G.rowGap + 4 + 0.6;
@@ -677,10 +693,14 @@ function glasshouseRows(
           const f = unit(c, sq.c);
           const rotY = ang(f.x, f.z);
           const sh = rectShape(c.x, c.z, rotY, w, d);
-          if (!onLand(ctx, isl, sh, G.minShore) || !siteFree(ctx, isl, sh)) continue;
+          if (!onLand(ctx, isl, sh, G.minShore)) continue;
+          if (!siteFree(ctx, isl, sh)) continue;
           const r = relief(ctx, sh);
           const tier = G.maxRelief.findIndex((m) => r <= m);
           if (tier < 0 || !clear(ctx, isl, sh, G.gap)) continue;
+          if (!cutOk(ctx, sh, FLATTEN.lotMargin, r)) continue;
+          // the ring lots came first: their pad cores stay apart from the block's
+          if (ringLots.some((l) => shapesOverlap(sh, lotShape(l), G.lotGap))) continue;
           const score = tier * 1000 + r + 0.05 * L + (near ? 0.1 * dist(c, near) : 0);
           if (!best || score < best.score) best = { c, rotY, score };
         }
@@ -742,17 +762,22 @@ function windmillRidge(
 ): XZ | null {
   const W = C.windmill;
   const centre = { x: isl.cx, z: isl.cz };
-  const c = bestSample(ctx, isl, centre, W.dist[1], (p, i) => {
-    const L = dist(p, centre);
-    if (L < W.dist[0] || ctx.sdf[i] < W.minShore || ctx.h.data[i] < W.minY) return Infinity;
-    if (dist(p, tree) < W.treeClear || dist(p, sq.c) < W.squareClear) return Infinity;
-    if (lineDist(stream, p) < W.streamClear) return Infinity;
-    const sh = discShape(p.x, p.z, W.discR);
-    const r = relief(ctx, sh);
-    const tier = W.maxRelief.findIndex((m) => r <= m);
-    if (tier < 0 || !onLand(ctx, isl, sh, W.minShore) || !clear(ctx, isl, sh, 1)) return Infinity;
-    return tier * 1000 + r - 0.1 * ctx.h.data[i] + 0.05 * Math.abs(L - W.preferDist);
-  });
+  let c: XZ | null = null;
+  for (const [minShore, treeClear, squareClear] of W.passes) {
+    c = bestSample(ctx, isl, centre, W.dist[1], (p, i) => {
+      const L = dist(p, centre);
+      if (L < W.dist[0] || ctx.sdf[i] < minShore || ctx.h.data[i] < W.minY) return Infinity;
+      if (dist(p, tree) < treeClear || dist(p, sq.c) < squareClear) return Infinity;
+      if (lineDist(stream, p) < W.streamClear) return Infinity;
+      const sh = discShape(p.x, p.z, W.discR);
+      const r = relief(ctx, sh);
+      const tier = W.maxRelief.findIndex((m) => r <= m);
+      if (tier < 0 || !onLand(ctx, isl, sh, minShore)) return Infinity;
+      if (!cutOk(ctx, sh, FLATTEN.discMargin, r) || !clear(ctx, isl, sh, 1)) return Infinity;
+      return tier * 1000 + r - 0.1 * ctx.h.data[i] + 0.05 * Math.abs(L - W.preferDist);
+    });
+    if (c) break;
+  }
   if (!c) return null;
   const rotY = ctx.windDir + Math.PI;
   ctx.fixtures.push({
@@ -855,7 +880,9 @@ export const planDesign: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
 
   const stream = resample(ctx.streams.find((s) => s.islandId === isl.id)?.points ?? [], 1, false);
   // the pier, the square (sets the hub), the bridge + stream band, then the bay lanes (A* round
-  // the band), the prism walk on the pier lane, the other sites, the lots, the culture kit
+  // the band), the prism walk on the pier lane, the lot ring round the square (before the other
+  // sites: on a small dome they would take the flank), the glasshouses, the garden, the windmill
+  // (its fallback passes move it in), the easels, the grove, the culture kit
   const pier = placePier(ctx, isl, plan, stream, rng.fork('pier'));
   const sq = conservatorySquare(ctx, isl, plan, treeAnchor, stream, pier);
   const centre = sq ? sq.c : plan.hub;
@@ -864,11 +891,10 @@ export const planDesign: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
     const lanes = bayLanes(ctx, isl, plan, sq, treeAnchor, pier);
     if (lanes[0]) prismWalk(ctx, isl, lanes[0], sq, rng.fork('prisms'));
   }
-  if (sq) {
-    glasshouseRows(ctx, isl, plan, sq, rng.fork('glasshouses'));
-    windmillRidge(ctx, isl, plan, sq, treeAnchor, stream);
-  }
+  squareLots(ctx, isl, plan, centre, sq ? sq.pins[0] : centre, rng.fork('glade'), sIdx);
+  if (sq) glasshouseRows(ctx, isl, plan, sq, rng.fork('glasshouses'));
   const garden = sculptureGarden(ctx, isl, plan, centre, stream, rng.fork('sculptures'));
+  if (sq) windmillRidge(ctx, isl, plan, sq, treeAnchor, stream);
   const easelPins = easelWalk(ctx, isl, stream, centre, rng.fork('easels'));
   const grove = mushroomGrove(
     ctx,
@@ -879,7 +905,6 @@ export const planDesign: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
     stream,
     rng.fork('grove'),
   );
-  squareLots(ctx, isl, plan, centre, sq ? sq.pins[0] : centre, rng.fork('glade'), sIdx);
   // Glass & Light culture (M19 TASK-425): after the lots, before the links (paths route round it)
   plan.stories = glassAndLight(ctx, isl, plan, rng.fork('culture'), {
     quad: sq ? sq.c : null,
@@ -982,7 +1007,7 @@ function glassAndLight(
   ): boolean => {
     const sh = discShape(p.x, p.z, r);
     return (
-      onLand(ctx, isl, sh, 1.5) &&
+      onLand(ctx, isl, sh, C.kitShore) &&
       heightAt(ctx.h, p.x, p.z) >= C.minY &&
       relief(ctx, sh) <= maxRelief &&
       freeOf(ctx, isl, sh, gap, skip)
@@ -1008,6 +1033,14 @@ function glassAndLight(
   };
 
   // ---- the gallery: the pavilion lot nearest the quad gets the faceted glass roof
+  // keep-off round the ring lots (the kit only): a kit pad core beside a lot would mix its
+  // level under a lot corner (the pad relaxation does not settle a crowded ring)
+  for (const li of plan.lots) {
+    const l = ctx.lots[li];
+    const m = 2 * C.lotKeepOff;
+    addShape(ctx, isl, rectShape(l.x, l.z, l.rotY, l.w + m, l.d + m), false);
+  }
+
   const pavilions = ctx.lots
     .map((l, i) => ({ l, i }))
     .filter(({ l }) => l.islandId === isl.id && l.defId === 'galleryPavilion');
@@ -1050,7 +1083,8 @@ function glassAndLight(
     const heat = hr.int(0, 2);
     ctx.fixtures.push({ defId: 'hotShop', x: p.x, z: p.z, rotY, islandId: isl.id, variant: heat });
     addShape(ctx, isl, rectShape(p.x, p.z, rotY, H.rect[0], H.rect[1]), true);
-    addPad(ctx, isl, yard, FLATTEN.discMargin);
+    // lotMargin: the shop's corners are checked (rect pads, MEMORY gotcha)
+    addPad(ctx, isl, yard, FLATTEN.lotMargin);
     paintZone(ctx, isl, yard, Zone.plaza);
     // workshop clutter: blowpipe rack by the furnace, the seconds shelf by the annealer, crates
     const W = C.workshop;
@@ -1066,17 +1100,20 @@ function glassAndLight(
       return null;
     };
     const rack = firstSlot(W.blowpipeRack, 'blowpipeRack');
-    if (rack) place('blowpipeRack', rack.q, rack.yaw, 0);
+    // the clutter stands on the yard pad's plateau (lotMargin core): no pad of its own, whose
+    // level would mix into the shop's corners
+    if (rack) place('blowpipeRack', rack.q, rack.yaw, 0, false);
     const shelf = firstSlot(W.seconds, 'sampleShelf');
     if (shelf) {
-      place('sampleShelf', shelf.q, shelf.yaw, W.secondsVariant);
+      place('sampleShelf', shelf.q, shelf.yaw, W.secondsVariant, false);
       story('secondsGull', shelf.q, shelf.yaw, ['sampleShelf'], C.secondsGullY);
     }
     const hues = hr.shuffle([0, 1, 2, 3, 4]);
     const nc = hr.int(W.culletCount[0], W.culletCount[1]);
     W.cullet.slice(0, nc).forEach((xz, k) => {
       const q = at(xz);
-      if (slot(q, 'culletCrate')) place('culletCrate', q, rotY + hr.range(-0.4, 0.4), hues[k]);
+      if (slot(q, 'culletCrate'))
+        place('culletCrate', q, rotY + hr.range(-0.4, 0.4), hues[k], false);
     });
     const cat = C.annealerCat;
     story('annealerCat', local(p, rotY, cat[0], cat[2]), rotY, ['hotShop'], cat[1]);

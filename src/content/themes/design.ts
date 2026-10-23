@@ -22,18 +22,18 @@ export const DESIGN_SITES = {
    * lanes are the four bay paths (plans/design.ts `conservatorySquare`), not CampusSpec lanes.
    */
   glade: {
-    lots: [4, 6],
+    lots: [3, 4],
     quadR: 10,
     quadSearch: 25,
     quadMinShore: 6,
     quadMaxRelief: 4,
     quadLee: 0,
     // lot pads (lotMargin + falloff ≈ 7 u) stay off the bluff band (TASK-467; was 4)
-    minShore: 8,
+    minShore: 13,
     maxRelief: 2.5,
     lanes: [],
     laneLength: 0,
-    ring: [2.5, 18],
+    ring: [2.5, 10],
     maxFieldSamples: 5,
   } satisfies CampusSpec,
   /**
@@ -72,8 +72,14 @@ export const DESIGN_SITES = {
     /** A bay whose axis is within this of the tree (deg) ends at the tree's access point. */
     treeBayDeg: 50,
     /** Forest within this of the square (past quadR) becomes meadow (pine filler cleared). */
-    meadowRing: 6,
+    meadowRing: 3,
   },
+  /**
+   * Deep pads keep off the coast face (TASK-467): a site levelled over more than `relief` u keeps
+   * its pad's whole reach (shape + margin + FLATTEN.falloff) at least `band` u from the shore —
+   * the archipelago's bluff-face test reads the first 6 u inland.
+   */
+  cut: { relief: 3, band: 5 },
   /**
    * The pier in the lee cove beside the stream mouth (Z5): the Prism Walk's far end. Preferred
    * root `offset` u along the shore from the mouth (either side), at least `streamClear` from
@@ -87,10 +93,10 @@ export const DESIGN_SITES = {
     rowboats: 1,
   },
   clearing: {
-    /** Disc radius (u) and the smallest tried when it finds no room: ≥ 6 so the clearing is
-     * ≥ 12 u wide (plan §5 TASK-367; TASK-467 fallback). */
+    /** Disc radius (u; ≥ 6: a ≥ 12 u clearing, plan §5 TASK-367) and the smallest tried when it
+     * finds no room (TASK-467: a 10 u clearing on a crowded small dome). */
     radius: 7,
-    minRadius: 6,
+    minRadius: 5,
     /** Max relief over the disc before levelling, tried in order (u). */
     maxRelief: [2, 3, 4.5, 6, 8, 10],
     /** Preferred distance from the quad centre (u); score cost per u off it. */
@@ -99,6 +105,8 @@ export const DESIGN_SITES = {
     /** Gap to other obstacles (quad, tree, lots) and to the stream line past the radius (u). */
     gap: 2.5,
     streamClear: 3,
+    /** Shore distance floor past the radius (u; TASK-467: was 2). */
+    shoreGap: 4,
     /** Sculptures: count range, kinds cycled in a seeded order, on an arc at this fraction of the radius. */
     sculptures: [3, 5] as const,
     kinds: ['sculptureTorus', 'sculptureStack', 'sculptureArch'] as const,

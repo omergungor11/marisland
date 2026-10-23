@@ -33,9 +33,12 @@
   the Prism Walk arches on straight runs of the pier lane, the glass bridge over a tidal creek cut into the
   stream's beach reach (`passable` deck cells), the 2 × 3 glasshouse block (split rows fallback), the
   stained windmill meadow, lots in a ring, the old kit re-homed, two rainbows, pine 0.85 → 0.55. Numbers in
-  `content/themes/design.ts` (`square`, `dock`) and `content/cultures/design.ts` (`glasshouses`,
-  `prismWalk`, `bridge`, `windmill`, `rainbows`). 30-seed thresholds carry `TASK-467` notes (the campus
-  crowds a 40 u dome: lots ≥ 3 on 90 %, ≥ 1 arch on 90 %, bridge on 85 %). Left for later (Design+1):
+  `content/themes/design.ts` (`square`, `dock`, `cut`) and `content/cultures/design.ts` (`glasshouses`,
+  `prismWalk`, `bridge`, `windmill`, `rainbows`). Order: pier → square → bridge → bay lanes → arches →
+  ring lots (3–4, before the other sites, else a ≈ 120 u dome loses them) → glasshouses → garden →
+  windmill (fallback passes) → easels → grove → kit. 30 seeds: lots ≥ 3 29/30, six glasshouses 24/30
+  (2 × 3 block 19, seed 1789 none), garden 21/30, bridge 23/30, ≥ 1 arch 27/30, windmill 30/30; the
+  thresholds carry `TASK-467` notes. Left for later (Design+1):
   the waterfall balcony (Z11), the chime walk (Z12), the mirror pond (after TASK-353); the sea-glass
   beach speckle (Z9) is in the theme ground table for every Design beach, not only the NE sand. Hooks:
   the arch fixture position is the TASK-468 light-pool centre (`hooks.pool.at` = local origin); bots
@@ -207,6 +210,13 @@
   cut below sea level in the planner (`glassBridge`), and every cut cell gets a NEGATIVE shore SDF: the
   settlements test holds `h > 0 ⇔ shoreSdf > 0`, `applyPads` skips sdf ≤ 0 cells (else the end pads refill
   the creek), and `pathStep` refuses sdf < minShore unless `ctx.passable[i]` (the deck cells).
+- **A deep pad near the bluff band steepens the coast face** (TASK-467): the archipelago face test
+  (p95 ≤ 68° over the first 6 u inland) fails when a site levelled over > 3 u has its pad reach
+  (shape + margin + FLATTEN.falloff) inside the band; `onLand` only checks the CENTRE sdf. Design uses
+  `cutOk` (`DESIGN_SITES.cut`) for the garden, glasshouses and windmill. Raising the relaxation sweeps
+  (12 → 48) fixes the lot-corner bumps below but moves every island's pads (QA / DevOps tests): use
+  keep-offs instead (`lotKeepOff` for the kit, `glasshouses.lotGap`, `prismWalk.keepOff`), and kit
+  clutter on another pad's plateau gets no pad of its own (hot shop rack / shelf / crates).
 - **Pad relaxation does not converge in a crowded chain** (12 pairwise sweeps): two overlapping cores
   with different `T` mix by distance weight and leave a 0.5–0.9 u bump under a prop corner (a glasshouse
   3.9 u from the windmill pad, a lot pad beside the block). Give a pad that must stay level a non-blocking
