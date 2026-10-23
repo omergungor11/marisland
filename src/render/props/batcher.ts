@@ -35,6 +35,7 @@ import {
 } from './clusters.ts';
 import { ALWAYS_APPEAR, APPEAR_OUT_SECONDS, HIDDEN_APPEAR, encodeAppearOut } from './appear.ts';
 import { createFarMerge, type FarMerge } from './far-merge.ts';
+import { NEAR_MERGE } from '../../content/budgets.ts';
 
 /**
  * PropBatcher (ARCHITECTURE §3, D-004): one InstancedMesh per
@@ -119,6 +120,8 @@ export interface BatcherDeps {
     material: THREE.Material;
     depth: THREE.Material | null;
   };
+  /** TASK-476 near merge: max pre-transformed vertices of a LOD0 group (default NEAR_MERGE). */
+  nearMergeMaxVerts?: number;
 }
 
 export interface BatcherWorld {
@@ -185,6 +188,8 @@ export interface PropBatcher {
   readonly clusters: ClusterIndex;
   /** TASK-407: per-island merged LOD1 meshes (null without `mergedMaterialFor`). */
   readonly farMerge: FarMerge | null;
+  /** TASK-476: per-island merged small LOD0 groups at tiers 2–3 (null without `mergedMaterialFor`). */
+  readonly nearMerge: FarMerge | null;
 }
 
 export interface RewriteStats {
@@ -1072,6 +1077,69 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
       })
     : null;
   if (far) for (let i = 0; i < store.count; i++) far.markDirty(store.islandId[i]);
+  // ---- near structure merge (TASK-476, D-061): the same pre-transformed merge at tiers 2–3 over
+  // the SMALL LOD0 groups of an island (HQ's culture gates / stalls / pennant cuts / crates,
+  // Design's kit, benches, lanterns, …): one mesh per (island, material class, tier class)
+  // instead of one InstancedMesh (+ shadow pass) per (def, variant). Same settled rule as the far
+  // merge, per island: an island is built once the camera comes within NEAR_MERGE.reach of its
+  // groups (close views see one or two islands; the rest keep their groups and cost no memory).
+  const near = d.mergedMaterialFor
+    ? createFarMerge({
+        scope: d.scope,
+        root,
+        store,
+        castShadows: d.castShadows,
+        materialsFor: d.mergedMaterialFor,
+        tierMask: (g) =>
+          (wantsVisible(g as Group, 2) ? 4 : 0) | (wantsVisible(g as Group, 3) ? 8 : 0),
+        tiers: 0b1100,
+        name: 'near',
+        islandOf: (g) => (g as Group).bucket,
+      })
+    : null;
+  if (near) for (let i = 0; i < store.count; i++) near.markDirty(store.islandId[i]);
+  const nearMaxVerts = d.nearMergeMaxVerts ?? NEAR_MERGE.maxVerts;
+  /**
+   * A LOD0 group the near merge may take: per island, not ground cover / cluster proxy / tree,
+   * casting like the merged mesh, at most `nearMaxVerts` pre-transformed vertices, and windy
+   * only at unit scale (merged wind sway measures the pivot height in world units).
+   */
+  const nearCandidate = (g: Group): boolean => {
+    if (g.lod !== 0 || g.groundCover || g.bucket === ALL_ISLANDS) return false;
+    if ((g.members.length && g.members[0] < 0) || g.casts !== d.castShadows) return false;
+    if ((g.def.flags & PropFlag.clusterable) !== 0) return false;
+    const geo = g.mesh.geometry;
+    const nv = geo.index ? geo.index.count : geo.getAttribute('position').count;
+    if (g.members.length * nv > nearMaxVerts) return false;
+    if ((g.def.flags & PropFlag.windy) !== 0)
+      for (const i of g.members) if (store.scale[i] !== 1) return false;
+    return true;
+  };
+  let nearList: Group[] = [];
+  let nearListLen = -1;
+  const nearGroups = (): Group[] => {
+    if (nearListLen !== groups.length) {
+      nearListLen = groups.length;
+      nearList = near ? groups.filter(nearCandidate) : [];
+    }
+    return nearList;
+  };
+  /**
+   * Dirty islands with a near-merge group within reach of the camera: its material's fade-out
+   * distance, at most NEAR_MERGE.reach (tier-0 structures never fade; without the cap every
+   * island in view would be built).
+   */
+  const nearIslands = (list: readonly Group[], cam: THREE.Vector3): Set<number> => {
+    const out = new Set<number>();
+    for (const g of list) {
+      if (out.has(g.bucket) || !near?.dirty.has(g.bucket)) continue;
+      const sph = g.mesh.boundingSphere;
+      const mat = g.mesh.material as { fade?: { uFadeFar: { value: number } } };
+      const reach = Math.min(mat.fade?.uFadeFar.value ?? Infinity, NEAR_MERGE.reach);
+      if (!sph || cam.distanceTo(sph.center) - sph.radius < reach) out.add(g.bucket);
+    }
+    return out;
+  };
   let farList: Group[] = [];
   let farListLen = -1;
   /** LOD1 groups across islands (the merge candidates). */
@@ -1091,13 +1159,13 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
   /** Attribute versions of the LOD1 groups after the batcher's own writes. */
   const seen = new Map<Group, { mesh: THREE.InstancedMesh; m: number; a: number }>();
   const snapshot = (): void => {
-    if (!far) return;
-    for (const g of farGroups())
-      seen.set(g, { mesh: g.mesh, m: g.mesh.instanceMatrix.version, a: g.appear.version });
+    for (const list of [far ? farGroups() : [], nearGroups()])
+      for (const g of list)
+        seen.set(g, { mesh: g.mesh, m: g.mesh.instanceMatrix.version, a: g.appear.version });
   };
-  /** True when someone else (click reactions) wrote a LOD1 group since `snapshot`. */
-  const touchedOutside = (): boolean => {
-    for (const g of farGroups()) {
+  /** True when someone else (click reactions) wrote a group of `list` since `snapshot`. */
+  const touchedOutside = (list: readonly Group[]): boolean => {
+    for (const g of list) {
       const s = seen.get(g);
       if (
         !s ||
@@ -1109,18 +1177,32 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
     }
     return false;
   };
-  const markEdited = (i: number): void => far?.markIndex(i, store.islandId[i]);
+  const markEdited = (i: number): void => {
+    far?.markIndex(i, store.islandId[i]);
+    near?.markIndex(i, store.islandId[i]);
+  };
   const syncFar = (time: number, cam?: THREE.Vector3): void => {
     if (!far) return;
     const fg = farGroups();
-    if (touchedOutside()) settleAt = Math.max(settleAt, time + OUTSIDE_GRACE_SECONDS);
+    if (touchedOutside(fg)) settleAt = Math.max(settleAt, time + OUTSIDE_GRACE_SECONDS);
     const settled =
       tier >= 0 && tier <= 1 && !popQueue.length && !pending.length && time >= settleAt;
     if (settled && far.dirty.size) far.rebuild(fg);
     // without the camera skip pass nothing else restores a group mesh hidden by the merge
     if (!cam) for (const g of fg) g.mesh.visible = g.visible;
     far.sync(fg, tier, settled, cam);
-    snapshot();
+  };
+  const syncNear = (time: number, cam?: THREE.Vector3): void => {
+    if (!near) return;
+    const ng = nearGroups();
+    if (touchedOutside(ng)) settleAt = Math.max(settleAt, time + OUTSIDE_GRACE_SECONDS);
+    const settled = tier >= 2 && !popQueue.length && !pending.length && time >= settleAt;
+    if (settled && near.dirty.size) {
+      const want = cam ? nearIslands(ng, cam) : null;
+      near.rebuild(ng, want ? (island) => want.has(island) : undefined);
+    }
+    if (!cam) for (const g of ng) g.mesh.visible = g.visible;
+    near.sync(ng, tier, settled, cam);
   };
 
   const batcher: PropBatcher = {
@@ -1210,12 +1292,15 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
       syncNearBlobs();
       syncFarBlobs();
       syncFar(time, cam);
+      syncNear(time, cam);
+      snapshot();
     },
     slotsOf(i) {
       return maps().slots.get(i);
     },
     clusters,
     farMerge: far,
+    nearMerge: near,
     rewrite(indices, time) {
       const st: RewriteStats = {
         updated: 0,

@@ -14,6 +14,27 @@ near-tier culture fixture groups and brings medium back to ≤ 300 calls; the li
 
 **Rejected**: a permanent raise (eats the medium FPS margin); holding 466 until the engine merge (blocks 468/469).
 
+**Implementation (TASK-476, 2026-10-23)**: a *near structure merge*. The TASK-407 far merge (`render/props/far-merge.ts`)
+now also runs at T2–T3 over the small LOD0 groups of an island. A group qualifies when it is at most
+`NEAR_MERGE.maxVerts` = 1600 pre-transformed vertices, is not a tree or ground cover, and is windy only at unit scale.
+That covers the seven culture gates, the stalls, pennant cuts, crates and mail line, the Design kit, benches and
+lanterns. They draw as one pre-transformed mesh per (island, material class, tier class), on the same lit / depth
+program (`uMarMerged`). The far merge's settled rule still holds: bloom-ins, removal fades and click reactions draw
+through the groups. An island is built only once the camera is within `NEAR_MERGE.reach` = 160 u of such a group.
+Per-island activation is `FarMergeDeps.islandOf`.
+- Calls: medium wow (seed 1001) W16 331 → 269, W2 / W3 239 → 176 / 175, every shot ≤ 269. Medium `drawCalls` is back
+  to **300**.
+- Memory: +1–5 MB on close shots (peak 172). The overall peak is still W4 at 173 MB, a T1 view the merge never
+  touches, so `gpuMemoryMB` stays at **176**. Getting to 170 needs W4's buffers trimmed.
+- Triangles: +0–19k, from whole-island meshes that are culled less than the separate groups were.
+- Pixels: before/after frames differ in ≤ 120 px, max Δ 28/255, 0 px over the pixelmatch 0.1 threshold.
+
+Rejected after measuring:
+- A per-def *variant atlas*: all variants in one InstancedMesh, the variant chosen by the vertex shader through an
+  `aSeed`-encoded band. It saves no memory, and every instance runs every variant's vertices. To reach W16 ≤ 290 it
+  cost +55k counted triangles (788k of the 800k budget).
+- A near merge over every island in fade reach: +12 MB.
+
 ## D-060: Round 3 details for HQ / Design and the morning mist — 2026-10-17
 
 The user took the recommended option for each item:
