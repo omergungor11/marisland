@@ -174,7 +174,16 @@ export const HQ_PLAN = {
     radius: 10,
     /** Search around the harbour anchor (grows by VILLAGE.searchGrow, 5 steps). */
     search: 25,
-    minShore: 11,
+    /** ≥ R + FLATTEN.discMargin + 1: the plaza pad's falloff never reaches the shore (pier root). */
+    minShore: 12.5,
+    /** Score cost per u of ground above `lowY`: a harbour plaza near the water, not on the bluff. */
+    lowY: 2.5,
+    highCost: 0.4,
+    /** Score cost per u of shore distance below `roomShore`: room for the streets to run inland. */
+    roomShore: 18,
+    roomCost: 0.12,
+    /** First pass: plaza ground at most this high (u); a bluff-top plaza only when none fits. */
+    maxY: 4.5,
   },
   /** Orchestrator Tower: inland side of the plaza, this far in from the plaza edge. */
   tower: { inset: 2.4, slide: [0, 30, -30, 60, -60] },
@@ -251,12 +260,29 @@ export const HQ_PLAN = {
     crossCost: 1.4,
     /** Street tint half-width (u, > PATHS.halfWidth so the band covers the smoothed path). */
     paintHalf: 1.7,
-    /** Lots: slots start `from` u past the rim, stop `back` u before the gate; target count. */
-    lots: { from: 12, back: 4, target: [8, 13] as const, minShore: 6, maxRelief: 1.6 },
+    /** Lots: slots every `every` u from `from` u past the rim to `back` u before the street end; target count. */
+    lots: {
+      from: 8,
+      every: 4.5,
+      back: 4,
+      target: [8, 13] as const,
+      minShore: 6,
+      maxRelief: 1.6,
+      /**
+       * Short-street seeds: below `target[0]`, lots also front the plaza between the rays, their
+       * fronts `ringGap` u past the rim (an inner row, then an outer one), every `ringStep` degrees.
+       */
+      ringGap: [1.5, 6] as const,
+      /** Ring lots may stand this close to the shore (a plaza on a narrow tip). */
+      ringMinShore: 3.5,
+      ringStep: 15,
+    },
   },
   /** Shore gate mooring post (gullPerch: three lashed stakes) at the waterline past the gate. */
   shoreGate: {
     def: 'gullPerch',
+    /** Any culture gate within this of the shore (u) is a shore gate too. */
+    nearShore: 5,
     /** Reach past the gate (u) and side offsets (u), first dry waterline spot wins. */
     reach: [2, 3, 4, 5, 6.5, 8, 10],
     side: [0, 1.6, -1.6, 2.8, -2.8],
@@ -302,13 +328,20 @@ export const HQ_PLAN = {
       /** Cable height over the ground (u) at every sample; lots count as this tall. */
       clearance: 2.5,
       lotHeight: 6.5,
-      /** Ground inside another pad's core may still rise this much to its plateau. */
-      padLift: 1.6,
+      /**
+       * Inside another pad's core the ground rises to that plateau: estimated as the pad centre's
+       * pre-pad ground + this (the plan runs before applyPads).
+       */
+      padLift: 0.8,
       /** The first / last `endFrac` of the span only needs `endClearance` over the ground. */
       endFrac: 0.14,
       endClearance: 1.0,
       /** Horizontal keep-out from the clock tower (u). */
       towerClear: 5,
+      /** Within this of a culture gate (u) the gate's height counts as ground. */
+      gateClear: 2.5,
+      /** Width of the strip under the span kept free of later lots / kit / trees (u). */
+      corridor: 3,
       span: [18, 85] as const,
       samples: 32,
     },
@@ -344,6 +377,8 @@ export const HQ_PLAN = {
     lanternOffset: 2.3,
     bench: { every: 4, offset: 2.5 },
   },
+  /** Terrace / yard site searches test every `ringStride`-th grid cell (speed; their discs are ≥ 4 u). */
+  ringStride: 2,
   /** Inland dry sand → civic lawn within these pads of the plaza edge / lot footprints (u). */
   lawn: { minShore: 4, quadPad: 14, lotPad: 6 },
 } as const;

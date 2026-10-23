@@ -23,7 +23,7 @@ import {
   type WorldData,
   type XZ,
 } from './index.ts';
-import { THEME_IDS, type ThemeId } from './types.ts';
+import { isStreetZone, THEME_IDS, type ThemeId } from './types.ts';
 import { PropFlag } from './prop-store.ts';
 import { lotRoof, roofNeighbours } from './gen/settlements.ts';
 import {
@@ -352,9 +352,14 @@ describe('settlements — 20-seed sweep', () => {
       const coding = w.islands.find((i) => i.theme === 'coding');
       if (w.districts.some((d) => d.islandId === coding?.id && d.kind === 'solar')) solar++;
       // fences are farm-only: no theme plans field fences any more (pipes and the DevOps
-      // foundry rail, TASK-405, are their own kinds)
+      // foundry rail, TASK-405, are their own kinds; HQ's ridge lookouts, TASK-466, keep a
+      // two-post rail at the bluff edge)
+      const hq = w.islands.find((i) => i.theme === 'hq')?.id;
       expect(
-        w.fences.filter((f) => f.kind !== 'pipe' && f.kind !== 'rail').length,
+        w.fences.filter(
+          (f) =>
+            f.kind !== 'pipe' && f.kind !== 'rail' && !(f.islandId === hq && f.points.length === 2),
+        ).length,
         `seed ${seed} fences`,
       ).toBe(0);
     }
@@ -459,7 +464,8 @@ describe('settlements — 20-seed sweep', () => {
         for (const q of pl.points) {
           total++;
           const z = zoneAt(w.height, w.zone, q.x, q.z);
-          if (z === Zone.path || z === Zone.plaza) onPath++;
+          // HQ streets are paths painted in their culture's zone (TASK-466)
+          if (z === Zone.path || z === Zone.plaza || isStreetZone(z)) onPath++;
         }
       }
       expect(onPath / total, `seed ${seed}`).toBeGreaterThan(0.85);
@@ -512,8 +518,9 @@ describe('campuses — 50-seed acceptance (TASK-302)', () => {
     research: 0,
   };
   /** Themes whose minimum may miss in ≤ 10 % of seeds (plan §8 TASK-302). */
-  // TASK-471 re-roll: Coding misses its minimum on 1 of 50 seeds
-  const SOFT: ThemeId[] = ['coding', 'devops', 'qa', 'design', 'marketing', 'research'];
+  // TASK-471 re-roll: Coding misses its minimum on 1 of 50 seeds. TASK-466: HQ's Seven Gates
+  // streets trade lots for gates / stalls; a plaza on a narrow tip (1526) holds 6
+  const SOFT: ThemeId[] = ['hq', 'coding', 'devops', 'qa', 'design', 'marketing', 'research'];
 
   it(
     'every island has its themed campus: quad, lot minimums, roles, research outpost',

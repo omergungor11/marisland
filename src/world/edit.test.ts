@@ -407,7 +407,12 @@ describe('edit commands — terrain side effects on props', () => {
     // a land prop just inland of the coast
     let spot: { x: number; z: number } | null = null;
     for (let k = 0; k < 2000 && !spot; k++) {
-      const p = findCell(w, (i) => w.shoreSdf[i] > 1 && w.shoreSdf[i] < 4, k);
+      // low ground (not a bluff top): the 4 u cut must take it under water
+      const p = findCell(
+        w,
+        (i) => w.shoreSdf[i] > 1 && w.shoreSdf[i] < 4 && w.height.data[i] < 2,
+        k,
+      );
       if (canPlace(w, { k: 'propAdd', def: 'driftwood', x: p.x, z: p.z, rotY: 0, scale: 1 }).ok)
         spot = p;
     }
@@ -610,7 +615,12 @@ describe('prop store growth', () => {
 describe('brush shape (sweep defect 6): terrain, not a balloon', () => {
   it('raise falloff is modulated by a fixed per-seed field (lobed outline), bounded by maxDelta', () => {
     const w = clone();
-    const p = inland(w, 13);
+    // below the raise taper (softCap), so the ring samples the full brush
+    const p = findCell(
+      w,
+      (i) => w.shoreSdf[i] > 12 && w.height.data[i] < EDIT_BRUSH.softCap - 4,
+      13,
+    );
     const h0 = w.height.data.slice();
     const r = 16;
     const s = 3;

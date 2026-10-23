@@ -182,7 +182,8 @@ export const HQ_CULTURE_SITE = {
       crateBack: 1.2,
       crateAlong: [0.5, -0.6],
     },
-    pennant: { along: 1.6, half: 3, poleR: 0.3, cordDepth: 0.8 },
+    /** `along`: distances past the rim tried in order (the first with both poles free wins). */
+    pennant: { along: [1.6, 3, 4.5, 6], half: 3, poleR: 0.3, cordDepth: 0.8 },
     /** The HQ gate on the harbour lane stands this far inland of the pier apron. */
     harbourGateBack: 2.5,
   },

@@ -22,6 +22,12 @@
   `hqOffice` v2 arcade / v3 bell niche + balcony (v3 far proxy = v1). Left for TASK-468: the compass
   mosaic over the 'compass' district (rays = the `cultureGate` fixtures' bearings from its centre);
   for TASK-469: semaphore arms + gate lamps in relay order (the sack mover is in).
+  Finish pass (2026-10-23): the plaza search prefers low, roomy ground (`maxY` first pass,
+  `highCost`, `roomCost`; minShore 12.5 so the pad's falloff never lifts the pier root); the post
+  yard + mail line are placed BEFORE the street lots and reserve a `tag: 'cable'` corridor under the
+  span (lots / kit / trees keep off it); plaza-ring lots fill short-street seeds; any culture gate
+  ≤ 5 u from the shore gets a mooring post. 50 seeds: lots ≥ 8 on 49 (1526, a narrow tip: 6–7),
+  mail line on 48, all seven gates on 44.
 - **2026-10-18 (M20/M21 in progress, paused to save quota)**: plan = `mar-plans/WORLD_PLAN.md` (+ `mar-plans/study/`),
   user decisions D-057…D-060 (all recommended options). Done on main: TASK-465 M20 props, 471 HQ at the centre +
   skerries + Lonely Palm islet (one-time re-pin), 472 night sky / deep sea / wakes / mist / comet, 473 tour mode,
@@ -202,6 +208,9 @@
   its posts. Pad a kit piece only when no foreign core is within its core (`padOk` / `padFree`), and
   give a lot that must hold a district level BOTH `group` and `step` (a lot pad with the default
   0.2 u step is dragged to its neighbours' level, and the whole group follows).
+- **Keep-out shapes must cover a pad's falloff** (TASK-466): a lot whose corner sits in another
+  pad's margin (FLATTEN.discMargin) tilts 0.3–0.7 u; register the terrace / yard shape at
+  radius + discMargin so `clear()` keeps the lots off it.
 - **The plan runs before `applyPads`**: relief tests inside the plaza disc see the pre-pad ground
   (rough); furniture on the plaza needs `S.padRelief`, not `wideRelief`. A cable / cord checked
   against pre-pad heights must add `padLift` over pad cores (lot pads rise ≈ 1–1.6 u) away from

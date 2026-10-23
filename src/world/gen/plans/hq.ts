@@ -286,15 +286,18 @@ export const planHq: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   // ---- Z1 Compass Plaza: the flattest disc near the harbour
   const plazaShape = (p: XZ): Shape => discShape(p.x, p.z, R);
   let plaza: XZ | null = null;
-  for (
-    let s = P.plaza.search;
-    s <= P.plaza.search + 5 * VILLAGE.searchGrow && !plaza;
-    s += VILLAGE.searchGrow
-  )
-    plaza = bestSample(ctx, isl, harbour, s, (p, i) => {
-      if (ctx.sdf[i] < Math.max(P.plaza.minShore, R + 1)) return Infinity;
-      return relief(ctx, plazaShape(p)) + 0.02 * dist(p, harbour);
-    });
+  for (const maxY of [P.plaza.maxY, Infinity])
+    for (
+      let s = P.plaza.search;
+      s <= P.plaza.search + 5 * VILLAGE.searchGrow && !plaza;
+      s += VILLAGE.searchGrow
+    )
+      plaza = bestSample(ctx, isl, harbour, s, (p, i) => {
+        if (ctx.sdf[i] < Math.max(P.plaza.minShore, R + 1) || ctx.h.data[i] > maxY) return Infinity;
+        const high = Math.max(0, ctx.h.data[i] - P.plaza.lowY) * P.plaza.highCost;
+        const cramped = Math.max(0, P.plaza.roomShore - ctx.sdf[i]) * P.plaza.roomCost;
+        return relief(ctx, plazaShape(p)) + high + cramped + 0.02 * dist(p, harbour);
+      });
   if (!plaza) return null;
   const plan = newPlan('village', plaza);
   plan.plaza = { x: plaza.x, z: plaza.z, r: R };
@@ -385,6 +388,9 @@ export const planHq: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   // ---- Z6 Guild Terrace first (the best flat ground), then the street lots; the crown lot on
   // a street when no terrace fits
   const terrace = placeTerrace(ctx, isl, plan, plaza, sIdx);
+  // Z5 post yard + mail line before the street lots: its cable corridor is kept free of roofs
+  const kit = kitHelpers(ctx, isl, dockSite?.root ?? null);
+  placeYard(ctx, isl, plan, plaza, towerAt, dockSite, kit, rng.fork('yard'));
   const lots = streetLots(ctx, isl, plaza, streets, sIdx, rng.fork('lots'));
   if (terrace < 0) {
     crownLot(ctx, isl, lots);
@@ -392,12 +398,9 @@ export const planHq: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
       if (ctx.lots[li].defId === 'hqAnnex') ctx.lots[li].pin = HQ_CULTURE_SITE.guildHallVariant;
   }
 
-  // ---- Z7 summit semaphore, Z5 post yard + mail line, Z8 ridge lookouts
+  // ---- Z7 summit semaphore, the pier kit, Z8 ridge lookouts
   const summit = placeSummit(ctx, isl, plan, plaza, rng.fork('summit'));
-  const kit = kitHelpers(ctx, isl, dockSite?.root ?? null);
-  // the pier kit before the mail line's low pylon (the crane keeps its quay spot)
   plan.stories = placeCulture(ctx, isl, plaza, a0, dockSite, kit, rng.fork('culture'));
-  placeYard(ctx, isl, plan, plaza, towerAt, dockSite, kit, rng.fork('yard'));
   placeRidge(ctx, isl, plan, plaza, summit, rng.fork('ridge'));
 
   // ---- links: kiosks, lots nearest first, the terrace by its stair
@@ -516,9 +519,12 @@ function layStreets(
     if (!o) continue;
     const d = unit(plaza, { x: o.cx, z: o.cz });
     if (harbour && pierDir && d.x * pierDir.x + d.z * pierDir.z >= Math.cos(S.shareDeg * DEG)) {
-      const gate = placeGate(ctx, isl, plaza, harbour, R + S.sharedGateOut, k, false, null);
-      if (gate) streets.push({ k, lane: harbour, shore: false, shared: true, gate });
-      continue;
+      // on its ray only (the lane may bend off it): else the culture gets a street of its own
+      const gate = placeGate(ctx, isl, plaza, harbour, R + S.sharedGateOut, k, false, d);
+      if (gate) {
+        streets.push({ k, lane: harbour, shore: false, shared: true, gate });
+        continue;
+      }
     }
     // land along the heading past the rim, up to the foot of a hill
     let landEnd = -2;
@@ -645,7 +651,9 @@ function placeGate(
     ctx.fixtures.push({ defId: 'cultureGate', x: p.x, z: p.z, rotY, islandId: isl.id, variant: k });
     for (const q of posts) addShape(ctx, isl, discShape(q.x, q.z, CULTURE_GATE.postR), true);
     if (padded) addPad(ctx, isl, discShape(p.x, p.z, S.gatePad), 0.5);
-    if (shore) placeMooring(ctx, isl, p, t, rotY);
+    // D-058: a gate by the water (shore street, or any gate this close to it) gets a mooring post
+    if (shore || (k !== HQ_K && sdfAt(ctx, p.x, p.z) <= HQ_PLAN.shoreGate.nearShore))
+      placeMooring(ctx, isl, p, t, rotY);
     return { p, rotY };
   }
   return null;
@@ -665,7 +673,16 @@ function placeMooring(ctx: SiteCtx, isl: IslandData, gate: XZ, t: XZ, rotY: numb
       if (y < S.quayY[0] || y > S.quayY[1] || sdfAt(ctx, q.x, q.z) > S.quayShore) continue;
       if (!freeOfShapes(ctx, isl, discShape(q.x, q.z, r), 0.3) || !offLanes(ctx, isl, q, r))
         continue;
-      pushFixture(ctx, isl, G.def, q, ang(-t.x, -t.z));
+      // the pier perches' variant: one instanced group for every post on the island
+      ctx.fixtures.push({
+        defId: G.def,
+        x: q.x,
+        z: q.z,
+        rotY: ang(-t.x, -t.z),
+        islandId: isl.id,
+        variant: S.perches.variant,
+      });
+      addShape(ctx, isl, discShape(q.x, q.z, r), true);
       return;
     }
 }
@@ -686,12 +703,12 @@ function streetLots(
   const pick = mixPicker(mix, rng);
   const goal = rng.int(L.target[0], L.target[1]);
   const lots: number[] = [];
-  // slots: (street, lane index) every ~5 u from `from` past the rim to `back` before the end
+  // slots: (street, lane index) every L.every u from `from` past the rim to `back` before the end
   const slots: { s: Street; k: number }[] = [];
   for (const s of streets) {
     if (s.shore || s.shared) continue;
     const total = s.lane.length - 1;
-    for (let d = R + L.from; d < total - L.back; d += 5) slots.push({ s, k: Math.floor(d) });
+    for (let d = R + L.from; d < total - L.back; d += L.every) slots.push({ s, k: Math.floor(d) });
   }
   slots.sort((a, b) => a.k - b.k || a.s.k - b.s.k);
   for (const { s, k } of slots) {
@@ -719,7 +736,24 @@ function streetLots(
       }
     }
   }
-  void plaza;
+  // too few street slots (short / shore streets): lots fronting the plaza between the rays
+  for (const gap of L.ringGap)
+    for (let a = 0; a < 360 && lots.length < L.target[0]; a += L.ringStep) {
+      const dir = dirOf(a * DEG);
+      const rotY = ang(-dir.x, -dir.z);
+      for (const def of slotDefs(pick(), mix, crown)) {
+        const d = LOT_FOOTPRINT[def][1];
+        const c = add(plaza, dir, R + 0.5 + gap + d / 2);
+        const li = tryLot(ctx, isl, def, c, rotY, sIdx, {
+          minShore: L.ringMinShore,
+          maxRelief: L.maxRelief,
+        });
+        if (li >= 0) {
+          lots.push(li);
+          break;
+        }
+      }
+    }
   return lots;
 }
 
@@ -768,8 +802,9 @@ function placeStreetKit(
     const r = rng.fork('street', s.k);
     const gateD = s.gate ? dist(s.gate.p, plaza) : Infinity;
     // pennant line across the street past the rim (the harbour lane flies HQ's swallowtails)
-    const pk = atDist(s.lane, R + S.pennant.along);
-    if (!s.shared && pk + 1 < s.lane.length && dist(s.lane[pk], plaza) < gateD - 2) {
+    for (const along of s.shared ? [] : S.pennant.along) {
+      const pk = atDist(s.lane, R + along);
+      if (pk + 1 >= s.lane.length || dist(s.lane[pk], plaza) >= gateD - 2) continue;
       const p = s.lane[pk];
       const t = unit(s.lane[pk - 1], s.lane[pk + 1]);
       const nrm = { x: -t.z, z: t.x };
@@ -793,6 +828,7 @@ function placeStreetKit(
           rectShape(p.x, p.z, rotY, 2 * S.pennant.half, S.pennant.cordDepth),
           false,
         );
+        break;
       }
     }
     // stalls: alternating sides along the street, the culture's goods; crates behind each
@@ -837,7 +873,10 @@ function placeStreetKit(
 // ---------------------------------------------------------------------------
 // Z6 terrace, Z5 yard, Z7 summit, Z8 ridge.
 
-/** Candidate centres in a ring, scored; the first that passes `ok` wins (null = none). */
+/**
+ * Candidate centres in a ring (every HQ_PLAN.ringStride-th cell: the discs are several u wide),
+ * scored; the first that passes `ok` wins (null = none).
+ */
 function ringSearch(
   ctx: SiteCtx,
   isl: IslandData,
@@ -850,8 +889,9 @@ function ringSearch(
   const cand: { p: XZ; s: number }[] = [];
   const [x0, x1] = gridRange(c.x - outer, c.x + outer);
   const [z0, z1] = gridRange(c.z - outer, c.z + outer);
-  for (let iz = z0; iz <= z1; iz++)
-    for (let ix = x0; ix <= x1; ix++) {
+  const st = HQ_PLAN.ringStride;
+  for (let iz = z0; iz <= z1; iz += st)
+    for (let ix = x0; ix <= x1; ix += st) {
       const i = iz * ctx.n + ix;
       if (ctx.islandMap[i] !== isl.id + 1) continue;
       const p = { x: cellX(ix), z: cellZ(iz) };
@@ -947,8 +987,9 @@ function placeTerrace(
     w: 2 * T.radius,
     d: 2 * T.radius,
   });
-  // the open terrace stays clear of scatter (non-blocking: the stair reaches the door)
-  addShape(ctx, isl, discShape(c.x, c.z, T.radius), false);
+  // the open terrace and its pad's falloff stay clear of scatter and of the street lots (a lot
+  // on the falloff tilts; non-blocking: the stair reaches the door)
+  addShape(ctx, isl, discShape(c.x, c.z, T.radius + FLATTEN.discMargin), false);
   return li;
 }
 
@@ -988,6 +1029,7 @@ function placeYard(
   const plazaY = heightAt(ctx.h, plaza.x, plaza.z);
   const lots = ctx.lots.filter((l) => l.islandId === isl.id);
   const lotShapes = lots.map((l) => rectShape(l.x, l.z, l.rotY, l.w, l.d));
+  const gates = ctx.fixtures.filter((f) => f.islandId === isl.id && f.defId === 'cultureGate');
   /** Cable from the yard pylon at `hi` to the low pylon: clears the ground, the roofs, the tower. */
   const cableOk = (hi: XZ): boolean => {
     const span = dist(hi, lowP);
@@ -1008,9 +1050,15 @@ function placeYard(
       // the span: roofs and pad plateaus (applyPads runs after the plans) under full clearance;
       // the ends drop to the anchors on the pylons' own pads, so only the head room counts there
       const end = t < Y.cable.endFrac || t > 1 - Y.cable.endFrac;
-      if (!end && lotShapes.some((sh) => shapeDist(sh, c.x, c.z) < 0.5)) g += Y.cable.lotHeight;
-      else if (!end && pads.some((q) => shapeDist(q.shape, c.x, c.z) <= q.margin))
-        g += Y.cable.padLift;
+      // a plateau settles near its centre's ground: the pad top is estimated from there
+      const top = (sh: Shape): number => heightAt(ctx.h, sh.x, sh.z) + Y.cable.padLift;
+      if (!end)
+        for (const q of pads)
+          if (shapeDist(q.shape, c.x, c.z) <= q.margin) g = Math.max(g, top(q.shape));
+      if (!end)
+        for (const sh of lotShapes)
+          if (shapeDist(sh, c.x, c.z) < 0.5) g = Math.max(g, top(sh) + Y.cable.lotHeight);
+      if (!end && gates.some((q) => dist(q, c) < Y.cable.gateClear)) g += CULTURE_GATE.height;
       if (c.y < g + (end ? Y.cable.endClearance : Y.cable.clearance)) return false;
     }
     return true;
@@ -1048,6 +1096,14 @@ function placeYard(
   const hi = add(c, along, HQ_CULTURE_SITE.yard.pylonOut);
   putKit(ctx, isl, 'mailLine', hi, rotToLow, r, 0);
   putKit(ctx, isl, 'mailLine', lowP, rotToLow + Math.PI, r, 1, kit.padOk(lowP));
+  // the span stays clear of the street lots, kit and trees placed after it (paths pass under)
+  const mid = add(hi, unit(hi, lowP), dist(hi, lowP) / 2);
+  addShape(
+    ctx,
+    isl,
+    { ...rectShape(mid.x, mid.z, rotToLow, Y.cable.corridor, dist(hi, lowP)), tag: 'cable' },
+    false,
+  );
   // the yard: inside its pad, so only land / free checks
   const YS = HQ_CULTURE_SITE.yard;
   const slot = (p: XZ, rr: number): boolean =>
@@ -1113,7 +1169,7 @@ function placeYard(
     w: 2 * Y.radius,
     d: 2 * Y.radius,
   });
-  addShape(ctx, isl, discShape(c.x, c.z, Y.radius), false);
+  addShape(ctx, isl, discShape(c.x, c.z, Y.radius + FLATTEN.discMargin), false);
   const toPlaza = unit(c, plaza);
   plan.links.push({ pin: add(c, toPlaza, Y.radius + 1), kind: 'path', done: () => undefined });
 }

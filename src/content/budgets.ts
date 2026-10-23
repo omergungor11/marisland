@@ -30,6 +30,10 @@ export interface Budget {
  * D-046 (TASK-402b): medium 255 → 300. The Research campus (≈ 20 instanced LOD1 groups: observatory,
  * library, halls, tower, parterres, terrariums, dishes, pods, sculptures, each + its shadow pass) sits
  * in the W11 postcard foreground: 216 → 289 calls measured (seed 1001); everything else stays ≤ 237.
+ * TASK-466 (D-057 Seven Gates): HQ's seven culture gates / goods stalls / pennant cuts are one
+ * instanced LOD0 group per culture (+ shadow pass); W16 (Harbour Guild, seed 1001) 291 → 328
+ * calls, W2 / W3 202 / 206 → 243 / 241. Medium 300 → 340. The new kit geometry adds 1–2 MB on
+ * every frame and W4 already stood at the 170 MB line: medium gpuMemoryMB 170 → 176.
  */
 export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
   low: {
@@ -45,14 +49,14 @@ export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
     newSeedMs: 1500,
   },
   medium: {
-    drawCalls: 300,
+    drawCalls: 340,
     triangles: 800_000,
     instances: 15_000,
     groundCover: 12_000,
     agents: 60,
     particles: 6_000,
     programs: 20,
-    gpuMemoryMB: 170,
+    gpuMemoryMB: 176,
     jsHeapMB: 180,
     newSeedMs: 800,
   },
