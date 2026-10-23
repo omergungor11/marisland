@@ -11,7 +11,7 @@ import {
   type LitMaterial,
   type LitOptions,
 } from './factory.ts';
-import { cultureGateOf, cultureLampTheme } from '../../content/cultures/rhythm.ts';
+import { cultureGateOf, cultureLampTheme, SEA_LAMPS } from '../../content/cultures/rhythm.ts';
 import { GATES } from '../uniforms.ts';
 
 /**
@@ -57,9 +57,11 @@ export function propFeatures(def: PropDef, groundCover: boolean): LitFeatures {
  * clock instead (never late-off); time-gated defs get their shared gate uniform.
  */
 function lampsOf(def: PropDef): Pick<LitOptions, 'gate'> & {
-  lamps: { stagger: boolean; lateOff: boolean; culture: boolean };
+  lamps: { stagger: boolean; lateOff: boolean; culture: boolean | 'sea' };
 } {
-  const culture = cultureLampTheme(def.id) !== null;
+  const culture: boolean | 'sea' = SEA_LAMPS.defs.includes(def.id)
+    ? 'sea'
+    : cultureLampTheme(def.id) !== null;
   const g = cultureGateOf(def.id);
   return {
     lamps: { stagger: true, lateOff: !culture && !NIGHT.alwaysOn.includes(def.geo), culture },
@@ -100,7 +102,7 @@ export function createPropMaterials(scope: Scope): PropMaterials {
       const features = propFeatures(def, false);
       const key =
         `${near}:${far}:${lamps.lateOff ? 1 : 0}:${features.rim ? 1 : 0}` +
-        (lamps.culture ? ':c' : '') +
+        (lamps.culture === 'sea' ? ':s' : lamps.culture ? ':c' : '') +
         (gate ? `:g${cultureGateOf(def.id)}` : '');
       let m = merged.get(key);
       if (!m) {

@@ -635,3 +635,57 @@ export const ROUTES = {
   legMargin: 80,
   resample: 2,
 } as const;
+
+/**
+ * Seamarks (TASK-474, world plan `W:D8` / `W:D3`; gen/seamarks.ts, placed after the boat routes).
+ * Channel buoys: a red (port) / green (starboard) pair every `spacing` u along every ferry route;
+ * sea-stack fields: `clusters` clusters of `seaStack` fixtures off the windward coasts, one of them
+ * with the arch variant. All of it keeps out of the routes, dock approaches, islets and boat rings.
+ */
+export const SEAMARKS = {
+  buoys: {
+    /** Pair spacing along the route (u) and the lateral offset of each buoy from the centreline (u). */
+    spacing: 25,
+    lateral: 3.5,
+    /** Water a buoy needs: depth ≥, shore distance ≥ (u). */
+    minDepth: 1,
+    minShore: 2.5,
+    /** No buoy within this of a pier end (u), of an islet's reach disc (u), of another route (u). */
+    dockClear: 16,
+    isletClear: 6,
+    routeClear: 3,
+    /** `buoy` variants: port (red) / starboard (green). */
+    port: 1,
+    starboard: 2,
+    /** Instance cap per world (pairs × 2). */
+    max: 120,
+  },
+  stacks: {
+    /** Clusters per world and stacks per cluster (inclusive). */
+    clusters: [2, 4] as const,
+    perCluster: [2, 4] as const,
+    /** Islands whose profile already carves its own stacks. */
+    skipArchetypes: ['beaconrock'] as readonly string[],
+    /** Windward only: leewardness (heightfield.ts) at most this. */
+    maxLee: 0.2,
+    /** Shore distance window (u) and depth window (u) of a cluster centre. */
+    shore: [5, 16] as const,
+    depth: [1.5, 10] as const,
+    /** Stacks around the centre: radius window (u; the arch's towers need more), min spacing (u). */
+    spread: [3.5, 6.5] as const,
+    archSpread: [6.5, 9.5] as const,
+    spacing: 3.2,
+    /** A stack must show at least this much above the water (variant height − depth, u). */
+    minVisible: 4,
+    /** `seaStack` size-class heights (u; registry) and the arch variant with its max depth (u). */
+    heights: [6, 10, 15] as const,
+    arch: 3,
+    archMaxDepth: 3.5,
+    /** Clearances (u): every route sample, pier ends, islet reach discs, buoys, culture boat rings. */
+    routeClear: 10,
+    dockClear: 20,
+    isletClear: 8,
+    buoyClear: 6,
+    ringClear: 6,
+  },
+} as const;

@@ -47,8 +47,9 @@ describe('generateWorld — determinism', () => {
           "props": "7e214163508f3cbc",
           "routes": "7c3fb900a1631df7",
           "sdf": "f25821e68b9fc27b",
+          "seamarks": "37638d086076f1f5",
           "sites": "c8ae8ec27e995a3e",
-          "world": "61451b6d0a2b3650",
+          "world": "ed7a0a3df737d1ed",
           "zone": "2f3e253c5c5edea5",
         },
         "1001": {
@@ -60,8 +61,9 @@ describe('generateWorld — determinism', () => {
           "props": "ed47fd7d8d0c1946",
           "routes": "ad9143a5f0133361",
           "sdf": "cc52d61ebf22894e",
+          "seamarks": "0d7eafafa2581373",
           "sites": "7c4957b0ced76172",
-          "world": "4fc98fb0f393ed7d",
+          "world": "ae430ab21cfd28e4",
           "zone": "e6292b2b6e1c36da",
         },
         "42": {
@@ -73,8 +75,9 @@ describe('generateWorld — determinism', () => {
           "props": "cab9ef88cb09967a",
           "routes": "96c6c80ad3e5b6b0",
           "sdf": "e18b47a56ddfcd47",
+          "seamarks": "bfe51c4b8f7d446c",
           "sites": "2ba5c44dc596d660",
-          "world": "f0d04ddf1ac0d2c1",
+          "world": "46fe6b3a852ddf7c",
           "zone": "e2848ac2c3a011b6",
         },
       }

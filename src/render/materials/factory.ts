@@ -66,7 +66,7 @@ export interface LitOptions {
    * lamps ramp (hash of the instance origin); `lateOff` = NIGHT.lateOffFraction of them go dark
    * late. Off for moving meshes (their origin hash would change as they move).
    */
-  lamps?: { stagger?: boolean; lateOff?: boolean; culture?: boolean };
+  lamps?: { stagger?: boolean; lateOff?: boolean; culture?: boolean | 'sea' };
   /**
    * Culture gate (TASK-430, render/culture-clock.ts GATES): a shared 0..1 visibility that
    * dither-fades the whole material (colour + depth) in and out with the time of day.
@@ -288,6 +288,7 @@ uniform vec3 uLampMode;
 uniform vec4 uCultureIsle[${CULTURE_SLOTS}];
 uniform vec2 uCultureLamps[${CULTURE_SLOTS}];
 uniform vec3 uFestival;
+uniform float uSeaLamps;
 // culture clock (TASK-430): the island whose disc (distance / reach) is nearest → (lamp set,
 // relay boost, distance / reach); vec3(0, 0, 1) without islands
 vec3 marCulture(vec2 p) {
@@ -340,7 +341,8 @@ const VERTEX_CLOUD = /* glsl */ `
       : uLamps.x;
     // a culture lamp set switches on in rings from its island's centre outward
     float marRing = clamp(marCu.z, 0.0, 1.0) * 0.7;
-    if (uLampMode.z > 0.5) marOn = smoothstep(marRing, marRing + 0.3, marCu.x);
+    if (uLampMode.z > 1.5) marOn = smoothstep(marLh * 0.85, marLh * 0.85 + 0.15, uSeaLamps);
+    else if (uLampMode.z > 0.5) marOn = smoothstep(marRing, marRing + 0.3, marCu.x);
     // late night: a fraction of the windows goes dark, staggered over the switch-off ramp
     float marLo = marHash12(marOrigin.xz * 1.37 + 11.1);
     if (uLampMode.y > 0.5 && marLo < ${f(NIGHT.lateOffFraction)}) {
@@ -535,7 +537,7 @@ export class LitMaterial extends THREE.MeshLambertMaterial {
     const lampMode = new THREE.Vector3(
       opts.lamps?.stagger ? 1 : 0,
       opts.lamps?.lateOff ? 1 : 0,
-      opts.lamps?.culture ? 1 : 0,
+      opts.lamps?.culture === 'sea' ? 2 : opts.lamps?.culture ? 1 : 0,
     );
     const defines = defineMap();
     const uniforms: Record<string, THREE.IUniform> = {
@@ -551,6 +553,7 @@ export class LitMaterial extends THREE.MeshLambertMaterial {
       uCultureIsle: SHARED.uCultureIsle,
       uCultureLamps: SHARED.uCultureLamps,
       uFestival: SHARED.uFestival,
+      uSeaLamps: SHARED.uSeaLamps,
       uPoolTex: SHARED.uPoolTex,
       uPoolMap: SHARED.uPoolMap,
       uPoolColor: SHARED.uPoolColor,

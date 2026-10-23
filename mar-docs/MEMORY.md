@@ -10,6 +10,23 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-18 (M20/M21 in progress, paused to save quota)**: plan = `mar-plans/WORLD_PLAN.md` (+ `mar-plans/study/`),
+  user decisions D-057…D-060 (all recommended options). Done on main: TASK-465 M20 props, 471 HQ at the centre +
+  skerries + Lonely Palm islet (one-time re-pin), 472 night sky / deep sea / wakes / mist / comet, 473 tour mode,
+  474 channel buoys + sea stacks + arch, lighter mist. wow 18/18 `--assert`.
+  **Paused mid-work (uncommitted, in worktrees):**
+  - TASK-466 HQ Seven Gates: worktree `.claude/worktrees/agent-ae0803b8bf255d7b4` (28 files), was writing street
+    zones / content / geometry / plan; not yet verified.
+  - TASK-467 Design conservatory: worktree `.claude/worktrees/agent-a8b0826a5966d6199` (13 files), plan written,
+    writing tests.
+  - Backups: `shots/wip/TASK-466.patch`, `TASK-467.patch` (gitignored; `git apply` on 71566fd).
+  To resume: SendMessage the stopped agents (Claude Code session `595d4a41…`) or start fresh agents in those
+  worktrees with the original briefs (TASK-466/467 rows + D-057/058/060 + `study/hq-design.md`).
+  Next after them: TASK-468 shader (compass mosaic, prism pools, conservatory glass) ∥ 469 life (semaphore relay,
+  gate lights, mail bursts 09:00/17:45, windmill) → 470 QA + new wow shots; then M22 five-island quick wins (Round 2
+  directions in D-059; Round 3 details per island in WORLD_PLAN §6). Follow-ups: stack arch lintel reads weak
+  (two rocks from afar), buoy lamps faint at W15; no Research dish/telescope → comet hook yet; shots `--port`
+  4190 is fetch-blocked (use 4185–4188); subagents run on fable (user request) but it hits session limits fast.
 - **2026-10-18 (TASK-467, worldgen)**: Design "Glass Conservatory" plan (`world/gen/plans/design.ts`): pier in
   the lee cove beside the stream mouth, Conservatory Square (R 10 terrazzo disc near the dome top, octagon
   blocked, bay 0 toward the pier, hub at bay 0's pin), four bay lanes (corridor A* round the plaza ring),
@@ -180,6 +197,10 @@
 - Shot presets are data in `src/content/shots.ts`; both the harness (`scripts/shots.ts`) and the app read them — keep them in sync
 
 ## Known Issues / Gotchas
+- Fixture `rotY` is the heading of local **+z** (render yaw = π/2 − rotY), not +x — the TASK-474 stack arch
+  first came out rotated 90°.
+- Sea marks (channel buoys, sea stacks) live in `world.seamarks`, hashed as `hashes.seamarks`, not in
+  `world.fixtures`, so per-island plan snapshots don't move; `settlement-props.ts` renders both.
 - **The Mossgrove stream carve does not reach the heightfield** (TASK-467): the profile's 1.1 u dent is
   swallowed by the dome's cross-slope and the 2 u grid; `world.streams` is a polyline over plain ground
   (easels / screens still read it). The only water a bridge can span is the sea, so the Design creek is
