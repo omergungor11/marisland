@@ -271,7 +271,7 @@ Details in `phases/phase-3.md`.
 | TASK-461 | World polish: DevOps steam main as a real pitched run on slopes (no steps), Research ≥ 4 pennant lines + lecture on every seed; medium tableau cap 4 → 5 so tea time keeps its bots | worldgen | M | COMPLETED (89bbae9, d7abd62) | — |
 | TASK-462 | Balloon shadow dither stipple — really the Bayer-dithered steam under the balloons: blended puffs + near-camera fade | shader | S | COMPLETED (537fb7c) | — |
 | TASK-463 | Ladder misses: exact masks on medium/high (composer skipped), class-consistent drift, Research ladder shift, DOF focus on the orbit target, solar rows T0 — low 6→0, medium 4→0, high 10→1 (D-056) | engine | M | COMPLETED (27bfa82, 9c55f1c) | 460–462 |
-| TASK-464 | T1 far forests stipple out (`TIER_FADE[1]` 320–420 u, blobs off at T1) + per-species / blossom T0 blobs so a wider fade doesn't break pair 380 (high L-pairs-design blob 0.7 %) | props → engine | M | PENDING | TASK-463 |
+| TASK-464 | T1 far forests stipple out (`TIER_FADE[1]` 320–420 u, blobs off at T1) + per-species / blossom T0 blobs so a wider fade doesn't break pair 380 (high L-pairs-design blob 0.7 %) | props → engine | M | IN_PROGRESS | TASK-463 |
 
 ### M20 — HQ Seven Gates + Design Glass Conservatory
 *User-chosen remake (D-057, D-058, 2026-10-17; master plan `mar-plans/WORLD_PLAN.md`). 465 done; 471 (layout) next; 466 ∥ 467; 468 ∥ 469; 470 last.*
@@ -294,6 +294,7 @@ Details in `phases/phase-3.md`.
 | TASK-472 | Sky + sea shader quick wins: night sky fix (stars, moon height; `W:G5`), deep-band texture ≤ 8 % L (`W:K5`), lingering ferry wakes (`W:B4`), morning channel mist (`W:H6`), comet on Comet Night + seeded meteors (`W:G2`) | shader | M | COMPLETED (81a963b) | — |
 | TASK-473 | Tour mode (`W:C1`): idle → wow-preset chain with eased flights and time scrub, HUD toggle, any input stops it | engine | S | COMPLETED (257f171) | — |
 | TASK-474 | Channel buoys along ferry routes with night lamps (`W:D8`); sea-stack fields + one arch (`W:D3`) | worldgen | S | COMPLETED (77408cf) | TASK-471 |
+| TASK-475 | Seamark polish: sea-stack arch lintel reads as one span from afar (not two rocks); buoy night lamps readable at W15 | worldgen | S | IN_PROGRESS | TASK-474 |
 
 ### M17 — Graphics II: decor & nature
 *Flower fields, fences, lanterns, benches, signs, rocks*
