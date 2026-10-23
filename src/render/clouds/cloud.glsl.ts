@@ -144,12 +144,15 @@ void main() {
       float p = mod(spawn, uBurp.x);
       size *= 1.0 + (uBurpSize.z - 1.0) * (1.0 - smoothstep(0.0, 1.3, p)) * step(0.5 * uBurp.x, spawn - p);
     }
-    if (aKind > 0.5) {
-      // soft steam (D5): curling turbulence that grows with age; lighter toward the top
+    {
+      // soft steam (D5): curling turbulence that grows with age; lighter toward the top.
+      // Chimney smoke (kind 0, TASK-477) takes the same fade + radial alpha (it was an opaque
+      // white ball until the last 40 % of its life) with a gentler curl.
       float ph = aSeed * 41.0 + id * 2.3;
       float tt = uTime * uSoftFreq * uMotionScale;
-      c.xz += vec2(sin(tt + ph), cos(tt * 0.83 + ph * 1.7)) * uSoft.w * age;
-      c.y += sin(tt * 1.3 + ph * 0.7) * uSoft.w * 0.3 * age;
+      float curl = uSoft.w * (aKind > 0.5 ? 1.0 : 0.3);
+      c.xz += vec2(sin(tt + ph), cos(tt * 0.83 + ph * 1.7)) * curl * age;
+      c.y += sin(tt * 1.3 + ph * 0.7) * curl * 0.3 * age;
       vOpacity = mix(uSoft.y, uSoft.z, age);
       // per-puff dither phase: overlapping see-through puffs cover different pixels and add up
       vDither = marPuffHash(vec2(id * 3.7, aSeed * 19.0));
@@ -197,15 +200,15 @@ void main() {
     vec3 n = normalize(vN);
     // a puff at the lens reads as a pale veil over the frame: fade it out near the camera
     float cover = vFade * smoothstep(uNearFade.x, uNearFade.y, distance(uCameraPos, vW));
-    if (vKind > 0.5) {
-      // soft steam (D5): radial alpha (view-facing) × life opacity
+    {
+      // soft steam (D5): radial alpha (view-facing) × life opacity (chimney smoke too, TASK-477)
       float facing = clamp(dot(n, normalize(uCameraPos - vW)), 0.0, 1.0);
       cover *= vOpacity * smoothstep(0.0, uSoft.x, facing);
     }
     // TASK-462: blended coverage (the old ordered dither left a 4 px dot lattice that tilt-shift /
     // DOF smeared into stippled discs over roofs and ground); the debug mask keeps the dither
     if (uDebugMask > 0.5) {
-      if (cover < fract(marBayer4(gl_FragCoord.xy) + (vKind > 0.5 ? vDither : 0.0))) discard;
+      if (cover < fract(marBayer4(gl_FragCoord.xy) + vDither)) discard;
     } else if (cover < 0.004) discard;
     // chimney smoke a touch greyer than steam
     float g = (0.3 + 0.7 * (0.5 + 0.5 * n.y)) * (vKind < 0.5 ? 0.55 : 1.0);

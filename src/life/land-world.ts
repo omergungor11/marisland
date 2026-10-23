@@ -264,6 +264,10 @@ export function buildWalkGraph(ctx: LifeCtx): WalkGraph {
   for (const [di, d] of (w.docks ?? []).entries()) {
     const root = d.node >= 0 && d.node < base ? d.node : nearest(d.x, d.z, 4);
     if (root < 0) continue;
+    // A dock root on the shore is often below minWalkY; it stays walkable as a deck node so the
+    // pier chain joins the land graph (TASK-477).
+    if (Number.isNaN(ys[root]) && ctx.h(xs[root], zs[root]) < VILLAGERS.minWalkY)
+      ys[root] = VILLAGERS.deckY;
     const len = d.segments * 2;
     const fx = Math.cos(d.rotY);
     const fz = Math.sin(d.rotY);
