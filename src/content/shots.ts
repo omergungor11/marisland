@@ -1268,6 +1268,38 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     quality: 'medium',
     sets: ['dev'],
   },
+  // ---- ground art (TASK-468): the HQ compass mosaic from above, the Design prism pools at golden
+  // hour and at night (seed 6006 has three arches on its Prism Walk), the conservatory glass
+  {
+    id: 'D-compass-top',
+    title: 'Compass mosaic · HQ plaza from above (15:00)',
+    seed: 1001,
+    cam: '-36,70,-8,-36,1.4,-28',
+    time: 15,
+    simt: 4,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-prism-golden',
+    title: 'Prism pools · Design Prism Walk at golden hour (17:15)',
+    seed: 6006,
+    cam: '112,26,-182,122,18,-162',
+    time: 17.25,
+    simt: 4,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-prism-night',
+    title: 'Prism pools + conservatory glass · Design at night (21:30)',
+    seed: 6006,
+    cam: '112,26,-182,122,18,-162',
+    time: 21.5,
+    simt: 4,
+    quality: 'medium',
+    sets: ['dev'],
+  },
   {
     id: 'D-marquee-show',
     title: 'Marquee chase · SHOW sign at the Launch Show (17:30, 0.4 s pair)',

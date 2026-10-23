@@ -172,6 +172,28 @@ export const STAINED = {
   night: 0.8,
   nightTint: EMISSIVE.window,
   nightTintMix: 0.35,
+  /**
+   * Glass body (TASK-468, conservatory / glasshouses / vitray): a pane is not a painted panel.
+   * By day the diffuse-lit pane is × `body` (thin glass scatters little light back) and its
+   * colour pushed to `saturation`; `mottle` ± lightness of cathedral-glass grain over `mottleScale`
+   * u (day and night: the lamp glow behind it breathes through the grain instead of a flat fill);
+   * the sky (horizon colour) reflects at grazing angles, (1 − n·v)^`skyPower` × `sky`; diagonal
+   * glare bands sweep the glass by day (`sheen` × band, `sheenFreq` per u), faded out past
+   * `sheenFade` u (sub-pixel bands would shimmer).
+   */
+  body: 0.66,
+  saturation: 1.3,
+  mottle: 0.22,
+  /** Night: the lamp-lit pane × `nightBody` with `nightMottle` grain — a soft glow behind
+   * cathedral glass, not an even lightbox quilt. */
+  nightBody: 0.72,
+  nightMottle: 0.4,
+  mottleScale: 0.9,
+  sky: 0.55,
+  skyPower: 2.5,
+  sheen: 0.32,
+  sheenFreq: 0.55,
+  sheenFade: [35, 80] as const,
 } as const;
 
 /** Wind turbine head yaw: into the wind plus a slow hunting wobble (deg, s). */

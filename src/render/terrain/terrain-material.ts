@@ -18,6 +18,12 @@ import { NIGHT_GLSL, POOL_GAIN } from '../shaders/chunks/night.glsl.ts';
 import { MIST_GLSL } from '../shaders/chunks/mist.glsl.ts';
 import { BRUSH_RING } from '../../content/edit-ui.ts';
 import { MORNING_MIST } from '../../content/weather.ts';
+import {
+  GROUND_ART_COLOR_GLSL,
+  GROUND_ART_LIGHT_GLSL,
+  GROUND_ART_PARS_GLSL,
+  groundArtUniforms,
+} from './ground-art.ts';
 
 /**
  * Editor brush ring (TASK-212), shared by every terrain material like `HOVER_UNIFORMS`:
@@ -40,7 +46,9 @@ export const BRUSH_UNIFORMS = {
  *  (f) lantern pools at night (TASK-171, chunks/night.glsl.ts): additive warm light × albedo,
  *  (g) the low weather mist band after three's fog (TASK-172, chunks/mist.glsl.ts),
  *  (h) the Emberpeak crater glow (D5, content CRATER_GLOW): emissive, brightest on the floor,
- *  (i) the editor brush ring (TASK-212, `BRUSH_UNIFORMS`): off (`uBrush.w == 0`) → no-op.
+ *  (i) the editor brush ring (TASK-212, `BRUSH_UNIFORMS`): off (`uBrush.w == 0`) → no-op,
+ *  (j) ground art (TASK-468, ground-art.ts): the HQ compass mosaic (every quality) and the Design
+ *      prism-arch light pools (MAR_PRISM, not on low).
  * One program per quality level; all chunks share one material instance.
  */
 export interface TerrainMaterial {
@@ -101,8 +109,10 @@ export function createTerrainMaterial(
     uBrush: BRUSH_UNIFORMS.uBrush,
     uBrushCol: BRUSH_UNIFORMS.uBrushCol,
     uBrushBad: BRUSH_UNIFORMS.uBrushBad,
+    ...groundArtUniforms(world),
   };
   const caustics = quality !== 'low';
+  const prism = quality !== 'low';
   if (detail) {
     const meanA = groundDetailData().meanA;
     uniforms.uDetail = { value: textures.groundDetail() };
@@ -129,6 +139,7 @@ export function createTerrainMaterial(
     shader.defines = shader.defines ?? {};
     if (caustics) shader.defines.MAR_CAUSTICS = '';
     if (detail) shader.defines.MAR_DETAIL = '';
+    if (prism) shader.defines.MAR_PRISM = '';
 
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vMarWorld;')
@@ -161,6 +172,7 @@ uniform vec3 uBrushBad;
 ${CLOUD_SHADOW_GLSL}
 ${NIGHT_GLSL}
 ${MIST_GLSL}
+${GROUND_ART_PARS_GLSL}
 vec2 marTerrainUv(vec2 xz) {
   return ((xz - uTerrainGrid.xy) * uTerrainGrid.z + 0.5) / uTerrainGrid.w;
 }
@@ -179,6 +191,7 @@ float marCaustic(vec2 p, float t) {
   vec2 marUv = marTerrainUv(vMarWorld.xz);
   float marZone = floor(texture2D(uTerrainZone, marUv).r * 255.0 + 0.5);
 ${GROUND_COLOR_GLSL}
+${GROUND_ART_COLOR_GLSL}
   {
     // (d) wet-sand lap: the wet edge advances ${f(F.lapAdvance)} u with the 4.5 s lap
     float sdf = texture2D(uTerrainSdf, marUv).r;
@@ -245,6 +258,7 @@ ${GROUND_COLOR_GLSL}
         * (marPl.x * marNear * marFacet * ${POOL_GAIN.ground} * marPoolFlicker(vMarWorld.xz, uTime));
     }
   }
+${GROUND_ART_LIGHT_GLSL}
   if (uBrush.w != 0.0) {
     // (i) editor brush: a soft ~1-cell band at the radius over a faint fill (never < 1.5 px;
     // thinner on small rings so a prop footprint still reads as a ring)
@@ -290,7 +304,7 @@ ${GROUND_COLOR_GLSL}
   // reachable for the GPU-memory walk (the patched uniforms otherwise live only in this closure)
   material.userData.uniforms = uniforms;
   material.customProgramCacheKey = () =>
-    `mar-terrain-v2-${caustics ? 'c' : 'n'}${detail ? 'd' : ''}`;
+    `mar-terrain-v3-${caustics ? 'c' : 'n'}${detail ? 'd' : ''}${prism ? 'p' : ''}`;
   return { material, uniforms };
 }
 
