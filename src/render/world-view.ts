@@ -40,6 +40,7 @@ import { createMovers } from './movers.ts';
 import { createCultureMovers } from './culture-movers.ts';
 import { createSkyCraft } from './sky-craft.ts';
 import { createWaterfalls } from './waterfalls.ts';
+import { createMailCables } from './mail-lines.ts';
 import type { DirtyRegion } from '../world/edit-types.ts';
 import type { SubImageRenderer } from './gl-subimage.ts';
 import { createPropMirror, type PropMirror } from './props/prop-mirror.ts';
@@ -246,6 +247,11 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   const scatter = { props: settlement.props, counts: {} as Record<string, number> };
   timings.scatter = d.now() - tScatter;
   const pm = createPropMaterials(d.scope);
+  // HQ mail line cables (TASK-466): one static merged mesh on the props' merged-twin material
+  const cables = d.propMaterial
+    ? { mesh: null }
+    : createMailCables(settlement.props, seed, d.scope, pm);
+  if (cables.mesh) group.add(cables.mesh);
   const props = createPropBatcher(scatter.props, {
     scope: d.scope,
     seed,

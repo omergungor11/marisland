@@ -18,7 +18,8 @@ import {
   WOOD,
 } from '../../content/palette.ts';
 import type { Polyline, WorldData, XZ } from '../types.ts';
-import { Zone } from '../types.ts';
+import { streetZone, THEME_IDS, Zone } from '../types.ts';
+import { THEMES } from '../../content/themes/index.ts';
 
 const hex = (h: string): [number, number, number] => [
   parseInt(h.slice(1, 3), 16),
@@ -45,6 +46,10 @@ const ZONE_COLORS: [number, number, number][] = (() => {
   c[Zone.path] = hex(WOOD.planks);
   c[Zone.plaza] = hex(WOOD.dock);
   c[Zone.crater] = hex(EMISSIVE.lava);
+  // HQ culture streets (TASK-466): paving in the culture accent
+  THEME_IDS.forEach((t, k) => {
+    c[streetZone(k)] = hex(THEMES[t].accent);
+  });
   return c;
 })();
 

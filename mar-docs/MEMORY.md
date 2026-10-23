@@ -10,6 +10,18 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-18 (TASK-466, worldgen)**: HQ Seven Gates plan (`world/gen/plans/hq.ts`, numbers in
+  `content/themes/hq.ts` HQ_PLAN + `content/cultures/hq.ts` HQ_CULTURE_SITE): R 10 compass plaza
+  (district kind 'compass'), seven streets aimed at the real islands (A* rays in a 4 u corridor, other
+  streets' cells cost extra), `cultureGate` per street (rim / shore gates + `gullPerch` mooring post),
+  goods stalls + crates + pennants per culture, lots from the new mix (cottage / barn / towerHouse),
+  Guild Terrace (earthed up to plaza + 3.5 u, stair link), post yard + `mailLine` pair (cable mesh
+  `render/mail-lines.ts`, sacks `CULTURE_MOVERS.mail` at the `mailHour` 09:00 / 17:45 bursts), summit
+  semaphore, 3 ridge lookouts, quay paving, bottle-beach scatter. Street tints = 7 new zones
+  (`Zone.streetHq…streetResearch`, ZONE_COUNT 23) painted by the plan and kept by `writePaths`.
+  `hqOffice` v2 arcade / v3 bell niche + balcony (v3 far proxy = v1). Left for TASK-468: the compass
+  mosaic over the 'compass' district (rays = the `cultureGate` fixtures' bearings from its centre);
+  for TASK-469: semaphore arms + gate lamps in relay order (the sack mover is in).
 - **2026-10-17 (TASK-471, worldgen)**: hub layout (HQ nearest the centroid, six on a 60° ring, `LAYOUT.hub`,
   `layoutProblem` 'offcentre') + islets (`world.islets`: 3–6 skerries + one Lonely Palm sandbar, `ISLETS` /
   `ISLET_LAYOUT` / `ISLET_SCATTER`), D-058 implementation note. One-time re-pin: every raw cam in `shots.ts`
@@ -167,6 +179,19 @@
 - Shot presets are data in `src/content/shots.ts`; both the harness (`scripts/shots.ts`) and the app read them — keep them in sync
 
 ## Known Issues / Gotchas
+- **Two pads at different levels dip the ground between them** (TASK-466): a padded prop whose core
+  overlaps another pad's core (the plaza, a lot) with `step` set is NOT relaxed to it, and
+  `applyPads` blends the two plateaus by weight: a gate pad inside the plaza rim made a 1 u dip under
+  its posts. Pad a kit piece only when no foreign core is within its core (`padOk` / `padFree`), and
+  give a lot that must hold a district level BOTH `group` and `step` (a lot pad with the default
+  0.2 u step is dragged to its neighbours' level, and the whole group follows).
+- **The plan runs before `applyPads`**: relief tests inside the plaza disc see the pre-pad ground
+  (rough); furniture on the plaza needs `S.padRelief`, not `wideRelief`. A cable / cord checked
+  against pre-pad heights must add `padLift` over pad cores (lot pads rise ≈ 1–1.6 u) away from
+  its own ends.
+- **Streets through the plaza**: kiosks / plaza furniture must be placed AFTER the street lanes
+  (a kiosk lot on a street's rim exit blocks `nearestPathCell` → no street); plaza furniture keeps
+  only `plazaLaneGap` off the lane centrelines (the plaza is one paved disc).
 - **Islets own `islandMap` ids past the islands** (TASK-471): `world.islands[world.islandMap[i] - 1]` is
   undefined on a skerry / sandbar cell. Guard with `id > islands.length` (done in terrain-colors' palette
   row, settlements' `pathSparesSlopes`, the archipelago / edit tests) or use `coastBody(islands, islets, id)`

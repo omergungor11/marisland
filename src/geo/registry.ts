@@ -182,7 +182,8 @@ defs.push(
   D('hotSpring', 1, hotSpring, 3.5, 1),
   D('volcanoCrater', 1, volcanoCrater, 5.4, 0.34),
   // phase-3 office shells (footprints from content/offices.ts), far proxy, interiors, fixtures
-  D('hqOffice', 2, hqOffice, 3.6, 5.4),
+  // v2 arcade (own far proxy: the loggia slab) / v3 bell niche + balcony (far proxy v1), TASK-466
+  { ...D('hqOffice', 4, hqOffice, 3.6, 5.4), lod1Of: { 3: 1 } },
   // variant 2 = Harbour Guild hall (M19 TASK-410), placed by the HQ plan on the crown lot (TASK-420)
   { ...D('hqAnnex', 3, withGuildHall(hqAnnex), 2.2, 7.9), lod1Of: { 2: 1 } },
   D('meetingPavilion', 2, meetingPavilion, 2.8, 4.1),

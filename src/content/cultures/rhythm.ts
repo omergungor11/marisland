@@ -40,8 +40,11 @@ export const CULTURE_RHYTHM: Record<ThemeId, CultureRhythm> = {
   hq: {
     slots: [
       { id: 'ferryFanfare', hour: 6, seconds: 40 },
+      // D-060: the mail sacks slide down the mail line in two 20 s bursts (TASK-466 mover)
+      { id: 'mailHour', hour: 9, seconds: 20 },
       { id: 'coffeeQueue', hour: 12 },
       { id: 'ferriesHome', hour: 17.75 },
+      { id: 'mailHour', hour: 17.75, seconds: 20 },
       { id: 'ferryFanfare', hour: 18, seconds: 40 },
       { id: 'pierLanterns', hour: 20 },
     ],

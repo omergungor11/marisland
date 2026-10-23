@@ -143,15 +143,17 @@ describe('settlements — 20-seed sweep', () => {
       if (s.plaza) expect(zoneAt(w.height, w.zone, s.plaza.x, s.plaza.z), ctx).toBe(Zone.plaza);
       const count = (def: string): number => s.lots.filter((i) => w.lots[i].defId === def).length;
       expect(s.theme, ctx).toBe('hq');
-      expect(s.lots.length, ctx).toBeGreaterThanOrEqual(8);
-      expect(count('hqOffice') + count('meetingPavilion'), ctx).toBeGreaterThanOrEqual(3);
+      // TASK-466: short-street seeds (3 shore headings) hold fewer lots
+      expect(s.lots.length, ctx).toBeGreaterThanOrEqual(6);
+      // Seven Gates (TASK-466, D-060): the street lots mix offices, cottages, barns and tower houses
+      expect(
+        count('hqOffice') + count('meetingPavilion') + count('cottage') + count('barn'),
+        ctx,
+      ).toBeGreaterThanOrEqual(3);
       expect(count('hqAnnex'), ctx).toBe(1);
       expect(count('coffeeKiosk'), ctx).toBeGreaterThanOrEqual(1);
-      // theme-first HQ (D-029): no cozy-village leftovers; the ferry office replaces the stilt huts
-      expect(
-        count('cottage') + count('towerHouse') + count('marketStall') + count('stiltHut'),
-        ctx,
-      ).toBe(0);
+      // theme-first HQ (D-029): the ferry office replaces the stilt huts, no market stalls
+      expect(count('marketStall') + count('stiltHut'), ctx).toBe(0);
       const fx = (def: string): number =>
         w.fixtures.filter((f) => f.defId === def && f.islandId === hh.id).length;
       expect(fx('well'), ctx).toBe(0);

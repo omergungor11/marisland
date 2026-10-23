@@ -4,6 +4,8 @@ import { hashInts } from '../core/hash.ts';
 import { BEAM } from '../content/lighting.ts';
 import { PROP_DEF_INDEX } from '../content/props.ts';
 import { CULTURE_MOVERS as M } from '../content/cultures/movers.ts';
+import { mailCablePoint, type Vec3Like } from '../content/props-themes/m20.ts';
+import { mailLinePairs } from './mail-lines.ts';
 import type { CultureFestival, CultureState } from './culture-clock.ts';
 import type { EnvState } from '../env/env-state.ts';
 import { makeLifeMaterial } from '../life/life-material.ts';
@@ -414,6 +416,36 @@ function balloonScene(): Scene['run'] {
   };
 }
 
+/**
+ * World-frame scene (TASK-466, D-060): at the two `mailHour` bursts the sacks leave the high
+ * pylon one after another and slide down the cable (the pylons' parabola, `mailCablePoint`) into
+ * the catch basket; a short hanger swings under each.
+ */
+function mailScene(a: Vec3Like, b: Vec3Like): Scene['run'] {
+  const Mm = M.mail;
+  return (w, c) => {
+    if (c.fest?.id !== Mm.ritual) return;
+    const ph = c.fest.phase;
+    for (let k = 0; k < Mm.sacks; k++) {
+      const t = (ph - k * Mm.gap) / Mm.travel;
+      if (t <= 0 || t >= 1) continue;
+      // ease in (gravity takes the sack), ease out into the basket
+      const p = mailCablePoint(a, b, smooth(t));
+      const sw = Mm.swing * c.motion * Math.sin(c.time * 3.1 + k * 1.3);
+      const top: V3 = [p.x, p.y - 0.04, p.z];
+      const bot: V3 = [p.x + sw, p.y - Mm.hanger, p.z + sw * 0.5];
+      cable(w, top, bot);
+      w.put(
+        PART.blob,
+        [bot[0], bot[1] - Mm.sack[1] * 0.6, bot[2]],
+        [0, 0, sw],
+        Mm.sack,
+        Mm.colors[k % Mm.colors.length],
+      );
+    }
+  };
+}
+
 /** World-frame scene: three sun-slid light patches below a prism. */
 function patchScene(
   world: WorldData,
@@ -612,6 +644,20 @@ export function createCultureMovers(
     );
   }
   // research balloon carts get the 06:00 launch only (their static balloon stays tethered)
+  // HQ mail lines (TASK-466): the sacks on the cable between each pylon pair
+  for (const pr of mailLinePairs(store)) {
+    const mid: V3 = [(pr.a.x + pr.b.x) / 2, (pr.a.y + pr.b.y) / 2, (pr.a.z + pr.b.z) / 2];
+    const sc = sceneAt(
+      world.islands[pr.islandId]?.theme ?? 'hq',
+      new THREE.Matrix4(),
+      0,
+      mid,
+      M.mail.sacks * 2,
+      mailScene(pr.a, pr.b),
+    );
+    sc.pivot = null; // world-frame parts
+    scenes.push(sc);
+  }
 
   let mesh: THREE.InstancedMesh | null = null;
   let writer: Writer | null = null;

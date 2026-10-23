@@ -423,8 +423,8 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // Glass & Light, TASK-453c Marketing path-spares-slopes + Emberpeak steam-main slope cap,
       // TASK-461 snapped pipe legs + Star Academy fallbacks, re-pinned
       // TASK-471 (D-058): hub layout + islets, re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('53465cf956958c48');
-      expect(generateWorld(1).hashes.world).toBe('9a1450fb57a866b7');
+      expect(generateWorld(1001).hashes.world).toBe('0a2e140a94b14774');
+      expect(generateWorld(1).hashes.world).toBe('b0d2652728be7a1a');
     } finally {
       for (const b of saved) b.on = true;
     }

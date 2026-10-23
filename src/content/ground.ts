@@ -181,6 +181,13 @@ export const GROUND_WALL = {
     [Zone.path]: 0.5,
     [Zone.plaza]: 0.5,
     [Zone.crater]: 0,
+    [Zone.streetHq]: 0.5,
+    [Zone.streetCoding]: 0.5,
+    [Zone.streetMarketing]: 0.5,
+    [Zone.streetQa]: 0.5,
+    [Zone.streetDesign]: 0.5,
+    [Zone.streetDevops]: 0.5,
+    [Zone.streetResearch]: 0.5,
   } as Partial<Record<ZoneId, number>>,
   /**
    * Soil walls (sand, path / plaza) are coastal: they fade out between coast[0] and
@@ -320,4 +327,12 @@ export const DEFAULT_GROUND: Readonly<Record<ZoneId, GroundSpec>> = {
   [Zone.path]: { material: 'path', base: '#D4C3A0' },
   [Zone.plaza]: { material: 'paving', base: '#CDBFA6' },
   [Zone.crater]: { material: 'rock', base: '#6A5F6B' },
+  // culture street tints (TASK-466): plain paving unless the island's theme tints them
+  [Zone.streetHq]: { material: 'paving', base: '#CDBFA6' },
+  [Zone.streetCoding]: { material: 'paving', base: '#CDBFA6' },
+  [Zone.streetMarketing]: { material: 'paving', base: '#CDBFA6' },
+  [Zone.streetQa]: { material: 'paving', base: '#CDBFA6' },
+  [Zone.streetDesign]: { material: 'paving', base: '#CDBFA6' },
+  [Zone.streetDevops]: { material: 'paving', base: '#CDBFA6' },
+  [Zone.streetResearch]: { material: 'paving', base: '#CDBFA6' },
 };

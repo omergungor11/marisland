@@ -42,6 +42,24 @@ export const CULTURE_MOVERS = {
     sackColor: '#F2D98A',
   },
 
+  /**
+   * HQ mailLine (TASK-466, D-060): at the two `mailHour` bursts (rhythm.ts, 09:00 / 17:45, 20 s)
+   * `sacks` sacks leave the high pylon one after another and slide down the cable
+   * (`mailCablePoint`, content/props-themes/m20.ts) into the catch basket at the low end.
+   */
+  mail: {
+    ritual: 'mailHour',
+    sacks: 4,
+    /** Phase offset between consecutive sacks and the travel of one sack (fractions of the burst). */
+    gap: 0.16,
+    travel: 0.42,
+    /** Hanger length below the cable and the sack size (u). */
+    hanger: 0.34,
+    sack: [0.24, 0.3, 0.24] as const,
+    swing: 0.12,
+    colors: ['#F2D98A', '#FFF4E0'] as readonly string[],
+  },
+
   /** Coding Wind Gardens: Kite Day, 14:00, wind-gated, from the kite rack. */
   kites: {
     ritual: 'kiteDay',

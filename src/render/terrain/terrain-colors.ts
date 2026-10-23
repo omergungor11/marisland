@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { WorldData, ZoneId } from '../../world/types.ts';
-import { Zone, ZONE_COUNT } from '../../world/types.ts';
+import { isStreetZone, Zone, ZONE_COUNT } from '../../world/types.ts';
 import { slopeAtCell } from '../../world/index.ts';
 import { createRng } from '../../core/rng.ts';
 import { createNoise, type Noise } from '../../core/noise.ts';
@@ -56,7 +56,7 @@ export function zoneClass(zone: number): number {
     case Zone.crater:
       return TerrainClass.crater;
     default:
-      return TerrainClass.veg;
+      return isStreetZone(zone) ? TerrainClass.path : TerrainClass.veg;
   }
 }
 
@@ -216,6 +216,7 @@ function zoneColor(
     case Zone.crater:
       return _c.copy(P.crater);
     default: {
+      if (isStreetZone(z)) return _c.copy(P.plaza);
       // grass family (grass / meadow / forest / field, and stray water zones on land)
       const isl = world.islandMap[i] > 0 ? world.islands[world.islandMap[i] - 1] : null;
       const peak = isl ? Math.max(isl.peakY, 4) : 10;

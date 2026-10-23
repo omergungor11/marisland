@@ -72,7 +72,8 @@ export const LOT_ROOFS: Readonly<Record<string, readonly number[]>> = {
   marketStall: [0, 2, 3],
   // themed lots: 2 variants each (OFFICE_DEFS.variants); the defs of one theme use different
   // pairs so mixed neighbours have room to differ
-  hqOffice: [0, 3],
+  // v2 / v3 (TASK-466) wear the v0 / v1 roofs
+  hqOffice: [0, 3, 0, 3],
   // v2 = Guild Hall (hqAnnex v1 + bell cote): v1's roof
   hqAnnex: [5, 1, 1],
   meetingPavilion: [2, 6],

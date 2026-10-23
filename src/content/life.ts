@@ -3,6 +3,17 @@ import { Zone } from '../world/types.ts';
 import type { WorkPose } from './offices.ts';
 import type { CarriedItem } from './themes/index.ts';
 
+/** The seven HQ street zones (TASK-466): paving, walked like paths. */
+const STREET_ZONES = [
+  Zone.streetHq,
+  Zone.streetCoding,
+  Zone.streetMarketing,
+  Zone.streetQa,
+  Zone.streetDesign,
+  Zone.streetDevops,
+  Zone.streetResearch,
+];
+
 /** Per-quality agent plan; totals stay ≤ QUALITY_PRESETS[q].agentCap (fish/dolphins only live at T3/T1+). */
 export interface LifePlan {
   sailboats: number;
@@ -744,6 +755,7 @@ export const WORKER_ZONES = [
   Zone.sandWet,
   Zone.sandDry,
   Zone.sandBlack,
+  ...STREET_ZONES,
 ];
 
 export const SHEEP = {
@@ -782,7 +794,7 @@ export const SHEEP = {
 } as const;
 
 export const CATS = {
-  zones: [Zone.grass, Zone.meadow, Zone.forest, Zone.path, Zone.plaza],
+  zones: [Zone.grass, Zone.meadow, Zone.forest, Zone.path, Zone.plaza, ...STREET_ZONES],
   weights: { village: 3, farm: 1, cabin: 1, lighthouse: 1, beachhut: 0, spring: 0 } as Record<
     string,
     number
