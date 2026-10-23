@@ -1,8 +1,11 @@
 import { PropFlag, type PropStore } from '../../world/prop-store.ts';
+import { BLOB_KIND_SCALE, PROP_DEFS } from '../../content/props.ts';
 
 /**
  * T0 tree-cluster cells (PropBatcher, D-004): at the map tier clusterable trees are replaced by
- * one proxy blob per `CLUSTER_CELL` u cell holding ≥ 1 live tree, at the trees' mean position.
+ * one proxy blob per `CLUSTER_CELL` u cell and canopy kind (deciduous / pine / palm / blossom, TASK-464)
+ * holding ≥ 1 live tree, at that kind's mean position. A cell with two species gets two blobs, each in
+ * its own species colour, instead of one blended (pale) blob.
  * Pure bookkeeping (no three) so the batcher can re-derive only the cells an edit touched
  * (TASK-213): `update(store, indices)` moves the touched store indices between cells and returns
  * the cells whose members changed. A cell that lost its last tree stays in the index with
@@ -11,7 +14,10 @@ import { PropFlag, type PropStore } from '../../world/prop-store.ts';
 export const CLUSTER_CELL = 8;
 
 export interface ClusterCell {
+  /** `clusterKey(x, z) * KIND_COUNT + kind index` (see `cellKey`). */
   key: number;
+  /** Canopy kind of every member. */
+  kind: CanopyKind;
   /** Island of the cell's first tree (blob group bucket). */
   island: number;
   /** Store indices in the cell, in insertion order (build: store order). */
@@ -30,6 +36,12 @@ export function clusterKey(x: number, z: number): number {
   const cx = Math.floor(x / CLUSTER_CELL);
   const cz = Math.floor(z / CLUSTER_CELL);
   return (cx + OFF) * 65536 + (cz + OFF);
+}
+
+/** Cell key (grid cell × canopy kind) of a clusterable store index. */
+export function cellKey(store: PropStore, i: number): number {
+  const kind = canopyKindOf(PROP_DEFS[store.defId[i]].id);
+  return clusterKey(store.x[i], store.z[i]) * CANOPY_KINDS.length + CANOPY_KINDS.indexOf(kind);
 }
 
 const live = (s: PropStore, i: number): boolean =>
@@ -62,7 +74,7 @@ export class ClusterIndex {
     for (const i of indices) {
       const old = this.cellOf.get(i);
       const isLive = live(store, i);
-      if (old !== undefined && isLive && old === clusterKey(store.x[i], store.z[i])) {
+      if (old !== undefined && isLive && old === cellKey(store, i)) {
         // same cell: keep the member order (an unchanged prop re-derives the identical mean)
         changed.add(this.cells.get(old)!);
         continue;
@@ -81,10 +93,19 @@ export class ClusterIndex {
   }
 
   private insert(store: PropStore, i: number): ClusterCell {
-    const key = clusterKey(store.x[i], store.z[i]);
+    const key = cellKey(store, i);
     let c = this.cells.get(key);
     if (!c) {
-      c = { key, island: store.islandId[i], members: [], x: 0, y: 0, z: 0, n: 0 };
+      c = {
+        key,
+        kind: CANOPY_KINDS[key % CANOPY_KINDS.length],
+        island: store.islandId[i],
+        members: [],
+        x: 0,
+        y: 0,
+        z: 0,
+        n: 0,
+      };
       this.cells.set(key, c);
     }
     c.members.push(i);
@@ -111,8 +132,9 @@ export class ClusterIndex {
   }
 }
 
-/** Blob scale for a cell of `n` trees. */
-export const clusterScale = (n: number): number => Math.min(2.4, 0.9 + 0.3 * Math.sqrt(n));
+/** Blob scale for a cell of `n` trees of one kind (TASK-464: narrow pines read smaller, blossom bigger). */
+export const clusterScale = (n: number, kind: CanopyKind = 'deciduous'): number =>
+  Math.min(2.4, 0.9 + 0.3 * Math.sqrt(n)) * BLOB_KIND_SCALE[kind];
 
 // ---- blob colours (TASK-373, D-031): a blob takes the canopy colour of the trees it stands for
 

@@ -12,7 +12,7 @@ import { appendSettlementProps } from './settlement-props.ts';
 import { Scope } from '../../core/scope.ts';
 import { BLOOM_IN } from '../../content/anim.ts';
 import { APPEAR_OUT_BELOW, removeFade } from './appear.ts';
-import { clusterKey, clusterScale, deltaE, type Rgb } from './clusters.ts';
+import { clusterScale, deltaE, type Rgb } from './clusters.ts';
 
 function makeStore() {
   const s = createPropStore(500);
@@ -319,10 +319,10 @@ describe('PropBatcher.rewrite (TASK-211)', () => {
       return null;
     };
     // empty a cell: its blob is hidden (zero scale), the slot stays
-    const key = clusterKey(store.x[0], store.z[0]);
+    const key = b.clusters.keyOf(0)!;
     const cell = b.clusters.cells.get(key)!;
     const [cx, cz] = [cell.x, cell.z];
-    expect(blobAt(cx, cz)!.scale).toBeCloseTo(clusterScale(cell.n), 5);
+    expect(blobAt(cx, cz)!.scale).toBeCloseTo(clusterScale(cell.n, cell.kind), 5);
     const members = [...cell.members];
     for (const i of members) store.flags[i] |= PropFlag.removed;
     expect(b.rewrite(members, 2).clusters).toBe(1);
@@ -336,7 +336,7 @@ describe('PropBatcher.rewrite (TASK-211)', () => {
     store.z[t] = 200;
     expect(b.rewrite([t], 3).clusters).toBe(1);
     const added = blobAt(200, 200)!;
-    expect(added.scale).toBeCloseTo(clusterScale(1), 5);
+    expect(added.scale).toBeCloseTo(clusterScale(1, 'deciduous'), 5);
     expect(added.visible).toBe(true);
     expect(
       b.groups.filter((g) => g.def.id === 'treeBlob').reduce((a, g) => a + g.mesh.count, 0),
@@ -344,11 +344,11 @@ describe('PropBatcher.rewrite (TASK-211)', () => {
     store.x[t] = 201;
     b.rewrite([t], 4);
     expect(blobAt(200, 200)).toBeNull();
-    expect(blobAt(201, 200)!.scale).toBeCloseTo(clusterScale(1), 5);
+    expect(blobAt(201, 200)!.scale).toBeCloseTo(clusterScale(1, 'deciduous'), 5);
     // restoring the emptied cell brings its blob back at the original mean
     for (const i of members) store.flags[i] &= ~PropFlag.removed;
     b.rewrite(members, 5);
-    expect(blobAt(cx, cz)!.scale).toBeCloseTo(clusterScale(members.length), 5);
+    expect(blobAt(cx, cz)!.scale).toBeCloseTo(clusterScale(members.length, cell.kind), 5);
   });
 });
 
@@ -390,7 +390,9 @@ describe('T0 blobs and grounding (TASK-373)', () => {
         g.mesh.getMatrixAt(k, m4);
         if (v3.setFromMatrixScale(m4).x === 0) continue;
         v3.setFromMatrixPosition(m4);
-        const cell = b.clusters.cells.get(clusterKey(v3.x, v3.z))!;
+        const cell = [...b.clusters.cells.values()].find(
+          (c) => c.n > 0 && Math.abs(c.x - v3.x) < 1e-4 && Math.abs(c.z - v3.z) < 1e-4,
+        )!;
         out.push(deltaE(own, cellColor(store, cell.members)));
       }
     }
@@ -405,22 +407,17 @@ describe('T0 blobs and grounding (TASK-373)', () => {
       const blobs = b.groups.filter((g) => g.def.id === 'treeBlob');
       expect(blobs.every((g) => g.bucket === ALL_ISLANDS)).toBe(true);
       const err = blobErrors(props, b);
-      // 3 pure kinds + a few blends, plus theme palettes (Design blossom); was one group per
-      // island × variant (~18). Each class costs one T0 draw call.
+      // one pure class per species × distinct ramp (TASK-464: cells are single-species, so no blends
+      // and no Design pine + blossom mixes); each class costs one T0 draw call.
       expect(blobs.length).toBeLessThanOrEqual(14);
       expect(err.length).toBe([...b.clusters.cells.values()].filter((c) => c.n).length);
-      // p95 ≤ 4.5; mixed pine + blossom cells (Design, ΔE ≈ 46 apart) keep a per-variant residue
-      // (class colour = variant-averaged kind colour) of up to ~12 on 2–4 px T0 blobs. With all
-      // seven theme plans (TASK-380) every cell above 4 is such a Design mix: seed 1001 p95 4.42.
-      // TASK-390 (taller Mossgrove dome on a bluff plateau): a 1 blossom + 2 pine cell reaches 13.6;
-      // TASK-425 (Glass & Light kit moves the Design scatter): one such mix cell reaches 14.7.
       const sorted = [...err].sort((a, b) => a - b);
       expect(sorted[Math.floor(sorted.length * 0.95)], `seed ${seed} p95`).toBeLessThanOrEqual(4.5);
       expect(Math.max(...err), `seed ${seed}`).toBeLessThanOrEqual(15);
     }
   });
 
-  it('a pine cell gets a pine-coloured blob; adding pines to a deciduous cell moves its class', () => {
+  it('a pine cell gets a pine-coloured blob; pines added next to deciduous trees get their own blob (TASK-464)', () => {
     const s = createPropStore(64);
     for (let k = 0; k < 4; k++)
       s.push(PROP_DEF_INDEX.roundTree, k % 3, 1 + k, 1, 1, 0, 1, 0, 0, TREE);
@@ -436,8 +433,8 @@ describe('T0 blobs and grounding (TASK-373)', () => {
     expect(Math.max(...blobErrors(s, b))).toBeLessThanOrEqual(4);
     const blobs = b.groups.filter((g) => g.def.id === 'treeBlob');
     expect(blobs.every((g) => g.mesh.visible)).toBe(true);
-    // the old slot stays, hidden: one live blob per cell
-    expect(blobErrors(s, b)).toHaveLength(2);
+    // one live blob per cell and species: the pines get their own next to the deciduous cell
+    expect(blobErrors(s, b)).toHaveLength(3);
   });
 
   it('LOD1 contact blobs draw as one merged mesh mirroring the visible LOD1 groups', () => {
