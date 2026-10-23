@@ -251,6 +251,18 @@ export const NIGHT = {
 } as const;
 
 /**
+ * Channel-buoy lamps (TASK-474 `W:D8`, TASK-475): the light dots that draw the ferry routes at
+ * night. `radius` / `y` per LOD (u, buoy-local: LOD1 is the overview dot, bigger so it survives
+ * the distance), `gain` multiplies the sea lamp set's glow on top of NIGHT.emissiveGain (more
+ * bloom halo per dot; the buoys are few and sparse, so they stay calm, not noisy).
+ */
+export const SEA_LAMP = {
+  radius: [0.24, 0.42] as const,
+  y: [1.1, 1.0] as const,
+  gain: 2.2,
+} as const;
+
+/**
  * Lantern pools (TASK-171): additive warm light baked into a small world-space texture
  * (soft falloff, wobbly rim so they never read as discs) and added by terrain, props and water
  * at night. `sources` maps prop geo → pool radius (u), intensity and a door-side offset (u).

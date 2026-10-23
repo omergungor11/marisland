@@ -13,6 +13,7 @@ import {
 import { Acc, blob, col, createNoise, frustum, mat, qEuler } from './kit.ts';
 import { TAU, TINT, V, V2, baseBox, cylB, jitterAcc, lathe, put, tubeAlong } from './parts.ts';
 import { THEMES } from '../content/themes.ts';
+import { SEA_LAMP } from '../content/lighting.ts';
 import type { BuildOpts } from './types.ts';
 import type { Rng } from '../core/rng.ts';
 
@@ -749,36 +750,94 @@ function stackTower(
 }
 
 /**
+ * The sea arch (TASK-475): ONE swept rock tube along a ∩ centreline (feet at x = ±3.3, crown
+ * centre 7.4 u up, top ≈ 9 u) instead of two towers + a lintel — the TASK-474 towers rose above
+ * their lintel and read as two rocks from afar. The legs flare into the sea like the stacks, the
+ * crown is the highest and thickest part (a ≈ 1.85 u lintel, its back flattened into a grassy
+ * mesa at `MESA`), the cross-section is a slab (depth 1.3 × width) and noise roughs it up; strata
+ * bands, the grass back at every LOD and a grass tuft at LOD0.
+ */
+function seaArch(acc: Acc, r: Rng, noise: ReturnType<typeof createNoise>, lod: number): void {
+  const N = lod === 0 ? 16 : 7; // segments along the span
+  const M = lod === 0 ? 10 : 5; // ring vertices
+  const A = 3.3;
+  const Yc = 7.4;
+  const MESA = Yc + 1.35;
+  const legK = [r.range(0.95, 1.1), r.range(0.95, 1.1)];
+  const sway = r.range(-0.35, 0.35);
+  const centre = (s: number): THREE.Vector2 => {
+    const th = Math.PI * (1 - s);
+    const sn = Math.max(0, Math.sin(th));
+    return new THREE.Vector2(A * Math.cos(th) + sway * sn * sn, Yc * Math.pow(sn, 0.6));
+  };
+  const pos: number[] = [];
+  for (let i = 0; i <= N; i++) {
+    const s = i / N;
+    const c = centre(s);
+    // tangent by central difference; the feet are vertical (sin^0.6 → infinite slope)
+    const t =
+      i === 0
+        ? new THREE.Vector2(0, 1)
+        : i === N
+          ? new THREE.Vector2(0, -1)
+          : centre(s + 0.01)
+              .sub(centre(s - 0.01))
+              .normalize();
+    const nrm = new THREE.Vector2(-t.y, t.x); // in-plane normal (points outward / up)
+    const h = c.y / Yc;
+    const flare = 1 + 0.6 * Math.pow(1 - h, 3);
+    const leg = s < 0.5 ? legK[0] : legK[1];
+    const a = (1.45 + 0.4 * Math.pow(h, 4)) * flare * leg;
+    const b = a * 1.3;
+    for (let j = 0; j < M; j++) {
+      const ph = (j / M) * TAU;
+      const ox = nrm.x * a * Math.cos(ph);
+      const oy = nrm.y * a * Math.cos(ph);
+      const oz = b * Math.sin(ph);
+      const k = 1 + 0.18 * noise.n3((c.x + ox) * 0.7 + 3, (c.y + oy) * 0.5, oz * 0.7 - 3);
+      // keep the feet on the sea floor (y ≥ 0); the crown's back is flattened into a grassy mesa
+      const y = c.y + oy * k;
+      pos.push(c.x + ox * k, Math.max(0, y > MESA ? MESA + (y - MESA) * 0.3 : y), oz * k);
+    }
+  }
+  const idx: number[] = [];
+  for (let i = 0; i < N; i++)
+    for (let j = 0; j < M; j++) {
+      const a0 = i * M + j;
+      const a1 = i * M + ((j + 1) % M);
+      const b0 = a0 + M;
+      const b1 = a1 + M;
+      idx.push(a0, a1, b0, a1, b1, b0); // outward (flat normals from the winding)
+    }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  const bands = (p: THREE.Vector3): THREE.Color => {
+    if (p.y > MESA - 0.5) return col(GRASS[2]);
+    if (p.y < 0.9) return col(ROCK[1]);
+    const i = Math.floor(p.y / 1.5 + 0.3 * noise.n3(p.x * 0.5, p.y, p.z * 0.5));
+    return col(CLIFF_STRATA[((i % 2) + 2) % 2]);
+  };
+  acc.add(g, { m: mat([0, 0, 0]), color: bands, windMul: 0, aoAmt: 0.3 });
+  if (lod === 0) {
+    const top = centre(0.5);
+    put(acc, blob(1.5, 0, noise, 0.15, 1.2, 3), [top.x, MESA - 0.05, 0], gradYGrass(MESA), {
+      aoAmt: 0.1,
+      s: [1.6, 0.35, 1.3],
+    });
+  }
+}
+
+/**
  * Sea stack: variants 0–2 are the 6 / 10 / 15 u size classes; variant 3 (TASK-474 `W:D3`) is the
- * arch — two 9 u towers 2.6 u either side of the pivot (local x) joined by a rock lintel.
+ * arch (`seaArch`): one continuous rock span over local x.
  */
 export function seaStack({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const r = rng.fork('stack');
   const acc = new Acc();
   const noise = createNoise(r.fork('n'));
   if (variant === 3) {
-    const H = 9;
-    const R = 1.9 * r.range(0.95, 1.05);
-    const radial = lod === 0 ? 10 : 6;
-    const hseg = lod === 0 ? 6 : 2;
-    for (const sx of [-2.6, 2.6])
-      stackTower(acc, r.fork('tower', sx), noise, lod, H, R, [sx, 0, 0], 0.15, radial, hseg);
-    // the lintel: a noisy block across the top of both towers, grass on its back at LOD0
-    const lint = new THREE.BoxGeometry(6.6, 1.7, 2.4, lod === 0 ? 4 : 1, 1, 1).translate(0, 7.1, 0);
-    const lp = lint.getAttribute('position');
-    for (let i = 0; i < lp.count; i++) {
-      const x = lp.getX(i);
-      const y = lp.getY(i);
-      const z = lp.getZ(i);
-      const n = 0.22 * noise.n3(x * 0.9 + 5, y * 0.9, z * 0.9 - 5);
-      lp.setXYZ(i, x * (1 + n), y + n * 0.6, z * (1 + n));
-    }
-    acc.add(lint, {
-      m: mat([0, 0, 0]),
-      color: (p) => col(p.y > 7.75 ? GRASS[2] : CLIFF_STRATA[p.y > 6.9 ? 0 : 1]),
-      windMul: 0,
-      aoAmt: 0.25,
-    });
+    seaArch(acc, r, noise, lod);
     return acc.finish(rng, false, true);
   }
   const cls = variant % 3;
@@ -809,12 +868,18 @@ export function buoy({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
     const cap = new THREE.CapsuleGeometry(0.2, 0.42, 1, 4).translate(0, 0.38, 0);
     put(acc, cap, [0, 0, 0], col(ROOFS[1]), { aoAmt: 0.15, noJitter: true, ...bob });
     // (a big lamp: at LOD1 distances it is the light dot of the W15 dotted lines)
-    put(acc, new THREE.SphereGeometry(0.32, 4, 2), [0, 1.1, 0], col(EMISSIVE.lantern), {
-      aoAmt: 0,
-      emissive: 1,
-      noJitter: true,
-      ...bob,
-    });
+    put(
+      acc,
+      new THREE.SphereGeometry(SEA_LAMP.radius[1], 4, 2),
+      [0, SEA_LAMP.y[1], 0],
+      col(EMISSIVE.lantern),
+      {
+        aoAmt: 0,
+        emissive: 1,
+        noJitter: true,
+        ...bob,
+      },
+    );
     return acc.finish(rng, false, true);
   }
   if (variant === 1 || variant === 2) {
@@ -825,12 +890,18 @@ export function buoy({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
       ...bob,
     });
     put(acc, cylB(0.03, 0.03, 0.34, 3, true), [0, 0.74, 0], col(WOOD.dark), { aoAmt: 0, ...bob });
-    put(acc, new THREE.SphereGeometry(0.2, 7, 4), [0, 1.1, 0], col(EMISSIVE.lantern), {
-      aoAmt: 0,
-      emissive: 1,
-      noJitter: true,
-      ...bob,
-    });
+    put(
+      acc,
+      new THREE.SphereGeometry(SEA_LAMP.radius[0], 7, 4),
+      [0, SEA_LAMP.y[0], 0],
+      col(EMISSIVE.lantern),
+      {
+        aoAmt: 0,
+        emissive: 1,
+        noJitter: true,
+        ...bob,
+      },
+    );
     return acc.finish(rng, false, true);
   }
   const cap = new THREE.CapsuleGeometry(0.17, 0.3, 2, 8).translate(0, 0.32, 0);

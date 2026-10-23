@@ -4,7 +4,7 @@ import { BLOOM_IN, TREE_SWAY, WINDMILL } from '../../content/anim.ts';
 import { CULTURE_SLOTS, SHARED } from '../uniforms.ts';
 import { FIELDS_GLSL } from '../shaders/chunks/fields.glsl.ts';
 import { SHARED_LIT_GLSL } from '../shaders/chunks/lit.glsl.ts';
-import { NIGHT, SHADE } from '../../content/lighting.ts';
+import { NIGHT, SEA_LAMP, SHADE } from '../../content/lighting.ts';
 import { RELAY } from '../../content/cultures/rhythm.ts';
 import { CLOUD_SHADOW_GLSL } from '../shaders/chunks/cloud-shadow.glsl.ts';
 import { NIGHT_GLSL, POOL_GAIN } from '../shaders/chunks/night.glsl.ts';
@@ -341,7 +341,8 @@ const VERTEX_CLOUD = /* glsl */ `
       : uLamps.x;
     // a culture lamp set switches on in rings from its island's centre outward
     float marRing = clamp(marCu.z, 0.0, 1.0) * 0.7;
-    if (uLampMode.z > 1.5) marOn = smoothstep(marLh * 0.85, marLh * 0.85 + 0.15, uSeaLamps);
+    // the sea lamp set (channel buoys) glows SEA_LAMP.gain × brighter: a halo per far dot
+    if (uLampMode.z > 1.5) marOn = smoothstep(marLh * 0.85, marLh * 0.85 + 0.15, uSeaLamps) * ${f(SEA_LAMP.gain)};
     else if (uLampMode.z > 0.5) marOn = smoothstep(marRing, marRing + 0.3, marCu.x);
     // late night: a fraction of the windows goes dark, staggered over the switch-off ramp
     float marLo = marHash12(marOrigin.xz * 1.37 + 11.1);
