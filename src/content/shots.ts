@@ -508,12 +508,61 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   {
     id: 'W19',
     title: 'Prism Hour',
-    // TASK-450: Design at 17:30 from the north-east (raw): the Atelier Tree's vitray canopy whole in
-    // frame, the glade, the pergola + hot shop and the spray rainbow off the west bluff
+    // TASK-450: Design at 17:30 (raw). TASK-470 re-frame: the TASK-467 Glass Conservatory took the
+    // glade and the old north-east look had the Atelier Tree in front of it; now from the
+    // north-north-west, sun on the right: the conservatory whole beside the tree, the glasshouse
+    // row behind, the spray rainbow off the west bluff on the left, the balloon above the tree
     seed: 1001,
-    cam: '-57.87,44,-122.72,-99.87,24,-166.72',
+    cam: '-134,50,-94,-112,26,-160',
     time: 17.5,
     simt: 4,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  // ---- M20 wow shots (TASK-470): the HQ Seven Gates and the Design Glass Conservatory
+  {
+    id: 'W20',
+    title: 'Compass Star',
+    // The HQ compass mosaic (TASK-468 ground art) from above: the seven culture-coloured rays and
+    // the gates at the street mouths, clock tower, stalls, bay sand on the left (refined
+    // D-compass-top: centred on the plaza + gates, 82 u up)
+    seed: 1001,
+    cam: '-35,82,-8,-34,1.4,-31',
+    time: 15.5,
+    simt: 4,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  {
+    id: 'W21',
+    title: 'Conservatory Prism Hour',
+    // Design's Glass Conservatory at golden hour (seed 6006: three prism arches on its Prism Walk,
+    // 1001 has one) from behind the conservatory looking down the walk to the sea: the faceted
+    // dome in front, the glasshouse rainbow row, two arches with their rainbow pools thrown away
+    // from the sun, the Atelier Tree, two spray rainbows and open sea behind (≈ 160 calls)
+    seed: 6006,
+    cam: '94,52,-116,126,16,-168',
+    time: 17.75,
+    simt: 4,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  {
+    id: 'W22',
+    title: 'Seven Gates Night',
+    // HQ at 21:00 +5 s, HQ's turn in the Launch Day Relay: the compass plaza lit warm, gate
+    // lanterns at the street mouths, the clock tower and the post yard; the semaphore on the
+    // summit sits off-frame (66 u from the plaza: a frame holding both reads as dark, empty land)
+    seed: 1001,
+    cam: '-36,55,25,-20,4,-25',
+    time: 21,
+    simt: 5,
     quality: 'medium',
     width: 1920,
     height: 1080,
