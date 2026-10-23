@@ -26,7 +26,9 @@
   TASK-469 merged: semaphore arms are mover parts now (`PART.arm`, tower gallery view is armless); gate halos
   flare in relay order over an always-on static lantern; stall keepers are closed-form mover parts, not agents;
   glass-bridge deck nodes join the walk graph (`glassBridgeDeckY`), Design itineraries changed. Dock reachability
-  bug → TASK-477. New worktrees have no `node_modules` (`pnpm install --offline --frozen-lockfile`).
+  bug fixed in TASK-477 (dock roots below `minWalkY` forced to `deckY`;
+  `dock-reach.test.ts`). Chimney puff kind 0 now shares the steam soft alpha in `cloud.glsl.ts` — any puff alpha
+  change must cover kind 0. Seed 1001 has a land path edge crossing water near (67, −133) (pre-existing, open). New worktrees have no `node_modules` (`pnpm install --offline --frozen-lockfile`).
 - **2026-10-18 (TASK-466, worldgen)**: HQ Seven Gates plan (`world/gen/plans/hq.ts`, numbers in
   `content/themes/hq.ts` HQ_PLAN + `content/cultures/hq.ts` HQ_CULTURE_SITE): R 10 compass plaza
   (district kind 'compass'), seven streets aimed at the real islands (A* rays in a 4 u corridor, other
