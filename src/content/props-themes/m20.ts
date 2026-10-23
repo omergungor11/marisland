@@ -81,10 +81,11 @@ export const CULTURE_GATE = {
 export const GOODS_STALL = { width: 2.4, depth: 1.5, height: 2.6 } as const;
 
 /**
- * semaphoreTower: lattice tower, two signal arms on a cross bar at the top. The arms are separate
- * vertex ranges (`userData.hooks.arms[i] = { first, count, pivot, axis, restAngle, length }`),
- * built at `restDeg` from +y and turn about the z axis through `pivot` (the arm plane faces +z;
- * a positive angle turns counter-clockwise seen from +z, i.e. from +y toward -x).
+ * semaphoreTower: lattice tower, two signal arms on a cross bar at the top. The arms are NOT in the
+ * tower mesh (TASK-469): the culture mover draws them (render/culture-movers.ts, `PART.arm`) from
+ * `userData.hooks.arms[i] = { pivot, axis, restAngle, length }`. They rest at `restDeg` from +y and
+ * turn about the z axis through `pivot` (the arm plane faces +z; a positive angle turns
+ * counter-clockwise seen from +z, i.e. from +y toward -x).
  */
 export const SEMAPHORE = {
   height: 8.8,
@@ -193,6 +194,16 @@ export const GLASS_BRIDGE = {
   midY: 0.95,
   railH: 0.95,
 } as const;
+
+/**
+ * Deck-top height above the bridge pivot at local x along the deck (pads flat at `endY`, a parabolic
+ * arch over the span up to `midY`). Shared by the geometry and by the walk graph (TASK-469: bots
+ * cross on the deck, `hooks.walk`).
+ */
+export function glassBridgeDeckY(x: number): number {
+  const t = Math.min(1, Math.abs(x) / (GLASS_BRIDGE.span / 2));
+  return GLASS_BRIDGE.endY + (GLASS_BRIDGE.midY - GLASS_BRIDGE.endY) * (1 - t * t);
+}
 
 /**
  * prismArch: the path walks through along local z. The prism on the crown throws the coloured

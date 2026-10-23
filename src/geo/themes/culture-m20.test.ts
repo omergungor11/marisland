@@ -37,7 +37,7 @@ const defOf = (id: string) => PROP_DEFS.find((d) => d.id === id);
 const num = (g: THREE.BufferGeometry, n: string): number[] => Array.from(g.getAttribute(n).array);
 interface Hooks {
   lamp: { at: number[]; first: number; count: number };
-  arms: { first: number; count: number; pivot: number[]; axis: number[]; restAngle: number }[];
+  arms: { pivot: number[]; axis: number[]; restAngle: number; length: number }[];
   cable: { anchor: number[]; sag: number };
   sack: { at: number[] };
   walk: { span: number; width: number; endY: number; midY: number };
@@ -178,31 +178,19 @@ describe('TASK-465 HQ details', () => {
     THEME_IDS.forEach((t, v) => expect(close(g[v], THEMES[t].accent), t).toBe(true));
   });
 
-  it('semaphoreTower: two separate arm ranges, exact pivots, V rest pose, lamp', () => {
+  it('semaphoreTower: arm hooks (the arms are mover parts), exact pivots, V rest pose, lamp', () => {
     const g = buildProp('semaphoreTower', 1, 0, 0);
     const h = hooks(g);
     expect(h.arms).toHaveLength(2);
-    const pos = g.getAttribute('position');
     h.arms.forEach(
-      (
-        a: { first: number; count: number; pivot: number[]; axis: number[]; restAngle: number },
-        i: number,
-      ) => {
-        expect(a.first % 3).toBe(0);
-        expect(a.count % 3).toBe(0);
+      (a: { pivot: number[]; axis: number[]; restAngle: number; length: number }, i: number) => {
         expect(a.pivot[0]).toBeCloseTo(SEMAPHORE.pivotX[i], 5);
         expect(a.pivot[1]).toBeCloseTo(SEMAPHORE.pivotY, 5);
         expect(a.axis).toEqual([0, 0, 1]);
         expect(a.restAngle).toBeCloseTo((SEMAPHORE.restDeg[i] * Math.PI) / 180, 6);
-        let far = 0;
-        for (let k = a.first; k < a.first + a.count; k++)
-          far = Math.max(far, Math.hypot(pos.getX(k) - a.pivot[0], pos.getY(k) - a.pivot[1]));
-        expect(far).toBeLessThan(SEMAPHORE.armLength + 0.7);
-        expect(far).toBeGreaterThan(SEMAPHORE.armLength - 0.4);
+        expect(a.length).toBe(SEMAPHORE.armLength);
       },
     );
-    const [a, b] = h.arms as { first: number; count: number }[];
-    expect(a.first + a.count).toBeLessThanOrEqual(b.first);
     expect(h.lamp.count).toBeGreaterThan(0);
     // the standalone arm for a mover: pivot at the origin
     const arm = buildSemaphoreArm(createRng(1).fork('arm'), 0);

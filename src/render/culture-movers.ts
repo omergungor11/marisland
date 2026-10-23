@@ -3,14 +3,17 @@ import type { Scope } from '../core/scope.ts';
 import { hashInts } from '../core/hash.ts';
 import { BEAM } from '../content/lighting.ts';
 import { PROP_DEF_INDEX } from '../content/props.ts';
+import { CULTURES } from '../content/cultures/index.ts';
 import { CULTURE_MOVERS as M } from '../content/cultures/movers.ts';
-import { mailCablePoint, type Vec3Like } from '../content/props-themes/m20.ts';
+import { RELAY } from '../content/cultures/rhythm.ts';
+import { THEMES } from '../content/themes.ts';
+import { SEMAPHORE, mailCablePoint, type Vec3Like } from '../content/props-themes/m20.ts';
 import { mailLinePairs } from './mail-lines.ts';
-import type { CultureFestival, CultureState } from './culture-clock.ts';
+import { relayBoost, type CultureFestival, type CultureState } from './culture-clock.ts';
 import type { EnvState } from '../env/env-state.ts';
 import { makeLifeMaterial } from '../life/life-material.ts';
 import { PropFlag, type PropStore } from '../world/prop-store.ts';
-import { heightAt, type ThemeId, type WorldData } from '../world/types.ts';
+import { THEME_IDS, heightAt, type ThemeId, type WorldData } from '../world/types.ts';
 import { buildBeamGeometry } from './night/beam.ts';
 import { createSkyProgramMaterial } from './sky/sky.ts';
 import { SHARED } from './uniforms.ts';
@@ -34,6 +37,10 @@ type V3 = readonly [number, number, number];
 export interface CultureCtx {
   time: number;
   hour: number;
+  /** Culture-clock day seconds (the relay clock; = hour x secondsPerHour when none is given). */
+  day: number;
+  /** Camera position, world xz (stall keepers turn and wave toward it). */
+  cam: { x: number; z: number };
   /** Direction to the sun (true, may point below the horizon) and 0 day .. 1 night. */
   sun: { x: number; y: number; z: number };
   night: number;
@@ -148,6 +155,37 @@ function rings(
       c.color,
     );
   }
+}
+
+const SPH = M.secondsPerHour;
+const DAY = 24 * SPH;
+/** Seconds since the Launch Day Relay started (0 .. DAY) at culture-clock day seconds `day`. */
+const relayT = (day: number): number => (((day - RELAY.hour * SPH) % DAY) + DAY) % DAY;
+const easeOutBack = (x: number): number => {
+  const t = Math.min(1, Math.max(0, x)) - 1;
+  return 1 + 2.70158 * t * t * t + 1.70158 * t * t;
+};
+
+/**
+ * Remaining share (1 -> 0) of an underdamped step response `u` s after the step (zero initial
+ * velocity): `pose = target + (previous - target) * springLeft(u)`. Closed form, so a frozen
+ * capture lands on the exact pose. `zeta` is clamped below 1.
+ */
+function springLeft(u: number, omega: number, zeta: number): number {
+  if (u <= 0) return 1;
+  const z = Math.min(0.995, zeta);
+  const wd = omega * Math.sqrt(1 - z * z);
+  return Math.exp(-z * omega * u) * (Math.cos(wd * u) + ((z * omega) / wd) * Math.sin(wd * u));
+}
+
+/** Relay order 1..7 -> the island's theme (the culture whose turn it is). */
+const THEME_OF_ORDER: ThemeId[] = [...THEME_IDS].sort(
+  (a, b) => CULTURES[a].relay.order - CULTURES[b].relay.order,
+);
+
+/** `hex` mixed toward white by `k` (0..1), as a #rrggbb string. */
+function lightened(hex: string, k: number): string {
+  return `#${new THREE.Color(hex).lerp(new THREE.Color(1, 1, 1), k).getHexString()}`;
 }
 
 /** A scene bound to one anchor (a prop instance or a story spot). */
@@ -446,6 +484,164 @@ function mailScene(a: Vec3Like, b: Vec3Like): Scene['run'] {
   };
 }
 
+/**
+ * HQ semaphore (TASK-469): the arms hold the V rest pose with a slow idle sway; at 21:00 each relay
+ * step throws them into that island's pose (underdamped spring, overshoots then settles) while the
+ * lamp flashes in the island's accent; after the relay they spring back to rest.
+ */
+function semaphoreScene(idx: number): Scene['run'] {
+  const S = M.semaphore;
+  const rest = SEMAPHORE.restDeg;
+  const accents = THEME_OF_ORDER.map((t) => THEMES[t].accent);
+  return (w, c) => {
+    const t = relayT(c.day);
+    const zeta = 1 - (1 - S.zeta) * c.motion;
+    const ang: [number, number] = [rest[0], rest[1]];
+    let lamp: number;
+    let colour: string;
+    let calm = 1;
+    if (t < RELAY.lengthS) {
+      const k = Math.min(S.poses.length - 1, Math.floor(t / RELAY.stepS));
+      const u = t - k * RELAY.stepS;
+      const f = springLeft(u, S.omega, zeta);
+      for (let a = 0; a < 2; a++) {
+        const prev = k === 0 ? rest[a] : S.poses[k - 1][a];
+        ang[a] = S.poses[k][a] + (prev - S.poses[k][a]) * f;
+      }
+      lamp = S.flash.r0 + (S.flash.r1 - S.flash.r0) * Math.exp(-u / S.flash.tau);
+      colour = accents[k];
+      calm = 0.35;
+    } else {
+      const u = t - RELAY.lengthS;
+      const last = S.poses[S.poses.length - 1];
+      const f = springLeft(u, S.omega, zeta);
+      for (let a = 0; a < 2; a++) ang[a] = rest[a] + (last[a] - rest[a]) * f;
+      lamp = S.flash.r0 * (1 - smooth(u / RELAY.fadeS));
+      colour = accents[accents.length - 1];
+      if (u < 3) calm = 0.35;
+    }
+    // the end panels glow in the step's accent while the relay holds (the arms are dark at night)
+    const lit = t < RELAY.lengthS ? 1 : 1 - smooth((t - RELAY.lengthS) / RELAY.fadeS);
+    for (let a = 0; a < 2; a++) {
+      const sway =
+        S.idleDeg *
+        calm *
+        c.motion *
+        Math.sin((c.time / S.idlePeriod) * Math.PI * 2 + a * S.idleGap + idx);
+      const rad = ((ang[a] + (a === 0 ? sway : -sway)) * Math.PI) / 180;
+      const pivot: V3 = [SEMAPHORE.pivotX[a], SEMAPHORE.pivotY, SEMAPHORE.pivotZ];
+      w.put(PART.arm, pivot, [0, 0, rad], 1);
+      if (lit > 0.01)
+        w.put(
+          PART.glow,
+          [
+            pivot[0] - Math.sin(rad) * S.tip.along,
+            pivot[1] + Math.cos(rad) * S.tip.along,
+            pivot[2] + S.tip.front,
+          ],
+          [0, 0, 0],
+          S.tip.r * lit,
+          colour,
+        );
+    }
+    if (lamp > 0.01) w.put(PART.glow, S.lamp, [0, 0, 0], lamp, colour);
+  };
+}
+
+/**
+ * HQ culture gate lantern (TASK-469): at its culture's relay step (order x 10 s) the lantern flares
+ * into an accent halo and sends out a ring, then holds a glow until the relay is over. The seven
+ * gates therefore light up one after another in relay order.
+ */
+function gateLampScene(variant: number): Scene['run'] {
+  const G = M.gateLamp;
+  const theme = THEME_IDS[variant % THEME_IDS.length];
+  const order = CULTURES[theme].relay.order;
+  const accent = THEMES[theme].accent;
+  const tints = Array.from({ length: 8 }, (_, i) => lightened(accent, (G.lighten * i) / 7));
+  return (w, c) => {
+    const boost = relayBoost(c.day, order);
+    if (boost < 0.01) return;
+    const k = Math.min(1, boost / RELAY.flash);
+    const r = G.base + G.perBoost * boost;
+    w.put(PART.glow, G.at, [0, 0, 0], r, tints[Math.round(k * 7)]);
+    const u = relayT(c.day) - (order - 1) * RELAY.stepS;
+    if (u >= 0 && u < G.ring.seconds) {
+      const ph = u / G.ring.seconds;
+      const rr = G.ring.r0 + (G.ring.r1 - G.ring.r0) * (1 - (1 - ph) * (1 - ph));
+      w.put(PART.ring, G.at, [0, 0, 0], [rr, rr * Math.max(0.15, 1 - ph), rr]);
+    }
+  };
+}
+
+/**
+ * HQ stall keeper (TASK-469): a worker-bot figure behind the counter. Awake from `open` to
+ * midnight (springs in, shrinks out), idles with a bob and nod, fiddles with the goods, beckons now
+ * and then, turns to and waves at a close camera and cheers at its culture's relay step.
+ */
+function keeperScene(variant: number, idx: number): Scene['run'] {
+  const K = M.keeper;
+  const theme = THEME_IDS[variant % THEME_IDS.length];
+  const order = CULTURES[theme].relay.order;
+  const tint = lightened(THEMES[theme].accent, K.lighten);
+  const ph = rnd(idx, variant, 21);
+  return (w, c, s) => {
+    const secs = c.hour * SPH;
+    const up = secs - K.open * SPH;
+    if (up < 0) return;
+    const sc =
+      K.scale *
+      (up < K.popSeconds ? easeOutBack(up / K.popSeconds) : 1) *
+      smooth((DAY - secs) / K.closeSeconds);
+    if (sc <= 0.01) return;
+    const m = c.motion;
+    const tt = c.time;
+    // camera in the stall frame: turn toward it, wave when it is close
+    const dx = c.cam.x - s.cx;
+    const dz = c.cam.z - s.cz;
+    const cs = Math.cos(s.yaw);
+    const sn = Math.sin(s.yaw);
+    const lx = dx * cs - dz * sn;
+    const lz = dx * sn + dz * cs;
+    const near = smooth((K.waveRadius - Math.hypot(dx, dz)) / 6);
+    const yaw = Math.max(-K.turn, Math.min(K.turn, Math.atan2(lx, lz))) * near * m;
+    // cheer at the culture's relay step
+    const rt = relayT(c.day);
+    const cu = rt - (order - 1) * RELAY.stepS;
+    const cheer =
+      rt < RELAY.lengthS && cu >= 0 && cu < K.cheer.seconds
+        ? smooth(cu / 0.3) * smooth((K.cheer.seconds - cu) / 0.5)
+        : 0;
+    const hop = K.cheer.hop * cheer * m * Math.abs(Math.sin((Math.PI * cu) / K.cheer.hopPeriod));
+    const bob = K.bob * m * Math.sin((tt / K.bobPeriod + ph) * Math.PI * 2);
+    const nod = K.nod * m * Math.sin((tt / (K.bobPeriod * 1.7) + ph) * Math.PI * 2);
+    const P: V3 = [K.at[0], K.at[1] + bob + hop, K.at[2]];
+    w.put(PART.keeper, P, [nod, yaw, 0], sc, tint);
+    // arms: both fiddle with the goods; the right one beckons / waves, both go up to cheer
+    const bu = (tt + ph * K.beckon.every) % K.beckon.every;
+    const beckon =
+      bu < K.beckon.seconds ? smooth(bu / 0.25) * smooth((K.beckon.seconds - bu) / 0.25) : 0;
+    const wave = Math.max(near * 0.9, beckon) * m;
+    for (const side of [-1, 1] as const) {
+      const fid = 0.15 * m * Math.sin(tt * 2.2 + ph * 6.28 + (side > 0 ? 1.9 : 0));
+      const raise = side > 0 ? Math.max(wave, cheer * m) : cheer * m;
+      const pitch = -0.7 + fid + (0.7 - fid) * raise;
+      const roll = 0.14 + (2.41 + 0.4 * Math.sin(tt * 9 + side)) * raise;
+      w.put(
+        PART.limb,
+        [
+          P[0] + side * K.shoulder[0] * sc * Math.cos(yaw),
+          P[1] + K.shoulder[1] * sc,
+          P[2] - side * K.shoulder[0] * sc * Math.sin(yaw),
+        ],
+        [pitch, yaw, roll * side],
+        sc,
+        tint,
+      );
+    }
+  };
+}
+
 /** World-frame scene: three sun-slid light patches below a prism. */
 function patchScene(
   world: WorldData,
@@ -499,7 +695,7 @@ export interface CultureMoversView {
     hour: number,
     env: EnvState,
     camPos: THREE.Vector3,
-    culture?: Pick<CultureState, 'festival'>,
+    culture?: Pick<CultureState, 'festival'> & Partial<Pick<CultureState, 'day'>>,
   ): void;
   /** Instances written last frame, scenes in range, visible beams. */
   stats(): { instances: number; scenes: number; beams: number };
@@ -530,6 +726,9 @@ export function createCultureMovers(
     flag: defOf('flagMast'),
     prism: defOf('prismSculpture'),
     cart: defOf('weatherBalloonCart'),
+    gate: defOf('cultureGate'),
+    stall: defOf('goodsStall'),
+    sema: defOf('semaphoreTower'),
   };
   const beams: Beam[] = [];
   const beamAnchors: { x: number; y: number; z: number }[] = [];
@@ -575,6 +774,12 @@ export function createCultureMovers(
       scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 1.2, 0], 1, flagScene()));
     else if (d === D.cart)
       scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 2, 0], 3, balloonScene()));
+    else if (d === D.gate)
+      scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 1.87, 0], 2, gateLampScene(v)));
+    else if (d === D.stall)
+      scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 1.0, 0], 3, keeperScene(v, idx)));
+    else if (d === D.sema)
+      scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 7.7, 0], 5, semaphoreScene(idx)));
     else if (d === D.prism) {
       const s = store.scale[i] || 1;
       const sc = sceneAt(
@@ -691,6 +896,8 @@ export function createCultureMovers(
   const ctx: CultureCtx = {
     time: 0,
     hour: 0,
+    day: 0,
+    cam: { x: 0, z: 0 },
     sun: { x: 0, y: 1, z: 0 },
     night: 0,
     wind: { x: 1, z: 0, s: 1 },
@@ -702,10 +909,13 @@ export function createCultureMovers(
     hour: number,
     env: EnvState,
     camPos: THREE.Vector3,
-    culture?: Pick<CultureState, 'festival'>,
+    culture?: Pick<CultureState, 'festival'> & Partial<Pick<CultureState, 'day'>>,
   ): void => {
     ctx.time = time;
     ctx.hour = hour;
+    ctx.day = culture?.day ?? hour * SPH;
+    ctx.cam.x = camPos.x;
+    ctx.cam.z = camPos.z;
     ctx.sun = env.sunSkyDir;
     ctx.night = env.night;
     const wv = SHARED.uWind.value;

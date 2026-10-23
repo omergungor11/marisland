@@ -22,6 +22,7 @@ import {
   GLASSHOUSE_HUES,
   GLASS_BRIDGE as BRIDGE,
   PRISM_ARCH as ARCH,
+  glassBridgeDeckY,
   STAINED_WINDMILL as MILL,
 } from '../../content/props-themes/m20.ts';
 import { DESIGN_CULTURE_KIT as K } from '../../content/props-themes/design.ts';
@@ -485,11 +486,7 @@ function glasshouse({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
 /* ================================== glassBridge ================================== */
 
 /** Deck-top height at x along the bridge (pads flat, an arch over the span). */
-function deckY(x: number): number {
-  const h = BRIDGE.span / 2;
-  const t = Math.min(1, Math.abs(x) / h);
-  return BRIDGE.endY + (BRIDGE.midY - BRIDGE.endY) * (1 - t * t);
-}
+const deckY = glassBridgeDeckY;
 
 /**
  * Arched footbridge along local x (see GLASS_BRIDGE): plank deck on two arched stringers, stone

@@ -295,6 +295,12 @@ export const WORK_SPOTS: Readonly<Record<string, readonly WorkSpot[]>> = {
   blowpipeRack: [{ x: 0, z: 1.4, face: PI, pose: 'look', sit: 0 }],
   sampleShelf: [{ x: 0, z: 1.4, face: PI, pose: 'look', sit: 0 }],
   glassOrb: [{ x: 0, z: 1.4, face: PI, pose: 'look', sit: 0 }],
+  // Glass bridge (TASK-469): a look at the creek from each bank beside the pads (deck axis = local
+  // x, banks at ±(padX + padR + pin) = 6.2); the far bank is only reachable over the deck
+  glassBridge: [
+    { x: 6.6, z: 0, face: -PI / 2, pose: 'look', sit: 0 },
+    { x: -6.6, z: 0, face: PI / 2, pose: 'look', sit: 0 },
+  ],
   // Research Stargazer Academy: telescope, orrery, lecture steps (chat hub), board, tea, books
   tripodTelescope: [{ x: 0, z: 1.4, face: PI, pose: 'gaze', sit: 0 }],
   orrery: [{ x: 0, z: 2.1, face: PI, pose: 'gaze', sit: 0 }],

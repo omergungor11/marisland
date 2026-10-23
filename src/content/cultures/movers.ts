@@ -60,6 +60,84 @@ export const CULTURE_MOVERS = {
     colors: ['#F2D98A', '#FFF4E0'] as readonly string[],
   },
 
+  /**
+   * HQ semaphoreTower (TASK-469): during the Launch Day Relay (rhythm.ts RELAY) the two signal arms
+   * snap to one pose per relay step (the step's island, order 1..7) with an underdamped spring, the
+   * lamp flashes in that island's accent, and after the relay they spring back to the V rest pose.
+   * Closed form in the relay seconds, so a frozen capture (`time=21&simt=T`) replays it exactly.
+   */
+  semaphore: {
+    /**
+     * [left, right] angle from +y in degrees per relay step (left + = outward, right - = outward).
+     * Pivots and the rest pose come from SEMAPHORE (content/props-themes/m20.ts).
+     */
+    poses: [
+      [0, 0],
+      [90, -90],
+      [135, -45],
+      [45, -135],
+      [90, 0],
+      [0, -90],
+      [135, -135],
+    ] as readonly (readonly [number, number])[],
+    /** Spring: natural rate (rad/s) and damping ratio; ~0.35 overshoot, settled in ~1 s. */
+    omega: 9,
+    zeta: 0.42,
+    /** Idle sway at rest (deg, s) and the phase gap between the two arms (rad). */
+    idleDeg: 2.2,
+    idlePeriod: 5.6,
+    idleGap: 1.7,
+    /** Lamp (tower-local) and its flash: radius at rest-glow / peak, decay time constant (s). */
+    lamp: [0, 8.47, 0] as const,
+    flash: { r0: 0.2, r1: 0.62, tau: 2.4 },
+    /** End-panel glow ball: distance from the pivot along the arm, offset toward +z, radius (u). */
+    tip: { along: 1.3, front: 0.1, r: 0.17 },
+  },
+  /**
+   * HQ cultureGate lantern (TASK-469): at its culture's relay step the lantern flares into an
+   * accent halo with an expanding ring, then holds a glow until the relay ends (RELAY.fadeS).
+   * `boost` is the relay envelope (culture-clock relayBoost): 0 off .. RELAY.flash at the peak.
+   */
+  gateLamp: {
+    /** Lantern centre (gate-local) = CULTURE_GATE.lampClear + 0.12. */
+    at: [0, 1.87, 0] as const,
+    /** Halo radius = base + perBoost x boost (u). */
+    base: 0.12,
+    perBoost: 0.075,
+    /** Expanding ring after the step starts: duration (s), radius range (u). */
+    ring: { seconds: 1.6, r0: 0.25, r1: 1.5 },
+    /** Share of white mixed into the accent at the flash peak. */
+    lighten: 0.45,
+  },
+  /**
+   * HQ stall keeper (TASK-469): a worker-bot figure behind the counter of every goodsStall. Awake
+   * from `open` (06:30, pops in with a spring) to midnight; idles with bob, nod and a beckoning arm,
+   * waves at a camera closer than `waveRadius`, and cheers (both arms up, hops) at its culture's
+   * relay step. Not an agent (no walking): closed form, ~3 instances per stall.
+   */
+  keeper: {
+    /** Feet position in the stall frame (deck top 0.1, behind the counter) and bot scale. */
+    at: [0, 0.1, -0.22] as const,
+    scale: 1.5,
+    /** Shoulder offset x (worker arm z) and y, before scale. */
+    shoulder: [0.255, 0.5] as const,
+    open: 6.5,
+    popSeconds: 0.5,
+    closeSeconds: 0.4,
+    bob: 0.025,
+    bobPeriod: 3.1,
+    nod: 0.07,
+    /** Beckoning wave: every `every` s (jittered per stall) for `seconds`. */
+    beckon: { every: 11, seconds: 1.8 },
+    /** Camera wave and the turn toward the camera (rad, max). */
+    waveRadius: 22,
+    turn: 0.6,
+    /** Cheer at the culture's relay step: seconds, hop height (u). */
+    cheer: { seconds: 5, hop: 0.16, hopPeriod: 0.5 },
+    /** Instance tint of the body: the stall's culture accent, lightened. */
+    lighten: 0.35,
+  },
+
   /** Coding Wind Gardens: Kite Day, 14:00, wind-gated, from the kite rack. */
   kites: {
     ritual: 'kiteDay',
