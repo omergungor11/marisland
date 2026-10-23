@@ -23,10 +23,11 @@ import { Tag } from './gen/profiles.ts';
 import { buildZones } from './gen/zones.ts';
 import { buildSettlements, markSites } from './gen/settlements.ts';
 import { buildRoutes } from './gen/routes.ts';
+import { placeSeamarks } from './gen/seamarks.ts';
 import { placeWaterfalls } from './gen/waterfalls.ts';
 import { createOccupancy, scatterProps } from './gen/scatter.ts';
 import { compactPropStore, createPropStore } from './prop-store.ts';
-import { hashPolylines, hashProps, hashSites } from './gen/hash.ts';
+import { hashPolylines, hashProps, hashSeamarks, hashSites } from './gen/hash.ts';
 import { EDIT_PROPS } from '../content/edit.ts';
 import { THEMES } from '../content/themes/index.ts';
 
@@ -70,6 +71,7 @@ export const STAGE_HASH_KEYS = [
   'chunks',
   'sites',
   'routes',
+  'seamarks',
   'props',
 ] as const;
 
@@ -184,6 +186,11 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
     { h: height, sdf, islands, docks: sites.docks },
     root.fork('routes'),
   );
+  // channel buoys + sea-stack fields (TASK-474): fixtures on the water, after the routes
+  const seamarks = placeSeamarks(
+    { h: height, sdf, islands, islets, docks: sites.docks, routes: boatRoutes, windDir },
+    root.fork('seamarks'),
+  );
   lap('routes');
 
   const chunkFlags = buildChunkFlags(height);
@@ -208,6 +215,7 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
     docks: sites.docks,
     moorings: sites.moorings,
     fixtures: sites.fixtures,
+    seamarks,
     fences: sites.fences,
     fields: rawLand.fields,
     fieldColor,
@@ -239,6 +247,7 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
   hashes.chunks = hashBytes(chunkFlags);
   hashes.sites = hashSites(world);
   hashes.routes = hashPolylines(boatRoutes);
+  hashes.seamarks = hashSeamarks(seamarks);
   hashes.props = hashProps(world.props);
   hashes.world = combineHashes(hashes, STAGE_HASH_KEYS);
   lap('hash');

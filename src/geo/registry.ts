@@ -155,8 +155,8 @@ defs.push(
   D('rowboat', 2, rowboat, 1.3, 0.6),
   // v2 ferry, v3 inspection boat (coastal.ts), v4 lantern boat (Design); random rolls keep v0/v1
   D('sailboat', 5, (o) => (o.variant === 4 ? lanternBoat(o) : sailboat(o)), 2.8, 5.2, true),
-  D('seaStack', 3, seaStack, 3, 10, false, [6, 10, 15]),
-  D('buoy', 2, buoy, 0.4, 0.85),
+  D('seaStack', 4, seaStack, 3, 10, false, [6, 10, 15, 9]),
+  D('buoy', 3, buoy, 0.4, 0.85, true, [1.1, 1.3, 1.3]),
   D('driftwood', 2, driftwood, 0.9, 0.4),
   D('tidePool', 2, tidePool, 1.2, 0.45),
   D('shell', 3, shell, 0.15, 0.15),

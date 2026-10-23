@@ -90,6 +90,8 @@ export const SHARED = {
   /** x = relay phase 0..1 over RELAY.lengthS (0 outside), y = relay step (order − 1, −1 outside),
    *  z = 1 while any island carries a relay boost (incl. the fade-out). */
   uFestival: { value: new THREE.Vector3(0, -1, 0) },
+  /** The sea lamp set 0..1 (content SEA_LAMPS: channel buoys, TASK-474). */
+  uSeaLamps: { value: 0 },
 };
 
 /**

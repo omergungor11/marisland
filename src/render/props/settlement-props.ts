@@ -413,8 +413,8 @@ export function appendSettlementProps(world: WorldData): {
       push(seg.def, p.x, p.z, yaw, 1, f.islandId, (a + b) / 2 - 0.5, v);
     });
   }
-  // fixtures (well, buoy, tidePool, messageBottle …)
-  for (const fx of world.fixtures) {
+  // fixtures (well, buoy, tidePool, messageBottle …) and the seamarks (channel buoys, sea stacks)
+  for (const fx of [...world.fixtures, ...world.seamarks]) {
     const yaw = Math.atan2(Math.cos(fx.rotY), Math.sin(fx.rotY));
     const def = PROP_DEFS[PROP_DEF_INDEX[fx.defId]];
     if (!def) continue;

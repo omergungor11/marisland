@@ -22,6 +22,23 @@
   `hqOffice` v2 arcade / v3 bell niche + balcony (v3 far proxy = v1). Left for TASK-468: the compass
   mosaic over the 'compass' district (rays = the `cultureGate` fixtures' bearings from its centre);
   for TASK-469: semaphore arms + gate lamps in relay order (the sack mover is in).
+- **2026-10-18 (M20/M21 in progress, paused to save quota)**: plan = `mar-plans/WORLD_PLAN.md` (+ `mar-plans/study/`),
+  user decisions D-057…D-060 (all recommended options). Done on main: TASK-465 M20 props, 471 HQ at the centre +
+  skerries + Lonely Palm islet (one-time re-pin), 472 night sky / deep sea / wakes / mist / comet, 473 tour mode,
+  474 channel buoys + sea stacks + arch, lighter mist. wow 18/18 `--assert`.
+  **Paused mid-work (uncommitted, in worktrees):**
+  - TASK-466 HQ Seven Gates: worktree `.claude/worktrees/agent-ae0803b8bf255d7b4` (28 files), was writing street
+    zones / content / geometry / plan; not yet verified.
+  - TASK-467 Design conservatory: worktree `.claude/worktrees/agent-a8b0826a5966d6199` (13 files), plan written,
+    writing tests.
+  - Backups: `shots/wip/TASK-466.patch`, `TASK-467.patch` (gitignored; `git apply` on 71566fd).
+  To resume: SendMessage the stopped agents (Claude Code session `595d4a41…`) or start fresh agents in those
+  worktrees with the original briefs (TASK-466/467 rows + D-057/058/060 + `study/hq-design.md`).
+  Next after them: TASK-468 shader (compass mosaic, prism pools, conservatory glass) ∥ 469 life (semaphore relay,
+  gate lights, mail bursts 09:00/17:45, windmill) → 470 QA + new wow shots; then M22 five-island quick wins (Round 2
+  directions in D-059; Round 3 details per island in WORLD_PLAN §6). Follow-ups: stack arch lintel reads weak
+  (two rocks from afar), buoy lamps faint at W15; no Research dish/telescope → comet hook yet; shots `--port`
+  4190 is fetch-blocked (use 4185–4188); subagents run on fable (user request) but it hits session limits fast.
 - **2026-10-17 (TASK-471, worldgen)**: hub layout (HQ nearest the centroid, six on a 60° ring, `LAYOUT.hub`,
   `layoutProblem` 'offcentre') + islets (`world.islets`: 3–6 skerries + one Lonely Palm sandbar, `ISLETS` /
   `ISLET_LAYOUT` / `ISLET_SCATTER`), D-058 implementation note. One-time re-pin: every raw cam in `shots.ts`
@@ -192,6 +209,10 @@
 - **Streets through the plaza**: kiosks / plaza furniture must be placed AFTER the street lanes
   (a kiosk lot on a street's rim exit blocks `nearestPathCell` → no street); plaza furniture keeps
   only `plazaLaneGap` off the lane centrelines (the plaza is one paved disc).
+- Fixture `rotY` is the heading of local **+z** (render yaw = π/2 − rotY), not +x — the TASK-474 stack arch
+  first came out rotated 90°.
+- Sea marks (channel buoys, sea stacks) live in `world.seamarks`, hashed as `hashes.seamarks`, not in
+  `world.fixtures`, so per-island plan snapshots don't move; `settlement-props.ts` renders both.
 - **Islets own `islandMap` ids past the islands** (TASK-471): `world.islands[world.islandMap[i] - 1]` is
   undefined on a skerry / sandbar cell. Guard with `id > islands.length` (done in terrain-colors' palette
   row, settlements' `pathSparesSlopes`, the archipelago / edit tests) or use `coastBody(islands, islets, id)`

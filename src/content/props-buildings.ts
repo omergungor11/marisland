@@ -6,7 +6,7 @@
 import { PropFlag } from '../world/prop-store.ts';
 import type { PropDef } from './props.ts';
 
-const { grounded, windy, underwater } = PropFlag;
+const { grounded, windy, underwater, noShadow } = PropFlag;
 
 type T = PropDef['tier'];
 const d = (
@@ -43,8 +43,11 @@ export const PROP_DEFS_BUILDINGS: PropDef[] = [
   d('dock', 1, 2, 1.1, grounded),
   d('rowboat', 1, 2, 1.2, grounded),
   d('sailboat', 0, 5, 2.6, windy, undefined, { rollVariants: 2 }),
-  d('seaStack', 0, 3, 2.6, 0),
-  d('buoy', 2, 2, 0.35, 0),
+  // variant 3 = the arch (TASK-474 seamarks)
+  d('seaStack', 0, 4, 2.6, 0, undefined, { rollVariants: 3 }),
+  // T0: the channel buoys (variants 1 red / 2 green, TASK-474) read as night light lines from the
+  // overview; `windy` = the gentle bob; rolls stay on the harbour buoy (variant 0)
+  d('buoy', 0, 3, 0.35, windy | noShadow, undefined, { rollVariants: 1 }),
   d('driftwood', 2, 2, 0.8, grounded),
   d('tidePool', 3, 2, 1.1, underwater),
   d('shell', 3, 3, 0.12, grounded),

@@ -169,6 +169,13 @@ export function cultureLampTheme(defId: string): ThemeId | null {
   return null;
 }
 
+/**
+ * The sea lamp set (TASK-474 `W:D8`): defs on the water between the islands (channel buoys) that
+ * follow one world-wide schedule instead of an island's — the culture lookup picks the nearest
+ * island, which is the wrong clock in mid-channel. Same window / ramp semantics as CultureLampSet.
+ */
+export const SEA_LAMPS: CultureLampSet = { defs: ['buoy'], on: 20, off: 6, rampS: 8 };
+
 /** Def id → the gate that shows / hides it, or null. */
 export function cultureGateOf(defId: string): CultureGateId | null {
   for (const [g, c] of Object.entries(CULTURE_GATES) as [CultureGateId, CultureGate][])
