@@ -36,6 +36,11 @@ export interface Budget {
  * every frame and W4 already stood at the 170 MB line: medium gpuMemoryMB 170 → 176.
  * TASK-467 (Design Glass Conservatory): conservatory / glasshouse / prism-arch / glass-bridge buffers
  * add ≈ 2.5 MB (W4 172 MB alone). D-061: TASK-476 wins the calls back.
+ * TASK-476 (D-061): the near structure merge (NEAR_MERGE below) draws an island's small LOD0 groups
+ * as one mesh per material class at T2–T3: W16 331 → 269 calls, W2 / W3 239 → 176 / 175, every
+ * wow shot ≤ 269. Medium calls 340 → 300. The merged copies cost +1–5 MB on close shots (max 172);
+ * the memory peak is still W4 (173 MB, a T1 view the merge never touches), so medium
+ * gpuMemoryMB stays 176 (170 needs W4's Beacon / Design buffers trimmed first).
  */
 export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
   low: {
@@ -51,7 +56,7 @@ export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
     newSeedMs: 1500,
   },
   medium: {
-    drawCalls: 340,
+    drawCalls: 300,
     triangles: 800_000,
     instances: 15_000,
     groundCover: 12_000,
@@ -87,3 +92,15 @@ export const cultureCapOverride: Readonly<Record<string, { defs: number; tier1: 
 
 /** SwiftShader is ~20–50× slower; time budgets are scaled by this when headless. */
 export const HEADLESS_TIME_FACTOR = 40;
+
+/**
+ * TASK-476 (D-061) near structure merge (render/props/batcher.ts): at tiers 2–3 the LOD0 groups
+ * of an island with at most `maxVerts` pre-transformed vertices (instances × geometry vertices)
+ * draw as one merged mesh per (island, material class, tier class) — HQ's seven culture gates /
+ * stalls / pennant cuts / crates, Design's kit, benches, lanterns, … instead of one instanced
+ * group (+ shadow pass) per (def, variant). An island is merged once the camera is within
+ * `reach` u of such a group (= the T2 fade-out, TIER_FADE[2]). The merged copy is memory
+ * (≈ 60 B per vertex): sweep 2026-10-23 (W16 / W3, seed 1001, medium) maxVerts 1200 → 284 / 185
+ * calls at 170 / 169 MB, 1600 → 269 / 175 at 172 / 170, 2500 → 252 / 160 at 176 / 175.
+ */
+export const NEAR_MERGE = { maxVerts: 1600, reach: 160 } as const;

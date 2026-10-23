@@ -67,14 +67,28 @@ export interface FarMergeDeps {
     material: THREE.Material;
     depth: THREE.Material | null;
   };
-  /** Bit t set: the group is visible at tier t (t = 0, 1). */
+  /** Bit t set: the group is visible at tier t (t = 0, 1; near merge: 2, 3). */
   tierMask: (g: FarMergeGroup) => number;
+  /**
+   * Tiers the merged meshes may draw at (bit t = tier t; default 0b0011, the far LOD1 merge).
+   * TASK-476 near merge: 0b1100 over small LOD0 groups.
+   */
+  tiers?: number;
+  /** Mesh name prefix (`props:<name>:…`, default `far`). */
+  name?: string;
+  /**
+   * Per-island activation (TASK-476 near merge, whose groups are per island): an island's meshes
+   * draw, and its covered groups hide, once that island is clean — other islands may still be
+   * dirty (not built yet). Without it (the far merge: LOD1 groups span islands) every island must
+   * be clean.
+   */
+  islandOf?: (g: FarMergeGroup) => number;
 }
 
 export interface MergedMesh {
   mesh: THREE.InstancedMesh;
   island: number;
-  /** Tier mask of its groups (bit 0 = T0, bit 1 = T1). */
+  /** Tier mask of its groups (bit t = Tt). */
   tiers: number;
   fadeFar: number;
 }
@@ -88,8 +102,11 @@ export interface FarMerge {
    */
   markIndex(i: number, island: number): void;
   readonly dirty: ReadonlySet<number>;
-  /** Rebuild the dirty islands from `groups` (call only when every instance is settled). */
-  rebuild(groups: readonly FarMergeGroup[]): void;
+  /**
+   * Rebuild the dirty islands (only those `want` accepts, when given) from `groups` (call only
+   * when every instance is settled).
+   */
+  rebuild(groups: readonly FarMergeGroup[], want?: (island: number) => boolean): void;
   /** True when `g` is drawn by the merged meshes while they are active. */
   covers(g: FarMergeGroup): boolean;
   /**
@@ -148,11 +165,12 @@ export function createFarMerge(d: FarMergeDeps): FarMerge {
   const _v = new THREE.Vector3();
   const _n = new THREE.Matrix3();
 
-  const rebuild = (groups: readonly FarMergeGroup[]): void => {
-    if (!dirty.size) return;
-    // the dirty islands' meshes go
+  const rebuild = (groups: readonly FarMergeGroup[], want?: (island: number) => boolean): void => {
+    const todo = new Set(want ? [...dirty].filter(want) : dirty);
+    if (!todo.size) return;
+    // the rebuilt islands' meshes go
     for (let k = meshes.length - 1; k >= 0; k--)
-      if (dirty.has(meshes[k].island)) {
+      if (todo.has(meshes[k].island)) {
         drop(meshes[k]);
         meshes.splice(k, 1);
       }
@@ -177,7 +195,7 @@ export function createFarMerge(d: FarMergeDeps): FarMerge {
       const arr = g.mesh.instanceMatrix.array as Float32Array;
       for (let k = 0; k < g.mesh.count; k++) {
         const i = g.members[k];
-        if (i < 0 || !dirty.has(store.islandId[i])) continue;
+        if (i < 0 || !todo.has(store.islandId[i])) continue;
         if (store.flags[i] & PropFlag.removed) continue;
         // zero-scaled (finished removal) instances draw nothing
         if (arr[k * 16] === 0 && arr[k * 16 + 1] === 0 && arr[k * 16 + 2] === 0) continue;
@@ -286,13 +304,13 @@ export function createFarMerge(d: FarMergeDeps): FarMerge {
       if (c.mats.depth) mesh.customDepthMaterial = c.mats.depth;
       mesh.frustumCulled = true;
       mesh.visible = false;
-      mesh.name = `props:far:${c.island}:${c.mats.key}:t${c.tiers}`;
+      mesh.name = `props:${d.name ?? 'far'}:${c.island}:${c.mats.key}:t${c.tiers}`;
       d.root.add(mesh);
       meshes.push({ mesh, island: c.island, tiers: c.tiers, fadeFar: c.fadeFar });
       stats.vertices += n;
       stats.bytes += bytesOf(geo);
     }
-    dirty.clear();
+    for (const island of todo) dirty.delete(island);
     stats.rebuilds++;
   };
 
@@ -309,14 +327,18 @@ export function createFarMerge(d: FarMergeDeps): FarMerge {
     rebuild,
     covers,
     sync(groups, tier, active, cam) {
-      const on = active && tier <= 1 && !dirty.size;
+      const on = active && tier >= 0 && (((d.tiers ?? 0b0011) >> tier) & 1) === 1;
+      const islandOf = d.islandOf;
+      const clean = (island: number): boolean => (islandOf ? !dirty.has(island) : !dirty.size);
       for (const m of meshes) {
-        let vis = on && (m.tiers & (1 << tier)) !== 0;
+        let vis = on && clean(m.island) && (m.tiers & (1 << tier)) !== 0;
         const sph = m.mesh.boundingSphere;
         if (vis && cam && sph) vis = cam.distanceTo(sph.center) - sph.radius < m.fadeFar;
         m.mesh.visible = vis;
       }
-      if (on) for (const g of groups) if (covers(g)) g.mesh.visible = false;
+      if (on)
+        for (const g of groups)
+          if (covers(g) && clean(islandOf ? islandOf(g) : 0)) g.mesh.visible = false;
     },
     meshes,
     stats,
