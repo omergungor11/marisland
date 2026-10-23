@@ -285,7 +285,7 @@ Details in `phases/phase-3.md`.
 | TASK-468 | Shader: HQ compass mosaic ground surface kind + street tints; Design prism-arch light pools, conservatory glass | shader | M | COMPLETED (371227d) | TASK-466, TASK-467 |
 | TASK-469 | Life: semaphore arms follow the 21:00 relay, gates light up in relay order, mail sacks slide down the line, stall keepers; windmill rotor | life | M | COMPLETED (16ba5e3) | TASK-466, TASK-467 |
 | TASK-470 | QA + framing: new wow shots (HQ compass star from above, conservatory prism hour), ladder L-hq / L-design, wow `--assert` | qa | S | IN_PROGRESS | TASK-468, TASK-469 |
-| TASK-476 | Engine: merge near-tier culture fixture groups (HQ gates / stalls / pennants, Design kit) so medium is back to ≤ 300 calls; lower the D-061 budget raise (340 → 300, 176 MB → 170) | engine | M | IN_PROGRESS | TASK-466, TASK-467 |
+| TASK-476 | Engine: merge near-tier culture fixture groups (HQ gates / stalls / pennants, Design kit) so medium is back to ≤ 300 calls; lower the D-061 budget raise (340 → 300, 176 MB → 170) | engine | M | COMPLETED (5d09e59; calls 300, MB stays 176 — W4 173 MB is a T1 view) | TASK-466, TASK-467 |
 | TASK-477 | Life fixes: dock roots below `VILLAGERS.minWalkY` drop out of the walk graph so piers are unreachable on ~6/7 islands (every `dock` itinerary goal silently fails) — keep dock roots walkable at h ≥ 0; find the white soft balls floating over HQ in W2/W16 (idle too) and fix or ground them | life | S | COMPLETED (5a708b3) | TASK-469 |
 
 ### M21 — World P1 (quick wins)

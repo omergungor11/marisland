@@ -32,7 +32,11 @@
   TASK-464 merged: T0 blobs per canopy kind (`ClusterIndex` 8 u × kind), `TREE_FADE` 500–620 for clusterable trees,
   `BLOB_KIND_SCALE` (blossom 1.5 so pair-380 passes); pine blobs still round; `mixLattice` now unused. Ladder misses
   not from 464 (already on main): L-marketing drift 700/480/340 ≈ 4.4–4.9, L-devops 30→21 blob 1.8 % → TASK-470.
-  `pnpm shots --port 4186` (space) silently falls back to 4173 — always `--port=NNNN`; `--tag=x` isolates outputs. New worktrees have no `node_modules` (`pnpm install --offline --frozen-lockfile`).
+  `pnpm shots --port 4186` (space) silently falls back to 4173 — always `--port=NNNN`; `--tag=x` isolates outputs.
+  TASK-476 merged: near structure merge (`NEAR_MERGE` maxVerts 1600, reach 160) in `far-merge.ts` / batcher — W16
+  331 → 269 calls, medium back to 300. `gpu-memory` counts hidden meshes, so any merge keeping fallback groups must be
+  lazy/capped; TIER_FADE[0] is infinite, so cap reach; all 16 vertex attribute slots in the lit program are used
+  (encode new per-vertex data into existing attributes). Memory 170 needs W4 Beacon/Design buffers trimmed. New worktrees have no `node_modules` (`pnpm install --offline --frozen-lockfile`).
 - **2026-10-18 (TASK-466, worldgen)**: HQ Seven Gates plan (`world/gen/plans/hq.ts`, numbers in
   `content/themes/hq.ts` HQ_PLAN + `content/cultures/hq.ts` HQ_CULTURE_SITE): R 10 compass plaza
   (district kind 'compass'), seven streets aimed at the real islands (A* rays in a 4 u corridor, other
