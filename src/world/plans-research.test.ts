@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { RESEARCH_CULTURE_SITES as CS } from '../content/cultures/research.ts';
 import { PROP_DEFS } from '../content/props.ts';
-import { RESEARCH_CULTURE_PROP_DEFS } from '../content/props-themes/research.ts';
+import { RESEARCH_CULTURE_PROP_DEFS, RESEARCH_M22 } from '../content/props-themes/research.ts';
+import { MAZE, mazeOf } from '../content/props-themes/research-maze.ts';
 import { FIXTURE_RADIUS } from '../content/settlements.ts';
 import { RESEARCH_SITE } from '../content/themes/research.ts';
 import { generateWorld, heightAt, Zone, type FixtureData, type WorldData } from './index.ts';
@@ -90,6 +91,8 @@ const PLAN_DEFS = [
   // Star Academy culture (TASK-426)
   ...RESEARCH_CULTURE_PROP_DEFS.map((d) => d.id),
   'pennantLine',
+  // the M22 arboretum (TASK-483): six species, the specimen plate is chalkboard v3
+  ...CS.arbor.species.map((x) => x.def),
 ];
 
 /** Buildings and big kit: must stand on level ground (their pads). */
@@ -293,6 +296,9 @@ describe('Research Observatory University plan (TASK-402b) — 30 seeds', () => 
           expect(heightAt(d.w.height, p.x[i], p.z[i]), `${ctx} buoy over water`).toBeLessThan(0);
         }
       }
+      // the arboretum's trees (M22 TASK-483) are planted fixtures, not scatter
+      for (const f of d.fixtures)
+        if (f.defId === 'roundTree' || f.defId === 'pine' || f.defId === 'palm') trees++;
       expect(trees, `${ctx} park trees`).toBeGreaterThanOrEqual(2);
       allTrees += trees;
       if (buoys > 0) withBuoys++;
@@ -307,7 +313,8 @@ const KIT_COUNTS: Record<string, readonly [number, number]> = {
   tripodTelescope: [1, 3],
   // the lecture board + the comet board (TASK-461: both on every seed)
   // TASK-471 re-roll: the comet board misses on a few seeds (see the TASK-461 hit rate below)
-  chalkboard: [1, 2],
+  // + the arboretum's specimen plates (M22 TASK-483: up to six)
+  chalkboard: [1, 8],
   orrery: [0, 1],
   lectureSteps: [1, 1],
   teaTrolley: [0, 1],
@@ -437,6 +444,94 @@ describe('Research Star Academy culture (TASK-426) — 30 seeds', { timeout: 120
       if (!d) continue;
       for (const f of d.w.fixtures)
         if (CULTURE_DEFS.has(f.defId)) expect(f.islandId, `seed ${seed} ${f.defId}`).toBe(d.isl.id);
+    }
+  });
+});
+
+describe('Research M22 quick wins (TASK-483) — 30 seeds', { timeout: 120_000 }, () => {
+  const all = (): NonNullable<ReturnType<typeof research>>[] =>
+    [1001, ...SEEDS].map((seed) => research(seed)).filter((d): d is NonNullable<typeof d> => !!d);
+
+  it('R12: 3-4 maze tiles (v2-v5) among the parterres, a pacing bot on a straight corridor', () => {
+    for (const d of all()) {
+      const ctx = `seed ${d.w.seed}`;
+      const plots = d.of('hedgeParterre');
+      const mazes = plots.filter((f) => (f.variant ?? 0) >= MAZE.firstVariant);
+      expect(mazes.length, `${ctx} mazes`).toBeGreaterThanOrEqual(3);
+      expect(mazes.length, `${ctx} mazes`).toBeLessThanOrEqual(4);
+      expect(plots.length - mazes.length, `${ctx} classic tiles stay`).toBeGreaterThanOrEqual(1);
+      for (const m of mazes) expect(m.variant, ctx).toBeLessThan(MAZE.firstVariant + MAZE.patterns);
+      const pace = d.w.storySpots.find((s) => s.islandId === d.isl.id && s.kind === 'mazePace');
+      expect(pace, `${ctx} mazePace`).toBeDefined();
+      // the bot's corridor lies inside one maze tile
+      const host = mazes.find((m) => Math.hypot(m.x - pace!.pos.x, m.z - pace!.pos.z) < 1.6);
+      expect(host, `${ctx} pace in a maze tile`).toBeDefined();
+    }
+  });
+
+  it('R12: every maze pattern has a straight corridor of three cells for the bot', () => {
+    for (let k = 0; k < MAZE.patterns; k++) {
+      const p = mazeOf(MAZE.firstVariant + k);
+      expect(Math.abs(p.pace.x) <= 1.4 && Math.abs(p.pace.z) <= 1.4, `pattern ${k}`).toBe(true);
+      expect(p.open.length, `pattern ${k} openings`).toBe(2);
+    }
+  });
+
+  it('R13: the launch gantry (rocketMonument v1) stands on the island rim on most seeds', () => {
+    let n = 0;
+    let have = 0;
+    for (const d of all()) {
+      n++;
+      const g = d.of('rocketMonument').filter((f) => f.variant === CS.gantry.variant);
+      expect(g.length, `seed ${d.w.seed}`).toBeLessThanOrEqual(1);
+      if (g.length === 1) {
+        have++;
+        expect(
+          heightAt(d.w.height, g[0].x, g[0].z),
+          `seed ${d.w.seed} gantry on land`,
+        ).toBeGreaterThan(0.3);
+      }
+    }
+    expect(have / n, 'gantry on the headland').toBeGreaterThanOrEqual(0.9);
+  });
+
+  it('R20: the base has the weather-roof pod (labPod v2) and the v1 mast', () => {
+    for (const d of all()) {
+      const pods = d.of('labPod');
+      if (pods.length === 0) continue;
+      expect(
+        pods.filter((f) => f.variant === 2).length,
+        `seed ${d.w.seed} weather roof`,
+      ).toBeLessThanOrEqual(1);
+      for (const m of d.of('weatherMast')) expect(m.variant, `seed ${d.w.seed} mast`).toBe(1);
+    }
+  });
+
+  it('R9: the arboretum has at least three labelled species on most seeds', () => {
+    let n = 0;
+    let ok = 0;
+    for (const d of all()) {
+      n++;
+      const plates = d.of('chalkboard').filter((f) => f.variant === RESEARCH_M22.plate.variant);
+      const species = new Set(
+        d.fixtures
+          .filter((f) => CS.arbor.species.some((x) => x.def === f.defId) && f.defId !== 'pergola')
+          .map((f) => f.defId),
+      );
+      expect(plates.length, `seed ${d.w.seed} plates`).toBeLessThanOrEqual(CS.arbor.species.length);
+      if (plates.length >= 3 && species.size >= 3) ok++;
+      for (const f of d.fixtures.filter((q) => q.scale !== undefined))
+        expect(f.defId, `seed ${d.w.seed}`).toBe('roundTree');
+    }
+    expect(ok / n, 'arboretum with ≥ 3 species').toBeGreaterThanOrEqual(0.85);
+  });
+
+  it('R3-16: a seal story spot on the pier end, on the deck', () => {
+    for (const d of all()) {
+      const seal = d.w.storySpots.find((s) => s.islandId === d.isl.id && s.kind === 'sealPier');
+      if (d.docks.length === 0) continue;
+      expect(seal, `seed ${d.w.seed} seal`).toBeDefined();
+      expect(seal!.pos.y, `seed ${d.w.seed} seal on the deck`).toBeCloseTo(CS.seal.deckY, 2);
     }
   });
 });

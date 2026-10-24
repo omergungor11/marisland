@@ -3,7 +3,7 @@
  * a prop can be judged on its own (no world needed). One image per def (a row of every variant at
  * LOD0 + LOD1) and one close 3/4 view of variant 0 LOD0.
  *
- *   pnpm exec tsx scripts/gallery-shots.ts [m20|id,id,...] [--port=5199] [--out=shots/gallery-m20]
+ *   pnpm exec tsx scripts/gallery-shots.ts [m20|research|id,id,...] [--port=5199] [--out=shots/gallery-m20]
  *
  * Starts its own `vite` dev server on `--port` (killed at the end; a server already on the port is
  * reused and left alone). Software GL (swiftshader), so no GPU is needed.
@@ -13,6 +13,7 @@ import { mkdirSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { chromium } from 'playwright';
 import { M20_PROP_IDS } from '../src/content/props-themes/m20.ts';
+import { RESEARCH_M22_PROP_IDS } from '../src/content/props-themes/research.ts';
 import { buildGalleryScene } from '../src/geo/gallery.ts';
 import { PROP_GEO } from '../src/geo/registry.ts';
 
@@ -20,10 +21,14 @@ const args = process.argv.slice(2);
 const opt = (n: string): string | undefined =>
   args.find((a) => a.startsWith(`--${n}=`))?.slice(n.length + 3);
 const which = args.find((a) => !a.startsWith('--')) ?? 'm20';
-const ids = which === 'm20' ? M20_PROP_IDS : which.split(',');
+const ids =
+  which === 'm20' ? M20_PROP_IDS : which === 'research' ? RESEARCH_M22_PROP_IDS : which.split(',');
 const PORT = Number(opt('port') ?? 5199);
 const ROOT = resolve(import.meta.dirname, '..');
-const OUT = resolve(ROOT, opt('out') ?? `shots/gallery-${which === 'm20' ? 'm20' : 'custom'}`);
+const OUT = resolve(
+  ROOT,
+  opt('out') ?? `shots/gallery-${which === 'm20' || which === 'research' ? which : 'custom'}`,
+);
 const BASE = `http://localhost:${PORT}/`;
 
 let server: ChildProcess | undefined;

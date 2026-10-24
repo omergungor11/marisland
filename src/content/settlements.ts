@@ -297,6 +297,10 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   biodomeHero: 3.2,
   biodome: 1.8,
   // Research Star Academy (TASK-426; lectureSteps / chalkboard also block their rects)
+  // M22 (TASK-483) arboretum trunks: the trees of the six labelled species (roundTree / giantMushroom above)
+  pine: 0.7,
+  palm: 0.7,
+  blossomTree: 0.8,
   tripodTelescope: 0.65,
   chalkboard: 0.8,
   orrery: 1.0,

@@ -309,6 +309,28 @@ export const REACTION_PRESETS: Record<string, ReactionSpec> = {
   boat: { motion: 'wobble', k: 60, c: 3, deg: 15, bursts: [] },
   /** Rocks: a heavy squash. */
   rock: { motion: 'squash', squash: 0.1, stretch: 0.02, kick: -20, bursts: [] },
+  /**
+   * Rocket monuments (M22 R13): a stiff rattle (the "test firing" shake, 2 deg, a fast ring-out) and
+   * a puff of steam at the base.
+   */
+  rocket: {
+    motion: 'wobble',
+    k: 900,
+    c: 9,
+    deg: 2,
+    bursts: [
+      {
+        glyph: 'puff',
+        count: 5,
+        pattern: 'ring',
+        colors: ['#FFFFFF', '#F4F1EA'],
+        size: [0.35, 0.55],
+        life: [0.9, 1.3],
+        speed: [0.9, 1.5],
+        from: 'base',
+      },
+    ],
+  },
   /** Everything else: the bible's baseline squash 0.85 → 1.15 and the sparkle ring. */
   generic: { motion: 'squash', squash: 0.15, stretch: 0.12, kick: -40, bursts: [] },
 };
@@ -337,6 +359,7 @@ export const PROP_REACTIONS: Record<string, string> = {
   seaStack: 'rock',
   volcanoCrater: 'rock',
   steppingStone: 'rock',
+  rocketMonument: 'rocket',
 };
 
 /** Agent kind (LifeSystem.kinds key) → preset. */

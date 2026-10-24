@@ -44,6 +44,7 @@ function rig(
   tier = 2,
   cam = new THREE.Vector3(0, 400, 0),
   wd: WorldData = world(seed),
+  festival?: (theme: string) => { id: string; phase: number } | null,
 ): Rig {
   const t = { v: tier };
   const counters = { agents: 0 };
@@ -56,6 +57,7 @@ function rig(
     counters: counters as never,
     getTier: () => t.v,
     cameraPos: cam,
+    festival,
   });
   life.onTier(tier);
   return { life, w: life.kinds.workers as Workers, tier: t, cam, counters };
@@ -441,6 +443,82 @@ describe('workers: bot culture (TASK-432)', () => {
       if (!r.w.active[i]) continue;
       expect(Math.floor(seed.getX(i)) % 100).toBe(THEMES[THEME_OF[r.w.themeOf[i]]].accessory);
     }
+  });
+
+  it('M22 R12: the maze bot paces its corridor, stops at the ends; R17: bell hour hurries the campus bots', async () => {
+    const { planTableaus } = await import('./workers-world.ts');
+    const { tableauMax, TABLEAU } = await import('../content/life.ts');
+    const w = world(1001);
+    const bot = planTableaus(w, tableauMax(0.75)).find((t) => t.kind === 'mazePace');
+    expect(bot, 'a mazePace tableau bot on the shot seed').toBeDefined();
+    const P = TABLEAU.mazePace[0].pace!;
+    const isl = w.islands.findIndex((i) => i.theme === 'research');
+    const hub = w.settlements.find((q) => q.islandId === isl)!.hub;
+    const cam = new THREE.Vector3(hub.x, 30, hub.z + 25);
+    const r = rig(1001, 'medium', 2, cam);
+    run(r, 60);
+    // the slot standing at the bot's spot
+    const slot = [...Array(r.w.capacity).keys()].find(
+      (i) =>
+        r.w.active[i] &&
+        THEME_OF[r.w.themeOf[i]] === 'research' &&
+        Math.hypot(r.w.x[i] - bot!.x, r.w.z[i] - bot!.z) <= P.reach + 0.05,
+    );
+    expect(slot, 'the pacing slot is awake').toBeDefined();
+    let moved = 0;
+    let still = 0;
+    let far = 0;
+    let last = [r.w.x[slot!], r.w.z[slot!]];
+    for (let k = 0; k < 900; k++) {
+      run(r, 1);
+      const x = r.w.x[slot!];
+      const z = r.w.z[slot!];
+      // the corridor: along (cos hd, sin hd) through the spot, at most `reach` each way
+      const along = (x - bot!.x) * Math.cos(bot!.hd) + (z - bot!.z) * Math.sin(bot!.hd);
+      const across = -(x - bot!.x) * Math.sin(bot!.hd) + (z - bot!.z) * Math.cos(bot!.hd);
+      expect(Math.abs(across)).toBeLessThan(0.05);
+      expect(Math.abs(along)).toBeLessThanOrEqual(P.reach + 0.05);
+      far = Math.max(far, Math.abs(along));
+      if (Math.hypot(x - last[0], z - last[1]) > 1e-4) moved++;
+      else still++;
+      last = [x, z];
+    }
+    expect(far).toBeGreaterThan(P.reach * 0.95);
+    expect(moved).toBeGreaterThan(100);
+    expect(still).toBeGreaterThan(50);
+  });
+
+  it('M22 R17: while the research ritual bellHour runs, its walkers move 1.5x faster', () => {
+    const w = world(1001);
+    const isl = w.islands.findIndex((i) => i.theme === 'research');
+    const hub = w.settlements.find((q) => q.islandId === isl)!.hub;
+    const cam = new THREE.Vector3(hub.x, 30, hub.z + 25);
+    /** Mean distance per step of the research bots walking the graph (state 0 before and after). */
+    const perStep = (festival?: (t: string) => { id: string; phase: number } | null): number => {
+      const r = rig(1001, 'medium', 2, cam, w, festival);
+      const state = (r.w as unknown as { state: Uint8Array }).state;
+      run(r, 60);
+      let sum = 0;
+      let n = 0;
+      for (let k = 0; k < 600; k++) {
+        const x0 = Float32Array.from(r.w.x);
+        const z0 = Float32Array.from(r.w.z);
+        const s0 = Uint8Array.from(state);
+        run(r, 1);
+        for (let i = 0; i < r.w.capacity; i++) {
+          if (!r.w.active[i] || THEME_OF[r.w.themeOf[i]] !== 'research') continue;
+          if (s0[i] !== 0 || state[i] !== 0) continue;
+          sum += Math.hypot(r.w.x[i] - x0[i], r.w.z[i] - z0[i]);
+          n++;
+        }
+      }
+      expect(n, 'walkers measured').toBeGreaterThan(50);
+      return sum / n;
+    };
+    const plain = perStep();
+    const bell = perStep((t) => (t === 'research' ? { id: 'bellHour', phase: 0.5 } : null));
+    expect(bell / plain).toBeGreaterThan(1.4);
+    expect(bell / plain).toBeLessThan(1.6);
   });
 
   it('Q17 lantern bots: at night every QA bot carries the lantern, by day the step item again (TASK-480)', () => {

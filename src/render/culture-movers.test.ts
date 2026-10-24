@@ -145,6 +145,65 @@ describe('culture movers', () => {
     expect(lenAt(2)).toBe(0);
   });
 
+  it('Research (M22): bell hour swings the belfry bells, the test firing steams, the caps fly', () => {
+    // the bell-cupola tower (campusTower v3)
+    let tower: THREE.Vector3 | null = null;
+    for (let i = 0; i < props.count && !tower; i++)
+      if (PROP_DEFS[props.defId[i]].id === 'campusTower' && props.variant[i] === 3)
+        tower = new THREE.Vector3(props.x[i], props.y[i] + 8, props.z[i]);
+    expect(tower).not.toBeNull();
+    const B = M.campusBell;
+    view.update(3, 12, env(12), tower!, fest());
+    const rest = ofKind(view, PART.bell);
+    expect(rest.length).toBe(2); // the bells hang there all day
+    expect(ofKind(view, PART.ring).length).toBe(0);
+    const at = (t: number) => {
+      view.update(3, 9, env(9), tower!, fest('research', B.ritual, t / B.seconds));
+      return snapshot(view);
+    };
+    const a = at(0.2 * B.swing);
+    const b = at(0.45 * B.swing);
+    expect(ofKind(view, PART.bell).length).toBe(2);
+    expect(ofKind(view, PART.ring).length).toBeGreaterThanOrEqual(B.rings);
+    expect(b).not.toEqual(a); // the bells are swinging
+    expect(a.every(Number.isFinite)).toBe(true);
+    // the swing is over before the ritual ends: the bells hang again (and the rings are gone)
+    at(B.seconds - 0.1);
+    expect(ofKind(view, PART.ring).length).toBe(0);
+
+    // the gantry rocket (rocketMonument v1): steam only while testFiring runs
+    const pad = world.fixtures.find((f) => f.defId === 'rocketMonument' && f.variant === 1);
+    expect(pad).toBeDefined();
+    const gp = new THREE.Vector3(pad!.x, 6, pad!.z);
+    // (other scenes in range draw blobs too: count the ones within 6 u of the pad)
+    const near = (kind: number): number =>
+      ofKind(view, kind).filter(
+        (m) => Math.hypot(m.elements[12] - pad!.x, m.elements[14] - pad!.z) < 6,
+      ).length;
+    view.update(3, 12, env(12), gp, fest());
+    expect(near(PART.blob)).toBe(0);
+    const L = M.launch;
+    view.update(3, 12, env(12), gp, fest('research', L.ritual, 1.6 / L.seconds));
+    expect(near(PART.blob)).toBeGreaterThanOrEqual(4);
+    expect(near(PART.glow)).toBe(1);
+    view.update(3, 12, env(12), gp, fest('research', L.ritual, 3.9 / L.seconds));
+    expect(near(PART.glow)).toBe(0);
+
+    // the lecture spot: six caps fly at capToss
+    const sp = world.storySpots.find((q) => q.kind === 'lecture' && q.islandId === pad!.islandId);
+    expect(sp).toBeDefined();
+    const lp = new THREE.Vector3(sp!.pos.x, sp!.pos.y + 1, sp!.pos.z);
+    const C = M.capToss;
+    view.update(3, 17.75, env(17.75), lp, fest());
+    expect(ofKind(view, PART.cap).length).toBe(0);
+    view.update(3, 17.75, env(17.75), lp, fest('research', C.ritual, 1.4 / C.seconds));
+    const air = ofKind(view, PART.cap);
+    expect(air.length).toBe(C.spots.length);
+    expect(
+      Math.max(...air.map((m) => new THREE.Vector3().setFromMatrixPosition(m).y)),
+    ).toBeGreaterThan(sp!.pos.y + 1.5);
+  });
+
   it('hidden beyond the range: nothing written, no draw', () => {
     const far = new THREE.Vector3(5000, 50, 5000);
     view.update(3, 6.1, env(6.1), far, fest('hq', 'ferryFanfare'));

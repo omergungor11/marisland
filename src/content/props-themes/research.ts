@@ -87,20 +87,33 @@ export const RESEARCH_PROP_DEFS: readonly PropDef[] = [
     id: 'rocketMonument',
     geo: 'rocketMonument',
     tier: 0,
-    variants: 1,
+    // v1 = the R13 launch gantry (M22 TASK-483), pinned by the Research plan only
+    variants: 2,
+    rollVariants: 1,
     footprint: 1.9,
     flags: grounded,
   },
   // outdoor science: radioDish v0 big (~7.4 u), v1 small (~3.6 u)
   { id: 'radioDish', geo: 'radioDish', tier: 0, variants: 2, footprint: 3.2, flags: grounded },
-  { id: 'labPod', geo: 'labPod', tier: 1, variants: 2, footprint: 2.8, flags: grounded },
+  // v2 = the R20 weather roof (M22 TASK-483), pinned by the Research plan only
+  {
+    id: 'labPod',
+    geo: 'labPod',
+    tier: 1,
+    variants: 3,
+    rollVariants: 2,
+    footprint: 2.8,
+    flags: grounded,
+  },
   // garden kit (flowerBed and bench already exist: HQ defs)
   { id: 'fountain', geo: 'fountain', tier: 1, variants: 1, footprint: 1.9, flags: grounded },
   {
     id: 'hedgeParterre',
     geo: 'hedgeParterre',
     tier: 2,
-    variants: 2,
+    // v2-v5 = the R12 maze tiles (M22 TASK-483), pinned by the Research plan only
+    variants: 6,
+    rollVariants: 2,
     footprint: 2.4,
     flags: grounded,
   },
@@ -189,7 +202,16 @@ export const RESEARCH_CULTURE_PROP_DEFS: readonly PropDef[] = [
     footprint: 0.9,
     flags: grounded,
   },
-  { id: 'chalkboard', geo: 'chalkboard', tier: 2, variants: 3, footprint: 1.0, flags: grounded },
+  // v3 = the R9 specimen plate (M22 TASK-483), pinned by the Research plan only
+  {
+    id: 'chalkboard',
+    geo: 'chalkboard',
+    tier: 2,
+    variants: 4,
+    rollVariants: 3,
+    footprint: 1.0,
+    flags: grounded,
+  },
   { id: 'orrery', geo: 'orrery', tier: 2, variants: 2, footprint: 1.2, flags: grounded },
   {
     id: 'lectureSteps',
@@ -233,4 +255,45 @@ export const RESEARCH_CULTURE_PROP_DEFS: readonly PropDef[] = [
     footprint: 0.6,
     flags: grounded | noShadow,
   },
+];
+
+/**
+ * M22 TASK-483 Research quick-win variants (geo/themes/research-m22.ts); only the Research plan pins
+ * them, random rolls keep the old variants (`rollVariants`). Lengths in u, prop-local frame.
+ *  - R12 hedge maze tiles: hedgeParterre v2-v5 (props-themes/research-maze.ts).
+ *  - R20 weather roof: labPod v2, a yawing anemometer head (cup wheel + vane tail) on the roof.
+ *  - R13 launch gantry: rocketMonument v1, the retro rocket beside a red lattice gantry tower with
+ *    hoses; the test-firing steam rises at `steamAt`.
+ *  - R17 bell hour: the campusTower v3 belfry bells hang from `bells` (culture movers swing them).
+ *  - R9 specimen plate: chalkboard v3, a brass plate on an oak post.
+ */
+export const RESEARCH_M22 = {
+  labPodWeather: { variant: 2, mastH: 1.0, tailLen: 0.62, hubZ: 0.2, cupArm: 0.4, scale: 1.45 },
+  gantry: {
+    variant: 1,
+    /** Tower centre (x), square half side at the base / top, height, swing-arm height. */
+    towerX: -1.75,
+    base: 0.62,
+    top: 0.42,
+    height: 4.9,
+    armY: 3.4,
+    steel: '#E35D6A',
+    steelDark: '#B8434F',
+    hose: ['#4FC3C9', '#FAFAF5'] as const,
+    /** Footprint of the whole piece (x, z) for the planner, and its steam nozzle (prop-local). */
+    footprint: [5.0, 3.2] as const,
+    steamAt: [0, 0.5, 0] as const,
+  },
+  /** campusTower v3 belfry bells: hinge height on the beam, z of the two bells, size (u). */
+  bells: { hingeY: 6.8, z: [-0.7, 0.7] as const, radius: 0.3, height: 0.55 },
+  plate: { variant: 3, height: 1.25, scale: 1.5 },
+} as const;
+
+/** Defs of the M22 Research variants, for the prop showcase (`gallery-shots.ts research`). */
+export const RESEARCH_M22_PROP_IDS: readonly string[] = [
+  'hedgeParterre',
+  'labPod',
+  'rocketMonument',
+  'chalkboard',
+  'campusTower',
 ];

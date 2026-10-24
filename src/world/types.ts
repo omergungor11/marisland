@@ -397,6 +397,8 @@ export interface FixtureData {
   islandId: number;
   /** Geometry variant chosen by the planner (e.g. straight vs corner kerb); unset = rolled. */
   variant?: number;
+  /** Instance scale (unset = 1): the Research arboretum's oversized round tree (M22 TASK-483). */
+  scale?: number;
 }
 
 export interface SettlementData {

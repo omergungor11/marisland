@@ -399,10 +399,12 @@ export const RESEARCH_SITE = {
     maxRelief: 2.6,
     ring: [3.4, 8] as const,
     items: [
+      // M22 R20: the weather-roof pod (v2) first, the long pod with the side module second; the mast
+      // is the small-dish variant (v1) that pairs with the pod's anemometer head
+      { def: 'labPod', variant: 2 },
       { def: 'labPod', variant: 1 },
-      { def: 'labPod', variant: 0 },
       { def: 'radioDish', variant: 1 },
-      { def: 'weatherMast', variant: 0 },
+      { def: 'weatherMast', variant: 1 },
     ],
   },
   /** Big radio dish on the spur behind the summit (+ small dishes beside it). */

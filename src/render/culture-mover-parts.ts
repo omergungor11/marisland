@@ -33,6 +33,10 @@ export const PART = {
   limb: 12,
   /** Tintable emissive ball (gate lamp halo, semaphore lamp flash), unit radius. */
   glow: 13,
+  /** Campus bell (M22 R17): hinge at the origin, hanging down -y, unit radius and height, brass. */
+  bell: 14,
+  /** Graduation cap (M22 R16): a flat mortarboard on its skull cap, unit width, tassel on +x. */
+  cap: 15,
 } as const;
 export type PartKind = (typeof PART)[keyof typeof PART];
 
@@ -313,6 +317,49 @@ export function buildPartsGeometry(): THREE.BufferGeometry {
     kind: PART.glow,
     color: null,
     emissive: 1,
+  });
+  // 14 bell: a lathe from the hinge (r 0.12) flaring to the lip (r 1) at y = -1, brass, with a clapper
+  const bellProfile: [number, number][] = [
+    [0.86, -1],
+    [1, -1],
+    [0.72, -0.78],
+    [0.5, -0.4],
+    [0.3, -0.12],
+    [0.12, 0],
+  ];
+  pieces.push({
+    geo: new THREE.LatheGeometry(
+      bellProfile.map(([r, y]) => new THREE.Vector2(r, y)),
+      8,
+    ),
+    kind: PART.bell,
+    color: OFFICE_COLORS.gold,
+    emissive: 0,
+  });
+  pieces.push({
+    geo: new THREE.IcosahedronGeometry(0.16, 0).translate(0, -0.95, 0),
+    kind: PART.bell,
+    color: '#8E6236',
+    emissive: 0,
+  });
+  // 15 cap: the board (takes the instance tint: black), a dark skull cap under it, a gold tassel
+  pieces.push({
+    geo: new THREE.BoxGeometry(1, 0.1, 1).translate(0, 0.2, 0),
+    kind: PART.cap,
+    color: null,
+    emissive: 0,
+  });
+  pieces.push({
+    geo: new THREE.CylinderGeometry(0.28, 0.32, 0.22, 6).translate(0, 0.05, 0),
+    kind: PART.cap,
+    color: '#2B2F3F',
+    emissive: 0,
+  });
+  pieces.push({
+    geo: new THREE.BoxGeometry(0.05, 0.05, 0.3).translate(0.4, 0.14, 0.1),
+    kind: PART.cap,
+    color: OFFICE_COLORS.gold,
+    emissive: 0,
   });
   const done = pieces.map((p) => finish(p));
   const geo = mergeGeometries(done, false);

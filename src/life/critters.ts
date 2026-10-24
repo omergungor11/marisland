@@ -22,6 +22,7 @@ import {
   buildFox,
   buildOwl,
   buildPerched,
+  buildSeal,
 } from './geo/critters.ts';
 import { buildCat, buildCrab } from './geo/land.ts';
 import { LandKind, type LandOpts } from './land.ts';
@@ -627,6 +628,7 @@ export class SpotCritters {
       owl: [buildOwl, false],
       crab: [buildCrab, true],
       duck: [buildDuck, false],
+      seal: [buildSeal, false],
     };
     for (const [species, items] of by) {
       const [build, tintAll] = geos[species];

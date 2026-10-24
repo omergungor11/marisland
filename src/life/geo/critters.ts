@@ -37,6 +37,38 @@ export function buildDuck(): THREE.BufferGeometry {
 }
 
 /**
+ * Seal ≈ 120 tris, origin on the ground, forward +x: a long grey barrel tapering to two rear flukes
+ * (white = instance tint), a pale belly, two small front flippers, a round head with a dark snout,
+ * eyes and whisker dots. The head dips about the neck (mode 4) so it can doze.
+ */
+export function buildSeal(): THREE.BufferGeometry {
+  const K = SPOT_LIFE.colors;
+  const b = new TriBuilder();
+  const belly = hex(K.sealBelly);
+  const dark = hex(K.sealDark);
+  b.clearLimb();
+  b.ellipsoid(v3(0.02, 0.17, 0), 0.34, 0.17, 0.19, 8, 4, () => WHITE);
+  b.ellipsoid(v3(-0.3, 0.13, 0), 0.26, 0.12, 0.13, 7, 3, () => WHITE);
+  b.ellipsoid(v3(0.05, 0.07, 0), 0.3, 0.06, 0.14, 6, 3, () => belly);
+  // front flippers + rear flukes
+  for (const s of [1, -1]) {
+    b.ellipsoid(v3(0.14, 0.07, 0.2 * s), 0.1, 0.03, 0.06, 5, 2, () => WHITE);
+    b.ellipsoid(v3(-0.55, 0.09, 0.09 * s), 0.12, 0.03, 0.08, 5, 2, () => WHITE);
+  }
+  // head dips about the neck (pivot x 0.34, y 0.26)
+  b.setLimb(0.6, 0.26, 0.34, 4);
+  b.ellipsoid(v3(0.42, 0.26, 0), 0.13, 0.12, 0.12, 7, 4, () => WHITE);
+  b.ellipsoid(v3(0.53, 0.23, 0), 0.07, 0.05, 0.07, 5, 3, () => belly);
+  b.ellipsoid(v3(0.595, 0.24, 0), 0.025, 0.025, 0.035, 4, 2, () => dark);
+  for (const s of [1, -1]) {
+    b.ellipsoid(v3(0.5, 0.31, 0.075 * s), 0.02, 0.025, 0.02, 4, 2, () => dark);
+    b.ellipsoid(v3(0.55, 0.22, 0.05 * s), 0.012, 0.012, 0.012, 3, 2, () => dark);
+  }
+  b.clearLimb();
+  return b.finish();
+}
+
+/**
  * Capybara ≈ 110 tris, origin on the ground, forward +x: a long square-ish brown barrel (white =
  * instance tint, 2:1 from above), a blunt box head with a squared snout and dark nose, small dark ears,
  * stubby legs and a flat yellow cap with a band (a dome here read as a turtle shell from above).

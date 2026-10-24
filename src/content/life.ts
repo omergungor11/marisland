@@ -1,6 +1,7 @@
 /** Life catalog numbers (ART_BIBLE §7 rows 3, 4, 8–15, 26, 28). Data only. */
 import { Zone } from '../world/types.ts';
 import type { WorkPose } from './offices.ts';
+import { MAZE } from './props-themes/research-maze.ts';
 import type { CarriedItem } from './themes/index.ts';
 
 /** The seven HQ street zones (TASK-466): paving, walked like paths. */
@@ -734,7 +735,17 @@ export interface TableauBotSpec {
   /** Feet on the story spot's own y (+ `dy`) instead of the terrain (platforms, decks, roofs). */
   atSpot?: boolean;
   dy?: number;
+  /**
+   * Paces back and forth along the spot's +z axis (`pose: 'pace'`, M22 R12): `reach` u each way from
+   * the spot, walking at `speed` u/s, standing `pause` s at each end.
+   */
+  pace?: { reach: number; speed: number; pause: number };
+  /** While the island's ritual `id` runs the bot takes this pose instead (M22 R16: the cap toss). */
+  ritual?: { id: string; pose: string };
 }
+
+/** The two lecture students cheer (arms up) while the caps fly (M22 R16, culture movers capToss). */
+const CAP_TOSS_POSE = { id: 'capToss', pose: 'wave' } as const;
 
 /**
  * Story spots (`world.storySpots` kind) that need a person: the tableau bots are taken from the
@@ -792,11 +803,21 @@ export const TABLEAU: Readonly<Record<string, readonly TableauBotSpec[]>> = {
     { dx: 0.7, dz: 0.2, look: 'teaTrolley', pose: 'stand', item: 'books' },
   ],
   lecture: [
-    { dx: -1.1, dz: 0, turn: 0, pose: 'stand', item: 'books' },
-    { dx: 1.1, dz: 0, turn: 0, pose: 'stand' },
+    { dx: -1.1, dz: 0, turn: 0, pose: 'stand', item: 'books', ritual: CAP_TOSS_POSE },
+    { dx: 1.1, dz: 0, turn: 0, pose: 'stand', ritual: CAP_TOSS_POSE },
     { dx: 0, dz: 2.6, turn: Math.PI, pose: 'speak' },
   ],
   cometWatch: [{ dx: 0.9, dz: 0.9, look: 'tripodTelescope', pose: 'gaze' }],
+  // M22 R12: a bot paces a straight corridor of a hedge maze (the spot lies on it, +z along it)
+  mazePace: [{ dx: 0, dz: 0, turn: 0, pose: 'pace', pace: MAZE.pace }],
+};
+
+/**
+ * Ritual walking speed (M22 R17 bell hour): while `theme`'s ritual `id` runs, its walkers move at
+ * this multiple of their usual speed (the campus bots hurry to class for 10 s at 09:00).
+ */
+export const RITUAL_SPEED: Readonly<Record<string, Readonly<Record<string, number>>>> = {
+  research: { bellHour: 1.5 },
 };
 
 /**
@@ -805,7 +826,7 @@ export const TABLEAU: Readonly<Record<string, readonly TableauBotSpec[]>> = {
  * so a small plan keeps most of its slots for the walkers. Medium = high so Research fits its
  * lecture (3) and tea time (2).
  */
-export const tableauMax = (ambientScale: number): number => (ambientScale >= 0.75 ? 5 : 2);
+export const tableauMax = (ambientScale: number): number => (ambientScale >= 0.75 ? 6 : 2);
 
 /** Ground workers may stand on outside the path graph (outpost loops). */
 export const WORKER_ZONES = [

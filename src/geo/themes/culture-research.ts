@@ -23,7 +23,7 @@
  * Emissive 1 parts (lamp flames, owl eyes, star dots, lava) glow at night with the lamps ramp.
  */
 import * as THREE from 'three';
-import { RESEARCH_CULTURE_KIT as K } from '../../content/props-themes/research.ts';
+import { RESEARCH_CULTURE_KIT as K, RESEARCH_M22 } from '../../content/props-themes/research.ts';
 import type { Rng } from '../../core/rng.ts';
 import { qEuler, qFromTo, type Acc } from '../kit.ts';
 import { Spin, finishSpin } from '../office-kit.ts';
@@ -31,6 +31,7 @@ import { TAU, V, baseBox, cylB, lathe, put } from '../parts.ts';
 import type { BuildOpts, PropGeoDef } from '../types.ts';
 import { cultureAcc } from './culture-devops.ts';
 import { addGlyph } from './glyphs.ts';
+import { specimenPlate } from './research-m22.ts';
 
 const Y = V(0, 1, 0);
 const PI = Math.PI;
@@ -488,6 +489,11 @@ function tripodTelescope({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry
 function chalkboard({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const hi = lod === 0;
   const acc = cultureAcc(rng, lod);
+  // v3: the R9 arboretum specimen plate (M22 TASK-483)
+  if (variant === RESEARCH_M22.plate.variant) {
+    specimenPlate(acc, hi);
+    return finish(acc, rng);
+  }
   const cy = 1.38;
   // easel: two front legs, rear prop leg, cross rails
   for (const s of [-1, 1]) {
@@ -1886,10 +1892,11 @@ export const RESEARCH_CULTURE_GEO: readonly PropGeoDef[] = [
   },
   {
     id: 'chalkboard',
-    variants: 3,
+    variants: 4,
     build: chalkboard,
     footprint: 1.0,
     height: 2.0,
+    heights: [2.0, 2.0, 2.0, RESEARCH_M22.plate.height],
     windy: false,
     lod1Of: { 1: 0, 2: 0 },
   },
