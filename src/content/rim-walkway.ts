@@ -85,4 +85,18 @@ export const RIM_POST_LOOKS: readonly RimPostLook[] = [
     railR: 0.045,
     railLen: 3,
   },
+  // 1 · Coding boardwalk (C18, TASK-484): plain timber posts, a darker cap, two rope rails, no lamp
+  {
+    bands: ['#B4885A', '#A97D50'],
+    band: 0.35,
+    half: 0.08,
+    height: 1.0,
+    foot: '#8E6A45',
+    cap: '#7A5636',
+    lamp: null,
+    railY: [0.85, 0.45],
+    rail: '#D9C29A',
+    railR: 0.035,
+    railLen: 3,
+  },
 ];

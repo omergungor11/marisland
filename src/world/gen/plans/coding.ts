@@ -19,7 +19,11 @@
  * content/themes/coding.ts (`CODING_PLAN`); every random draw comes from `rng` forks.
  */
 import { CODING_CULTURE_SITES as CS } from '../../../content/cultures/coding.ts';
-import { CODING_PLAN as P } from '../../../content/themes/coding.ts';
+import {
+  CODING_PLAN as P,
+  CODING_RIM_BENCHES,
+  CODING_RIM_WALK,
+} from '../../../content/themes/coding.ts';
 import { THEMES } from '../../../content/themes/index.ts';
 import { FIXTURE_RADIUS, FLATTEN, LOT_FOOTPRINT, PATHS } from '../../../content/settlements.ts';
 import type { Rng } from '../../../core/rng.ts';
@@ -29,12 +33,14 @@ import type {
   DistrictKind,
   FieldPatchData,
   IslandData,
+  Polyline,
   StorySpot,
   XZ,
 } from '../../types.ts';
 import { PATCHWORK } from '../../../content/islands.ts';
 import { heightAt, Zone } from '../../types.ts';
 import { cellX, cellZ, gridRange } from '../grid.ts';
+import { rimSamples, rimWalkway, slopeAtXZ, type RimWalkway } from '../rim-walkway.ts';
 import { addCellPath, gridAStar, pathStep, resample } from '../paths.ts';
 import { slopeAtCell } from '../zones.ts';
 import {
@@ -61,6 +67,8 @@ import {
   pushLandmark,
   rectShape,
   relief,
+  segDist,
+  shapesOverlap,
   seedHub,
   sdfAt,
   shapeDist,
@@ -713,8 +721,75 @@ export const planCoding: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   for (const li of turbines) linkLandmark(ctx, plan, li, f.o);
   lots.sort((x, y) => dist(ctx.lots[x], f.o) - dist(ctx.lots[y], f.o) || x - y);
   for (const li of lots) linkLot(ctx, plan, li);
+  // C18 rim boardwalk + benches (TASK-484): once the footpaths exist (gaps at them)
+  plan.finish = (paths) => {
+    rimBenches(ctx, isl, rimWalkway(ctx, isl, CODING_RIM_WALK, paths), paths);
+  };
   return plan;
 };
+
+/**
+ * C18 benches (TASK-484): `CODING_RIM_BENCHES.count` timber benches on the inland edge of the rim
+ * boardwalk, facing the sea; the first where one fits, the next as far from the placed ones as fits.
+ */
+function rimBenches(
+  ctx: SiteCtx,
+  isl: IslandData,
+  walk: RimWalkway,
+  paths: readonly Polyline[],
+): void {
+  const B = CODING_RIM_BENCHES;
+  const cands: { sh: Shape; rotY: number }[] = [];
+  for (const smp of rimSamples(walk, B.step)) {
+    const p = add(smp.p, smp.inland, B.back);
+    // front (+z) = (cos rotY, sin rotY) points down the normal, out to sea
+    const rotY = Math.atan2(-smp.inland.z, -smp.inland.x);
+    const sh = rectShape(p.x, p.z, rotY, B.rect[0], B.rect[1]);
+    if (!onLand(ctx, isl, sh, 2) || relief(ctx, sh) > B.maxRelief) continue;
+    if (slopeAtXZ(ctx, p.x, p.z) > CODING_RIM_WALK.maxSlope) continue;
+    if (ctx.shapes[isl.id].some((o) => o.tag !== 'plaza' && shapesOverlap(o, sh, 0.3))) continue;
+    if (
+      paths.some(
+        (pl) =>
+          pl.islandId === isl.id &&
+          pl.points.some(
+            (q, k) =>
+              k + 1 < pl.points.length &&
+              segDist(p, q, pl.points[k + 1]) < B.rect[0] / 2 + CODING_RIM_WALK.pathGap,
+          ),
+      )
+    )
+      continue;
+    cands.push({ sh, rotY });
+  }
+  const placed: Shape[] = [];
+  while (placed.length < B.count) {
+    let pick: { sh: Shape; rotY: number } | null = null;
+    let bd = -1;
+    for (const c of cands) {
+      if (!placed.length) {
+        pick = c;
+        break;
+      }
+      const dmin = Math.min(...placed.map((o) => dist(o, c.sh)));
+      if (dmin >= B.apart && dmin > bd) {
+        bd = dmin;
+        pick = c;
+      }
+    }
+    if (!pick) break;
+    placed.push(pick.sh);
+    ctx.fixtures.push({
+      defId: 'bench',
+      x: pick.sh.x,
+      z: pick.sh.z,
+      rotY: pick.rotY,
+      islandId: isl.id,
+      variant: B.variant,
+    });
+    addShape(ctx, isl, pick.sh, false);
+  }
+}
 
 /** Grid step (samples) of the quick-win site search. */
 const SITE_STEP = 2;
