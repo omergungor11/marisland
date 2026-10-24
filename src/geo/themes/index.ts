@@ -18,6 +18,7 @@ import { CULTURE_DESIGN_GEO } from './culture-design.ts';
 import { RESEARCH_CULTURE_GEO } from './culture-research.ts';
 import { M20_HQ_GEO } from './culture-m20-hq.ts';
 import { M20_DESIGN_GEO } from './culture-m20-design.ts';
+import { RIM_GEO } from './rim.ts';
 
 export const THEME_GEO: readonly PropGeoDef[] = [
   ...HQ_GEO,
@@ -37,4 +38,6 @@ export const THEME_GEO: readonly PropGeoDef[] = [
   // M20 (D-057) HQ and Design kits
   ...M20_HQ_GEO,
   ...M20_DESIGN_GEO,
+  // M22 (TASK-480) shared rim walkway post
+  ...RIM_GEO,
 ];

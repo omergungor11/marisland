@@ -6,11 +6,36 @@
  */
 import { FOLIAGE } from '../palette.ts';
 import { PLACEMENT_RULES } from '../placement.ts';
+import type { RimWalkwaySpec } from '../rim-walkway.ts';
 import { Zone } from '../../world/types.ts';
 import type { ThemeDef } from './index.ts';
 
-/** Palms ring the plateau rim: the archetype's palm rule at this density / cap, up on the bluff. */
-const PALM_FACTOR = 0.45;
+/**
+ * Rim walkway (Q6, TASK-480; world/gen/rim-walkway.ts): a dark safety-rubber walk 2 u in
+ * from the plateau lip (the hazard frame round the mint disc from T0/T1), yellow-black hazard posts
+ * with a mint rail every 3 u between the walk and the drop. Paints the island's `streetQa` zone
+ * (its material is `ground[Zone.streetQa]` below; HQ's QA street keeps HQ's own table).
+ */
+export const QA_RIM_WALK: RimWalkwaySpec = {
+  zone: Zone.streetQa,
+  inset: 2,
+  halfWidth: 1.15,
+  lip: { band: 0.5, steep: 0.8, flat: 0.32, maxSdf: 16 },
+  drop: { shore: 1, min: 3 },
+  maxSlope: 0.4,
+  minY: 3,
+  paintOver: [Zone.grass, Zone.meadow, Zone.forest, Zone.sandDry, Zone.field],
+  minRun: 6,
+  shapeGap: 0.6,
+  pathGap: 1.6,
+  posts: { def: 'rimPost', variant: 0, end: 1, spacing: 3, inset: 0.8 },
+};
+
+/**
+ * Palm rim (Q18, TASK-480): the archetype's palm rule turned into a row along the inland side of
+ * the rim walk (`near` its zone), at this density / cap; the plateau edge reads as a green fringe.
+ */
+const PALM_RIM = { density: 0.9, minDist: 3.4, near: 5, maxPerIsland: 34 } as const;
 
 export const QA_THEME: ThemeDef = {
   id: 'qa',
@@ -44,21 +69,31 @@ export const QA_THEME: ThemeDef = {
       base: '#E4EFEA',
       layer: { tile: { size: 2, grout: '#3FBF8F' } },
     },
+    // the rim walkway (QA_RIM_WALK): a dark safety-rubber floor flecked hazard yellow and white
+    [Zone.streetQa]: {
+      material: 'gravel',
+      base: '#5A5F6B',
+      layer: { speckle: ['#F5C84C', '#FAFAF5'], amplitude: 1.3 },
+    },
   },
   patchwork: 'off',
   // the QA tower on the profile's knoll anchor (placed by plans/qa.ts)
   landmarks: { tower: { kind: 'qaTower', variant: 0 } },
   scatter: PLACEMENT_RULES.filter(
     (r) => r.def === 'palm' && r.archetypes?.includes('palmlagoon'),
-  ).map((r) => ({
+  ).map(({ cluster: _rimHasNoClusters, ...r }) => ({
     ...r,
-    density: r.density * PALM_FACTOR,
-    // up on the plateau rim too (the bluff lifts the land to 7–10 u; most of it is meadow)
-    zones: [Zone.sandDry, Zone.grass, Zone.meadow],
-    heights: [r.heights[0], 12] as const,
-    shore: [2, 9] as const,
-    maxPerIsland:
-      r.maxPerIsland === undefined ? undefined : Math.round(r.maxPerIsland * PALM_FACTOR),
+    density: PALM_RIM.density,
+    minDist: PALM_RIM.minDist,
+    // a row up on the plateau rim, inland of the walk (the bluff lifts the land to 7–10 u)
+    zones: [Zone.grass, Zone.meadow],
+    heights: [QA_RIM_WALK.minY, 12] as const,
+    // inland of the walk (centre ≈ lip + 2 u, lip ≈ 6 u in): never between it and the drop
+    shore: [9.5, 16] as const,
+    near: [QA_RIM_WALK.zone],
+    nearDist: PALM_RIM.near,
+    first: true,
+    maxPerIsland: PALM_RIM.maxPerIsland,
   })),
   scatterOff: ['palm'],
   life: {},
@@ -147,10 +182,21 @@ export const QA_FACTORY = {
      * One colourway, one variant: a second variant cost a draw call per tier (+ its shadow) on
      * every frame that shows the factory.
      */
-    wall: '#FFDDB0',
+    // Q16 (TASK-480, R3-14 white-mint-yellow toy factory): white walls (the old #FFDDB0 read grey
+    // in shade), two mint bands, a bigger yellow door
+    wall: '#FAFAF5',
     roof: '#3FBF8F',
-    /** Pastel band along the wall foot, fan blades. */
+    /** Pastel bands (wall foot + `band2` above it), fan blades. */
     band: '#7FD8B3',
+    /** Foot band height; second mint band (above the window rows): bottom over the plinth top, height. */
+    band1: 1.0,
+    band2: [2.85, 0.32] as const,
+    /** Wall-top cap band (yellow) and its height. */
+    cap: '#F5C84C',
+    capH: 0.34,
+    /** Door width / height (u). */
+    doorW: 3.7,
+    doorH: 3.05,
     blade: '#CDEBFF',
     trim: '#2E9E74',
     plinth: '#A9AEB8',

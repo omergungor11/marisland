@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { FIXED_STEP } from '../core/clock.ts';
 import { Scope } from '../core/scope.ts';
 import { CULTURE_BOATS } from '../content/life.ts';
-import { generateWorld, type WorldData } from '../world/index.ts';
+import { generateWorld, heightAt, type WorldData } from '../world/index.ts';
+import { islandRing, weaveRing } from './boats.ts';
 import { buildFerrySchedule, ferryDist, ferryDwelling } from './ferry.ts';
 import { createLife, type LifeSystem } from './index.ts';
 
@@ -98,5 +99,60 @@ describe('life: culture boats', () => {
       return [...out, [f.x[0], f.z[0]]];
     };
     expect(run()).toEqual(run());
+  });
+});
+
+describe('Q10 slalom weave (TASK-480)', () => {
+  const ring = (n: number, r: number): { x: number; y: number }[] =>
+    Array.from({ length: n }, (_, i) => ({
+      x: Math.cos((i / n) * Math.PI * 2) * r,
+      y: Math.sin((i / n) * Math.PI * 2) * r,
+    }));
+  const ang = (p: { x: number; y: number }): number => {
+    const a = Math.atan2(p.y, p.x);
+    return a < 0 ? a + Math.PI * 2 : a;
+  };
+
+  for (const a0 of [0.8, -0.15]) {
+    it(`one alternating point per buoy, the loop stays angle-ordered (start ${a0})`, () => {
+      const R = 60;
+      const buoys = Array.from({ length: 8 }, (_, k) => ({
+        x: Math.cos(a0 + k * 0.1) * R,
+        z: Math.sin(a0 + k * 0.1) * R,
+      }));
+      const out = weaveRing(ring(180, R), 0, 0, buoys, 2.6);
+      buoys.forEach((b, k) => {
+        const p = out.reduce((m, q) =>
+          Math.hypot(q.x - b.x, q.y - b.z) < Math.hypot(m.x - b.x, m.y - b.z) ? q : m,
+        );
+        expect(Math.hypot(p.x, p.y) - R).toBeCloseTo(k % 2 === 0 ? 2.6 : -2.6, 6);
+      });
+      // one turn round the centre: the angle steps never run backwards
+      let turns = 0;
+      for (let i = 0; i < out.length; i++) {
+        let d = ang(out[(i + 1) % out.length]) - ang(out[i]);
+        if (d < -Math.PI) d += Math.PI * 2;
+        expect(d).toBeGreaterThan(0);
+        turns += d;
+      }
+      expect(turns).toBeCloseTo(Math.PI * 2, 6);
+    });
+  }
+
+  it('the QA inspection boat ring weaves through the slalom buoys (seed 1001)', () => {
+    const w = generateWorld(1001);
+    const qa = w.islands.find((i) => i.theme === 'qa');
+    const buoys = w.fixtures.filter((f) => f.islandId === qa?.id && f.defId === 'inspectionBuoy');
+    expect(buoys.length).toBe(8);
+    const P = CULTURE_BOATS.patrol;
+    const ctx = { world: w, h: (x: number, z: number) => heightAt(w.height, x, z) } as never;
+    const route = islandRing(ctx, P.theme, P.margin, P.slalom);
+    expect(route).not.toBeNull();
+    // the smoothed loop passes beside every buoy, never through it
+    for (const b of buoys) {
+      const d = Math.min(...(route?.pts ?? []).map((p) => Math.hypot(p.x - b.x, p.y - b.z)));
+      expect(d).toBeLessThan(P.slalom.weave + 0.6);
+      expect(d).toBeGreaterThan(1);
+    }
   });
 });

@@ -73,9 +73,12 @@ export function testHangar({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
   const y0 = 0.25;
   put(acc, baseBox(w + 0.4, y0, d + 0.4), [0, 0, 0], H.plinth, { aoAmt: 0.2 });
   put(acc, baseBox(w, h, d), [0, y0, 0], H.wall, { aoAmt: 0.18 });
-  put(acc, baseBox(w + 0.08, 0.7, d + 0.08), [0, y0, 0], H.band, { aoAmt: 0.1 });
-  // trim band at the wall top
-  put(acc, baseBox(w + 0.12, 0.22, d + 0.12), [0, y0 + h - 0.22, 0], H.trim, { aoAmt: 0 });
+  put(acc, baseBox(w + 0.08, H.band1, d + 0.08), [0, y0, 0], H.band, { aoAmt: 0.1 });
+  put(acc, baseBox(w + 0.08, H.band2[1], d + 0.08), [0, y0 + H.band2[0], 0], H.band, {
+    aoAmt: 0.05,
+  });
+  // trim band at the wall top (Q16: toy-factory yellow)
+  put(acc, baseBox(w + 0.12, H.capH, d + 0.12), [0, y0 + h - H.capH, 0], H.cap, { aoAmt: 0 });
   sawtoothRoof(acc, {
     w,
     d,
@@ -92,8 +95,8 @@ export function testHangar({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
     for (const sx of [-1, 1])
       fan(acc, spin, V(sx * 3.2, y0 + h - 0.75, d / 2 + 0.06), H.fanR, H.trim, H.blade, lod);
   // big door (yellow) with a hazard band and a check over it
-  const dw = 3.2;
-  const dh = 2.9;
+  const dw = H.doorW;
+  const dh = H.doorH;
   put(acc, baseBox(dw + 0.3, dh + 0.18, 0.12), [0, y0, d / 2], H.trim, { aoAmt: 0 });
   put(acc, baseBox(dw, dh, 0.1), [0, y0, d / 2 + 0.06], H.door, { aoAmt: 0.05 });
   if (hi) {

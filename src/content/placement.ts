@@ -40,6 +40,14 @@ export interface PlacementRule {
   fieldRows?: number;
   /** One instance at the body's peak sample instead of a Poisson set (the Lonely Palm). */
   atPeak?: boolean;
+  /**
+   * Only within `nearDist` u of one of these zones (8 directions at `nearDist` and half of it):
+   * rows along a painted feature, e.g. the QA palm rim along the rim walkway (TASK-480).
+   */
+  near?: number[];
+  nearDist?: number;
+  /** Placed before every other rule of the body (its rng fork index is unchanged): rows that must win their spots. */
+  first?: boolean;
 }
 
 const {

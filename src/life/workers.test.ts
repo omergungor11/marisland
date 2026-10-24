@@ -4,7 +4,8 @@ import { FIXED_STEP } from '../core/clock.ts';
 import { Scope } from '../core/scope.ts';
 import type { Quality } from '../core/params.ts';
 import { LAND, LIFE_PLAN, VILLAGERS, WORKER_ZONES, WORKERS } from '../content/life.ts';
-import { THEMES } from '../content/themes.ts';
+import { CARRIED_ITEM_SLOT, THEMES } from '../content/themes.ts';
+import { SHARED } from '../render/uniforms.ts';
 import {
   FLOOR_Y,
   INTERIOR_OF,
@@ -439,6 +440,33 @@ describe('workers: bot culture (TASK-432)', () => {
     for (let i = 0; i < r.w.capacity; i++) {
       if (!r.w.active[i]) continue;
       expect(Math.floor(seed.getX(i)) % 100).toBe(THEMES[THEME_OF[r.w.themeOf[i]]].accessory);
+    }
+  });
+
+  it('Q17 lantern bots: at night every QA bot carries the lantern, by day the step item again (TASK-480)', () => {
+    const lantern = CARRIED_ITEM_SLOT.lantern - 6;
+    const r = rig(1001, 'high', 2, new THREE.Vector3(100, 12, -160));
+    const night = (v: number): void => {
+      SHARED.uNight.value = v;
+      r.w.update(0);
+    };
+    try {
+      night(0);
+      run(r, 60);
+      const qa = [...Array(r.w.capacity).keys()].filter(
+        (i) => r.w.active[i] && THEME_OF[r.w.themeOf[i]] === 'qa',
+      );
+      expect(qa.length).toBeGreaterThan(0);
+      const day = qa.map((i) => r.w.itemOf(i));
+      night(1);
+      for (const i of qa) expect(r.w.itemOf(i)).toBe(lantern);
+      for (let i = 0; i < r.w.capacity; i++)
+        if (r.w.active[i] && THEME_OF[r.w.themeOf[i]] !== 'qa')
+          expect(r.w.itemOf(i)).not.toBe(lantern);
+      night(0);
+      expect(qa.map((i) => r.w.itemOf(i))).toEqual(day);
+    } finally {
+      SHARED.uNight.value = 0;
     }
   });
 });

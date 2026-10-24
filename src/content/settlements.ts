@@ -213,6 +213,8 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   dummyBench: 1.0,
   inspectionBooth: 1.8,
   uvLampPost: 0.35,
+  // TASK-480: the shared rim walkway post (rails are walked past, the post is the obstacle)
+  rimPost: 0.3,
   scoreboard: 1.3,
   bugJar: 0.4,
   conePyramid: 0.65,

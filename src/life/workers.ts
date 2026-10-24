@@ -4,6 +4,7 @@ import {
   LAND,
   LAND_COLORS,
   NAP,
+  NIGHT_ITEMS,
   POSES,
   WORKERS,
   type ItineraryStep,
@@ -19,6 +20,7 @@ import { buildStops, islandComps, type Stop } from './activity-world.ts';
 import { LandKind, nodesByComponent, type LandOpts, type WorldNodes } from './land.ts';
 import { lineOk, NodeKind, walkRoute, type Mask, type WalkGraph } from './land-world.ts';
 import { ITEM_STRIDE } from './life-material.ts';
+import { SHARED } from '../render/uniforms.ts';
 import {
   planAmbient,
   planWorkers,
@@ -68,7 +70,13 @@ const ITEM_CODE: Record<string, number> = {
   megaphone: CARRIED_ITEM_SLOT.megaphone - 6,
   blowpipe: CARRIED_ITEM_SLOT.blowpipe - 6,
   books: CARRIED_ITEM_SLOT.books - 6,
+  lantern: CARRIED_ITEM_SLOT.lantern - 6,
 };
+/** Night item code per THEME_ORDER index (0 = none; NIGHT_ITEMS, TASK-480). */
+const NIGHT_CODE = THEME_ORDER.map((t) => {
+  const it = NIGHT_ITEMS.items[t];
+  return it ? ITEM_CODE[it] : 0;
+});
 
 const WP = 2; // waypoints per trip inside a lot (entrance, seat / entrance, door)
 
@@ -120,6 +128,9 @@ export class Workers extends LandKind {
   readonly residents: number;
   /** Carried item code per worker: 0 none, else CARRIED_ITEM_SLOT − 6 (laptop 1 … paintPot 4). */
   readonly item: Uint8Array;
+  /** The step's item (what `item` returns to by day) and whether the night items are on. */
+  private readonly dayItem: Uint8Array;
+  private nightOn = false;
   /** Island whose campus the camera is focused on (−1 = none). */
   focus = -1;
   private readonly accOf: Uint8Array;
@@ -226,6 +237,7 @@ export class Workers extends LandKind {
     const firstAmbient = spawns.findIndex((s) => s.ambient);
     this.residents = firstAmbient < 0 ? n : firstAmbient;
     this.item = new Uint8Array(n);
+    this.dayItem = new Uint8Array(n);
     this.accOf = new Uint8Array(n);
     this.gStep = new Int16Array(n);
     this.gKind = new Uint8Array(n);
@@ -1044,7 +1056,10 @@ export class Workers extends LandKind {
   // =========================================================================
   // Living close-up (M14c, TASK-383): itinerary, stops, chat, focus.
 
-  private setItem(i: number, code: number): void {
+  private setItem(i: number, want: number): void {
+    this.dayItem[i] = want;
+    // Q17 lantern bots: at night the theme's night item replaces the step's (TASK-480)
+    const code = this.nightOn && NIGHT_CODE[this.themeOf[i]] ? NIGHT_CODE[this.themeOf[i]] : want;
     if (this.item[i] === code) return;
     this.item[i] = code;
     this.seedArr[i] = this.accOf[i] + ITEM_STRIDE * code + Math.min(this.phase[i], 0.999);
@@ -1052,6 +1067,12 @@ export class Workers extends LandKind {
   }
 
   override update(alpha: number): void {
+    const night = (SHARED.uNight.value as number) >= NIGHT_ITEMS.from;
+    if (night !== this.nightOn) {
+      this.nightOn = night;
+      for (let i = 0; i < this.item.length; i++)
+        if (NIGHT_CODE[this.themeOf[i]]) this.setItem(i, this.dayItem[i]);
+    }
     if (this.seedDirty) {
       this.seedAttr.needsUpdate = true;
       this.seedDirty = false;

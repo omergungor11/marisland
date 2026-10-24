@@ -14,6 +14,7 @@ import { DEVOPS_CULTURE_PROP_DEFS, DEVOPS_PROP_DEFS } from './props-themes/devop
 import { RESEARCH_CULTURE_PROP_DEFS, RESEARCH_PROP_DEFS } from './props-themes/research.ts';
 import { DESIGN_M20_PROP_DEFS, HQ_M20_PROP_DEFS } from './props-themes/m20.ts';
 import { SIGNAGE_PROP_DEFS } from './props-themes/signage.ts';
+import { RIM_PROP_DEFS } from './props-themes/rim.ts';
 
 export interface PropDef {
   id: string;
@@ -131,6 +132,8 @@ const ALL_DEFS: readonly PropDef[] = [
   // M20 (D-057): HQ seven-gates and Design conservatory kits, again at the very end
   ...HQ_M20_PROP_DEFS,
   ...DESIGN_M20_PROP_DEFS,
+  // M22 (TASK-480): the shared rim walkway post
+  ...RIM_PROP_DEFS,
 ];
 
 /**

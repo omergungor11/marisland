@@ -47,6 +47,8 @@ const INK = C.dark;
 
 /** The `terrarium` variant index of the Bug Zoo (placed by the QA plan, TASK-424). */
 export const BUG_ZOO_VARIANT = 2;
+/** The `dummyBench` variant index of the Q15 grandstand (placed by the QA plan, TASK-480). */
+export const GRANDSTAND_VARIANT = 1;
 
 /* --------------------------------- helpers --------------------------------- */
 
@@ -190,7 +192,8 @@ function limb(
  * and torso, black joints and quartered target marks, a friendly pair of eyes, paper cup in the
  * right hand and a second one beside him. Front +z, 1.9 u long, head at 1.5 u.
  */
-function dummyBench({ rng, lod }: BuildOpts): THREE.BufferGeometry {
+function dummyBench({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
+  if (variant === GRANDSTAND_VARIANT) return grandstand(rng, lod === 0);
   const acc = jitterAcc(rng, 0.012);
   const hi = lod === 0;
   const L = 1.9;
@@ -266,6 +269,114 @@ function dummyBench({ rng, lod }: BuildOpts): THREE.BufferGeometry {
   }
   const g = acc.finish(rng, false, true);
   return addHook(g, 'seat', { center: [x0, seatY, -0.02], normal: [0, 0, 1] });
+}
+
+/**
+ * A seated crash-test dummy (grandstand spectator): pelvis on the seat at (x, seatY, z), facing +z,
+ * hands on the knees, boots on the tier below (`footY`); `nap` slumps the head (the sleeping one,
+ * Q15), `cheer` throws the right arm up. Kept cheap (≈ 260 tris; LOD1 = two boxes).
+ */
+function spectator(
+  acc: Acc,
+  x: number,
+  seatY: number,
+  footY: number,
+  z: number,
+  hi: boolean,
+  nap: boolean,
+  cheer: boolean,
+): void {
+  const lean = nap ? -0.32 : -0.05;
+  if (!hi) {
+    put(acc, baseBox(0.36, 0.62, 0.3), [x, seatY, z - 0.04], HAZ, { aoAmt: 0.1 });
+    put(acc, baseBox(0.28, 0.26, 0.28), [x, seatY + 0.66, z - 0.04], HAZ, { aoAmt: 0.05 });
+    return;
+  }
+  put(acc, baseBox(0.34, 0.16, 0.26), [x, seatY, z], HAZ, { aoAmt: 0.1 });
+  put(acc, baseBox(0.36, 0.5, 0.21), [x, seatY + 0.12, z - 0.04], HAZ, {
+    q: qEuler(lean, 0, 0),
+    aoAmt: 0.1,
+  });
+  const hz = z - 0.04 + Math.sin(lean) * 0.6 + (nap ? 0.12 : 0);
+  const hy = seatY + 0.82 - (nap ? 0.1 : 0);
+  const hx = x + (nap ? 0.08 : 0);
+  put(acc, blobGeo(0.16), [hx, hy, hz], HAZ, { aoAmt: 0.05 });
+  target(acc, V(hx + 0.152, hy, hz), 0.075, qEuler(0, Math.PI / 2, 0), 6);
+  if (!nap)
+    for (const sx of [-1, 1])
+      put(acc, baseBox(0.04, 0.05, 0.02), [hx + sx * 0.062, hy - 0.01, hz + 0.15], INK, {
+        aoAmt: 0,
+      });
+  for (const sx of [-1, 1]) {
+    const hip = V(x + sx * 0.1, seatY + 0.08, z);
+    const knee = V(x + sx * 0.1, seatY + 0.1, z + 0.36);
+    const ankle = V(x + sx * 0.1, footY + 0.07, z + 0.4);
+    rod(acc, hip, knee, 0.064, HAZ, 4);
+    rod(acc, knee, ankle, 0.055, HAZ, 4);
+    put(acc, baseBox(0.12, 0.07, 0.22), [x + sx * 0.1, footY, z + 0.44], INK, { aoAmt: 0.1 });
+    const sh = V(x + sx * 0.22, seatY + 0.55, z - 0.06 + (nap ? -0.12 : 0));
+    const hand =
+      cheer && sx > 0
+        ? V(x + 0.3, seatY + 1.05, z + 0.05)
+        : V(x + sx * 0.16, seatY + 0.14, z + 0.3);
+    rod(acc, sh, hand, 0.048, HAZ, 4);
+  }
+}
+
+/**
+ * Q15 grandstand (TASK-480; `dummyBench` variant 1): three straight white / mint tiers with green
+ * seat strips and a hazard nosing, four crash-test dummies watching the loop track (one asleep, one
+ * cheering), a chequered finish flag on a pole at the +x end. Front (+z) to the track, 3.6 u wide,
+ * tiers z ∈ [−0.85, 0.8], < 3 u tall.
+ */
+function grandstand(rng: BuildOpts['rng'], hi: boolean): THREE.BufferGeometry {
+  const acc = jitterAcc(rng, 0.01);
+  const W = 3.6;
+  const th = 0.3;
+  const dz = 0.55;
+  for (let i = 0; i < 3; i++) {
+    const zc = 0.525 - i * dz;
+    const h = th * (i + 1);
+    put(acc, baseBox(W, h, dz), [0, 0, zc], i % 2 === 0 ? WHITE : GREEN_L, { aoAmt: 0.15 });
+    if (hi) {
+      put(acc, baseBox(W - 0.3, 0.05, 0.26), [0, h, zc - 0.1], GREEN, { aoAmt: 0 });
+      hazardBars(acc, -W / 2, W / 2, h - 0.07, zc + dz / 2 + 0.005, 0.07, 0.02, 6);
+    }
+  }
+  // cheek walls + back rail
+  for (const sx of [-1, 1])
+    put(acc, baseBox(0.12, 1.0, 1.7), [sx * (W / 2 + 0.06), 0, -0.02], GREEN_D, { aoAmt: 0.2 });
+  if (hi)
+    for (const y of [1.25, 1.55])
+      rod(acc, V(-W / 2, y, -0.83), V(W / 2, y, -0.83), 0.035, GREEN_D, 4);
+  // spectators: (tier, x, nap, cheer)
+  const seats: ReadonlyArray<readonly [number, number, boolean, boolean]> = [
+    [0, -0.9, false, false],
+    [1, 0.7, false, true],
+    [1, -1.1, true, false],
+    [2, 0.1, false, false],
+  ];
+  for (const [i, x, nap, cheer] of seats) {
+    const seatY = th * (i + 1) + 0.03;
+    spectator(acc, x, seatY, th * i, 0.525 - i * dz - 0.12, hi, nap, cheer);
+  }
+  // chequered finish flag on a pole past the +x cheek
+  const px = W / 2 + 0.35;
+  put(acc, cylB(0.05, 0.04, 2.7, hi ? 6 : 3), [px, 0, 0.5], C.steel, { aoAmt: 0.1 });
+  const cols = hi ? 3 : 1;
+  const rows = hi ? 2 : 1;
+  const fw = 0.72;
+  const fh = 0.5;
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++)
+      put(
+        acc,
+        baseBox(fw / cols, fh / rows, 0.03),
+        [px + 0.06 + (c + 0.5) * (fw / cols), 2.65 - fh + r * (fh / rows), 0.5],
+        (r + c) % 2 === 0 ? WHITE : INK,
+        { aoAmt: 0 },
+      );
+  return acc.finish(rng, false, true);
 }
 
 /** Paper cup with a green sleeve and a dark lid, base at `at`. */
@@ -609,7 +720,8 @@ function bugJar({ rng, lod }: BuildOpts): THREE.BufferGeometry {
   const hi = lod === 0;
   const ty = 0.07;
   put(acc, baseBox(1.15, ty, 0.5), [0, 0, 0], WOOD.planks, { aoAmt: 0.15 });
-  const glow = { emissive: 0.45, aoAmt: 0, ao: () => 1 } as const;
+  // Q17 (TASK-480): the jar cages glow bug-hunt green at night (was a faint glass glow)
+  const glow = { emissive: 1, aoAmt: 0, ao: () => 1 } as const;
   const jars: ReadonlyArray<readonly [number, number, number, number]> = [
     [-0.34, 0.13, 0.36, 1],
     [0.0, 0.16, 0.48, 2],
@@ -618,7 +730,7 @@ function bugJar({ rng, lod }: BuildOpts): THREE.BufferGeometry {
   for (const [x, r, h, bugs] of jars) {
     if (!hi) {
       // far proxy: one glowing glass column, lid, a bug
-      put(acc, cylB(r, r, h, 4), [x, ty, 0], C.glass, glow);
+      put(acc, cylB(r, r, h, 4), [x, ty, 0], GREEN_L, glow);
       put(acc, baseBox(r * 2.1, 0.05, r * 2.1), [x, ty + h, 0], GREEN, { aoAmt: 0.05 });
       continue;
     }
@@ -630,7 +742,7 @@ function bugJar({ rng, lod }: BuildOpts): THREE.BufferGeometry {
         acc,
         baseBox(0.04, h, 0.04),
         [x + Math.cos(a) * r, ty + 0.05, Math.sin(a) * r],
-        C.glass,
+        GREEN_L,
         glow,
       );
     }
@@ -644,6 +756,8 @@ function bugJar({ rng, lod }: BuildOpts): THREE.BufferGeometry {
         b * 1.1,
         false,
       );
+    // a caught glow-bug hovering in each jar (the bug-hunt green read at night)
+    put(acc, blobGeo(r * 0.34), [x, ty + h * 0.62, 0], GREEN_L, glow);
     // lid with a tick label on the jar
     put(acc, cylB(r + 0.03, r + 0.03, 0.05, 6), [x, ty + 0.05 + h, 0], GREEN, { aoAmt: 0.05 });
     if (x === 0) {
@@ -979,7 +1093,16 @@ export function withBugZoo(def: PropGeoDef): PropGeoDef {
 }
 
 export const CULTURE_QA_GEO: readonly PropGeoDef[] = [
-  { id: 'dummyBench', variants: 1, build: dummyBench, footprint: 1.0, height: 1.5, windy: false },
+  // v1 = the Q15 grandstand (TASK-480): the finish flag pole tops out at 2.7 u
+  {
+    id: 'dummyBench',
+    variants: 2,
+    build: dummyBench,
+    footprint: 1.0,
+    height: 1.5,
+    heights: [1.5, 2.7],
+    windy: false,
+  },
   {
     id: 'inspectionBooth',
     variants: 1,

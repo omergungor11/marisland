@@ -51,7 +51,10 @@ describe('fireflies', () => {
       const r = rig(seed);
       const f = r.life.kinds.fireflies!;
       expect(f).toBeDefined();
-      expect(f.capacity).toBe(LIFE_PLAN.medium.fireflies);
+      // + the QA bug-hunt swarms (TASK-480), whole swarms on top of the plan's count
+      const extra = f.capacity - LIFE_PLAN.medium.fireflies;
+      expect(extra % FIREFLIES.perSwarm).toBe(0);
+      expect(extra / FIREFLIES.perSwarm).toBeLessThanOrEqual(FIREFLIES.bugHunt.stories.length);
       at(0, 10);
       r.life.update(FIXED_STEP, 0.5);
       expect(f.mesh.count).toBe(0);
@@ -66,6 +69,23 @@ describe('fireflies', () => {
       expect(r.counters.agents).toBe(agentsDay); // particles, not agents
       at(0, 0);
     }
+  });
+
+  it('Q17 bug hunt: green swarms at the QA bug-hunt story spots, after the warm ones (TASK-480)', () => {
+    const w = world(1001);
+    const qa = w.islands.find((i) => i.theme === 'qa')!;
+    const spots = w.storySpots.filter(
+      (s) => s.islandId === qa.id && FIREFLIES.bugHunt.stories.includes(s.kind),
+    );
+    expect(spots.length).toBeGreaterThan(0);
+    const f = rig(1001).life.kinds.fireflies!;
+    const plain = LIFE_PLAN.medium.fireflies;
+    expect(f.capacity).toBe(plain + spots.length * FIREFLIES.perSwarm);
+    const c = new THREE.Color();
+    f.mesh.getColorAt(0, c);
+    expect(c.getHexString()).toBe(new THREE.Color(FIREFLIES.color).getHexString());
+    f.mesh.getColorAt(plain, c);
+    expect(c.getHexString()).toBe(new THREE.Color(FIREFLIES.bugHunt.color).getHexString());
   });
 
   it('dusk brings them in one by one; none below night 0.5 or below tier 2', () => {

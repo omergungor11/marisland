@@ -154,6 +154,18 @@ export const FIREFLIES = {
   /** Swarm centres are ranked by distance to the settlement hub in bands of this width (u). */
   hubBand: 8,
   minSeparation: 8,
+  /**
+   * Q17 bug hunt 2.0 (TASK-480): extra green swarms on the theme's island, centred on these story
+   * spots (the UV-lamp hunt by the track, the Bug Zoo's ant trail), `perSwarm` each, on top of the
+   * plan's count (any quality with fireflies). Not agents, same mesh (instance colour).
+   */
+  bugHunt: {
+    theme: 'qa',
+    color: '#6CF59A',
+    stories: ['uvBugHunt', 'antTrail'] as readonly string[],
+    /** Swarm centre offset from the story spot along its facing (u). */
+    ahead: 1.5,
+  },
 } as const;
 
 export const SIM_LOD = { farDistance: 400, farEvery: 6 } as const;
@@ -219,7 +231,14 @@ export const SAILBOAT = {
  */
 export const CULTURE_BOATS = {
   ferry: { variant: 2, speed: 3.4, decel: 0.45, startFrac: 0.12, heelScale: 0.6 },
-  patrol: { variant: 3, theme: 'qa', speed: 2.2, margin: 22 },
+  // Q10 (TASK-480): the ring weaves through the QA plan's inspection buoys, `weave` u either side
+  patrol: {
+    variant: 3,
+    theme: 'qa',
+    speed: 2.2,
+    margin: 22,
+    slalom: { def: 'inspectionBuoy', weave: 2.6 },
+  },
   lantern: { variant: 4, theme: 'design', speed: 1.4, margin: 30 },
 } as const;
 
@@ -658,6 +677,15 @@ export const POSES: Readonly<Record<string, { code: number; lean?: number; lie?:
   peer: { code: 5, lean: -0.5 },
 };
 
+/**
+ * Night items (Q17 bug hunt 2.0, TASK-480): while `uNight` ≥ `from`, every bot of the theme carries
+ * this item instead of its step's (the lantern bots of the QA bug hunt); back to the step's item by day.
+ */
+export const NIGHT_ITEMS = {
+  from: 0.5,
+  items: { qa: 'lantern' } as Readonly<Partial<Record<string, CarriedItem>>>,
+} as const;
+
 /** Lying on a hammock: pitch (rad), lift of the feet pivot (u) and shift along the heading (u), ease rate (1/s). */
 export const NAP = { pitch: 1.5, lift: 0.75, shift: 1.05, lambda: 3 } as const;
 
@@ -927,6 +955,9 @@ export const WORKER_COLORS = {
     ember: '#FF6A3D',
     books: ['#C29A74', '#3FB8AF', '#E0B050'],
     pages: '#FBF3DC',
+    // QA bug-hunt lantern (TASK-480): dark frame, green-glowing glass
+    lanternFrame: '#4F4A5E',
+    lanternGlow: '#7FD8B3',
   },
 } as const;
 

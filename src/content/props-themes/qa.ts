@@ -48,7 +48,16 @@ export const QA_PROP_DEFS: readonly PropDef[] = [
  * rolled); sailboat v3 (inspection boat) stays unplaced until wave 3.
  */
 export const QA_CULTURE_PROP_DEFS: readonly PropDef[] = [
-  { id: 'dummyBench', geo: 'dummyBench', tier: 2, variants: 1, footprint: 1.0, flags: grounded },
+  // v1 = the Q15 grandstand by the loop track (TASK-480): pinned by the QA plan, rolls keep v0
+  {
+    id: 'dummyBench',
+    geo: 'dummyBench',
+    tier: 2,
+    variants: 2,
+    rollVariants: 1,
+    footprint: 1.0,
+    flags: grounded,
+  },
   {
     id: 'inspectionBooth',
     geo: 'inspectionBooth',
