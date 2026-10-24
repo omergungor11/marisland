@@ -106,7 +106,8 @@ const LIVE_CROP: [number, number, number, number] = [0.15, 0.1, 0.85, 0.9];
  */
 const STORY_SHOTS: readonly (readonly [string, string, string, number, number])[] = [
   ['signpostDebate', 'Signpost debate · HQ', '-51.04,8.5,-3.82,-48.24,2,-9.62', 14, 6],
-  ['hammockNap', 'Hammock nap · Coding', '-106.45,13.3,181.31,-105.67,10.6,176.16', 14, 6],
+  // TASK-484: re-aimed at the turbine-foot nap hammock (moved with the TASK-479 solar halving)
+  ['hammockNap', 'Hammock nap · Coding', '-118.5,12.6,179.5,-112.27,9.6,174.58', 14, 6],
   ['containerNap', 'Container nap · DevOps', '153.71,8.93,-11.08,158.75,6.23,-12.37', 14, 6],
   ['lighthouseSelfie', 'Selfie · Marketing', '-189.14,28.37,-21.87,-184.03,25.67,-22.88', 14, 6],
   ['gafferTurn', 'Gaffer · Design', '-97.6,24.75,-175.95,-99.57,22.05,-171.13', 14, 6],
@@ -210,7 +211,8 @@ const MOVE_SHOTS: readonly ShotPreset[] = (
   [
     ['hq', 'Harbour Guild · 06:00 bell fanfare', 1001, '-59.04,4.5,-19.82,-52.44,2.8,-16.42', 6],
     ['hq-crane', 'Harbour Guild · crane sack', 1001, '-56.94,5.5,-4.12,-49.94,2,-4.12', 9],
-    ['coding', 'Wind Gardens · 14:00 Kite Day', 1001, '-102.43,18,154.05,-104.43,17,179.05', 14],
+    // TASK-484: re-aimed at the kite-day spot (the old look framed a turbine mast); the C18 boardwalk on the left
+    ['coding', 'Wind Gardens · 14:00 Kite Day', 1001, '-122,16,170,-110.7,13,182.9', 14],
     [
       'devops',
       'Ember Works · 21:00 Release Night lift + horn',
@@ -336,10 +338,12 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'W6',
     title: 'QA Test Factory',
     // QA (TASK-401, was the TASK-380 lagoon): the raised factory plateau on its earth walls, the
-    // yard with sawtooth hangars, conveyor bridges and the loop track, the check tower
+    // yard with sawtooth hangars, conveyor bridges and the loop track, the check tower. TASK-484:
+    // from the east at 15:00 (raw), the sun behind the camera on the R3-14 white-mint-yellow hangar
+    // walls; the slalom buoys, grandstand and rim hammock in frame (the noon village look was flat)
     seed: 4004,
-    cam: 'village:qa',
-    time: 12,
+    cam: '-112,50,-129,-172,7,-107',
+    time: 15,
     simt: 5,
     quality: 'medium',
     width: 1920,
@@ -574,9 +578,12 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   // ---- M22 wow shots (TASK-484): the five-island quick wins
   {
     id: 'W23',
-    title: 'Slalom Afternoon',
+    title: 'Rim Walk Afternoon',
+    // QA from the sunny south-east (15:00): the Q6 rim walkway (dark safety rubber, yellow-black
+    // hazard posts, mint rails) round the plateau lip, the Q18 palm rim inland of it, the repainted
+    // hangars and the check tower (≈ 220 calls; a lower look takes in the archipelago, 330–380)
     seed: 1001,
-    cam: '175,22,-205,110,6,-160',
+    cam: '178,55,-188,118,4,-160',
     time: 15,
     simt: 5,
     quality: 'medium',
@@ -587,9 +594,12 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   {
     id: 'W24',
     title: 'Lantern Zigzag',
+    // DevOps Release Night (21:00 +5 s) from the W5 side: the D12 switchback lantern roads up the
+    // cone in warm pools, the D5 watch tower's red beacon at the summit, container LED strips and
+    // the lit harbour sheds, the steam plume lit from the crater
     seed: 1001,
-    cam: 'village:devops',
-    time: 20,
+    cam: '158,52,22,184,19,-46',
+    time: 21,
     simt: 5,
     quality: 'medium',
     width: 1920,
@@ -599,8 +609,11 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   {
     id: 'W25',
     title: 'Carpet Night',
+    // Marketing at 20:00 (seed 2024): the M7 red-carpet boulevard with its gold trim across Beacon
+    // Rock's top, the lit marquee billboard and bulb strings, the lighthouse, sea-stack
+    // transmitters and the lit buoy chain in the bay
     seed: 2024,
-    cam: '240,30,-80,180,12,-112',
+    cam: '215,60,-80,178,22,-112',
     time: 20,
     simt: 5,
     quality: 'medium',
@@ -610,11 +623,13 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   },
   {
     id: 'W26',
-    title: 'Test Firing',
+    title: 'Test Firing Noon',
+    // Research 12:00 +3 s: the R13 launch gantry on the headland during the test firing (trench
+    // steam), the R12 hedge-maze parterres, the R17 belfry tower and the arboretum behind
     seed: 1001,
-    cam: '66,16,140,100,7,118',
+    cam: '80,12,135,97,7,121',
     time: 12,
-    simt: 1.5,
+    simt: 3,
     quality: 'medium',
     width: 1920,
     height: 1080,
