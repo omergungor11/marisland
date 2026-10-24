@@ -17,6 +17,13 @@ export const BLOOM_IN = {
 } as const;
 export const CLICK_SQUASH = { k: 300, c: 14, squash: 0.85, stretch: 1.15 } as const;
 export const BOAT_BOB = { period: 3.2, y: 0.12, rollDeg: 6, pitchDeg: 3, rollLag: 0.8 } as const;
+/**
+ * Floating props that bob in the lit vertex shader (TASK-481: the Marketing party pontoon and the
+ * lit ad-buoy chain; vertices tagged `MOTION_TAG.bob`): the tagged part heaves / rolls / pitches
+ * about its waterline pivot, the phase a hash of the instance origin. Same numbers as the moored
+ * boats, a little gentler.
+ */
+export const FLOAT_BOB = { period: 3.2, y: 0.09, rollDeg: 4, pitchDeg: 2 } as const;
 export const CLOUDS = {
   count: [6, 10],
   altitude: [60, 90],

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {
   LEDS,
+  BEACON,
   MARQUEE,
   MOTION_TAG,
   OCCUPANCY,
@@ -13,6 +14,7 @@ import {
   TRACKER,
   TURBINE_YAW,
 } from '../../content/activity.ts';
+import { FLOAT_BOB } from '../../content/anim.ts';
 import { WATERFALL_LOOK as WF } from '../../content/waterfalls.ts';
 import { MERGED_FACADE_BIAS, MERGED_FACADE_SCALE } from '../props/far-merge.ts';
 
@@ -45,7 +47,7 @@ export const ACTIVITY_VERTEX_PARS = /* glsl */ `
 uniform vec3 uSunSkyDir;
 `;
 
-/** Rotation of `transformed` for the yaw / tracker tags (after the spin, before bloom-in). */
+/** Rotation of `transformed` for the yaw / tracker / float-bob tags (after the spin, before bloom-in). */
 export const ACTIVITY_DISPLACE = /* glsl */ `
   #ifdef MAR_SPIN
   if (aSpin.w > ${f(T.yaw - 0.5)} && aSpin.w < ${f(T.yawSpin + 0.5)}) {
@@ -57,7 +59,19 @@ export const ACTIVITY_DISPLACE = /* glsl */ `
     float marYc = cos(marYaw);
     float marYs = sin(marYaw);
     transformed.xz = vec2(marYc * transformed.x + marYs * transformed.z, -marYs * transformed.x + marYc * transformed.z);
-  } else if (aSpin.w > ${f(T.tracker - 0.5)}) {
+  } else if (aSpin.w > ${f(T.bob - 0.5)} && aSpin.w < ${f(T.bob + 0.5)}) {
+    // float bob (TASK-481): heave, roll and pitch about the waterline pivot (the object origin)
+    float marBw = uTime * ${f((2 * Math.PI) / FLOAT_BOB.period)} + marHash12(marOrigin.xz * 0.61 + 3.7) * 6.2831853;
+    float marBr = ${f(FLOAT_BOB.rollDeg * DEG)} * sin(marBw - 0.8) * uMotionScale;
+    float marBt = ${f(FLOAT_BOB.pitchDeg * DEG)} * cos(marBw) * uMotionScale;
+    float marBc = cos(marBr);
+    float marBs = sin(marBr);
+    transformed.xy = vec2(marBc * transformed.x - marBs * transformed.y, marBs * transformed.x + marBc * transformed.y);
+    marBc = cos(marBt);
+    marBs = sin(marBt);
+    transformed.yz = vec2(marBc * transformed.y - marBs * transformed.z, marBs * transformed.y + marBc * transformed.z);
+    transformed.y += ${f(FLOAT_BOB.y)} * sin(marBw) * uMotionScale;
+  } else if (aSpin.w > ${f(T.tracker - 0.5)} && aSpin.w < ${f(T.tracker + 0.5)}) {
     // sun tracker: rest tilt = (w − 4)·π about x through the pivot; stow when the sun is down
     mat3 marTR = mat3(marM);
     vec3 marSl = transpose(marTR) * uSunSkyDir;
@@ -118,6 +132,7 @@ export const FLOW_SURFACE = /* glsl */ `if (marK > ${f(SURFACE.flow - 0.5)}) {
     } else `;
 
 const MQ = MARQUEE;
+const BC = BEACON;
 /** Linear night tint of stained glass: white → studio lamp light by `nightTintMix`. */
 const nightTint = new THREE.Color(1, 1, 1).lerp(
   new THREE.Color(STAINED.nightTint),
@@ -129,7 +144,11 @@ const nightTint = new THREE.Color(1, 1, 1).lerp(
  * the others dim (albedo and glow weight). Stained: flags the day transmission for ACTIVITY_GLOW
  * (it needs the shaded normal) and tints the night lamp glow toward the studio light.
  */
-export const CULTURE_SURFACE = /* glsl */ `if (marK > ${f(SURFACE.stained - 0.5)}) {
+export const CULTURE_SURFACE = /* glsl */ `if (marK > ${f(SURFACE.beacon - 0.5)}) {
+      float marBc = step(fract(marSt / ${f(BC.period)} + vMarSurfSeed), ${f(BC.duty)});
+      marC.rgb = diffuseColor.rgb * mix(${f(BC.offAlbedo)}, 1.0, marBc);
+      marC.a = mix(${f(BC.off)}, 1.0, marBc);
+    } else if (marK > ${f(SURFACE.stained - 0.5)}) {
       marStain = 1.0;
       marTint = vec3(${f(nightTint.r)}, ${f(nightTint.g)}, ${f(nightTint.b)}) * ${f(STAINED.night)};
     } else if (marK > ${f(SURFACE.marquee - 0.5)}) {

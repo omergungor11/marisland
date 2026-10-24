@@ -261,6 +261,25 @@ export function tagMarquee(
 }
 
 /**
+ * Warning-light blink (TASK-481): the vertices of `r` (a lamp: emissive 1) flash on the BEACON
+ * period, phase per instance. LOD0 only (a tagged LOD1 would keep its group out of the far merge).
+ */
+export function tagBeacon(g: THREE.BufferGeometry, r: VertexRange): void {
+  tagRange(g, r, [0, 0, 0, -SURFACE.beacon]);
+}
+
+/**
+ * Float bob (TASK-481): every vertex of `g` that carries no tag yet bobs about the waterline pivot
+ * (MOTION_TAG.bob, FLOAT_BOB). Call it last, after the surface tags: the lamps and bulbs keep their
+ * own (they move 0.09 u less than the hull, which the eye does not catch). LOD0 only.
+ */
+export function tagBob(g: THREE.BufferGeometry): void {
+  const s = spinAttr(g);
+  for (let i = 0; i < s.count; i++) if (s.getW(i) === 0) s.setXYZW(i, 0, 0, 0, MOTION_TAG.bob);
+  s.needsUpdate = true;
+}
+
+/**
  * Stained glass (TASK-440): the glass vertices (emissive 1: lamp class, not the molten ≥ 1.5
  * screen class) from vertex `first` on get (0, 0, 0, −stained). LOD0 only — a tagged LOD1 would
  * keep its group out of the far merge (D-049).

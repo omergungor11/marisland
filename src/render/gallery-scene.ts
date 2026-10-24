@@ -5,17 +5,20 @@ import { buildGalleryScene } from '../geo/index.ts';
 import { SAND } from '../content/palette.ts';
 import { CODING_M22_SHOWCASE_IDS } from '../content/props-themes/coding.ts';
 import { M20_PROP_IDS } from '../content/props-themes/m20.ts';
+import { M22_MARKETING_PROP_IDS } from '../content/themes/marketing.ts';
 import type { CameraWorld } from '../camera/controls.ts';
 import type { TestScene } from './test-scene.ts';
 
 /**
  * Def ids of the `?ids=` query: `m20` = the M20 HQ / Design kits (TASK-465), `coding22` = the M22 Coding
- * quick wins (TASK-479), else a comma list of def ids; none = every def.
+ * quick wins (TASK-479), `m22` = the Marketing quick-win defs (TASK-481), else a comma list of def ids;
+ * none = every def.
  */
 function showcaseIds(): readonly string[] | undefined {
   const raw = new URLSearchParams(globalThis.location?.search ?? '').get('ids');
   if (!raw) return undefined;
   if (raw === 'coding22') return CODING_M22_SHOWCASE_IDS;
+  if (raw === 'm22') return M22_MARKETING_PROP_IDS;
   return raw === 'm20' ? M20_PROP_IDS : raw.split(',');
 }
 

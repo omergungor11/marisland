@@ -607,7 +607,8 @@ describe('Design Glass & Light culture (TASK-425), 30 seeds', () => {
       expect(THEMES.design.landmarkVariant.giantTree).toBe(3);
       for (const id of ['giantTree', 'galleryPavilion', 'bunting']) {
         const def = PROP_DEFS.find((d) => d.id === id);
-        expect(def?.rollVariants, id).toBe((def?.variants ?? 0) - 1);
+        // bunting: v4 (the Marketing bulb string, TASK-481) sits past the glass chime line
+        expect(def?.rollVariants, id).toBe(id === 'bunting' ? 3 : (def?.variants ?? 0) - 1);
       }
       // no unpinned pavilion anywhere rolled the glass roof
       for (const seed of SEEDS.slice(0, 6)) {

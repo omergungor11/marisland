@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { generateWorld } from '../../world/index.ts';
-import { THEME_IDS } from '../../world/types.ts';
-import { COMPASS_MOSAIC, PRISM_POOLS } from '../../content/ground-art.ts';
+import { THEME_IDS, heightAt } from '../../world/types.ts';
+import { CARPET, COMPASS_MOSAIC, PRISM_POOLS } from '../../content/ground-art.ts';
 import { groundArtUniforms } from './ground-art.ts';
 
 /** Ground art uniforms (TASK-468): compass rays = the HQ gates' bearings, prism pools = the arches. */
@@ -34,5 +34,20 @@ describe('ground art uniforms', () => {
     const on = (u.uPrism.value as THREE.Vector4[]).filter((p) => p.w > 0.5);
     expect(on.length).toBe(Math.min(arches.length, PRISM_POOLS.maxArches));
     on.forEach((p, k) => expect([p.x, p.y]).toEqual([arches[k].x, arches[k].z]));
+  });
+
+  it('lays the Marketing carpet over the Ad Boulevard (TASK-481): centre, heading, size, height', () => {
+    const d = world.districts.find((x) => x.kind === 'carpet');
+    expect(d).toBeDefined();
+    if (!d) return;
+    const c = u.uCarpet.value as THREE.Vector4;
+    const dim = u.uCarpetDim.value as THREE.Vector4;
+    expect([c.x, c.y]).toEqual([d.x, d.z]);
+    expect(c.z).toBeCloseTo(Math.cos(d.rotY), 6);
+    expect(c.w).toBeCloseTo(Math.sin(d.rotY), 6);
+    expect(dim.x).toBeCloseTo(d.w / 2 + CARPET.edge, 6);
+    expect(dim.y).toBeCloseTo(d.d / 2, 6);
+    expect(dim.w).toBe(1);
+    expect(dim.z).toBeCloseTo(heightAt(world.height, d.x, d.z), 6);
   });
 });

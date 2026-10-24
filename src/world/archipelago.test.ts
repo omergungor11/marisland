@@ -92,9 +92,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "2198307ccbe7b1dd",
-          "1001": "1642a04a62137dfe",
-          "42": "fe380c991f7b7fee",
+          "1": "402ddc462411de20",
+          "1001": "db588e17366ef1d5",
+          "42": "c073edda878f391b",
         }
       `);
     },
@@ -429,9 +429,9 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // TASK-466 HQ Seven Gates + TASK-467 Design Glass Conservatory, re-pinned; TASK-480 QA quick
       // wins (slalom buoys, grandstand, palm rim rule; the rim walk needs a bluff), re-pinned;
       // TASK-482 DevOps quick wins (watch tower, pools, columns, switchback roads), re-pinned;
-      // TASK-479 Coding quick wins, re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('1ba3d7da70487d1c');
-      expect(generateWorld(1).hashes.world).toBe('ca71d28636674610');
+      // TASK-479 Coding quick wins, TASK-481 Marketing quick wins, re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('71d0f0d890d5ec3b');
+      expect(generateWorld(1).hashes.world).toBe('defb4e19e154bf55');
     } finally {
       for (const b of saved) b.on = true;
     }

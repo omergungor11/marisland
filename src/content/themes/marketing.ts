@@ -179,3 +179,97 @@ export const MEDIA_ROCK = {
 
 /** Ferris wheel rotor motion (render/movers.ts): seconds per turn; drawn at every distance. */
 export const MEDIA_MOVERS = { wheelPeriod: 36, fadeNear: 4000, fadeFar: 5000 } as const;
+
+/** The defs of the M22 Marketing quick wins (the prop showcase `?gallery=1&ids=m22`). */
+export const M22_MARKETING_PROP_IDS: readonly string[] = [
+  'cultureGate',
+  'bunting',
+  'antennaTower',
+  'adBuoy',
+  'sailboat',
+];
+
+/**
+ * M22 Marketing quick wins (TASK-481, world/gen/plans/marketing.ts + geo/themes/marketing-quick.ts).
+ * No new defs: every item is a variant of a def that already exists (`bunting` 4, `antennaTower` 1,
+ * `adBuoy` 2 / 3, `sailboat` 5) or the HQ `cultureGate` in its Marketing variant. Lengths in u.
+ */
+export const MARKETING_QUICK = {
+  /**
+   * M11 carnival gate: the HQ `cultureGate` (variant = THEME_IDS index of marketing: streamer pennant,
+   * megaphone plaque) across the pier mouth. The passage runs along the pier axis; the first spot
+   * inland of the pier root (`inland` u from it, `step` apart, `lateral` offsets tried in order)
+   * whose footprint (`w` across × `d` along, relief ≤ `relief`) is clear.
+   */
+  gate: {
+    inland: [1.5, 9] as const,
+    step: 0.5,
+    lateral: [0, 0.8, -0.8, 1.6, -1.6] as const,
+    w: 4.8,
+    d: 0.8,
+    relief: 2.2,
+  },
+  /**
+   * M5 marquee bulb strings (`bunting` variant 4): poles at ± `poleX` across the boulevard (just
+   * outside the 5 u walk), the bulbs chasing (SURFACE.marquee). `count` strings at least `spacing`
+   * apart, `edge` u from either end of the street and `hub` u from the plaza hub; a spot needs both
+   * pole feet (radius `pole`) clear of obstacles.
+   */
+  bulbString: {
+    variant: 4,
+    poleX: 3,
+    poleH: 3.3,
+    sag: 0.5,
+    bulbs: 13,
+    bulbR: 0.065,
+    wind: 0.1,
+    count: [3, 4] as const,
+    spacing: 2.4,
+    edge: 1.6,
+    hub: 2.2,
+    pole: 0.3,
+  },
+  /**
+   * M2 transmitter masts (`antennaTower` variant 1) on the windward sea stacks (anchors `stack0…`):
+   * the highest cell within `search` u of the anchor, at least `minRise` u above the sea, takes the
+   * mast. Its red tip lamp blinks (SURFACE.beacon).
+   */
+  transmitter: { variant: 1, height: 6.4, foot: 0.75, top: 0.2, search: 4, minRise: 2.5 },
+  /**
+   * M17 lit ad-buoy chain across the bay mouth (`adBuoy` variant 2, each carrying a rope `spacing`
+   * u long toward the next; the last buoy is the plain gold variant 1): a line of
+   * `count` buoys `spacing` u apart, centred `beyond[0]…beyond[1]` u past the pier end along its
+   * axis, in water ≥ `minDepth` u deep and ≥ `minShore` u off the coast.
+   */
+  buoyChain: {
+    variants: [2] as const,
+    end: 1,
+    spacing: 5.2,
+    count: 6,
+    beyond: [10, 26] as const,
+    radius: 16,
+    minDepth: 1.4,
+    minShore: 3.5,
+    rope: { y: 0.6, sag: 0.18, r: 0.02 },
+  },
+  /**
+   * M8 party pontoon (`sailboat` variant 5, a floating fixture): a `w` × `l` raft in the bay,
+   * `off[0]…off[1]` u off the pier axis, `along[0]…along[1]` u out from the root, in water ≥ `minDepth` u deep
+   * and ≥ `minShore` u off the coast; the score prefers the nearest to the pier, around 14 u out.
+   */
+  pontoon: {
+    variant: 5,
+    w: 2.8,
+    l: 6.2,
+    off: [5, 12] as const,
+    along: [8, 20] as const,
+    minDepth: 1.2,
+    minShore: 4,
+  },
+  /**
+   * M7 red-carpet boulevard (district kind 'carpet', painted by the terrain shader): a crisp strip
+   * `edge` u wider than the street each side, gold trim lines, a gold star plate every `pitch` u
+   * down the middle (see content/ground-art.ts CARPET).
+   */
+  carpet: { edge: 0.35 },
+} as const;

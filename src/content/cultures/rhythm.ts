@@ -83,7 +83,12 @@ export const CULTURE_RHYTHM: Record<ThemeId, CultureRhythm> = {
       { id: 'goldenHourShow', hour: 17.5, seconds: 60 },
       { id: 'neonNight', hour: 19.5 },
     ],
-    lamps: { defs: ['marqueeSign'], on: 17.4, off: 1, rampS: 6 },
+    lamps: {
+      defs: ['marqueeSign', 'bunting', 'adBuoy', 'antennaTower', 'sailboat'],
+      on: 17.4,
+      off: 1,
+      rampS: 6,
+    },
   },
   // Inspectors: siren test, green-light ceremony, the night bug hunt under UV lamps
   qa: {

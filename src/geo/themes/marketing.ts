@@ -16,6 +16,7 @@ import { TAU, V, baseBox, cylB, gableRoof, jitterAcc, put } from '../parts.ts';
 import type { BuildOpts, PropGeoDef } from '../types.ts';
 import { addHook, cloth, lighten, pennant, stripedBuoy } from './hq.ts';
 import { accVerts } from './coding.ts';
+import { chainBuoy, transmitterMast } from './marketing-quick.ts';
 import { tagSlides } from './surface-tags.ts';
 import {
   antennaTower,
@@ -490,15 +491,26 @@ export const MARKETING_GEO: readonly PropGeoDef[] = [
     height: 3.4,
     windy: false,
   },
-  { id: 'adBuoy', variants: 2, build: adBuoy, footprint: 0.5, height: 1.8, windy: false },
+  // v2 = the lit bay-mouth chain buoy (TASK-481, marketing-quick.ts)
+  {
+    id: 'adBuoy',
+    variants: 3,
+    build: (o) => (o.variant >= 2 ? chainBuoy(o) : adBuoy(o)),
+    footprint: 0.5,
+    height: 2.1,
+    heights: [1.8, 1.8, 2.1],
+    windy: false,
+  },
   // TASK-403 Media Rock (geo/themes/marketing-media.ts)
   { id: 'giantScreen', variants: 1, build: giantScreen, footprint: 4.4, height: 9.6, windy: false },
   {
     id: 'antennaTower',
-    variants: 1,
-    build: antennaTower,
+    // v1 = the short transmitter on a sea stack (TASK-481, marketing-quick.ts)
+    variants: 2,
+    build: (o) => (o.variant === 1 ? transmitterMast(o) : antennaTower(o)),
     footprint: 1.8,
     height: 16.3,
+    heights: [16.3, 8.4],
     windy: false,
   },
   { id: 'mediaOffice', variants: 1, build: mediaOffice, footprint: 3.4, height: 7.4, windy: false },

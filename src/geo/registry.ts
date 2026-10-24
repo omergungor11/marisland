@@ -74,6 +74,7 @@ import {
   withGlassChimeLine,
   withGlassPavilion,
 } from './themes/culture-design.ts';
+import { bulbString, pontoon } from './themes/marketing-quick.ts';
 import type { Lod, PropGeoDef } from './types.ts';
 import type * as THREE from 'three';
 
@@ -124,6 +125,8 @@ const defs: PropGeoDef[] = [
   { id: 'treeBlob', variants: 3, build: treeBlob, footprint: 1.8, height: 5, windy: true },
 ];
 
+const chimeBunting = withGlassChimeLine(bunting);
+
 const D = (
   id: string,
   variants: number,
@@ -156,7 +159,15 @@ defs.push(
   D('dock', 2, dock, 1.2, 0.95),
   D('rowboat', 2, rowboat, 1.3, 0.6),
   // v2 ferry, v3 inspection boat (coastal.ts), v4 lantern boat (Design); random rolls keep v0/v1
-  D('sailboat', 5, (o) => (o.variant === 4 ? lanternBoat(o) : sailboat(o)), 2.8, 5.2, true),
+  // v5 = the Marketing party pontoon (TASK-481, a floating fixture)
+  D(
+    'sailboat',
+    6,
+    (o) => (o.variant === 5 ? pontoon(o) : o.variant === 4 ? lanternBoat(o) : sailboat(o)),
+    2.8,
+    5.2,
+    true,
+  ),
   D('seaStack', 4, seaStack, 3, 10, false, [6, 10, 15, 9]),
   D('buoy', 3, buoy, 0.4, 0.85, true, [1.1, 1.3, 1.3]),
   D('driftwood', 2, driftwood, 0.9, 0.4),
@@ -169,7 +180,19 @@ defs.push(
   D('lanternPost', 3, lanternPost, 0.5, 2.3),
   D('laundryLine', 3, laundryLine, 2.1, 2.0, true),
   // variant 3 = glass chime line (M19 TASK-415), pinned across the Design lanes (TASK-425)
-  { ...D('bunting', 4, withGlassChimeLine(bunting), 3.1, 2.6, true), lod1Of: { 3: 2 } },
+  // variant 4 = the Marketing marquee bulb string (TASK-481); LOD1 = a thin string of its own
+  {
+    ...D(
+      'bunting',
+      5,
+      (o) => (o.variant === 4 ? bulbString(o) : chimeBunting(o)),
+      3.1,
+      2.6,
+      true,
+      [2.6, 2.6, 2.6, 2.6, 3.4],
+    ),
+    lod1Of: { 3: 2 },
+  },
   D('bench', 2, bench, 0.8, 0.8),
   D('barrel', 2, barrel, 0.3, 0.6),
   D('crate', 2, crate, 0.45, 0.6, false, [0.6, 0.48]),

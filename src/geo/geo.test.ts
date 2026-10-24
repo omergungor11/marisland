@@ -79,6 +79,9 @@ const TARGET: Record<string, number> = {
  */
 const VARIANT_TARGET: Record<string, number> = {
   'bunting:3': 1500,
+  // TASK-481: the Marketing bulb string (13 bulbs, cable, two poles) and the party pontoon
+  'bunting:4': 400,
+  'sailboat:5': 900,
   'giantTree:3': 2400,
   // TASK-434: culture boats (HQ ferry, inspection boat, lantern boat)
   'sailboat:2': 800,

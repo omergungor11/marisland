@@ -233,6 +233,8 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   // Marketing Media Rock (TASK-403): the obstacle discs bots and creatures keep clear of
   giantScreen: 2.4,
   antennaTower: 1.7,
+  // the Marketing party pontoon (TASK-481): afloat, so only the plan's own water footprint matters
+  sailboat: 1.6,
   mediaOffice: 3.4,
   mediaShop: 2.2,
   ferrisWheel: 3.4,
@@ -342,6 +344,8 @@ export const FLOATING_FIXTURES: readonly string[] = [
   'researchVessel',
   // the Design spray rainbow stands in the sea off the bluff foot (TASK-425)
   'rainbowArc',
+  // the Marketing party pontoon (sailboat variant 5, TASK-481); no other sailboat is a fixture
+  'sailboat',
 ];
 
 /**

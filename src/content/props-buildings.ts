@@ -43,7 +43,8 @@ export const PROP_DEFS_BUILDINGS: PropDef[] = [
   // coastal
   d('dock', 1, 2, 1.1, grounded),
   d('rowboat', 1, 2, 1.2, grounded),
-  d('sailboat', 0, 5, 2.6, windy, undefined, { rollVariants: 2 }),
+  // v4 = Design lantern boat, v5 = Marketing party pontoon (TASK-481): pinned, never rolled
+  d('sailboat', 0, 6, 2.6, windy | noShadow, undefined, { rollVariants: 2 }),
   // variant 3 = the arch (TASK-474 seamarks)
   d('seaStack', 0, 4, 2.6, 0, undefined, { rollVariants: 3 }),
   // T0: the channel buoys (variants 1 red / 2 green, TASK-474) read as night light lines from the
@@ -58,8 +59,9 @@ export const PROP_DEFS_BUILDINGS: PropDef[] = [
   d('fence', 2, 2, 0.8, grounded),
   d('lanternPost', 2, 3, 0.4, grounded),
   d('laundryLine', 2, 3, 2.0, grounded | windy),
-  // v3 = Design glass chime line (TASK-425): only where the Design plan pins it
-  d('bunting', 2, 4, 3.0, grounded | windy, undefined, { rollVariants: 3 }),
+  // v3 = Design glass chime line (TASK-425), v4 = Marketing marquee bulb string (TASK-481): only
+  // where the plans pin them
+  d('bunting', 2, 5, 3.0, grounded | windy, undefined, { rollVariants: 3 }),
   d('bench', 2, 2, 0.7, grounded),
   d('barrel', 2, 2, 0.3, grounded),
   d('crate', 2, 2, 0.4, grounded),
