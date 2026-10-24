@@ -46,6 +46,8 @@ export interface LifeDeps {
   cameraTarget?: THREE.Vector3;
   /** Overrides of `LIFE_PLAN[quality]` (tests; e.g. `villagers` for a later "visitors" option). */
   plan?: Partial<LifePlan>;
+  /** The ritual running on `theme`'s island now (the culture clock), or null (M22: bell hour, cap toss). */
+  festival?: (theme: string) => { id: string; phase: number } | null;
 }
 
 /** Everything the kinds share: world, fields (live motion scale), water, tier. */
@@ -66,6 +68,8 @@ export interface LifeCtx {
   zone(x: number, z: number): number;
   /** Independent stream for a sub-system: createRng(seed).fork('life').fork(label). */
   rngFor(label: string): Rng;
+  /** The ritual running on `theme`'s island now, or null (no culture clock: always null). */
+  festival(theme: string): { id: string; phase: number } | null;
 }
 
 export function makeCtx(deps: LifeDeps): LifeCtx {
@@ -94,6 +98,7 @@ export function makeCtx(deps: LifeDeps): LifeCtx {
     h: (x, z) => heightAt(world.height, x, z),
     zone: (x, z) => zoneAt(world.height, world.zone, x, z),
     rngFor: (label) => createRng(deps.seed).fork('life').fork(label),
+    festival: (theme) => deps.festival?.(theme) ?? null,
   };
 }
 

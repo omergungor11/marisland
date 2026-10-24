@@ -26,6 +26,8 @@ import { DOCK, FIXTURE_RADIUS, FLATTEN, PATHS } from '../../../content/settlemen
 import { RESEARCH_CULTURE_SITES as CS } from '../../../content/cultures/research.ts';
 import { ARCHETYPES } from '../../../content/islands.ts';
 import { RESEARCH_SITE as S } from '../../../content/themes/research.ts';
+import { MAZE, SIDE_VEC, mazeOf } from '../../../content/props-themes/research-maze.ts';
+import { lotLocalToWorld } from '../../lot-frame.ts';
 import { THEME_IDS, heightAt, type IslandData, type StorySpot, type XZ } from '../../types.ts';
 import { cellX, cellZ, gridRange } from '../grid.ts';
 import { coveness } from '../heightfield.ts';
@@ -68,7 +70,9 @@ const angGap = (a: number, b: number): number => Math.abs(((a - b + 3 * Math.PI)
 const perp = (d: XZ): XZ => ({ x: -d.z, z: d.x });
 const radiusOf = (def: string): number => FIXTURE_RADIUS[def] ?? 0.5;
 /** Pad level groups (Pad.group): each district is one level, districts differ by ≤ padStep. */
-const LEVEL = { summit: 1, quad: 2, garden: 3, glass: 4, base: 5, dish: 6 } as const;
+/** chalkboard variant 3 = the arboretum specimen plate (props-themes/research.ts RESEARCH_M22.plate). */
+const PLATE_VARIANT = 3;
+const LEVEL = { summit: 1, quad: 2, garden: 3, glass: 4, base: 5, dish: 6, tip: 7 } as const;
 
 interface Put {
   /** Obstacle shape (default: the FIXTURE_RADIUS disc). */
@@ -80,11 +84,21 @@ interface Put {
   /** Level group of the pad (Pad.group): one flat level inside a group, `padStep` between groups. */
   group?: number;
   variant?: number;
+  /** Instance scale (the arboretum's oversized tree). */
+  scale?: number;
 }
 
 /** A fixture with its obstacle shape (and an optional flatten pad). */
 function put(ctx: SiteCtx, isl: IslandData, defId: string, p: XZ, rotY: number, o: Put = {}): void {
-  ctx.fixtures.push({ defId, x: p.x, z: p.z, rotY, islandId: isl.id, variant: o.variant });
+  ctx.fixtures.push({
+    defId,
+    x: p.x,
+    z: p.z,
+    rotY,
+    islandId: isl.id,
+    variant: o.variant,
+    ...(o.scale !== undefined ? { scale: o.scale } : {}),
+  });
   const sh = o.sh ?? discShape(p.x, p.z, radiusOf(defId));
   addShape(ctx, isl, sh, o.block ?? true);
   if (o.pad !== undefined) addPad(ctx, isl, sh, o.pad, S.padStep, o.group);
@@ -203,6 +217,7 @@ export const planResearch: ThemePlanner = ({ ctx, isl, rng }) => {
   const g = formalGarden(ctx, isl, plan, garden, quad, rng.fork('garden'));
   glasshouses(ctx, isl, plan, A.glasshouse ?? garden, g, rng.fork('glasshouse'));
   bigDish(ctx, isl, plan, A.spur, obs, rng.fork('dish'));
+  launchGantry(ctx, isl, plan, A.headland);
   researchBase(ctx, isl, plan, A.headland, rng.fork('base'));
   if (g) gardenEnds(ctx, isl, g);
   sculptureWalk(ctx, isl, quad, obs, g, harbourAt, rng.fork('sculptures'));
@@ -608,6 +623,51 @@ function researchBase(
   pin(plan, best.yard);
 }
 
+/**
+ * R13 launch gantry (M22 TASK-483): rocketMonument v1 claims the headland tip before the research
+ * base settles round it (the base's pad level group, so one flat yard): the farthest free ground
+ * from the island centre within `ring` u of the headland anchor, else anywhere on the island; the
+ * rocket stands toward the sea (`turns` tried).
+ */
+function launchGantry(ctx: SiteCtx, isl: IslandData, plan: SitePlan, anchor: XZ | undefined): void {
+  const G = CS.gantry;
+  const c0 = { x: isl.cx, z: isl.cz };
+  const pins = plan.links.map((l) => l.pin);
+  // the glasshouse row keeps its front lawn (the mini volcano row stands there)
+  const glass = ctx.fixtures.filter((f) => f.islandId === isl.id && f.defId === S.glasshouse.def);
+  const all = islandCells(ctx, isl)
+    .filter((i) => ctx.sdf[i] >= G.minShore)
+    .map((i) => cellPos(ctx, i))
+    .filter((p) => glass.every((f) => dist(p, f) >= G.glassKeep))
+    .sort((a, b) => dist(b, c0) - dist(a, c0));
+  const passes = anchor ? [all.filter((p) => dist(p, anchor) <= G.ring), all] : [all];
+  for (const cells of passes)
+    for (const p of cells)
+      for (const t of G.turns) {
+        const rot = ang(p.x - c0.x, p.z - c0.z) + t * DEG;
+        const sh = rectShape(p.x, p.z, rot, G.size[0], G.size[1]);
+        if (!fits(ctx, isl, sh, G.minShore, G.relief)) continue;
+        if (pins.some((q) => shapeDist(sh, q.x, q.z) < CS.pinKeep)) continue;
+        // its pad stays off every other district's flat core (overlapping cores blend their levels)
+        if (
+          ctx.pads.some(
+            (q) =>
+              q.islandId === isl.id &&
+              q.group !== LEVEL.tip &&
+              shapesOverlap(q.shape, sh, 2 * CS.pad + q.margin + CS.level.padKeep + 1),
+          )
+        )
+          continue;
+        put(ctx, isl, 'rocketMonument', p, rot, {
+          sh,
+          variant: G.variant,
+          pad: CS.pad,
+          group: LEVEL.tip,
+        });
+        return;
+      }
+}
+
 /** The big radio dish on the spur, bowl toward the sea, and small dishes beside it. */
 function bigDish(
   ctx: SiteCtx,
@@ -784,6 +844,12 @@ function academy(ctx: SiteCtx, isl: IslandData, rng: Rng, s: AcademySite): Story
     s.pins.every((q) => shapeDist(sh, q.x, q.z) >= CS.pinKeep) &&
     (Number.isNaN(maxRelief) || reliefAround(sh) <= maxRelief) &&
     opensPins(sh);
+  /** `free` without the relief and the path-pin flood fill (the cheap tests, for wide searches). */
+  const roomy = (sh: Shape, gap: number, minShore: number): boolean =>
+    !(sdfAt(ctx, sh.x, sh.z) < S.coveKeep && coveness(isl, ctx.windDir, sh.x, sh.z) > 0.6) &&
+    onLand(ctx, isl, sh, minShore) &&
+    clear(ctx, isl, sh, gap, false) &&
+    s.pins.every((q) => shapeDist(sh, q.x, q.z) >= CS.pinKeep);
   /**
    * Which path pins of the plan (hub first, doors, gates, the pier root) are linked to the hub
    * pin over open cells (8-connected, the rim blocked) with `extra` cells blocked too: the start
@@ -1219,6 +1285,17 @@ function academy(ctx: SiteCtx, isl: IslandData, rng: Rng, s: AcademySite): Story
     );
     cart = placeFirst('weatherBalloonCart', cands, B.variant, { ok: offWalks });
   }
+  // M22: neither the summit nor the base had room for the owl box: the nearest free lawn round the quad
+  if (!stories.some((st) => st.kind === 'owlNight')) {
+    const O = CS.owlFallback;
+    const cands = islandCells(ctx, isl)
+      .map((i) => cellPos(ctx, i))
+      .filter((p) => dist(p, quad) >= O.ring[0] && dist(p, quad) <= O.ring[1])
+      .sort((a, b) => dist(a, quad) - dist(b, quad))
+      .map((p) => ({ p, rot: face(p, quad) }));
+    const owl = placeFirst('owlBox', cands, B.owlVariant, { ok: offWalks });
+    if (owl) story('owlNight', owl.p, owl.rot, ['owlBox']);
+  }
   const late = !cart;
   if (!cart) {
     // TASK-461: the flattest free lawn round the quad on its own pad (a steeper notch allowed)
@@ -1342,6 +1419,132 @@ function academy(ctx: SiteCtx, isl: IslandData, rng: Rng, s: AcademySite): Story
       const got = placeFirst('tripodTelescope', cands, T.variant, { ok: offWalks });
       if (!got) break;
       placed.push(got.p);
+    }
+  }
+  // ---- R9 arboretum (M22 TASK-483): up to six labelled species in the south-west of the lawns, each
+  // placed on its own free spot (the first nearest the south-west, the others within `spread` of it,
+  // `spacing` apart), a specimen plate (chalkboard v3) `plate` u in front of it toward the quad. Trees
+  // need only their trunk disc; the plate (and the pergola) stand on near-level ground.
+  {
+    const A = CS.arbor;
+    const sw = A.southWest;
+    const cands = islandCells(ctx, isl)
+      .map((i) => cellPos(ctx, i))
+      .filter((p) => dist(p, quad) >= A.quad[0] && dist(p, quad) <= A.quad[1])
+      .map((p) => {
+        const u = unit(quad, p);
+        return { p, bias: -3 * (u.x * sw[0] + u.z * sw[1]) + 0.05 * dist(p, quad) };
+      })
+      .sort((a, b) => a.bias - b.bias)
+      .map((c) => c.p);
+    const chosen: XZ[] = [];
+    for (const def of A.species) {
+      for (const c of cands) {
+        if (chosen.some((q) => dist(q, c) < A.spacing)) continue;
+        if (chosen.length > 0 && dist(c, chosen[0]) > A.spread) continue;
+        let placed = false;
+        for (const t of A.turns) {
+          const rot = face(c, quad) + t * DEG;
+          const sh =
+            def.def === 'pergola'
+              ? rectShape(c.x, c.z, rot, S.pergola.size[0], S.pergola.size[1])
+              : discShape(c.x, c.z, def.r);
+          const q = add(c, dirOf(rot), def.plate);
+          const shQ = discShape(q.x, q.z, A.plateR);
+          if (!roomy(sh, CS.gap.lawn, A.minShore) || !roomy(shQ, CS.gap.lawn, A.minShore)) continue;
+          if (reliefAround(shQ) > A.plateRelief) continue;
+          if (def.def === 'pergola' && relief(ctx, sh) > A.pergolaRelief) continue;
+          if (!opensPins(sh) || !opensPins(shQ)) continue;
+          put(ctx, isl, def.def, c, rot, {
+            sh,
+            variant: def.variant,
+            scale: def.scale !== 1 ? def.scale : undefined,
+          });
+          put(ctx, isl, 'chalkboard', q, rot, { sh: shQ, variant: PLATE_VARIANT });
+          placed = true;
+          break;
+        }
+        if (!placed) continue;
+        chosen.push(c);
+        break;
+      }
+    }
+  }
+
+  // ---- R3-16 / R18: a seal sleeps on the end of the pier (a spot critter, not an agent)
+  {
+    const SE = CS.seal;
+    const dk = ctx.docks.find((d) => d.islandId === isl.id);
+    if (dk) {
+      const dir = dirOf(dk.rotY);
+      const L = dk.segments * DOCK.segment;
+      const p = add(add(dk, dir, L - SE.back), perp(dir), SE.side);
+      stories.push({
+        kind: 'sealPier',
+        islandId: isl.id,
+        // (y is an offset over the ground: the story spot lands on the deck, not the sea floor)
+        pos: { x: p.x, y: SE.deckY - heightAt(ctx.h, p.x, p.z), z: p.z },
+        rotY: dk.rotY,
+        defs: ['researchVessel'],
+      });
+    }
+  }
+
+  // ---- R12 hedge maze (M22 TASK-483, R3-16): 3-4 of the garden's parterres become maze tiles; each
+  // takes the pattern whose openings face the most neighbouring maze tiles; one hosts the pacing bot
+  {
+    const M = CS.maze;
+    const plots = fixturesOf('hedgeParterre');
+    const n = plots.length;
+    const want = Math.min(rng.fork('maze').int(M.count[0], M.count[1]), n - 1);
+    if (want >= 2) {
+      const start = rng.fork('maze', 1).int(0, n - 1);
+      const picks: number[] = [];
+      for (let k = 0; picks.length < want && k < n * 2; k++) {
+        const i = (start + Math.floor((k * n) / want)) % n;
+        if (!picks.includes(i)) picks.push(i);
+      }
+      for (let i = 0; picks.length < want; i++) if (!picks.includes(i)) picks.push(i);
+      const tiles = picks.sort((a, b) => a - b).map((i) => plots[i]);
+      const gaps = tiles.flatMap((a, i) => tiles.slice(i + 1).map((b) => dist(a, b)));
+      const pitch = gaps.length > 0 ? Math.min(...gaps) : 1;
+      const taken: number[] = [];
+      tiles.forEach((t, ti) => {
+        let best = 0;
+        let bestScore = -Infinity;
+        for (let k = 0; k < MAZE.patterns; k++) {
+          const pat = mazeOf(MAZE.firstVariant + k);
+          let score = 0;
+          for (const o of pat.open) {
+            const v = SIDE_VEC[o.side];
+            const d = unit(t, lotLocalToWorld(t, v[0], v[1]));
+            for (let tj = 0; tj < ti; tj++) {
+              if (dist(t, tiles[tj]) > pitch * M.near) continue;
+              const e = unit(t, tiles[tj]);
+              if (d.x * e.x + d.z * e.z > 0.8) score++;
+            }
+          }
+          // on ties, not the pattern taken just before
+          if (taken.length > 0 && taken[taken.length - 1] === k) score -= 0.5;
+          if (score > bestScore) {
+            bestScore = score;
+            best = k;
+          }
+        }
+        taken.push(best);
+        t.variant = MAZE.firstVariant + best;
+      });
+      // the maze nearest the quad hosts the pacing bot (first in the story order: a tableau slot)
+      const host = [...tiles].sort((a, b) => dist(a, quad) - dist(b, quad))[0];
+      const pace = mazeOf(host.variant ?? MAZE.firstVariant).pace;
+      const at = lotLocalToWorld(host, pace.x, pace.z);
+      stories.unshift({
+        kind: 'mazePace',
+        islandId: isl.id,
+        pos: { x: at.x, y: 0, z: at.z },
+        rotY: pace.alongZ ? host.rotY : host.rotY - Math.PI / 2,
+        defs: ['hedgeParterre'],
+      });
     }
   }
   return stories;

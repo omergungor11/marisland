@@ -54,6 +54,10 @@ export const RESEARCH_CULTURE: CultureDef = {
     /** A pigeon on a statue's head (the perch beside it). */
     { kind: 'pigeonStatue', defs: ['pigeonPerch'] },
     { kind: 'volcanoSteam', defs: ['miniVolcanoTerrarium'] },
+    /** M22 R12: a bot paces a straight corridor of one of the garden's maze tiles. */
+    { kind: 'mazePace', defs: ['hedgeParterre'] },
+    /** M22 R3-16 / R18: a seal sleeps on the pier end (spot critter, not an agent). */
+    { kind: 'sealPier', defs: ['researchVessel'] },
   ],
   rhythm: [],
   relay: { order: 7, id: 'cometNight' },
@@ -217,4 +221,60 @@ export const RESEARCH_CULTURE_SITES = {
     front: [1.0, 1.6, 2.2, 3.0, 4.0] as const,
     slide: [0, 1.5, -1.5, 3, -3, 4.5, -4.5] as const,
   },
+  /**
+   * R12 hedge maze (M22 TASK-483, R3-16): `count` of the garden's parterres become maze tiles
+   * (hedgeParterre v2-v5, spread by a stride over the plot order). Tiles within `near` x the
+   * plot pitch of each other are neighbours: each tile takes the pattern whose frame openings
+   * face most neighbouring maze tiles (ties by plot order). The first maze tile (nearest the quad)
+   * hosts the pacing bot (`mazePace` story spot, content/props-themes/research-maze.ts `pace`).
+   */
+  maze: { count: [3, 4] as const, near: 1.3 },
+  /**
+   * R13 launch gantry (rocketMonument v1): on the headland tip, the farthest free ground from the
+   * island centre within `ring` u of the headland anchor (else anywhere on the island), at least
+   * `minShore` u in from the water; `size` (across x along the heading) u of obstacle on ground with
+   * at most `relief` u relief (its pad levels it). The rocket stands toward the sea (`turns`).
+   */
+  gantry: {
+    variant: 1,
+    size: [4.0, 2.6] as const,
+    ring: 26,
+    minShore: 2,
+    relief: 3.5,
+    gap: 0.2,
+    /** Keeps this far off the terrariums (the mini volcano row's lawn). */
+    glassKeep: 18,
+    /** Bearings tried (deg off straight out to sea): the rocket stands toward the sea first. */
+    turns: [0, 30, -30, 60, -60, 90, -90] as const,
+  },
+  /**
+   * R9 arboretum: up to six labelled species (south-west of the quad first, each within `spread` u of
+   * the first, `spacing` u apart); `r` = the trunk disc, `plate` = how far in front of it (toward the
+   * quad) its specimen plate (chalkboard v3) stands. Trees only need `r` free; the plate and the
+   * pergola need at most `plateRelief` (grown by 1 u) / `pergolaRelief` u relief round them.
+   */
+  arbor: {
+    plateR: 0.45,
+    quad: [8, 42] as const,
+    spacing: 2.4,
+    spread: 20,
+    /** Plate bearings tried (deg off the direction to the quad). */
+    turns: [0, 45, -45, 90, -90, 135, -135, 180] as const,
+    plateRelief: 0.9,
+    pergolaRelief: 0.8,
+    minShore: 2.5,
+    southWest: [-0.7071, 0.7071] as const,
+    species: [
+      { def: 'pine', r: 0.7, plate: 1.5, variant: 0, scale: 1 },
+      { def: 'blossomTree', r: 0.8, plate: 1.5, variant: 0, scale: 1 },
+      { def: 'palm', r: 0.7, plate: 1.5, variant: 0, scale: 1 },
+      { def: 'giantMushroom', r: 0.8, plate: 1.4, variant: 0, scale: 1 },
+      { def: 'roundTree', r: 1.0, plate: 1.8, variant: 0, scale: 1.4 },
+      { def: 'pergola', r: 1.7, plate: 2.3, variant: 0, scale: 1 },
+    ] as const,
+  },
+  /** Owl box when the summit and the base had no room (M22): the nearest free lawn in this ring round the quad. */
+  owlFallback: { ring: [6, 26] as const },
+  /** R18 seal on the pier end (R3-16: a spot critter, not an agent), `back` u in from the end, `side` off the axis. */
+  seal: { back: 0.9, side: 0.45, deckY: 0.7 },
 } as const;

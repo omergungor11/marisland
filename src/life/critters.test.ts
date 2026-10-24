@@ -280,6 +280,15 @@ describe('critters: culture story-spot animals (TASK-433)', () => {
     for (const k of Object.keys(SPOT_CRITTERS)) expect(kinds.has(k)).toBe(true);
   });
 
+  it('M22 R3-16: the Research seal sleeps on the pier deck (a spot critter, not an agent)', () => {
+    const r = spotsOf(1001);
+    const seal = r.life.spots?.meshes.find((m) => m.species === 'seal');
+    expect(seal, 'a seal mesh on the shot seed').toBeDefined();
+    const it = seal!.items[0];
+    expect(it.kind).toBe('sealPier');
+    expect(it.y).toBeCloseTo(0.7, 2);
+  });
+
   it('stand at the story spots that need an animal, never count as agents', () => {
     let seen = 0;
     for (const s of SEEDS) {

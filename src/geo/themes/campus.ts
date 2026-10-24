@@ -668,16 +668,7 @@ function campusTower({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
     // v3 bell cupola (M19 TASK-416): a big brass bell shows in the belfry opening (hung just
     // proud of the dark core), the spire is replaced by a stone drum + eight copper posts around
     // a second small bell, a green-copper dome, a lit lantern and a star vane; the clock shows six
-    for (const sz of [-1, 1])
-      put(
-        acc,
-        new THREE.SphereGeometry(0.3, 10, 5, 0, TAU, 0, PI * 0.82),
-        [0, by + 0.62, sz * 0.7],
-        K.gold,
-        {
-          aoAmt: 0,
-        },
-      );
+    // (the two belfry bells are culture movers: they swing at the 09:00 bell hour, M22 R17)
     put(acc, cylB(0.9, 0.82, 0.3, 8), [0, sy, 0], K.stone, { aoAmt: 0.1 });
     for (let k = 0; k < 8; k++) {
       const a = ((k + 0.5) / 8) * TAU;

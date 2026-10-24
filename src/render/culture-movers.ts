@@ -19,6 +19,8 @@ import { createSkyProgramMaterial } from './sky/sky.ts';
 import { SHARED } from './uniforms.ts';
 import { PART, buildPartsGeometry, type PartKind } from './culture-mover-parts.ts';
 import { DEVOPS_M22 } from '../content/props-themes/devops.ts';
+import { RESEARCH_M22 } from '../content/props-themes/research.ts';
+import { lotYaw } from '../world/lot-frame.ts';
 import { DEVOPS_MOVERS } from '../content/themes/devops.ts';
 import { DOCK } from '../content/settlements.ts';
 import { pierLoop, shipPose } from './harbour-routes.ts';
@@ -387,6 +389,101 @@ function deployScene(L: NonNullable<ReturnType<typeof pierLoop>>, k: number): Sc
       D.lamp.r[0] + (D.lamp.r[1] - D.lamp.r[0]) * f * f,
       D.lamp.color,
     );
+  };
+}
+
+/**
+ * Research bell hour (M22 R17): the two belfry bells of the bell-cupola tower swing at the 09:00
+ * bell ritual (6 x 0.8 s, +-25 deg, in antiphase) with sound rings over the belfry; otherwise they
+ * hang with a hair of sway. Tower-local frame (hinges RESEARCH_M22.bells).
+ */
+function campusBellScene(): Scene['run'] {
+  const B = M.campusBell;
+  const R = RESEARCH_M22.bells;
+  const amp = (B.deg * Math.PI) / 180;
+  const span = B.swings * B.swing;
+  return (w, c) => {
+    const ringing = c.fest?.id === B.ritual;
+    const t = ringing && c.fest ? c.fest.phase * B.seconds : -1;
+    R.z.forEach((z, k) => {
+      let th = B.rest * c.motion * Math.sin(c.time * 0.9 + k * 2.1);
+      if (t >= 0 && t < span) {
+        const env = smooth(t / 0.3) * smooth((span - t) / 0.5);
+        th = amp * env * Math.sin((t / B.swing) * Math.PI * 2) * (k === 0 ? 1 : -1);
+      }
+      w.put(PART.bell, [0, R.hingeY, z], [th, 0, 0], [R.radius, R.height, R.radius]);
+    });
+    if (t >= 0 && t < span + 1) rings(w, [0, R.hingeY - 0.3, 0], [0, 1, 0], B, 0, c.time);
+  };
+}
+
+/**
+ * Research test firing (M22 R13): steam rolls out both ways along the launch trench under the
+ * gantry rocket while the `testFiring` ritual runs (4 s), with a flickering flame glow under the
+ * nozzle. Rocket-local frame (steam origin RESEARCH_M22.gantry.steamAt, trench along local z).
+ */
+function launchScene(idx: number): Scene['run'] {
+  const L = M.launch;
+  const at = RESEARCH_M22.gantry.steamAt;
+  return (w, c) => {
+    if (c.fest?.id !== L.ritual) return;
+    const t = c.fest.phase * L.seconds;
+    for (let k = 0; k < L.puffs; k++)
+      for (const side of [-1, 1] as const) {
+        const u = (t - k * L.gap - (side > 0 ? 0.08 : 0)) / L.life;
+        if (u <= 0 || u >= 1) continue;
+        const j = rnd(idx, k * 2 + (side > 0 ? 1 : 0), 41);
+        const s = L.size[0] + (L.size[1] - L.size[0]) * Math.sqrt(u);
+        // billow out and up, then thin away (the ball shrinks as it cools)
+        const sz = s * (1 - u * u * u);
+        w.put(
+          PART.blob,
+          [
+            at[0] + (j - 0.5) * 0.6,
+            at[1] + L.rise * u * (0.45 + 0.55 * j),
+            at[2] + side * (L.reach[0] + (L.reach[1] - L.reach[0]) * smooth(u)) * (0.75 + 0.25 * j),
+          ],
+          [0, 0, 0],
+          [sz, sz * 0.8, sz],
+          L.color,
+        );
+      }
+    if (t < L.flame) {
+      const f = 0.5 + 0.5 * Math.sin(c.time * L.glow.rate + idx);
+      const r = L.glow.r[0] + (L.glow.r[1] - L.glow.r[0]) * f * smooth((L.flame - t) / 0.5);
+      w.put(PART.glow, L.glow.at, [0, 0, 0], r, L.glow.color);
+    }
+  };
+}
+
+/**
+ * Research cap toss (M22 R16): six mortarboards fly up from the lecture class on parabolas at the
+ * 17:45 ritual, tumble, land on the lawn and shrink away at the end. Lecture-spot frame.
+ */
+function capTossScene(): Scene['run'] {
+  const C = M.capToss;
+  return (w, c) => {
+    if (c.fest?.id !== C.ritual) return;
+    const t = c.fest.phase * C.seconds;
+    C.spots.forEach(([x, z], k) => {
+      const t0 = C.launch[0] + (C.launch[1] - C.launch[0]) * rnd(k, 1, 53);
+      const T = C.flight[0] + (C.flight[1] - C.flight[0]) * rnd(k, 2, 53);
+      const peak = C.peak[0] + (C.peak[1] - C.peak[0]) * rnd(k, 3, 53);
+      const u = (t - t0) / T;
+      if (u < 0) return;
+      const dx = (rnd(k, 4, 53) - 0.5) * 2 * C.drift;
+      const dz = (rnd(k, 5, 53) - 0.5) * 2 * C.drift;
+      const fade = smooth((C.seconds - t) / C.fade);
+      const size = C.size * fade;
+      if (u >= 1) {
+        // landed: flat on the lawn, a last bit of the tumble frozen in its yaw
+        w.put(PART.cap, [x + dx, 0.06, z + dz], [0, rnd(k, 6, 53) * 6.28, 0], size, C.color);
+        return;
+      }
+      const y = C.head * (1 - u) + 4 * peak * u * (1 - u);
+      const a = C.spin * (t - t0);
+      w.put(PART.cap, [x + dx * u, y, z + dz * u], [a * 0.6, a + k, a * 0.8], size, C.color);
+    });
   };
 }
 
@@ -771,6 +868,8 @@ export function createCultureMovers(
     stall: defOf('goodsStall'),
     sema: defOf('semaphoreTower'),
     mast: defOf('antennaMast'),
+    tower: defOf('campusTower'),
+    rocket: defOf('rocketMonument'),
   };
   const beams: Beam[] = [];
   const beamAnchors: { x: number; y: number; z: number }[] = [];
@@ -825,6 +924,23 @@ export function createCultureMovers(
       scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 1.0, 0], 3, keeperScene(v, idx)));
     else if (d === D.sema)
       scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 7.7, 0], 5, semaphoreScene(idx)));
+    else if (d === D.tower && v === 3)
+      // M22 R17: the bell-cupola tower's two belfry bells + the sound rings
+      scenes.push(
+        sceneAt(th, pv(), store.rotY[i], [0, RESEARCH_M22.bells.hingeY, 0], 4, campusBellScene()),
+      );
+    else if (d === D.rocket && v === RESEARCH_M22.gantry.variant)
+      // M22 R13: the 12:00 test firing under the gantry rocket
+      scenes.push(
+        sceneAt(
+          th,
+          pv(),
+          store.rotY[i],
+          RESEARCH_M22.gantry.steamAt,
+          M.launch.puffs * 2 + 1,
+          launchScene(idx),
+        ),
+      );
     else if (d === D.mast && v === M.watch.variant) {
       const T = DEVOPS_M22.tower;
       scenes.push(sceneAt(th, pv(), store.rotY[i], [0, T.bellY, 0], M.watch.rings, watchScene()));
@@ -917,6 +1033,17 @@ export function createCultureMovers(
         antScene(),
       ),
     );
+  }
+  // M22 R16: the cap toss at the research lecture spot (spot frame: x right, z ahead = lotYaw)
+  for (const sp of world.storySpots) {
+    if (sp.kind !== 'lecture' || world.islands[sp.islandId]?.theme !== 'research') continue;
+    const yaw = lotYaw({ x: sp.pos.x, z: sp.pos.z, rotY: sp.rotY });
+    const m = new THREE.Matrix4().compose(
+      new THREE.Vector3(sp.pos.x, sp.pos.y, sp.pos.z),
+      new THREE.Quaternion().setFromAxisAngle(_up, yaw),
+      new THREE.Vector3(1, 1, 1),
+    );
+    scenes.push(sceneAt('research', m, yaw, [0, 1.5, 0], M.capToss.spots.length, capTossScene()));
   }
   // research balloon carts get the 06:00 launch only (their static balloon stays tethered)
   // HQ mail lines (TASK-466): the sacks on the cable between each pylon pair

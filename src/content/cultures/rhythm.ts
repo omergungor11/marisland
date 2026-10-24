@@ -121,10 +121,15 @@ export const CULTURE_RHYTHM: Record<ThemeId, CultureRhythm> = {
     slots: [
       { id: 'weatherBalloon', hour: 6, seconds: 60 },
       { id: 'lectures', hour: 9 },
+      // M22 TASK-483: bell hour (R17), the launch-pad test firing (R13), the cap toss (R16)
+      { id: 'bellHour', hour: 9, seconds: 10 },
+      { id: 'testFiring', hour: 12, seconds: 4 },
       { id: 'goldenReading', hour: 17.75 },
+      { id: 'capToss', hour: 17.75, seconds: 4 },
       { id: 'cometNight', hour: 22, seconds: 60 },
     ],
-    lamps: { defs: ['chalkboard', 'owlBox'], on: 21.75, off: 5, rampS: 10 },
+    // + the gantry floodlights and the red obstruction beacon (rocketMonument v1)
+    lamps: { defs: ['chalkboard', 'owlBox', 'rocketMonument'], on: 21.75, off: 5, rampS: 10 },
   },
 };
 

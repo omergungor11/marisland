@@ -5,7 +5,7 @@
  */
 import { BUTTERFLIES } from './life-critters.ts';
 
-export type SpotSpecies = 'cat' | 'fox' | 'capybara' | 'bird' | 'owl' | 'crab' | 'duck';
+export type SpotSpecies = 'cat' | 'fox' | 'capybara' | 'bird' | 'owl' | 'crab' | 'duck' | 'seal';
 
 /**
  * Idle loops (closed forms of the engine clock): sleep = loaf breathing, sit = upright cat with a
@@ -116,6 +116,8 @@ export const SPOT_CRITTERS: Readonly<Record<string, readonly SpotCritter[]>> = {
       variants: { 0: { dy: 1.9 }, 1: { dy: 1.15 } },
     }),
   ],
+  // M22 R3-16 / R18: the seal dozing on the pier end (the spot's own y is the deck), a slow nod
+  sealPier: [c('seal', 'doze', 1.5, '#9AA3AE', { y: 'spot', period: 11 })],
 };
 
 export const SPOT_LIFE = {
@@ -125,10 +127,16 @@ export const SPOT_LIFE = {
   /** Night window: owls are out above `night[1]`, gone below `night[0]`. */
   night: [0.45, 0.65] as const,
   /** Per-species base size of the model. */
-  size: { cat: 1.65, fox: 1, capybara: 1, bird: 1.4, owl: 1, crab: 1.4, duck: 1 } as Record<
-    SpotSpecies,
-    number
-  >,
+  size: {
+    cat: 1.65,
+    fox: 1,
+    capybara: 1,
+    bird: 1.4,
+    owl: 1,
+    crab: 1.4,
+    duck: 1,
+    seal: 1,
+  } as Record<SpotSpecies, number>,
   /** Loaf sleep: squash, breathing period (s) and amplitude. */
   sleep: { squash: 0.64, breath: [3.4, 0.035] as const },
   /** Sitting cat: head-turn period (s), amplitude (rad) and rear-up pitch (rad). */
@@ -163,6 +171,8 @@ export const SPOT_LIFE = {
     owlCream: '#F2E4C8',
     owlWing: '#6E4F34',
     owlEye: '#FFD84A',
+    sealBelly: '#DDE1E8',
+    sealDark: '#3A3F4D',
   },
 } as const;
 

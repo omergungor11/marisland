@@ -6,6 +6,7 @@ import {
   NAP,
   NIGHT_ITEMS,
   POSES,
+  RITUAL_SPEED,
   WORKERS,
   type ItineraryStep,
   type LifePlan,
@@ -131,6 +132,8 @@ export class Workers extends LandKind {
   /** The step's item (what `item` returns to by day) and whether the night items are on. */
   private readonly dayItem: Uint8Array;
   private nightOn = false;
+  /** Walking speed multiple per THEME_ORDER index while a ritual runs (RITUAL_SPEED), set each step. */
+  private readonly rmul = new Float32Array(THEME_ORDER.length).fill(1);
   /** Island whose campus the camera is focused on (−1 = none). */
   focus = -1;
   private readonly accOf: Uint8Array;
@@ -764,7 +767,7 @@ export class Workers extends LandKind {
       }
     } else if (s === W_WALK) {
       moving = 1;
-      let step = V.speed * dt;
+      let step = V.speed * dt * this.rmul[this.themeOf[i]];
       const r = this.routes[i] as number[];
       let arrived = false;
       while (step > 0) {
@@ -893,27 +896,58 @@ export class Workers extends LandKind {
       }
     } else if (s === W_TABLEAU) {
       const tb = this.tab[i] as TableauBot;
-      const ps = POSES[tb.pose];
+      // a ritual pose (M22 R16: the lecture students cheer while the caps fly)
+      const rit =
+        tb.ritual && this.ctx.festival(THEME_ORDER[this.themeOf[i]])?.id === tb.ritual.id
+          ? tb.ritual
+          : null;
+      const pose = rit ? rit.pose : tb.pose;
+      const ps = POSES[pose];
       this.timer[i] += dt;
       const t = this.timer[i];
       want = tb.hd;
+      if (tb.pace) {
+        // M22 R12: back and forth along the spot's +z axis, a pause at each end (closed form in `t`)
+        const P = tb.pace;
+        const leg = (2 * P.reach) / P.speed;
+        const c =
+          (((t + this.phase[i] * 7) % (2 * (leg + P.pause))) + 2 * (leg + P.pause)) %
+          (2 * (leg + P.pause));
+        let k: number;
+        let fwd = true;
+        if (c < leg) {
+          k = -1 + (2 * c) / leg;
+          moving = 1;
+        } else if (c < leg + P.pause) k = 1;
+        else if (c < 2 * leg + P.pause) {
+          k = 1 - (2 * (c - leg - P.pause)) / leg;
+          fwd = false;
+          moving = 1;
+        } else {
+          k = -1;
+          fwd = false;
+        }
+        this.x[i] = tb.x + Math.cos(tb.hd) * P.reach * k;
+        this.z[i] = tb.z + Math.sin(tb.hd) * P.reach * k;
+        want = tb.hd + (fwd ? 0 : Math.PI);
+      }
       if (ps) {
         typeTarget = 1;
         poseCode = ps.code;
         lean = ps.lean ?? 0;
         lie = ps.lie ?? 0;
-      } else if (tb.pose === 'wave') {
+      } else if (pose === 'wave') {
         typeTarget = 1;
         wave = clamp(this.typeAmt[i], 0, 1.15);
-      } else if (tb.pose === 'chat' || tb.pose === 'speak') {
+      } else if (pose === 'chat' || pose === 'speak') {
         const swap = 1.7 + 0.2 * (tb.group % 3);
-        const speaker = tb.pose === 'speak' || (Math.floor(t / swap) + tb.k) % 2 === 0;
+        const speaker = pose === 'speak' || (Math.floor(t / swap) + tb.k) % 2 === 0;
         talkSq = this.talkSquash(t, speaker);
         if (speaker) talkWave = this.talkGesture(t, i);
         else talkNod = this.talkNodding(t);
         turn = 8;
       }
-      if (tb.pose === 'stand' || tb.pose === 'gaze' || tb.pose === 'peer')
+      if (pose === 'stand' || pose === 'gaze' || pose === 'peer')
         want += A.scan.yaw * 0.6 * Math.sin(TAU * (A.scan.hz * t + this.phase[i]));
       if (lie > 0) this.restAt(i, tb.x, tb.z, tb.hd);
     }
@@ -1763,6 +1797,12 @@ export class Workers extends LandKind {
 
   protected override beginStep(dt: number, t: number): void {
     this.updateFocus();
+    // ritual walking speed (M22 R17), read once per step so the sim stays a function of the clock
+    for (let k = 0; k < THEME_ORDER.length; k++) {
+      const th = THEME_ORDER[k];
+      const fest = RITUAL_SPEED[th] ? this.ctx.festival(th) : null;
+      this.rmul[k] = (fest && RITUAL_SPEED[th][fest.id]) || 1;
+    }
     for (let i = 0; i < this.capacity; i++) if (this.chatCool[i] > 0) this.chatCool[i] -= dt;
     super.beginStep(dt, t);
   }

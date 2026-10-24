@@ -9,9 +9,12 @@
 import * as THREE from 'three';
 import { SCIENCE_PALETTE as S } from '../../content/themes/research.ts';
 import { qEuler, qFromTo, type Acc } from '../kit.ts';
+import { Spin, finishSpin } from '../office-kit.ts';
 import { TAU, V, V2, baseBox, cylB, jitterAcc, prism, put } from '../parts.ts';
 import type { BuildOpts, PropGeoDef } from '../types.ts';
 import { addHook } from './hq.ts';
+import { launchGantry, weatherHead } from './research-m22.ts';
+import { tagYawHead } from './surface-tags.ts';
 
 const Y = V(0, 1, 0);
 const PI = Math.PI;
@@ -283,10 +286,14 @@ function scholarStatue({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
 
 /* ------------------------------ rocketMonument ------------------------------ */
 
-/** Retro finned rocket on a launch-ring plinth, held up by a cradle of struts. */
-function rocketMonument({ rng, lod }: BuildOpts): THREE.BufferGeometry {
+/**
+ * Retro finned rocket on a launch-ring plinth, held up by a cradle of struts. v1 (M22 R13): the
+ * launch gantry, the rocket on a steam trench beside a red lattice tower (research-m22.ts).
+ */
+function rocketMonument({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const acc = jitterAcc(rng, 0.01);
   const hi = lod === 0;
+  const gantry = variant === 1;
   const seg = hi ? 12 : 6;
   put(acc, cylB(1.9, 1.8, 0.3, hi ? 14 : 6), [0, 0, 0], S.plinthDark, { aoAmt: 0.25 });
   put(acc, cylB(1.5, 1.4, 0.25, hi ? 14 : 6), [0, 0.3, 0], S.plinth, { aoAmt: 0.15 });
@@ -339,8 +346,9 @@ function rocketMonument({ rng, lod }: BuildOpts): THREE.BufferGeometry {
         aoAmt: 0,
       });
   }
+  if (gantry) launchGantry(acc, lod, by);
   // cradle: 3 angled struts from the ring to the body
-  for (let k = 0; hi && k < 3; k++) {
+  for (let k = 0; hi && !gantry && k < 3; k++) {
     const a = (k / 3) * TAU + PI / 6;
     strut(
       acc,
@@ -508,24 +516,30 @@ function labPod({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
       aoAmt: 0,
     });
   }
-  // solar panel on a bracket on top, antenna
-  put(acc, baseBox(1.5, 0.05, 0.9), [-len * 0.2, cy + r + 0.45, -0.1], S.solar, {
-    q: qEuler(-0.4, 0, 0),
-    aoAmt: 0,
-  });
-  strut(acc, V(-len * 0.2, cy + r - 0.1, -0.1), V(-len * 0.2, cy + r + 0.4, -0.1), 0.04, S.mount);
-  const ax = len * 0.3;
-  strut(acc, V(ax, cy + r - 0.1, 0), V(ax, cy + r + 1.0, 0), 0.03, S.mount);
-  put(acc, new THREE.IcosahedronGeometry(0.08, 0), [ax, cy + r + 1.05, 0], S.rocketRed, {
-    emissive: 1,
-    aoAmt: 0,
-    ao: () => 1,
-  });
-  if (hi)
-    put(acc, new THREE.CylinderGeometry(0.3, 0.05, 0.1, 8), [ax - 0.0, cy + r + 0.7, 0], S.dish, {
+  // v2 (M22 R20 weather roof): the anemometer head replaces the solar panel and the antenna
+  const spin = new Spin();
+  let head: { first: number; count: number } | null = null;
+  if (variant === 2) head = weatherHead(acc, spin, cy + r, lod);
+  else {
+    // solar panel on a bracket on top, antenna
+    put(acc, baseBox(1.5, 0.05, 0.9), [-len * 0.2, cy + r + 0.45, -0.1], S.solar, {
+      q: qEuler(-0.4, 0, 0),
       aoAmt: 0,
-      q: qEuler(0.9, 0, 0),
     });
+    strut(acc, V(-len * 0.2, cy + r - 0.1, -0.1), V(-len * 0.2, cy + r + 0.4, -0.1), 0.04, S.mount);
+    const ax = len * 0.3;
+    strut(acc, V(ax, cy + r - 0.1, 0), V(ax, cy + r + 1.0, 0), 0.03, S.mount);
+    put(acc, new THREE.IcosahedronGeometry(0.08, 0), [ax, cy + r + 1.05, 0], S.rocketRed, {
+      emissive: 1,
+      aoAmt: 0,
+      ao: () => 1,
+    });
+    if (hi)
+      put(acc, new THREE.CylinderGeometry(0.3, 0.05, 0.1, 8), [ax - 0.0, cy + r + 0.7, 0], S.dish, {
+        aoAmt: 0,
+        q: qEuler(0.9, 0, 0),
+      });
+  }
   if (variant === 1) {
     // side module: sphere on the -x end with a tunnel
     const sx = -(len / 2 + r + 0.9);
@@ -554,6 +568,10 @@ function labPod({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
     );
   }
   const g = acc.finish(rng, false, true);
+  if (head) {
+    finishSpin(g, acc, spin);
+    tagYawHead(g, head);
+  }
   return addHook(g, 'door', { center: [0, cy, r], normal: [0, 0, 1] });
 }
 
@@ -585,10 +603,11 @@ export const SCIENCE_GEO: readonly PropGeoDef[] = [
   },
   {
     id: 'rocketMonument',
-    variants: 1,
+    variants: 2,
     build: rocketMonument,
     footprint: 1.9,
     height: 5.6,
+    heights: [5.6, 5.7],
     windy: false,
   },
   {
@@ -600,5 +619,13 @@ export const SCIENCE_GEO: readonly PropGeoDef[] = [
     heights: [7.4, 3.6],
     windy: false,
   },
-  { id: 'labPod', variants: 2, build: labPod, footprint: 2.8, height: 3.6, windy: false },
+  {
+    id: 'labPod',
+    variants: 3,
+    build: labPod,
+    footprint: 2.8,
+    height: 3.6,
+    heights: [3.6, 3.6, 4.1],
+    windy: false,
+  },
 ];

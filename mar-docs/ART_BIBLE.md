@@ -122,7 +122,7 @@ The seed picks 5–7 islands.
 | **Emberpeak** (DevOps "Ember Works", TASK-405) | Volcano · 90–120 u | 35 u notched cone + steam plume over three cone-foot shelves on bluff walls (harbour quay, two-step foundry and data center terraces) | Glowing crater; hot spring with cooling towers; summit watch tower (lattice, uptime bell, red rotating beacon; M22) | Container yard (Docker-blue / teal / coral stacks with LED strips, gantry crane, control tower), CI/CD belt, furnace halls with chimneys (lava glow at night, rising embers), smithies, rail line, ops-shack lodges (cream, steel roof, orange band), black sand, vents; M22: switchback service roads (pale gravel zigzag, a lava lantern every ~10 u), three fumarole pools (teal `#9FE6E0` / sulphur `#FFE45C` / pink `#FF8FB1`, salt rim), basalt column clusters on the windward shore | Ore trains on the rails, cargo ships at the pier (movers; horn + masthead flash at Release Night) | `#FF7A5C` |
 | **Palmlagoon** (QA "Test Factory", TASK-401) | Factory plateau · 70–100 u | Rounded-square plateau on a 6–6.8 u bluff, top 8.6–9.6 u | Check tower (~20 u with the sign) | Sawtooth hangars with extractor fans, conveyor bridges, crash-test loop track | Crates on the belts, test cart on the loop (movers, not agents) | `#7FD8B3` |
 | **Mossgrove** | Forest · 80–110 u | 20 u green dome + 18 u giant tree | Treehouse with rope ladder | Pines, giant mushrooms, log cabin, stream | Foxes, squirrels, owl, fireflies | `#3E9A52` |
-| **Lonely Palm** (Research "Observatory University", TASK-402b, D-046) | Terraced campus hill · 52–58 u | 4.2–4.8 u bluff walls, a lawn plateau with a campus terrace and a summit plateau (12–13.2 u), a dish spur, a base headland, the leeward cove | Summit observatory (~11 u) with a big radio dish | Quad of faculty halls round the library and fountain, campus tower, hedge-parterre garden with topiaries and pergolas, terrarium row, lab pods + weather mast, atom / DNA / rocket / armillary sculptures, research vessel at the cove pier | Campus bots | `#F7E1AE` |
+| **Lonely Palm** (Research "Observatory University", TASK-402b, D-046) | Terraced campus hill · 52–58 u | 4.2–4.8 u bluff walls, a lawn plateau with a campus terrace and a summit plateau (12–13.2 u), a dish spur, a base headland, the leeward cove | Summit observatory (~11 u) with a big radio dish | Quad of faculty halls round the library and fountain, campus tower, hedge-parterre garden with topiaries and pergolas, terrarium row, lab pods + weather mast, atom / DNA / rocket / armillary sculptures, research vessel at the cove pier; M22: 3–4 of the parterres are hedge mazes, the weather-roof lab pod (spinning cups + vane), the launch gantry on the headland tip (red lattice tower, hoses, steam trench), an arboretum of labelled species (specimen plates) | Campus bots; bell swings at 09:00, caps fly at 17:45 | `#F7E1AE` |
 
 **Bluff coasts (TASK-390).** Every archetype except Beacon Rock (its own windward cliff) stands on a 5–7 u
 bluff wall with a harbour / leeward cove sector, tagged `Zone.cliff` and painted as earth wall (§2). The
@@ -438,7 +438,7 @@ Code: `src/content/cultures/` (contract, kit ledger, rhythm, movers, boats), `sr
 | Marketing | 09:00 poster crew · 12:00 fair opens · 19:30 neon night | Golden Hour Launch Show 17:30 (60 s) | marquee 17:24 → 01:00 |
 | QA | 08:00 hangars open · 20:30 bug hunt | Siren test 12:00 (10 s) · Green light 16:00 (30 s) | UV posts + bug jars 20:30 → 05:00 |
 | Design | 06:00 dawn glass · 09:00 hot shop · 16:30 prism hour | Light Night 20:00 (60 s) | stained screens + glass orbs 20:00 → 06:00 |
-| Research | 09:00 lectures · 17:45 golden reading | Weather balloon 06:00 (60 s) · Comet night 22:00 (60 s) | chalkboard + owl box 21:45 → 05:00 |
+| Research | 09:00 lectures · 17:45 golden reading | Weather balloon 06:00 (60 s) · Bell hour 09:00 (10 s, bell swings 6x, campus bots x1.5) · Test firing 12:00 (4 s, steam under the gantry rocket) · Cap toss 17:45 (4 s) · Comet night 22:00 (60 s) | chalkboard + owl box + rocket gantry floodlights 21:45 → 05:00 |
 
 Design's rainbow arc is gated to 06:00–07:30 and 16:30–18:30 (dither, rain fades it out).
 
@@ -452,7 +452,7 @@ Design's rainbow arc is gated to 06:00–07:30 and 16:30–18:30 (dither, rain f
 | Marketing | mascot crab waves; popcorn gulls; selfie by the lighthouse; ferris-wheel operator asleep; balloon snagged on the antenna; prize duck; poster crew; balloon launch |
 | QA | dummy with coffee on the bench; gull on the cone pyramid; ant trail with a magnifier bot; scoreboard drop with an escaped ladybug; sleepy stamp desk; crab inspected by cones |
 | Design | annealer cat on the warm oven; gaffer turning a blowpipe; gull on the seconds shelf; rainbow from broken cullet; vase held to the sun; fox looking into an orb; prism rainbow; critique ring |
-| Research | owl at night; tea time; lecture steps; balloon cart; pigeon on the statue; volcano terrarium steam; comet watch; book step gazer |
+| Research | owl at night; tea time; lecture steps; balloon cart; pigeon on the statue; volcano terrarium steam; comet watch; book step gazer; maze bot pacing a hedge-maze corridor (M22); seal dozing on the pier end (M22, a spot critter) |
 
 **What reads at each tier, and the M19 QA result** (`mar-docs/qa/`, TASK-451; P present, W weak)
 

@@ -338,4 +338,72 @@ export const CULTURE_MOVERS = {
     /** Masthead flash: lamp spot, radius range and flashes per second. */
     lamp: { at: [0, 4.45, -4.1] as const, r: [0.18, 0.46] as const, rate: 1.5, color: '#FFFFFF' },
   },
+
+  /**
+   * Research bell hour (M22 TASK-483, R17; rhythm slot `bellHour`, 09:00, `seconds` long): the two
+   * belfry bells of the bell-cupola tower (campusTower v3, hinges RESEARCH_M22.bells) swing `swings`
+   * times, `swing` s each (a full back-and-forth), +-`deg` degrees, in antiphase, with sound rings
+   * over the belfry; the rest of the day they sway a hair (`rest` rad). The campus bots hurry at
+   * x1.5 for the same window (content/life.ts RITUAL_SPEED).
+   */
+  campusBell: {
+    ritual: 'bellHour',
+    seconds: 10,
+    swings: 6,
+    swing: 0.8,
+    deg: 25,
+    rest: 0.025,
+    rings: 2,
+    period: 1.2,
+    r0: 0.4,
+    r1: 1.5,
+    color: '#FFF4E0',
+  },
+  /**
+   * Research test firing (M22 TASK-483, R13; rhythm slot `testFiring`, 12:00, `seconds` = 4): steam
+   * rolls out of the launch trench under the gantry rocket (rocketMonument v1, RESEARCH_M22.gantry
+   * `steamAt`): `puffs` per side of the trench (along local z), one every `gap` s, each living `life`
+   * s, billowing `reach` u out and `rise` u up, growing to `size`; a flickering flame glow under the
+   * nozzle for the first `flame` s. (The click shake is the `rocket` reaction preset.)
+   */
+  launch: {
+    ritual: 'testFiring',
+    seconds: 4,
+    puffs: 9,
+    gap: 0.3,
+    life: 1.5,
+    reach: [0.5, 2.1] as const,
+    rise: 1.7,
+    size: [0.3, 0.9] as const,
+    color: '#FFFFFF',
+    flame: 2.6,
+    glow: { at: [0, 0.95, 0] as const, r: [0.2, 0.42] as const, rate: 13, color: '#FFB066' },
+  },
+  /**
+   * Research cap toss (M22 TASK-483, R16; rhythm slot `capToss`, 17:45, `seconds` = 4): from the lecture
+   * spot (x right, z toward the steps) six graduation caps fly up from `spots` (x, z, spot frame) on
+   * parabolas (`launch` s start, `flight` s long, `peak` u high, drifting `drift` u sideways), tumbling
+   * `spin` rad/s, and lie on the lawn until the ritual ends (they shrink away over the last `fade` s).
+   */
+  capToss: {
+    ritual: 'capToss',
+    seconds: 4,
+    spots: [
+      [-1.8, 0.3],
+      [-1.1, -0.1],
+      [-0.5, 0.35],
+      [0.5, -0.2],
+      [1.1, 0.25],
+      [1.8, -0.15],
+    ] as const,
+    head: 1.0,
+    launch: [0.15, 0.6] as const,
+    flight: [2.0, 2.5] as const,
+    peak: [2.4, 3.4] as const,
+    drift: 1.2,
+    spin: 5,
+    size: 0.36,
+    fade: 0.4,
+    color: '#1E2230',
+  },
 } as const;

@@ -441,7 +441,7 @@ export function appendSettlementProps(world: WorldData): {
     // rolled even when the planner chose one: keeps the island's decor stream stable
     const rolled = decorOf(fx.islandId).int(0, rolls(def) - 1);
     const v = fx.variant !== undefined && fx.variant < def.variants ? fx.variant : rolled;
-    propEmitters(push(fx.defId, fx.x, fx.z, yaw, 1, fx.islandId, y, v), fx.defId);
+    propEmitters(push(fx.defId, fx.x, fx.z, yaw, fx.scale ?? 1, fx.islandId, y, v), fx.defId);
   }
   // plaza decor (every campus quad, THEMES[theme].plazaDecor): posts at the rim, seats between
   // them, `across` items halfway in. The rolls are made even for a null def (stable stream).

@@ -45,7 +45,7 @@ import type { DirtyRegion } from '../world/edit-types.ts';
 import type { SubImageRenderer } from './gl-subimage.ts';
 import { createPropMirror, type PropMirror } from './props/prop-mirror.ts';
 import { createRebuilder, type Rebuilder } from './rebuild.ts';
-import { createCultureClock, type CultureClock } from './culture-clock.ts';
+import { createCultureClock, type CultureClock, type CultureFestival } from './culture-clock.ts';
 
 /**
  * Everything seed-derived on the render side (ARCHITECTURE §1 "world scope").
@@ -237,6 +237,8 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     getTier: d.getTier,
     cameraPos: _camPos,
     cameraTarget: d.getCameraTarget ? _camTarget : undefined,
+    // the running ritual of an island (bell hour: the campus bots hurry; cap toss: the students cheer)
+    festival: (theme) => (culture.state.festival as Record<string, CultureFestival | null>)[theme],
   });
   group.add(life.group);
   d.scope.add(life);

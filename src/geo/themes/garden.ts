@@ -6,9 +6,11 @@
  */
 import * as THREE from 'three';
 import { SCIENCE_PALETTE as S } from '../../content/themes/research.ts';
+import { MAZE } from '../../content/props-themes/research-maze.ts';
 import { gradY, qEuler } from '../kit.ts';
 import { TAU, baseBox, cylB, jitterAcc, put } from '../parts.ts';
 import type { BuildOpts, PropGeoDef } from '../types.ts';
+import { mazeTile } from './research-m22.ts';
 
 const PI = Math.PI;
 
@@ -104,6 +106,11 @@ function fountain({ rng, lod }: BuildOpts): THREE.BufferGeometry {
 function hedgeParterre({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const acc = jitterAcc(rng, 0.015);
   const hi = lod === 0;
+  // v2-v5: the R12 maze tiles (M22 TASK-483)
+  if (variant >= MAZE.firstVariant) {
+    mazeTile(acc, variant, hi);
+    return acc.finish(rng, false, true);
+  }
   const hc = gradY([S.hedge, S.hedgeTop], 0.06, 0.5);
   const bar = (x: number, z: number, w: number, d: number, h = 0.46): void =>
     put(acc, baseBox(w, h, d), [x, 0.06, z], hc, { aoAmt: 0.1 });
@@ -279,7 +286,7 @@ export const GARDEN_GEO: readonly PropGeoDef[] = [
   { id: 'fountain', variants: 1, build: fountain, footprint: 1.9, height: 3.2, windy: false },
   {
     id: 'hedgeParterre',
-    variants: 2,
+    variants: 6,
     build: hedgeParterre,
     footprint: 2.4,
     height: 0.55,

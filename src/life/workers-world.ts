@@ -239,6 +239,8 @@ export interface TableauBot {
   hd: number;
   pose: string;
   item?: ItineraryStep['item'];
+  pace?: { reach: number; speed: number; pause: number };
+  ritual?: { id: string; pose: string };
   /** Bots sharing a story spot: `group` is the spot, `k` the bot's rank in it (chat partners alternate). */
   group: number;
   k: number;
@@ -284,6 +286,8 @@ export function planTableaus(
         hd,
         pose: b.pose,
         item: b.item,
+        pace: b.pace,
+        ritual: b.ritual,
         group,
         k,
       });
