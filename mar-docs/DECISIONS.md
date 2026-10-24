@@ -2,6 +2,22 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-062: Round 3 for the five islands (M22) — all recommended options; HQ street tint stays — 2026-10-24
+
+**Decision** (user, 2026-10-24, WORLD_PLAN §6):
+- R3-1 culture cap overrides as tabled (Coding 12/2, DevOps 12, QA 12, Research 11; HQ / Design / Marketing fixed).
+- R3-12 Coding: solar rows halved; night = warm park + blue server light; kite train (C3) yes.
+- R3-13 DevOps: lodges become the ops-shack variant; slope service road in every direction (zigzag).
+- R3-14 QA: white-mint-yellow toy-factory tone; two tracks (loop + stunt yard); tier-1 = Q2 tower.
+- R3-15 Marketing: ON AIR neon on the cliff face; fair on ledge2; diving tower (1 def), cap 11.
+- R3-16 Research: maze parterres; seal spot critter (not an agent); tier-1 slot kept for M27 stilt lab.
+- HQ street tint stays at `STREET_TINT` 0.62 (the compass star already tells the streets).
+
+**How**: M22 = the per-island quick-win packages (WORLD_PLAN §4.3–4.7) as TASK-479…483; Round 3 details that
+touch a quick win land there, the rest with the signature milestones (M24–M26). The rim walkway primitive is
+built in the QA task (Q6 / Q18) and reused by Coding C18 after it merges. Shared files (`budgets.ts`, `shots.ts`,
+`rhythm.ts`, `app.ts`) are edited only by the orchestrator. At most three parallel agents (shots load).
+
 ## D-061: Medium budget raised for HQ Seven Gates, to be won back by an engine merge — 2026-10-23
 
 **Context**: TASK-466 puts each culture's gate, stall and pennant line in its own instanced group (+ shadow pass):
