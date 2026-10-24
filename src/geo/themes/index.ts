@@ -5,6 +5,7 @@
 import type { PropGeoDef } from '../types.ts';
 import { HQ_GEO } from './hq.ts';
 import { CODING_GEO } from './coding.ts';
+import { CODING_M22_GEO } from './culture-coding-m22.ts';
 import { MARKETING_GEO } from './marketing.ts';
 import { QA_GEO } from './qa.ts';
 import { DESIGN_GEO } from './design.ts';
@@ -40,4 +41,6 @@ export const THEME_GEO: readonly PropGeoDef[] = [
   ...M20_DESIGN_GEO,
   // M22 (TASK-480) shared rim walkway post
   ...RIM_GEO,
+  // M22 Coding quick wins: windsock, fairyWreath
+  ...CODING_M22_GEO,
 ];

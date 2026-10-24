@@ -154,8 +154,11 @@ export interface Pad {
 export interface PendingLot extends LotData {
   key: number;
   settlement: number;
-  /** Geometry variant the plan requires (skips the roof colouring's pick, M19 culture variants). */
-  pin?: number;
+  /**
+   * Geometry variant the plan requires (skips the roof colouring's pick, M19 culture variants); a
+   * list = the colouring picks among exactly these (M22: the weather-vane pods, devPod v2 / v3).
+   */
+  pin?: number | readonly number[];
 }
 
 export interface LinkReq {

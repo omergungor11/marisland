@@ -308,6 +308,8 @@ export const POOLS = {
     // DevOps lava lanterns (M22 TASK-482): warm pools, so the D12 switchback roads draw an orange
     // zigzag on the dark cone at night from T1 (the lantern props themselves are tier 2)
     lavaLantern: { radius: 5.5, intensity: 1.3, offset: 0 },
+    // Coding fairy-light grove (TASK-479 C13): a soft warm pool under each wreathed quad-end tree
+    fairyWreath: { radius: 4.2, intensity: 0.55, offset: 0 },
   } as Record<string, { radius: number; intensity: number; offset: number; hue?: number }>,
   /**
    * Second pool colour (TASK-440): a source's `hue` share blends its pool from `color` toward this

@@ -6,7 +6,11 @@
 import { PropFlag } from '../world/prop-store.ts';
 import { PROP_DEFS_BUILDINGS } from './props-buildings.ts';
 import { HQ_PROP_DEFS, HQ_CULTURE_PROP_DEFS } from './props-themes/hq.ts';
-import { CODING_CULTURE_PROP_DEFS, CODING_PROP_DEFS } from './props-themes/coding.ts';
+import {
+  CODING_CULTURE_PROP_DEFS,
+  CODING_M22_PROP_DEFS,
+  CODING_PROP_DEFS,
+} from './props-themes/coding.ts';
 import { MARKETING_CULTURE_PROP_DEFS, MARKETING_PROP_DEFS } from './props-themes/marketing.ts';
 import { QA_CULTURE_PROP_DEFS, QA_PROP_DEFS } from './props-themes/qa.ts';
 import { DESIGN_CULTURE_PROP_DEFS, DESIGN_PROP_DEFS } from './props-themes/design.ts';
@@ -134,6 +138,8 @@ const ALL_DEFS: readonly PropDef[] = [
   ...DESIGN_M20_PROP_DEFS,
   // M22 (TASK-480): the shared rim walkway post
   ...RIM_PROP_DEFS,
+  // M22 (TASK-479): Coding windsock + fairy wreath
+  ...CODING_M22_PROP_DEFS,
 ];
 
 /**

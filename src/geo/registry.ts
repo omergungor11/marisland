@@ -191,7 +191,8 @@ defs.push(
   D('meetingPavilion', 2, meetingPavilion, 2.8, 4.1),
   D('coffeeKiosk', 2, coffeeKiosk, 1.5, 2.75),
   D('devOffice', 2, devOffice, 4.0, 3.9, false, [4.1, 3.7]),
-  D('devPod', 2, devPod, 2.2, 3.25, false, [3.1, 3.4]),
+  // v2 / v3 = weather-vane pods (M22 TASK-479)
+  D('devPod', 4, devPod, 2.2, 3.25, false, [3.1, 3.4, 3.3, 4.1]),
   D('serverShed', 2, serverShed, 2.1, 3),
   D('broadcastStudio', 2, broadcastStudio, 2.7, 4.7),
   D('billboard', 2, billboard, 2.2, 4.6),
@@ -233,6 +234,8 @@ export function buildProp(
   const def = PROP_GEO[id];
   if (!def) throw new Error(`unknown prop geo: ${id}`);
   const v = lod === 1 ? (def.lod1Of?.[variant] ?? variant) : variant;
-  const rng = createRng(seed).fork('geo', v).fork(id);
+  const rng = createRng(seed)
+    .fork('geo', v)
+    .fork(def.rngAs ?? id);
   return def.build({ rng, lod, variant: v });
 }

@@ -37,6 +37,8 @@ import {
   type ShellOpts,
 } from './office-kit.ts';
 import { TAU, V, V2, baseBox, cylB, jitterAcc, prism, put } from './parts.ts';
+import { addVane } from './themes/culture-coding-m22.ts';
+import { tagYawHead } from './themes/surface-tags.ts';
 import type { BuildOpts, Lod } from './types.ts';
 
 const pal = (theme: ThemeId, variant: number): OfficePal => OFFICE_PAL[theme][variant % 2];
@@ -609,9 +611,14 @@ export function devPod({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
     },
     lod,
   );
-  if (variant === 0) {
+  // v2 / v3 (M22 TASK-479): the v0 / v1 shell with a weather vane on the roof centre (no solar row on
+  // the flat one: the mast stands there)
+  const vane = variant >= 2;
+  let vaneRange: { first: number; count: number } | null = null;
+  if (variant % 2 === 0) {
     roofFlat(acc, { w: 3, d: 3, y: H, roof: p.roof, trim: p.trim, parapet: 0.16, lod });
-    solarRow(acc, V(0, H + 0.18, -0.4), 2, 1.2, 1.0, lod);
+    if (!vane) solarRow(acc, V(0, H + 0.18, -0.4), 2, 1.2, 1.0, lod);
+    else if (hi) vaneRange = addVane(acc, H + 0.18);
   } else {
     gabledRoof(acc, {
       top: H,
@@ -624,13 +631,16 @@ export function devPod({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
       wall: p.wall,
       lod,
     });
+    if (vane && hi) vaneRange = addVane(acc, H + 1.0);
   }
   if (hi) {
     glyph(acc, 'coding', V(-0.85, 2.05, 1.55), 0, 0.4, acc1);
   }
   put(acc, baseBox(0.95, 0.1, 0.4), [-0.85, 0, 1.7], C.plinth, { aoAmt: 0.2 });
   band(acc, V(0.5, 2.15, 1.51), 0, 1.5, 0.1, lighten(acc1, 0.45), 1);
-  return acc.finish(rng, false, true);
+  const g = acc.finish(rng, false, true);
+  if (vaneRange) tagYawHead(g, vaneRange);
+  return g;
 }
 
 export function serverShed({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
@@ -670,6 +680,22 @@ export function serverShed({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
   const ry = H + 0.18;
   vent(acc, V(0.8, ry, -0.5), 0.4, 0.15, C.steelLight, lod);
   put(acc, baseBox(0.9, 0.08, 0.5), [0, 0, D / 2 + 0.25], C.plinth, { aoAmt: 0.2 });
+  // R3-12 (TASK-479) the blue server glow: three stepped light plates on the apron in front of the
+  // door (they carry the night light that the lantern pools give the park); the outer one stays on
+  // the far proxy so the yard still glows blue from the overview
+  const glow = acc1;
+  for (const [w, d, z, e] of [
+    [3.3, 0.76, 0.4, 0.12],
+    [2.5, 0.52, 0.4, 0.24],
+    [1.6, 0.3, 0.4, 0.42],
+  ] as const)
+    if (hi || e < 0.2)
+      put(acc, baseBox(w, 0.025, d), [0, 0.03 + e * 0.01, D / 2 + z], glow, {
+        emissive: e,
+        ao: () => 1,
+        aoAmt: 0,
+        noJitter: true,
+      });
   if (hi) {
     fan(acc, spin, V(-0.85, 2.12, D / 2 + 0.02), 0.2, p.trim, C.white, lod);
     for (const [x, s] of [

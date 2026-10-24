@@ -59,10 +59,11 @@ export const CODING_PROP_DEFS: readonly PropDef[] = [
   // T0 (TASK-463): a solar field is a district-sized blue block; at tier 1 its gravel pads read grey
   // from T0 and the rows popped in at 380 u (L-pairs-marketing 380 blob)
   { id: 'solarRow', geo: 'solarRow', tier: 0, variants: 2, footprint: 2.3, flags: grounded },
+  // tier 1 since M22 (TASK-479 C9): the `{ < / > }` glyph letters of hedge pieces read from 240 u
   {
     id: 'hedge',
     geo: 'hedge',
-    tier: 2,
+    tier: 1,
     variants: 3,
     rollVariants: 2,
     footprint: 1.1,
@@ -93,7 +94,8 @@ export const CODING_CULTURE_PROP_DEFS: readonly PropDef[] = [
     footprint: 0.3,
     flags: grounded | noShadow,
   },
-  { id: 'kite', geo: 'kite', tier: 2, variants: 3, footprint: 1.2, flags: grounded | windy },
+  // v3 = the M22 pinwheel (TASK-479, C4): a garden stake with a spinning paper pinwheel, never a kite
+  { id: 'kite', geo: 'kite', tier: 2, variants: 4, footprint: 1.2, flags: grounded | windy },
   {
     id: 'pergolaDesk',
     geo: 'pergolaDesk',
@@ -128,4 +130,40 @@ export const CODING_CULTURE_PROP_DEFS: readonly PropDef[] = [
     footprint: 0.45,
     flags: grounded | noShadow,
   },
+];
+
+/**
+ * M22 TASK-479 Coding quick wins, ledger entries 9-10 (content/cultures/coding.ts). Registered at the
+ * very END of PROP_DEFS (content/props.ts) so no existing defId shifts. Variants of existing defs
+ * (kite v3 pinwheel, devPod v2 / v3 weather vane, hedge glyph pieces) are not ledger entries.
+ */
+export const CODING_M22_PROP_DEFS: readonly PropDef[] = [
+  // C11 windsock avenue: variant = band colours (blue / coral on cream); the plan points +x downwind
+  {
+    id: 'windsock',
+    geo: 'windsock',
+    tier: 2,
+    variants: 2,
+    footprint: 0.5,
+    flags: grounded | windy,
+  },
+  // C13 fairy-light grove: the bulbs of a roundTree (variant k dresses the k-th tree); no blob, no shadow
+  {
+    id: 'fairyWreath',
+    geo: 'fairyWreath',
+    tier: 2,
+    variants: 3,
+    footprint: 1.2,
+    flags: windy | noShadow,
+  },
+];
+
+/** The M22 Coding showcase (`?gallery=1&ids=coding22`, scripts/gallery-shots.ts): new defs + the variants / tips. */
+export const CODING_M22_SHOWCASE_IDS: readonly string[] = [
+  'windsock',
+  'fairyWreath',
+  'kite',
+  'devPod',
+  'windTurbine',
+  'roundTree',
 ];

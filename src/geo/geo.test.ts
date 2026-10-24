@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
+import { BLINK } from '../content/activity.ts';
 import { OFFICE_DEFS, OFFICE_INTERIOR_SHELLS, WORK_SPOTS } from '../content/offices.ts';
 import { PROP_GEO, buildProp } from './index.ts';
 import { THEME_GEO } from './themes/index.ts';
@@ -207,8 +208,10 @@ describe('prop geometry', () => {
             expect(em.itemSize).toBe(1);
             expect(em.count).toBe(n);
             const ea = em.array as Float32Array;
-            // 0..1 glow, 2 = screen / LED class (TASK-305)
-            expect(ea.every((x) => Number.isFinite(x) && x >= 0 && x <= 2)).toBe(true);
+            // 0..1 glow, 2 = screen / LED class (TASK-305), BLINK.base + 1 = blinking lamp (TASK-479)
+            expect(
+              ea.every((x) => Number.isFinite(x) && x >= 0 && (x <= 2 || x === BLINK.base + 1)),
+            ).toBe(true);
             if (lod === 0 && GLOWS.has(def.id)) expect(ea.some((x) => x === 1)).toBe(true);
             // emissive faces are whole triangles
             for (let f = 0; f < n; f += 3)

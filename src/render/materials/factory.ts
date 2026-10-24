@@ -4,6 +4,7 @@ import { BLOOM_IN, TREE_SWAY, WINDMILL } from '../../content/anim.ts';
 import { CULTURE_SLOTS, SHARED } from '../uniforms.ts';
 import { FIELDS_GLSL } from '../shaders/chunks/fields.glsl.ts';
 import { SHARED_LIT_GLSL } from '../shaders/chunks/lit.glsl.ts';
+import { BLINK } from '../../content/activity.ts';
 import { NIGHT, SEA_LAMP, SHADE } from '../../content/lighting.ts';
 import { RELAY } from '../../content/cultures/rhythm.ts';
 import { CLOUD_SHADOW_GLSL } from '../shaders/chunks/cloud-shadow.glsl.ts';
@@ -325,6 +326,14 @@ const VERTEX_CLOUD = /* glsl */ `
   bool marFlood = vMarEmissive <= 0.0 && wind <= 0.0;
   if (uLampMode.x > 0.5 && uCultureIsle[0].w > 0.5 && (vMarEmissive > 0.0 || (marFlood && uFestival.z > 0.5)))
     marCu = marCulture(marOrigin.xz);
+  // aviation blink (TASK-479): emissive ≥ BLINK.base = lamp class × a 1 s pulse (phase per instance)
+  float marBk = 1.0;
+  if (vMarEmissive >= ${f(BLINK.base)}) {
+    float marBp = fract(uTime / ${f(BLINK.period)} + marHash12(marOrigin.xz * 0.731 + 3.7));
+    float marBs = smoothstep(0.0, 0.04, marBp) * (1.0 - smoothstep(${f(BLINK.duty)}, ${f(BLINK.duty + 0.08)}, marBp));
+    marBk = mix(0.55, marBs, uMotionScale);
+    vMarEmissive -= ${f(BLINK.base)};
+  }
   if (vMarEmissive >= 1.5) {
     // screen class (TASK-305): mask = emissive − 1; dim by day, full with the lamps ramp (no
     // stagger, never off late) + a slow flicker and a soft band scrolling down the screen.
@@ -352,7 +361,7 @@ const VERTEX_CLOUD = /* glsl */ `
     }
 ${ACTIVITY_OCCUPANCY}    float marFw1 = ${f((2 * Math.PI) / NIGHT.flickerPeriod[1])} + ${f((2 * Math.PI) / NIGHT.flickerPeriod[0] - (2 * Math.PI) / NIGHT.flickerPeriod[1])} * marLh;
     float marFl = 1.0 + ${f(NIGHT.flickerAmp)} * (0.6 * sin(uTime * marFw1 + marLh * 37.0) + 0.4 * sin(uTime * marFw1 * 1.618 + marLh * 71.0));
-    vMarEmissive *= marOn * marFl;
+    vMarEmissive *= marOn * marFl * marBk;
   }
   vMarEmissive *= 1.0 + marCu.y;
   // Launch Day Relay: the island's structures (not foliage) light up warm with its boost

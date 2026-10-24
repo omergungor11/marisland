@@ -26,4 +26,9 @@ export interface PropGeoDef {
    * variant such as hqAnnex 2 adds no new LOD1 look).
    */
   lod1Of?: Readonly<Record<number, number>>;
+  /**
+   * Build under another def's rng stream (`createRng(seed).fork('geo', v).fork(rngAs)`): a companion
+   * def (M22 `fairyWreath`) reads the very tree / mast of the def it dresses.
+   */
+  rngAs?: string;
 }

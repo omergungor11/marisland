@@ -157,6 +157,8 @@ export const CODING_PLAN = {
     minHeight: 1,
     minShore: 3,
     clear: 1,
+    /** R3-12 (D-062): only this share of the farm blocks stays (the largest), the rest becomes lawn. */
+    keep: 0.5,
   },
   dock: { maxDist: 20, lee: 40, rowboats: [1, 2] as const },
   /** Lot floor: devPods ringed around the park until this many lots stand. */

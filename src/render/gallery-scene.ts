@@ -3,17 +3,19 @@ import type { Scope } from '../core/scope.ts';
 import type { System } from '../core/loop.ts';
 import { buildGalleryScene } from '../geo/index.ts';
 import { SAND } from '../content/palette.ts';
+import { CODING_M22_SHOWCASE_IDS } from '../content/props-themes/coding.ts';
 import { M20_PROP_IDS } from '../content/props-themes/m20.ts';
 import type { CameraWorld } from '../camera/controls.ts';
 import type { TestScene } from './test-scene.ts';
 
 /**
- * Def ids of the `?ids=` query: `m20` = the M20 HQ / Design kits (TASK-465), else a comma list of
- * def ids; none = every def.
+ * Def ids of the `?ids=` query: `m20` = the M20 HQ / Design kits (TASK-465), `coding22` = the M22 Coding
+ * quick wins (TASK-479), else a comma list of def ids; none = every def.
  */
 function showcaseIds(): readonly string[] | undefined {
   const raw = new URLSearchParams(globalThis.location?.search ?? '').get('ids');
   if (!raw) return undefined;
+  if (raw === 'coding22') return CODING_M22_SHOWCASE_IDS;
   return raw === 'm20' ? M20_PROP_IDS : raw.split(',');
 }
 

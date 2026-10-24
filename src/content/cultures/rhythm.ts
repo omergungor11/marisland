@@ -58,7 +58,7 @@ export const CULTURE_RHYTHM: Record<ThemeId, CultureRhythm> = {
       { id: 'hammockHour', hour: 17.5 },
       { id: 'fairyLights', hour: 19.5 },
     ],
-    lamps: { defs: ['pergolaDesk'], on: 19.5, off: 5.5, rampS: 10 },
+    lamps: { defs: ['pergolaDesk', 'fairyWreath'], on: 19.5, off: 5.5, rampS: 10 },
   },
   // Ember Smiths: shift siren, hammer hours, shift end, Release Night at 21:00 (40 s)
   devops: {

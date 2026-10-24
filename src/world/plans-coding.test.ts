@@ -9,6 +9,7 @@ import { FIXTURE_RADIUS } from '../content/settlements.ts';
 import { CODING_CULTURE_SITES as CS } from '../content/cultures/coding.ts';
 import { CODING_CULTURE_PROP_DEFS, TURBINE_HEIGHTS } from '../content/props-themes/coding.ts';
 import { appendSettlementProps } from '../render/props/settlement-props.ts';
+import { PINWHEEL_VARIANT } from '../geo/themes/culture-coding-m22.ts';
 import { generateWorld, heightAt, Zone, type IslandData, type WorldData } from './index.ts';
 import { discShape, rectShape, shapeCorners, shapeDist, type Shape } from './gen/sites.ts';
 
@@ -206,10 +207,11 @@ describe('Coding island plan (TASK-363)', { timeout: 120_000 }, () => {
 const KIT_COUNTS: Record<string, readonly [number, number]> = {
   pergolaDesk: [4, 4],
   whiteboardA: [2, 2],
-  mugStack: [3, 3],
+  // + the M22 nap grove (TASK-479): up to 3 mugs and 6 hammocks beside the turbine-foot ones
+  mugStack: [3, 6],
   giantDuck: [1, 1],
   rubberDuck: [2, 4],
-  hammock: [1, 3],
+  hammock: [1, 9],
   kite: [0, 6],
   kiteRack: [0, 1],
 };
@@ -222,7 +224,13 @@ describe('Coding Wind Gardens culture (TASK-421)', { timeout: 120_000 }, () => {
       const w = world(seed);
       const isl = codingOf(w);
       const ctx = `seed ${seed}`;
-      const fx = w.fixtures.filter((f) => f.islandId === isl.id && CULTURE_DEFS.has(f.defId));
+      // the M22 pinwheels (kite variant 3) are not kites of the field
+      const fx = w.fixtures.filter(
+        (f) =>
+          f.islandId === isl.id &&
+          CULTURE_DEFS.has(f.defId) &&
+          !(f.defId === 'kite' && f.variant === PINWHEEL_VARIANT),
+      );
       for (const [def, [lo, hi]] of Object.entries(KIT_COUNTS)) {
         const n = fx.filter((f) => f.defId === def).length;
         expect(n, `${ctx} ${def}`).toBeGreaterThanOrEqual(lo);
@@ -232,7 +240,10 @@ describe('Coding Wind Gardens culture (TASK-421)', { timeout: 120_000 }, () => {
       // story spots: ≥ 5 distinct kinds, on this island's land
       const st = w.storySpots.filter((s) => s.islandId === isl.id);
       expect(st.length, ctx).toBeGreaterThanOrEqual(5);
-      expect(new Set(st.map((s) => s.kind)).size, ctx).toBe(st.length);
+      // one spot per kind, except the M22 nap grove's extra hammockNap tableaux (TASK-479, up to 3)
+      const once = st.filter((s) => s.kind !== 'hammockNap');
+      expect(new Set(once.map((s) => s.kind)).size, ctx).toBe(once.length);
+      expect(st.length - once.length, ctx).toBeLessThanOrEqual(4);
       for (const s of st) expect(s.pos.y, `${ctx} ${s.kind}`).toBeGreaterThan(0.3);
       // on land, level (posts and poles never float or sink), clear of every building
       const lots = w.lots

@@ -310,75 +310,110 @@ function solarCells(
   return { real, grid };
 }
 
+/** A trimmed, lattice-snapped solar block: its rect, the rotation of its rows and its area (u²). */
+interface SolarBlock {
+  sh: Shape;
+  rot: number;
+  area: number;
+}
+
+/**
+ * The solar block one patch rectangle yields: trimmed to clean, free, flat ground and snapped to the
+ * panel lattice; null when no block of the minimum lattice fits. Pure (reads the plan so far).
+ */
+function solarBlock(ctx: SiteCtx, isl: IslandData, fp: FieldPatchData): SolarBlock | null {
+  const S = P.solar;
+  const f = frameAt({ x: fp.x, z: fp.z }, fp.rotY);
+  const rows = Math.floor(fp.w / S.step); // across (v)
+  const cols = Math.floor(fp.d / S.step); // along (u)
+  const mask = new Uint8Array(rows * cols);
+  const uOf = (c: number): number => -fp.d / 2 + (c + 0.5) * S.step;
+  const vOf = (r: number): number => -fp.w / 2 + (r + 0.5) * S.step;
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++) {
+      const p = at(f, uOf(c), vOf(r));
+      if (!onIsland(ctx, isl, p.x, p.z) || !cellOnLand(ctx, isl, p.x, p.z)) continue;
+      if (heightAt(ctx.h, p.x, p.z) < S.minHeight || sdfAt(ctx, p.x, p.z) < S.minShore) continue;
+      const i = cellOf(ctx, p.x, p.z);
+      if (slopeAtCell(ctx.h, i % ctx.n, Math.floor(i / ctx.n)) > S.maxSlope) continue;
+      let free = true;
+      for (const o of ctx.shapes[isl.id])
+        if (shapeDist(o, p.x, p.z) < S.clear) {
+          free = false;
+          break;
+        }
+      if (free)
+        for (const lane of ctx.lanes[isl.id]) {
+          for (const q of lane)
+            if (dist(q, p) < PATHS.halfWidth + S.clear) {
+              free = false;
+              break;
+            }
+          if (!free) break;
+        }
+      if (free) mask[r * cols + c] = 1;
+    }
+  const m = maxRect(mask, rows, cols);
+  if (!m) return null;
+  const [r0, c0, r1, c1] = m;
+  // snap to the render lattice (rows along the district depth every `lattice.len`,
+  // `lattice.pitch` apart, edge margin `lattice.margin`), rows along whichever side holds more
+  // panels, so the rows fill the block instead of leaving a ragged rim
+  const L = S.lattice;
+  const fit = (along: number, across: number): [number, number] => [
+    Math.floor((along - 2 * S.inset - 2 * L.margin) / L.len),
+    Math.floor((across - 2 * S.inset - 2 * L.margin - L.depth) / L.pitch) + 1,
+  ];
+  const lu = (c1 - c0 + 1) * S.step;
+  const lv = (r1 - r0 + 1) * S.step;
+  const [sa, ra] = fit(lu, lv);
+  const [sb, rb] = fit(lv, lu);
+  const alongU = sa * ra >= sb * rb;
+  const [segs, rowsN] = alongU ? [sa, ra] : [sb, rb];
+  if (segs < S.minLattice[0] || rowsN < S.minLattice[1]) return null;
+  const hAlong = (segs * L.len + 2 * L.margin) / 2;
+  const hAcross = ((rowsN - 1) * L.pitch + L.depth + 2 * L.margin) / 2;
+  const c = at(f, (uOf(c0) + uOf(c1)) / 2, (vOf(r0) + vOf(r1)) / 2);
+  const rot = alongU ? fp.rotY : fp.rotY + Math.PI / 2;
+  const sh = rectShape(c.x, c.z, rot, hAcross * 2, hAlong * 2);
+  return { sh, rot, area: sh.hw * sh.hd * 4 };
+}
+
 /**
  * Solar districts: every patch rectangle of this island trimmed to clean, free, flat ground and
  * snapped to the panel lattice; other cells of the patch grid while the farm is below `minArea`.
+ * R3-12 (D-062, M22): only the largest `keep` share of the blocks stays; the rest of the patch
+ * ground turns to lawn, which is the room the pinwheel meadow, glyph bed and nap grove take.
  */
 function solarFarm(ctx: SiteCtx, isl: IslandData, plan: SitePlan, a: number): Shape[] {
   const S = P.solar;
   const out: Shape[] = [];
   const { real, grid } = solarCells(ctx, isl, a);
+  // dry run: the blocks the full farm would have, to rank them (no obstacles added yet)
+  const ranked: { fp: FieldPatchData; area: number }[] = [];
   let area = 0;
   for (const fp of [...real, ...grid]) {
     if (grid.includes(fp) && area >= S.minArea) break;
-    const f = frameAt({ x: fp.x, z: fp.z }, fp.rotY);
-    const rows = Math.floor(fp.w / S.step); // across (v)
-    const cols = Math.floor(fp.d / S.step); // along (u)
-    const mask = new Uint8Array(rows * cols);
-    const uOf = (c: number): number => -fp.d / 2 + (c + 0.5) * S.step;
-    const vOf = (r: number): number => -fp.w / 2 + (r + 0.5) * S.step;
-    for (let r = 0; r < rows; r++)
-      for (let c = 0; c < cols; c++) {
-        const p = at(f, uOf(c), vOf(r));
-        if (!onIsland(ctx, isl, p.x, p.z) || !cellOnLand(ctx, isl, p.x, p.z)) continue;
-        if (heightAt(ctx.h, p.x, p.z) < S.minHeight || sdfAt(ctx, p.x, p.z) < S.minShore) continue;
-        const i = cellOf(ctx, p.x, p.z);
-        if (slopeAtCell(ctx.h, i % ctx.n, Math.floor(i / ctx.n)) > S.maxSlope) continue;
-        let free = true;
-        for (const o of ctx.shapes[isl.id])
-          if (shapeDist(o, p.x, p.z) < S.clear) {
-            free = false;
-            break;
-          }
-        if (free)
-          for (const lane of ctx.lanes[isl.id]) {
-            for (const q of lane)
-              if (dist(q, p) < PATHS.halfWidth + S.clear) {
-                free = false;
-                break;
-              }
-            if (!free) break;
-          }
-        if (free) mask[r * cols + c] = 1;
-      }
-    const m = maxRect(mask, rows, cols);
-    if (!m) continue;
-    const [r0, c0, r1, c1] = m;
-    // snap to the render lattice (rows along the district depth every `lattice.len`,
-    // `lattice.pitch` apart, edge margin `lattice.margin`), rows along whichever side holds more
-    // panels, so the rows fill the block instead of leaving a ragged rim
-    const L = S.lattice;
-    const fit = (along: number, across: number): [number, number] => [
-      Math.floor((along - 2 * S.inset - 2 * L.margin) / L.len),
-      Math.floor((across - 2 * S.inset - 2 * L.margin - L.depth) / L.pitch) + 1,
-    ];
-    const lu = (c1 - c0 + 1) * S.step;
-    const lv = (r1 - r0 + 1) * S.step;
-    const [sa, ra] = fit(lu, lv);
-    const [sb, rb] = fit(lv, lu);
-    const alongU = sa * ra >= sb * rb;
-    const [segs, rowsN] = alongU ? [sa, ra] : [sb, rb];
-    if (segs < S.minLattice[0] || rowsN < S.minLattice[1]) continue;
-    const hAlong = (segs * L.len + 2 * L.margin) / 2;
-    const hAcross = ((rowsN - 1) * L.pitch + L.depth + 2 * L.margin) / 2;
-    const c = at(f, (uOf(c0) + uOf(c1)) / 2, (vOf(r0) + vOf(r1)) / 2);
-    const rot = alongU ? fp.rotY : fp.rotY + Math.PI / 2;
-    const sh = rectShape(c.x, c.z, rot, hAcross * 2, hAlong * 2);
-    addShape(ctx, isl, sh, true);
-    paint(ctx, isl, sh, Zone.field, 0.5);
-    plan.districts.push(district(isl, 'solar', sh, rot));
-    out.push(sh);
-    area += sh.hw * sh.hd * 4;
+    const b = solarBlock(ctx, isl, fp);
+    if (!b) continue;
+    ranked.push({ fp, area: b.area });
+    area += b.area;
+  }
+  const keep = new Set(
+    ranked
+      .map((r, i) => ({ r, i }))
+      .sort((p, q) => q.r.area - p.r.area || p.i - q.i)
+      .slice(0, Math.max(1, Math.ceil(ranked.length * S.keep)))
+      .map((x) => x.r.fp),
+  );
+  for (const { fp } of ranked) {
+    if (!keep.has(fp)) continue;
+    const b = solarBlock(ctx, isl, fp);
+    if (!b) continue;
+    addShape(ctx, isl, b.sh, true);
+    paint(ctx, isl, b.sh, Zone.field, 0.5);
+    plan.districts.push(district(isl, 'solar', b.sh, b.rot));
+    out.push(b.sh);
   }
   return out;
 }
@@ -447,9 +482,26 @@ export const planCoding: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   const walkCells: number[] = [];
   for (let k = 0; k < 4; k++) walkCells.push(...walk(ctx, isl, corners[k], corners[(k + 1) % 4]));
   // trees in rows across both quad ends, clipped hedges along the long edges
+  // M22 C13: the quad-end trees wear fairy-light wreaths (variant k of the wreath dresses tree variant k)
+  let treeN = 0;
   for (const su of [-1, 1])
-    for (const v of K.treeV)
-      pushFixture(ctx, isl, 'roundTree', at(f, su * (lu - K.treeInset), v), a);
+    for (const v of K.treeV) {
+      const tp = at(f, su * (lu - K.treeInset), v);
+      pushFixture(ctx, isl, 'roundTree', tp, a);
+      ctx.fixtures[ctx.fixtures.length - 1].variant = treeN % 3;
+      wreath(ctx, isl, tp, a, treeN % 3);
+      treeN++;
+    }
+  // M22 R3-12 warm park: a lantern post at each corner of the perimeter walk
+  for (const su of [-1, 1])
+    for (const sv of [-1, 1])
+      pushFixture(
+        ctx,
+        isl,
+        'lanternPost',
+        at(f, su * (cu + CS.m22.lanternCorner), sv * (cv + CS.m22.lanternCorner)),
+        a,
+      );
   for (const u of K.hedgeU)
     for (const sv of [-1, 1]) {
       pushFixture(ctx, isl, 'hedge', at(f, u, sv * (lv - K.hedgeInset)), facing(f, 1));
@@ -643,12 +695,358 @@ export const planCoding: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
     sheds: lots.filter((li) => ctx.lots[li].defId === 'serverShed'),
   });
 
+  // ---- M22 quick wins (TASK-479): pinwheel meadow, hedge glyphs, windsock avenue, nap grove; the
+  // pods get weather vanes. After the Wind Gardens kit, so none of it moves; before the links, so
+  // the paths route round it
+  // the later links run hub → lot doors / turbines / the dock: the big sites keep off those strips
+  const targets: XZ[] = [
+    ...lots.map((li) => ctx.lots[li] as XZ),
+    ...turbines.map((li) => ctx.landmarks[li] as XZ),
+    ...(site ? [site.root] : []),
+  ];
+  plan.stories.push(...m22Quick(ctx, isl, rng.fork('m22'), { f, targets }));
+  // every pod wears a vane: the roof colouring picks devPod v2 or v3 (the v0 / v1 roofs) per pod
+  for (const li of lots)
+    if (ctx.lots[li].defId === 'devPod') ctx.lots[li].pin = CS.m22.vaneVariants;
+
   // ---- links: turbines (service paths), lots nearest the park first
   for (const li of turbines) linkLandmark(ctx, plan, li, f.o);
   lots.sort((x, y) => dist(ctx.lots[x], f.o) - dist(ctx.lots[y], f.o) || x - y);
   for (const li of lots) linkLot(ctx, plan, li);
   return plan;
 };
+
+/** Grid step (samples) of the quick-win site search. */
+const SITE_STEP = 2;
+/** Clear gap (u) kept round a quick-win site. */
+const SITE_GAP = 1;
+
+/** Fairy-light wreath on a tree at `p` (no obstacle of its own; the tree's variant and yaw). */
+function wreath(ctx: SiteCtx, isl: IslandData, p: XZ, rotY: number, variant: number): void {
+  ctx.fixtures.push({ defId: 'fairyWreath', x: p.x, z: p.z, rotY, islandId: isl.id, variant });
+}
+
+/**
+ * A free `size` (along U, along V) rect for a frame at angle `a`: the best of the candidates on rings
+ * round `from` (on land, flat, clear of everything placed), lowest `score(p, relief, ring)` wins.
+ * Null when nothing fits.
+ */
+function findSite(
+  ctx: SiteCtx,
+  isl: IslandData,
+  from: XZ,
+  angles: readonly number[],
+  size: readonly [number, number],
+  ring: readonly [number, number],
+  maxRelief: number,
+  minShore: number,
+  score: (p: XZ, relief: number, r: number) => number,
+): Frame | null {
+  let best: Frame | null = null;
+  let bs = Infinity;
+  const [x0, x1] = gridRange(isl.minX, isl.maxX);
+  const [z0, z1] = gridRange(isl.minZ, isl.maxZ);
+  for (let iz = z0; iz <= z1; iz += SITE_STEP)
+    for (let ix = x0; ix <= x1; ix += SITE_STEP) {
+      const i = iz * ctx.n + ix;
+      if (ctx.islandMap[i] !== isl.id + 1 || ctx.sdf[i] < minShore) continue;
+      const p = { x: cellX(ix), z: cellZ(iz) };
+      const r = dist(p, from);
+      if (r < ring[0] || r > ring[1]) continue;
+      for (const a of angles) {
+        const g = frameAt(p, a);
+        const sh = frameRect(g, 0, 0, size[0] / 2, size[1] / 2);
+        if (!onLand(ctx, isl, sh, minShore)) continue;
+        const rel = relief(ctx, sh);
+        if (rel > maxRelief || !clear(ctx, isl, sh, SITE_GAP)) continue;
+        const sc = score(p, rel, r);
+        if (sc < bs) {
+          bs = sc;
+          best = g;
+        }
+      }
+    }
+  return best;
+}
+
+/** Hedge-letter strokes (a along the reading direction, b up; 6 u tall, a in [0, w]). */
+type Stroke = readonly [readonly [number, number], readonly [number, number]];
+const GLYPH_W = { '{': 3.0, '}': 3.0, '<': 3.2, '>': 3.2, '/': 2.4 } as const;
+const GLYPH_STROKES: Readonly<Record<keyof typeof GLYPH_W, readonly Stroke[]>> = {
+  '{': [
+    [
+      [3.0, 5.6],
+      [1.2, 5.6],
+    ],
+    [
+      [1.2, 5.6],
+      [1.2, 3.4],
+    ],
+    [
+      [1.2, 3.0],
+      [0.0, 3.0],
+    ],
+    [
+      [1.2, 2.6],
+      [1.2, 0.4],
+    ],
+    [
+      [1.2, 0.4],
+      [3.0, 0.4],
+    ],
+  ],
+  '}': [
+    [
+      [0.0, 5.6],
+      [1.8, 5.6],
+    ],
+    [
+      [1.8, 5.6],
+      [1.8, 3.4],
+    ],
+    [
+      [1.8, 3.0],
+      [3.0, 3.0],
+    ],
+    [
+      [1.8, 2.6],
+      [1.8, 0.4],
+    ],
+    [
+      [1.8, 0.4],
+      [0.0, 0.4],
+    ],
+  ],
+  '<': [
+    [
+      [3.0, 5.6],
+      [0.2, 3.0],
+    ],
+    [
+      [0.2, 3.0],
+      [3.0, 0.4],
+    ],
+  ],
+  '>': [
+    [
+      [0.2, 5.6],
+      [3.0, 3.0],
+    ],
+    [
+      [3.0, 3.0],
+      [0.2, 0.4],
+    ],
+  ],
+  '/': [
+    [
+      [0.2, 0.4],
+      [2.2, 5.6],
+    ],
+  ],
+};
+
+/**
+ * M22 quick wins (TASK-479, WORLD_PLAN §4.3), placed once the Wind Gardens kit stands:
+ * - C11 windsock avenue: poles along both long sides of the Tech Park, socks streaming downwind;
+ * - C4 pinwheel meadow: a 6 x 8 grid of pinwheels (kite v3) facing the wind on a clover bed;
+ * - C9 hedge glyphs: `{ < / > }`, 6 u letters of straight hedge pieces on a clover bed, leaning SE;
+ * - C15 nap grove: two rows of hammocks strung between wreathed round trees on the west lobe, mugs,
+ *   three `hammockNap` stories (the first nap stays at the turbine foot).
+ * Every number is CODING_CULTURE_SITES.m22; every draw comes from a sub-fork of `rng`.
+ */
+function m22Quick(
+  ctx: SiteCtx,
+  isl: IslandData,
+  rng: Rng,
+  s: { f: Frame; targets: readonly XZ[] },
+): StorySpot[] {
+  const { f } = s;
+  const M = CS.m22;
+  const K = P.park;
+  const stories: StorySpot[] = [];
+  const wd = ctx.windDir;
+  const fixture = (defId: string, p: XZ, rotY: number, variant: number): void => {
+    ctx.fixtures.push({ defId, x: p.x, z: p.z, rotY, islandId: isl.id, variant });
+  };
+  const bed = (g: Frame, size: readonly [number, number]): void => {
+    const sh = frameRect(g, 0, 0, size[0] / 2, size[1] / 2);
+    addShape(ctx, isl, sh, true);
+    addPad(ctx, isl, sh, FLATTEN.discMargin);
+    paint(ctx, isl, sh, Zone.meadow);
+  };
+  // fixture heading (local +z) that turns local +x along (dx, dz)
+  const headingOfX = (dx: number, dz: number): number => Math.atan2(dx, -dz);
+
+  // ---- C11 windsock avenue: both long sides of the park, just outside the perimeter walk
+  const W = M.windsocks;
+  const cv = K.lawn[1] + K.walk;
+  [1, -1].forEach((sv) =>
+    W.u.forEach((u, k) => {
+      const p = at(f, u, sv * (cv + W.out));
+      // the sock streams along local +x: heading = wind + pi/2 points +x downwind
+      pushFixture(ctx, isl, 'windsock', p, wd + Math.PI / 2);
+      ctx.fixtures[ctx.fixtures.length - 1].variant = (k + (sv > 0 ? 0 : 1)) % 2;
+    }),
+  );
+
+  // the grove and the glyphs come first (they need the big free rects), the meadow takes what is left
+  const park = f.o;
+  const centre = { x: isl.cx, z: isl.cz };
+  // straight strips hub → every lot / turbine / the dock, kept clear while the sites are searched
+  // (the links route later; a bed across a neck of the plateau would cut the dock off)
+  const strips = s.targets.map((t) => {
+    const len = dist(park, t);
+    const g = frameAt(park, Math.atan2(t.z - park.z, t.x - park.x));
+    return frameRect(g, len / 2, 0, len / 2, M.corridor / 2);
+  });
+  ctx.shapes[isl.id].push(...strips);
+
+  // ---- C15 nap grove: hammocks strung between wreathed round trees, west lobe (the layouts are
+  // tried in order: 2 rows of 3, then 3 rows of 2 hammocks)
+  const G = M.grove;
+  for (const [rows, cols] of G.layouts) {
+    const gw = cols * G.pitchU + 2.4;
+    const gd = rows * G.pitchV + 1.6;
+    const ng = findSite(
+      ctx,
+      isl,
+      centre,
+      [0, Math.PI / 2],
+      [gw, gd],
+      [0, isl.reach],
+      G.maxRelief,
+      G.minShore,
+      (p, rel) => p.x + 3 * rel,
+    );
+    if (!ng) continue;
+    bed(ng, [gw, gd]);
+    const gr = rng.fork('grove');
+    let naps = 0;
+    let n = 0;
+    for (let r = 0; r < rows; r++) {
+      const v = (r - (rows - 1) / 2) * G.pitchV;
+      // alternate rows face away from each other: hammock yaw +V / -V
+      const yaw = facing(ng, r % 2 === 0 ? 1 : 3);
+      for (let j = 0; j <= cols; j++) {
+        const tp = at(ng, (j - cols / 2) * G.pitchU + gr.range(-0.2, 0.2), v + gr.range(-0.2, 0.2));
+        const ty = gr.range(0, Math.PI * 2);
+        fixture('roundTree', tp, ty, (j + r) % 3);
+        wreath(ctx, isl, tp, ty, (j + r) % 3);
+      }
+      for (let j = 0; j < cols; j++) {
+        const u = (j + 0.5 - cols / 2) * G.pitchU;
+        const hp = at(ng, u, v);
+        // hammock variant 0 = a sleeper with a laptop (the nap), 1 = a book
+        const variant = n % 2;
+        fixture('hammock', hp, yaw, variant);
+        if (variant === 0 && naps < 3) {
+          naps++;
+          const mug = at(ng, u + G.mug[0], v + (r % 2 === 0 ? G.mug[1] : -G.mug[1]));
+          fixture('mugStack', mug, yaw, naps % 2);
+          stories.push({
+            kind: 'hammockNap',
+            islandId: isl.id,
+            pos: { x: hp.x, y: 0, z: hp.z },
+            rotY: yaw,
+            defs: ['hammock', 'mugStack'],
+          });
+        }
+        n++;
+      }
+    }
+    break;
+  }
+  // ---- C9 hedge glyphs `{ }` over `< / >` (stacked; or one row, or smaller, when that is what fits),
+  // read from the south (up = -z), leaning SE
+  const GL = M.glyphs;
+  for (const layout of GL.layouts) {
+    // the letter table is 6 u tall; `k` scales a layout down
+    const k = layout.height / 6;
+    const lineW = (l: readonly string[]): number =>
+      k * l.reduce((t, c) => t + GLYPH_W[c as keyof typeof GLYPH_W], 0) + GL.gap * (l.length - 1);
+    const size: [number, number] = [
+      Math.max(...layout.lines.map(lineW)) + GL.margin,
+      layout.lines.length * layout.height + (layout.lines.length - 1) * GL.lineGap + GL.margin,
+    ];
+    const gg = findSite(
+      ctx,
+      isl,
+      park,
+      [0],
+      size,
+      GL.ring,
+      GL.maxRelief,
+      GL.minShore,
+      (p, rel, r) =>
+        rel + 0.02 * r - 2 * Math.cos(Math.atan2(p.z - park.z, p.x - park.x) - GL.bearing),
+    );
+    if (!gg) continue;
+    bed(gg, size);
+    layout.lines.forEach((line, li) => {
+      // line li's top edge, top line first (up = -V)
+      const vTop = -size[1] / 2 + GL.margin / 2 + li * (layout.height + GL.lineGap);
+      let a0 = -lineW(line) / 2;
+      for (const c of line) {
+        const ch = c as keyof typeof GLYPH_W;
+        const world = (a: number, b: number): XZ =>
+          at(gg, a0 + a * k, vTop + layout.height - b * k);
+        for (const [A, B] of GLYPH_STROKES[ch]) {
+          const pa = world(A[0], A[1]);
+          const pb = world(B[0], B[1]);
+          const n = Math.max(1, Math.ceil(dist(pa, pb) / GL.piece - 0.05));
+          const yaw = headingOfX(pb.x - pa.x, pb.z - pa.z);
+          for (let j = 0; j < n; j++) {
+            const t = (j + 0.5) / n;
+            fixture('hedge', { x: pa.x + (pb.x - pa.x) * t, z: pa.z + (pb.z - pa.z) * t }, yaw, 0);
+          }
+        }
+        a0 += GLYPH_W[ch] * k + GL.gap;
+      }
+    });
+    break;
+  }
+
+  // ---- C4 pinwheel meadow (last: it takes what the grove and the glyphs left; smaller grids when
+  // the plateau has no room for 6 x 8)
+  const PW = M.pinwheels;
+  const pr = rng.fork('pinwheels');
+  const windward = (p: XZ): number =>
+    -((p.x - centre.x) * Math.cos(wd) + (p.z - centre.z) * Math.sin(wd)) / (dist(p, centre) || 1);
+  for (const [cols, rows] of PW.grids) {
+    const size: [number, number] = [
+      (rows - 1) * PW.spacing + PW.margin,
+      (cols - 1) * PW.spacing + PW.margin,
+    ];
+    const mg = findSite(
+      ctx,
+      isl,
+      park,
+      [0, Math.PI / 2],
+      size,
+      PW.ring,
+      PW.maxRelief,
+      PW.minShore,
+      // a flat spot near the park, the windward side slightly preferred (the gusts arrive over it)
+      (p, rel, r) => rel + 0.04 * r - 1.5 * windward(p),
+    );
+    if (!mg) continue;
+    bed(mg, size);
+    for (let j = 0; j < rows; j++)
+      for (let i = 0; i < cols; i++) {
+        const p = at(
+          mg,
+          (j - (rows - 1) / 2) * PW.spacing + pr.range(-PW.jitter, PW.jitter),
+          (i - (cols - 1) / 2) * PW.spacing + pr.range(-PW.jitter, PW.jitter),
+        );
+        // the pinwheel faces local +z: heading wind + pi points it into the wind
+        fixture('kite', p, wd + Math.PI, 3);
+      }
+    break;
+  }
+
+  ctx.shapes[isl.id] = ctx.shapes[isl.id].filter((o) => !strips.includes(o));
+  return stories;
+}
 
 /** Highest plateau sample clear of turbines, the park and every obstacle (extra turbines). */
 function bestSampleHigh(ctx: SiteCtx, isl: IslandData, turbines: number[], park: XZ): XZ | null {

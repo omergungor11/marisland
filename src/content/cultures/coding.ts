@@ -1,9 +1,10 @@
 /**
- * Rüzgâr Bahçeleri (Wind Gardens). Kit ledger (TASK-411): 8 new defs, 7/8 tier >= 2, one tier-1
+ * Rüzgâr Bahçeleri (Wind Gardens). Kit ledger (TASK-411; M22 TASK-479 added the last two): 10 new defs,
+ * 9/10 tier >= 2, one tier-1
  * (giantDuck), no tier-0, ORDERED BY PRIORITY (most identity-defining first; if the budget gate
  * drops the per-island cap to 6, cut from the end). Geometry: geo/themes/culture-coding.ts.
  * Not ledger entries (variants of existing defs): bracketHedge = hedge v2, windChimeTower =
- * windTurbine v3 (LOD1 identical to v0). Story spots, rhythm and relay by waves 2-3.
+ * windTurbine v3 (LOD1 identical to v0), pinwheel = kite v3, weather-vane pods = devPod v2 / v3. Story spots, rhythm and relay by waves 2-3.
  * Placement (TASK-421): `CODING_CULTURE_SITES` below, read by world/gen/plans/coding.ts.
  */
 import { PropFlag } from '../../world/prop-store.ts';
@@ -32,6 +33,9 @@ export const CODING_CULTURE: CultureDef = {
     { id: 'giantDuck', tier: 1, flags: grounded },
     { id: 'whiteboardA', tier: 3, flags: grounded | noShadow },
     { id: 'mugStack', tier: 3, flags: grounded | noShadow },
+    // M22 (TASK-479): the windsock avenue (C11) and the fairy-light bulbs on the quad-end trees (C13)
+    { id: 'windsock', tier: 2, flags: grounded | windy },
+    { id: 'fairyWreath', tier: 2, flags: windy | noShadow },
   ],
   // emitted by world/gen/plans/coding.ts (TASK-421); `defs` = the props the scene stands on
   storySpots: [
@@ -134,4 +138,82 @@ export const CODING_CULTURE_SITES = {
   chimeVariant: 3,
   /** Pagoda plinth radius round the chime tower foot (obstacle). */
   chimeRadius: 2.6,
+  /**
+   * M22 quick wins (TASK-479, WORLD_PLAN §4.3). Lengths in u. Glyph / grove / meadow sites are found
+   * on the plateau after the Wind Gardens kit stands (so they never move it): `ring` = distance from
+   * the Tech Park centre, `phase` samples per ring step.
+   */
+  m22: {
+    /** C4 pinwheel meadow: a cols × rows grid of pinwheels (kite v3) on a clover bed, facing the wind. */
+    pinwheels: {
+      /** [columns, rows] tried in order (the bed is `margin` bigger than the grid, rows along U). */
+      grids: [
+        [6, 8],
+        [5, 6],
+        [4, 5],
+      ] as const,
+      spacing: 1.3,
+      margin: 2.5,
+      jitter: 0.18,
+      /** Search ring round the park, ground limits. */
+      ring: [12, 80] as const,
+      maxRelief: 3.5,
+      minShore: 3,
+    },
+    /** C9 hedge glyphs `{ < / > }`: letters of straight hedge pieces (hedge v0, 2 u long), 6 u tall. */
+    glyphs: {
+      gap: 1.1,
+      /** Piece length of the hedge def and the hedge the strokes are made of (variant). */
+      piece: 2,
+      /** Layouts tried in order (stacked 6 u, one row 6 u, one row 4.5 u): lines of letters and the
+       * letter height; lines are `lineGap` apart, the clover bed is `margin` bigger than the text,
+       * the search leans toward `bearing` (rad, 0 = +x, π/2 = +z). */
+      layouts: [
+        {
+          lines: [
+            ['{', '}'],
+            ['<', '/', '>'],
+          ],
+          height: 6,
+        },
+        { lines: [['{', '<', '/', '>', '}']], height: 6 },
+        { lines: [['{', '<', '/', '>', '}']], height: 4.5 },
+        { lines: [['{', '<', '/', '>', '}']], height: 3.6 },
+      ] as const,
+      lineGap: 1.4,
+      margin: 2.2,
+      ring: [10, 90] as const,
+      bearing: Math.PI / 4,
+      maxRelief: 4.5,
+      minShore: 3,
+    },
+    /** Width of the strips kept clear from the hub to every lot, turbine and the dock while the sites are searched. */
+    corridor: 3.5,
+    /** C11 windsock avenue: poles on both long sides of the Tech Park, outside the perimeter walk. */
+    windsocks: {
+      u: [-10.6, -6.4, -2.1, 2.1, 6.4, 10.6] as const,
+      /** Distance beyond the perimeter walk (v). */
+      out: 1.35,
+    },
+    /** C13 fairy lights: lanterns at the four lawn corners (warm park) + wreaths on the quad-end trees. */
+    lanternCorner: 0.9,
+    /** C15 nap grove: six hammocks strung between round trees, west lobe. */
+    grove: {
+      /** [rows, columns] of hammocks, tried in order. */
+      layouts: [
+        [2, 3],
+        [3, 2],
+      ] as const,
+      /** Hammock pitch along the row (u) and between rows (v); trees stand at the pitch midpoints. */
+      pitchU: 5.2,
+      pitchV: 3.6,
+      /** Ground limits (the free rect is cols × pitchU + 2.4 by rows × pitchV + 1.6). */
+      maxRelief: 3.5,
+      minShore: 3,
+      /** Mug crate beside every other hammock: offset along u / v. */
+      mug: [0.2, 1.0] as const,
+    },
+    /** Devpod roofs wear weather vanes: devPod variants 2 / 3 (wearing the v0 / v1 roofs). */
+    vaneVariants: [2, 3] as const,
+  },
 } as const;

@@ -31,7 +31,8 @@ export const OFFICE_DEFS: Readonly<Record<string, OfficeDef>> = {
   meetingPavilion: { theme: 'hq', kind: 'pavilion', w: 4, d: 4, variants: 2 },
   coffeeKiosk: { theme: 'hq', kind: 'kiosk', w: 2, d: 1.5, variants: 2 },
   devOffice: { theme: 'coding', kind: 'office', w: 7, d: 4, variants: 2 },
-  devPod: { theme: 'coding', kind: 'office', w: 3, d: 3, variants: 2 },
+  // v2 / v3 = the weather-vane pods (M22 TASK-479; the Coding plan pins them)
+  devPod: { theme: 'coding', kind: 'office', w: 3, d: 3, variants: 4 },
   serverShed: { theme: 'coding', kind: 'shed', w: 3, d: 2.5, variants: 2 },
   broadcastStudio: { theme: 'marketing', kind: 'studio', w: 4, d: 3.5, variants: 2 },
   billboard: { theme: 'marketing', kind: 'kiosk', w: 4, d: 1.5, variants: 2 },

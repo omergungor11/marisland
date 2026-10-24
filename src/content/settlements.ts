@@ -81,7 +81,8 @@ export const LOT_ROOFS: Readonly<Record<string, readonly number[]>> = {
   meetingPavilion: [2, 6],
   coffeeKiosk: [0, 4],
   devOffice: [5, 2],
-  devPod: [3, 6],
+  // v2 / v3 (TASK-479) wear the v0 / v1 roofs
+  devPod: [3, 6, 3, 6],
   serverShed: [4, 0],
   broadcastStudio: [1, 3],
   billboard: [0, 4],
@@ -169,6 +170,9 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   giantDuck: 1.6,
   whiteboardA: 0.8,
   mugStack: 0.5,
+  // Coding M22 (TASK-479): windsock avenue pole; fairy wreaths ride their tree (no obstacle of their own)
+  windsock: 0.4,
+  fairyWreath: 0.1,
   // DevOps
   coolingTower: 2.6,
   rackRow: 1.6,
