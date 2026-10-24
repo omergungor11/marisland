@@ -8,6 +8,7 @@
 import { FOLIAGE } from '../palette.ts';
 import type { CampusSpec } from '../settlements.ts';
 import type { PlacementRule } from '../placement.ts';
+import type { RimWalkwaySpec } from '../rim-walkway.ts';
 import { Zone } from '../../world/types.ts';
 import type { ThemeDef } from './index.ts';
 
@@ -37,12 +38,54 @@ const GROUND: ThemeDef['ground'] = {
     base: '#C9CED6',
     layer: { tile: { size: 1, grout: '#8A93A0' } },
   },
+  // C18 rim boardwalk (CODING_RIM_WALK): warm timber deck tiles with dark seams
+  [Zone.streetCoding]: {
+    material: 'paving',
+    base: '#C49A6C',
+    layer: { tile: { size: 1, grout: '#8E6A45' } },
+  },
   // reflecting pool: still blue-teal water look (ripples only)
   [Zone.crater]: {
     material: 'paving',
     base: '#5E9FD2',
     layer: { layers: ['ripples'], amplitude: 0.5 },
   },
+};
+
+/**
+ * C18 rim boardwalk (TASK-484; the TASK-480 primitive, world/gen/rim-walkway.ts): a timber walk 2 u
+ * in from the plateau lip in the island's `streetCoding` zone, wooden posts (RIM_POST_LOOKS[1] =
+ * rimPost variants 2 / 3) with rope rails between the walk and the drop. Lip / drop numbers are
+ * QA's (both are bluff plateaus); `field` (the solar gravel) is never painted over.
+ */
+export const CODING_RIM_WALK: RimWalkwaySpec = {
+  zone: Zone.streetCoding,
+  inset: 2,
+  halfWidth: 1.1,
+  lip: { band: 0.5, steep: 0.8, flat: 0.32, maxSdf: 16 },
+  drop: { shore: 1, min: 3 },
+  maxSlope: 0.4,
+  minY: 3,
+  paintOver: [Zone.grass, Zone.meadow, Zone.forest, Zone.sandDry],
+  minRun: 6,
+  shapeGap: 0.6,
+  pathGap: 1.6,
+  posts: { def: 'rimPost', variant: 2, end: 3, spacing: 3, inset: 0.8 },
+};
+
+/**
+ * C18 benches on the boardwalk: `count` benches (bench v0, timber) on its inland edge facing the
+ * sea, `back` u inland of the walk centreline, at least `apart` u from each other; samples every
+ * `step` u of the walk, footprint `rect` [w, d], ground relief ≤ `maxRelief` u.
+ */
+export const CODING_RIM_BENCHES = {
+  count: 2,
+  variant: 0,
+  back: 1.5,
+  step: 2,
+  apart: 24,
+  rect: [1.6, 0.7] as const,
+  maxRelief: 0.5,
 };
 
 /** Theme scatter (the global roundTree / pine / bush rules are off on this island). */
