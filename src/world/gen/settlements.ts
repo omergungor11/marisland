@@ -1117,6 +1117,8 @@ export function buildSettlements(input: SettlementInput, rng: Rng): SettlementRe
   }
   writePaths(ctx.h, ctx.zone, ctx.sdf, built.paths, protect);
   for (const [i, z] of spared) ctx.zone[i] = z;
+  // late plan passes that need the final footpaths (TASK-480 rim walkway)
+  for (const plan of plans) plan.finish?.(built.paths);
 
   const fences: Polyline[] = [];
   for (const plan of plans) {

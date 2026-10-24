@@ -30,7 +30,7 @@ import { flockCentres, Gulls, type Perch } from './gulls.ts';
 import type { Cats, Crabs, Sheep, Villagers } from './land.ts';
 import type { Butterflies, SpotCritters } from './critters.ts';
 import { createCritterKinds, createSpotCritters, type Ducks } from './critters.ts';
-import { Fireflies, planSwarms } from './fireflies.ts';
+import { Fireflies, planBugHunt, planSwarms } from './fireflies.ts';
 import { createLandKinds, type LandKind } from './land.ts';
 import { buildSolids, buildWalkGraph, makeMask, makeStopMask } from './land-world.ts';
 import { createWorkers, type Workers } from './workers.ts';
@@ -103,7 +103,7 @@ export function createLife(deps: LifeDeps): LifeSystem {
   const routes = allRoutes.filter((r) => r.kind !== 'ferry');
   const ferryRoutes = allRoutes.filter((r) => r.kind === 'ferry');
   const P = CULTURE_BOATS.patrol;
-  const patrolRing = plan.patrolBoats > 0 ? islandRing(ctx, P.theme, P.margin) : null;
+  const patrolRing = plan.patrolBoats > 0 ? islandRing(ctx, P.theme, P.margin, P.slalom) : null;
   const LB = CULTURE_BOATS.lantern;
   const lanternRing = plan.lanternBoats > 0 ? islandRing(ctx, LB.theme, LB.margin) : null;
   const sailing = routes.length > 0 && plan.sailboats > 0 ? plan.sailboats : 0;
@@ -244,7 +244,9 @@ export function createLife(deps: LifeDeps): LifeSystem {
   all.push(...landKinds);
 
   const swarms = planSwarms(ctx, plan.fireflies, ctx.rngFor('fireflies'));
-  if (swarms.length > 0) kinds.fireflies = new Fireflies(base, ctx, swarms, plan.fireflies);
+  const bugs = plan.fireflies > 0 ? planBugHunt(ctx) : [];
+  if (swarms.length > 0 || bugs.length > 0)
+    kinds.fireflies = new Fireflies(base, ctx, swarms, plan.fireflies, bugs);
 
   const ambient = new AmbientScheduler(deps.seed);
   const spotRng = ctx.rngFor('spots');

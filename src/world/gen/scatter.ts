@@ -166,7 +166,10 @@ export function scatterProps(
     rules: readonly PlacementRule[],
     skip: (rule: PlacementRule, r: number) => boolean,
   ): void => {
-    for (let r = 0; r < rules.length; r++) {
+    // `first` rules claim their spots before the rest; each keeps its own rng fork index
+    const order = rules.map((_, r) => r);
+    order.sort((a, b) => Number(!!rules[b].first) - Number(!!rules[a].first) || a - b);
+    for (const r of order) {
       const rule = rules[r];
       if (skip(rule, r)) continue;
       const defIndex = PROP_DEF_INDEX[rule.def];
@@ -200,6 +203,17 @@ export function scatterProps(
           noise.fbm(x / rule.cluster.scale, z / rule.cluster.scale, 3) < rule.cluster.threshold
         )
           return false;
+        if (rule.near && rule.nearDist) {
+          let hit = false;
+          for (let k = 0; k < 16 && !hit; k++) {
+            const a = ((k & 7) / 8) * Math.PI * 2;
+            const d = k < 8 ? rule.nearDist : rule.nearDist / 2;
+            hit = rule.near.includes(
+              zoneAt(h, world.zone, x + Math.cos(a) * d, z + Math.sin(a) * d),
+            );
+          }
+          if (!hit) return false;
+        }
         if (rule.avoid && rule.avoidDist) {
           const d = rule.avoidDist;
           for (const [ox, oz] of [

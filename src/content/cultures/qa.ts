@@ -59,7 +59,7 @@ export const QA_CULTURE_SITES = {
   maxRelief: 0.8,
   padMargin: 0.4,
   /** Obstacle rect (local x, z) of the flat defs; the others block their FIXTURE_RADIUS disc. */
-  rect: { clipboardWall: [2.8, 0.45], scoreboard: [2.7, 0.5] },
+  rect: { clipboardWall: [2.8, 0.45], scoreboard: [2.7, 0.5], hammock: [4.4, 1.3] },
   /** Footpath pins (lot doors, landmark access, pier root) stay this clear. */
   pinClear: 1.4,
   /** Pads more than this apart in height are another level (keep out of their relax bound). */
@@ -139,4 +139,26 @@ export const QA_CULTURE_SITES = {
   crab: { y: [0.5, 1.3] as const, search: 14, minFromRoot: 3, minShore: 0.3, maxRelief: 1.2 },
   /** Story spot heights above the ground (gull on the pyramid tip). */
   gullY: 2.4,
+  /**
+   * Q15 grandstand (TASK-480): `dummyBench` variant 1 beside the loop track, front to it; candidate
+   * (local x past the track side, z) in the track frame, obstacle rect [w, d].
+   */
+  grandstand: {
+    variant: 1,
+    rect: [4.6, 1.9] as const,
+    side: [1.3, 2.6] as const,
+    at: [0, 2.5, -2.5, 4.5, -4.5] as const,
+    maxRelief: 1,
+  },
+  /**
+   * Q18 hammocks on the rim (TASK-480; Coding's `hammock` def, teal variant): this far inland of the
+   * walk centreline, walk samples every `step` u, at most `count`, at least `apart` u apart.
+   */
+  hammocks: { count: 2, variant: 1, back: 3.1, step: 2, apart: 26, maxRelief: 0.6 },
+  /**
+   * Q10 buoy slalom (TASK-480): `count` inspection buoys `spacing` u apart on the inspection boat's
+   * ring (radius + CULTURE_BOATS.patrol.margin), on a stretch at least `depth` u deep (± `pad`
+   * samples of the stretch too), as far round from the pier as the stretch allows.
+   */
+  slalom: { count: 8, spacing: 6.5, depth: 2.5, pad: 2, angles: 180 },
 } as const;

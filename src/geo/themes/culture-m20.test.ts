@@ -5,6 +5,7 @@ import { CULTURES } from '../../content/cultures/index.ts';
 import { validateCultures } from '../../content/cultures/validate.ts';
 import { cultureCapOverride } from '../../content/budgets.ts';
 import { PROP_DEFS, PROP_DEF_INDEX } from '../../content/props.ts';
+import { RIM_PROP_DEFS } from '../../content/props-themes/rim.ts';
 import {
   CONSERVATORY,
   CULTURE_GATE,
@@ -68,7 +69,9 @@ describe('TASK-465 ledgers and defs', () => {
   it('every ledger entry has a PropDef (tier, flags) and a geo def (variants, windy) at the end of PROP_DEFS', () => {
     const all = [...HQ_M20_PROP_DEFS, ...DESIGN_M20_PROP_DEFS];
     expect(all.map((d) => d.id)).toEqual(M20_PROP_IDS);
-    const last = PROP_DEFS.slice(-all.length).map((d) => d.id);
+    // M22 appends the shared rim post after them (TASK-480)
+    const end = PROP_DEFS.length - RIM_PROP_DEFS.length;
+    const last = PROP_DEFS.slice(end - all.length, end).map((d) => d.id);
     expect(last).toEqual(M20_PROP_IDS);
     for (const k of [...CULTURES.hq.kit.slice(8), ...CULTURES.design.kit.slice(10)]) {
       const d = defOf(k.id);

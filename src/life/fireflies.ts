@@ -23,6 +23,27 @@ export interface Swarm {
   z: number;
 }
 
+/**
+ * Q17 bug hunt (TASK-480): green swarms at the bug-hunt story spots of `FIREFLIES.bugHunt.theme`'s
+ * island (each spot kind once, in table order). Pure data.
+ */
+export function planBugHunt(ctx: LifeCtx): Swarm[] {
+  const B = FIREFLIES.bugHunt;
+  const isl = ctx.world.islands.find((i) => i.theme === B.theme);
+  if (!isl) return [];
+  const out: Swarm[] = [];
+  for (const kind of B.stories) {
+    const s = (ctx.world.storySpots ?? []).find((t) => t.islandId === isl.id && t.kind === kind);
+    if (!s) continue;
+    out.push({
+      island: isl.id,
+      x: s.pos.x + Math.cos(s.rotY) * B.ahead,
+      z: s.pos.z + Math.sin(s.rotY) * B.ahead,
+    });
+  }
+  return out;
+}
+
 /** Light sources of the lantern pools (lantern posts, stalls, door lights …): fireflies keep out of them. */
 function lightSources(ctx: LifeCtx): { x: number; z: number; r: number }[] {
   const out: { x: number; z: number; r: number }[] = [];
@@ -117,7 +138,8 @@ export function planSwarms(ctx: LifeCtx, count: number, rng: Rng): Swarm[] {
 function fireflyGeometry(): THREE.BufferGeometry {
   const g = new THREE.OctahedronGeometry(FIREFLIES.size, 0);
   const n = g.getAttribute('position').count;
-  const col = new THREE.Color(FIREFLIES.color);
+  // white: the instance colour carries the hue (FIREFLIES.color, the bug hunt's green)
+  const col = new THREE.Color(1, 1, 1);
   const c: number[] = [];
   const limb: number[] = [];
   const em: number[] = [];
@@ -167,11 +189,13 @@ export class Fireflies extends AgentKind {
     private readonly ctx: LifeCtx,
     swarms: Swarm[],
     count: number,
+    /** Q17 green bug-hunt swarms, `FIREFLIES.perSwarm` each after the `count` plain ones. */
+    bugs: Swarm[] = [],
   ) {
     super({
       ...o,
       name: 'fireflies',
-      capacity: swarms.length > 0 ? count : 0,
+      capacity: (swarms.length > 0 ? count : 0) + bugs.length * FIREFLIES.perSwarm,
       geometry: fireflyGeometry(),
       material: makeLifeMaterial('life:fireflies', false),
     });
@@ -194,8 +218,12 @@ export class Fireflies extends AgentKind {
     this.onAt = f32();
     const h = (i: number, k: number): number => unitHash(o.seed, i, 0xf1e5 + k);
     const lerp = (r: readonly [number, number], u: number): number => r[0] + (r[1] - r[0]) * u;
+    const plain = swarms.length > 0 ? count : 0;
     for (let i = 0; i < n; i++) {
-      const sw = swarms[Math.floor(i / F.perSwarm) % swarms.length];
+      const sw =
+        i < plain
+          ? swarms[Math.floor(i / F.perSwarm) % swarms.length]
+          : bugs[Math.floor((i - plain) / F.perSwarm)];
       const a = h(i, 0) * TAU;
       const d = Math.sqrt(h(i, 1)) * F.swarmRadius;
       this.hx[i] = sw.x + Math.cos(a) * d;
@@ -217,8 +245,9 @@ export class Fireflies extends AgentKind {
     this.mesh.frustumCulled = false;
     // an instanceColor attribute keeps the program parameters identical to the land critters'
     // (same cache key + same defines = the one shared creature program, not a 13th)
-    const white = new THREE.Color(1, 1, 1);
-    for (let i = 0; i < n; i++) this.mesh.setColorAt(i, white);
+    const warm = new THREE.Color(F.color);
+    const green = new THREE.Color(F.bugHunt.color);
+    for (let i = 0; i < n; i++) this.mesh.setColorAt(i, i < plain ? warm : green);
     this.render(0, 0); // hidden until night
   }
 

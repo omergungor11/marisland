@@ -187,6 +187,12 @@ export interface SitePlan {
    * height above the ground (0 = on it); the final ground is added after the pads.
    */
   stories?: StorySpot[];
+  /**
+   * Late pass (TASK-480): runs once the footpaths are built and written to the zones (before the
+   * fences are collected), for features that must gap at paths or paint around them (the rim
+   * walkway). May push fixtures / shapes / lines; no pads (they are already applied).
+   */
+  finish?: (paths: readonly Polyline[]) => void;
 }
 
 /** Shared planner state across all islands (one per `buildSettlements` call). */

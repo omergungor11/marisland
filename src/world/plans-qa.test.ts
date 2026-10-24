@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { QA_CULTURE, QA_CULTURE_SITES } from '../content/cultures/qa.ts';
 import { PROP_DEFS, PROP_DEF_INDEX } from '../content/props.ts';
 import { FIXTURE_RADIUS } from '../content/settlements.ts';
-import { QA_PLAN } from '../content/themes/qa.ts';
+import { CULTURE_BOATS } from '../content/life.ts';
+import { RIM_POST_LOOKS } from '../content/rim-walkway.ts';
+import { QA_PLAN, QA_RIM_WALK } from '../content/themes/qa.ts';
 import { StageHash } from './gen/hash.ts';
 import { generateWorld, heightAt, type WorldData, type XZ } from './index.ts';
 
@@ -198,8 +200,11 @@ describe('QA Test Factory plan (TASK-401), 30 seeds', () => {
       for (const l of labs) expect(heightAt(w.height, l.x, l.z), ctx).toBeLessThan(-0.3);
       stilt += labs.length;
       const fx = w.fixtures.filter((f) => f.islandId === isl.id).map((f) => f.defId);
-      for (const d of ['buoy', 'inspectionBuoy', 'tidePool', 'well'])
-        expect(fx, ctx).not.toContain(d);
+      // inspection buoys are back since TASK-480, but only as the Q10 slalom line (own test)
+      for (const d of ['buoy', 'tidePool', 'well']) expect(fx, ctx).not.toContain(d);
+      expect(fx.filter((d) => d === 'inspectionBuoy').length, ctx).toBeLessThanOrEqual(
+        QA_CULTURE_SITES.slalom.count,
+      );
       expect(
         w.landmarks.filter((m) => m.islandId === isl.id).map((m) => m.kind),
         ctx,
@@ -217,9 +222,9 @@ describe('QA Test Factory plan (TASK-401), 30 seeds', () => {
     });
     expect(got).toMatchInlineSnapshot(`
       [
-        "71c7bb156107dc59",
-        "b57181299471095f",
-        "b86af0297e0c20ff",
+        "a4469af79649fbc8",
+        "00e59e155c4d0bd9",
+        "38a404a72d2c6d20",
       ]
     `);
   });
@@ -252,7 +257,10 @@ describe("QA Inspectors' Island culture (TASK-424), 30 seeds", () => {
       const ctx = `seed ${seed}`;
       const fx = w.fixtures.filter((f) => f.islandId === isl.id);
       for (const [id, R] of Object.entries(RANGES)) {
-        const k = fx.filter((f) => f.defId === id).length;
+        // the Q15 grandstand is dummyBench v1 (TASK-480, own test)
+        const k = fx.filter(
+          (f) => f.defId === id && !(id === 'dummyBench' && f.variant === C.grandstand.variant),
+        ).length;
         expect(k, `${ctx} ${id}`).toBeGreaterThanOrEqual(R.n[0]);
         expect(k, `${ctx} ${id}`).toBeLessThanOrEqual(R.n[1]);
         if (k > 0) hits[id] = (hits[id] ?? 0) + 1;
@@ -324,5 +332,143 @@ describe("QA Inspectors' Island culture (TASK-424), 30 seeds", () => {
         expect(s.pos.y, ctx).toBeGreaterThanOrEqual(y - 1e-6);
       }
     }
+  });
+});
+
+/** TASK-480 (M22 QA quick wins): rim walkway + hazard posts, palm rim, hammocks, slalom, grandstand. */
+describe('QA quick wins (TASK-480), 30 seeds', () => {
+  const C = QA_CULTURE_SITES;
+  const W = QA_RIM_WALK;
+  const P = W.posts!;
+  const cellOf = (w: WorldData, x: number, z: number): number =>
+    Math.round((z - w.height.originZ) / w.height.cellSize) * w.height.n +
+    Math.round((x - w.height.originX) / w.height.cellSize);
+  const slope = (w: WorldData, x: number, z: number): number =>
+    Math.hypot(
+      heightAt(w.height, x + 1, z) - heightAt(w.height, x - 1, z),
+      heightAt(w.height, x, z + 1) - heightAt(w.height, x, z - 1),
+    ) / 2;
+  const nearPath = (w: WorldData, id: number, p: XZ, r: number): boolean =>
+    w.paths.some(
+      (pl) =>
+        pl.islandId === id &&
+        pl.points.some((q, k) => k + 1 < pl.points.length && segDist(p, q, pl.points[k + 1]) < r),
+    );
+
+  it('Q6 rim walkway: a painted band on the plateau rim, hazard posts every 3 u, gaps at paths', () => {
+    let walks = 0;
+    for (const seed of SEEDS) {
+      const w = world(seed);
+      const { isl } = qaOf(w);
+      const ctx = `seed ${seed}`;
+      let painted = 0;
+      for (let i = 0; i < w.zone.length; i++) {
+        if (w.islandMap[i] !== isl.id + 1 || w.zone[i] !== W.zone) continue;
+        painted++;
+        // up on the plateau, never on the bluff face
+        expect(w.height.data[i], ctx).toBeGreaterThanOrEqual(W.minY - 0.5);
+        expect(w.shoreSdf[i], ctx).toBeGreaterThan(3);
+      }
+      const posts = w.fixtures.filter((f) => f.islandId === isl.id && f.defId === P.def);
+      if (painted >= 40 && posts.length >= 15) walks++;
+      for (const f of posts) {
+        const at = `${ctx} post @${f.x.toFixed(1)},${f.z.toFixed(1)}`;
+        expect([P.variant, P.end], at).toContain(f.variant);
+        expect(heightAt(w.height, f.x, f.z), at).toBeGreaterThanOrEqual(W.minY);
+        expect(slope(w, f.x, f.z), at).toBeLessThanOrEqual(W.maxSlope + 1e-6);
+        expect(nearPath(w, isl.id, f, W.pathGap - 0.05), `${at} on a path`).toBe(false);
+        // the rail (local +x = (sin, −cos) of rotY) ends at the next post
+        if (f.variant === P.variant) {
+          const end = {
+            x: f.x + Math.sin(f.rotY) * RIM_POST_LOOKS[0].railLen,
+            z: f.z - Math.cos(f.rotY) * RIM_POST_LOOKS[0].railLen,
+          };
+          const next = Math.min(...posts.map((q) => Math.hypot(q.x - end.x, q.z - end.z)));
+          expect(next, `${at} rail end`).toBeLessThan(0.05);
+        }
+      }
+    }
+    // TASK-480: a rim crowded with lots / hangars can leave a seed too little walk
+    expect(walks / SEEDS.length).toBeGreaterThanOrEqual(0.85);
+  });
+
+  it('Q18 palm rim: palms inland of the walk, near it; two hammocks on the rim', () => {
+    const palm = PROP_DEF_INDEX.palm;
+    let rows = 0;
+    let hammocks = 0;
+    for (const seed of SEEDS) {
+      const w = world(seed);
+      const { isl } = qaOf(w);
+      const ctx = `seed ${seed}`;
+      let n = 0;
+      for (let i = 0; i < w.props.count; i++) {
+        if (w.props.defId[i] !== palm || w.props.islandId[i] !== isl.id) continue;
+        n++;
+        const c = cellOf(w, w.props.x[i], w.props.z[i]);
+        expect(w.shoreSdf[c], `${ctx} palm inland of the walk`).toBeGreaterThan(8.5);
+      }
+      if (n >= 6) rows++;
+      const hs = w.fixtures.filter((f) => f.islandId === isl.id && f.defId === 'hammock');
+      expect(hs.length, ctx).toBeLessThanOrEqual(C.hammocks.count);
+      for (const f of hs) {
+        expect(f.variant, ctx).toBe(C.hammocks.variant);
+        expect(heightAt(w.height, f.x, f.z), ctx).toBeGreaterThan(W.minY);
+        expect(nearPath(w, isl.id, f, 1.5), `${ctx} hammock on a path`).toBe(false);
+      }
+      if (hs.length > 1)
+        expect(Math.hypot(hs[0].x - hs[1].x, hs[0].z - hs[1].z)).toBeGreaterThan(
+          C.hammocks.apart - 1e-6,
+        );
+      hammocks += hs.length;
+    }
+    expect(rows / SEEDS.length, 'palm rows').toBeGreaterThanOrEqual(0.7);
+    expect(hammocks / SEEDS.length, 'hammocks per island').toBeGreaterThanOrEqual(1.6);
+  });
+
+  it('Q10 slalom: eight inspection buoys on the inspection boat ring, in deep water', () => {
+    let lines = 0;
+    for (const seed of SEEDS) {
+      const w = world(seed);
+      const { isl } = qaOf(w);
+      const bs = w.fixtures.filter((f) => f.islandId === isl.id && f.defId === 'inspectionBuoy');
+      if (bs.length === 0) continue;
+      lines++;
+      expect(bs.length, `seed ${seed}`).toBe(C.slalom.count);
+      const R = isl.radius + CULTURE_BOATS.patrol.margin;
+      for (const b of bs) {
+        expect(Math.hypot(b.x - isl.cx, b.z - isl.cz)).toBeCloseTo(R, 3);
+        expect(heightAt(w.height, b.x, b.z), `seed ${seed}`).toBeLessThanOrEqual(-C.slalom.depth);
+      }
+      for (let k = 1; k < bs.length; k++)
+        expect(Math.hypot(bs[k].x - bs[k - 1].x, bs[k].z - bs[k - 1].z)).toBeCloseTo(
+          C.slalom.spacing,
+          1,
+        );
+    }
+    expect(lines / SEEDS.length).toBeGreaterThanOrEqual(0.9);
+  });
+
+  it('Q15 grandstand: one dummyBench v1 beside the loop track, facing it', () => {
+    let stands = 0;
+    for (const seed of SEEDS) {
+      const w = world(seed);
+      const { isl } = qaOf(w);
+      const fx = w.fixtures.filter((f) => f.islandId === isl.id);
+      const gs = fx.filter((f) => f.defId === 'dummyBench' && f.variant === C.grandstand.variant);
+      expect(gs.length, `seed ${seed}`).toBeLessThanOrEqual(1);
+      const track = fx.find((f) => f.defId === 'testTrack');
+      for (const g of gs) {
+        expect(track, `seed ${seed}`).toBeDefined();
+        const t = track as XZ;
+        expect(Math.hypot(g.x - t.x, g.z - t.z), `seed ${seed}`).toBeLessThan(
+          QA_PLAN.track[1] / 2 + 4,
+        );
+        // front (+z = dirOf(rotY)) toward the track
+        const fwd = (t.x - g.x) * Math.cos(g.rotY) + (t.z - g.z) * Math.sin(g.rotY);
+        expect(fwd, `seed ${seed}`).toBeGreaterThan(0);
+      }
+      stands += gs.length;
+    }
+    expect(stands / SEEDS.length).toBeGreaterThanOrEqual(0.8);
   });
 });

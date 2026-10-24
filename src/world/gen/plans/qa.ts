@@ -22,12 +22,14 @@ import {
   PATHS,
   VILLAGE,
 } from '../../../content/settlements.ts';
-import { QA_PLAN as P } from '../../../content/themes/qa.ts';
+import { CULTURE_BOATS } from '../../../content/life.ts';
+import { QA_PLAN as P, QA_RIM_WALK } from '../../../content/themes/qa.ts';
 import { THEMES } from '../../../content/themes/index.ts';
 import type { Rng } from '../../../core/rng.ts';
-import type { IslandData, StorySpot, XZ } from '../../types.ts';
+import type { IslandData, Polyline, StorySpot, XZ } from '../../types.ts';
 import { heightAt } from '../../types.ts';
 import { gridRange } from '../grid.ts';
+import { rimSamples, rimWalkway, slopeAtXZ } from '../rim-walkway.ts';
 import {
   add,
   addPad,
@@ -49,6 +51,7 @@ import {
   pushLandmark,
   rectShape,
   relief,
+  segDist,
   shapeDist,
   shapesOverlap,
   siteFree,
@@ -380,8 +383,116 @@ export const planQa: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
     tower: tp,
     root: site ? site.root : null,
   });
+
+  // Q10 buoy slalom on the inspection boat's ring, away from the pier (TASK-480)
+  placeSlalom(ctx, isl, dockA);
+  // Q6 rim walkway + hazard posts, Q18 hammocks: once the footpaths exist (gaps at them)
+  plan.finish = (paths) => {
+    const walk = rimWalkway(ctx, isl, QA_RIM_WALK, paths);
+    placeHammocks(ctx, isl, walk, paths);
+  };
   return plan;
 };
+
+/**
+ * Q10 (TASK-480): `slalom.count` inspection buoys `slalom.spacing` u apart on the circle the
+ * inspection boat circles (life `islandRing`: radius + CULTURE_BOATS.patrol.margin round the island
+ * centre), on a stretch deep enough (± `pad` spacings) that the ring is not pushed out there, as far
+ * round from the pier as possible. The boat's ring weaves through them (life/boats.ts).
+ */
+function placeSlalom(ctx: SiteCtx, isl: IslandData, dockA: number): void {
+  const S = QA_CULTURE_SITES.slalom;
+  const R = isl.radius + CULTURE_BOATS.patrol.margin;
+  const da = S.spacing / R;
+  const at = (a: number): XZ => ({ x: isl.cx + Math.cos(a) * R, z: isl.cz + Math.sin(a) * R });
+  let best = -1;
+  let bestA = 0;
+  for (let k = 0; k < S.angles; k++) {
+    const a0 = (k / S.angles) * TAU;
+    let ok = true;
+    for (let j = -S.pad; j < S.count + S.pad && ok; j++) {
+      const p = at(a0 + j * da);
+      ok = heightAt(ctx.h, p.x, p.z) <= -S.depth;
+    }
+    if (!ok) continue;
+    const gap = angGap(a0 + ((S.count - 1) * da) / 2, dockA);
+    if (gap > best + 1e-9) {
+      best = gap;
+      bestA = a0;
+    }
+  }
+  if (best < 0) return;
+  for (let j = 0; j < S.count; j++) {
+    const a = bestA + j * da;
+    const p = at(a);
+    // local +z faces out to sea (radial)
+    ctx.fixtures.push({ defId: 'inspectionBuoy', x: p.x, z: p.z, rotY: a, islandId: isl.id });
+  }
+}
+
+/**
+ * Q18 hammocks (TASK-480): Coding's `hammock` (teal variant) on the inland side of the rim walk,
+ * slung along it, facing the sea view; the first where it fits, the next as far from it as fits.
+ */
+function placeHammocks(
+  ctx: SiteCtx,
+  isl: IslandData,
+  walk: ReturnType<typeof rimWalkway>,
+  paths: readonly Polyline[],
+): void {
+  const H = QA_CULTURE_SITES.hammocks;
+  const [w, d] = QA_CULTURE_SITES.rect.hammock;
+  const cands: { sh: Shape; rotY: number }[] = [];
+  for (const smp of rimSamples(walk, H.step)) {
+    const p = add(smp.p, smp.inland, H.back);
+    const rotY = ang(smp.inland.x, smp.inland.z);
+    const sh = rectShape(p.x, p.z, rotY, w, d);
+    if (!onLand(ctx, isl, sh, 2) || relief(ctx, sh) > H.maxRelief) continue;
+    if (slopeAtXZ(ctx, p.x, p.z) > QA_RIM_WALK.maxSlope) continue;
+    if (ctx.shapes[isl.id].some((o) => o.tag !== 'plaza' && shapesOverlap(o, sh, 0.4))) continue;
+    if (
+      paths.some(
+        (pl) =>
+          pl.islandId === isl.id &&
+          pl.points.some(
+            (_q, k) =>
+              k + 1 < pl.points.length &&
+              segDist(p, pl.points[k], pl.points[k + 1]) < w / 2 + QA_RIM_WALK.pathGap,
+          ),
+      )
+    )
+      continue;
+    cands.push({ sh, rotY });
+  }
+  const placed: { sh: Shape; rotY: number }[] = [];
+  while (placed.length < H.count) {
+    let pick: { sh: Shape; rotY: number } | null = null;
+    let bd = -1;
+    for (const c of cands) {
+      const dmin = placed.length ? Math.min(...placed.map((o) => dist(o.sh, c.sh))) : 0;
+      if (placed.length && dmin < H.apart) continue;
+      if (!placed.length) {
+        pick = c;
+        break;
+      }
+      if (dmin > bd) {
+        bd = dmin;
+        pick = c;
+      }
+    }
+    if (!pick) break;
+    placed.push(pick);
+    ctx.fixtures.push({
+      defId: 'hammock',
+      x: pick.sh.x,
+      z: pick.sh.z,
+      rotY: pick.rotY,
+      islandId: isl.id,
+      variant: H.variant,
+    });
+    addShape(ctx, isl, pick.sh, false);
+  }
+}
 
 /* ------------------------------------------------------------------------------------------ */
 /* TASK-424 "Müfettişler Adası" (Inspectors' Island): the culture kit round the Test Factory.   */
@@ -647,6 +758,18 @@ function inspectors(
     }
     const cone = kitAt('conePyramid', ends);
     if (cone) story('gullOnCones', cone.p, K.gullY, cone.rotY);
+    // Q15 grandstand (TASK-480): beside a long side, front to the track
+    const G = K.grandstand;
+    stand: for (const side of G.side)
+      for (const z of G.at)
+        for (const sx of [1, -1]) {
+          const p = loc(T.p, T.rot, sx * (w / 2 + side + G.rect[1] / 2), z);
+          const rotY = facing(p, loc(T.p, T.rot, 0, z));
+          const sh = rectShape(p.x, p.z, rotY, G.rect[0], G.rect[1]);
+          if (!fits(sh, { maxRelief: G.maxRelief })) continue;
+          put('dummyBench', sh, rotY, G.variant);
+          break stand;
+        }
   }
 
   // ---- Bug Zoo (terrarium v2) near a test lab, door to the nearest lane, its own footpath

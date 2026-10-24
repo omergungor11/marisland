@@ -342,5 +342,14 @@ function items(b: TriBuilder): void {
     b.box(v3(0.2, 0.31 + k * 0.045, 0.02 * (k - 1)), 0.085, 0.021, 0.115, hex(c), hex(I.pages));
   });
 
+  // 15 lantern (QA bug hunt, TASK-480): held out in the right hand, a glowing green glass box
+  tag(15);
+  b.box(v3(0.26, 0.36, 0.2), 0.008, 0.07, 0.008, hex(I.lanternFrame));
+  b.box(v3(0.26, 0.29, 0.2), 0.05, 0.012, 0.05, hex(I.lanternFrame));
+  b.box(v3(0.26, 0.15, 0.2), 0.05, 0.012, 0.05, hex(I.lanternFrame));
+  b.setEmissive(2);
+  b.box(v3(0.26, 0.22, 0.2), 0.042, 0.06, 0.042, hex(I.lanternGlow));
+  b.setEmissive(0);
+
   b.clearLimb();
 }

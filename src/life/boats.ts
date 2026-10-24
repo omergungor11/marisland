@@ -94,11 +94,24 @@ export function resolveRoutes(ctx: LifeCtx): Route[] {
   });
 }
 
-/** A loop `margin` u beyond a themed island's radius (inspection / lantern boat), or null. */
-export function islandRing(ctx: LifeCtx, theme: string, margin: number): Route | null {
+/**
+ * A loop `margin` u beyond a themed island's radius (inspection / lantern boat), or null. With
+ * `slalom`, the stretch of the ring past that island's `slalom.def` fixtures (the QA plan's buoy
+ * line, placed on this very circle) is replaced by a weave `slalom.weave` u either side of each one.
+ */
+export function islandRing(
+  ctx: LifeCtx,
+  theme: string,
+  margin: number,
+  slalom?: { def: string; weave: number },
+): Route | null {
   const isl = ctx.world.islands.find((i) => i.theme === theme);
-  const raw = isl && ringAround(ctx, isl.cx, isl.cz, isl.radius + margin);
-  if (!raw) return null;
+  let raw = isl && ringAround(ctx, isl.cx, isl.cz, isl.radius + margin);
+  if (!raw || !isl) return null;
+  if (slalom) {
+    const buoys = ctx.world.fixtures.filter((f) => f.islandId === isl.id && f.defId === slalom.def);
+    raw = weaveRing(raw, isl.cx, isl.cz, buoys, slalom.weave);
+  }
   const pts = smoothPolyline(raw, 4, true);
   const lens = arcLengths(pts, true);
   return {
@@ -110,6 +123,57 @@ export function islandRing(ctx: LifeCtx, theme: string, margin: number): Route |
     dwell: 0,
     stopArcs: [],
   };
+}
+
+/**
+ * Replace the ring points (angle-ordered round (cx, cz), as `ringAround` makes them) between the
+ * first and last buoy by a weave: one point per buoy, alternately `weave` u outside / inside it.
+ * The buoys must be one run along the ring (the QA slalom line); fewer than 2 → unchanged.
+ */
+export function weaveRing(
+  ring: Vec2[],
+  cx: number,
+  cz: number,
+  buoys: readonly { x: number; z: number }[],
+  weave: number,
+): Vec2[] {
+  if (buoys.length < 2) return ring;
+  const TAU = Math.PI * 2;
+  const angOf = (x: number, z: number): number => {
+    const a = Math.atan2(z - cz, x - cx);
+    return a < 0 ? a + TAU : a;
+  };
+  // unwrap the buoy angles round the first one (the line spans well under half a turn)
+  const a0 = angOf(buoys[0].x, buoys[0].z);
+  const rel = (a: number): number => {
+    let d = a - a0;
+    while (d > Math.PI) d -= TAU;
+    while (d <= -Math.PI) d += TAU;
+    return d;
+  };
+  const bs = buoys.map((b) => ({ b, d: rel(angOf(b.x, b.z)) })).sort((p, q) => p.d - q.d);
+  const lo = bs[0].d;
+  const hi = bs[bs.length - 1].d;
+  const step = (hi - lo) / (bs.length - 1);
+  const keep = ring.filter((p) => {
+    const d = rel(angOf(p.x, p.y));
+    return d < lo - step || d > hi + step;
+  });
+  const weaveAt = bs.map(({ b }, k) => {
+    const dx = b.x - cx;
+    const dz = b.z - cz;
+    const l = Math.hypot(dx, dz) || 1;
+    const s = k % 2 === 0 ? weave : -weave;
+    return { x: b.x + (dx / l) * s, y: b.z + (dz / l) * s };
+  });
+  // splice the weave in at the angle gap (keep is still angle-ordered, starting at angle 0)
+  const at = keep.findIndex((p) => {
+    const a = angOf(p.x, p.y);
+    const aw = angOf(weaveAt[0].x, weaveAt[0].y);
+    return a > aw;
+  });
+  const i = at < 0 ? keep.length : at;
+  return [...keep.slice(0, i), ...weaveAt, ...keep.slice(i)];
 }
 
 /** Circle of radius r pushed outward per angle until every point is over water ≥ minDepth; null if impossible. */

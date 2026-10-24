@@ -43,10 +43,10 @@ describe('worker bot geometry (TASK-306)', () => {
     for (const m of [0, 2, 7, 8]) expect(modes.has(m)).toBe(true);
     // no villager-only modes sneak in
     for (const m of [3, 4, 5, 6]) expect(modes.has(m)).toBe(false);
-    // 0..6 department accessories, 7..14 carried items (laptop, clipboard, crate, paint pot, satchel,
-    // megaphone, blowpipe, books)
+    // 0..6 department accessories, 7..15 carried items (laptop, clipboard, crate, paint pot, satchel,
+    // megaphone, blowpipe, books, the QA bug-hunt lantern of TASK-480)
     expect([...acc].sort((a, b) => a - b)).toEqual([
-      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
     ]);
     for (const id of THEME_IDS) expect(acc.has(THEMES[id].accessory)).toBe(true);
   });

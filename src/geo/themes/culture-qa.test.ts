@@ -8,7 +8,7 @@ import { validateCultures } from '../../content/cultures/validate.ts';
 import { PropFlag } from '../../world/prop-store.ts';
 import { isLargeStructure } from '../../render/props/batcher.ts';
 import { PROP_GEO, buildProp } from '../registry.ts';
-import { BUG_ZOO_VARIANT, CULTURE_QA_GEO } from './culture-qa.ts';
+import { BUG_ZOO_VARIANT, CULTURE_QA_GEO, GRANDSTAND_VARIANT } from './culture-qa.ts';
 
 const KIT_IDS = CULTURE_QA_GEO.map((d) => d.id);
 const verts = (g: THREE.BufferGeometry): number => g.getAttribute('position').count;
@@ -70,9 +70,13 @@ describe('TASK-414 QA culture kit: geometry', () => {
             expect(g.boundingBox?.min.y ?? 0).toBeLessThanOrEqual(0.05);
           }
           const s0 = size(g0);
-          expect(s0.y).toBeGreaterThan(geo.height * 0.65);
-          expect(s0.y).toBeLessThan(geo.height * 1.35);
-          expect(Math.max(s0.x, s0.z) / 2).toBeLessThanOrEqual(geo.footprint * 1.8);
+          const h = geo.heights?.[v] ?? geo.height;
+          expect(s0.y).toBeGreaterThan(h * 0.65);
+          expect(s0.y).toBeLessThan(h * 1.35);
+          // the Q15 grandstand (TASK-480) is a 4.6 × 1.9 u prefab the plan blocks as a rect
+          const reach =
+            geo.id === 'dummyBench' && v === GRANDSTAND_VARIANT ? 2.6 : geo.footprint * 1.8;
+          expect(Math.max(s0.x, s0.z) / 2).toBeLessThanOrEqual(reach);
           const def = QA_PROP_DEFS.find((d) => d.id === geo.id);
           expect(def && isLargeStructure(def, s0), `${geo.id} is a large structure`).toBe(false);
         });

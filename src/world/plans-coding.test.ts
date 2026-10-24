@@ -269,8 +269,11 @@ describe('Coding Wind Gardens culture (TASK-421)', { timeout: 120_000 }, () => {
     for (const seed of SEEDS.slice(0, 6)) {
       const w = world(seed);
       const id = codingOf(w).id;
+      // cross-island reuse (TASK-480): the QA palm rim slings two Coding hammocks
+      const qa = w.islands.find((i) => i.theme === 'qa')?.id;
       for (const f of w.fixtures)
-        if (CULTURE_DEFS.has(f.defId)) expect(f.islandId, `seed ${seed}`).toBe(id);
+        if (CULTURE_DEFS.has(f.defId) && !(f.defId === 'hammock' && f.islandId === qa))
+          expect(f.islandId, `seed ${seed}`).toBe(id);
       const { props } = appendSettlementProps(w);
       const hedge = PROP_DEFS.findIndex((d) => d.id === 'hedge');
       const brackets = w.fixtures.filter(
