@@ -35,6 +35,7 @@ import {
   dist,
   dirOf,
   dockWithLink,
+  doorOf,
   findDock,
   islandWindow,
   linkLandmark,
@@ -58,6 +59,8 @@ import {
   type SitePlan,
 } from '../sites.ts';
 import type { ThemePlanner } from './types.ts';
+import { placeColumns, placeFumaroles, placeRoadLanterns, switchbackLinks } from './devops-m22.ts';
+import { leewardness } from '../heightfield.ts';
 import {
   district,
   paintZone,
@@ -186,6 +189,14 @@ export const planDevops: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   }
   // TASK-422: valve wheels on the finished pipe runs
   placeValves(ctx, isl, plan);
+
+  // M22 (TASK-482): D8 fumarole pools on the cone, D11 windward basalt columns, D12 switchback
+  // roads from the summit watch tower (attached before every other link) + their lanterns
+  placeFumaroles(ctx, isl, centre, hub);
+  placeColumns(ctx, isl, rng.fork('columns'), (p) => leewardness(isl, ctx.windDir, p.x, p.z));
+  if (masts.length > 0)
+    plan.links.unshift(...switchbackLinks(ctx, isl, centre, doorOf(ctx.lots[masts[0]]), hub));
+  plan.finish = (paths) => void placeRoadLanterns(ctx, isl, paths);
   return plan;
 };
 
@@ -326,7 +337,10 @@ function placeRidge(
       minShore: 4,
       maxRelief: G.maxRelief,
     });
-    if (li >= 0) lots.push(li);
+    if (li < 0) continue;
+    // D5 (TASK-482): the summit watch tower variant
+    ctx.lots[li].pin = G.towerVariant;
+    lots.push(li);
   }
   return lots;
 }

@@ -30,7 +30,7 @@ import { flockCentres, Gulls, type Perch } from './gulls.ts';
 import type { Cats, Crabs, Sheep, Villagers } from './land.ts';
 import type { Butterflies, SpotCritters } from './critters.ts';
 import { createCritterKinds, createSpotCritters, type Ducks } from './critters.ts';
-import { Fireflies, planBugHunt, planSwarms } from './fireflies.ts';
+import { Fireflies, planBugHunt, planEmbers, planSwarms } from './fireflies.ts';
 import { createLandKinds, type LandKind } from './land.ts';
 import { buildSolids, buildWalkGraph, makeMask, makeStopMask } from './land-world.ts';
 import { createWorkers, type Workers } from './workers.ts';
@@ -245,8 +245,9 @@ export function createLife(deps: LifeDeps): LifeSystem {
 
   const swarms = planSwarms(ctx, plan.fireflies, ctx.rngFor('fireflies'));
   const bugs = plan.fireflies > 0 ? planBugHunt(ctx) : [];
-  if (swarms.length > 0 || bugs.length > 0)
-    kinds.fireflies = new Fireflies(base, ctx, swarms, plan.fireflies, bugs);
+  const embers = plan.fireflies > 0 ? planEmbers(ctx) : [];
+  if (swarms.length > 0 || bugs.length > 0 || embers.length > 0)
+    kinds.fireflies = new Fireflies(base, ctx, swarms, plan.fireflies, bugs, embers);
 
   const ambient = new AmbientScheduler(deps.seed);
   const spotRng = ctx.rngFor('spots');

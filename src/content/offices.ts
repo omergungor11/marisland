@@ -43,7 +43,8 @@ export const OFFICE_DEFS: Readonly<Record<string, OfficeDef>> = {
   galleryPavilion: { theme: 'design', kind: 'pavilion', w: 4, d: 4, variants: 3 },
   dataCenter: { theme: 'devops', kind: 'office', w: 7, d: 4, variants: 2 },
   rackShed: { theme: 'devops', kind: 'shed', w: 3, d: 2.5, variants: 2 },
-  antennaMast: { theme: 'devops', kind: 'tower', w: 2, d: 2, variants: 2 },
+  // v2 = summit watch tower (M22 TASK-482; the DevOps plan pins it on the one rim lot)
+  antennaMast: { theme: 'devops', kind: 'tower', w: 2, d: 2, variants: 3 },
   researchHut: { theme: 'research', kind: 'outpost', w: 3, d: 3, variants: 2 },
 };
 

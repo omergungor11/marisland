@@ -305,6 +305,9 @@ export const POOLS = {
     // QA night bug hunt (TASK-440): violet pools under the UV lamp posts (`hue` 1 = uvColor);
     // Q17 bug hunt 2.0 (TASK-480): the pools ×1.6 (radius 5 → 8)
     uvLampPost: { radius: 8, intensity: 1, offset: 0, hue: 1 },
+    // DevOps lava lanterns (M22 TASK-482): warm pools, so the D12 switchback roads draw an orange
+    // zigzag on the dark cone at night from T1 (the lantern props themselves are tier 2)
+    lavaLantern: { radius: 5.5, intensity: 1.3, offset: 0 },
   } as Record<string, { radius: number; intensity: number; offset: number; hue?: number }>,
   /**
    * Second pool colour (TASK-440): a source's `hue` share blends its pool from `color` toward this

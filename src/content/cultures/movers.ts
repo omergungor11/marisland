@@ -301,4 +301,41 @@ export const CULTURE_MOVERS = {
     payload: '#FFF4E0',
     wobble: 0.35,
   },
+
+  /**
+   * DevOps summit watch tower (M22 TASK-482, D5; antennaMast v2): the uptime bell rings out at
+   * the 06:00 shift siren and at Release Night; at night a mini lighthouse beam in beacon red
+   * turns from the roof lamp (one mesh per tower, the lighthouse beam program). Anchors in the
+   * tower frame = DEVOPS_M22.tower (`bellY`, `beaconY`).
+   */
+  watch: {
+    variant: 2,
+    rituals: ['shiftSiren', 'releaseNight'] as readonly string[],
+    rings: 3,
+    period: 1.3,
+    r0: 0.4,
+    r1: 2.2,
+    color: '#FFF4E0',
+    /** Beam: colour, scale of the lighthouse beam (length 40 u → ×), seconds per turn. */
+    beam: { color: '#FF4A3D', scale: 0.45, secondsPerRev: 5, flare: 0.8 },
+    /** The beam shows within this camera distance (u): a T1 read of the summit at night. */
+    range: 520,
+  },
+  /**
+   * DevOps Deploy Night (M22 TASK-482, D16; Release Night 21:00, 40 s): every cargo ship sounds
+   * its horn (rings from the funnel top) and flashes a white masthead light. Ship-local anchors
+   * (DEVOPS_WORKS.ship: funnel at the stern, deck 1.1 u).
+   */
+  deploy: {
+    ritual: 'releaseNight',
+    horn: { at: [0, 4.0, -4.6] as const, dir: [0, 0.8, -0.6] as const },
+    rings: 3,
+    period: 1.0,
+    r0: 0.3,
+    r1: 1.6,
+    travel: 2.4,
+    color: '#FFF4E0',
+    /** Masthead flash: lamp spot, radius range and flashes per second. */
+    lamp: { at: [0, 4.45, -4.1] as const, r: [0.18, 0.46] as const, rate: 1.5, color: '#FFFFFF' },
+  },
 } as const;

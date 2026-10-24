@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { PROP_DEFS } from '../content/props.ts';
 import { FIXTURE_RADIUS, FLATTEN } from '../content/settlements.ts';
 import { DEVOPS_CULTURE, DEVOPS_CULTURE_SITE } from '../content/cultures/devops.ts';
-import { DEVOPS_SITE, DEVOPS_THEME } from '../content/themes/devops.ts';
+import { DEVOPS_SITE, DEVOPS_THEME, FUMAROLE_ZONES } from '../content/themes/devops.ts';
+import { leewardness } from './gen/heightfield.ts';
 import {
   generateWorld,
   heightAt,
@@ -308,6 +309,8 @@ describe('DevOps island plan (TASK-364) — 30 seeds', () => {
             // TASK-422 Ember Smiths kit + imported cargo crates
             ...DEVOPS_CULTURE.kit.map((k) => k.id),
             'cargoCrate',
+            // M22 (TASK-482): D11 basalt column clusters
+            'basaltBoulder',
           ],
           ctx,
         ).toContain(f.defId);
@@ -409,7 +412,11 @@ describe('DevOps Ember Smiths culture (TASK-422) — 30 seeds', () => {
   const RANGES: Record<string, { n: [number, number]; share: number }> = {
     onsenDeck: { n: [0, 1], share: 0.95 },
     onsenHouse: { n: [0, 1], share: 0.85 },
-    lavaLantern: { n: [0, C.lanterns.quayMax + C.lanterns.railMax], share: 0.95 },
+    // + the D12 switchback road lanterns on the cone (M22 TASK-482)
+    lavaLantern: {
+      n: [0, C.lanterns.quayMax + C.lanterns.railMax + DEVOPS_SITE.switchback.maxLanterns],
+      share: 0.95,
+    },
     ingotStack: { n: [0, C.ingots.count[1]], share: 0.9 },
     anvil: { n: [0, C.anvils.max], share: 0.9 },
     incidentSign: { n: [0, 1], share: 0.9 },
@@ -524,6 +531,89 @@ describe('DevOps Ember Smiths culture (TASK-422) — 30 seeds', () => {
         expect(dist(s.pos, d.isl.anchors.crater ?? s.pos), ctx).toBeLessThanOrEqual(d.isl.reach);
         expect(s.pos.y, ctx).toBeGreaterThanOrEqual(heightAt(d.w.height, s.pos.x, s.pos.z) - 1e-6);
       }
+    }
+  });
+});
+
+/** M22 quick wins (TASK-482, WORLD_PLAN §4.4, D-062 R3-13) over the same 30 seeds. */
+describe('DevOps M22 quick wins (TASK-482) — 30 seeds', () => {
+  const S = DEVOPS_SITE;
+
+  it('D5: one summit watch tower (antennaMast v2) replaces the rim masts; R3-13: every lodge is an ops shack', () => {
+    for (const seed of SEEDS) {
+      const d = devops(seed);
+      if (!d) continue;
+      const ctx = `seed ${seed}`;
+      const masts = d.lots.filter((l) => l.defId === 'antennaMast');
+      expect(masts.length, ctx).toBe(1);
+      expect(masts[0].variant, ctx).toBe(S.ridge.towerVariant);
+      expect(heightAt(d.w.height, masts[0].x, masts[0].z), ctx).toBeGreaterThanOrEqual(
+        S.ridge.minY,
+      );
+      const lodges = d.fixtures.filter((f) => f.defId === 'cottage');
+      expect(lodges.length, ctx).toBeGreaterThan(0);
+      for (const f of lodges) expect(f.variant, ctx).toBe(S.lodgeVariant);
+    }
+  });
+
+  it('D8: three fumarole pool zones in a salt rim on the cone; D11: windward basalt column clusters', () => {
+    let pools = 0;
+    let n = 0;
+    for (const seed of SEEDS) {
+      const d = devops(seed);
+      if (!d) continue;
+      n++;
+      const ctx = `seed ${seed}`;
+      const seen = new Set<number>();
+      let rim = 0;
+      for (let i = 0; i < d.w.islandMap.length; i++) {
+        if (d.w.islandMap[i] !== d.isl.id + 1) continue;
+        const z = d.w.zone[i];
+        if ((FUMAROLE_ZONES.pools as readonly number[]).includes(z)) {
+          seen.add(z);
+          expect(d.w.height.data[i], `${ctx} pool on land`).toBeGreaterThan(0);
+        }
+        if (z === FUMAROLE_ZONES.rim) rim++;
+      }
+      if (seen.size === 3 && rim > 0) pools++;
+      const cols = d.fixtures.filter(
+        (f) => f.defId === 'basaltBoulder' && f.variant === S.columns.variant,
+      );
+      expect(cols.length, ctx).toBeGreaterThanOrEqual(3);
+      for (const f of cols) {
+        expect(heightAt(d.w.height, f.x, f.z), ctx).toBeGreaterThan(0);
+        expect(leewardness(d.isl, d.w.windDir, f.x, f.z), ctx).toBeLessThanOrEqual(
+          S.columns.maxLee + 0.15,
+        );
+      }
+    }
+    expect(rate(pools, n)).toBeGreaterThanOrEqual(0.95);
+  });
+
+  it('D12: switchback roads from the tower in >= 2 directions, painted, lantern-lit on the cone', () => {
+    for (const seed of SEEDS) {
+      const d = devops(seed);
+      if (!d) continue;
+      const ctx = `seed ${seed}`;
+      const tower = d.lots.find((l) => l.defId === 'antennaMast')!;
+      const top = heightAt(d.w.height, tower.x, tower.z);
+      const stairs = d.w.paths.filter((p) => p.islandId === d.isl.id && p.kind === 'stair');
+      // the roads reach down the cone in at least two quadrants round the crater
+      const centre = d.isl.anchors.crater ?? { x: d.isl.cx, z: d.isl.cz };
+      const heads = new Set<number>();
+      for (const p of stairs)
+        for (const q of p.points)
+          if (heightAt(d.w.height, q.x, q.z) < top - 12)
+            heads.add(Math.round((Math.atan2(q.z - centre.z, q.x - centre.x) / Math.PI) * 2));
+      expect(heads.size, ctx).toBeGreaterThanOrEqual(2);
+      let road = 0;
+      for (let i = 0; i < d.w.islandMap.length; i++)
+        if (d.w.islandMap[i] === d.isl.id + 1 && d.w.zone[i] === Zone.streetDevops) road++;
+      expect(road, ctx).toBeGreaterThan(30);
+      const lit = d.fixtures.filter(
+        (f) => f.defId === 'lavaLantern' && heightAt(d.w.height, f.x, f.z) >= S.switchback.minY,
+      );
+      expect(lit.length, ctx).toBeGreaterThanOrEqual(8);
     }
   });
 });
