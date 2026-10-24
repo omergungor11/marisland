@@ -51,6 +51,20 @@ Rejected after measuring:
   cost +55k counted triangles (788k of the 800k budget).
 - A near merge over every island in fade reach: +12 MB.
 
+**Implementation (TASK-478, 2026-10-24)**: the memory half. W4 (seed 2024, T1 Beacon) held 58.4 MB of
+geometry, 43.8 MB of it prop buffers: the LOD0 groups of all seven islands are built and counted,
+whatever the tier. Of those, `normal` / `color` / `position` were 7.1 MB each in float32 and the
+scalar weights `ao` / `wind` / `emissive` 2.3 MB each. The batcher now compacts every prop LOD
+geometry when it builds it (`compactAttributes`): normals become 16-bit normalized (the far merge's
+format), and `ao` / `wind` / `emissive` become 16-bit unsigned normalized when they lie in [0, 1]. The
+shader reads the same floats, and CPU readers de-normalize (`getX`, `fromBufferAttribute`, `floatArray` in
+`geoStats`). Position and colour stay float32 because `sameGeometry` / `geoStats` read them raw, and 8-bit
+linear colour would band the darks.
+- Memory: W4 174 → 166 MB (geometry 58.4 → 50.4), W16 / W22 172 → 164 / 163, W19 170 → 162.
+  Medium `gpuMemoryMB` is back to **170**.
+- Pixels: unchanged-camera frames differ in ≤ 375 px, max Δ 10/255 (W19), and W4 in 19 px, Δ 1.
+- Not taken: 16-bit colour (another −3.5 MB) would need the raw readers changed. Keep it for the next squeeze.
+
 ## D-060: Round 3 details for HQ / Design and the morning mist — 2026-10-17
 
 The user took the recommended option for each item:

@@ -108,6 +108,22 @@ export const CULTURE_MOVERS = {
     ring: { seconds: 1.6, r0: 0.25, r1: 1.5 },
     /** Share of white mixed into the accent at the flash peak. */
     lighten: 0.45,
+    /**
+     * Night rest glow (TASK-478): the two lamps on the post-top finials (gate-local centre =
+     * ±CULTURE_GATE.postX, clearHeight + 0.58) light up in the culture accent after dusk, relay
+     * or not, so the seven gates read from a plaza-wide view (W22). Ramp over EnvState.night,
+     * lamp radius (u), tint step (0 = accent .. 7 = `lighten` white). The hanging lantern stays
+     * the mesh's own emissive (it hides under the lintel from above).
+     */
+    rest: {
+      night: [0.3, 0.7] as const,
+      posts: [
+        [-1.95, 2.78, 0],
+        [1.95, 2.78, 0],
+      ] as const,
+      post: 0.3,
+      tint: 0,
+    },
   },
   /**
    * HQ stall keeper (TASK-469): a worker-bot figure behind the counter of every goodsStall. Awake

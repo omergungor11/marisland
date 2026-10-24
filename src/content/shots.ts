@@ -466,9 +466,12 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     title: 'Harbour Guild Morning',
     // TASK-450: the Harbour Guild at 09:00 (the fog burns off after 08:30; earlier it greys the
     // frame), low over the bay (raw): the pier root with awning + timetable, crates, pennant
-    // lines and banners as the subject, the whole clock tower behind it
+    // lines and banners as the subject, the whole clock tower behind it. TASK-478 re-frame (the
+    // TASK-466 plaza moved the pier root out of the old look and parked a balloon on the tower
+    // crown): from over the bay north-west of the pier, the ferry office / awning at the pier root
+    // in front, gates and pennant lines on the plaza, the clock tower whole with sky above it
     seed: 1001,
-    cam: '-32.04,14,21.18,-46.04,9,-14.82',
+    cam: '-45,16,25,-32,7,-21',
     time: 9,
     simt: 15,
     quality: 'medium',

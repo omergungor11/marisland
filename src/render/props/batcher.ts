@@ -244,7 +244,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
     const key = `${def.geo}:${variant}:${lod}`;
     let g = geoCache.get(key);
     if (!g) {
-      g = buildProp(def.geo, d.seed, variant, lod);
+      g = compactAttributes(buildProp(def.geo, d.seed, variant, lod));
       d.scope.add(g);
       geoCache.set(key, g);
     }
@@ -1367,9 +1367,50 @@ export function geoStats(g: THREE.BufferGeometry): CanopyStats {
   return canopyStats(
     g.getAttribute('position').array,
     g.getAttribute('color').array,
-    ao ? ao.array : null,
+    ao ? floatArray(ao) : null,
     g.index ? g.index.array : null,
   );
+}
+
+/**
+ * Smaller GPU buffers for a prop LOD geometry (TASK-478, D-061): `normal` as 16-bit normalized
+ * (the far merge's precision, < 0.002°) and the scalar weights `emissive` / `ao` / `wind` as
+ * 16-bit unsigned normalized when they lie in [0, 1] (step 1.5e-5). Shaders read the same floats;
+ * CPU readers go through `getX` / `fromBufferAttribute` (de-normalized) or `floatArray`. Position
+ * and colour stay float32 (`sameGeometry` / `geoStats` read them raw).
+ */
+export function compactAttributes(g: THREE.BufferGeometry): THREE.BufferGeometry {
+  const n = g.getAttribute('normal');
+  if (n instanceof THREE.BufferAttribute && n.array instanceof Float32Array) {
+    const src = n.array;
+    const dst = new Int16Array(src.length);
+    for (let k = 0; k < src.length; k++)
+      dst[k] = Math.round(Math.max(-1, Math.min(1, src[k])) * 32767);
+    g.setAttribute('normal', new THREE.BufferAttribute(dst, n.itemSize, true));
+  }
+  for (const name of ['emissive', 'ao', 'wind']) {
+    const a = g.getAttribute(name);
+    if (!(a instanceof THREE.BufferAttribute) || !(a.array instanceof Float32Array)) continue;
+    const src = a.array;
+    let ok = true;
+    for (let k = 0; k < src.length && ok; k++) ok = src[k] >= 0 && src[k] <= 1;
+    if (!ok) continue;
+    const dst = new Uint16Array(src.length);
+    for (let k = 0; k < src.length; k++) dst[k] = Math.round(src[k] * 65535);
+    g.setAttribute(name, new THREE.BufferAttribute(dst, a.itemSize, true));
+  }
+  return g;
+}
+
+/** The float values of a (possibly normalized) attribute. */
+function floatArray(
+  a: THREE.BufferAttribute | THREE.InterleavedBufferAttribute,
+): ArrayLike<number> {
+  if (!a.normalized) return a.array;
+  const out = new Float32Array(a.count * a.itemSize);
+  for (let k = 0; k < a.count; k++)
+    for (let c = 0; c < a.itemSize; c++) out[k * a.itemSize + c] = a.getComponent(k, c);
+  return out;
 }
 
 /** Same vertex data (position + colour, same index) — a def's LOD1 variants that never differ. */

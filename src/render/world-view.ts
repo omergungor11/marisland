@@ -135,6 +135,8 @@ export interface WorldViewDeps {
   getCameraTarget?: (out: THREE.Vector3) => void;
   /** Capture `craft=0`: no sky craft (default true). */
   skyCraft?: boolean;
+  /** Capture `birds=0`: no gull flocks (default true). */
+  birds?: boolean;
 }
 
 const _focus = new THREE.Vector3();
@@ -237,6 +239,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     getTier: d.getTier,
     cameraPos: _camPos,
     cameraTarget: d.getCameraTarget ? _camTarget : undefined,
+    plan: d.birds === false ? { flocks: 0 } : undefined,
   });
   group.add(life.group);
   d.scope.add(life);
