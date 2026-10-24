@@ -2,6 +2,18 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-063: Island-agnostic rim walkway primitive — 2026-10-24
+
+**Decision**: Cliff-top boardwalks are one shared worldgen primitive (`world/gen/rim-walkway.ts`, spec type
+`content/rim-walkway.ts`), not per-island code. The walk follows the SDF iso-line 2 u inland of the rim lip
+(rim cells only), paints the island's street zone, places the shared `rimPost` def every 3 u by chord and gaps
+at footpaths. It runs in the new `SitePlan.finish` pass, after paths are written. Per-island looks are rows
+in `RIM_POST_LOOKS` (append-only: the index is the `rimPost` variant). QA (TASK-480, hazard posts + mint rails)
+and Coding C18 (TASK-484, timber posts + rope rails + two sea-facing benches) use it.
+**Rationale**: WORLD_PLAN reuses the rim walk on several islands; one primitive keeps the rules and tests in one
+place. **Impact**: adding a rim walk changes world hashes (re-pin); the Coding walk is unlit at night until a
+post cap joins the Coding lamp set in `rhythm.ts`.
+
 ## D-062: Round 3 for the five islands (M22) — all recommended options; HQ street tint stays — 2026-10-24
 
 **Decision** (user, 2026-10-24, WORLD_PLAN §6):

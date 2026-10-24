@@ -299,17 +299,17 @@ Details in `phases/phase-3.md`.
 | TASK-474 | Channel buoys along ferry routes with night lamps (`W:D8`); sea-stack fields + one arch (`W:D3`) | worldgen | S | COMPLETED (77408cf) | TASK-471 |
 | TASK-475 | Seamark polish: sea-stack arch lintel reads as one span from afar (not two rocks); buoy night lamps readable at W15 | worldgen | S | COMPLETED (9dd7199) | TASK-474 |
 
-### M22 — Five-island quick wins
+### M22 — Five-island quick wins (CLOSED 2026-10-24)
 *D-059 directions, D-062 Round 3 (all recommended). WORLD_PLAN §4.3–4.7 quick-win rows; item codes defined in `mar-plans/study/coding-devops-qa.md` / `marketing-research.md`. Wave 1: 479 ∥ 480 ∥ 481; wave 2: 482 ∥ 483 (+ TASK-478); then 484 + QA.*
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|------------|--------|--------------|
 | TASK-479 | Coding quick wins: C4 pinwheel meadow, C9 hedge glyphs, C11 windsock avenue, C13 fairy-light grove, C14 turbine tip lights, C15 nap grove; R3-12 solar halved + warm park / blue server night lights; Coding lamp set | props | M | COMPLETED (924d7a5) | M20 |
-| TASK-480 | QA quick wins: Q16 hangar repaint (white-mint-yellow tone, R3-14), Q6 rim walkway primitive + hazard posts, Q18 palm rim, Q17 bug-hunt night, Q10 buoy slalom, Q15 grandstand; QA lamp set | worldgen | M | IN_PROGRESS | M20 |
+| TASK-480 | QA quick wins: Q16 hangar repaint (white-mint-yellow tone, R3-14), Q6 rim walkway primitive + hazard posts, Q18 palm rim, Q17 bug-hunt night, Q10 buoy slalom, Q15 grandstand; QA lamp set | worldgen | M | COMPLETED (9659926) | M20 |
 | TASK-481 | Marketing quick wins: M11 carnival gate (`cultureGate` marketing), M5 marquee bulb strings, M2 transmitter stacks, M17 lit buoy chain, M8 party pontoon, M7 straight red-carpet boulevard; Marketing lamp set | props | M | COMPLETED (dbf4bd5) | M20 |
 | TASK-482 | DevOps quick wins: D8 fumarole pools, D11 basalt columns, D12 switchback lantern path (R3-13 every direction), D15 ember sparks, D16 deploy night, D5 summit watch tower; R3-13 lodges → ops-shack variant; DevOps lamp set | worldgen | M | COMPLETED (a763b5c) | M20 |
 | TASK-483 | Research quick wins: R12 hedge maze parterres (R3-16), R20 weather roof, R13 launch gantry, R17 bell hour, R16 cap toss, R9 arboretum; seal spot critter; Research lamp set | props | M | COMPLETED (81bc1f5) | M20 |
-| TASK-484 | Coding C18 rim walkway (reuses the TASK-480 primitive) + M22 QA: wow / ladder `--assert`, new or re-framed wow shots per island, QA report | engine | S | IN_PROGRESS | TASK-479…483 |
+| TASK-484 | Coding C18 rim walkway (reuses the TASK-480 primitive) + M22 QA: wow / ladder `--assert`, new or re-framed wow shots per island, QA report | engine | S | COMPLETED (4cc2343, d3b700a; W23–W26, W6 re-frame; `mar-docs/qa/m22-2026-10-24.md`) | TASK-479…483 |
 
 ### M17 — Graphics II: decor & nature
 *Flower fields, fences, lanterns, benches, signs, rocks*

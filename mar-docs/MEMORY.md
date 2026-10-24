@@ -10,6 +10,20 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-24 (M22 closed)**: TASK-478…484 on main; wow 25/25 `--assert` (new W23 Rim Walk Afternoon, W24
+  Lantern Zigzag, W25 Carpet Night seed 2024, W26 Test Firing Noon; W6 re-framed from the east). Medium 300 calls /
+  170 MB: W16 270 calls / 788k of 800k tris (don't add kit visible from the W16 cam), W4 167 MB. Rim walkway =
+  D-063 (QA + Coding C18). QA report `mar-docs/qa/m22-2026-10-24.md` lists the open items: C11 windsock on the
+  Coding duck-crossing spot (needs a story-spot keep-out), W26 steam reads as one faceted ball, W25 billboard hides
+  half the carpet + a bot on the cliff by the transmitter (walk-graph leak?), L-pairs-marketing transmitter
+  parallax (only new ladder miss), medium far drift Marketing/DevOps (far-wall strata), small slalom buoys, C18
+  unlit at night (needs a post cap in the Coding lamp set, `rhythm.ts`), M20 leftovers (W2 gate on grass, W20 mail
+  cable, L-design near rungs). Next: M23 "Dünya İmza" — ask the user first.
+  Gotchas: framing loop = `pnpm dev --port=NNNN` + `pnpm shots <set> --only=… --base=http://localhost:NNNN/
+  --no-selftest --tag=x` (shots.ts edits live, ~10 s/frame). Oblique QA/Marketing frames that take in the horizon
+  cost 330–380 calls; look down ≥ 25°. `git merge main` fails while `shots.ts` is dirty — commit WIP first. Ladder
+  drift misses only show as "N ladder misses" in the log; read `ladder-L-*.json`. Culture lamp sets live in
+  `CULTURE_RHYTHM[theme].lamps.defs` (`rhythm.ts`, orchestrator-only); each M22 island added its set at merge.
 - **2026-10-24 (M20 closed)**: TASK-464…477 all on main; wow 21/21 `--assert` (new W20 Compass Star, W21
   Conservatory Prism Hour seed 6006, W22 Seven Gates Night; W19 re-framed NNW), 2433 tests, medium 300 calls /
   176 MB (W16 269 calls, W4 173 MB). QA report `mar-docs/qa/m20-2026-10-23.md`; open items → TASK-478. Next: M22
