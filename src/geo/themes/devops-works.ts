@@ -6,7 +6,7 @@
  * Glow (night): window panes, the furnace mouth, lava trough and forge coals are emissive 1.
  */
 import * as THREE from 'three';
-import { DEVOPS_WORKS as W } from '../../content/props-themes/devops.ts';
+import { DEVOPS_M22, DEVOPS_WORKS as W } from '../../content/props-themes/devops.ts';
 import { createRng } from '../../core/rng.ts';
 import type { Rng } from '../../core/rng.ts';
 import { Acc, col, qEuler, qFromTo } from '../kit.ts';
@@ -32,6 +32,17 @@ function beam(acc: Acc, a: THREE.Vector3, b: THREE.Vector3, th: number, color: s
 function container(acc: Acc, at: THREE.Vector3, color: string, lod: 0 | 1): void {
   const C = W.container;
   put(acc, baseBox(C.l, C.h, C.w), at, color, { aoAmt: 0.12 });
+  // D16 deploy night (M22 TASK-482): an LED strip along the top of both long sides (both LODs,
+  // so the stacks read as lit lines from T1 at night)
+  const L = DEVOPS_M22.led;
+  for (const sz of [-1, 1])
+    put(
+      acc,
+      new THREE.PlaneGeometry(C.l - 2 * L.inset, L.h),
+      [at.x, at.y + C.h - 0.26, at.z + sz * (C.w / 2 + 0.04)],
+      L.color,
+      { q: qEuler(0, sz > 0 ? 0 : Math.PI, 0), emissive: 1, aoAmt: 0, ao: () => 1 },
+    );
   if (lod === 1) return;
   const rib = lighten(color, 0.18);
   // corrugation ribs on both long sides, a top rail, the door end (+x) with lock bars

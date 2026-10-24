@@ -166,6 +166,38 @@ export const FIREFLIES = {
     /** Swarm centre offset from the story spot along its facing (u). */
     ahead: 1.5,
   },
+  /**
+   * D15 ember sparks (M22 TASK-482): orange firefly points on the theme's island (same mesh,
+   * instance colour, night only like the fireflies). At every `anvilHammer` story spot `anvil.n`
+   * sparks burst off the anvil top once per hammer stroke (the worker hammer pose: 1.1 Hz) and
+   * fly out in a short arc; at every furnace mouth (`foundry` fixture, hall-local `mouth`)
+   * `forge.n` embers drift up continuously, each on its own period. Lengths in u, times in s.
+   */
+  embers: {
+    theme: 'devops',
+    color: '#FF8A3D',
+    size: 0.75,
+    anvil: {
+      story: 'anvilHammer',
+      /** Anvil top: this far ahead of the smith's spot, this high. */
+      ahead: 0.8,
+      y: 0.75,
+      n: 3,
+      period: 0.909,
+      spread: 0.9,
+      rise: 0.7,
+    },
+    forge: {
+      def: 'foundry',
+      /** Mouth sill in the hall frame (along its facing, height). */
+      mouth: [3.4, 0.4] as const,
+      n: 8,
+      period: [1.4, 2.6] as const,
+      width: 1.1,
+      rise: 3.4,
+      sway: 0.25,
+    },
+  },
 } as const;
 
 export const SIM_LOD = { farDistance: 400, farEvery: 6 } as const;

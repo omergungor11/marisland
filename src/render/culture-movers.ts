@@ -18,6 +18,10 @@ import { buildBeamGeometry } from './night/beam.ts';
 import { createSkyProgramMaterial } from './sky/sky.ts';
 import { SHARED } from './uniforms.ts';
 import { PART, buildPartsGeometry, type PartKind } from './culture-mover-parts.ts';
+import { DEVOPS_M22 } from '../content/props-themes/devops.ts';
+import { DEVOPS_MOVERS } from '../content/themes/devops.ts';
+import { DOCK } from '../content/settlements.ts';
+import { pierLoop, shipPose } from './harbour-routes.ts';
 
 /**
  * Culture movers (M19 TASK-431): closed-form scenes that make each island culture visibly alive.
@@ -346,6 +350,43 @@ function hornScene(): Scene['run'] {
   return (w, c) => {
     if (!c.fest || !H.rituals.includes(c.fest.id)) return;
     for (const m of H.mouths) rings(w, m.at, m.dir, H, H.travel, c.time);
+  };
+}
+
+/** DevOps watch tower (M22 D5): the uptime bell rings at the shift siren and Release Night. */
+function watchScene(): Scene['run'] {
+  const W = M.watch;
+  const at: V3 = [0, DEVOPS_M22.tower.bellY, 0];
+  return (w, c) => {
+    if (!c.fest || !W.rituals.includes(c.fest.id)) return;
+    rings(w, at, [0, 1, 0], W, 0, c.time);
+  };
+}
+
+/**
+ * DevOps Deploy Night (M22 D16): during Release Night every cargo ship (render/movers.ts, the same
+ * closed-form loop pose) sounds its horn and flashes its masthead light. World-frame scene: the
+ * ship's own frame is set on the writer each frame.
+ */
+function deployScene(L: NonNullable<ReturnType<typeof pierLoop>>, k: number): Scene['run'] {
+  const D = M.deploy;
+  const m = new THREE.Matrix4();
+  return (w, c) => {
+    if (c.fest?.id !== D.ritual) return;
+    const p = shipPose(L, c.time, k, DEVOPS_MOVERS.ship.perDock);
+    _x.set(p.hz, 0, -p.hx);
+    _z.set(p.hx, 0, p.hz);
+    m.makeBasis(_x, _up, _z).setPosition(p.x, 0, p.z);
+    w.pivot = m;
+    rings(w, D.horn.at, D.horn.dir, D, D.travel, c.time);
+    const f = 0.5 + 0.5 * Math.cos(c.time * D.lamp.rate * Math.PI * 2);
+    w.put(
+      PART.beacon,
+      D.lamp.at,
+      [0, 0, 0],
+      D.lamp.r[0] + (D.lamp.r[1] - D.lamp.r[0]) * f * f,
+      D.lamp.color,
+    );
   };
 }
 
@@ -729,11 +770,15 @@ export function createCultureMovers(
     gate: defOf('cultureGate'),
     stall: defOf('goodsStall'),
     sema: defOf('semaphoreTower'),
+    mast: defOf('antennaMast'),
   };
   const beams: Beam[] = [];
   const beamAnchors: { x: number; y: number; z: number }[] = [];
   let beamMat: THREE.ShaderMaterial | null = null;
   let beamGeo: THREE.BufferGeometry | null = null;
+  // M22 (TASK-482) DevOps watch tower beacons
+  const watchBeams: THREE.Mesh[] = [];
+  let watchMat: THREE.ShaderMaterial | null = null;
   const ids = new Map<number, number>();
   for (let i = 0; i < store.count; i++) {
     const d = store.defId[i];
@@ -780,7 +825,32 @@ export function createCultureMovers(
       scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 1.0, 0], 3, keeperScene(v, idx)));
     else if (d === D.sema)
       scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 7.7, 0], 5, semaphoreScene(idx)));
-    else if (d === D.prism) {
+    else if (d === D.mast && v === M.watch.variant) {
+      const T = DEVOPS_M22.tower;
+      scenes.push(sceneAt(th, pv(), store.rotY[i], [0, T.bellY, 0], M.watch.rings, watchScene()));
+      // the red beacon beam from the roof lamp (lighthouse beam program, own colour / turn rate)
+      const B = M.watch.beam;
+      const sc = store.scale[i] || 1;
+      watchMat ??= scope.add(
+        createSkyProgramMaterial('beam', {
+          flareRadius: BEAM.flareRadius * B.scale * B.flare,
+          flarePull: BEAM.flarePull * B.scale,
+        }),
+      );
+      (watchMat.uniforms.uBeamColor.value as THREE.Color).set(B.color);
+      (watchMat.uniforms.uBeamMotion.value as THREE.Vector4).x = (Math.PI * 2) / B.secondsPerRev;
+      beamGeo ??= scope.add(buildBeamGeometry());
+      const mesh = new THREE.Mesh(beamGeo, watchMat);
+      mesh.name = 'watch-beacon-beam';
+      mesh.position.copy(new THREE.Vector3(0, T.beaconY, 0).applyMatrix4(pv()));
+      mesh.scale.setScalar(B.scale * sc);
+      mesh.renderOrder = 20;
+      mesh.castShadow = false;
+      mesh.receiveShadow = false;
+      mesh.visible = false;
+      group.add(mesh);
+      watchBeams.push(mesh);
+    } else if (d === D.prism) {
       const s = store.scale[i] || 1;
       const sc = sceneAt(
         th,
@@ -862,6 +932,35 @@ export function createCultureMovers(
     );
     sc.pivot = null; // world-frame parts
     scenes.push(sc);
+  }
+
+  // M22 Deploy Night (TASK-482): the DevOps cargo ships' horn + masthead flash (movers.ts loops)
+  for (const dk of world.docks) {
+    if (world.islands[dk.islandId]?.theme !== 'devops') continue;
+    const L = pierLoop(
+      world.height,
+      dk,
+      { x: Math.cos(dk.rotY), z: Math.sin(dk.rotY) },
+      dk.segments * DOCK.segment,
+    );
+    if (!L) continue;
+    const mid: V3 = [
+      L.a.x + L.t.x * L.len * 0.5 + L.f.x * L.r,
+      2,
+      L.a.z + L.t.z * L.len * 0.5 + L.f.z * L.r,
+    ];
+    for (let k = 0; k < DEVOPS_MOVERS.ship.perDock; k++) {
+      const sc = sceneAt(
+        'devops',
+        new THREE.Matrix4(),
+        0,
+        mid,
+        M.deploy.rings + 1,
+        deployScene(L, k),
+      );
+      sc.pivot = null;
+      scenes.push(sc);
+    }
   }
 
   let mesh: THREE.InstancedMesh | null = null;
@@ -965,6 +1064,13 @@ export function createCultureMovers(
       beams[i].mesh.visible = on;
       if (on) nb++;
     }
+    // the watch tower beacons: every night, within M.watch.range (a T1 read)
+    const wr2 = M.watch.range * M.watch.range;
+    for (const b of watchBeams) {
+      const on = SHARED.uLamps.value.z > 0.001 && b.position.distanceToSquared(camPos) < wr2;
+      b.visible = on;
+      if (on) nb++;
+    }
     lastBeams = nb;
   };
   return {
@@ -972,6 +1078,6 @@ export function createCultureMovers(
     mesh,
     update,
     stats: () => ({ instances: lastInstances, scenes: lastScenes, beams: lastBeams }),
-    sceneCount: scenes.length + beamAnchors.length,
+    sceneCount: scenes.length + beamAnchors.length + watchBeams.length,
   };
 }

@@ -30,7 +30,8 @@ const d = (
 
 export const PROP_DEFS_BUILDINGS: PropDef[] = [
   // buildings
-  d('cottage', 1, 3, 2.1, grounded),
+  // v3 = DevOps ops shack (M22 TASK-482): only where the DevOps plan pins it
+  d('cottage', 1, 4, 2.1, grounded, undefined, { rollVariants: 3 }),
   // stands in shallow water: pivot = water level, so no contact blob
   d('stiltHut', 1, 2, 2.2, 0),
   d('towerHouse', 1, 3, 1.8, grounded),
@@ -96,7 +97,8 @@ export const PROP_DEFS_BUILDINGS: PropDef[] = [
   d('galleryPavilion', 0, 3, 2.6, grounded, undefined, { rollVariants: 2 }),
   d('dataCenter', 0, 2, 3.6, grounded),
   d('rackShed', 0, 2, 1.9, grounded),
-  d('antennaMast', 0, 2, 1.2, grounded),
+  // v2 = DevOps summit watch tower (M22 TASK-482): only the lot the DevOps plan pins
+  d('antennaMast', 0, 3, 1.2, grounded, undefined, { rollVariants: 2 }),
   d('researchHut', 0, 2, 2.1, grounded),
   // fixture: decor for the research island
   d('telescope', 2, 2, 0.4, grounded),

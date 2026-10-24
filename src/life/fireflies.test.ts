@@ -51,8 +51,9 @@ describe('fireflies', () => {
       const r = rig(seed);
       const f = r.life.kinds.fireflies!;
       expect(f).toBeDefined();
-      // + the QA bug-hunt swarms (TASK-480), whole swarms on top of the plan's count
-      const extra = f.capacity - LIFE_PLAN.medium.fireflies;
+      // + the QA bug-hunt swarms (TASK-480), whole swarms on top of the plan's count, then the
+      // DevOps ember sparks (TASK-482) from `sparkFrom` on
+      const extra = f.sparkFrom - LIFE_PLAN.medium.fireflies;
       expect(extra % FIREFLIES.perSwarm).toBe(0);
       expect(extra / FIREFLIES.perSwarm).toBeLessThanOrEqual(FIREFLIES.bugHunt.stories.length);
       at(0, 10);
@@ -80,12 +81,45 @@ describe('fireflies', () => {
     expect(spots.length).toBeGreaterThan(0);
     const f = rig(1001).life.kinds.fireflies!;
     const plain = LIFE_PLAN.medium.fireflies;
-    expect(f.capacity).toBe(plain + spots.length * FIREFLIES.perSwarm);
+    expect(f.sparkFrom).toBe(plain + spots.length * FIREFLIES.perSwarm);
     const c = new THREE.Color();
     f.mesh.getColorAt(0, c);
     expect(c.getHexString()).toBe(new THREE.Color(FIREFLIES.color).getHexString());
     f.mesh.getColorAt(plain, c);
     expect(c.getHexString()).toBe(new THREE.Color(FIREFLIES.bugHunt.color).getHexString());
+  });
+
+  it('D15 ember sparks: anvil bursts + forge embers on the DevOps island, orange, after the bugs (TASK-482)', () => {
+    const w = world(1001);
+    const isl = w.islands.find((i) => i.theme === FIREFLIES.embers.theme)!;
+    const E = FIREFLIES.embers;
+    const anvils = w.storySpots.filter((s) => s.islandId === isl.id && s.kind === E.anvil.story);
+    const forges = w.fixtures.filter((x) => x.islandId === isl.id && x.defId === E.forge.def);
+    expect(anvils.length + forges.length).toBeGreaterThan(0);
+    const r = rig(1001);
+    const f = r.life.kinds.fireflies!;
+    expect(f.capacity - f.sparkFrom).toBe(anvils.length * E.anvil.n + forges.length * E.forge.n);
+    const c = new THREE.Color();
+    f.mesh.getColorAt(f.sparkFrom, c);
+    expect(c.getHexString()).toBe(new THREE.Color(E.color).getHexString());
+    // night: sparks are drawn near their sources, none by day
+    at(1, 10);
+    r.life.update(FIXED_STEP, 0.5);
+    const a = f.mesh.instanceMatrix.array as Float32Array;
+    let lit = 0;
+    for (let i = f.sparkFrom; i < f.mesh.count; i++) {
+      if (a[i * 16] <= 0.01) continue;
+      lit++;
+      const near = [...anvils.map((s) => s.pos), ...forges].some(
+        (p) => Math.hypot(a[i * 16 + 12] - p.x, a[i * 16 + 14] - p.z) < 5,
+      );
+      expect(near).toBe(true);
+    }
+    expect(lit).toBeGreaterThan(0);
+    at(0, 10);
+    r.life.update(FIXED_STEP, 0.5);
+    expect(f.mesh.count).toBe(0);
+    at(0, 0);
   });
 
   it('dusk brings them in one by one; none below night 0.5 or below tier 2', () => {

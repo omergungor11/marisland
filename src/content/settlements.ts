@@ -64,7 +64,9 @@ export const LOT_ROLE_BY_KIND: Readonly<Partial<Record<LotKind, LotRole>>> = {
  * lots share a roof colour; the variant count per def must equal props-buildings `variants`.
  */
 export const LOT_ROOFS: Readonly<Record<string, readonly number[]>> = {
-  cottage: [0, 2, 4],
+  // v3 = DevOps ops shack (M22 TASK-482; a fixture the DevOps plan pins, never a rolled lot): a
+  // steel roof outside ROOFS, listed with v0's roof
+  cottage: [0, 2, 4, 0],
   stiltHut: [2, 4],
   towerHouse: [5, 1, 2],
   barn: [5, 0],
@@ -91,7 +93,8 @@ export const LOT_ROOFS: Readonly<Record<string, readonly number[]>> = {
   galleryPavilion: [3, 6, 6],
   dataCenter: [2, 5],
   rackShed: [0, 3],
-  antennaMast: [1, 4],
+  // v2 = summit watch tower (M22 TASK-482; red hip roof = ROOFS[1], like v0's lamp)
+  antennaMast: [1, 4, 1],
   researchHut: [2, 0],
 };
 
@@ -185,6 +188,8 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   // DevOps "Kor Demircileri" kit (TASK-422); the onsen deck is walkable planks (only its rack /
   // bench core is solid, the capybara story spot stays reachable)
   lavaLantern: 0.3,
+  // M22 (TASK-482): D11 basalt column clusters on the windward shore
+  basaltBoulder: 0.6,
   ingotStack: 0.75,
   anvil: 0.45,
   incidentSign: 1.1,

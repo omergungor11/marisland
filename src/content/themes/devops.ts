@@ -5,6 +5,17 @@ import type { ThemeDef } from './index.ts';
 
 const { grass, meadow, forest, rock, cliff, sandBlack, sandWet, path, plaza } = Zone;
 
+/**
+ * D8 fumarole pools (M22 TASK-482): three kerbless pool discs (teal / sulphur / pink) inside a
+ * salt-white rim, painted by the plan. They reuse zone ids no DevOps feature paints (the other
+ * cultures' street tints, which only the HQ plan writes on its own island), so no new zone id:
+ * this island's `ground` row gives them their look.
+ */
+export const FUMAROLE_ZONES = {
+  pools: [Zone.streetHq, Zone.streetCoding, Zone.streetMarketing] as const,
+  rim: Zone.streetQa,
+} as const;
+
 export const DEVOPS_THEME: ThemeDef = {
   id: 'devops',
   displayName: 'DevOps',
@@ -62,6 +73,35 @@ export const DEVOPS_THEME: ThemeDef = {
       material: 'paving',
       base: '#9A979E',
       layer: { layers: ['tiles'], tile: { size: 1.9, grout: '#F5C84C' } },
+    },
+    // D8 fumarole pools (TASK-482): still mineral water (ripples only), study colours
+    [FUMAROLE_ZONES.pools[0]]: {
+      material: 'paving',
+      base: '#9FE6E0',
+      layer: { layers: ['ripples'], amplitude: 0.5 },
+    },
+    [FUMAROLE_ZONES.pools[1]]: {
+      material: 'paving',
+      base: '#FFE45C',
+      layer: { layers: ['ripples'], amplitude: 0.5 },
+    },
+    [FUMAROLE_ZONES.pools[2]]: {
+      material: 'paving',
+      base: '#FF8FB1',
+      layer: { layers: ['ripples'], amplitude: 0.5 },
+    },
+    // D12 switchback service roads (TASK-482; the island's own street zone, painted over the
+    // cone's stair paths): pale ochre gravel, so the zigzag reads on the dark cone by day
+    [Zone.streetDevops]: {
+      material: 'gravel',
+      base: '#C9BDAC',
+      layer: { layers: ['pebbles'] },
+    },
+    // salt crust round the pools: off-white with white / grey speckle
+    [FUMAROLE_ZONES.rim]: {
+      material: 'sand',
+      base: '#F2EFE8',
+      layer: { layers: ['speckle'], speckle: ['#FFFFFF', '#B9B3BE'] },
     },
   },
   // pines stay low (no upper-slope forest)
@@ -179,7 +219,13 @@ export const DEVOPS_SITE = {
     /** Antenna masts: distance from the crater centre, min height, spacing between masts. */
     dist: [13, 22] as const,
     minY: 14,
-    count: [2, 3] as const,
+    /**
+     * D5 (M22 TASK-482): ONE summit watch tower replaces the 2–3 rim masts — the highest rim
+     * shoulder nearest the hub, antennaMast lot pinned to `towerVariant` (lattice + bell + red
+     * beacon, geo/themes/devops-m22.ts).
+     */
+    count: [1, 1] as const,
+    towerVariant: 2,
     gap: 12,
     maxRelief: 4,
     angles: 48,
@@ -299,7 +345,88 @@ export const DEVOPS_SITE = {
    * the pipe pieces traverse the cone in short steps, TASK-453c). */
   steam: { ventY: [15, 24] as const, search: 16, furnaceR: 3.2, maxSlope: 0.6 },
   /** Worker lodges (cottage fixtures, variants cycled) beside the ops quad. */
-  quadLodges: { count: 2, ring: [7, 13] as const, variants: [0] as const },
+  quadLodges: { count: 2, ring: [7, 13] as const, variants: [3] as const },
+  /**
+   * R3-13 (M22 TASK-482): every DevOps lodge (quad, shelf village, foundry row) is the cottage
+   * ops-shack variant (steel roof, orange trim; geo/themes/devops-m22.ts), not the stock cottage.
+   */
+  lodgeVariant: 3,
+  /**
+   * D8 fumarole pools (TASK-482): a trio of level pool discs on the cone flank (zones
+   * FUMAROLE_ZONES, kerbless: no prop), each in a salt rim `rim` u wide. The trio centre is the
+   * flattest spot `dist` u from the crater centre at `y` heights, nearest the crater → hub
+   * heading (the face the village cameras see); pools sit `spread` u from it.
+   */
+  fumaroles: {
+    radii: [3, 2.5, 2.1] as const,
+    rim: 1.4,
+    spread: 5.4,
+    /** Trio centre distance from the crater centre and its height band (u). */
+    dist: [10, 34] as const,
+    y: [5, 22] as const,
+    /** Score: relief + `heading` × angle off the crater → hub heading (rad). */
+    heading: 0.6,
+    /**
+     * Relief under one pool + rim before its pad: the pads level every sample within the
+     * archetype's padBreak (2.5 u) of the mean, so up to ~2 × that the pool reads level.
+     */
+    maxRelief: 5.5,
+    /** Second pass: maxRelief × this. */
+    rough: 1.4,
+    minShore: 6,
+    /** Pad margin round each disc (its own level: pools step down the slope). */
+    padMargin: 0.6,
+    padStep: 1.5,
+  },
+  /**
+   * D11 basalt columns (TASK-482): clusters of basaltBoulder v2 (hex column clusters) on the
+   * windward shore at the foot of a steep rise: shore distance `shore`, ground ≤ `maxY`, the ground
+   * `probe` u inland at least `rise` u higher; `clusters` cluster centres ≥ `gap` apart, each
+   * `perCluster` columns within `spread` u.
+   */
+  columns: {
+    variant: 2,
+    maxLee: 0.3,
+    shore: [0.4, 3] as const,
+    maxY: 2.2,
+    probe: 5,
+    rise: 2.4,
+    clusters: [3, 4] as const,
+    gap: 11,
+    perCluster: [3, 5] as const,
+    spread: 2.6,
+    sep: 1.15,
+  },
+  /**
+   * D12 switchback service roads (TASK-482, R3-13 "every direction"): from the summit watch tower
+   * down to the hub and to the foot of shelf facilities (`feet`, in this order, each >= `minTurn`
+   * rad round the crater from the others, `maxRoads` with the hub road), each a zigzag of legs of
+   * about `legRise` u of drop (`legs` range) swinging `amp` u across the fall line; every leg is a
+   * 'stair' link searched in a `corridor` u half-width strip (straight legs, sharp hairpins).
+   * The foot pin stands `footIn` u from the shelf anchor toward the crater (on the cone).
+   */
+  switchback: {
+    feet: ['harbour', 'foundryUpper', 'datacenterUpper', 'hotspring', 'foundry'] as const,
+    maxRoads: 4,
+    minTurn: 1.0,
+    footIn: 6,
+    legRise: 6,
+    legs: [2, 8] as const,
+    amp: 18,
+    corridor: 2.6,
+    /** Hairpin corners keep this much shore distance (u). */
+    minShore: 3,
+    /** lavaLantern every `every`-th path sample (PATHS.step u) on cone paths above `minY`. */
+    every: 5,
+    minY: 9,
+    /** Lantern this far beside the centreline, >= PATHS.halfWidth + `gap` from every path sample. */
+    side: 1.8,
+    gap: 0.5,
+    /** A lantern stands only where the ground within `levelR` u varies ≤ `maxRelief` u; at most `maxLanterns`. */
+    levelR: 0.3,
+    maxRelief: 0.65,
+    maxLanterns: 40,
+  },
 } as const;
 
 /**

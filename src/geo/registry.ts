@@ -67,6 +67,7 @@ import {
 import { giantMushroom, palm, pine, roundTree, treeBlob } from './trees.ts';
 import { THEME_GEO } from './themes/index.ts';
 import { withGuildHall } from './themes/culture-hq.ts';
+import { withOpsShack, withWatchTower } from './themes/devops-m22.ts';
 import {
   lanternBoat,
   withCanopyVitray,
@@ -143,7 +144,8 @@ const D = (
 
 defs.push(
   // buildings
-  D('cottage', 3, cottage, 2.2, 3.7),
+  // variant 3 = DevOps ops shack (M22 TASK-482), pinned by the DevOps plan only
+  D('cottage', 4, withOpsShack(cottage), 2.2, 3.7),
   D('stiltHut', 2, stiltHut, 2.4, 4.6),
   D('towerHouse', 3, towerHouse, 2.1, 6),
   D('windmill', 2, windmill, 2.4, 9.9),
@@ -202,7 +204,8 @@ defs.push(
   D('galleryPavilion', 3, withGlassPavilion(galleryPavilion), 2.8, 3.6),
   D('dataCenter', 2, dataCenter, 4.0, 3.25),
   D('rackShed', 2, rackShed, 2.1, 3),
-  D('antennaMast', 2, antennaMast, 1.4, 9.2, false, [9.8, 8.6]),
+  // variant 2 = DevOps summit watch tower (M22 TASK-482), pinned by the DevOps plan only
+  D('antennaMast', 3, withWatchTower(antennaMast), 1.4, 9.2, false, [9.8, 8.6, 12.2]),
   D('researchHut', 2, researchHut, 2.3, 4.4),
   D('telescope', 2, telescope, 0.6, 1.65),
   D('officeLod1', 4, officeLod1, 4.0, 4, false, [3.5, 3.2, 2.9, 6.9]),

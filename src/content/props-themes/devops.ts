@@ -358,3 +358,47 @@ export const DEVOPS_CULTURE_PROP_DEFS: readonly PropDef[] = [
   // the one tier-1 def: a small bath house by the hot spring
   { id: 'onsenHouse', geo: 'onsenHouse', tier: 1, variants: 1, footprint: 2.2, flags: grounded },
 ];
+
+/**
+ * M22 (TASK-482) DevOps quick-win looks (geo/themes/devops-m22.ts). Lengths in u, local frame.
+ * - D5 summit watch tower = antennaMast v2 (DEVOPS_SITE.ridge.towerVariant): a tapered lattice
+ *   tower, a lookout deck with a hip-roofed bell cab, the uptime bell under the roof and a red
+ *   beacon on the roof mast. `bellY` / `beaconY` anchor the culture-mover bell rings and the red
+ *   rotating beam (content/cultures/movers.ts `watch`).
+ * - R3-13 ops shack = cottage v3 (DEVOPS_SITE.lodgeVariant): cream walls, steel roof, orange band.
+ * - D16 LED strips along the top of every container (containerYard / containerRow stacks).
+ */
+export const DEVOPS_M22 = {
+  tower: {
+    base: 0.85,
+    top: 0.5,
+    deck: 9,
+    /** Lattice rings (y) between the plinth and the deck. */
+    rings: [2.4, 4.6, 6.8] as const,
+    leg: 0.08,
+    cab: 1.3,
+    cabH: 1.7,
+    roofRise: 0.9,
+    mast: 0.75,
+    bellY: 10.0,
+    bellR: 0.34,
+    beaconY: 11.95,
+    beaconR: 0.26,
+    steel: '#5E6472',
+    lattice: '#8A909C',
+    trim: '#FF9F43',
+    roof: '#E35D6A',
+    bell: '#F2C14E',
+    beacon: '#FF4A3D',
+  },
+  shack: {
+    wall: '#EFE6D6',
+    roof: '#8A909C',
+    trim: '#FF9F43',
+    rise: 0.95,
+    /** Orange band under the eaves (height). */
+    band: 0.22,
+    stack: '#5E6472',
+  },
+  led: { color: '#8FF0FF', h: 0.08, inset: 0.35 },
+} as const;

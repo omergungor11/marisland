@@ -44,6 +44,42 @@ export function planBugHunt(ctx: LifeCtx): Swarm[] {
   return out;
 }
 
+/** D15 ember source (TASK-482): an anvil top (`forge` false) or a furnace mouth sill, world xyz. */
+export interface EmberSource {
+  island: number;
+  x: number;
+  y: number;
+  z: number;
+  /** Heading of the anvil spot / furnace mouth (rad, xz). */
+  rotY: number;
+  forge: boolean;
+}
+
+/**
+ * D15 ember sources (TASK-482): the anvil of every `anvilHammer` story spot and the mouth of every
+ * `foundry` fixture on `FIREFLIES.embers.theme`'s island. Pure data.
+ */
+export function planEmbers(ctx: LifeCtx): EmberSource[] {
+  const E = FIREFLIES.embers;
+  const isl = ctx.world.islands.find((i) => i.theme === E.theme);
+  if (!isl) return [];
+  const out: EmberSource[] = [];
+  for (const s of ctx.world.storySpots ?? []) {
+    if (s.islandId !== isl.id || s.kind !== E.anvil.story) continue;
+    const x = s.pos.x + Math.cos(s.rotY) * E.anvil.ahead;
+    const z = s.pos.z + Math.sin(s.rotY) * E.anvil.ahead;
+    out.push({ island: isl.id, x, y: ctx.h(x, z) + E.anvil.y, z, rotY: s.rotY, forge: false });
+  }
+  for (const f of ctx.world.fixtures) {
+    if (f.islandId !== isl.id || f.defId !== E.forge.def) continue;
+    const [along, up] = E.forge.mouth;
+    const x = f.x + Math.cos(f.rotY) * along;
+    const z = f.z + Math.sin(f.rotY) * along;
+    out.push({ island: isl.id, x, y: ctx.h(f.x, f.z) + up, z, rotY: f.rotY, forge: true });
+  }
+  return out;
+}
+
 /** Light sources of the lantern pools (lantern posts, stalls, door lights …): fireflies keep out of them. */
 function lightSources(ctx: LifeCtx): { x: number; z: number; r: number }[] {
   const out: { x: number; z: number; r: number }[] = [];
@@ -176,6 +212,10 @@ export class Fireflies extends AgentKind {
   private readonly bph: Float32Array;
   /** Where in the dusk ramp (0..1) this one lights. */
   private readonly onAt: Float32Array;
+  /** First D15 spark instance (the sparks run to the end); per spark: base y, forge flag. */
+  readonly sparkFrom: number;
+  private readonly ey: Float32Array;
+  private readonly eForge: Uint8Array;
   /** Glow ramp of the last frame and how many instances are drawn (tests / debug). */
   glow = 0;
   shown = 0;
@@ -191,11 +231,15 @@ export class Fireflies extends AgentKind {
     count: number,
     /** Q17 green bug-hunt swarms, `FIREFLIES.perSwarm` each after the `count` plain ones. */
     bugs: Swarm[] = [],
+    /** D15 ember sources (TASK-482), after the bugs: anvil.n / forge.n sparks each. */
+    embers: EmberSource[] = [],
   ) {
+    const E = FIREFLIES.embers;
+    const sparks = embers.reduce((a, e) => a + (e.forge ? E.forge.n : E.anvil.n), 0);
     super({
       ...o,
       name: 'fireflies',
-      capacity: (swarms.length > 0 ? count : 0) + bugs.length * FIREFLIES.perSwarm,
+      capacity: (swarms.length > 0 ? count : 0) + bugs.length * FIREFLIES.perSwarm + sparks,
       geometry: fireflyGeometry(),
       material: makeLifeMaterial('life:fireflies', false),
     });
@@ -219,7 +263,11 @@ export class Fireflies extends AgentKind {
     const h = (i: number, k: number): number => unitHash(o.seed, i, 0xf1e5 + k);
     const lerp = (r: readonly [number, number], u: number): number => r[0] + (r[1] - r[0]) * u;
     const plain = swarms.length > 0 ? count : 0;
+    this.sparkFrom = plain + bugs.length * F.perSwarm;
+    this.ey = new Float32Array(n - this.sparkFrom);
+    this.eForge = new Uint8Array(n - this.sparkFrom);
     for (let i = 0; i < n; i++) {
+      if (i >= this.sparkFrom) continue;
       const sw =
         i < plain
           ? swarms[Math.floor(i / F.perSwarm) % swarms.length]
@@ -242,12 +290,38 @@ export class Fireflies extends AgentKind {
       this.bph[i] = h(i, 12);
       this.onAt[i] = h(i, 13) * F.stagger;
     }
+    // D15 sparks: the source in hx/hz/ey, a direction (ex = cos, ez = sin), a period (bp) and a
+    // phase (bph); the anvil's sparks share the stroke phase (one burst per stroke)
+    let i = this.sparkFrom;
+    embers.forEach((e, j) => {
+      const k = e.forge ? E.forge.n : E.anvil.n;
+      const burst = h(n + j, 20);
+      for (let s = 0; s < k; s++, i++) {
+        const q = i - this.sparkFrom;
+        this.eForge[q] = e.forge ? 1 : 0;
+        const side = (h(i, 21) - 0.5) * (e.forge ? E.forge.width : 0);
+        this.hx[i] = e.x - Math.sin(e.rotY) * side;
+        this.hz[i] = e.z + Math.cos(e.rotY) * side;
+        this.ey[q] = e.y;
+        const a = e.forge
+          ? e.rotY
+          : e.rotY + Math.PI + (s / k - 0.5) * 2.2 + (h(i, 22) - 0.5) * 0.4;
+        this.ex[i] = Math.cos(a);
+        this.ez[i] = Math.sin(a);
+        this.bp[i] = e.forge ? lerp(E.forge.period, h(i, 23)) : E.anvil.period;
+        this.bph[i] = e.forge ? h(i, 24) : burst + s * 0.04;
+        this.px0[i] = h(i, 25) * TAU;
+        this.onAt[i] = h(i, 26) * F.stagger;
+      }
+    });
     this.mesh.frustumCulled = false;
     // an instanceColor attribute keeps the program parameters identical to the land critters'
     // (same cache key + same defines = the one shared creature program, not a 13th)
     const warm = new THREE.Color(F.color);
     const green = new THREE.Color(F.bugHunt.color);
-    for (let i = 0; i < n; i++) this.mesh.setColorAt(i, i < plain ? warm : green);
+    const ember = new THREE.Color(E.color);
+    for (let i = 0; i < n; i++)
+      this.mesh.setColorAt(i, i < plain ? warm : i < this.sparkFrom ? green : ember);
     this.render(0, 0); // hidden until night
   }
 
@@ -281,6 +355,11 @@ export class Fireflies extends AgentKind {
     let top = 0;
     for (let i = 0; i < n; i++) {
       const on = smooth(this.onAt[i], this.onAt[i] + (1 - F.stagger), glow);
+      if (i >= this.sparkFrom) {
+        if (this.spark(i, t, calm, on)) top = i + 1;
+        this.m.toArray(arr, i * 16);
+        continue;
+      }
       const x = this.hx[i] + this.ex[i] * calm * Math.sin(this.wx[i] * t + this.px0[i]);
       const z = this.hz[i] + this.ez[i] * calm * Math.sin(this.wz[i] * t + this.pz0[i]);
       const y =
@@ -303,6 +382,42 @@ export class Fireflies extends AgentKind {
     this.mesh.visible = top > 0;
     this.mesh.instanceMatrix.needsUpdate = true;
     if (top > 0) this.mesh.computeBoundingSphere();
+  }
+
+  /**
+   * Pose spark `i` into `this.m` (D15): an anvil spark flies out and up in a short arc once per
+   * stroke, shrinking; a forge ember drifts up from the mouth sill, swaying, fading out. Reduced
+   * motion holds every spark at a third of its flight. Returns true when it is drawn.
+   */
+  private spark(i: number, t: number, calm: number, on: number): boolean {
+    const E = FIREFLIES.embers;
+    const q = i - this.sparkFrom;
+    const u0 = (t / this.bp[i] + this.bph[i]) % 1;
+    const u = calm > 0.5 ? u0 : 0.33;
+    let x = this.hx[i];
+    let z = this.hz[i];
+    let y = this.ey[q];
+    let k: number;
+    if (this.eForge[q]) {
+      const out = 0.4 * u;
+      const sw = E.forge.sway * Math.sin(this.px0[i] + u * 6);
+      x += this.ex[i] * out - this.ez[i] * sw;
+      z += this.ez[i] * out + this.ex[i] * sw;
+      y += E.forge.rise * u;
+      k = (1 - u) * Math.min(1, u * 8);
+    } else {
+      // the burst lives for the first 40 % of the stroke period
+      const f = Math.min(1, u / 0.4);
+      x += this.ex[i] * E.anvil.spread * f;
+      z += this.ez[i] * E.anvil.spread * f;
+      y += E.anvil.rise * f * (1.6 - f) * 1.4;
+      k = u < 0.4 ? (1 - f) * (1 - f) : 0;
+    }
+    const sc = Math.max(on * k * E.size, 0);
+    this.p.set(x, y, z);
+    this.s.setScalar(sc);
+    this.m.compose(this.p, this.q, this.s);
+    return sc > 0.01;
   }
 
   protected stepAgent(): void {}

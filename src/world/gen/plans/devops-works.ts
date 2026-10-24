@@ -474,7 +474,7 @@ export function placeVillage(ctx: SiteCtx, isl: IslandData): void {
       };
       const q = shed
         ? fixtureNear(ctx, isl, 'rackShed', p, F.rotY, LOT_FOOTPRINT.rackShed, fit, made % 2)
-        : fixtureNear(ctx, isl, 'cottage', p, F.rotY, LOT_FOOTPRINT.cottage, fit, 0);
+        : fixtureNear(ctx, isl, 'cottage', p, F.rotY, LOT_FOOTPRINT.cottage, fit, S.lodgeVariant);
       if (q) made++;
     }
   }
@@ -579,7 +579,7 @@ export function placeFoundry(ctx: SiteCtx, isl: IslandData, plan: SitePlan, rng:
   let lodges = 0;
   const shop = (def: 'smithy' | 'cottage', at: XZ): boolean => {
     const size = def === 'smithy' ? W.smithy.footprint : LOT_FOOTPRINT.cottage;
-    const v = def === 'cottage' ? 0 : undefined;
+    const v = def === 'cottage' ? S.lodgeVariant : undefined;
     return !!fixtureNear(
       ctx,
       isl,
