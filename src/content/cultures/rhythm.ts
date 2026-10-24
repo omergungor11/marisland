@@ -88,7 +88,12 @@ export const CULTURE_RHYTHM: Record<ThemeId, CultureRhythm> = {
       { id: 'greenLight', hour: 16, seconds: 30 },
       { id: 'bugHunt', hour: 20.5 },
     ],
-    lamps: { defs: ['uvLampPost', 'bugJar'], on: 20.5, off: 5, rampS: 10 },
+    lamps: {
+      defs: ['uvLampPost', 'bugJar', 'rimPost', 'inspectionBuoy'],
+      on: 20.5,
+      off: 5,
+      rampS: 10,
+    },
   },
   // Glass & Light: Light Night at 20:00 — the glass lights ring by ring from the tree outward
   design: {
