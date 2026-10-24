@@ -697,7 +697,12 @@ function gateLampScene(variant: number): Scene['run'] {
   const order = CULTURES[theme].relay.order;
   const accent = THEMES[theme].accent;
   const tints = Array.from({ length: 8 }, (_, i) => lightened(accent, (G.lighten * i) / 7));
+  const R = G.rest;
   return (w, c) => {
+    // night rest glow (TASK-478): the two finial lamps of every gate light up after dusk
+    const rest = smooth((c.night - R.night[0]) / (R.night[1] - R.night[0]));
+    if (rest > 0.01)
+      for (const p of R.posts) w.put(PART.glow, p, [0, 0, 0], R.post * rest, tints[R.tint]);
     const boost = relayBoost(c.day, order);
     if (boost < 0.01) return;
     const k = Math.min(1, boost / RELAY.flash);
@@ -919,7 +924,7 @@ export function createCultureMovers(
     else if (d === D.cart)
       scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 2, 0], 3, balloonScene()));
     else if (d === D.gate)
-      scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 1.87, 0], 2, gateLampScene(v)));
+      scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 1.87, 0], 4, gateLampScene(v)));
     else if (d === D.stall)
       scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 1.0, 0], 3, keeperScene(v, idx)));
     else if (d === D.sema)

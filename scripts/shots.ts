@@ -176,8 +176,12 @@ function shotUrl(base: string, p: ShotPreset, extra = ''): string {
   if (p.panel) q.set('panel', p.panel);
   if (p.edit) q.set('edit', p.edit);
   if (p.introt !== undefined) q.set('introt', String(p.introt));
-  // zoom-ladder frames: no sky craft crossing the parallax measurement (TASK-450)
-  if (p.ladder) q.set('craft', '0');
+  // zoom-ladder frames: no sky craft (TASK-450) and no gulls (TASK-478: a flock near the lens
+  // reads as a blob) crossing the parallax measurement
+  if (p.ladder) {
+    q.set('craft', '0');
+    q.set('birds', '0');
+  }
   return `${base}?${q.toString()}${extra}`;
 }
 

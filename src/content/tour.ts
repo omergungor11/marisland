@@ -35,6 +35,11 @@ export interface TourStop {
   pitch?: number;
   /** Heading offset (deg) from the anchor's facing / the ladder heading. */
   azOffset?: number;
+  /**
+   * `anchor` stops: target shift (u) off the anchor in the view frame (right = across the view,
+   * back = toward the camera), as `FRAMING.ladder.shift`.
+   */
+  shift?: { right: number; back: number };
   /** Game hour held at this stop; the clock scrubs forward to it during the flight. */
   time: number;
   /** Per-stop overrides of `TOUR.flySeconds` / `TOUR.holdSeconds`. */
@@ -67,10 +72,13 @@ export const TOUR = {
       title: 'Prism Hour',
       kind: 'anchor',
       island: 'design',
+      // the TASK-470 W19 look (NNW): heading ≈ the W19 camera's, target ≈ 21 u left of the
+      // Atelier Tree so the conservatory sits whole beside it; pitch at the band's floor
       anchor: 'giantTree',
-      dist: 70,
-      pitch: 34,
-      azOffset: 40,
+      dist: 74,
+      pitch: 26,
+      azOffset: 53,
+      shift: { right: -21, back: 0 },
       time: 17.5,
     },
     { id: 'W2', title: 'Golden Harbor', kind: 'dock', island: 'hq', time: 17.75 },

@@ -698,14 +698,13 @@ export function sailboat({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry
 }
 
 /**
- * One rock tower of height H / foot radius R at `at` (strata bands, a grass cap at LOD0; the
+ * One rock tower of height H / foot radius R at `at` (strata bands, a grass cap; the
  * `lean` factor tilts the top). `radial` / `hseg` are the cylinder resolutions.
  */
 function stackTower(
   acc: Acc,
   r: Rng,
   noise: ReturnType<typeof createNoise>,
-  lod: number,
   H: number,
   R: number,
   at: [number, number, number],
@@ -738,15 +737,15 @@ function stackTower(
     return col(CLIFF_STRATA[((i % 2) + 2) % 2]);
   };
   acc.add(g, { m: mat(at), color: bands, windMul: 0, aoAmt: 0.3 });
-  if (lod === 0) {
-    put(
-      acc,
-      blob(R * 0.75, 0, noise, 0.15, 1.2, 3),
-      [at[0] + lean * H * 0.25, at[1] + H + 0.05, at[2]],
-      gradYGrass(at[1] + H),
-      { aoAmt: 0.1, s: [1, 0.55, 1] },
-    );
-  }
+  // the grass cap at every LOD (TASK-478: without it the far stacks read as flat stumps); the
+  // detail-0 dome is 20 triangles, inside the LOD1 cap of 0.3 x LOD0
+  put(
+    acc,
+    blob(R * 0.75, 0, noise, 0.15, 1.2, 3),
+    [at[0] + lean * H * 0.25, at[1] + H + 0.05, at[2]],
+    gradYGrass(at[1] + H),
+    { aoAmt: 0.1, s: [1, 0.55, 1] },
+  );
 }
 
 /**
@@ -845,7 +844,7 @@ export function seaStack({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry
   const R = [1.6, 2.1, 2.7][cls] * r.range(0.95, 1.05);
   const radial = lod === 0 ? 12 : 6;
   const hseg = lod === 0 ? 8 : 3;
-  stackTower(acc, r, noise, lod, H, R, [0, 0, 0], (cls + 1) * 0.35, radial, hseg);
+  stackTower(acc, r, noise, H, R, [0, 0, 0], (cls + 1) * 0.35, radial, hseg);
   return acc.finish(rng, false, true);
 }
 const gradYGrass =
