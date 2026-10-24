@@ -41,6 +41,9 @@ export interface Budget {
  * wow shot ≤ 269. Medium calls 340 → 300. The merged copies cost +1–5 MB on close shots (max 172);
  * the memory peak is still W4 (173 MB, a T1 view the merge never touches), so medium
  * gpuMemoryMB stays 176 (170 needs W4's Beacon / Design buffers trimmed first).
+ * TASK-478 (D-061): prop LOD geometries keep normals as 16-bit normalized and the emissive / ao /
+ * wind weights as 16-bit unsigned normalized (batcher `compactAttributes`; same floats in the
+ * shader): prop geometry −5.3 to −8 MB per frame, W4 174 → 166 MB. Medium gpuMemoryMB 176 → 170.
  */
 export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
   low: {
@@ -63,7 +66,7 @@ export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
     agents: 60,
     particles: 6_000,
     programs: 20,
-    gpuMemoryMB: 176,
+    gpuMemoryMB: 170,
     jsHeapMB: 180,
     newSeedMs: 800,
   },

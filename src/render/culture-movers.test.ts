@@ -292,18 +292,22 @@ describe('culture movers', () => {
       view.update(3, 21, env(21), tower, relay(simt));
       return ofKind(view, PART.glow).length;
     };
+    // every gate's two finial lamps glow all night (TASK-478 rest glow); none by day
+    const rest = 2 * orders.length;
+    view.update(3, 12, env(12), tower, relay(-5));
+    expect(ofKind(view, PART.glow)).toHaveLength(0);
     // +3 = the semaphore lamp and its two arm tips (lit through the relay)
-    expect(glows(-5)).toBe(0);
+    expect(glows(-5)).toBe(rest);
     let prev = 0;
     for (let step = 0; step < 7; step++) {
       const lit = orders.filter((o) => o <= step + 1).length;
-      expect(glows(step * 10 + 5), `step ${step + 1}`).toBe(lit + 3);
+      expect(glows(step * 10 + 5), `step ${step + 1}`).toBe(rest + lit + 3);
       expect(lit).toBeGreaterThanOrEqual(prev);
       prev = lit;
     }
     // the glow holds to the end of the relay and is gone after the fade
-    expect(glows(70 + 2)).toBeGreaterThan(0);
-    expect(glows(70 + RELAY.fadeS + 3)).toBe(0);
+    expect(glows(70 + 2)).toBeGreaterThan(rest);
+    expect(glows(70 + RELAY.fadeS + 3)).toBe(rest);
   });
 
   it('stall keepers: one per goods stall, awake from 06:30, closed form', () => {

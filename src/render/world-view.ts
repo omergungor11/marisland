@@ -135,6 +135,8 @@ export interface WorldViewDeps {
   getCameraTarget?: (out: THREE.Vector3) => void;
   /** Capture `craft=0`: no sky craft (default true). */
   skyCraft?: boolean;
+  /** Capture `birds=0`: no gull flocks (default true). */
+  birds?: boolean;
 }
 
 const _focus = new THREE.Vector3();
@@ -239,6 +241,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     cameraTarget: d.getCameraTarget ? _camTarget : undefined,
     // the running ritual of an island (bell hour: the campus bots hurry; cap toss: the students cheer)
     festival: (theme) => (culture.state.festival as Record<string, CultureFestival | null>)[theme],
+    plan: d.birds === false ? { flocks: 0 } : undefined,
   });
   group.add(life.group);
   d.scope.add(life);

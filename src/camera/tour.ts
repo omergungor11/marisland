@@ -143,14 +143,13 @@ export function stopPose(stop: TourStop, ctx: FitContext): Pose {
     case 'anchor': {
       const a = stop.anchor ? isl?.anchors[stop.anchor] : undefined;
       if (!a) return ladderPose(world, isl, key, dist, pitch, stop.azOffset);
-      return {
-        tx: a.x,
-        ty: Math.max(0, world.heightAt(a.x, a.z)),
-        tz: a.z,
-        dist,
-        pitch,
-        az: azimuthToward(a.rotY) + (stop.azOffset ?? 0),
-      };
+      const az = azimuthToward(a.rotY) + (stop.azOffset ?? 0);
+      const ux = Math.sin((az * Math.PI) / 180);
+      const uz = Math.cos((az * Math.PI) / 180);
+      const sh = stop.shift ?? { right: 0, back: 0 };
+      const tx = a.x + uz * sh.right + ux * sh.back;
+      const tz = a.z - ux * sh.right + uz * sh.back;
+      return { tx, ty: Math.max(0, world.heightAt(tx, tz)), tz, dist, pitch, az };
     }
   }
 }

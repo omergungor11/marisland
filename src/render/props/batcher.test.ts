@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { ALL_ISLANDS, createPropBatcher, geoStats, type BatcherWorld } from './batcher.ts';
+import {
+  ALL_ISLANDS,
+  compactAttributes,
+  createPropBatcher,
+  geoStats,
+  type BatcherWorld,
+} from './batcher.ts';
 import { createPropStore, PropFlag, type PropStore } from '../../world/prop-store.ts';
 import { PROP_DEFS, PROP_DEF_INDEX } from '../../content/props.ts';
 import { THEMES } from '../../content/themes/index.ts';
@@ -515,5 +521,24 @@ describe('T0 blobs and grounding (TASK-373)', () => {
     const g = plain.groups.find((x) => x.lod === 0 && Array.from(x.members).includes(a))!;
     g.mesh.getMatrixAt(Array.from(g.members).indexOf(a), m4);
     expect(v3.setFromMatrixPosition(m4).y).toBeCloseTo(s.y[a], 5);
+  });
+});
+
+describe('compactAttributes (TASK-478)', () => {
+  it('stores normals / weights in 16 bits, same floats, same canopy stats', () => {
+    const raw = buildProp('roundTree', 3, 0, 0);
+    const before = geoStats(raw);
+    const n0 = Float32Array.from(raw.getAttribute('normal').array);
+    const ao0 = Float32Array.from(raw.getAttribute('ao').array);
+    const g = compactAttributes(raw);
+    const n = g.getAttribute('normal') as THREE.BufferAttribute;
+    expect(n.array).toBeInstanceOf(Int16Array);
+    expect(n.normalized).toBe(true);
+    for (let k = 0; k < n.count; k++) expect(n.getX(k)).toBeCloseTo(n0[k * 3], 4);
+    const ao = g.getAttribute('ao') as THREE.BufferAttribute;
+    expect(ao.array).toBeInstanceOf(Uint16Array);
+    for (let k = 0; k < ao.count; k++) expect(ao.getX(k)).toBeCloseTo(ao0[k], 4);
+    expect(geoStats(g).rgb[0]).toBeCloseTo(before.rgb[0], 4);
+    expect(g.getAttribute('position').array).toBeInstanceOf(Float32Array);
   });
 });
