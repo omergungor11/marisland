@@ -68,7 +68,12 @@ export const CULTURE_RHYTHM: Record<ThemeId, CultureRhythm> = {
       { id: 'shiftEnd', hour: 17.5 },
       { id: 'releaseNight', hour: 21, seconds: 40 },
     ],
-    lamps: { defs: ['lavaLantern'], on: 18.5, off: 6, rampS: 10 },
+    lamps: {
+      defs: ['lavaLantern', 'antennaMast', 'containerYard', 'containerRow'],
+      on: 18.5,
+      off: 6,
+      rampS: 10,
+    },
   },
   // Carnival Broadcasters: the marquee warms up just before the 17:30 Golden Hour Launch Show
   marketing: {
