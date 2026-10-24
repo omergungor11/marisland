@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { WorldData } from '../../world/types.ts';
 import { heightAt, THEME_IDS } from '../../world/types.ts';
-import { COMPASS_MOSAIC as CM, PRISM_POOLS as PP } from '../../content/ground-art.ts';
+import { CARPET as CP, COMPASS_MOSAIC as CM, PRISM_POOLS as PP } from '../../content/ground-art.ts';
 import { SHARED } from '../uniforms.ts';
 
 /**
@@ -11,6 +11,8 @@ import { SHARED } from '../uniforms.ts';
  *
  * - `GROUND_ART_COLOR_GLSL` (after the ground colour, in `color_fragment`): the mosaic over the
  *   'compass' district's albedo; needs `marDPx` / `marDPy` / `marBase` from the ground colour.
+ *   The Marketing red carpet (TASK-481) is painted in the same block: a rotated strip over the
+ *   first 'carpet' district, gold trim lines and star plates.
  * - `GROUND_ART_LIGHT_GLSL` (after the cloud shadow, `opaque_fragment`): the prism pools as added
  *   light × albedo (define `MAR_PRISM`; off on low quality); the day pools fade under the overcast
  *   veil (rain, fog), the night ones follow the lamps.
@@ -51,7 +53,18 @@ export function groundArtUniforms(world: WorldData): Record<string, THREE.IUnifo
     if (f.defId !== 'prismArch') continue;
     prisms[n++].set(f.x, f.z, heightAt(world.height, f.x, f.z), 1);
   }
+  // ---- red carpet: the first 'carpet' district (Marketing's Ad Boulevard)
+  const carpet = new THREE.Vector4(0, 0, 1, 0);
+  const carpetDim = new THREE.Vector4(0, 0, 0, 0);
+  const cd = world.districts.find((x) => x.kind === 'carpet');
+  if (cd) {
+    carpet.set(cd.x, cd.z, Math.cos(cd.rotY), Math.sin(cd.rotY));
+    carpetDim.set(cd.w / 2 + CP.edge, cd.d / 2, heightAt(world.height, cd.x, cd.z), 1);
+  }
   return {
+    uCarpet: { value: carpet },
+    uCarpetDim: { value: carpetDim },
+    uCarpetInk: { value: [CP.pile, CP.trim, CP.plate, CP.star, CP.outline].map(lin) },
     uCompass: { value: compass },
     uCompassRay: { value: rays },
     uCompassCol: { value: rayCol },
@@ -71,6 +84,9 @@ export function groundArtUniforms(world: WorldData): Record<string, THREE.IUnifo
 const f = (v: number): string => v.toFixed(5);
 
 export const GROUND_ART_PARS_GLSL = /* glsl */ `
+uniform vec4 uCarpet;
+uniform vec4 uCarpetDim;
+uniform vec3 uCarpetInk[5];
 uniform vec4 uCompass;
 uniform vec4 uCompassRay[${CM.maxRays}];
 uniform vec3 uCompassCol[${CM.maxRays}];
@@ -81,6 +97,19 @@ uniform vec3 uSunSkyDir;
 uniform vec3 uSunColor;
 uniform float uGolden;
 uniform vec4 uWeather;
+/** Five-point star (r = outer radius, rf = inner / outer ratio in (0.3, 0.55)), signed distance. */
+float marStar5(vec2 p, float r, float rf) {
+  const vec2 k1 = vec2(0.809016994375, -0.587785252292);
+  const vec2 k2 = vec2(-k1.x, k1.y);
+  p.x = abs(p.x);
+  p -= 2.0 * max(dot(k1, p), 0.0) * k1;
+  p -= 2.0 * max(dot(k2, p), 0.0) * k2;
+  p.x = abs(p.x);
+  p.y -= r;
+  vec2 ba = rf * vec2(-k1.y, k1.x) - vec2(0.0, 1.0);
+  float h = clamp(dot(p, ba) / dot(ba, ba), 0.0, r);
+  return length(p - ba * h) * sign(p.y * ba.x - p.x * ba.y);
+}
 /** Prism spectrum at t in [0, 1]: banded (a soft step between neighbouring hues). */
 vec3 marPrismSpectrum(float t) {
   float x = clamp(t, 0.0, 1.0) * ${f(PP.colors.length - 1)};
@@ -102,6 +131,35 @@ const RIM1 = f(CM.rim[1]);
  * pixel footprint (taken from the ground colour's derivatives, outside any branch).
  */
 export const GROUND_ART_COLOR_GLSL = /* glsl */ `
+  if (uCarpetDim.w > 0.5 && abs(vMarWorld.y - uCarpetDim.z) < ${f(CP.heightBand)}) {
+    vec2 marKq = vMarWorld.xz - uCarpet.xy;
+    float marKa = dot(marKq, uCarpet.zw);
+    float marKx = marKq.x * -uCarpet.w + marKq.y * uCarpet.z;
+    float marKe = 0.75 * max(max(length(marDPx.xz), length(marDPy.xz)), 1e-3);
+    float marKd = max(abs(marKx) - uCarpetDim.x, abs(marKa) - uCarpetDim.y);
+    if (marKd < marKe) {
+      vec3 marKdet = mix(vec3(1.0), diffuseColor.rgb / max(marBase, vec3(1e-3)), ${f(CP.detail)});
+      float marKw = 1.0 + ${f(CP.weave)} * sin(marKa * 23.0 + marKx * 5.0) * sin(marKa * 7.0 - marKx * 19.0);
+      vec3 marKc = uCarpetInk[0] * marKw;
+      // gold trim lines inside either edge (the strip's own distance to its edge)
+      float marKin = uCarpetDim.x - abs(marKx);
+      float marKt = smoothstep(${f(CP.trimBand[0])} - marKe, ${f(CP.trimBand[0])} + marKe, marKin)
+                  * (1.0 - smoothstep(${f(CP.trimBand[1])} - marKe, ${f(CP.trimBand[1])} + marKe, marKin));
+      marKc = mix(marKc, uCarpetInk[1], marKt);
+      // star plates down both edges, one every pitch
+      float marKcell = floor(marKa / ${f(CP.pitch)} + 0.5);
+      vec2 marKp = vec2(abs(marKx) - (uCarpetDim.x - ${f(CP.plateInset)}), marKa - marKcell * ${f(CP.pitch)});
+      float marKbox = max(abs(marKp.x), abs(marKp.y)) - ${f(CP.plateHalf)};
+      float marKpl = 1.0 - smoothstep(-marKe, marKe, marKbox);
+      float marKol = 1.0 - smoothstep(0.03 - marKe, 0.03 + marKe, abs(marKbox + 0.03));
+      float marKs = 1.0 - smoothstep(-marKe, marKe, marStar5(vec2(marKp.x, marKp.y), ${f(CP.starR)}, 0.45));
+      float marKlim = step(abs(marKa), uCarpetDim.y - ${f(CP.plateHalf)});
+      marKc = mix(marKc, uCarpetInk[2], marKpl * marKlim);
+      marKc = mix(marKc, uCarpetInk[4], marKol * marKlim * (1.0 - smoothstep(0.0, 1.5, marKe)));
+      marKc = mix(marKc, uCarpetInk[3], marKs * marKlim);
+      diffuseColor.rgb = mix(diffuseColor.rgb, marKc * marKdet, 1.0 - smoothstep(-marKe, marKe, marKd));
+    }
+  }
   if (uCompass.z > 0.0) {
     vec2 marCp = vMarWorld.xz - uCompass.xy;
     float marCr = length(marCp);

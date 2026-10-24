@@ -92,9 +92,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "102e9103d65a3def",
-          "1001": "762f5cea977f1d5e",
-          "42": "624f7d7d1dfa24a4",
+          "1": "deff0386599a5631",
+          "1001": "fb66880a35c4e5b6",
+          "42": "c122128223739bbb",
         }
       `);
     },
@@ -426,9 +426,10 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // Glass & Light, TASK-453c Marketing path-spares-slopes + Emberpeak steam-main slope cap,
       // TASK-461 snapped pipe legs + Star Academy fallbacks, re-pinned
       // TASK-471 (D-058): hub layout + islets, re-pinned; TASK-474 seamarks stage hash, re-pinned;
-      // TASK-466 HQ Seven Gates + TASK-467 Design Glass Conservatory, re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('4ff3c0665c4a9588');
-      expect(generateWorld(1).hashes.world).toBe('8737f74474e5a241');
+      // TASK-466 HQ Seven Gates + TASK-467 Design Glass Conservatory, re-pinned;
+      // TASK-481 Marketing quick wins (gate, bulb strings, transmitters, buoy chain, pontoon, carpet), re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('49e5002ffd8304e7');
+      expect(generateWorld(1).hashes.world).toBe('9840771bc7367d22');
     } finally {
       for (const b of saved) b.on = true;
     }

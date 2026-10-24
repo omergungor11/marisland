@@ -182,15 +182,16 @@ describe('TASK-415 variants of existing defs', () => {
   // TASK-425 placed them: `variants` bumped by one, random rolls keep the old range
   // (`rollVariants`); the glass pavilion has its own LOD1 (the shared v1 one popped colour)
   const cases = [
-    { id: 'giantTree', variant: 3, lod1: 2, count: 4 },
-    { id: 'galleryPavilion', variant: 2, lod1: null, count: 3 },
-    { id: 'bunting', variant: 3, lod1: 2, count: 4 },
+    { id: 'giantTree', variant: 3, lod1: 2, count: 4, rolls: 3 },
+    { id: 'galleryPavilion', variant: 2, lod1: null, count: 3, rolls: 2 },
+    // TASK-481 appended v4 (the Marketing marquee bulb string): rolls still stop at v2
+    { id: 'bunting', variant: 3, lod1: 2, count: 5, rolls: 3 },
   ];
   for (const c of cases) {
     it(`${c.id} v${c.variant}: LOD1 == v${c.lod1 ?? 'own'}, rolls keep the old range, LOD0 adds glass`, () => {
       expect(PROP_GEO[c.id].variants).toBe(c.count);
       expect(defOf(c.id)?.variants).toBe(c.count);
-      expect(defOf(c.id)?.rollVariants).toBe(c.count - 1);
+      expect(defOf(c.id)?.rollVariants).toBe(c.rolls);
       for (const seed of [1, 42, 1001]) {
         const far = buildProp(c.id, seed, c.variant, 1);
         if (c.lod1 !== null) expect(same(far, buildProp(c.id, seed, c.lod1, 1))).toBe(true);

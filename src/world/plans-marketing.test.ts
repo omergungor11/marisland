@@ -113,7 +113,7 @@ describe('Marketing Media Rock plan (TASK-403), 30 seeds', () => {
       if (!lh) continue;
       const top = heightAt(w.height, lh.x, lh.z) + MARKETING_PLAN.towerHeight;
       // the antenna tower (16.3 u with its whip) and the giant screen stay below it
-      for (const f of [...of('antennaTower'), ...of('giantScreen')])
+      for (const f of [...of('antennaTower').filter((x) => x.variant !== 1), ...of('giantScreen')])
         expect(heightAt(w.height, f.x, f.z) + 16.3, `seed ${seed} ${f.defId}`).toBeLessThan(top);
     }
   });
@@ -156,7 +156,8 @@ describe('Marketing Media Rock plan (TASK-403), 30 seeds', () => {
         const y = heightAt(w.height, f.x, f.z);
         return levels.slice(0, 2).some((l) => Math.abs(y - l) < 1.6);
       };
-      const ant = of('antennaTower');
+      // v1 = the transmitters on the sea stacks (TASK-481), not the campus tower
+      const ant = of('antennaTower').filter((f) => f.variant !== 1);
       return (
         ant.length === 1 &&
         onLedge(ant[0]) &&
@@ -233,9 +234,9 @@ describe('Marketing Media Rock plan (TASK-403), 30 seeds', () => {
     });
     expect(got).toMatchInlineSnapshot(`
       [
-        "10a3e2fa6872afd3",
-        "c107c53fb09b6f7d",
-        "75604128a9f9b60a",
+        "89ac1ec917805d10",
+        "e6068d79d9a33b52",
+        "cdd11a60e800cade",
       ]
     `);
   });

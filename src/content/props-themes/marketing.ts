@@ -29,12 +29,31 @@ export const MARKETING_PROP_DEFS: readonly PropDef[] = [
     footprint: 1.4,
     flags: grounded,
   },
-  // floats: pivot = water level, no contact blob (like buoy)
-  { id: 'adBuoy', geo: 'adBuoy', tier: 2, variants: 2, footprint: 0.4, flags: 0 },
+  // floats: pivot = water level, no contact blob (like buoy); v2 = the lit bay-mouth chain
+  // (TASK-481), pinned by the plan, never rolled; noShadow (tiny floats, one pass less). Tier 1 (was 2): the lit chain frames the bay
+  // from the T1 night views (W4), not only from 120 u
+  {
+    id: 'adBuoy',
+    geo: 'adBuoy',
+    tier: 1,
+    variants: 3,
+    rollVariants: 2,
+    footprint: 0.4,
+    flags: noShadow,
+  },
   // TASK-403 Media Rock: structures >= 3 u read from T0 (D-031); one variant unless noted. The
   // ones standing on their own plinth / deck skip the contact blob (one draw call per LOD0 group)
   { id: 'giantScreen', geo: 'giantScreen', tier: 0, variants: 1, footprint: 4.2, flags: 0 },
-  { id: 'antennaTower', geo: 'antennaTower', tier: 0, variants: 1, footprint: 1.7, flags: 0 },
+  // v1 = the short transmitter on a sea stack (TASK-481), pinned by the plan
+  {
+    id: 'antennaTower',
+    geo: 'antennaTower',
+    tier: 0,
+    variants: 2,
+    rollVariants: 1,
+    footprint: 1.7,
+    flags: 0,
+  },
   { id: 'mediaOffice', geo: 'mediaOffice', tier: 0, variants: 1, footprint: 3.2, flags: 0 },
   // v0 photo studio, v1 print shop (one LOD1 group)
   { id: 'mediaShop', geo: 'mediaShop', tier: 0, variants: 2, footprint: 2.0, flags: 0 },

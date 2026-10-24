@@ -9,6 +9,7 @@
  *   2          yaw head: rotates about the object y axis into the wind (turbine nacelle)
  *   3          yaw head + spin (turbine rotor: spin about the hub first, then yaw)
  *   4          sun tracker: rotate about the x axis through the pivot `aSpin.xyz` (solar panels)
+ *   6          float bob (TASK-481, FLOAT_BOB): heave / roll / pitch about the waterline pivot (object origin)
  *   −k (k ≥ 1) animated surface of kind `k` (SURFACE): screens / LED strips carry
  *              (u, v, aspect, −k) with uv ∈ [0, 1] over the patch (u right, v up seen from the
  *              front); LED strips put `cols + seed` in z (integer part = dot columns, fraction =
@@ -38,11 +39,13 @@ export const SURFACE = {
   marquee: 11,
   /** Stained glass (TASK-440): low sun shining through the pane, lamp-lit at night; (0, 0, 0, −12). */
   stained: 12,
+  /** Warning-light blink (TASK-481): lit `duty` of every `period` s, phase per instance; (0, 0, 0, −13). */
+  beacon: 13,
 } as const;
 export type SurfaceKind = keyof typeof SURFACE;
 
 /** Spin-channel motion tags (`aSpin.w` > 0). */
-export const MOTION_TAG = { spin: 1, yaw: 2, yawSpin: 3, tracker: 4 } as const;
+export const MOTION_TAG = { spin: 1, yaw: 2, yawSpin: 3, tracker: 4, bob: 6 } as const;
 
 /** Monitor content per department (interiors, theme props). */
 export const THEME_SCREEN: Readonly<Record<ThemeId, SurfaceKind>> = {
@@ -145,6 +148,14 @@ export const PULSE = {
  * The glow itself rides the bulbs' lamp class (culture lamp set: on 17:24, before the Launch Show).
  */
 export const MARQUEE = { group: 3, rate: 5, off: 0.3, offAlbedo: 0.7 } as const;
+
+/**
+ * Beacon blink (TASK-481, Marketing transmitter masts and the lit ad-buoy chain): the tagged lamp
+ * is lit for `duty` of every `period` seconds, its phase a hash of the instance (no two masts
+ * flash together); between flashes it dims to `off` (glow) and `offAlbedo`. The glow rides the
+ * lamp class (emissive 1, culture lamp set).
+ */
+export const BEACON = { period: 1.2, duty: 0.4, off: 0.12, offAlbedo: 0.55 } as const;
 
 /**
  * Stained glass (TASK-440, Design stainedScreen / canopy vitray / glass pavilion). Day: the sun

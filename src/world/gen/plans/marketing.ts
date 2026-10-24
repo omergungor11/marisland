@@ -17,16 +17,25 @@
  *   booths and balloon masts round the fair (the launch mast is a story spot), LIVE / NEW signs on
  *   the Ad Boulevard, a selfie deck by the Broadcast Tower, poster rolls at the print shop and
  *   megaphone stands at the media offices, plus the story spots.
+ * - M22 quick wins (TASK-481, `quickWins`): the carnival gate across the pier mouth, marquee bulb
+ *   strings over the boulevard, a transmitter on every sea stack, the lit ad-buoy chain at the bay
+ *   mouth, the party pontoon, and the straight red-carpet boulevard (district kind 'carpet').
  * Stairs climb the earth walls between the shelves (stair links hub → hub, in switchbacks).
  * Random draws come from labelled forks of `rng`; tuning lives in MARKETING_PLAN.
  */
 import { MARKETING_CULTURE_SITES as CS } from '../../../content/cultures/marketing.ts';
-import { FIXTURE_RADIUS, FLATTEN, LOT_FOOTPRINT, VILLAGE } from '../../../content/settlements.ts';
+import {
+  DOCK,
+  FIXTURE_RADIUS,
+  FLATTEN,
+  LOT_FOOTPRINT,
+  VILLAGE,
+} from '../../../content/settlements.ts';
 import { OFFICE_DEFS } from '../../../content/offices.ts';
-import { MARKETING_PLAN as P } from '../../../content/themes/marketing.ts';
+import { MARKETING_PLAN as P, MARKETING_QUICK as Q } from '../../../content/themes/marketing.ts';
 import { THEMES } from '../../../content/themes/index.ts';
 import type { Rng } from '../../../core/rng.ts';
-import { Zone, type IslandData, type StorySpot, type XZ } from '../../types.ts';
+import { THEME_IDS, Zone, type IslandData, type StorySpot, type XZ } from '../../types.ts';
 import { heightAt } from '../../types.ts';
 import { cellX, cellZ, gridRange } from '../grid.ts';
 import {
@@ -53,10 +62,12 @@ import {
   segDist,
   seedHub,
   shapeCorners,
+  shapesOverlap,
   shapeDist,
   siteFree,
   tryLot,
   unit,
+  type DockSite,
   type LinkReq,
   type Shape,
   type SiteCtx,
@@ -64,6 +75,7 @@ import {
 import type { ThemePlanner } from './types.ts';
 
 const TAU = Math.PI * 2;
+const xz = (p: XZ): [number, number] => [p.x, p.z];
 const DEG = Math.PI / 180;
 
 /** A fixed prop (not a lot) with its own obstacle shape; `pad` flattens the ground under it. */
@@ -267,6 +279,16 @@ export const planMarketing: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   addShape(ctx, isl, street, false);
   addPad(ctx, isl, street, FLATTEN.discMargin);
   paintZone(ctx, isl, street, Zone.path); // the red-carpet street (theme path tiles)
+  // M7 (TASK-481): the terrain shader lays a crisp straight carpet over this rectangle
+  plan.districts.push({
+    islandId: isl.id,
+    kind: 'carpet',
+    x: mid.x,
+    z: mid.z,
+    rotY: ang(u.x, u.z),
+    w: P.boulevard.width,
+    d: L,
+  });
   plan.plaza = { x: mid.x, z: mid.z, r: P.quadR };
   seedHub(ctx, isl, plan, mid);
   plan.hub = mid;
@@ -589,8 +611,167 @@ export const planMarketing: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   const f0 = ctx.fixtures.length;
   placeBuoys(ctx, isl, rng.fork('buoys'));
   for (let k = f0; k < ctx.fixtures.length; k++) ctx.fixtures[k].defId = 'adBuoy';
+  // ---- M22 quick wins (TASK-481): after everything else, from their own forks, so the rest of
+  // the plan keeps its layout
+  quickWins(ctx, isl, rng.fork('quick'), { site, street: { a: access, u, len: L } });
   return plan;
 };
+
+interface QuickSite {
+  /** The landing pier (null: no dock found). */
+  site: DockSite | null;
+  /** The Ad Boulevard: from `a` along `u` for `len` u. */
+  street: { a: XZ; u: XZ; len: number };
+}
+
+/**
+ * Marketing quick wins (M22 TASK-481): carnival gate, marquee bulb strings, sea-stack
+ * transmitters, the lit ad-buoy chain and the party pontoon. Every number is MARKETING_QUICK;
+ * every draw comes from a sub-fork of `rng`; a piece that finds no room is skipped.
+ */
+function quickWins(ctx: SiteCtx, isl: IslandData, rng: Rng, s: QuickSite): void {
+  const push = (defId: string, p: XZ, rotY: number, variant: number): void => {
+    ctx.fixtures.push({ defId, x: p.x, z: p.z, rotY, islandId: isl.id, variant });
+  };
+  const waterOk = (p: XZ, depth: number, shore: number): boolean =>
+    heightAt(ctx.h, p.x, p.z) <= -depth && sdfAt(ctx, p.x, p.z) <= -shore;
+
+  // ---- M11 carnival gate: the HQ `cultureGate` (Marketing variant) over the way in from the pier
+  const G = Q.gate;
+  if (s.site) {
+    const { root, dir } = s.site;
+    const perp = { x: -dir.z, z: dir.x };
+    const rot = ang(dir.x, dir.z);
+    const variant = THEME_IDS.indexOf('marketing');
+    gate: for (let t = G.inland[0]; t <= G.inland[1] + 1e-6; t += G.step)
+      for (const off of G.lateral) {
+        const p = add(add(root, dir, -t), perp, off);
+        const sh = rectShape(p.x, p.z, rot, G.w, G.d);
+        if (!onLand(ctx, isl, sh, P.shelfMinShore) || relief(ctx, sh) > G.relief) continue;
+        // planned lanes and the fair paving may run through it, only obstacles keep it out
+        if (
+          ctx.shapes[isl.id].some((o) => o.tag !== 'plaza' && shapesOverlap(o, sh, 0.3)) ||
+          !siteFree(ctx, isl, sh)
+        )
+          continue;
+        // walkable (block: false: the way runs through it); the pad levels the foot of both posts
+        fixture(ctx, isl, 'cultureGate', p, rot, sh, {
+          block: false,
+          pad: FLATTEN.discMargin,
+          variant,
+        });
+        break gate;
+      }
+  }
+
+  // ---- M5 marquee bulb strings across the boulevard (bunting v4)
+  const B = Q.bulbString;
+  {
+    const { a, u, len } = s.street;
+    const br = rng.fork('bulbs');
+    const rot = ang(u.x, u.z);
+    const nrm = { x: -u.z, z: u.x };
+    const want = br.int(B.count[0], B.count[1]);
+    const lo = B.edge;
+    const hi = len - B.edge;
+    const taken: number[] = [];
+    for (let k = 0; k < want; k++) {
+      const target = lo + ((hi - lo) * (k + 0.5)) / want;
+      for (const d of [0, 0.4, -0.4, 0.8, -0.8, 1.2, -1.2, 1.6, -1.6, 2, -2]) {
+        const t = target + d;
+        if (t < lo || t > hi || taken.some((o) => Math.abs(o - t) < B.spacing)) continue;
+        if (Math.abs(t - len / 2) < B.hub) continue;
+        const c = add(a, u, t);
+        const feet = [1, -1].map((sd) => discShape(...xz(add(c, nrm, sd * B.poleX)), B.pole));
+        if (feet.some((f) => !onLand(ctx, isl, f, 1, 0.1) || !clear(ctx, isl, f, 0.15, true)))
+          continue;
+        push('bunting', c, rot, B.variant);
+        for (const f of feet) addShape(ctx, isl, f, true);
+        taken.push(t);
+        break;
+      }
+    }
+  }
+
+  // ---- M2 transmitters: the highest cell on each windward sea stack takes a mast
+  const T = Q.transmitter;
+  const tr = rng.fork('transmitters');
+  for (let k = 0; isl.anchors[`stack${k}`]; k++) {
+    const an = isl.anchors[`stack${k}`];
+    let best: XZ | null = null;
+    let bestH: number = T.minRise;
+    for (let dz = -T.search; dz <= T.search + 1e-6; dz += 0.5)
+      for (let dx = -T.search; dx <= T.search + 1e-6; dx += 0.5) {
+        if (dx * dx + dz * dz > T.search * T.search) continue;
+        const p = { x: an.x + dx, z: an.z + dz };
+        const h = heightAt(ctx.h, p.x, p.z);
+        if (h > bestH + 1e-6) {
+          best = p;
+          bestH = h;
+        }
+      }
+    const rot = tr.fork('rot', k).range(0, TAU);
+    if (best)
+      fixture(ctx, isl, 'antennaTower', best, rot, discShape(best.x, best.z, 1.1), {
+        variant: T.variant,
+      });
+  }
+
+  // ---- M17 lit ad-buoy chain across the bay mouth, M8 party pontoon beside the pier
+  if (!s.site) return;
+  const { root, dir, segments } = s.site;
+  const perp = { x: -dir.z, z: dir.x };
+  const end = add(root, dir, segments * DOCK.segment);
+  const C = Q.buoyChain;
+  {
+    let bestRun: XZ[] = [];
+    search: for (let beyond = C.beyond[0]; beyond <= C.beyond[1] + 1e-6; beyond += 1.5)
+      for (const shift of [0, 3, -3, 6, -6]) {
+        const c = add(add(end, dir, beyond), perp, shift);
+        const pts: XZ[] = [];
+        for (let j = 0; j < C.count; j++)
+          pts.push(add(c, perp, (j - (C.count - 1) / 2) * C.spacing));
+        let run: XZ[] = [];
+        let longest: XZ[] = [];
+        for (const p of pts) {
+          if (waterOk(p, C.minDepth, C.minShore) && clear(ctx, isl, discShape(p.x, p.z, 0.6), 0.8))
+            run = [...run, p];
+          else run = [];
+          if (run.length > longest.length) longest = run;
+        }
+        if (longest.length > bestRun.length) bestRun = longest;
+        if (bestRun.length === C.count) break search;
+      }
+    if (bestRun.length >= 3) {
+      const rot = ang(perp.x, perp.z);
+      bestRun.forEach((p, j) => {
+        const last = j === bestRun.length - 1;
+        const v = last ? C.end : C.variants[j % C.variants.length];
+        fixture(ctx, isl, 'adBuoy', p, rot, discShape(p.x, p.z, 0.5), { variant: v });
+      });
+    }
+  }
+  const O = Q.pontoon;
+  {
+    const rot = ang(dir.x, dir.z);
+    let best: { p: XZ; score: number } | null = null;
+    for (const side of [1, -1])
+      for (let along = O.along[0]; along <= O.along[1] + 1e-6; along += 1.5)
+        for (let off = O.off[0]; off <= O.off[1] + 1e-6; off += 1) {
+          const p = add(add(root, dir, along), perp, side * off);
+          const sh = rectShape(p.x, p.z, rot, O.w, O.l);
+          if (!waterOk(p, O.minDepth, O.minShore)) continue;
+          if (shapeCorners(sh).some((q) => heightAt(ctx.h, q.x, q.z) > -O.minDepth)) continue;
+          if (!clear(ctx, isl, sh, 1.2)) continue;
+          const score = off + 0.25 * Math.abs(along - 14);
+          if (!best || score < best.score) best = { p, score };
+        }
+    if (best)
+      fixture(ctx, isl, 'sailboat', best.p, rot, rectShape(best.p.x, best.p.z, rot, O.w, O.l), {
+        variant: O.variant,
+      });
+  }
+}
 
 interface CarnivalSite {
   /** The fair paving disc (centre, radius, shelf level). */

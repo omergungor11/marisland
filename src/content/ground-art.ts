@@ -5,6 +5,9 @@
  * - HQ compass mosaic (hq-design H1): over the 'compass' district (the round plaza), a rim band
  *   that makes the plaza read round, seven two-tone rays toward the `cultureGate` fixtures (each in
  *   its culture's accent, its gate marked by a dot on the rim) and a centre medallion.
+ * - Marketing red carpet (TASK-481, M7): over the 'carpet' district (the Ad Boulevard) a crisp straight
+ *   strip of deep-red pile with gold trim lines either side and a gold star on a cream plate every
+ *   `pitch` u down both edges, so the street reads as one straight red line from T1.
  * - Design prism pools (hq-design D3): under every `prismArch` a rainbow pool of sun light thrown
  *   through the prism — offset away from the sun, stretched and brightest at golden hour; at night
  *   (lamps on) a softer pool right under the glowing prism.
@@ -13,6 +16,7 @@ import { WALLS } from './palette.ts';
 import { CULTURE_ACCENT, GROUT, PAVING } from './themes/hq.ts';
 import { DESIGN_CULTURE_KIT } from './props-themes/design.ts';
 import { PRISM_ARCH } from './props-themes/m20.ts';
+import { MARKETING_QUICK } from './themes/marketing.ts';
 
 /** Compass mosaic. Distances in u (plaza radius R = district w / 2, 10 today). */
 export const COMPASS_MOSAIC = {
@@ -82,4 +86,28 @@ export const PRISM_POOLS = {
   sunY: [0.02, 0.12] as const,
   /** Arch slots (≥ DESIGN_CULTURE_SITE.prismWalk.count max). */
   maxArches: 6,
+} as const;
+
+/** Marketing red carpet (TASK-481). Distances in u; the district is the street (w across, d along). */
+export const CARPET = {
+  /** The strip is this much wider than the street each side (covers the painted zone's soft edge). */
+  edge: MARKETING_QUICK.carpet.edge,
+  /** Deep red pile, gold trim, cream plate, gold star, dark plate outline. */
+  pile: '#B22A41',
+  trim: '#F5C84C',
+  plate: '#FFF4E0',
+  star: '#E8A92E',
+  outline: '#6E1A2A',
+  /** Trim line: from `trim[0]` to `trim[1]` u inside the strip edge. */
+  trimBand: [0.14, 0.32] as const,
+  /** Plates: centred `plateInset` u inside the strip edge, every `pitch` u along, `plate` half-size, star radius. */
+  plateInset: 0.95,
+  pitch: 2.6,
+  plateHalf: 0.4,
+  starR: 0.3,
+  /** Share of the underlying tile detail kept on the pile (0 = flat), and the pile's own weave (± lightness). */
+  detail: 0.45,
+  weave: 0.05,
+  /** Paints only within ± this of the street height (a stair or a cliff below stays plain). */
+  heightBand: 1.2,
 } as const;

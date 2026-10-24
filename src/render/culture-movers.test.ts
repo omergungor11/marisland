@@ -218,8 +218,15 @@ describe('culture movers', () => {
     const tower = firstOf(world, props, 'semaphoreTower')!;
     const gateDef = PROP_DEFS.findIndex((d) => d.id === 'cultureGate');
     const orders: number[] = [];
+    // the gates of the tower's island (TASK-481: the Marketing island has its own gate far away)
+    const semaDef = PROP_DEFS.findIndex((d) => d.id === 'semaphoreTower');
+    const hq =
+      props.islandId[
+        Array.from({ length: props.count }, (_, i) => i).find((i) => props.defId[i] === semaDef) ??
+          0
+      ];
     for (let i = 0; i < props.count; i++)
-      if (props.defId[i] === gateDef)
+      if (props.defId[i] === gateDef && props.islandId[i] === hq)
         orders.push(CULTURES[THEME_IDS[props.variant[i] % THEME_IDS.length]].relay.order);
     expect(orders.length).toBeGreaterThanOrEqual(4);
     const glows = (simt: number): number => {
