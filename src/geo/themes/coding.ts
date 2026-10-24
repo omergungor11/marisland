@@ -18,6 +18,7 @@ import {
   TURBINE_HEIGHTS,
   TURBINE_RISE,
 } from '../../content/props-themes/coding.ts';
+import { BLINK } from '../../content/activity.ts';
 import { createRng } from '../../core/rng.ts';
 import { Acc, col, createNoise, qEuler } from '../kit.ts';
 import { Spin, finishSpin } from '../office-kit.ts';
@@ -193,6 +194,20 @@ export function windTurbine({ rng: rng0, lod, variant }: BuildOpts): THREE.Buffe
     const bp = hub.clone().add(V(0, 0, 0.1 * k).applyQuaternion(qh));
     put(acc, body.clone(), bp, white, { q, windAbs: tag, aoAmt: 0, ao: () => 0.97 });
     put(acc, tip.clone(), bp, accent, { q, windAbs: tag, aoAmt: 0, ao: () => 0.97 });
+    // C14 (TASK-479): the red aviation lamp on every blade tip; blinks from dusk (BLINK, factory.ts).
+    // Chunkier at LOD1 so the three blinks still read from the overview
+    const lk = lod === 0 ? 1 : 1.7;
+    put(
+      acc,
+      new THREE.BoxGeometry(0.24 * k * lk, 0.3 * k * lk, 0.22 * k * lk).translate(
+        0,
+        bladeLen - 0.12 * k * lk,
+        0,
+      ),
+      bp,
+      col(K.lamp),
+      { q, windAbs: tag, emissive: BLINK.base + 1, ao: () => 1, aoAmt: 0 },
+    );
   }
   const headCount = accVerts(acc) - headFirst;
   const g = finishSpin(finish(acc, rng), acc, spin);

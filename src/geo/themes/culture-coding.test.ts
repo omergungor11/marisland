@@ -8,6 +8,7 @@ import { isLargeStructure } from '../../render/props/batcher.ts';
 import { PropFlag } from '../../world/prop-store.ts';
 import { buildProp } from '../registry.ts';
 import { CODING_CULTURE_GEO } from './culture-coding.ts';
+import { CODING_M22_GEO } from './culture-coding-m22.ts';
 import { TURBINE_CHIME_VARIANT } from './coding.ts';
 
 const verts = (g: THREE.BufferGeometry): number => g.getAttribute('position').count;
@@ -29,8 +30,11 @@ describe('TASK-411 Wind Gardens kit', () => {
   it('ledger = the new PropDefs, ordered, validator-clean', () => {
     expect(validateCultures([CODING_CULTURE])).toEqual([]);
     const ids = CODING_CULTURE.kit.map((k) => k.id);
-    expect(ids).toEqual(expect.arrayContaining(CODING_CULTURE_GEO.map((d) => d.id)));
-    expect(ids).toHaveLength(CODING_CULTURE_GEO.length);
+    // M19 kit + the two M22 entries (TASK-479: windsock, fairyWreath), in that order
+    const geoIds = [...CODING_CULTURE_GEO, ...CODING_M22_GEO].map((d) => d.id);
+    expect(ids).toEqual(expect.arrayContaining(geoIds));
+    expect(ids).toHaveLength(geoIds.length);
+    expect(ids.slice(-2)).toEqual(CODING_M22_GEO.map((d) => d.id));
     for (const k of CODING_CULTURE.kit) {
       const d = PROP_DEFS.find((p) => p.id === k.id);
       expect(d, k.id).toBeDefined();

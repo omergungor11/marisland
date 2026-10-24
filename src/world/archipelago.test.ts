@@ -92,9 +92,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "102e9103d65a3def",
-          "1001": "762f5cea977f1d5e",
-          "42": "624f7d7d1dfa24a4",
+          "1": "45fccb9763db7a9b",
+          "1001": "f7ba7c92e4693cc3",
+          "42": "1c01e8b3de5634e0",
         }
       `);
     },
@@ -427,8 +427,8 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // TASK-461 snapped pipe legs + Star Academy fallbacks, re-pinned
       // TASK-471 (D-058): hub layout + islets, re-pinned; TASK-474 seamarks stage hash, re-pinned;
       // TASK-466 HQ Seven Gates + TASK-467 Design Glass Conservatory, re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('4ff3c0665c4a9588');
-      expect(generateWorld(1).hashes.world).toBe('8737f74474e5a241');
+      expect(generateWorld(1001).hashes.world).toBe('959a45369ef19d69');
+      expect(generateWorld(1).hashes.world).toBe('2417a96dc46fe71c');
     } finally {
       for (const b of saved) b.on = true;
     }

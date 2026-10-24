@@ -872,7 +872,7 @@ export function roofNeighbours(lots: readonly LotData[]): number[][] {
 function assignLotVariants(
   lots: LotData[],
   seed: number,
-  pins: readonly (number | undefined)[],
+  pins: readonly (number | readonly number[] | undefined)[],
 ): void {
   const nb = roofNeighbours(lots);
   // TASK-403: the hash key is the lot's index within its island (+ islandId · 4096), so one
@@ -889,7 +889,10 @@ function assignLotVariants(
     const vs = Array.from({ length: k }, (_, v) => v);
     const h = vs.map((v) => hashInts(seed, key, v));
     const pin = pins[i];
-    return pin !== undefined ? [pin] : vs.sort((x, y) => h[x] - h[y]);
+    if (typeof pin === 'number') return [pin];
+    // a pinned list: only these variants, in the lot's seeded order
+    if (pin) return [...pin].sort((x, y) => hashInts(seed, key, x) - hashInts(seed, key, y));
+    return vs.sort((x, y) => h[x] - h[y]);
   });
   const set = new Uint8Array(lots.length);
   const ok = (i: number, v: number): boolean => {
@@ -1050,7 +1053,7 @@ export function buildSettlements(input: SettlementInput, rng: Rng): SettlementRe
   // drop lots that could not be connected; remap settlement indices
   const lotMap = new Int32Array(ctx.lots.length).fill(-1);
   const lots: LotData[] = [];
-  const pins: (number | undefined)[] = [];
+  const pins: (number | readonly number[] | undefined)[] = [];
   ctx.lots.forEach((l, i) => {
     const node = l.key >= 0 ? built.nodeOf.get(l.key) : undefined;
     if (node === undefined) return;

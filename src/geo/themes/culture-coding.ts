@@ -36,6 +36,7 @@ import {
 } from '../parts.ts';
 import type { BuildOpts, PropGeoDef } from '../types.ts';
 import { addGlyph } from './glyphs.ts';
+import { PINWHEEL_VARIANT, pinwheel } from './culture-coding-m22.ts';
 
 const CREAM = WALLS[1];
 const DUCK = FLOWERS[1];
@@ -1038,7 +1039,16 @@ export const CODING_CULTURE_GEO: readonly PropGeoDef[] = [
     heights: [0.6, 0.65, 0.8],
     windy: false,
   },
-  { id: 'kite', variants: 3, build: kite, footprint: 1.2, height: 2.8, windy: true },
+  // v3 = the M22 pinwheel (TASK-479 C4, geo/themes/culture-coding-m22.ts): a meadow stake, never a kite
+  {
+    id: 'kite',
+    variants: PINWHEEL_VARIANT + 1,
+    build: (o) => (o.variant === PINWHEEL_VARIANT ? pinwheel(o) : kite(o)),
+    footprint: 1.2,
+    height: 2.8,
+    heights: [2.8, 2.8, 2.8, 1.9],
+    windy: true,
+  },
   { id: 'pergolaDesk', variants: 2, build: pergolaDesk, footprint: 1.9, height: 2.7, windy: true },
   { id: 'hammock', variants: 2, build: hammock, footprint: 1.9, height: 1.8, windy: true },
   { id: 'kiteRack', variants: 2, build: kiteRack, footprint: 1.9, height: 2.3, windy: true },

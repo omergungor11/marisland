@@ -83,7 +83,8 @@ export const PROP_DEFS_BUILDINGS: PropDef[] = [
   d('meetingPavilion', 0, 2, 2.6, grounded),
   d('coffeeKiosk', 0, 2, 1.3, grounded),
   d('devOffice', 0, 2, 3.6, grounded),
-  d('devPod', 0, 2, 2.1, grounded),
+  // v2 / v3 = the weather-vane pods (TASK-479): only where the Coding plan pins them
+  d('devPod', 0, 4, 2.1, grounded, undefined, { rollVariants: 2 }),
   d('serverShed', 0, 2, 1.9, grounded),
   d('broadcastStudio', 0, 2, 2.4, grounded),
   d('billboard', 0, 2, 2.0, grounded),

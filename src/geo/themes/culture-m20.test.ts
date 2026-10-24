@@ -68,7 +68,9 @@ describe('TASK-465 ledgers and defs', () => {
   it('every ledger entry has a PropDef (tier, flags) and a geo def (variants, windy) at the end of PROP_DEFS', () => {
     const all = [...HQ_M20_PROP_DEFS, ...DESIGN_M20_PROP_DEFS];
     expect(all.map((d) => d.id)).toEqual(M20_PROP_IDS);
-    const last = PROP_DEFS.slice(-all.length).map((d) => d.id);
+    // later milestones append their own defs after these (M22 ...): the M20 block stays contiguous
+    const at = PROP_DEFS.findIndex((d) => d.id === M20_PROP_IDS[0]);
+    const last = PROP_DEFS.slice(at, at + all.length).map((d) => d.id);
     expect(last).toEqual(M20_PROP_IDS);
     for (const k of [...CULTURES.hq.kit.slice(8), ...CULTURES.design.kit.slice(10)]) {
       const d = defOf(k.id);

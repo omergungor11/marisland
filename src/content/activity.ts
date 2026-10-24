@@ -41,6 +41,14 @@ export const SURFACE = {
 } as const;
 export type SurfaceKind = keyof typeof SURFACE;
 
+/**
+ * Aviation blink (M22 TASK-479, C14 turbine tip lights): a vertex with `emissive ≥ base` is lamp class
+ * (mask = emissive − base, staggered night switch-on, culture lamp sets) times a pulse of `duty` of
+ * each `period` s, phase from the instance origin, steady (0.55) under reduced motion. The glow value
+ * 4 is a full-strength blinking lamp; screens stay in 1.5…2.
+ */
+export const BLINK = { base: 3, period: 1.0, duty: 0.3 } as const;
+
 /** Spin-channel motion tags (`aSpin.w` > 0). */
 export const MOTION_TAG = { spin: 1, yaw: 2, yawSpin: 3, tracker: 4 } as const;
 
