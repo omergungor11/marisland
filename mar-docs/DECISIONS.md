@@ -2,7 +2,7 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
-## D-067: Ladder pair IoU follows the dolly's radial parallax; drift is judged without fog; the drift class filter is not relaxed (amends D-035) — 2026-10-26
+## D-068: Ladder pair IoU follows the dolly's radial parallax; drift is judged without fog; the drift class filter is not relaxed (amends D-035) — 2026-10-26
 
 **Decision** (TASK-487, `scripts/ladder-metrics.ts`):
 - **Pair IoU**: both ladder cameras sit on one line through the target, so the frame centre is the epipole and a
