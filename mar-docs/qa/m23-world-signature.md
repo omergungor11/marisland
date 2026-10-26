@@ -70,6 +70,13 @@ the cause was not isolated (probably culture content or reef geometry added in M
 Closed since M22: W26 steam (soft puffs), W25 billboard covering the carpet, L-pairs-marketing IoU, medium far
 drift Marketing/DevOps.
 
+## After the QA run
+
+- Finding 1 closed by TASK-494 (`bed7728`, D-072): W28 is now a raw cam from in front of the whale (≈ 180 px with
+  the spout, Research cape for scale), W28b shows flippers, fluke and a single soft spout column. Orchestrator
+  checked both frames; open nit: no waterline ring/foam where the body meets the water.
+- Findings 2 + 5 → TASK-495 (engine), findings 3 + 4 + 7 → TASK-496 (shader).
+
 ## Top 3
 
 1. Whale (W28/W28b) is not a wow element yet: tiny in the overview, a capsule in the close frame.
