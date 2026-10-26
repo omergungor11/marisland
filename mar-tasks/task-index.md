@@ -312,7 +312,7 @@ Details in `phases/phase-3.md`.
 | TASK-484 | Coding C18 rim walkway (reuses the TASK-480 primitive) + M22 QA: wow / ladder `--assert`, new or re-framed wow shots per island, QA report | engine | S | COMPLETED (4cc2343, d3b700a; W23–W26, W6 re-frame; `mar-docs/qa/m22-2026-10-24.md`) | TASK-479…483 |
 | TASK-485 | M22 follow-ups (worldgen): story-spot keep-out (C11 windsock on the Coding duck crossing), Marketing bot on the cliff face (walk-graph leak?), W25 billboard hides the carpet, C18 boardwalk night lamp caps (Coding lamp set), W2 gate on grass, W20 mail cable, bigger slalom buoys | worldgen | M | COMPLETED (5a8e7bd; D-065; W2 Research gate tint open) | TASK-484 |
 | TASK-486 | M22 follow-ups (shader): W26 test-firing steam as soft puffs, medium far drift on Marketing / DevOps (far-wall strata), DevOps switchbacks pale by day | shader | S | COMPLETED (b25dce5; D-066; L-devops medium passes, L-marketing 480 → TASK-487, DevOps day bands open) | TASK-484 |
-| TASK-487 | Ladder metric: L-design near rungs keep measuring structure cells (> 35 % of frame), L-pairs-marketing transmitter parallax; a real pop must still fail | engine | S | IN_PROGRESS | TASK-484 |
+| TASK-487 | Ladder metric: L-design near rungs keep measuring structure cells (> 35 % of frame), L-pairs-marketing transmitter parallax; a real pop must still fail | engine | S | COMPLETED (d8dcff4; D-068; ladder low + medium 0 miss; glasshouse T2 pop found → TASK-493) | TASK-484 |
 
 ### M23 — Dünya İmza (world signature)
 *D-064 (whale; constellations + fireworks), D-058 (K3 underwater sills). WORLD_PLAN §5 row 3, items in `mar-plans/study/world.md`. Starts after TASK-485…487 merge. Wave 1: 488 ∥ 489 ∥ 490; wave 2: 491; then 492 QA.*
@@ -324,6 +324,7 @@ Details in `phases/phase-3.md`.
 | TASK-490 | Relay night scene (`W:B1` + `W:B6` + `W:G7`): 2–3 mini beacons on skerries + Marketing lighthouse sweep in route order (1 s offsets) 18:30–06:30; signal lamps on each island's top relay the 21:00 flashes to the next island; 22:01 fireworks from HQ harbour (6 bursts, culture accents, water reflection; off in rain) | props | M | COMPLETED (b4a9a95, 104962b; D-069; W15b–W15e) | TASK-469, TASK-472 |
 | TASK-491 | Culture constellations (`W:G4`): 7 glyph constellations (6–9 bright stars, lines alpha ≤ 0.15) in the sky above each island, 21:00–04:00, lines brighten on Comet Night | shader | S | COMPLETED (d7b0a13; D-071; W27; glyphs not in existing night frames — no sky in them) | TASK-486 |
 | TASK-492 | M23 QA: wow `--assert` + new shots (whale postcard, relay wave W15b, fireworks), ladder low + medium, QA report | qa | S | TODO | TASK-488…491 |
+| TASK-493 | Glasshouse row pop: the six tier-2 glasshouses (`props-themes/m20.ts`, each < 3 u) are absent at 170 u and appear together at the 140 u boundary — move the row to T1 or give the group effective tier 0 (D-031), within the tier-1 cap and budget; then the Design ladder target can move to the row (−8, −28) | props | S | TODO | TASK-487 |
 
 ### M17 — Graphics II: decor & nature
 *Flower fields, fences, lanterns, benches, signs, rocks*

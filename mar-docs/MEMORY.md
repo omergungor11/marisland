@@ -10,6 +10,12 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-26 (TASK-487 merged)**: ladder `drift` is now judged on `fog=0` frames (`<dist>.nofog.png`); the fogged
+  value is `driftFog` — compare both before blaming a tier for far drift. Fog depends only on camera distance
+  (1.8 % at 170 u, 7.3 % at 480 u on target). Pair IoU forgives structure cells inside their radial parallax
+  corridor (`parallaxCells`); terrain gets no corridor. The tier-2 glasshouse row is a real pop at 140 u
+  (TASK-493) — the Design ladder stays on the windmill slope until it is fixed. Old vs new metric needs no
+  recapture: import both modules over saved `shots/ladder-*/L-*/<d>.png`.
 - **2026-10-26 (TASK-491 merged)**: the sky program is shared by the dome and every beam material — any new sky
   uniform must be one shared object for all of them (`CONST_U` pattern in `sky.ts`). A raw `cam` target's
   distance picks the tier: an upward shot with a 100 u target hit 850k tris, the same view with a 300 u target
