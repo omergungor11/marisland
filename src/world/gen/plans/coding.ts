@@ -41,6 +41,7 @@ import { PATCHWORK } from '../../../content/islands.ts';
 import { heightAt, Zone } from '../../types.ts';
 import { cellX, cellZ, gridRange } from '../grid.ts';
 import { rimSamples, rimWalkway, slopeAtXZ, type RimWalkway } from '../rim-walkway.ts';
+import { clearStoryStages } from '../story-keepout.ts';
 import { addCellPath, gridAStar, pathStep, resample } from '../paths.ts';
 import { slopeAtCell } from '../zones.ts';
 import {
@@ -1222,12 +1223,23 @@ function windGardens(ctx: SiteCtx, isl: IslandData, rng: Rng, s: CultureSite): S
     const [du, dv] = CS.pool.duckAt[k];
     place('rubberDuck', at(other, du, dv), pr.range(0, Math.PI * 2), pr.int(0, 2));
   }
-  // the duck family crossing the walk beside that pool (a bot waits for them)
-  const cv = (pr.chance(0.5) ? 1 : -1) * (K.lawn[1] + K.walk);
-  story('duckCrossing', at(f, su[1 - giant] * K.poolU, cv), facing(f, 0), [
-    'bikeRack',
-    'reflectingPoolEdge',
-  ]);
+  // the duck family crossing the walk beside that pool (a bot waits for them): the rolled side
+  // first, then the other side / the other end of the pool, whichever stage (TASK-485 keep-out)
+  // the lawn desks and boards leave clear; none clear = the rolled one (the stage clears them)
+  const duckSide = pr.chance(0.5) ? 1 : -1;
+  const duckDefs = ['bikeRack', 'reflectingPoolEdge'] as const;
+  const duckAt = (sd: number, q: number) => ({
+    kind: 'duckCrossing',
+    islandId: isl.id,
+    pos: { ...at(f, su[1 - giant] * K.poolU, sd * (K.lawn[1] + K.walk)), y: 0 },
+    rotY: facing(f, q),
+    defs: duckDefs,
+  });
+  const duckCands = [0, 2].flatMap((q) => [duckAt(duckSide, q), duckAt(-duckSide, q)]);
+  const duck =
+    duckCands.find((c) => clearStoryStages(ctx.fixtures, [c]).length === ctx.fixtures.length) ??
+    duckCands[0];
+  story('duckCrossing', duck.pos, duck.rotY, duckDefs);
 
   // ---- hammocks at the turbine feet, the chime tower's first: the first one is the nap (sleeper
   // with a laptop, the toppled mug crate beside it). With no room at any mast the nap hangs

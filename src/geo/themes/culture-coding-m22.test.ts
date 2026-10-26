@@ -12,14 +12,18 @@ const attr = (g: THREE.BufferGeometry, n: string): Float32Array =>
 const verts = (g: THREE.BufferGeometry): number => g.getAttribute('position').count;
 
 describe('TASK-479 Coding M22 kit', () => {
-  it('the new defs are at the end of PROP_DEFS and line up with their geo', () => {
+  it('the new defs follow the rim post at the end of PROP_DEFS and line up with their geo', () => {
     for (const d of CODING_M22_PROP_DEFS) {
       expect(PROP_DEF_INDEX[d.id], d.id).toBeGreaterThan(0);
       const g = buildProp(d.geo, 5, 0, 0);
       expect(verts(g), d.id).toBeGreaterThan(0);
     }
-    const last = Object.keys(PROP_DEF_INDEX).slice(-CODING_M22_PROP_DEFS.length);
-    expect(last).toEqual(CODING_M22_PROP_DEFS.map((d) => d.id));
+    // appended as one block after the M22 rim post (later blocks, e.g. TASK-485 stairFlight, follow)
+    const ids = Object.keys(PROP_DEF_INDEX);
+    const at = ids.indexOf('rimPost') + 1;
+    expect(ids.slice(at, at + CODING_M22_PROP_DEFS.length)).toEqual(
+      CODING_M22_PROP_DEFS.map((d) => d.id),
+    );
   });
 
   it('windsock: pole on the ground, the sock streams along +x, tail sways more than the pole', () => {

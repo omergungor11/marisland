@@ -158,7 +158,8 @@ export const QA_CULTURE_SITES = {
   /**
    * Q10 buoy slalom (TASK-480): `count` inspection buoys `spacing` u apart on the inspection boat's
    * ring (radius + CULTURE_BOATS.patrol.margin), on a stretch at least `depth` u deep (± `pad`
-   * samples of the stretch too), as far round from the pier as the stretch allows.
+   * samples of the stretch too), as far round from the pier as the stretch allows. `scale`: the
+   * slalom buoys' instance size (TASK-485: they read too small in every frame with the plateau).
    */
-  slalom: { count: 8, spacing: 6.5, depth: 2.5, pad: 2, angles: 180 },
+  slalom: { count: 8, spacing: 6.5, depth: 2.5, pad: 2, angles: 180, scale: 1.5 },
 } as const;

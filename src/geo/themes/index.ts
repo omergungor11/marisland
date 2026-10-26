@@ -20,6 +20,7 @@ import { RESEARCH_CULTURE_GEO } from './culture-research.ts';
 import { M20_HQ_GEO } from './culture-m20-hq.ts';
 import { M20_DESIGN_GEO } from './culture-m20-design.ts';
 import { RIM_GEO } from './rim.ts';
+import { STAIR_GEO } from './stairs.ts';
 
 export const THEME_GEO: readonly PropGeoDef[] = [
   ...HQ_GEO,
@@ -43,4 +44,6 @@ export const THEME_GEO: readonly PropGeoDef[] = [
   ...RIM_GEO,
   // M22 Coding quick wins: windsock, fairyWreath
   ...CODING_M22_GEO,
+  // TASK-485 stair flights
+  ...STAIR_GEO,
 ];

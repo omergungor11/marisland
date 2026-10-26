@@ -763,11 +763,30 @@ function paintStreets(ctx: SiteCtx, isl: IslandData, streets: readonly Street[])
   for (const s of streets) {
     if (s.shared) continue;
     const z = streetZone(s.k);
-    for (let i = 0; i + 1 < s.lane.length; i++)
-      forSamplesNearSegment(ctx.h, s.lane[i], s.lane[i + 1], half, (j) => {
+    const band = (a: XZ, b: XZ): void =>
+      forSamplesNearSegment(ctx.h, a, b, half, (j) => {
         if (ctx.islandMap[j] !== isl.id + 1 || ctx.sdf[j] <= 0 || ctx.h.data[j] <= 0) return;
         if (ctx.zone[j] !== Zone.plaza) ctx.zone[j] = z;
       });
+    for (let i = 0; i + 1 < s.lane.length; i++) band(s.lane[i], s.lane[i + 1]);
+    // a street that stops just short of the water (shore streets, a full street at the quay) runs
+    // its band on down to the waterline; one ending inland (at a hill foot) stays as it is
+    const n = s.lane.length;
+    if (n < 2) continue;
+    const end = s.lane[n - 1];
+    const dir = unit(s.lane[n - 2], end);
+    let t = 0;
+    let wet = false;
+    while (t < HQ_PLAN.streets.shoreRun) {
+      const q = add(end, dir, t + 0.5);
+      if (!onIsland(ctx, isl, q.x, q.z) || sdfAt(ctx, q.x, q.z) <= 0) {
+        wet = true;
+        break;
+      }
+      t += 0.5;
+    }
+    if (!wet) continue;
+    if (t > 0) band(end, add(end, dir, t));
   }
 }
 

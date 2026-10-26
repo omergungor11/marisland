@@ -224,6 +224,8 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   uvLampPost: 0.35,
   // TASK-480: the shared rim walkway post (rails are walked past, the post is the obstacle)
   rimPost: 0.3,
+  // TASK-485: the stair flight is walked on (its foot sits on a path node): a token disc only
+  stairFlight: 0.1,
   scoreboard: 1.3,
   bugJar: 0.4,
   conePyramid: 0.65,
