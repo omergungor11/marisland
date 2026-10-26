@@ -53,6 +53,12 @@ export interface Params {
   /** Capture: `birds=0` leaves the gull flocks out (zoom-ladder frames, TASK-478). */
   birds: boolean;
   /**
+   * Capture: `fog=0` renders without distance fog (zoom-ladder drift frames, TASK-487: the fog
+   * depends on the camera distance only, never on the tier, so the island drift is measured
+   * without it).
+   */
+  fog: boolean;
+  /**
    * Tour mode (TASK-473): `now` (`tour=1`) starts the wow chain at once (after the intro; before
    * the `simt` warm-up in capture, so the pose is a function of time), `off` (`tour=0`) never
    * auto-starts, `idle` (default) starts after `TOUR.idleAfter` seconds without input.
@@ -130,6 +136,7 @@ export function parseParams(search: string): Params {
     introt: Number.isFinite(introt) && introt >= 0 ? introt : NaN,
     craft: parseBool(q.get('craft'), true),
     birds: parseBool(q.get('birds'), true),
+    fog: parseBool(q.get('fog'), true),
     tour: q.get('tour') === null ? 'idle' : parseBool(q.get('tour'), true) ? 'now' : 'off',
   };
 }

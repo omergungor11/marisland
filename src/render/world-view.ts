@@ -142,6 +142,8 @@ export interface WorldViewDeps {
   skyCraft?: boolean;
   /** Capture `birds=0`: no gull flocks (default true). */
   birds?: boolean;
+  /** Capture `fog=0`: no distance fog (default true). */
+  fog?: boolean;
 }
 
 const _focus = new THREE.Vector3();
@@ -396,7 +398,8 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     // T0 postcard: the fog curve is fitted for island/village views; at map distance it would
     // wash the whole archipelago out, so scale density down with camera distance (D-009).
     const camDist = _camPos.distanceTo(_focus);
-    const density = FOG.density * remap(camDist, 300, 650, 1, FOG_T0_SCALE) * fx.fog;
+    const density =
+      d.fog === false ? 0 : FOG.density * remap(camDist, 300, 650, 1, FOG_T0_SCALE) * fx.fog;
     sky.fog.density = density;
     SHARED.uFogDensity.value = density;
     lights.update(env, d.camera, _focus);

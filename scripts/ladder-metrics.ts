@@ -48,6 +48,14 @@ export const LADDER_THRESHOLDS = {
   pairIou: 0.92,
   /** Registration slack (cells): parallax of tall props / relief off the target plane. */
   slack: 1,
+  /**
+   * Parallax corridor height (u above the target plane, TASK-487) of the solid-mask IoU: a
+   * structure cell solid in one frame only is the other frame's structure displaced by parallax
+   * when that frame holds structure on its radial line within the displacement of a point this
+   * high (`parallaxRatio`). Covers the 6.4 u transmitter mast on its sea stack (L-pairs-marketing
+   * 42.4 → 37.6). Terrain cells get no corridor: coastlines lie on the sea plane.
+   */
+  parallaxH: 12,
 } as const;
 
 /** Raw interleaved 8-bit sRGB pixels (RGB or RGBA), row-major, top row first. */
@@ -106,6 +114,84 @@ export function planeMap(near: LadderView, far: LadderView): MapFn {
     const cv = (c * ry - s * rz) / depth;
     return [(cu / (th * far.aspect) + 1) / 2, (1 - cv / th) / 2];
   };
+}
+
+/**
+ * Radial parallax bound of the ladder dolly (TASK-487). Both cameras sit on one line through the
+ * target with the same orientation, so the frame centre is the epipole and `planeMap` keeps
+ * radial lines: a point off the target plane lies on the same radial line in the near frame and
+ * in the far frame sampled onto the near grid, which registers it only on the plane. A point up
+ * to h above the plane, drawn at radius r in the near frame, shows in the far frame at a near-grid
+ * radius in [f r, r]. f is exact for the bottom row's centre, whose plane points are nearest (the
+ * widest parallax; the frame corners and the top are narrower). Returns f; 1 = no parallax.
+ */
+export function parallaxRatio(
+  near: LadderView,
+  far: LadderView,
+  h: number = LADDER_THRESHOLDS.parallaxH,
+): number {
+  if (far.dist <= near.dist) return 1;
+  const p = (near.pitchDeg * Math.PI) / 180;
+  const half = (near.fovDeg * Math.PI) / 360;
+  const s = Math.sin(p);
+  const c = Math.cos(p);
+  const H = near.dist * s;
+  if (h >= H) return 0;
+  // in the vertical plane through the target (z toward the camera): the bottom row's ray meets
+  // height h at zP, the far camera's ray through that point meets the plane at zQ, and the near
+  // camera sees zQ at angle b below the horizontal
+  const zP = near.dist * c - (H - h) / Math.tan(p + half);
+  const zQ = far.dist * c + ((zP - far.dist * c) * far.dist * s) / (far.dist * s - h);
+  const b = Math.atan2(H, near.dist * c - zQ);
+  return Math.tan(b - p) / Math.tan(half);
+}
+
+/**
+ * Whether `on` holds a cell within ±`slack` of the radial segment from the grid centre through
+ * cell k's centre, scaled by t ∈ [t0, t1] (the parallax corridor of `parallaxRatio`).
+ */
+function onRadial(
+  on: ArrayLike<boolean>,
+  k: number,
+  t0: number,
+  t1: number,
+  slack: number,
+): boolean {
+  const { w, h } = GRID;
+  const x = (k % w) + 0.5 - w / 2;
+  const y = Math.floor(k / w) + 0.5 - h / 2;
+  const n = Math.max(1, Math.ceil(2 * Math.hypot(x, y) * (t1 - t0)));
+  for (let i = 0; i <= n; i++) {
+    const t = t0 + ((t1 - t0) * i) / n;
+    const cx = Math.floor(w / 2 + x * t);
+    const cy = Math.floor(h / 2 + y * t);
+    for (let dy = -slack; dy <= slack; dy++)
+      for (let dx = -slack; dx <= slack; dx++) {
+        const qx = cx + dx;
+        const qy = cy + dy;
+        if (qx >= 0 && qy >= 0 && qx < w && qy < h && on[qy * w + qx]) return true;
+      }
+  }
+  return false;
+}
+
+/**
+ * A structure cell that is in one frame only (`inA`: the near frame) is parallax when the other
+ * frame holds structure on its corridor: the far frame shows an elevated point nearer the centre
+ * (t ∈ [f, 1]), the near frame farther out (t ∈ [1, 1 / f]). An element absent from the other
+ * frame has no structure there and stays a mismatch.
+ */
+function parallaxed(
+  k: number,
+  inA: boolean,
+  structA: ArrayLike<boolean>,
+  structB: ArrayLike<boolean>,
+  f: number,
+  slack: number,
+): boolean {
+  return inA
+    ? structA[k] && onRadial(structB, k, f, 1, slack)
+    : structB[k] && onRadial(structA, k, 1, 1 / Math.max(f, 1e-3), slack);
 }
 
 // ---------------------------------------------------------------- colour
@@ -364,8 +450,13 @@ export interface StepMetrics {
   /** Largest 8-connected component of compared cells with ΔE > blobDeltaE, fraction of compared. */
   blob: number;
   blobCells: number;
-  /** IoU of the solid (land + structure) cell masks over the whole grid. */
+  /**
+   * IoU of the solid (land + structure) cell masks over the whole grid; structure cells solid in
+   * one frame only that are parallax (`parallaxCells`) are left out of the union.
+   */
   iou: number;
+  /** Structure cells solid in one frame only, matched along their parallax corridor. */
+  parallaxCells: number;
   /** IoU of the structure-dominated cells (≥ 50 % lit props). */
   structIou: number;
   /** ΔE per cell (NaN where not compared), for heat maps. */
@@ -383,6 +474,8 @@ export function compareFrames(
   farMask: Img,
   map: MapFn,
   slack: number = LADDER_THRESHOLDS.slack,
+  /** `parallaxRatio` of the two views; 1 = no parallax corridor. */
+  parallax = 1,
 ): StepMetrics {
   const T = LADDER_THRESHOLDS;
   const n = GRID.w * GRID.h;
@@ -412,6 +505,20 @@ export function compareFrames(
   const solidB = Array.from(mB.solid, (v) => v >= 0.5);
   const structA = Array.from(mA.struct, (v) => v >= 0.5);
   const structB = Array.from(mB.struct, (v) => v >= 0.5);
+  // solid IoU: a tall prop sliding along its radial parallax corridor (the transmitter mast at the
+  // frame edge, TASK-487) is not a footprint change; anything with no structure on its corridor is
+  let inter = 0;
+  let union = 0;
+  let parallaxCells = 0;
+  for (let k = 0; k < n; k++) {
+    if (!solidA[k] && !solidB[k]) continue;
+    if (solidA[k] && solidB[k]) inter++;
+    else if (parallaxed(k, solidA[k], structA, structB, parallax, slack)) {
+      parallaxCells++;
+      continue;
+    }
+    union++;
+  }
   return {
     compared,
     landFrac: compared / n,
@@ -421,7 +528,8 @@ export function compareFrames(
     max: compared ? sorted[compared - 1] : 0,
     blob: compared ? blobCells / compared : 0,
     blobCells,
-    iou: iou(solidA, solidB),
+    iou: union === 0 ? 1 : inter / union,
+    parallaxCells,
     structIou: iou(structA, structB),
     heat,
   };
