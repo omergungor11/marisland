@@ -2,6 +2,20 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-069: Relay night scene — skerry beacons, signal chain, fireworks — 2026-10-26
+
+**Decision** (TASK-490, `W:B1` + `W:B6` + `W:G7`; numbers in `content/signature.ts`):
+- Beacons: a `beaconTower` prop on up to 3 spread-out skerry peaks (picked max-min from the one farthest from
+  HQ). Their beams and the Marketing lighthouse beam reuse the beam program, one call each; the route-order
+  phase lag (1 s per rank of an 8 s turn) is a mesh yaw, so only `uTime` drives them.
+- Signal chain: a culture-mover scene per island peak (night-only mast, so W16 tris don't grow); each island
+  flashes 3 × toward the next in its relay step, the HQ semaphore points at it.
+- Fireworks: a second emissive Bursts pool, closed-form from the culture clock and the world seed (22:00 + the
+  60 s Comet Night, i.e. day second 10; capture `time=21&simt=85`), 6 shells in culture accents, cancelled in
+  rain. The water reflection is a spark glitter at sea level, not a water-shader branch.
+**Impact**: world hashes changed; `interaction.ts` now adds to `counters.particles` instead of overwriting it.
+Open: in live play at high day speed the show re-spawns when birth times drift > 1 s.
+
 ## D-067: Reef shoals and shared-shelf sills — a separate reef mask, gaps measured like LAYOUT — 2026-10-26
 
 **Decision** (TASK-488, `W:D1` + `W:K3`): 3–6 shoal blobs (crest −2.4…−4.2 u) in the gaps between islands

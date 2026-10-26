@@ -10,6 +10,11 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-26 (TASK-490 merged)**: the culture clock day is 600 s, so 22:00 + 60 s wraps to second 10 of the
+  next day. A culture-mover scene's `max` instance count must cover every part it can write at once.
+  `interaction.ts` runs after the world view and owns the final particle counter. Oblique night shots of the
+  signal lamps blew the budget at first (351 calls / 862k tris) — look down steeper. `generateWorld` via
+  `pnpm tsx` scripts is a quick probe for geometry/world questions.
 - **2026-10-26 (TASK-488 merged)**: reefs run right after `finalizeHeight` (`root.fork('reefs')`); routes then
   `carveReefGaps` before seamarks. Don't derive "raised" cells from `h.data - natural` after settlements (it
   catches land pads) — use `ReefField.raised` / `weight`. W4 now 168 / 170 MB medium — little memory headroom.
