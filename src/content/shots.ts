@@ -630,6 +630,20 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     height: 1080,
     sets: ['wow'],
   },
+  {
+    id: 'W27',
+    title: 'Whale Surfacing',
+    // 17:45 (+0.5 s): the whale's cape pass (TASK-489, D-070) — the postcard overview with the grey
+    // whale's back up in the open water off the Research cape, 8.5 s into its surfacing, spout in the air
+    seed: 1001,
+    cam: 'overview',
+    time: 17.75,
+    simt: 0.5,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
 
   // ---- dev set (960×540) + ci subset (640×360)
   {

@@ -408,7 +408,21 @@ export function createInteraction(d: InteractionDeps): Interaction {
 
   const doPick = (x: number, y: number): PickHit | null => {
     const r = rayAt(x, y);
-    const hit = r ? picker.pick(r) : null;
+    let hit = r ? picker.pick(r) : null;
+    // the whale (M23 TASK-489): a world mover with its own ray test, in front of what it hides
+    const wt = r && wv.whale ? wv.whale.hit(r.ox, r.oy, r.oz, r.dx, r.dy, r.dz) : -1;
+    if (r && wt >= 0 && (!hit || wt < hit.t))
+      hit = {
+        kind: 'agent',
+        id: 0,
+        name: 'whale',
+        instanceIndex: 0,
+        t: wt,
+        x: r.ox + r.dx * wt,
+        y: r.oy + r.dy * wt,
+        z: r.oz + r.dz * wt,
+        water: false,
+      };
     if (hit && hit.kind === 'prop') hit.rotY = store.rotY[hit.instanceIndex];
     return hit;
   };
@@ -430,7 +444,7 @@ export function createInteraction(d: InteractionDeps): Interaction {
   const hoverFrom = (hit: PickHit | null): void => {
     const target = hit && hit.kind !== 'terrain' ? meshesOf(hit) : null;
     hover = hit && target ? { hit, target } : null;
-    setCursor(hover ? 'pointer' : '');
+    setCursor(hover || hit?.name === 'whale' ? 'pointer' : '');
     // fish scatter from the water point under the cursor (tier 3 schools)
     if (hit && hit.kind === 'terrain' && hit.water) wv.life.setCursorWorld(hit.x, hit.z);
     else wv.life.setCursorWorld(null);
@@ -445,6 +459,12 @@ export function createInteraction(d: InteractionDeps): Interaction {
   const clickAt = (x: number, y: number): PickHit | null => {
     const hit = doPick(x, y);
     if (!hit || hit.kind === 'terrain') return hit;
+    if (hit.name === 'whale') {
+      // tail slap + splash (cute-motion: anticipation, lift, whip, springy settle)
+      wv.whale?.poke(d.getTime());
+      d.events.emit('picked', { kind: 'agent:whale', id: 0 });
+      return hit;
+    }
     const target = meshesOf(hit);
     if (!target) return hit;
     const key = `${hit.kind}:${hit.name}:${hit.instanceIndex}`;

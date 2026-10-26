@@ -37,6 +37,15 @@ export * from './edit-types.ts';
 export { CHUNK_HAS_LAND, CHUNK_HAS_SHALLOW } from './gen/chunks.ts';
 export { slopeAtCell } from './gen/zones.ts';
 export { openSeaAt, reefClearance, routeClearance } from './gen/reefs.ts';
+export {
+  planWhaleRoute,
+  routeAt as whaleRouteAt,
+  whaleEventAt,
+  whaleEvents,
+  whaleTimes,
+  type WhaleEvent,
+  type WhaleRoute,
+} from './gen/whale-route.ts';
 export { PropFlag, PROP_FLAGS, growPropStore, propCapacity, type PropStore } from './prop-store.ts';
 export {
   applyEdit,
