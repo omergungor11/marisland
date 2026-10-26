@@ -10,6 +10,11 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-27 (TASK-496 merged)**: beam-program meshes may be stretched non-uniformly now; animate a travelling
+  front with `uBeamFx.xy` per frame (`signalFlash()`). A fireworks reflection on open water is the mirror image
+  (eye ray to (x, 2·sea − y, z)); to see shells and reflection in one frame the camera must sit ~2 u high and
+  ≥ 200 u from the shells. A dithered soft disc in the shared life material shows its dither at large sizes —
+  use bloom for glow. Skerry beam fade is 900–1200 u (was 380–500) so beams read in the postcard.
 - **2026-10-26 (TASK-494 merged)**: `WhaleBend.tail`/`fluke` + = up only since TASK-494 (the skin sent them down
   before). The whale heads along its route, so a camera behind it sees only its back — frame it from in front
   (17:45 heading ≈ (0.37, −0.93)). Water alpha hides anything deeper than ~1 u, so a submerged silhouette is not

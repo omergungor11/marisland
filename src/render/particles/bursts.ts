@@ -47,11 +47,25 @@ export const GLYPH_ID: Record<BurstGlyph, number> = {
   sparkle: 2,
   leaf: 3,
   bang: 4,
+  streak: 5,
+  glow: 6,
 };
-const PATTERN_ID: Record<BurstPattern, number> = { ring: 0, rise: 1, fall: 2, pop: 3, sphere: 4 };
-/** Firework shell: drag rate (1/s) of the outward speed and the share of gravity the sparks feel. */
-const SPHERE_DRAG = 2.5;
-const SPHERE_DROOP = 0.35;
+const PATTERN_ID: Record<BurstPattern, number> = {
+  ring: 0,
+  rise: 1,
+  fall: 2,
+  pop: 3,
+  sphere: 4,
+  willow: 5,
+  mirror: 6,
+};
+const SPH = BURSTS.sphere;
+const WIL = BURSTS.willow;
+const MIR = BURSTS.mirror;
+/** Streak glyph: head circle centre (x) and radius in the ±1 box (the tail runs to x = −1). */
+const STREAK_HEAD = { x: 0.6, r: 0.4 };
+/** Streak head diameter as a share of the particle size. */
+const STREAK_WIDTH = 0.6;
 
 export interface BurstsOptions {
   /** Pool size (default BURSTS.capacity[quality]). */
@@ -108,26 +122,51 @@ function glyphShapes(): THREE.Shape[][] {
   return [[circle(0, 0, 1)], [heart], [sparkle], [leaf], [bar, circle(0, -0.75, 0.19)]];
 }
 
+/** Streak: a teardrop, round head at +x tapering to a point at x = −1 (TASK-496). */
+function streakShape(): THREE.Shape {
+  const { x, r } = STREAK_HEAD;
+  const pts = [new THREE.Vector2(-1, 0)];
+  for (let i = 0; i <= 10; i++) {
+    const a = -Math.PI / 2 + (i / 10) * Math.PI;
+    pts.push(new THREE.Vector2(x + Math.cos(a) * r, Math.sin(a) * r));
+  }
+  return new THREE.Shape(pts);
+}
+
 function buildGlyphGeometry(emissive: boolean): THREE.BufferGeometry {
   const pos: number[] = [];
   const nrm: number[] = [];
   const limb: number[] = [];
   const col: number[] = [];
   const em: number[] = [];
-  glyphShapes().forEach((shapes, id) => {
-    for (const shape of shapes) {
+  // limb.z = dither-out share (life material, mode 6): the streak's tail and the glow's rim fade
+  const vert = (id: number, x: number, y: number, cut: number): void => {
+    pos.push(x, y, 0);
+    nrm.push(0, 0, 1);
+    limb.push(id, 0, cut, 6);
+    col.push(1, 1, 1);
+    em.push(1);
+  };
+  const shapes = glyphShapes();
+  shapes.push([streakShape()]);
+  shapes.forEach((list, id) => {
+    for (const shape of list) {
       const g = new THREE.ShapeGeometry(shape).toNonIndexed();
       const p = g.getAttribute('position');
-      for (let i = 0; i < p.count; i++) {
-        pos.push(p.getX(i), p.getY(i), 0);
-        nrm.push(0, 0, 1);
-        limb.push(id, 0, 0, 6);
-        col.push(1, 1, 1);
-        em.push(1);
-      }
+      for (let i = 0; i < p.count; i++)
+        vert(id, p.getX(i), p.getY(i), id === GLYPH_ID.streak ? Math.max(0, -p.getX(i)) * 0.85 : 0);
       g.dispose();
     }
   });
+  // glow: a fan disc, solid-ish centre, dithered out toward the rim
+  const n = 16;
+  for (let i = 0; i < n; i++) {
+    const a0 = (i / n) * Math.PI * 2;
+    const a1 = ((i + 1) / n) * Math.PI * 2;
+    vert(GLYPH_ID.glow, 0, 0, 0.35);
+    vert(GLYPH_ID.glow, Math.cos(a0), Math.sin(a0), 1);
+    vert(GLYPH_ID.glow, Math.cos(a1), Math.sin(a1), 1);
+  }
   const geo = new THREE.BufferGeometry();
   if (emissive) geo.setAttribute('emissive', new THREE.Float32BufferAttribute(em, 1));
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -144,6 +183,9 @@ const _q = new THREE.Quaternion();
 const _qz = new THREE.Quaternion();
 const _qc = new THREE.Quaternion();
 const _zAxis = new THREE.Vector3(0, 0, 1);
+const _p0 = new THREE.Vector3();
+const _cr = new THREE.Vector3();
+const _cu = new THREE.Vector3();
 const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 
 export function createBursts(scope: Scope, quality: Quality, opts: BurstsOptions = {}): Bursts {
@@ -189,6 +231,7 @@ export function createBursts(scope: Scope, quality: Quality, opts: BurstsOptions
   const floorY = new Float32Array(capacity);
   const seed = new Float32Array(capacity);
   const pat = new Uint8Array(capacity);
+  const trail = new Float32Array(capacity);
   let next = 0;
   let high = 0;
 
@@ -208,6 +251,7 @@ export function createBursts(scope: Scope, quality: Quality, opts: BurstsOptions
     sd: number,
     pt: number,
     c: THREE.Color,
+    tr: number,
   ): void => {
     o[i * 3] = ox;
     o[i * 3 + 1] = oy;
@@ -222,6 +266,7 @@ export function createBursts(scope: Scope, quality: Quality, opts: BurstsOptions
     floorY[i] = fl;
     seed[i] = sd;
     pat[i] = pt;
+    trail[i] = tr;
     aGait.setXYZ(i, 0, g, 0);
     mesh.setColorAt(i, c);
   };
@@ -261,14 +306,14 @@ export function createBursts(scope: Scope, quality: Quality, opts: BurstsOptions
           pz + vz * age + Math.cos(age * 3.3 + sd * 9) * 0.16,
         );
         break;
-      case 4: {
-        // sphere: speed bleeds off with drag (a burst that hangs), then the sparks sink
-        const k = (1 - Math.exp(-SPHERE_DRAG * age)) / SPHERE_DRAG;
-        out.set(
-          px + vx * k,
-          py + vy * k - 0.5 * BURSTS.gravity * SPHERE_DROOP * age * age,
-          pz + vz * k,
-        );
+      case 4:
+      case 5:
+      case 6: {
+        // sphere (and its sea mirror): speed bleeds off with drag (a burst that hangs), then the
+        // sparks sink; willow: less drag, a heavy sag (long drooping trails)
+        const w = pat[i] === 5 ? WIL : SPH;
+        const k = (1 - Math.exp(-w.drag * age)) / w.drag;
+        out.set(px + vx * k, py + vy * k - 0.5 * BURSTS.gravity * w.droop * age * age, pz + vz * k);
         break;
       }
       default:
@@ -307,7 +352,9 @@ export function createBursts(scope: Scope, quality: Quality, opts: BurstsOptions
             vx = ca * speed;
             vz = sa * speed;
             break;
-          case 'sphere': {
+          case 'sphere':
+          case 'willow':
+          case 'mirror': {
             // uniform direction on the sphere
             const cy = rng.range(-1, 1);
             const sy = Math.sqrt(1 - cy * cy);
@@ -356,6 +403,7 @@ export function createBursts(scope: Scope, quality: Quality, opts: BurstsOptions
           sd,
           PATTERN_ID[spec.pattern],
           col,
+          spec.trail ?? 0,
         );
       }
       aGait.needsUpdate = true;
@@ -371,6 +419,8 @@ export function createBursts(scope: Scope, quality: Quality, opts: BurstsOptions
       let alive = 0;
       let pending = 0;
       camera.getWorldQuaternion(_q);
+      _cr.set(1, 0, 0).applyQuaternion(_q);
+      _cu.set(0, 1, 0).applyQuaternion(_q);
       const camPos = camera.position;
       const arr = mesh.instanceMatrix.array as Float32Array;
       for (let i = 0; i < high; i++) {
@@ -384,21 +434,60 @@ export function createBursts(scope: Scope, quality: Quality, opts: BurstsOptions
         alive++;
         const u = age / life[i];
         posAt(i, age, u, _p);
-        const dist = _p.distanceTo(camPos);
-        // quick pop-in, shrink out; never smaller than a screen fraction (readable at any zoom)
-        const grow = 1 - Math.exp(-14 * age) * (1 + 14 * age);
-        const out = 1 - THREE.MathUtils.smoothstep(u, 1 - BURSTS.outFrac, 1);
-        const s = Math.max(size[i], dist * minFrac) * Math.min(Math.max(grow, 0), 1) * out * scale;
         const g = glyph[i];
         const sd = seed[i];
-        const ang =
+        let sz = size[i];
+        let sx = 0.5;
+        let sy = 0.5;
+        let ang =
           g === 3
             ? sd * 6.2831853 + age * (2 + 2 * sd) * (sd > 0.5 ? 1 : -1)
             : g === 2
               ? age * 1.5 + sd * 3
               : (sd - 0.5) * 0.4;
+        if (pat[i] === 6) {
+          // the spark's mirror image: where the eye ray to (x, 2 sea − y, z) meets the sea, a
+          // vertical shimmer streak of the spark's own apparent size
+          const sea = floorY[i];
+          const ch = camPos.y - sea;
+          const hh = _p.y - sea;
+          if (ch <= 0.01 || hh <= 0) {
+            ZERO.toArray(arr, i * 16);
+            continue;
+          }
+          const t = ch / (ch + hh);
+          _p.set(camPos.x + (_p.x - camPos.x) * t, sea, camPos.z + (_p.z - camPos.z) * t);
+          sz *= t;
+          const f = 0.55 + 0.45 * Math.sin(age * MIR.flicker * 6.2831853 + sd * 40);
+          sx = 0.5 * MIR.thin * f;
+          sy = 0.5 * MIR.stretch * f;
+          ang = 0;
+        }
+        const dist = _p.distanceTo(camPos);
+        // quick pop-in, shrink out; never smaller than a screen fraction (readable at any zoom)
+        const grow = 1 - Math.exp(-14 * age) * (1 + 14 * age);
+        const out = 1 - THREE.MathUtils.smoothstep(u, 1 - BURSTS.outFrac, 1);
+        const s = Math.max(sz, dist * minFrac) * Math.min(Math.max(grow, 0), 1) * out * scale;
+        if (g === 5 && s > 1e-4) {
+          // streak: the teardrop spans the path of the last `trail` s as seen on screen, head on
+          // the spark (the tail shrinks to a round dot when the spark hangs)
+          const a0 = Math.max(0, age - trail[i]);
+          posAt(i, a0, a0 / life[i], _p0);
+          _p0.sub(_p);
+          const dx = -_p0.dot(_cr);
+          const dy = -_p0.dot(_cu);
+          const len = Math.hypot(dx, dy);
+          ang = Math.atan2(dy, dx);
+          // head diameter STREAK_WIDTH × s; tail (x = −1) to head centre spans the path
+          sy = (0.5 * STREAK_WIDTH) / STREAK_HEAD.r;
+          sx = Math.max(len / (s * (1 + STREAK_HEAD.x)), sy);
+          const back = STREAK_HEAD.x * s * sx;
+          const c = Math.cos(ang);
+          const sn = Math.sin(ang);
+          _p.addScaledVector(_cr, -back * c).addScaledVector(_cu, -back * sn);
+        }
         _qz.setFromAxisAngle(_zAxis, ang);
-        _m.compose(_p, _qc.copy(_q).multiply(_qz), _s.setScalar(s * 0.5));
+        _m.compose(_p, _qc.copy(_q).multiply(_qz), _s.set(s * sx, s * sy, s * 0.5));
         _m.toArray(arr, i * 16);
       }
       mesh.count = pending > 0 ? high : 0;

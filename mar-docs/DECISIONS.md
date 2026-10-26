@@ -2,6 +2,37 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-074: Night effects polish — signal as a beam with a travelling light front, streak-spark fireworks with a mirror reflection, beacons readable from the postcard (amends D-069) — 2026-10-26
+
+**Decision** (TASK-496, M23 QA findings 3, 4, 7): (1) **Signal.** The relay signal is no longer a glowing
+ellipsoid + flash ball (read as a comet / lightsaber) but a soft beam on the lighthouse beam program: per island
+one non-turning beam mesh (shared beam geometry, own material, 0 programs, 1 draw call only while that island
+flashes), rotated from the lamp to the next island's lamp and stretched to the gap (`len / 40` along, `width` 0.7
+across). Each flash its light front (the beam's fade-out band) runs out and reaches the next lamp at `reach` 0.45
+of the flash (eased), the beam's flare grows with distance, and the next lamp answers with a catch pop
+(`SIGNAL_CHAIN.reach / beam / catch`). The beam shader now transforms normals with the inverse-transpose of the
+model scale (unchanged for the uniformly scaled beams). Sketched in debug frames: A beam alone, B a morse
+train of beads on an arc, C beam + bead head; B is invisible from 200 u, C's bead head reads as a comet again —
+A kept. (2) **Fireworks.** The burst pool (same capacity and buffers) gains a `streak` glyph (a teardrop whose
+tail spans the spark's screen path over the last `trailS` s, dithered toward the tip), a `glow` disc (flash),
+and `willow` / `mirror` patterns. Shells alternate peony (streaking sparks that hang, then sink) and willow (60 %
+of the sparks, gold-tinted, heavy sag, 0.6 s trails). The reflection is now the shell's mirror image: `mirror`
+sparks follow a sphere spark and are placed where the eye ray to (x, 2 sea − y, z) meets the sea, as thin
+vertical shimmer streaks — on open water between the burst and the camera. A dithered core-glow disc was tried
+and dropped (dither pattern visible). W15c was re-framed lower and further back (`-30,2.2,275,-30,7,10`) so
+the shells and their reflections share the frame; W15e became a side view of the Coding → Marketing signal
+(`30,120,120,-150,15,85`, `simt` 31.35). (3) **Beacons.** The skerry beam distance fade moved from 380–500 u to
+900–1200 u, and every beacon flare has a distance floor (`flareMin` 0.006 × distance), so the postcard shows
+the beams and lamps instead of red tower dots.
+**Cost**: 0 MB (no new textures or buffers beyond one shared beam geometry per world, ≈ 240 vertices), 0
+programs; +1 draw call while a signal flashes, +2–3 calls for the far beacon beams at night (W15 182, W15b 183).
+Fireworks counts stay per quality (sparks 48 / 150 / 220, mirror 14 / 48 / 72 per shell).
+**Rationale**: the beam program already reads as "lamp light" (W15d); a front that runs out tells the direction
+without a bright head. Streaks give the burst motion in a still frame; a true mirror image is the only
+reflection that sits on open water from any camera.
+**Alternatives**: a travelling pulse uniform in the beam shader (a new shared uniform for every beam material);
+per-spark trail copies (more instances); a water-shader reflection branch (program change, D-069).
+
 ## D-073: Budget headroom without raising budgets — per-kind culture-mover meshes, no depth on the composer output buffer, glasshouse row from T0 — 2026-10-26
 
 **Context** (TASK-495 / TASK-493): the M23 QA found low-ladder tier-2 rungs over the 350k triangle budget (Design 120 u

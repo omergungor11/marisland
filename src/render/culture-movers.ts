@@ -197,6 +197,7 @@ function rings(
 const SPH = M.secondsPerHour;
 const DAY = 24 * SPH;
 /** Seconds since the Launch Day Relay started (0 .. DAY) at culture-clock day seconds `day`. */
+const _flash = { e: 0, p: -1, front: 0 };
 const relayT = (day: number): number => (((day - RELAY.hour * SPH) % DAY) + DAY) % DAY;
 const easeOutBack = (x: number): number => {
   const t = Math.min(1, Math.max(0, x)) - 1;
@@ -729,48 +730,65 @@ function semaphoreScene(idx: number): Scene['run'] {
   };
 }
 
+/** One signal flash at culture-clock `day` for relay step `order`: envelope 0..1 and flash phase. */
+export interface SignalFlash {
+  /** Envelope (attack, then decay) of the flash running now; 0 between flashes. */
+  e: number;
+  /** Phase 0..1 of that flash (−1 when none runs). */
+  p: number;
+  /** Light front along the path, 0 at the lamp .. 1 at the next lamp (eased). */
+  front: number;
+}
+
+export function signalFlash(order: number, day: number, out: SignalFlash): SignalFlash {
+  const S = SIGNAL_CHAIN;
+  out.e = 0;
+  out.p = -1;
+  out.front = 0;
+  const u = relayT(day) - (order - 1) * RELAY.stepS;
+  if (u < 0 || u >= RELAY.stepS) return out;
+  for (let i = 0; i < S.flashes; i++) {
+    const ph = (u - S.firstS - i * S.gapS) / S.flashS;
+    if (ph < 0 || ph >= 1) continue;
+    out.p = ph;
+    out.e = ph < S.attack ? ph / S.attack : (1 - ph) / (1 - S.attack);
+    const f = Math.min(1, ph / S.reach);
+    out.front = 1 - (1 - f) * (1 - f);
+  }
+  return out;
+}
+
 /**
- * Signal chain (M23 TASK-490, W:B6): the lamp on an island's highest point. At night a mast with a
- * small lamp springs up; in the relay, in its island's step, it throws `flashes` flashes toward the
- * next island of the chain (a glowing ray along the bearing), so the signal runs island to island
- * after the HQ semaphore points at that island. World-frame scene; sizes grow with the camera
- * distance (the lamps are meant to read from the T0 postcard).
+ * Signal chain (M23 TASK-490, W:B6; TASK-496): the lamp on an island's highest point. At night a mast
+ * with a small lamp springs up; in the relay, in its island's step, it throws `flashes` flashes toward
+ * the next island of the chain. The light itself is a soft beam (`createCultureMovers`, lighthouse beam
+ * program); this scene adds the lamp swelling and the catch pop at the next lamp when the beam's light
+ * front gets there. World-frame scene; sizes grow with the camera distance (the lamps are meant to read
+ * from the T0 postcard).
  */
 function signalScene(order: number, lamp: V3, to: V3, accent: string, mast: boolean): Scene['run'] {
   const S = SIGNAL_CHAIN;
   const tint = lightened(accent, S.lighten);
-  const dir = new THREE.Vector3(to[0] - lamp[0], to[1] - lamp[1], to[2] - lamp[2]).normalize();
-  const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir);
+  const pop = lightened(accent, 0.75);
+  const fl: SignalFlash = { e: 0, p: -1, front: 0 };
   return (w, c) => {
     const dist = Math.hypot(c.cam.x - lamp[0], c.cam.z - lamp[2]);
     const px = Math.min(S.maxPx, dist * S.minScreen);
     const up = smooth((c.night - S.rest.night[0]) / (S.rest.night[1] - S.rest.night[0]));
     const rise = easeOutBack(up);
-    const u = relayT(c.day) - (order - 1) * RELAY.stepS;
-    let e = 0;
-    if (u >= 0 && u < RELAY.stepS)
-      for (let i = 0; i < S.flashes; i++) {
-        const ph = (u - S.firstS - i * S.gapS) / S.flashS;
-        if (ph < 0 || ph >= 1) continue;
-        e = Math.max(e, ph < S.attack ? ph / S.attack : (1 - ph) / (1 - S.attack));
-      }
+    const { e, p } = signalFlash(order, c.day, fl);
     if (up > 0.01) {
       if (mast) cable(w, [lamp[0], lamp[1] - S.mast * rise, lamp[2]], lamp, '#FFF4E0');
-      const r = Math.max(S.lampR * S.rest.r, px) * rise;
+      const r = Math.max(S.lampR * S.rest.r, px) * rise * (1 + S.flashGrow * e);
       w.put(PART.glow, lamp, [0, 0, 0], r, tint);
     }
-    if (e > 0.01) {
-      w.put(PART.glow, lamp, [0, 0, 0], Math.max(S.flashR, px * S.flashPx) * e, tint);
-      // a glowing ellipsoid from the lamp along the bearing (`half` = half its length)
-      const half = S.ray.length * 0.5 * e;
-      const rw = Math.max(S.ray.r, px * S.rayPx) * e;
-      w.putQ(
-        PART.glow,
-        [lamp[0] + dir.x * half, lamp[1] + dir.y * half, lamp[2] + dir.z * half],
-        q,
-        [rw, rw, half],
-        tint,
-      );
+    if (e <= 0.01) return;
+    // the next lamp catches the light: a pop as the front lands, fading over `catch.fade`
+    const k = (p - S.reach) / S.catch.fade;
+    if (k >= 0 && k < 1) {
+      const dt = Math.hypot(c.cam.x - to[0], c.cam.z - to[2]);
+      const r = Math.max(S.catch.r, Math.min(S.maxPx, dt * S.minScreen) * S.catch.px);
+      w.put(PART.glow, to, [0, 0, 0], r * easeOutBack(Math.min(1, k * 4)) * (1 - k), pop);
     }
   };
 }
@@ -1124,6 +1142,7 @@ export function createCultureMovers(
   // M23 W:B6 signal chain: a lamp on every island's highest point (HQ: the semaphore lamp), each
   // flashing toward the next island in relay order in its own step
   const lampOf = new Map<ThemeId, V3>();
+  const signals: { mesh: THREE.Mesh; mat: THREE.ShaderMaterial; order: number }[] = [];
   for (const th of THEME_OF_ORDER) {
     const isl = world.islands.find((i) => i.theme === th);
     if (!isl) continue;
@@ -1139,12 +1158,34 @@ export function createCultureMovers(
       new THREE.Matrix4(),
       0,
       at,
-      4, // mast, lamp, flash ball, ray
+      3, // mast, lamp, the catch at the next lamp
       signalScene(CULTURES[th].relay.order, at, to, THEMES[th].accent, th !== 'hq'),
     );
     sc.pivot = null;
     sc.range2 = SIGNAL_CHAIN.range * SIGNAL_CHAIN.range;
     scenes.push(sc);
+    // the signal beam (TASK-496): the lighthouse beam cone, not turning, stretched from the lamp to
+    // the next lamp; shown only while a flash runs
+    const SB = SIGNAL_CHAIN.beam;
+    _a.set(to[0] - at[0], to[1] - at[1], to[2] - at[2]);
+    const len = _a.length();
+    beamGeo ??= scope.add(buildBeamGeometry());
+    const mat = scope.add(
+      createSkyProgramMaterial('beam', { flareRadius: SB.flare, flarePull: 0 }),
+    );
+    (mat.uniforms.uBeamColor.value as THREE.Color).set(lightened(THEMES[th].accent, 0.55));
+    (mat.uniforms.uBeamMotion.value as THREE.Vector4).setX(0).setY(0);
+    const mesh = new THREE.Mesh(beamGeo, mat);
+    mesh.name = 'signal-beam';
+    mesh.position.set(at[0], at[1], at[2]);
+    mesh.quaternion.setFromUnitVectors(_x.set(1, 0, 0), _a.divideScalar(len));
+    mesh.scale.set(len / BEAM.length, SB.width, SB.width);
+    mesh.renderOrder = 20;
+    mesh.castShadow = false;
+    mesh.receiveShadow = false;
+    mesh.visible = false;
+    group.add(mesh);
+    signals.push({ mesh, mat, order: CULTURES[th].relay.order });
   });
   // QA ant trails: story spots of kind antTrail (story-spot frame)
   for (const sp of world.storySpots) {
@@ -1345,6 +1386,32 @@ export function createCultureMovers(
       const on = SHARED.uLamps.value.z > 0.001 && b.position.distanceToSquared(camPos) < wr2;
       b.visible = on;
       if (on) nb++;
+    }
+    // the signal beams: the light front runs out each flash and the beam fades with its envelope
+    const SB = SIGNAL_CHAIN.beam;
+    const sr2 = SIGNAL_CHAIN.range * SIGNAL_CHAIN.range;
+    for (const sg of signals) {
+      const f = signalFlash(sg.order, ctx.day, _flash);
+      const on =
+        SHARED.uLamps.value.z > 0.001 &&
+        f.e > 0.01 &&
+        sg.mesh.position.distanceToSquared(camPos) < sr2;
+      sg.mesh.visible = on;
+      if (!on) continue;
+      nb++;
+      const u = sg.mat.uniforms;
+      const look = u.uBeamLook.value as THREE.Vector4;
+      look.x = SB.opacity * f.e;
+      look.y = 0;
+      const fx = u.uBeamFx.value as THREE.Vector4;
+      fx.x = Math.max(0, f.front - SB.soft);
+      fx.y = f.front + 0.001;
+      fx.z = SB.flareIntensity * f.e;
+      const px = Math.min(
+        SIGNAL_CHAIN.maxPx,
+        sg.mesh.position.distanceTo(camPos) * SIGNAL_CHAIN.minScreen,
+      );
+      (u.uBeamMotion.value as THREE.Vector4).z = Math.max(SB.flare, px * SB.flarePx);
     }
     lastBeams = nb;
   };

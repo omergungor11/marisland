@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import type { Scope } from '../../core/scope.ts';
 import type { Quality } from '../../core/params.ts';
 import { createRng } from '../../core/rng.ts';
-import type { BurstSpec } from '../../content/anim.ts';
 import { CULTURE_CLOCK } from '../../content/cultures/rhythm.ts';
 import { FIREWORKS as FW } from '../../content/signature.ts';
 import { THEMES } from '../../content/themes/index.ts';
@@ -11,9 +10,10 @@ import { createBursts, type BurstAnchor } from './bursts.ts';
 import { fireworkPlan, type FireworkPlan } from './firework-plan.ts';
 
 /**
- * Fireworks (M23 TASK-490, W:G7): after the relay's last step and the Comet Night, the HQ harbour fires
- * six shells in the culture accent colours (rocket trail, a spherical burst, a glitter of sparks on the
- * water under it). One extra instanced draw on the shared creature program (the click-burst glyph mesh,
+ * Fireworks (M23 TASK-490, W:G7; TASK-496): after the relay's last step and the Comet Night, the HQ
+ * harbour fires six shells in the culture accent colours: a rocket streak, a burst of streaking sparks
+ * (peony) or of long sagging gold-tinted trails (willow) around a white flash, and the
+ * burst's mirror image shimmering on the sea between it and the camera. One extra instanced draw on the shared creature program (the click-burst glyph mesh,
  * emissive so it glows and blooms at night), nothing alive = no draw.
  *
  * Closed form of the culture clock: the show second is `day − start` on the 24 h circle, so every
@@ -60,14 +60,18 @@ export function createFireworks(
   const root = createRng(world.seed).fork('fireworks-emit');
   let spawnedFor = Number.NaN;
 
+  const gold = THEMES.hq.accent;
   const emitShow = (showStart: number): void => {
     bursts.clear();
     const R = FW.rocket;
-    const G = FW.glint;
+    const W = FW.willow;
     const coreN = Math.round(FW.coreShare * 10);
     plan.shells.forEach((sh, k) => {
       const rng = root.fork('shell', k);
-      const accent = THEMES[sh.theme].accent;
+      const willow = FW.kinds[k % FW.kinds.length] === 'willow';
+      const accent = willow
+        ? `#${new THREE.Color(THEMES[sh.theme].accent).lerp(new THREE.Color(gold), W.gold).getHexString()}`
+        : THEMES[sh.theme].accent;
       const light = mixWhite(accent, 0.45);
       const palette = [
         ...Array.from({ length: 10 - coreN }, (_, i) => (i % 3 === 2 ? light : accent)),
@@ -82,45 +86,49 @@ export function createFireworks(
         h: 0,
         floor: 0,
       });
-      // the rocket: a short chain of sparks rising straight up from the water under the shell
+      // the rocket: one streak rising straight up from the water under the shell
       // ('rise' eases out: it travels 0.6 × speed × life by the end of its life)
       const climb = sh.y / 0.6 / R.climbS;
-      for (let j = 0; j < R.trail; j++) {
-        const spec: BurstSpec = {
-          glyph: 'sparkle',
+      bursts.emit(
+        {
+          glyph: 'streak',
           count: 1,
           pattern: 'rise',
-          colors: [light],
+          colors: [mixWhite(gold, 0.5)],
           size: R.size,
           life: [R.climbS, R.climbS],
           speed: [climb, climb],
           from: 'base',
-          delay: -R.climbS + j * R.trailGap,
-        };
-        bursts.emit(spec, anchor(0.6, 0.1), at, rng);
-      }
-      // the burst
+          delay: -R.climbS,
+          trail: R.trailS,
+        },
+        anchor(0.6, 0),
+        at,
+        rng,
+      );
+      // the burst: streaking sparks (peony) or long sagging trails (willow)
       bursts.emit(
         {
-          glyph: 'sparkle',
-          count: FW.sparks[quality],
-          pattern: 'sphere',
+          glyph: 'streak',
+          count: Math.round(FW.sparks[quality] * (willow ? W.share : 1)),
+          pattern: willow ? 'willow' : 'sphere',
           colors: palette,
-          size: FW.size,
-          life: FW.life,
-          speed: FW.speed,
+          size: willow ? W.size : FW.size,
+          life: willow ? W.life : FW.life,
+          speed: willow ? W.speed : FW.speed,
           from: 'base',
+          trail: willow ? W.trailS : FW.trailS,
         },
         anchor(sh.y, 0),
         at,
         rng,
       );
-      // the flash of the shell going off
+      // the flash of the shell going off (a soft white disc)
       bursts.emit(
         {
-          glyph: 'sparkle',
+          glyph: 'glow',
           count: 1,
-          pattern: 'pop',
+          pattern: 'sphere',
           colors: [mixWhite(accent, 0.8)],
           size: FW.flash.size,
           life: FW.flash.life,
@@ -131,20 +139,19 @@ export function createFireworks(
         at,
         rng,
       );
-      // glitter on the sea under the burst (the water reflection)
+      // the sea reflection: shell sparks mirrored on the water under the camera's eye
       bursts.emit(
         {
-          glyph: 'sparkle',
-          count: G[quality],
-          pattern: 'rise',
-          colors: [dim(light, G.dim), dim(accent, G.dim)],
-          size: G.size,
-          life: G.life,
-          speed: [0.02, 0.06],
+          glyph: 'puff',
+          count: FW.mirror[quality],
+          pattern: 'mirror',
+          colors: [dim(light, FW.mirror.dim), dim(accent, FW.mirror.dim)],
+          size: [FW.size[0] * FW.mirror.size, FW.size[1] * FW.mirror.size],
+          life: willow ? W.life : FW.life,
+          speed: willow ? W.speed : FW.speed,
           from: 'base',
-          delay: G.lag,
         },
-        anchor(0.35, G.spread * 4),
+        anchor(sh.y, 0),
         at,
         rng,
       );
