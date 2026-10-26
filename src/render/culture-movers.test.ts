@@ -343,21 +343,39 @@ describe('culture movers', () => {
 
   it('signal chain: each island throws three flashes toward the next, in its own step', () => {
     const tower = firstOf(world, props, 'semaphoreTower')!;
+    const lamps = SHARED.uLamps.value.z;
+    SHARED.uLamps.value.z = 1;
     const glows = (simt: number): number => {
       view.update(3, 21, env(21), tower, relay(simt));
       return ofKind(view, PART.glow).length;
     };
+    const signalBeams = (): THREE.Mesh[] =>
+      view.group.children.filter(
+        (o): o is THREE.Mesh => o.name === 'signal-beam' && o.visible,
+      ) as THREE.Mesh[];
     const S = SIGNAL_CHAIN;
-    const peak = (i: number): number => S.firstS + i * S.gapS + S.attack * S.flashS;
+    const at = (i: number, ph: number): number => S.firstS + i * S.gapS + ph * S.flashS;
+    expect(view.group.children.filter((o) => o.name === 'signal-beam')).toHaveLength(7);
     for (let step = 0; step < 7; step++) {
-      // between flashes and after the last one: only the rest lamps; at a flash peak: + ball and ray
-      const quiet = glows(step * 10 + S.firstS + S.flashS + 0.4);
-      for (let i = 0; i < S.flashes; i++)
-        expect(glows(step * 10 + peak(i)), `step ${step + 1} flash ${i + 1}`).toBe(quiet + 2);
-      expect(glows(step * 10 + peak(S.flashes - 1) + S.flashS + 0.5)).toBe(quiet);
+      // between flashes: only the rest lamps, no beam; at a flash peak the step's beam alone shows
+      // (its light front on the way); once the front lands, the next lamp pops (+1 glow)
+      const quiet = glows(step * 10 + at(0, 1) + 0.4);
+      expect(signalBeams()).toHaveLength(0);
+      for (let i = 0; i < S.flashes; i++) {
+        expect(glows(step * 10 + at(i, S.attack)), `step ${step + 1} flash ${i + 1}`).toBe(quiet);
+        expect(signalBeams()).toHaveLength(1);
+        const fx = (signalBeams()[0].material as THREE.ShaderMaterial).uniforms.uBeamFx
+          .value as THREE.Vector4;
+        expect(fx.y).toBeGreaterThan(0.2);
+        expect(fx.y).toBeLessThan(1);
+        expect(glows(step * 10 + at(i, S.reach + S.catch.fade * 0.5))).toBe(quiet + 1);
+      }
+      expect(glows(step * 10 + at(S.flashes - 1, 1) + 0.5)).toBe(quiet);
+      expect(signalBeams()).toHaveLength(0);
     }
     // deterministic in the clock
     expect(glows(23.15)).toBe(glows(23.15));
+    SHARED.uLamps.value.z = lamps;
   });
 
   it('stall keepers: one per goods stall, awake from 06:30, closed form', () => {

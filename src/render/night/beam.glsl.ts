@@ -55,7 +55,11 @@ void marBeamVertex() {
     vBCorner = vec2(0.0);
     vec3 p = marBeamRot(position, ang, uBeamMotion.y);
     vec4 wp = modelMatrix * vec4(p, 1.0);
-    vBN = normalize(mat3(modelMatrix) * marBeamRot(normal, ang, uBeamMotion.y));
+    // inverse-transpose for a scaled mesh (R S: R S^-1 n = M (n / s^2)); a signal beam (TASK-496) is
+    // stretched along its axis, uniform-scale beams are unchanged
+    mat3 bm = mat3(modelMatrix);
+    vec3 bs2 = vec3(dot(bm[0], bm[0]), dot(bm[1], bm[1]), dot(bm[2], bm[2]));
+    vBN = normalize(bm * (marBeamRot(normal, ang, uBeamMotion.y) / bs2));
     vBV = normalize(cameraPosition - wp.xyz);
     mv = viewMatrix * wp;
   }

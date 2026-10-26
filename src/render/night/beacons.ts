@@ -33,6 +33,8 @@ interface Node {
   mesh: THREE.Mesh;
   mat: THREE.ShaderMaterial;
   base: number;
+  /** Flare radius (u) at rest; grows to `BEACON_NET.flareMin` × distance far away. */
+  flare: number;
 }
 
 export function createBeaconNet(
@@ -68,13 +70,23 @@ export function createBeaconNet(
     mesh.castShadow = false;
     mesh.receiveShadow = false;
     mesh.visible = false;
-    const node = { mesh, mat, base: BEAM.opacity * B.opacity };
+    const node = {
+      mesh,
+      mat,
+      base: BEAM.opacity * B.opacity,
+      flare: BEAM.flareRadius * B.scale * B.flare,
+    };
     nodes.push(node);
     rank.push({ d: Math.hypot(props.x[i] - hx, props.z[i] - hz), node });
   }
   if (lighthouse.mesh) {
     const mat = lighthouse.mesh.material as THREE.ShaderMaterial;
-    const node = { mesh: lighthouse.mesh, mat, base: BEAM.opacity };
+    const node = {
+      mesh: lighthouse.mesh,
+      mat,
+      base: BEAM.opacity,
+      flare: (mat.uniforms.uBeamMotion.value as THREE.Vector4).z,
+    };
     nodes.push(node);
     rank.push({
       d: Math.hypot(lighthouse.mesh.position.x - hx, lighthouse.mesh.position.z - hz),
@@ -102,6 +114,11 @@ export function createBeaconNet(
         const k = d <= f0 ? 1 : d >= f1 ? 0 : 1 - (d - f0) / (f1 - f0);
         const k2 = k * k * (3 - 2 * k);
         (n.mat.uniforms.uBeamLook.value as THREE.Vector4).x = n.base * k2;
+        // the lamp reads as a light from the postcard, not a red dot (TASK-496)
+        (n.mat.uniforms.uBeamMotion.value as THREE.Vector4).z = Math.max(
+          n.flare,
+          d * BEACON_NET.flareMin,
+        );
         n.mesh.visible = night && k2 > 0.002;
       }
     },
