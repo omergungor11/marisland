@@ -378,20 +378,29 @@ export const CULTURE_MOVERS = {
   /**
    * Research test firing (M22 TASK-483, R13; rhythm slot `testFiring`, 12:00, `seconds` = 4): steam
    * rolls out of the launch trench under the gantry rocket (rocketMonument v1, RESEARCH_M22.gantry
-   * `steamAt`): `puffs` per side of the trench (along local z), one every `gap` s, each living `life`
-   * s, billowing `reach` u out and `rise` u up, growing to `size`; a flickering flame glow under the
-   * nozzle for the first `flame` s. (The click shake is the `rocket` reaction preset.)
+   * `steamAt`): `puffs` per side of the trench (along local z), one every `gap` s (+ up to one gap of
+   * jitter), each living `life` s, billowing `reach` u out, `rise` u up and ± `spread` u apart,
+   * swelling over `size` (diameter, u). Soft puffs of the puff program (TASK-486) at `opacity` with a
+   * firmer radial alpha `edge` than the emitters' (separate cotton puffs, not one veil),
+   * fading in over `fadeIn` of the life and thinning as (1 − age)^`thin`, all of them over the
+   * ritual's last `endFade` s. A flickering flame glow under the nozzle for the first `flame` s.
+   * (The click shake is the `rocket` reaction preset.)
    */
   launch: {
     ritual: 'testFiring',
     seconds: 4,
-    puffs: 9,
-    gap: 0.3,
-    life: 1.5,
-    reach: [0.5, 2.1] as const,
-    rise: 1.7,
-    size: [0.3, 0.9] as const,
-    color: '#FFFFFF',
+    puffs: 22,
+    gap: 0.16,
+    life: 1.7,
+    reach: [0.6, 4.2] as const,
+    rise: 3.2,
+    spread: 0.9,
+    size: [0.7, 2.9] as const,
+    opacity: 0.9,
+    edge: 0.45,
+    fadeIn: 0.08,
+    thin: 1.0,
+    endFade: 0.6,
     flame: 2.6,
     glow: { at: [0, 0.95, 0] as const, r: [0.2, 0.42] as const, rate: 13, color: '#FFB066' },
   },

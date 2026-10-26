@@ -26,6 +26,7 @@ function fakePuffs(): Puffs & { added: number[][] } {
     mesh: null as unknown as THREE.InstancedMesh,
     addEmitter: (x, y, z, kind) => added.push([x, y, z, kind]) - 1,
     setEmitter: () => undefined,
+    reserve: () => null,
     finalize: () => undefined,
     update: () => undefined,
     stats: () => ({ used: 0, capacity: 0, dropped: 0 }),

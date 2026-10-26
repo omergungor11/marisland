@@ -58,12 +58,15 @@ const MORPH_PARS = /* glsl */ `
 layout(location = ${TERRAIN_MORPH_LOCATION}) attribute vec4 aMorph;
 uniform vec2 uMorphBand[${TERRAIN_LOD.strides.length}];
 varying vec3 vMarSurf;
+varying float vMarCoarse;
 `;
 const MORPH_NORMAL = /* glsl */ `
   // geomorph (TASK-371): odd vertices slide to the coarser level as the camera recedes
   vec2 marMb = uMorphBand[int(aMorph.w + 0.5)];
   float marMw = clamp((distance(position, cameraPosition) - marMb.x) / (marMb.y - marMb.x), 0.0, 1.0);
   objectNormal = mix(objectNormal, vec3(aMorph.y, sqrt(max(1.0 - dot(aMorph.yz, aMorph.yz), 0.0)), aMorph.z), marMw);
+  // share of the coarsest (4 u) level in this vertex: level 0, or level 1 morphing toward it
+  vMarCoarse = aMorph.w < 0.5 ? 1.0 : (aMorph.w < 1.5 ? marMw : 0.0);
 `;
 const MORPH_POSITION = /* glsl */ `
   transformed.y += aMorph.x * marMw;
@@ -71,11 +74,23 @@ const MORPH_POSITION = /* glsl */ `
 `;
 const FACET_PARS = /* glsl */ `
 varying vec3 vMarSurf;
+varying float vMarCoarse;
 uniform sampler2D uMarHeight;
 uniform vec4 uMarHeightGrid;
 `;
 // Flat normal of the 2 u grid triangle under the fragment (diagonal (x0,z0)–(x1,z1), as the mesh)
 const FACET_NORMAL = /* glsl */ `
+  if (vMarCoarse > 0.0) {
+    // TASK-486: the 4 u far level lays steep walls back (more sun, lighter and greyer far cliffs:
+    // the ladder's far drift); shade it with the 2 u grid's slope (height texture, central
+    // difference over ${TERRAIN_FACETS.slopeSpan} u), which the finer levels follow. textureLod: no derivatives here
+    vec2 marHu = ((vMarSurf.xz - uMarHeightGrid.xy) * uMarHeightGrid.z + 0.5) / uMarHeightGrid.w;
+    vec2 marHo = vec2(${f4(TERRAIN_FACETS.slopeSpan / 2)} * uMarHeightGrid.z / uMarHeightGrid.w, 0.0);
+    vec2 marHd = vec2(textureLod(uMarHeight, marHu + marHo.xy, 0.0).r - textureLod(uMarHeight, marHu - marHo.xy, 0.0).r,
+                      textureLod(uMarHeight, marHu + marHo.yx, 0.0).r - textureLod(uMarHeight, marHu - marHo.yx, 0.0).r);
+    vec3 marTn = normalize(vec3(-marHd.x, ${f4(TERRAIN_FACETS.slopeSpan)}, -marHd.y));
+    normal = normalize(mix(normal, normalize((viewMatrix * vec4(marTn, 0.0)).xyz), vMarCoarse));
+  }
   {
     // uTerrainZone: declared by the terrain material (same program)
     vec2 marG = clamp((vMarSurf.xz - uMarHeightGrid.xy) * uMarHeightGrid.z, vec2(0.0), vec2(uMarHeightGrid.w - 1.001));

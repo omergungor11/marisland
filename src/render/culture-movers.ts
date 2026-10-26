@@ -24,6 +24,7 @@ import { lotYaw } from '../world/lot-frame.ts';
 import { DEVOPS_MOVERS } from '../content/themes/devops.ts';
 import { DOCK } from '../content/settlements.ts';
 import { pierLoop, shipPose } from './harbour-routes.ts';
+import type { PlacedPuffs } from './particles/puffs.ts';
 
 /**
  * Culture movers (M19 TASK-431): closed-form scenes that make each island culture visibly alive.
@@ -71,6 +72,10 @@ class Writer {
   private readonly colours = new Map<string, THREE.Color>();
   /** Anchor pivot applied to local-frame parts (null = world frame). */
   pivot: THREE.Matrix4 | null = null;
+  /** Soft steam puffs placed this frame into `puffs` (TASK-486; null = not bound, none drawn). */
+  pn = 0;
+  puffs: PlacedPuffs | null = null;
+  private readonly _ps = new THREE.Vector3();
   constructor(
     readonly mesh: THREE.InstancedMesh,
     private readonly gait: THREE.InstancedBufferAttribute,
@@ -100,6 +105,18 @@ class Writer {
     else this._s.set(scale[0], scale[1], scale[2]);
     this._l.compose(this._p, this._q, this._s);
     this.commit(kind, hex);
+  }
+
+  /** Soft steam puff (puff program, TASK-486): local centre, diameter (u), opacity, alpha edge. */
+  puff(p: V3, size: number, opacity: number, edge: number): void {
+    if (!this.puffs || this.pn >= this.puffs.count) return;
+    this._p.set(p[0], p[1], p[2]);
+    let sc = 1;
+    if (this.pivot) {
+      this._p.applyMatrix4(this.pivot);
+      sc = this._ps.setFromMatrixScale(this.pivot).x;
+    }
+    this.puffs.set(this.pn++, this._p.x, this._p.y, this._p.z, size * sc, opacity, edge);
   }
 
   /** Part with an explicit quaternion. */
@@ -203,6 +220,8 @@ interface Scene {
   cz: number;
   /** Max instances the scene can write. */
   max: number;
+  /** Max soft puffs the scene can place (TASK-486). */
+  puffs?: number;
   pivot: THREE.Matrix4 | null;
   yaw: number;
   run(w: Writer, c: CultureCtx, s: Scene): void;
@@ -225,9 +244,10 @@ function sceneAt(
   localCentre: V3,
   max: number,
   run: Scene['run'],
+  puffs = 0,
 ): Scene {
   _a.set(...localCentre).applyMatrix4(pivot);
-  return { theme, cx: _a.x, cy: _a.y, cz: _a.z, max, pivot, yaw, run, wl: { x: 1, z: 0 } };
+  return { theme, cx: _a.x, cy: _a.y, cz: _a.z, max, puffs, pivot, yaw, run, wl: { x: 1, z: 0 } };
 }
 
 /* ------------------------------------- scenes ------------------------------------- */
@@ -421,6 +441,8 @@ function campusBellScene(): Scene['run'] {
  * Research test firing (M22 R13): steam rolls out both ways along the launch trench under the
  * gantry rocket while the `testFiring` ritual runs (4 s), with a flickering flame glow under the
  * nozzle. Rocket-local frame (steam origin RESEARCH_M22.gantry.steamAt, trench along local z).
+ * The steam is soft puffs of the puff program (TASK-486: lit blobs read as one faceted boulder):
+ * many small see-through puffs that overlap, swell, rise, drift apart and thin away.
  */
 function launchScene(idx: number): Scene['run'] {
   const L = M.launch;
@@ -428,24 +450,29 @@ function launchScene(idx: number): Scene['run'] {
   return (w, c) => {
     if (c.fest?.id !== L.ritual) return;
     const t = c.fest.phase * L.seconds;
+    // the whole cloud thins out over the ritual's last `endFade` s (no pop when it ends)
+    const end = smooth((L.seconds - t) / L.endFade);
     for (let k = 0; k < L.puffs; k++)
       for (const side of [-1, 1] as const) {
-        const u = (t - k * L.gap - (side > 0 ? 0.08 : 0)) / L.life;
+        const n = k * 2 + (side > 0 ? 1 : 0);
+        const j = rnd(idx, n, 41);
+        const j2 = rnd(idx, n, 42);
+        const u = (t - k * L.gap - j2 * L.gap) / L.life;
         if (u <= 0 || u >= 1) continue;
-        const j = rnd(idx, k * 2 + (side > 0 ? 1 : 0), 41);
-        const s = L.size[0] + (L.size[1] - L.size[0]) * Math.sqrt(u);
-        // billow out and up, then thin away (the ball shrinks as it cools)
-        const sz = s * (1 - u * u * u);
-        w.put(
-          PART.blob,
+        // out along the trench fast, then up and apart as it slows (ease-out), swelling as it goes
+        const out = 1 - (1 - u) * (1 - u);
+        const size = L.size[0] + (L.size[1] - L.size[0]) * Math.sqrt(u) * (0.7 + 0.6 * j);
+        const op =
+          L.opacity * smooth(u / L.fadeIn) * Math.pow(1 - u, L.thin) * (0.75 + 0.5 * j2) * end;
+        w.puff(
           [
-            at[0] + (j - 0.5) * 0.6,
-            at[1] + L.rise * u * (0.45 + 0.55 * j),
-            at[2] + side * (L.reach[0] + (L.reach[1] - L.reach[0]) * smooth(u)) * (0.75 + 0.25 * j),
+            at[0] + (j - 0.5) * 2 * L.spread * (0.3 + out),
+            at[1] + L.rise * Math.pow(u, 1.4) * (0.5 + j2) + size * 0.25,
+            at[2] + side * (L.reach[0] + (L.reach[1] - L.reach[0]) * out) * (0.7 + 0.5 * j),
           ],
-          [0, 0, 0],
-          [sz, sz * 0.8, sz],
-          L.color,
+          size,
+          op,
+          L.edge,
         );
       }
     if (t < L.flame) {
@@ -840,6 +867,11 @@ export interface CultureMoversView {
     camPos: THREE.Vector3,
     culture?: Pick<CultureState, 'festival'> & Partial<Pick<CultureState, 'day'>>,
   ): void;
+  /**
+   * Bind the world's puff mesh (before its `finalize`): scenes with soft steam (the test firing)
+   * place their puffs there. Without it they draw no steam.
+   */
+  bindPuffs(puffs: { reserve(n: number): PlacedPuffs | null }): void;
   /** Instances written last frame, scenes in range, visible beams. */
   stats(): { instances: number; scenes: number; beams: number };
   readonly sceneCount: number;
@@ -942,8 +974,9 @@ export function createCultureMovers(
           pv(),
           store.rotY[i],
           RESEARCH_M22.gantry.steamAt,
-          M.launch.puffs * 2 + 1,
+          1,
           launchScene(idx),
+          M.launch.puffs * 2,
         ),
       );
     else if (d === D.mast && v === M.watch.variant) {
@@ -1121,6 +1154,7 @@ export function createCultureMovers(
   }
 
   let lastInstances = 0;
+  let lastPuffs = 0;
   let lastScenes = 0;
   let lastBeams = 0;
   const range2 = M.range * M.range;
@@ -1158,6 +1192,7 @@ export function createCultureMovers(
     let nScenes = 0;
     if (writer && mesh) {
       writer.n = 0;
+      writer.pn = 0;
       for (const s of scenes) {
         const dx = s.cx - camPos.x;
         const dy = s.cy - camPos.y;
@@ -1174,6 +1209,13 @@ export function createCultureMovers(
         s.run(writer, ctx, s);
         if (writer.n > before) nScenes++;
       }
+      // hide the puffs placed last frame and not this one, upload while any is or was out
+      const pb = writer.puffs;
+      if (pb && (writer.pn > 0 || lastPuffs > 0)) {
+        for (let i = writer.pn; i < lastPuffs; i++) pb.set(i, 0, -1e3, 0, 0, 0, 1);
+        pb.upload();
+      }
+      lastPuffs = writer.pn;
       mesh.count = writer.n;
       mesh.visible = writer.n > 0;
       if (writer.n > 0) {
@@ -1209,6 +1251,10 @@ export function createCultureMovers(
     group,
     mesh,
     update,
+    bindPuffs(puffs) {
+      const n = scenes.reduce((a, s) => a + (s.puffs ?? 0), 0);
+      if (writer && n > 0) writer.puffs = puffs.reserve(n);
+    },
     stats: () => ({ instances: lastInstances, scenes: lastScenes, beams: lastBeams }),
     sceneCount: scenes.length + beamAnchors.length + watchBeams.length,
   };

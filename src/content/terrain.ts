@@ -91,6 +91,11 @@ export const TERRAIN_FACETS = {
   relief: [9, 15] as const,
   /** Max blend toward the flat facet normal (strata / cracks carry the rest of the carving). */
   strength: 0.65,
+  /**
+   * The 4 u far mesh level shades with the height texture's slope over this span (u, central
+   * difference) instead of its own laid-back normal (TASK-486 ladder far drift on cliff islands).
+   */
+  slopeSpan: 2,
 } as const;
 
 /**

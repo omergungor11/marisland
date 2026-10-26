@@ -85,7 +85,7 @@ ${FRAG_OUT}
 /**
  * Puff vertex shader: stateless f(uTime, aSeed) (ARCHITECTURE §5). Kinds: 0 chimney, 1 steam,
  * 2 spring, 3 burp ring, 4 rain streak (TASK-172: the rain mesh shares this program,
- * weather/rain.glsl.ts).
+ * weather/rain.glsl.ts). A slot with life (aShape.w) < 0 is placed by the CPU (TASK-486).
  */
 export const PUFF_VERT = /* glsl */ `
 uniform float uTime;
@@ -106,6 +106,7 @@ varying float vFade;
 varying float vKind;
 varying float vOpacity;
 varying float vDither;
+varying float vEdge;
 ${RAIN_VERT_PARS}
 float marPuffHash(vec2 p) {
   vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -123,10 +124,18 @@ void main() {
   vAlong = 0.0;
   vOpacity = 1.0;
   vDither = 0.0;
+  vEdge = uSoft.x;
   vec3 c = aOrigin;
   float size = 0.0;
   float fadeLast = uBurpSize.w;
-  if (aKind < 2.5) {
+  if (aShape.w < 0.0) {
+    // placed puff (TASK-486, life < 0): the CPU scene gives centre, size and opacity (test firing)
+    size = aShape.x;
+    vOpacity = aShape.y;
+    vEdge = aShape.z;
+    vFade = 1.0;
+    vDither = aSeed;
+  } else if (aKind < 2.5) {
     float cyc = uTime / aShape.w + aSeed;
     float age = fract(cyc);
     float id = floor(cyc);
@@ -187,6 +196,7 @@ varying float vFade;
 varying float vKind;
 varying float vOpacity;
 varying float vDither;
+varying float vEdge;
 uniform vec4 uSoft;
 uniform vec2 uNearFade; // fade puffs out between x and y u from the camera
 uniform vec3 uSteamGlow;
@@ -203,7 +213,7 @@ void main() {
     {
       // soft steam (D5): radial alpha (view-facing) × life opacity (chimney smoke too, TASK-477)
       float facing = clamp(dot(n, normalize(uCameraPos - vW)), 0.0, 1.0);
-      cover *= vOpacity * smoothstep(0.0, uSoft.x, facing);
+      cover *= vOpacity * smoothstep(0.0, vEdge, facing);
     }
     // TASK-462: blended coverage (the old ordered dither left a 4 px dot lattice that tilt-shift /
     // DOF smeared into stippled discs over roofs and ground); the debug mask keeps the dither
