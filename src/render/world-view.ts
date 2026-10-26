@@ -40,6 +40,7 @@ import { createFireworks } from './particles/fireworks.ts';
 import { createDrones } from './drones.ts';
 import { createMovers } from './movers.ts';
 import { createCultureMovers } from './culture-movers.ts';
+import { createWhale, type WhaleView } from './whale.ts';
 import { createSkyCraft } from './sky-craft.ts';
 import { createWaterfalls } from './waterfalls.ts';
 import { createMailCables } from './mail-lines.ts';
@@ -84,6 +85,8 @@ export interface WorldView {
   pools: LanternPools;
   /** Culture clock (TASK-430): island lamp sets, Launch Day Relay, rituals, time gates. */
   culture: CultureClock;
+  /** The archipelago's whale (M23 TASK-489); null when the world has no open-sea loop. */
+  whale: WhaleView | null;
   /**
    * TASK-213: run the edit rebuild path once on unchanged data (chunk under the camera focus)
    * so the first live edit is warm. Interactive mode only; `between` waits between the steps
@@ -206,6 +209,8 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   if (movers.ships) group.add(movers.ships);
   const cultureMovers = createCultureMovers(settlement.props, world, d.scope);
   group.add(cultureMovers.group);
+  const whale = createWhale(world, seed, d.scope);
+  if (whale) group.add(whale.mesh);
   // hot-air balloons + airship over the archipelago (TASK-335)
   const skyCraft =
     d.skyCraft === false
@@ -240,6 +245,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   if (falls.mesh) group.add(falls.mesh);
   // culture scenes with soft steam (the Research test firing, TASK-486)
   cultureMovers.bindPuffs(clouds.puffs);
+  whale?.bindPuffs(clouds.puffs);
   clouds.puffs.finalize();
   const life = createLife({
     world,
@@ -403,6 +409,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     drones.update(time);
     movers.update(time, _camPos);
     cultureMovers.update(time, env.hour, env, _camPos, culture.state);
+    whale?.update(culture.state.day, time, _camPos);
     skyCraft.update(time, culture.state, _camPos);
     water.update(_camPos, d.getTime());
     terrain.update(d.getTime());
@@ -505,6 +512,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     mirror,
     pools,
     culture,
+    whale,
     prewarmEdits: (between) =>
       rebuild.prewarm(_focus.x, _focus.z, async () => {
         await between?.();

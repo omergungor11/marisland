@@ -2,6 +2,21 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-070: The whale — a CPU-skinned world mover on the culture-clock day, one lap per day — 2026-10-26
+
+**Decision** (TASK-489, `W:D6`): (1) One grey whale, a mover (not an agent): `render/whale.ts`, mesh from
+`geo/whale.ts` (≈ 620 triangles, vertex-coloured, one `InstancedMesh` of count 1 on the existing `mar-lit`
+program, hidden between surfacings), pose timeline `life/whale-pose.ts`, numbers `content/whale.ts`.
+(2) The route is a closed loop round the archipelago through `openSeaAt` (planned per angle as the outermost
+obstacle + pad, dilated, smoothed, validated every 4 u; `world/gen/whale-route.ts`, not part of `WorldData`, so no
+world re-pin). The whale does one lap per game day; it surfaces 5 times a day, the first at 17:45 off the
+Research headland (anchor `headland` + 60 u straight out), the gaps seeded in 90–150 s. Everything is a function of
+the culture-clock day seconds (`CultureState.day`) + seed, so a capture (`time=17.75&simt=0.5`) lands on the exact
+pose; only a click adds state. (3) The spout and splash are placed slots of the puff program (D-066), 44 in all.
+(4) Click = ray test against 6 spheres on the spine (`interaction.ts` `doPick`), tail slap + splash.
+**Rationale**: the 17:45 cape pass is pinned to the day clock, not to sim time, so the schedule cannot be a pure
+function of `time`. A CPU skin of ≈ 1.8k vertices costs a few µs and avoids a skinned-mesh program.
+**Alternatives**: vertex-shader bend (new program, 17 → 18); sim-time schedule (cannot pin 17:45).
 ## D-068: Ladder pair IoU follows the dolly's radial parallax; drift is judged without fog; the drift class filter is not relaxed (amends D-035) — 2026-10-26
 
 **Decision** (TASK-487, `scripts/ladder-metrics.ts`):
