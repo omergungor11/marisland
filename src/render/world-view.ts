@@ -228,6 +228,8 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   // waterfalls off the bluff lips + mist puffs at their feet, after the chimneys (TASK-395)
   const falls = createWaterfalls(world, d.quality, d.scope, clouds.puffs);
   if (falls.mesh) group.add(falls.mesh);
+  // culture scenes with soft steam (the Research test firing, TASK-486)
+  cultureMovers.bindPuffs(clouds.puffs);
   clouds.puffs.finalize();
   const life = createLife({
     world,
