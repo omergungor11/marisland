@@ -10,6 +10,10 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-26 (TASK-494 merged)**: `WhaleBend.tail`/`fluke` + = up only since TASK-494 (the skin sent them down
+  before). The whale heads along its route, so a camera behind it sees only its back — frame it from in front
+  (17:45 heading ≈ (0.37, −0.93)). Water alpha hides anything deeper than ~1 u, so a submerged silhouette is not
+  worth it. `pnpm shots --tag=<x>` writes to `shots/wow-<x>` so parallel agents don't collide.
 - **2026-10-26 (TASK-489 merged)**: the whale (D-070) runs on the culture-clock day, not sim time — one lap per
   day, 5 surfacings, the first pinned to 17:45 off the Research headland. Its route loop is not in `WorldData` (no
   re-pin). The lit dither fade inverts when near > far; a mesh meant to be seen must stay outside `fade.near`. A

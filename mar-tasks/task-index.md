@@ -325,7 +325,7 @@ Details in `phases/phase-3.md`.
 | TASK-491 | Culture constellations (`W:G4`): 7 glyph constellations (6–9 bright stars, lines alpha ≤ 0.15) in the sky above each island, 21:00–04:00, lines brighten on Comet Night | shader | S | COMPLETED (d7b0a13; D-071; W27; glyphs not in existing night frames — no sky in them) | TASK-486 |
 | TASK-492 | M23 QA: wow `--assert` + new shots (whale postcard, relay wave W15b, fireworks), ladder low + medium, QA report | qa | S | IN_PROGRESS | TASK-488…491 |
 | TASK-493 | Glasshouse row pop: the six tier-2 glasshouses (`props-themes/m20.ts`, each < 3 u) are absent at 170 u and appear together at the 140 u boundary — move the row to T1 or give the group effective tier 0 (D-031), within the tier-1 cap and budget; then the Design ladder target can move to the row (−8, −28) | props | S | TODO | TASK-487 |
-| TASK-494 | Whale polish: reads as a cute whale from above (flippers, fluke at the surface, tapered stock, countershading), spout one soft column, W28 reads at T0 (≥ 60 px, an island for scale); memory ~0, no new program | life | S | IN_PROGRESS | TASK-489 |
+| TASK-494 | Whale polish: reads as a cute whale from above (flippers, fluke at the surface, tapered stock, countershading), spout one soft column, W28 reads at T0 (≥ 60 px, an island for scale); memory ~0, no new program | life | S | COMPLETED (bed7728; D-072; W28 raw cam, ~900 tris; tail/fluke sign bug from TASK-489 fixed; side-on view still fishy) | TASK-489 |
 
 ### M17 — Graphics II: decor & nature
 *Flower fields, fences, lanterns, benches, signs, rocks*
