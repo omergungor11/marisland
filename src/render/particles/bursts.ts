@@ -31,8 +31,13 @@ export interface Bursts {
   mesh: THREE.InstancedMesh;
   /** Spawn one burst at engine time `time`. Deterministic given `rng`. */
   emit(spec: BurstSpec, a: BurstAnchor, time: number, rng: Rng): void;
-  /** Per frame: pose every live particle for engine time `time`; returns how many are alive. */
-  update(time: number, camera: THREE.Camera): number;
+  /**
+   * Per frame: pose every live particle for engine time `time`; returns how many are alive.
+   * `scale` (0..1) shrinks every particle (the firework show fades out in rain).
+   */
+  update(time: number, camera: THREE.Camera, scale?: number): number;
+  /** Drop every particle (a re-seeded show). */
+  clear(): void;
   readonly capacity: number;
 }
 
@@ -43,7 +48,19 @@ export const GLYPH_ID: Record<BurstGlyph, number> = {
   leaf: 3,
   bang: 4,
 };
-const PATTERN_ID: Record<BurstPattern, number> = { ring: 0, rise: 1, fall: 2, pop: 3 };
+const PATTERN_ID: Record<BurstPattern, number> = { ring: 0, rise: 1, fall: 2, pop: 3, sphere: 4 };
+/** Firework shell: drag rate (1/s) of the outward speed and the share of gravity the sparks feel. */
+const SPHERE_DRAG = 2.5;
+const SPHERE_DROOP = 0.35;
+
+export interface BurstsOptions {
+  /** Pool size (default BURSTS.capacity[quality]). */
+  capacity?: number;
+  /** Glyphs glow at night (the firework pool): emissive = 1 on every vertex. */
+  emissive?: boolean;
+  /** Quads never shrink below this fraction of the camera distance (default BURSTS.minScreenFrac). */
+  minScreenFrac?: number;
+}
 
 /** Glyph outlines in a ±1 box, counter-clockwise (faces +z). */
 function glyphShapes(): THREE.Shape[][] {
@@ -91,11 +108,12 @@ function glyphShapes(): THREE.Shape[][] {
   return [[circle(0, 0, 1)], [heart], [sparkle], [leaf], [bar, circle(0, -0.75, 0.19)]];
 }
 
-function buildGlyphGeometry(): THREE.BufferGeometry {
+function buildGlyphGeometry(emissive: boolean): THREE.BufferGeometry {
   const pos: number[] = [];
   const nrm: number[] = [];
   const limb: number[] = [];
   const col: number[] = [];
+  const em: number[] = [];
   glyphShapes().forEach((shapes, id) => {
     for (const shape of shapes) {
       const g = new THREE.ShapeGeometry(shape).toNonIndexed();
@@ -105,11 +123,13 @@ function buildGlyphGeometry(): THREE.BufferGeometry {
         nrm.push(0, 0, 1);
         limb.push(id, 0, 0, 6);
         col.push(1, 1, 1);
+        em.push(1);
       }
       g.dispose();
     }
   });
   const geo = new THREE.BufferGeometry();
+  if (emissive) geo.setAttribute('emissive', new THREE.Float32BufferAttribute(em, 1));
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   geo.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
   geo.setAttribute('limb', new THREE.Float32BufferAttribute(limb, 4));
@@ -126,9 +146,10 @@ const _qc = new THREE.Quaternion();
 const _zAxis = new THREE.Vector3(0, 0, 1);
 const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 
-export function createBursts(scope: Scope, quality: Quality): Bursts {
-  const capacity = BURSTS.capacity[quality];
-  const geo = scope.add(buildGlyphGeometry());
+export function createBursts(scope: Scope, quality: Quality, opts: BurstsOptions = {}): Bursts {
+  const capacity = opts.capacity ?? BURSTS.capacity[quality];
+  const minFrac = opts.minScreenFrac ?? BURSTS.minScreenFrac;
+  const geo = scope.add(buildGlyphGeometry(opts.emissive ?? false));
   const aGait = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3);
   aGait.setUsage(THREE.DynamicDrawUsage);
   geo.setAttribute('aGait', aGait);
@@ -240,6 +261,16 @@ export function createBursts(scope: Scope, quality: Quality): Bursts {
           pz + vz * age + Math.cos(age * 3.3 + sd * 9) * 0.16,
         );
         break;
+      case 4: {
+        // sphere: speed bleeds off with drag (a burst that hangs), then the sparks sink
+        const k = (1 - Math.exp(-SPHERE_DRAG * age)) / SPHERE_DRAG;
+        out.set(
+          px + vx * k,
+          py + vy * k - 0.5 * BURSTS.gravity * SPHERE_DROOP * age * age,
+          pz + vz * k,
+        );
+        break;
+      }
       default:
         out.set(px + vx * age, py + vy * age - 0.5 * BURSTS.gravity * age * age, pz + vz * age);
     }
@@ -276,6 +307,15 @@ export function createBursts(scope: Scope, quality: Quality): Bursts {
             vx = ca * speed;
             vz = sa * speed;
             break;
+          case 'sphere': {
+            // uniform direction on the sphere
+            const cy = rng.range(-1, 1);
+            const sy = Math.sqrt(1 - cy * cy);
+            vx = ca * sy * speed;
+            vz = sa * sy * speed;
+            vy = cy * speed;
+            break;
+          }
           case 'rise': {
             const j = rng.range(0, a.r * 0.25);
             ox += ca * j;
@@ -321,7 +361,13 @@ export function createBursts(scope: Scope, quality: Quality): Bursts {
       aGait.needsUpdate = true;
       mesh.instanceColor!.needsUpdate = true;
     },
-    update(time, camera) {
+    clear() {
+      born.fill(1e9);
+      next = 0;
+      high = 0;
+      mesh.count = 0;
+    },
+    update(time, camera, scale = 1) {
       let alive = 0;
       let pending = 0;
       camera.getWorldQuaternion(_q);
@@ -342,8 +388,7 @@ export function createBursts(scope: Scope, quality: Quality): Bursts {
         // quick pop-in, shrink out; never smaller than a screen fraction (readable at any zoom)
         const grow = 1 - Math.exp(-14 * age) * (1 + 14 * age);
         const out = 1 - THREE.MathUtils.smoothstep(u, 1 - BURSTS.outFrac, 1);
-        const s =
-          Math.max(size[i], dist * BURSTS.minScreenFrac) * Math.min(Math.max(grow, 0), 1) * out;
+        const s = Math.max(size[i], dist * minFrac) * Math.min(Math.max(grow, 0), 1) * out * scale;
         const g = glyph[i];
         const sd = seed[i];
         const ang =
