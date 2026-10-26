@@ -18,7 +18,7 @@ import { THEME_IDS, heightAt, type ThemeId, type WorldData } from '../world/type
 import { buildBeamGeometry } from './night/beam.ts';
 import { createSkyProgramMaterial } from './sky/sky.ts';
 import { SHARED } from './uniforms.ts';
-import { PART, buildPartsGeometry, type PartKind } from './culture-mover-parts.ts';
+import { PART, buildPartGeometries, type PartKind } from './culture-mover-parts.ts';
 import { DEVOPS_M22 } from '../content/props-themes/devops.ts';
 import { RESEARCH_M22 } from '../content/props-themes/research.ts';
 import { lotYaw } from '../world/lot-frame.ts';
@@ -77,10 +77,21 @@ class Writer {
   pn = 0;
   puffs: PlacedPuffs | null = null;
   private readonly _ps = new THREE.Vector3();
+  /** Instances written this frame per kind (index = `PartKind`). */
+  readonly counts: Int32Array;
   constructor(
-    readonly mesh: THREE.InstancedMesh,
-    private readonly gait: THREE.InstancedBufferAttribute,
-  ) {}
+    /** One instanced mesh per part kind (TASK-495), each `capacity` slots. */
+    readonly meshes: readonly THREE.InstancedMesh[],
+    private readonly capacity: number,
+  ) {
+    this.counts = new Int32Array(meshes.length);
+  }
+
+  reset(): void {
+    this.n = 0;
+    this.pn = 0;
+    this.counts.fill(0);
+  }
 
   private colour(hex: string | undefined): THREE.Color {
     if (!hex) return this._c.setRGB(1, 1, 1);
@@ -90,11 +101,13 @@ class Writer {
   }
 
   private commit(kind: PartKind, hex: string | undefined): void {
-    if (this.n >= this.mesh.instanceMatrix.count) return;
+    if (this.n >= this.capacity) return;
     const m = this.pivot ? this._m.multiplyMatrices(this.pivot, this._l) : this._l;
-    this.mesh.setMatrixAt(this.n, m);
-    this.mesh.setColorAt(this.n, this.colour(hex));
-    this.gait.setXYZ(this.n, 0, kind, 0);
+    const mesh = this.meshes[kind];
+    const i = this.counts[kind]++;
+    mesh.setMatrixAt(i, m);
+    mesh.setColorAt(i, this.colour(hex));
+    mesh.geometry.getAttribute('aGait').setXYZ(i, 0, kind, 0);
     this.n++;
   }
 
@@ -905,10 +918,10 @@ function patchScene(
 /* ------------------------------------ the view ------------------------------------ */
 
 export interface CultureMoversView {
-  /** Add to the world group: the part mesh and the night searchlight beams. */
+  /** Add to the world group: the part meshes and the night searchlight beams. */
   group: THREE.Group;
-  /** The one part mesh (null when the world has no culture scene). */
-  mesh: THREE.InstancedMesh | null;
+  /** One part mesh per `PartKind` (index = kind; empty when the world has no culture scene). */
+  meshes: readonly THREE.InstancedMesh[];
   update(
     time: number,
     hour: number,
@@ -1208,29 +1221,33 @@ export function createCultureMovers(
     }
   }
 
-  let mesh: THREE.InstancedMesh | null = null;
+  const meshes: THREE.InstancedMesh[] = [];
   let writer: Writer | null = null;
   const capacity = scenes.reduce((a, s) => a + s.max, 0);
   if (capacity > 0) {
-    const geo = scope.add(buildPartsGeometry());
-    const gait = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3);
-    gait.setUsage(THREE.DynamicDrawUsage);
-    geo.setAttribute('aGait', gait);
+    // one shared material (one program) and one instanced mesh per part kind (TASK-495)
     const mat = scope.add(makeLifeMaterial('culture-movers', false));
-    mesh = new THREE.InstancedMesh(geo, mat, capacity);
-    mesh.name = 'culture-movers';
-    mesh.count = 0;
-    mesh.frustumCulled = false;
-    mesh.castShadow = false;
-    mesh.receiveShadow = false;
-    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    // allocate instanceColor up front: a later allocation would change the program parameters
-    for (let i = 0; i < capacity; i++) mesh.setColorAt(i, new THREE.Color(1, 1, 1));
-    mesh.instanceColor!.setUsage(THREE.DynamicDrawUsage);
-    mesh.visible = false;
-    scope.add(mesh);
-    group.add(mesh);
-    writer = new Writer(mesh, gait);
+    for (const geo of buildPartGeometries()) {
+      scope.add(geo);
+      const gait = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3);
+      gait.setUsage(THREE.DynamicDrawUsage);
+      geo.setAttribute('aGait', gait);
+      const mesh = new THREE.InstancedMesh(geo, mat, capacity);
+      mesh.name = `culture-movers:${meshes.length}`;
+      mesh.count = 0;
+      mesh.frustumCulled = true;
+      mesh.castShadow = false;
+      mesh.receiveShadow = false;
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      // allocate instanceColor up front: a later allocation would change the program parameters
+      for (let i = 0; i < capacity; i++) mesh.setColorAt(i, new THREE.Color(1, 1, 1));
+      mesh.instanceColor!.setUsage(THREE.DynamicDrawUsage);
+      mesh.visible = false;
+      scope.add(mesh);
+      group.add(mesh);
+      meshes.push(mesh);
+    }
+    writer = new Writer(meshes, capacity);
   }
 
   let lastInstances = 0;
@@ -1270,9 +1287,8 @@ export function createCultureMovers(
     ctx.wind.s = wv.z;
     ctx.motion = SHARED.uMotionScale.value;
     let nScenes = 0;
-    if (writer && mesh) {
-      writer.n = 0;
-      writer.pn = 0;
+    if (writer) {
+      writer.reset();
       for (const s of scenes) {
         const dx = s.cx - camPos.x;
         const dy = s.cy - camPos.y;
@@ -1296,13 +1312,18 @@ export function createCultureMovers(
         pb.upload();
       }
       lastPuffs = writer.pn;
-      mesh.count = writer.n;
-      mesh.visible = writer.n > 0;
-      if (writer.n > 0) {
-        mesh.instanceMatrix.needsUpdate = true;
-        mesh.instanceColor!.needsUpdate = true;
-        mesh.geometry.getAttribute('aGait').needsUpdate = true;
-      }
+      meshes.forEach((mesh, k) => {
+        const n = writer!.counts[k];
+        mesh.count = n;
+        mesh.visible = n > 0;
+        if (n > 0) {
+          mesh.instanceMatrix.needsUpdate = true;
+          mesh.instanceColor!.needsUpdate = true;
+          mesh.geometry.getAttribute('aGait').needsUpdate = true;
+          // bounds of this frame's instances: a kind wholly out of view costs no draw call
+          mesh.computeBoundingSphere();
+        }
+      });
       lastInstances = writer.n;
     }
     lastScenes = nScenes;
@@ -1329,7 +1350,7 @@ export function createCultureMovers(
   };
   return {
     group,
-    mesh,
+    meshes,
     update,
     bindPuffs(puffs) {
       const n = scenes.reduce((a, s) => a + (s.puffs ?? 0), 0);

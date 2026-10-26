@@ -44,6 +44,10 @@ export interface Budget {
  * TASK-478 (D-061): prop LOD geometries keep normals as 16-bit normalized and the emissive / ao /
  * wind weights as 16-bit unsigned normalized (batcher `compactAttributes`; same floats in the
  * shader): prop geometry −5.3 to −8 MB per frame, W4 174 → 166 MB. Medium gpuMemoryMB 176 → 170.
+ * TASK-495 (D-073), budgets unchanged, headroom won back: the culture movers draw one instanced
+ * mesh per part kind (an instance drew all 970 part triangles before), low ladder tier-2 rungs
+ * Design 120 u 358k → 303k, Research 131.6 u 351k → 305k tris; the composer's ping-pong output
+ * buffer has no depth renderbuffer (−7.9 MB on every medium frame at 1920×1080): W27 169 → 162 MB.
  */
 export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
   low: {
