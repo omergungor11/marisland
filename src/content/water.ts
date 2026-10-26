@@ -130,6 +130,29 @@ export const WATER_SHADER = {
     farGlow: 0.09,
   },
   /**
+   * Reef shoals + sills (TASK-488, `W:D1` / `W:K3`): over seabed a reef raised (`world.reefWeight`,
+   * the R8 reef texture), the band colour leans toward WATER.reef by `gain`, full while the seabed
+   * is shallower than `depth[0]` u, gone by `depth[1]` (carved gaps and dug-out reefs fade). Kept
+   * off the lagoon ring (fades in over banded shore distance lagoonMax → shallowMax). Crests
+   * shallower than `foam.depth` carry a slow foam pulse: `foam.period` s breathing, phase drifting
+   * over `foam.phaseScale` u, broken by noise above `foam.threshold`; it folds into a faint
+   * `foam.farLift` brightening once the pixel footprint passes `foam.fade` u/px (no shimmer at T0).
+   */
+  reef: {
+    gain: 0.66,
+    depth: [3.2, 9] as const,
+    foam: {
+      depth: [2.3, 3.3] as const,
+      period: 6,
+      phaseScale: 40,
+      noiseScale: 0.7,
+      threshold: 0.55,
+      gain: 0.85,
+      fade: [0.35, 1.2] as const,
+      farLift: 0.18,
+    },
+  },
+  /**
    * Foam trail (TASK-472 B4): RG8 texture over the archipelago — R = stamp profile (1 − r²/R²),
    * G = age 0..1 of the stamp's own life. Boats stamp their track into it on every tier (the
    * foam-dot V-wake is the close-up); each stamp lingers `life` s (per splat), the visible disc

@@ -23,6 +23,7 @@ import { Tag } from './gen/profiles.ts';
 import { buildZones } from './gen/zones.ts';
 import { buildSettlements, markSites } from './gen/settlements.ts';
 import { buildRoutes } from './gen/routes.ts';
+import { carveReefGaps, planReefs, raiseReefs, reefWeights } from './gen/reefs.ts';
 import { placeSeamarks } from './gen/seamarks.ts';
 import { placeWaterfalls } from './gen/waterfalls.ts';
 import { createOccupancy, scatterProps } from './gen/scatter.ts';
@@ -35,6 +36,7 @@ export * from './types.ts';
 export * from './edit-types.ts';
 export { CHUNK_HAS_LAND, CHUNK_HAS_SHALLOW } from './gen/chunks.ts';
 export { slopeAtCell } from './gen/zones.ts';
+export { openSeaAt, reefClearance, routeClearance } from './gen/reefs.ts';
 export { PropFlag, PROP_FLAGS, growPropStore, propCapacity, type PropStore } from './prop-store.ts';
 export {
   applyEdit,
@@ -138,6 +140,13 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
   lap('sdf');
 
   const height = finalizeHeight(rawLand, sdf, owner, islands, islets, windDir, root.fork('height'));
+  // reef shoals + shared-shelf sills (TASK-488): under water only, before anything reads depth
+  const reefRng = root.fork('reefs');
+  const reefs = planReefs(
+    { h: height, sdf, owner, islandMap: rawLand.islandMap, islands },
+    reefRng.fork('plan'),
+  );
+  const reefField = raiseReefs(height, reefs, reefRng.fork('shape'));
   measurePeaks(height, rawLand.islandMap, bodies);
   finalAnchors(height, owner, rawLand.tags, islands);
   lap('height');
@@ -183,9 +192,12 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
   lap('sites');
 
   const boatRoutes = buildRoutes(
-    { h: height, sdf, islands, docks: sites.docks },
+    { h: height, sdf, islands, docks: sites.docks, reefs: reefField },
     root.fork('routes'),
   );
+  // a deep gap wherever a route crosses a reef, before the buoys read the depths
+  carveReefGaps(height, reefField, boatRoutes);
+  const reefWeight = reefWeights(reefField);
   // channel buoys + sea-stack fields (TASK-474): fixtures on the water, after the routes
   const seamarks = placeSeamarks(
     { h: height, sdf, islands, islets, docks: sites.docks, routes: boatRoutes, windDir },
@@ -216,6 +228,8 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
     moorings: sites.moorings,
     fixtures: sites.fixtures,
     seamarks,
+    reefs,
+    reefWeight,
     fences: sites.fences,
     fields: rawLand.fields,
     fieldColor,
