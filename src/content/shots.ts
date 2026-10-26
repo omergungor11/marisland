@@ -700,6 +700,21 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     height: 1080,
     sets: ['wow'],
   },
+  {
+    id: 'W27',
+    title: 'Constellation Night',
+    // TASK-491 (W:G4): Comet Night (22:00 +30 s, lines lifted) from the sea between HQ and the
+    // Star Academy, looking up over Research at its own constellation, the Telescope (the target sits
+    // 300 u out so the view stays tier 1: a 100 u target put it at 850k tris)
+    seed: 1001,
+    cam: '50,18,45,256,60,259',
+    time: 22,
+    simt: 30,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
 
   // ---- dev set (960×540) + ci subset (640×360)
   {

@@ -7,12 +7,23 @@ import { BEAM, COMET, FOG, METEORS, SKY } from '../../content/lighting.ts';
 import { SHARED } from '../uniforms.ts';
 import type { CultureState } from '../culture-clock.ts';
 import { SKY_FRAG, SKY_VERT } from './sky.glsl.ts';
+import { THEME_IDS, type IslandData } from '../../world/types.ts';
+import { CONSTELLATION_LOOK } from '../../content/constellations.ts';
+import {
+  CONST_ROW,
+  cometLift,
+  constellationTexels,
+  constellationWindow,
+  glyphRadius,
+  placeConstellations,
+} from './constellations.ts';
 
 /**
  * Sky dome + fog (ARCHITECTURE §3 "Sky & lights", ART_BIBLE §3). A camera-
  * following BackSide sphere drawn first (no depth), gradient fog → horizon →
  * zenith, a blooming sun disc by day, a moon disc and hashed stars at night,
- * the Comet Night comet and seeded shooting stars (TASK-472 G2).
+ * the Comet Night comet and seeded shooting stars (TASK-472 G2), the culture constellations
+ * (TASK-491 W:G4, placed from the world's island layout).
  * At the horizon (and below) the dome equals the fog colour, so fogged sea and
  * far islands melt into it with no line.
  *
@@ -39,6 +50,23 @@ export interface SkyView {
 }
 
 const DEG = THREE.MathUtils.DEG2RAD;
+
+/**
+ * Constellation uniforms (TASK-491), one set shared by every sky-program material (dome and the
+ * beams use the same program, so they must agree). The current world's sky fills them; the data
+ * texture belongs to that world's scope and is unset again on dispose.
+ */
+const CONST_U = {
+  uConstDir: { value: THEME_IDS.map(() => new THREE.Vector4(0, 1, 0, 2)) },
+  uConstLook: { value: new THREE.Vector4() },
+  uConstLine: { value: new THREE.Vector4() },
+  uConstFx: {
+    value: new THREE.Vector2(CONSTELLATION_LOOK.backgroundDim, CONSTELLATION_LOOK.starHalo),
+  },
+  uConstStarColor: { value: new THREE.Color(CONSTELLATION_LOOK.starColor) },
+  uConstLineColor: { value: new THREE.Color(CONSTELLATION_LOOK.lineColor) },
+  uConstTex: { value: null as THREE.DataTexture | null },
+};
 
 /**
  * The dome program's material. `mode` 'sky' = the dome (opaque list, drawn first, no depth),
@@ -125,6 +153,7 @@ export function createSkyProgramMaterial(
       uMeteorDir: { value: new THREE.Vector4(1, 0, 0, 0) },
       uMeteorLook: { value: new THREE.Vector3(METEORS.widthDeg * DEG, METEORS.intensity, 0) },
       uMeteorColor: { value: new THREE.Color(METEORS.color) },
+      ...CONST_U,
       uBeamColor: { value: new THREE.Color(BEAM.color) },
       uBeamMotion: {
         value: new THREE.Vector4(
@@ -237,8 +266,51 @@ export function createSky(
   scope: Scope,
   quality: Quality = 'medium',
   seed = 0,
+  islands: readonly Pick<IslandData, 'theme' | 'cx' | 'cz'>[] = [],
 ): SkyView {
   const fog = new THREE.FogExp2(0xd6eef7, FOG.density);
+  // culture constellations (TASK-491): glyph caps from the world layout + the glyph data texture
+  const tex = scope.add(
+    new THREE.DataTexture(
+      constellationTexels(),
+      CONST_ROW,
+      THEME_IDS.length,
+      THREE.RGBAFormat,
+      THREE.FloatType,
+    ),
+  );
+  tex.colorSpace = THREE.NoColorSpace;
+  tex.needsUpdate = true;
+  CONST_U.uConstTex.value = tex;
+  for (const v of CONST_U.uConstDir.value) v.set(0, 1, 0, 2);
+  const unit = CONSTELLATION_LOOK.scaleDeg * DEG;
+  for (const p of placeConstellations(islands)) {
+    const cap = (glyphRadius(p.theme) + 1) * unit;
+    CONST_U.uConstDir.value[THEME_IDS.indexOf(p.theme)].set(
+      p.dir.x,
+      p.dir.y,
+      p.dir.z,
+      Math.cos(cap),
+    );
+  }
+  CONST_U.uConstLook.value.set(
+    unit,
+    CONSTELLATION_LOOK.starDeg * DEG,
+    CONSTELLATION_LOOK.starMinPx,
+    CONSTELLATION_LOOK.starIntensity[quality],
+  );
+  CONST_U.uConstLine.value.set(
+    CONSTELLATION_LOOK.linePx,
+    CONSTELLATION_LOOK.lineGapDeg * DEG,
+    CONSTELLATION_LOOK.lineAlpha,
+    0,
+  );
+  scope.defer(() => {
+    if (CONST_U.uConstTex.value === tex) {
+      CONST_U.uConstTex.value = null;
+      CONST_U.uConstLine.value.w = 0;
+    }
+  });
   scene.fog = fog;
   SHARED.uFogDensity.value = FOG.density;
   scene.background = new THREE.Color(0xd6eef7);
@@ -271,6 +343,12 @@ export function createSky(
       const k = cometAt(phase, env.sunSkyDir, _head, _tail) * env.starAlpha;
       (u.uComet.value as THREE.Vector4).set(_head.x, _head.y, _head.z, k);
       (u.uCometTail.value as THREE.Vector4).set(_tail.x, _tail.y, _tail.z, COMET.tailDeg * DEG);
+      // constellations: star alpha (night ramp, veil) × the 21:00–04:00 window; lines lift on Comet Night
+      const cl = CONST_U.uConstLine.value;
+      cl.w = env.starAlpha * constellationWindow(env.hour);
+      cl.z =
+        CONSTELLATION_LOOK.lineAlpha +
+        (CONSTELLATION_LOOK.lineAlphaComet - CONSTELLATION_LOOK.lineAlpha) * cometLift(phase);
       // shooting stars: clear full nights only
       const clear = env.starAlpha >= 0.5 && veil < METEORS.veilCut;
       const m = clear ? meteorAt(time, seed, _m0, _mdir) : { progress: -1, length: 0 };
