@@ -145,6 +145,26 @@ export interface StreamData {
   points: { x: number; z: number }[];
 }
 
+/**
+ * A reef (TASK-488). `sill`: axis from the coast of `islands[0]` (x0, z0) to the coast of
+ * `islands[1]` (x1, z1), `halfWidth` = half width. `shoal`: a blob centred at (x0, z0) = (x1, z1),
+ * `halfWidth` = radius along `angle`, `aspect` × radius across. `crest` = top height (u, < 0).
+ */
+export interface ReefData {
+  kind: 'sill' | 'shoal';
+  islands: number[];
+  x0: number;
+  z0: number;
+  x1: number;
+  z1: number;
+  halfWidth: number;
+  crest: number;
+  angle: number;
+  aspect: number;
+  /** Noise offset of this reef's shape. */
+  salt: number;
+}
+
 export interface WorldData {
   seed: number;
   /** Wind direction in radians (y-up, angle in the xz plane). */
@@ -182,6 +202,13 @@ export interface WorldData {
    * the nearest island (decor stream), not a settlement's. Hashed as `hashes.seamarks`.
    */
   seamarks: FixtureData[];
+  /**
+   * Reef shoals + shared-shelf sills (TASK-488, `W:D1` / `W:K3`; gen/reefs.ts): raised seabed
+   * between islands, always under water, already baked into `height` (and so into its hash).
+   */
+  reefs: ReefData[];
+  /** Per sample 0…255: how much the seabed was raised by a reef (water shader tint mask). */
+  reefWeight: Uint8Array;
   /** Fence lines (open polylines, 1.5 u spacing) along Millbrook field-patch edges. */
   fences: Polyline[];
   /** Millbrook patchwork: one rectangle per crop field (colour index into palette FIELDS). */

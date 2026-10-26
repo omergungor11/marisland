@@ -8,6 +8,8 @@ export const WATER = {
   shallow: '#4FD1D9',
   lagoon: '#8EEBE0',
   foam: '#F4FFFC',
+  /** Reef shoals / sills between islands (TASK-488, `W:D1` / `W:K3`): turquoise-green. */
+  reef: '#4CCFB0',
 } as const;
 
 /** Water band distances from shore in u (ART_BIBLE §2). */

@@ -129,6 +129,20 @@ export function waterDefines(): string {
     `#define MAR_TRAIL_NEAR0 ${f(W.trail.nearFade[0])}`,
     `#define MAR_TRAIL_NEAR1 ${f(W.trail.nearFade[1])}`,
     `#define MAR_MIST_SDF0 ${f(MORNING_MIST.channelSdf[0])}`,
+    // TASK-488 D1 / K3: reef shoals + sills
+    `#define MAR_REEF_GAIN ${f(W.reef.gain)}`,
+    `#define MAR_REEF_D0 ${f(W.reef.depth[0])}`,
+    `#define MAR_REEF_D1 ${f(W.reef.depth[1])}`,
+    `#define MAR_REEF_FD0 ${f(W.reef.foam.depth[0])}`,
+    `#define MAR_REEF_FD1 ${f(W.reef.foam.depth[1])}`,
+    `#define MAR_REEF_FW ${f((2 * Math.PI) / W.reef.foam.period)}`,
+    `#define MAR_REEF_FPHASE ${f(1 / W.reef.foam.phaseScale)}`,
+    `#define MAR_REEF_FNOISE ${f(W.reef.foam.noiseScale)}`,
+    `#define MAR_REEF_FTH ${f(W.reef.foam.threshold)}`,
+    `#define MAR_REEF_FGAIN ${f(W.reef.foam.gain)}`,
+    `#define MAR_REEF_FFADE0 ${f(W.reef.foam.fade[0])}`,
+    `#define MAR_REEF_FFADE1 ${f(W.reef.foam.fade[1])}`,
+    `#define MAR_REEF_FLIFT ${f(W.reef.foam.farLift)}`,
     `#define MAR_MIST_SDF1 ${f(MORNING_MIST.channelSdf[1])}`,
   ].join('\n');
 }
@@ -162,6 +176,7 @@ void main() {
 export const WATER_FRAG = /* glsl */ `
 ${COMMON}
 uniform sampler2D uHeightTex;
+uniform sampler2D uReefTex;
 uniform sampler2D uTrailTex;
 uniform vec3 uTrailMap;
 uniform vec3 uSunDir;
@@ -181,6 +196,7 @@ uniform vec3 uDeep;
 uniform vec3 uMid;
 uniform vec3 uShallow;
 uniform vec3 uLagoon;
+uniform vec3 uReef;
 uniform vec3 uFoam;
 uniform vec4 uWeather;
 varying vec3 vWorld;
@@ -334,6 +350,11 @@ void main() {
   // (gentle over the first few u so carved dock basins / channels blend instead of reading as holes)
   float dk = smoothstep(MAR_DARKEN0, MAR_DARKEN1, depth);
   col *= 1.0 - MAR_DARKEN * dk * dk * (1.0 - s3);
+  // reef shoals + sills (TASK-488): raised seabed between the islands leans turquoise-green while
+  // it is shallow (carved boat gaps and dug-out reefs fade with the live depth); off the lagoon ring
+  float reefW = texture2D(uReefTex, marGridUv(xz)).r * smoothstep(MAR_LAGOON_MAX, MAR_SHALLOW_MAX, db);
+  float reefK = reefW * (1.0 - smoothstep(MAR_REEF_D0, MAR_REEF_D1, depth));
+  col = mix(col, uReef, reefK * MAR_REEF_GAIN);
 
   float alpha = mix(MAR_A_LAGOON, MAR_A_SHALLOW, s1);
   alpha = mix(alpha, MAR_A_DEEP, s2);
@@ -431,6 +452,15 @@ void main() {
   dots *= crest * (1.0 - s2) * smoothstep(MAR_LAGOON_MAX, MAR_LAGOON_MAX + 2.0, d);
   dots *= 1.0 - smoothstep(0.08, 0.3, cpx);
   foam = max(foam, dots);
+
+  // reef crest foam pulse (TASK-488): slow breathing patches over the shallowest reef crests,
+  // phase drifting across the reef; past the fade footprint only a faint brightening (no shimmer)
+  float reefCrest = reefW * (1.0 - smoothstep(MAR_REEF_FD0, MAR_REEF_FD1, depth));
+  float reefPulse = 0.5 + 0.5 * sin(t * MAR_REEF_FW * uMotionScale + marNoise(xz * MAR_REEF_FPHASE + 5.3) * 6.2832);
+  float reefNear = 1.0 - smoothstep(MAR_REEF_FFADE0, MAR_REEF_FFADE1, fp);
+  float reefFoam = smoothstep(MAR_REEF_FTH, 1.0, reefPulse * marNoise(xz * MAR_REEF_FNOISE + vec2(t * 0.05, -t * 0.04) * uMotionScale));
+  foam = max(foam, reefCrest * reefFoam * reefNear * MAR_REEF_FGAIN);
+  col = mix(col, uFoam * light, reefCrest * reefPulse * (1.0 - reefNear) * MAR_REEF_FLIFT);
 
   // foam trail (wakes, ripples; TASK-472 B4): R = stamp profile 1 − r²/R², G = age, B = gain.
   // The visible disc is the profile above a threshold that drops with age (fresh: F0 of the

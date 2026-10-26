@@ -129,6 +129,8 @@ export function placeSeamarks(input: SeamarkInput, rng: Rng): FixtureData[] {
       const star = { x: p.x - tz * B.lateral, z: p.z + tx * B.lateral };
       const rot = bRng.range(0, Math.PI * 2);
       if (!buoyOk(port, ri, s) || !buoyOk(star, ri, s)) continue;
+      // a pair never straddles another route (two ferries crossing between the buoys)
+      if (routeDist(p, ri, s, B.spacing * 0.6) < B.routeClear) continue;
       const islandId = nearestIsland(p).id;
       out.push({ defId: 'buoy', x: port.x, z: port.z, rotY: rot, islandId, variant: B.port });
       out.push({ defId: 'buoy', x: star.x, z: star.z, rotY: rot, islandId, variant: B.starboard });
