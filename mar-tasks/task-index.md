@@ -319,7 +319,7 @@ Details in `phases/phase-3.md`.
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|------------|--------|--------------|
-| TASK-488 | Reef shoals + shared shelves (`W:D1` + `W:K3`): 3–6 seabed patches at −2…−6 u in the deep gaps, sills (−3 u, never above water) between neighbours < 55 u with a deep boat gap; shoal tint + foam on the water shader (sdf contribution or separate depth tint, 0 programs) | worldgen | M | TODO | TASK-485, TASK-486 |
+| TASK-488 | Reef shoals + shared shelves (`W:D1` + `W:K3`): 3–6 seabed patches at −2…−6 u in the deep gaps, sills (−3 u, never above water) between neighbours < 55 u with a deep boat gap; shoal tint + foam on the water shader (sdf contribution or separate depth tint, 0 programs) | worldgen | M | IN_PROGRESS | TASK-485 |
 | TASK-489 | Whale (`W:D6`): 14 u grey whale mover (not an agent) in a deep channel, closed-form surfacing every 90–150 s (seeded phase): back + spout puffs 6 s, tail slap, dive; passes the Research cape at 17:45; click = tail + splash; ≥ 20 u from boat polylines, outside the reefs; `fadeNear` at T2 | life | M | TODO | TASK-488 (route) |
 | TASK-490 | Relay night scene (`W:B1` + `W:B6` + `W:G7`): 2–3 mini beacons on skerries + Marketing lighthouse sweep in route order (1 s offsets) 18:30–06:30; signal lamps on each island's top relay the 21:00 flashes to the next island; 22:01 fireworks from HQ harbour (6 bursts, culture accents, water reflection; off in rain) | props | M | TODO | TASK-469, TASK-472 |
 | TASK-491 | Culture constellations (`W:G4`): 7 glyph constellations (6–9 bright stars, lines alpha ≤ 0.15) in the sky above each island, 21:00–04:00, lines brighten on Comet Night | shader | S | TODO | TASK-486 |
