@@ -12,7 +12,7 @@ import { generateWorld } from '../world/index.ts';
 import { THEME_IDS, type ThemeId, type WorldData } from '../world/types.ts';
 import { appendSettlementProps } from './props/settlement-props.ts';
 import { createCultureMovers, type CultureMoversView } from './culture-movers.ts';
-import { PART, buildPartsGeometry } from './culture-mover-parts.ts';
+import { PART, buildPartGeometries, buildPartsGeometry } from './culture-mover-parts.ts';
 import { SHARED } from './uniforms.ts';
 
 /** Prop store position of the first instance of def `id` (null when the seed has none). */
@@ -43,13 +43,13 @@ function env(hour: number): EnvState {
 
 /** Packed instance matrices + kinds of the live range, for determinism / NaN checks. */
 function snapshot(v: CultureMoversView): number[] {
-  const m = v.mesh;
-  if (!m) return [];
-  const gait = m.geometry.getAttribute('aGait');
   const out: number[] = [];
-  for (let i = 0; i < m.count; i++) {
-    out.push(gait.getY(i));
-    for (let k = 0; k < 16; k++) out.push(m.instanceMatrix.array[i * 16 + k]);
+  for (const m of v.meshes) {
+    const gait = m.geometry.getAttribute('aGait');
+    for (let i = 0; i < m.count; i++) {
+      out.push(gait.getY(i));
+      for (let k = 0; k < 16; k++) out.push(m.instanceMatrix.array[i * 16 + k]);
+    }
   }
   return out;
 }
@@ -84,6 +84,38 @@ describe('culture movers', () => {
     for (const a of ['position', 'normal', 'color', 'emissive'])
       expect(g.getAttribute(a).array.every(Number.isFinite)).toBe(true);
     expect(g.getAttribute('position').count).toBeLessThan(3000);
+  });
+
+  it('per-kind split (TASK-495): every vertex once, each geometry holds only its own kind', () => {
+    const all = buildPartsGeometry();
+    const parts = buildPartGeometries();
+    expect(parts).toHaveLength(Object.keys(PART).length);
+    let n = 0;
+    parts.forEach((g, k) => {
+      const limb = g.getAttribute('limb');
+      expect(limb.count).toBeGreaterThan(0);
+      expect(limb.count % 3).toBe(0);
+      for (let i = 0; i < limb.count; i++) expect(limb.getX(i)).toBe(k);
+      expect(Object.keys(g.attributes).sort()).toEqual(Object.keys(all.attributes).sort());
+      n += limb.count;
+    });
+    expect(n).toBe(all.getAttribute('position').count);
+  });
+
+  it('draws each kind on its own mesh: an instance costs only its shape', () => {
+    const at = firstOf(world, props, 'bellPost')!;
+    view.update(10, 6.1, env(6.1), at, fest('hq', 'ferryFanfare'));
+    expect(view.stats().instances).toBeGreaterThan(0);
+    let drawn = 0;
+    view.meshes.forEach((m, k) => {
+      const gait = m.geometry.getAttribute('aGait');
+      for (let i = 0; i < m.count; i++) expect(gait.getY(i)).toBe(k);
+      expect(m.visible).toBe(m.count > 0);
+      drawn += m.count;
+    });
+    expect(drawn).toBe(view.stats().instances);
+    // one shared material = one program for every kind
+    expect(new Set(view.meshes.map((m) => m.material)).size).toBe(1);
   });
 
   it('every scene kind exists in seed 1001 (or is covered by ants / beams)', () => {
@@ -139,7 +171,7 @@ describe('culture movers', () => {
     const prism = firstOf(world, props, 'prismSculpture')!;
     const lenAt = (hour: number): number => {
       view.update(3, hour, env(hour), prism, fest());
-      const m = view.mesh!;
+      const m = view.meshes[PART.patch];
       const gait = m.geometry.getAttribute('aGait');
       let best = 0;
       const mm = new THREE.Matrix4();
@@ -238,7 +270,7 @@ describe('culture movers', () => {
     const far = new THREE.Vector3(5000, 50, 5000);
     view.update(3, 6.1, env(6.1), far, fest('hq', 'ferryFanfare'));
     expect(view.stats().instances).toBe(0);
-    expect(view.mesh?.visible).toBe(false);
+    expect(view.meshes.some((m) => m.visible)).toBe(false);
     expect(view.stats().beams).toBe(0);
   });
 
@@ -258,7 +290,7 @@ describe('culture movers', () => {
   });
   /** World positions of every instance of a part kind. */
   function ofKind(v: CultureMoversView, kind: number): THREE.Matrix4[] {
-    const m = v.mesh!;
+    const m = v.meshes[kind];
     const gait = m.geometry.getAttribute('aGait');
     const out: THREE.Matrix4[] = [];
     for (let i = 0; i < m.count; i++)

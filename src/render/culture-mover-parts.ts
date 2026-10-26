@@ -366,3 +366,30 @@ export function buildPartsGeometry(): THREE.BufferGeometry {
   for (const d of done) d.dispose();
   return geo;
 }
+
+/**
+ * The parts geometry split per kind (index = `PartKind`; same vertices and attributes as
+ * `buildPartsGeometry`). TASK-495: each kind draws as its own instanced mesh, so an instance costs
+ * only its own shape. On the merged geometry every instance drew all 970 triangles (the shader
+ * collapsed the other kinds), so each new kind added its triangles to every live instance.
+ */
+export function buildPartGeometries(): THREE.BufferGeometry[] {
+  const all = buildPartsGeometry();
+  const kind = all.getAttribute('limb');
+  const out: THREE.BufferGeometry[] = [];
+  for (let k = 0; k < Object.keys(PART).length; k++) {
+    const verts: number[] = [];
+    for (let i = 0; i < kind.count; i++) if (kind.getX(i) === k) verts.push(i);
+    const g = new THREE.BufferGeometry();
+    for (const [name, a] of Object.entries(all.attributes)) {
+      const s = a.itemSize;
+      const src = a.array as Float32Array;
+      const arr = new Float32Array(verts.length * s);
+      verts.forEach((v, j) => arr.set(src.subarray(v * s, v * s + s), j * s));
+      g.setAttribute(name, new THREE.BufferAttribute(arr, s));
+    }
+    out.push(g);
+  }
+  all.dispose();
+  return out;
+}

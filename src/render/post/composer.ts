@@ -104,6 +104,14 @@ export function createPostChain(
     composer.addPass(new EffectPass(camera, tilt, bloom, grade, tone));
   }
   if (msaa === 0) composer.addPass(new EffectPass(camera, new FXAAEffect()));
+  // TASK-495: only the RenderPass draws geometry, always into `inputBuffer`; the ping-pong
+  // `outputBuffer` (a clone) only takes full-screen effect quads, so its depth renderbuffer was
+  // never read (7.9 MB at 1920×1080). Kept when a pass needs the depth texture (high: DOF).
+  if (composer.outputBuffer.depthTexture === null) {
+    composer.outputBuffer.depthBuffer = false;
+    composer.outputBuffer.stencilBuffer = false;
+    composer.outputBuffer.dispose();
+  }
 
   const setTilt = (band: number, blurPx: number): void => {
     tiltActive = band > 0 && blurPx > 0;

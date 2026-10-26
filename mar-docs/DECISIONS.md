@@ -33,6 +33,34 @@ reflection that sits on open water from any camera.
 **Alternatives**: a travelling pulse uniform in the beam shader (a new shared uniform for every beam material);
 per-spark trail copies (more instances); a water-shader reflection branch (program change, D-069).
 
+## D-073: Budget headroom without raising budgets — per-kind culture-mover meshes, no depth on the composer output buffer, glasshouse row from T0 — 2026-10-26
+
+**Context** (TASK-495 / TASK-493): the M23 QA found low-ladder tier-2 rungs over the 350k triangle budget (Design 120 u
+358k, Research 131.6 u 351k) and medium memory at 169 / 170 MB (W27). A bisect over the merges shows the Design
+overage is not new in M23: it crossed at TASK-483 (M22, `c4f18b1`, +8.7k) when the bell and graduation-cap parts
+(148 triangles) joined the merged culture-mover geometry. On that geometry every instance drew all 970 part
+triangles (the shader collapsed the other kinds), so each new kind cost its triangles × every live instance
+(≈ 58 at the Design rung). M22 QA ran the ladder without `--assert`, so it went unseen; M23 added ≈ 2–4k (reefs,
+beacons, whale) and pushed Research over too.
+**Decision**:
+- `render/culture-movers.ts`: one `InstancedMesh` per `PartKind` (`buildPartGeometries`, the merged geometry split by
+  kind), one shared material (no new program), each frustum-culled on its instances' bounds. Low Design 120 u
+  358k → 303k tris, Research 131.6 u 351k → 305k (calls ±1); medium W16 796k → 765k. Each kind on screen is a
+  draw call: W16 268 → 278 (+5 kinds, +5 glasshouse shadow casters, below).
+- `render/post/composer.ts`: the ping-pong `outputBuffer` only takes full-screen effect quads, so it has no depth /
+  stencil renderbuffer unless a pass needs the depth texture (high: DOF). −7.9 MB on every medium frame
+  (1920×1080), no pixel change.
+- TASK-493: `PropDef.fromT0` draws a small def from T0 like a large structure (D-031) — the six Design
+  glasshouses (each < 3 u) read as one colourful row and popped in at 140 u. They are still declared tier 2, so
+  the Design tier-1 cap (2) is unchanged; they cost their LOD1 at T0 / T1 and cast shadows at T2 / T3 from farther
+  away (W16 +5 shadow calls).
+- The Design ladder target stays on the windmill slope: on the glasshouse row L-design passes, but the dome of the
+  conservatory comes to the frame centre and its LOD1 → LOD0 colour change fails pair 140 (mean 2.59, blob 0.6 %).
+**Rejected**: raising the low triangle budget (the cause was a fixable per-instance waste); sorting instances by kind
+in one buffer (WebGL2 has no base instance); half-res bloom luminance (−7.9 MB more, but changes the bloom).
+**Open**: worker bots draw 1862 triangles each (all 16 accessory / item slots, ≈ 520 shown) — the same pattern,
+≈ 97k of the Design 120 u rung; the next lever if the tier-2 budget gets tight again.
+
 ## D-072: Whale polish — a chubby, raised body with surface-breaking flippers and a visible fluke; W28 is a raw cam (amends D-070) — 2026-10-26
 
 **Decision** (TASK-494): (1) The mesh (`geo/whale.ts`) is ≈ 900 triangles (was ≈ 620), still one vertex-coloured
