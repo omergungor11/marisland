@@ -10,6 +10,13 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-26 (TASK-485 merged)**: story-spot keep-out (D-065, `world/gen/story-keepout.ts`, `STORY_KEEP_OUT`)
+  drops planner fixtures on a story stage after `finish` (shifts rolled decor variants); new tall avenue defs go in
+  `STORY_KEEP_OUT.tall.defs`. Zones don't render on steep faces (earth-wall shading ignores them) — make stairs
+  or paths on walls visible with geometry (`stairFlight`, Marketing only via `STAIR_FLIGHT.byTheme`). A def may sit
+  in several `CULTURE_RHYTHM` lamp sets (clock = nearest island; `cultureLampTheme` is only a boolean). Open: W2
+  Research gate street reads as grass in golden-hour shade (D-062 tint, left as is). Agents in worktrees: Bash
+  refuses some compound/loop commands and then runs none of it — keep edits in separate commands.
 - **2026-10-24 (M22 closed)**: TASK-478…484 on main; wow 25/25 `--assert` (new W23 Rim Walk Afternoon, W24
   Lantern Zigzag, W25 Carpet Night seed 2024, W26 Test Firing Noon; W6 re-framed from the east). Medium 300 calls /
   170 MB: W16 270 calls / 788k of 800k tris (don't add kit visible from the W16 cam), W4 167 MB. Rim walkway =
