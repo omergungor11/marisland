@@ -649,10 +649,10 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'W15c',
     title: 'Harbour Fireworks',
     // TASK-490 (W:G7): 22:01 (the relay and the Comet Night are over) +14.9 s into the show, from the
-    // sea south of the Harbour Guild: the finale shells over the bay, sparks glittering on the water,
-    // the island's lit quay below (raw)
+    // sea south of the Harbour Guild: the finale shells over the bay (TASK-496: low and far enough that
+    // their mirror image on the open water below shares the frame), the island's lit quay between (raw)
     seed: 1001,
-    cam: '-30,8,200,-30,38,10',
+    cam: '-30,2.2,275,-30,7,10',
     time: 21,
     simt: 99.9,
     quality: 'medium',
@@ -690,11 +690,12 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'W15e',
     title: 'Signal Lamp',
     // TASK-490 (W:B6): the Wind Gardens' signal lamp on its peak at 21:00 +31 s (Coding's step, first
-    // flash): the lamp mast, the flash and the ray thrown toward the next island of the chain (raw)
+    // flash; TASK-496: seen from the side) — its beam's light front reaching across the sea to the next
+    // island of the chain, Marketing's Beacon Rock (raw)
     seed: 1001,
-    cam: '-84,31,200,-106,10,168',
+    cam: '30,120,120,-150,15,85',
     time: 21,
-    simt: 31.2,
+    simt: 31.35,
     quality: 'medium',
     width: 1920,
     height: 1080,

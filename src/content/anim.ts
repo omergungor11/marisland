@@ -152,12 +152,15 @@ export const PICK = {
 export const HOVER = { color: '#FFE9B0', strength: 0.22, flash: 0.5, flashMs: 300 } as const;
 
 export type ReactionMotion = 'squash' | 'hop' | 'spin' | 'wobble' | 'emote';
-export type BurstGlyph = 'puff' | 'heart' | 'sparkle' | 'leaf' | 'bang';
+/** streak: a teardrop spark trail (head +x); glow: a soft disc with a dithered rim (TASK-496). */
+export type BurstGlyph = 'puff' | 'heart' | 'sparkle' | 'leaf' | 'bang' | 'streak' | 'glow';
 /**
  * ring: radial outward; rise: float up; fall: drift down from the top; pop: small scatter;
- * sphere: a firework shell (every direction, drag, then a slow droop; TASK-490).
+ * sphere: a firework shell (every direction, drag, then a slow droop; TASK-490); willow: a shell
+ * whose sparks sag into long drooping trails; mirror: a sphere spark seen in the sea (its mirror
+ * image on the water plane under the camera's eye, TASK-496).
  */
-export type BurstPattern = 'ring' | 'rise' | 'fall' | 'pop' | 'sphere';
+export type BurstPattern = 'ring' | 'rise' | 'fall' | 'pop' | 'sphere' | 'willow' | 'mirror';
 
 export interface BurstSpec {
   glyph: BurstGlyph;
@@ -175,6 +178,8 @@ export interface BurstSpec {
   from: 'base' | 'mid' | 'top';
   /** Seconds before the burst starts. */
   delay?: number;
+  /** Streak glyph: the trail covers the path of the last `trail` seconds (TASK-496). */
+  trail?: number;
 }
 
 export interface ReactionSpec {
@@ -395,4 +400,12 @@ export const BURSTS = {
   outFrac: 0.3,
   /** Particles stop this far above the ground they spawned over, u. */
   floorLift: 0.06,
+  /**
+   * Firework shells (TASK-490/496): drag rate (1/s) of the outward speed and the share of gravity
+   * the sparks feel — the peony hangs, the willow sags into long trails.
+   */
+  sphere: { drag: 2.5, droop: 0.35 },
+  willow: { drag: 1.5, droop: 3.2 },
+  /** Mirror sparks (the sea reflection): height × width of the shimmer streak, flicker rate (Hz). */
+  mirror: { stretch: 2.6, thin: 0.32, flicker: 9 },
 } as const;

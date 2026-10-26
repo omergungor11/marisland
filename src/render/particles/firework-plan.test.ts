@@ -10,11 +10,11 @@ const SPH = CULTURE_CLOCK.secondsPerHour;
 describe('fireworks content (W:G7)', () => {
   it('one colour per shell, every shell inside the show, in order', () => {
     expect(FIREWORKS.times.length).toBe(FIREWORKS.themes.length);
+    expect(FIREWORKS.kinds.length).toBe(FIREWORKS.themes.length);
     for (let k = 0; k < FIREWORKS.times.length; k++) {
       expect(FIREWORKS.times[k]).toBeGreaterThan(0);
-      expect(FIREWORKS.times[k] + FIREWORKS.life[1]).toBeLessThanOrEqual(
-        FIREWORKS.lengthS + FIREWORKS.tailS,
-      );
+      const life = FIREWORKS.kinds[k] === 'willow' ? FIREWORKS.willow.life : FIREWORKS.life;
+      expect(FIREWORKS.times[k] + life[1]).toBeLessThanOrEqual(FIREWORKS.lengthS + FIREWORKS.tailS);
       if (k > 0) expect(FIREWORKS.times[k]).toBeGreaterThan(FIREWORKS.times[k - 1]);
     }
   });
