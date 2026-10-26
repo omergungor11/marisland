@@ -62,8 +62,8 @@ describe('generateWorld — determinism', () => {
           "routes": "ad9143a5f0133361",
           "sdf": "cc52d61ebf22894e",
           "seamarks": "0d7eafafa2581373",
-          "sites": "c8c86021a085f1f9",
-          "world": "86d7014c180f4836",
+          "sites": "86d2d01fcec1d5b9",
+          "world": "f78473dfb0a4f7e0",
           "zone": "178cef9d4283a301",
         },
         "42": {

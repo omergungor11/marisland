@@ -305,3 +305,24 @@ export const OCCUPANCY_CELL = 1;
 export const PROP_CAPACITY = 70000;
 /** Ground-cover total cap (instances) regardless of quality; the batcher gates by chunk. */
 export const GROUND_COVER_CAP = 36000;
+
+/**
+ * Story-spot keep-out (TASK-485, `world/gen/story-keepout.ts`): planner fixtures that are not the
+ * spot's own props, and scatter trees / bushes, stay off the spot's stage. `route` = clearance (u)
+ * round a walking critter's path (cross / pace), `stand` = round a pacing bot's beat, an orbit and a
+ * critter or tableau bot that stays put. Elevated critters / bots (on a roof, deck, cab) have none.
+ * `tall`: these pole defs keep `extra` u more off (a windsock 1.8 u from the Coding duck route hid
+ * the ducks from every angle; desks and hedges that close only frame the scene).
+ * `own` = radius round the spot within which its own story props (defs, anchors, look-ats) stay;
+ * `pass` = fixture defs that never yield (overhead spans: the stage passes under them).
+ */
+export const STORY_KEEP_OUT = {
+  route: 0.9,
+  stand: 0.8,
+  tall: {
+    extra: 1.3,
+    defs: ['windsock', 'bannerPole', 'flagMast', 'lanternPost', 'balloonMast'] as readonly string[],
+  },
+  own: 8,
+  pass: ['pennantLine'] as readonly string[],
+} as const;

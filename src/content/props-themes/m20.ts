@@ -9,6 +9,7 @@
  */
 import { PropFlag } from '../../world/prop-store.ts';
 import type { PropDef } from '../props.ts';
+import { WOOD } from '../palette.ts';
 
 const { grounded, windy } = PropFlag;
 
@@ -114,12 +115,17 @@ export const MAIL_LINE = {
     [0, 3.25, 0.62],
   ] as const,
   cableRadius: 0.045,
+  /**
+   * Cable colour: a hemp rope (TASK-485: the dark steel cable read as a scratch across the W20 top
+   * view, M20 QA).
+   */
+  cableColor: WOOD.planks,
   /** Sag = span * sagFrac, clamped to [sagMin, sagMax] (u). */
   sagFrac: 0.03,
   sagMin: 0.35,
   sagMax: 1.6,
-  /** A coral flag hangs from the cable every this many u (LOD0). */
-  flagEvery: 5,
+  /** A coral / cream flag hangs from the cable every this many u (LOD0; TASK-485: 5 → 3, bunting). */
+  flagEvery: 3,
 } as const;
 
 export interface Vec3Like {

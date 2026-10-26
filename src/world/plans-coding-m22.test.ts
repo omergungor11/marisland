@@ -8,6 +8,9 @@ import { CODING_CULTURE_SITES as CS } from '../content/cultures/coding.ts';
 import { LOT_ROOFS } from '../content/settlements.ts';
 import { PINWHEEL_VARIANT } from '../geo/themes/culture-coding-m22.ts';
 import { heightAt, generateWorld, type IslandData, type WorldData } from './index.ts';
+import { shapeDist } from './gen/sites.ts';
+import { storyKeepOuts } from './gen/story-keepout.ts';
+import { STORY_KEEP_OUT } from '../content/placement.ts';
 
 const SEEDS = Array.from({ length: 30 }, (_, i) => 1 + i * 37);
 const worlds = new Map<number, WorldData>();
@@ -26,13 +29,20 @@ const codingOf = (w: WorldData): IslandData => {
 };
 
 describe('Coding M22 quick wins (TASK-479)', { timeout: 120_000 }, () => {
-  it('windsocks: 12 along the park, every one streams downwind (heading wind + π/2)', () => {
+  it('windsocks: 12 along the park (less the ones on a story stage), every one streams downwind (heading wind + π/2)', () => {
     for (const seed of SEEDS) {
       const w = world(seed);
       const socks = w.fixtures.filter(
         (f) => f.islandId === codingOf(w).id && f.defId === 'windsock',
       );
-      expect(socks.length, `seed ${seed}`).toBe(CS.m22.windsocks.u.length * 2);
+      // TASK-485: a sock on a story spot's stage (the duck crossing) yields; never more than two
+      expect(socks.length, `seed ${seed}`).toBeLessThanOrEqual(CS.m22.windsocks.u.length * 2);
+      expect(socks.length, `seed ${seed}`).toBeGreaterThanOrEqual(
+        CS.m22.windsocks.u.length * 2 - 2,
+      );
+      const stages = w.storySpots.flatMap((sp) => storyKeepOuts(sp, STORY_KEEP_OUT.tall.extra));
+      for (const s of socks)
+        for (const sh of stages) expect(shapeDist(sh, s.x, s.z), `seed ${seed}`).toBeGreaterThan(0);
       for (const s of socks) {
         const d = Math.atan2(
           Math.sin(s.rotY - w.windDir - Math.PI / 2),

@@ -426,7 +426,14 @@ function placeSlalom(ctx: SiteCtx, isl: IslandData, dockA: number): void {
     const a = bestA + j * da;
     const p = at(a);
     // local +z faces out to sea (radial)
-    ctx.fixtures.push({ defId: 'inspectionBuoy', x: p.x, z: p.z, rotY: a, islandId: isl.id });
+    ctx.fixtures.push({
+      defId: 'inspectionBuoy',
+      x: p.x,
+      z: p.z,
+      rotY: a,
+      islandId: isl.id,
+      scale: S.scale,
+    });
   }
 }
 

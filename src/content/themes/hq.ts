@@ -268,6 +268,12 @@ export const HQ_PLAN = {
     crossCost: 1.4,
     /** Street tint half-width (u, > PATHS.halfWidth so the band covers the smoothed path). */
     paintHalf: 1.7,
+    /**
+     * A street whose lane ends within this of the water (u; shore streets stop `endMinShore` short
+     * of it, full streets at the quay) runs its tint on down to the waterline: its gate leads onto
+     * the beach, not onto a strip of grass (TASK-485, M20 W2).
+     */
+    shoreRun: 6,
     /** Lots: slots every `every` u from `from` u past the rim to `back` u before the street end; target count. */
     lots: {
       from: 8,
