@@ -11,6 +11,7 @@ import {
   maskClass,
   liveFailures,
   motionMetric,
+  parallaxRatio,
   planeMap,
   regionDrift,
   stepFailures,
@@ -117,6 +118,75 @@ describe('ladder metrics: steps', () => {
     expect(m.structIou).toBe(0);
   });
 
+  describe('pair IoU parallax corridor (TASK-487)', () => {
+    // L-pairs-marketing 42.4 → 37.6: a cliff band at the top, sea below, a thin mast at the
+    // lower right that the far frame shows nearer the centre (parallax off the target plane)
+    const roof: [number, number, number] = [238, 112, 79];
+    const water = rgb(WATER.deep);
+    const land = rgb(TERRAIN_MASK.land);
+    const f = parallaxRatio(
+      { fovDeg: 35, aspect: 16 / 9, pitchDeg: 48, dist: 37.6 },
+      { fovDeg: 35, aspect: 16 / 9, pitchDeg: 48, dist: 42.4 },
+    );
+    const mast = (u: number, v: number): boolean => Math.abs(u - 0.8) < 0.02 && v > 0.55 && v < 0.9;
+    // the far frame's view of a shape: scaled toward the centre by t
+    const toward =
+      (shape: (u: number, v: number) => boolean, t: number) =>
+      (u: number, v: number): boolean =>
+        shape(0.5 + (u - 0.5) / t, 0.5 + (v - 0.5) / t);
+    const scene = (...props: ((u: number, v: number) => boolean)[]): Img =>
+      img((u, v) => (props.some((p) => p(u, v)) ? roof : v < 0.12 ? land : water));
+    const pair = (
+      near: Img,
+      far: Img,
+      parallax: number,
+      slack: number = LADDER_THRESHOLDS.slack,
+    ): ReturnType<typeof compareFrames> => {
+      const flat = img(meadow);
+      return compareFrames(flat, near, flat, far, identityMap, slack, parallax);
+    };
+    // the far frame's mast at the corridor's inner edge
+    const slid = (): Img => scene(toward(mast, f + 0.005));
+
+    it('a tall prop sliding along its radial corridor is not a footprint change', () => {
+      expect(f).toBeGreaterThan(0.85);
+      expect(f).toBeLessThan(0.95);
+      const near = scene(mast);
+      const far = slid();
+      // the plain plane registration (no slack, no corridor) misses, as in the M22 report (0.915)
+      expect(pair(near, far, 1, 0).iou).toBeLessThan(LADDER_THRESHOLDS.pairIou);
+      const m = pair(near, far, f);
+      expect(m.parallaxCells).toBeGreaterThan(0);
+      expect(m.iou).toBeGreaterThan(0.99);
+      expect(stepFailures(m, true)).toEqual([]);
+    });
+
+    it('a prop appearing over the water between the pair still fails (a real pop)', () => {
+      const boat = (u: number, v: number): boolean => Math.hypot(u - 0.25, v - 0.7) < 0.07;
+      const m = pair(scene(mast, boat), slid(), f);
+      expect(m.iou).toBeLessThan(LADDER_THRESHOLDS.pairIou);
+      expect(stepFailures(m, true).some((s) => s.startsWith('IoU'))).toBe(true);
+      // and the other way round: a prop that vanishes
+      expect(pair(scene(mast), scene(toward(mast, f + 0.005), boat), f).iou).toBeLessThan(
+        LADDER_THRESHOLDS.pairIou,
+      );
+    });
+
+    it('the corridor is radial, not an isotropic slack: a sideways slide stays a miss', () => {
+      const sideways = (u: number, v: number): boolean => mast(u + 0.08, v);
+      expect(pair(scene(mast), scene(sideways), f).iou).toBeLessThan(LADDER_THRESHOLDS.pairIou);
+    });
+
+    it('a building appearing between rungs still fails the step with the corridor on', () => {
+      const a = img(meadow);
+      const inBlob = (u: number, v: number): boolean => Math.hypot(u - 0.6, v - 0.4) < 0.08;
+      const b = img((u, v) => (inBlob(u, v) ? [70, 110, 220] : meadow(u, v)));
+      const bMask = img((u, v) => (inBlob(u, v) ? [70, 110, 220] : land));
+      const m = compareFrames(b, bMask, a, landMask, identityMap, LADDER_THRESHOLDS.slack, 0.5);
+      expect(stepFailures(m, false).some((s) => s.startsWith('blob'))).toBe(true);
+    });
+  });
+
   it('does not judge a step with too little land', () => {
     const a = img(meadow);
     const water = img((u) => (u < 0.03 ? rgb(TERRAIN_MASK.land) : rgb(WATER.deep)));
@@ -166,6 +236,13 @@ describe('ladder metrics: steps', () => {
     expect(regionDrift(cover, coverMask, far, landMask, identityMap)).toBeGreaterThan(
       LADDER_THRESHOLDS.drift,
     );
+    // TASK-487: a frame-filling row (40 % of the frame) the reference does not have is the
+    // Design glasshouse pop (tier 2, absent at 170 u), so a "structure fills > 35 % of the frame →
+    // keep the class filter" rule would hide it; it stays judged
+    const [row, rowMask] = view((u, v) => u < 0.5 && v > 0.2);
+    expect(regionDrift(row, rowMask, far, landMask, identityMap)).toBeGreaterThan(
+      LADDER_THRESHOLDS.drift,
+    );
   });
 });
 
@@ -190,6 +267,58 @@ describe('ladder metrics: mapping', () => {
     // a plain crop says, its bottom edge stays nearer the centre
     expect(zoom(0.5, 0)[1]).toBeLessThan(cropMap(0.7)(0.5, 0)[1] - 0.02);
     expect(zoom(0.5, 1)[1]).toBeLessThan(cropMap(0.7)(0.5, 1)[1]);
+  });
+
+  it('parallaxRatio bounds where the far frame shows a point h above the plane (TASK-487)', () => {
+    const near = { fovDeg: 35, aspect: 16 / 9, pitchDeg: 48, dist: 37.6 };
+    const far = { ...near, dist: 42.4 };
+    const h = 12;
+    const f = parallaxRatio(near, far, h);
+    expect(parallaxRatio(near, near, h)).toBe(1);
+    expect(parallaxRatio(near, far, 0)).toBeCloseTo(1, 9);
+    expect(parallaxRatio(near, far, 6)).toBeGreaterThan(f);
+    // brute force: the point h above the plane on the near ray of pixel (u, v), projected into
+    // the far camera and pulled back onto the near grid along its radial line (planeMap keeps
+    // radial lines through the centre); its radius ratio stays within [f, 1]
+    const p = (48 * Math.PI) / 180;
+    const s = Math.sin(p);
+    const c = Math.cos(p);
+    const th = Math.tan((35 * Math.PI) / 360);
+    const map = planeMap(near, far);
+    const rad = ([u, v]: [number, number]): number => Math.hypot((u - 0.5) * near.aspect, v - 0.5);
+    let worst = 1;
+    for (const [u, v] of [
+      [0.5, 1],
+      [0.9, 0.95],
+      [0.05, 0.9],
+      [0.95, 0.5],
+      [0.8, 0.2],
+    ] as [number, number][]) {
+      const x = (2 * u - 1) * th * near.aspect;
+      const y = (1 - 2 * v) * th;
+      const dy = -s + y * c;
+      const t = (near.dist * s - h) / -dy; // down from the camera height to h
+      const P = [x * t, near.dist * s + dy * t, near.dist * c + (-c - y * s) * t];
+      const ry = P[1] - far.dist * s;
+      const rz = P[2] - far.dist * c;
+      const depth = -s * ry - c * rz;
+      const q: [number, number] = [
+        (P[0] / depth / (th * far.aspect) + 1) / 2,
+        (1 - (c * ry - s * rz) / depth / th) / 2,
+      ];
+      // pull q back: the near-grid point on the same radial line that planeMap sends to q
+      let lo = 0;
+      let hi = 1;
+      for (let i = 0; i < 60; i++) {
+        const m = (lo + hi) / 2;
+        const g = map(0.5 + (u - 0.5) * m, 0.5 + (v - 0.5) * m);
+        if (rad(g) < rad(q)) lo = m;
+        else hi = m;
+      }
+      expect(lo).toBeLessThan(1);
+      worst = Math.min(worst, lo);
+    }
+    expect(worst).toBeCloseTo(f, 6);
   });
 });
 

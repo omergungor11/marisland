@@ -33,6 +33,7 @@ import { computeMetrics, isBlank, isMagenta, type ImageMetrics } from './shots-m
 import {
   GRID,
   compareFrames,
+  parallaxRatio,
   regionDrift,
   planeMap,
   stepFailures,
@@ -678,6 +679,8 @@ async function runLadder(
       far.frame,
       far.mask,
       planeMap(view(dists[k + 1]), view(dists[k])),
+      LADDER_THRESHOLDS.slack,
+      parallaxRatio(view(dists[k + 1]), view(dists[k])),
     );
     heats[k + 1] = m.heat;
     const { heat: _heat, ...rest } = m;
