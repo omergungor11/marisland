@@ -10,6 +10,12 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-26 (TASK-491 merged)**: the sky program is shared by the dome and every beam material — any new sky
+  uniform must be one shared object for all of them (`CONST_U` pattern in `sky.ts`). A raw `cam` target's
+  distance picks the tier: an upward shot with a 100 u target hit 850k tris, the same view with a 300 u target
+  is tier 1 (439k). Existing night wow frames show almost no sky (W24/W25 look down, W15 has 0–7° of sky, mostly
+  fog), so constellations only read in W27. Give shot logs unique names — parallel agents overwrite shared
+  scratchpad logs; read results from `shots/<set>/manifest.json`.
 - **2026-10-26 (TASK-490 merged)**: the culture clock day is 600 s, so 22:00 + 60 s wraps to second 10 of the
   next day. A culture-mover scene's `max` instance count must cover every part it can write at once.
   `interaction.ts` runs after the world view and owns the final particle counter. Oblique night shots of the
