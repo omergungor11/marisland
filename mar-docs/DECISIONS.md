@@ -2,6 +2,21 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-066: CPU-placed soft puffs on the puff mesh; far terrain level shades with the grid slope — 2026-10-26
+
+**Decision** (TASK-486): (1) Culture scenes that need steam draw it on the existing puff mesh, not
+as lit mover blobs: `Puffs.reserve(n)` (before `finalize`) hands out a block of slots whose life
+(`aShape.w`) is negative; the vertex shader then takes centre / size / opacity / alpha edge as given
+(no time function). `CultureMoversView.bindPuffs` reserves one block for all scenes; `Writer.puff`
+fills it each frame and hides the rest. First user: the Research test firing (`CULTURE_MOVERS.launch`).
+(2) The 4 u terrain level (and level 1 while it morphs toward it) shades with the height texture's
+slope (`TERRAIN_FACETS.slopeSpan`) instead of its laid-back mesh normal.
+**Rationale**: Lit blobs read as one faceted boulder (W26); the puff program already has the soft
+radial alpha, so no new program (medium stays 17 / 20). The far level's normal lit far cliffs
+brighter and greyer than the 2 u level (ladder far drift).
+**Alternatives**: a soft-alpha variant of the creature material (new program); keeping 2 u meshes
+for cliff chunks at T0 (more triangles, same drift gain in the experiment).
+
 ## D-065: Story-spot keep-out and stair flights on spared faces — 2026-10-26
 
 **Decision** (TASK-485): (1) Every story spot has a *stage* derived from the life content (SPOT_CRITTERS
