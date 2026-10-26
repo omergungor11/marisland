@@ -30,7 +30,10 @@ describe('culture clock (TASK-430)', () => {
     for (const t of THEME_IDS) {
       for (const id of CULTURE_RHYTHM[t].lamps.defs) {
         expect(ids.has(id), id).toBe(true);
-        expect(cultureLampTheme(id)).toBe(t);
+        // a def shared by several sets (rimPost) resolves to one of them; the clock is per island
+        const owner = cultureLampTheme(id);
+        expect(owner).not.toBeNull();
+        expect(CULTURE_RHYTHM[owner as ThemeId].lamps.defs).toContain(id);
       }
       expect(CULTURES[t].rhythm.length).toBeGreaterThan(0);
     }

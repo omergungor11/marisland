@@ -138,13 +138,7 @@ const CRITTER_SHOTS: readonly (readonly [string, string, string, number, number]
     14,
     6,
   ],
-  [
-    'duck-crossing',
-    'Duck family crossing · Coding',
-    '-102.76,13.99,161.27,-105.16,9.59,153.63',
-    14,
-    10,
-  ],
+  ['duck-crossing', 'Duck family crossing · Coding', '-113.9,13.9,145.3,-107.9,9.5,151', 14, 10],
 ] as const;
 
 /** W7 camera (raw, seed 1001 Coding; TASK-380), re-pin when that layout changes. */
@@ -610,10 +604,11 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'W25',
     title: 'Carpet Night',
     // Marketing at 20:00 (seed 2024): the M7 red-carpet boulevard with its gold trim across Beacon
-    // Rock's top, the lit marquee billboard and bulb strings, the lighthouse, sea-stack
-    // transmitters and the lit buoy chain in the bay
+    // Rock's top, seen across it from the north (TASK-485: from the bay side the giant screen at the
+    // boulevard's lee end hid half the carpet), the lit giant screen end-on, billboards and bulb
+    // strings, the lighthouse with its beam, a sea-stack transmitter, the fair's wheel and searchlights
     seed: 2024,
-    cam: '215,60,-80,178,22,-112',
+    cam: '170,64,-84,182,21,-115',
     time: 20,
     simt: 5,
     quality: 'medium',

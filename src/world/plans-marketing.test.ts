@@ -234,9 +234,9 @@ describe('Marketing Media Rock plan (TASK-403), 30 seeds', () => {
     });
     expect(got).toMatchInlineSnapshot(`
       [
-        "89ac1ec917805d10",
-        "e6068d79d9a33b52",
-        "cdd11a60e800cade",
+        "daf79f7b6e0d3c47",
+        "5bd58753dbcdbd77",
+        "f9258674231a37a2",
       ]
     `);
   });
