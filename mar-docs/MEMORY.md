@@ -10,6 +10,14 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-27 (M23 closed; TASK-495/493 merged)**: M23 world signature is done — reefs, relay night, constellations,
+  whale, night-effects polish; QA in `mar-docs/qa/m23-world-signature.md`. Budgets now: medium memory peak W27
+  162 / 170 MB, W16 278 calls / 765k tris, low ladder max 305k. An "uber geometry + shader collapse" mesh costs
+  every slot's tris on every instance — worker bots still do (1862 tris/bot, ~97k at the Design 120 u rung): the
+  next lever if tier 2 gets tight. The composer `outputBuffer` has no depth unless a pass needs the depth
+  texture. `PropDef.fromT0` defs never fade → extra shadow calls from far islands. Run the ladder with
+  `--assert` at milestone QA (M22 missed the Design overage without it). Open nits: whale has no waterline
+  ring; W25 blank screen panel; W26 lower slope; DevOps day bands; W2 gate tint.
 - **2026-10-27 (TASK-496 merged)**: beam-program meshes may be stretched non-uniformly now; animate a travelling
   front with `uBeamFx.xy` per frame (`signalFlash()`). A fireworks reflection on open water is the mirror image
   (eye ray to (x, 2·sea − y, z)); to see shells and reflection in one frame the camera must sit ~2 u high and
