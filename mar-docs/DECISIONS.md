@@ -2,6 +2,20 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-071: Culture constellations — layout-placed glyph caps in the sky program — 2026-10-26
+
+**Decision** (TASK-491, `W:G4`): the seven glyphs (`content/constellations.ts`) are drawn by the sky
+dome program (0 programs, 0 draw calls): a 18×7 RGBA float data texture (stars + line segments per theme,
+owned by the world scope) and 7 cap uniforms. Each glyph sits on the bearing from the archipelago centre
+to its island at atan(50 u / distance) (clamped 11–26°, so 12–17° on the pinned seeds); HQ, at the centre,
+rides at 28° in the widest bearing gap; any glyph steps down until its disc clears the moon at every
+night hour. Visibility = star alpha × an hour window (fade in 19:45–21:00, full 21:00–04:00, out by
+05:00); lines are an alpha mix of 0.10, 0.15 during Comet Night. Hashed stars dim 60 % inside a cap.
+**Rationale**: placement follows the seed with no worldgen change; the constellation uniforms are one
+module-level set shared by the dome and every beam material (same program). **Impact**: the existing
+night wow frames (W15 postcard sky strip ≈ 0–7°, W24/W25 no sky at all) cannot show them without a
+re-frame; W27 "Constellation Night" is the showcase.
+
 ## D-067: Reef shoals and shared-shelf sills — a separate reef mask, gaps measured like LAYOUT — 2026-10-26
 
 **Decision** (TASK-488, `W:D1` + `W:K3`): 3–6 shoal blobs (crest −2.4…−4.2 u) in the gaps between islands

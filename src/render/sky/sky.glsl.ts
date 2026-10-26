@@ -4,7 +4,8 @@ import { BEAM_FRAG_PARS, BEAM_VERT_PARS } from '../night/beam.glsl.ts';
  * Sky dome shaders (TASK-171). Uniforms: SHARED env colours (linear) + sky constants from
  * content/lighting SKY. Output is HDR (sun disc > 1 so bloom catches it; moon slightly).
  * One draw call: gradient → sun (disc + glow, grows near the horizon) → moon (soft crescent +
- * halo, earthshine blocks stars) → hashed twinkling stars → comet (TASK-472 G2: a distance-field
+ * halo, earthshine blocks stars) → hashed twinkling stars → culture constellations (TASK-491 W:G4:
+ * 7 glyph caps, stars + ≈ 1 px lines from a small data texture) → comet (TASK-472 G2: a distance-field
  * head + fan tail during the Star Academy's Comet Night) → shooting star (one 0.6 s streak at a
  * seeded time; both off with their uniform's w ≤ 0, no math).
  *
@@ -69,6 +70,18 @@ uniform vec4 uMeteorDir;
 // x = half width (rad), y = HDR intensity, z = fade envelope
 uniform vec3 uMeteorLook;
 uniform vec3 uMeteorColor;
+// culture constellations (TASK-491 W:G4): xyz = glyph centre direction, w = cos(cap radius)
+uniform vec4 uConstDir[7];
+// x = rad per glyph unit, y = star radius (rad), z = min star radius (px), w = star HDR intensity
+uniform vec4 uConstLook;
+// x = line half width (px), y = line gap around stars (rad), z = line alpha, w = visibility 0..1
+uniform vec4 uConstLine;
+// x = hashed-star dim inside a glyph cap (0..1), y = star halo strength
+uniform vec2 uConstFx;
+uniform vec3 uConstStarColor;
+uniform vec3 uConstLineColor;
+// row i = glyph i: stars (x, y, brightness, 0) then lines (x0, y0, x1, y1), glyph units
+uniform sampler2D uConstTex;
 varying vec3 vDir;
 ${BEAM_FRAG_PARS}
 
@@ -79,6 +92,8 @@ float skyHash12(vec2 p) {
 }
 
 void main() {
+  // angular size of a pixel (rad), taken before any branch (no derivatives in non-uniform flow)
+  float skyPix = max(length(dFdx(vDir)), length(dFdy(vDir))) / max(length(vDir), 1e-3);
   if (uMode > 0.5) {
     gl_FragColor = vec4(marBeamFrag(), 1.0);
     #include <tonemapping_fragment>
@@ -149,6 +164,47 @@ void main() {
     col += uMoonHaloColor * halo * k;
   }
 
+  // --- culture constellations (TASK-491 W:G4): per glyph cap test, then its stars (round HDR
+  // dots with a soft halo, ≥ uConstLook.z px) and thin lines (≈ 1 px, a gap around each star) in
+  // the glyph's gnomonic tangent plane (x right, y toward the zenith). Hashed stars dim inside a
+  // cap so the glyph reads. Composited after the hashed stars.
+  float cStar = 0.0;
+  float cLine = 0.0;
+  float cDim = 0.0;
+  if (uConstLine.w > 0.001) {
+    float rS = max(uConstLook.y, uConstLook.z * skyPix);
+    float hw = uConstLine.x * skyPix;
+    for (int i = 0; i < 7; i++) {
+      vec4 cd = uConstDir[i];
+      float cc = dot(d, cd.xyz);
+      if (cc < cd.w) continue;
+      cDim = max(cDim, smoothstep(cd.w, mix(cd.w, 1.0, 0.25), cc));
+      vec3 ex = normalize(cross(cd.xyz, vec3(0.0, 1.0, 0.0)));
+      vec3 ey = cross(ex, cd.xyz);
+      vec2 p = vec2(dot(d, ex), dot(d, ey)) / (cc * uConstLook.x);
+      float gap = 1e3;
+      for (int j = 0; j < 9; j++) {
+        vec4 s = texelFetch(uConstTex, ivec2(j, i), 0);
+        float dist = length(p - s.xy) * uConstLook.x;
+        gap = min(gap, dist + (1.0 - step(0.001, s.z)) * 1e3);
+        float tw = 0.9 + 0.1 * sin(uTime * 1.1 + float(i * 9 + j) * 2.3);
+        float core = 1.0 - smoothstep(rS * 0.2, rS, dist);
+        float halo = exp(-dist / (rS * 1.2)) * uConstFx.y;
+        cStar += (core + halo) * s.z * tw;
+      }
+      float ln = 0.0;
+      for (int j = 0; j < 9; j++) {
+        vec4 sg = texelFetch(uConstTex, ivec2(9 + j, i), 0);
+        vec2 ab = sg.zw - sg.xy;
+        float t = clamp(dot(p - sg.xy, ab) / max(dot(ab, ab), 1e-6), 0.0, 1.0);
+        float dist = length(p - sg.xy - ab * t) * uConstLook.x;
+        ln = max(ln, 1.0 - smoothstep(hw * 0.5, hw + skyPix * 0.5, dist));
+      }
+      cLine += ln * smoothstep(uConstLine.y, uConstLine.y * 1.6, gap);
+    }
+    cDim *= uConstFx.x * uConstLine.w;
+  }
+
   // --- stars: one candidate per angular cell, twinkling; fade into the fog band, behind the moon
   float starA = uSkyNight.y;
   if (starA > 0.001) {
@@ -170,11 +226,18 @@ void main() {
       float bright = mix(0.35, 1.0, skyHash12(cell + 5.7));
       // ≥ ~1.5 px wide at 540p so stars stay round dots (sub-pixel stars alias into streaks)
       float star = (1.0 - smoothstep(size * 0.15, size, dist)) * tw * bright;
-      float fade = smoothstep(uStarFx.y, uStarFx.z, h) * (1.0 - moonMask);
+      float fade = smoothstep(uStarFx.y, uStarFx.z, h) * (1.0 - moonMask) * (1.0 - cDim);
       vec3 sc = mix(vec3(1.0, 0.92, 0.8), vec3(0.85, 0.9, 1.0), skyHash12(cell + 9.7));
       col += sc * star * uStars.z * starA * fade;
     }
   }
+
+  if (uConstLine.w > 0.001) {
+    float cFade = uConstLine.w * smoothstep(uStarFx.y, uStarFx.z, h) * (1.0 - moonMask);
+    col = mix(col, uConstLineColor, min(cLine, 1.0) * uConstLine.z * cFade);
+    col += uConstStarColor * cStar * uConstLook.w * cFade;
+  }
+
 
   // --- comet (TASK-472 G2): distance field in the head's tangent frame — soft HDR head with a
   // glow, a fan tail (width grows along it) with a brighter core and two wavy rays
