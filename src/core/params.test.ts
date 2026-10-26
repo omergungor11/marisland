@@ -37,6 +37,8 @@ describe('params', () => {
     expect(parseParams('?craft=0').craft).toBe(false);
     expect(d.birds).toBe(true);
     expect(parseParams('?birds=0').birds).toBe(false);
+    expect(d.fog).toBe(true);
+    expect(parseParams('?fog=0').fog).toBe(false);
     expect(d.tour).toBe('idle');
     expect(parseParams('?tour=1').tour).toBe('now');
     expect(parseParams('?tour=0').tour).toBe('off');
