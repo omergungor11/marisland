@@ -24,6 +24,8 @@ export const WHALE = {
     maxR: 372,
     /** Box-filter half width (angle samples) smoothing the radius. */
     smooth: 3,
+    /** The cape pass aims this far past the headland anchor, straight out from the island centre, u. */
+    capeOffset: 60,
     /** Validation spacing along the polyline, u. */
     step: 4,
     /** Open-sea query overrides while planning (clearance from reefs / boat routes, depth). */
@@ -46,7 +48,7 @@ export const WHALE = {
     depth: -7.5,
     /** Back rises over `rise`, resting with its top `back` u above the sea. */
     rise: 6,
-    back: 1.2,
+    back: 1.75,
     /** Blows (event s) and how long each plume lasts. */
     blows: [5.2, 10.4] as const,
     blowSeconds: [3.2, 2.2] as const,
@@ -76,14 +78,14 @@ export const WHALE = {
 
   /** Spout / splash puffs (puff program, placed slots; `edge` = alpha edge of the placed puffs). */
   spout: {
-    puffs: 16,
+    puffs: 30,
     life: 1.9,
     /** Plume height (u) and base / top diameter. */
     height: 8,
-    size: [1.3, 3.6] as const,
-    opacity: 0.85,
+    size: [1.5, 3.4] as const,
+    opacity: 0.75,
     spread: 0.45,
-    edge: 0.45,
+    edge: 0.8,
     fadeIn: 0.08,
     /** Blowhole position on the back: along the axis (a, +x forward) and above the surface. */
     blowhole: { a: 3.4, lift: 0.1 },
@@ -95,7 +97,7 @@ export const WHALE = {
     height: 2.8,
     size: [0.9, 2.6] as const,
     opacity: 0.9,
-    edge: 0.45,
+    edge: 0.7,
   },
 
   /** Near-camera dither fade (camera to body centre): hidden inside `far`, whole beyond `near`. */
@@ -105,17 +107,17 @@ export const WHALE = {
   pick: { radius: 2.7, samples: 5 },
 
   colors: {
-    back: '#7A8DA3',
-    flank: '#93A4B7',
+    back: '#8CA4C2',
+    flank: '#A9BDD6',
     belly: '#F2EFE6',
-    groove: '#D9DCD8',
-    fin: '#667B92',
-    fluke: '#6A7F97',
+    groove: '#E6E6DE',
+    fin: '#7890AC',
+    fluke: '#7C93B0',
     flukeUnder: '#B9C4CF',
-    mouth: '#46505F',
+    mouth: '#566A82',
     eye: '#232834',
     eyeLight: '#FFFFFF',
     blush: '#F2B5B0',
-    mottle: '#A7B5C4',
+    mottle: '#9DB3CE',
   },
 } as const;

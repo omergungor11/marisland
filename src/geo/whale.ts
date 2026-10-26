@@ -106,7 +106,7 @@ export function buildWhale(): WhaleRig {
       if (j === 0 && k >= 9 && k <= 11) ry *= 1.2;
       // throat grooves: every other belly line pulled in on the head and chest
       let g = 1;
-      if ((j === 6 || j === 8 || j === 10) && k <= 8) g = 1 - 0.09 * (1 - smooth((k - 4) / 5));
+      if ((j === 7 || j === 8 || j === 9) && k <= 8) g = 1 - 0.06 * (1 - smooth((k - 4) / 5));
       row.push(addNode({ k, ox: 0, oy: ry * cy * g, oz: rz * Math.sin(th) * g }));
     }
     ring.push(row);
@@ -118,10 +118,10 @@ export function buildWhale(): WhaleRig {
     const ang = Math.min(c, 1 - c) * 2; // 0 at the top, 1 at the bottom
     const mouthJ = k <= 3 ? 4 : 3;
     // mouth line: the smiling band along the head, on each side
-    if (k >= 1 && k <= 5 && (j === mouthJ || j === N - 1 - mouthJ)) return C.mouth;
+    if (k >= 2 && k <= 5 && (j === mouthJ || j === N - 1 - mouthJ)) return C.mouth;
     if (ang > 0.72) return k <= 8 && j % 2 === 0 ? C.groove : C.belly;
     if (ang > 0.52) return C.flank;
-    return rng.chance(0.14) ? C.mottle : C.back;
+    return rng.chance(0.06) ? C.mottle : C.back;
   };
   for (let j = 0; j < N; j++) {
     const j2 = (j + 1) % N;
@@ -207,7 +207,7 @@ export function buildWhale(): WhaleRig {
 
   // --- face: eyes with a highlight, rosy cheeks (ring 3 / 4 frames)
   const ico = (r: number, detail: number): THREE.BufferGeometry =>
-    new THREE.IcosahedronGeometry(r, detail).toNonIndexed();
+    new THREE.IcosahedronGeometry(r, detail);
   const blob = (
     kring: number,
     c: [number, number, number],

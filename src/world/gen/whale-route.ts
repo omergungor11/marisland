@@ -22,7 +22,13 @@ export interface WhaleWorld {
   height: Heightfield;
   reefs: readonly ReefData[];
   boatRoutes: readonly Polyline[];
-  islands: readonly { cx: number; cz: number; reach: number; theme: string }[];
+  islands: readonly {
+    cx: number;
+    cz: number;
+    reach: number;
+    theme: string;
+    anchors?: Record<string, { x: number; z: number }>;
+  }[];
 }
 
 export interface WhaleRoute {
@@ -138,10 +144,19 @@ export function planWhaleRoute(world: WhaleWorld, seed: number): WhaleRoute | nu
   }
   const capeIsland =
     world.islands.find((i) => i.theme === 'research') ?? world.islands[world.islands.length - 1];
+  // the cape: the island's headland anchor (Research's launch headland), else its centre
+  const hl = capeIsland.anchors?.headland;
+  const hd = hl ? Math.hypot(hl.x - capeIsland.cx, hl.z - capeIsland.cz) || 1 : 1;
+  const tip = hl
+    ? {
+        x: hl.x + ((hl.x - capeIsland.cx) / hd) * R.capeOffset,
+        z: hl.z + ((hl.z - capeIsland.cz) / hd) * R.capeOffset,
+      }
+    : { x: capeIsland.cx, z: capeIsland.cz };
   let best = 0;
   let bd = Infinity;
   for (let i = 0; i < n; i++) {
-    const d = Math.hypot(pts[i * 2] - capeIsland.cx, pts[i * 2 + 1] - capeIsland.cz);
+    const d = Math.hypot(pts[i * 2] - tip.x, pts[i * 2 + 1] - tip.z);
     if (d < bd) {
       bd = d;
       best = i;
@@ -152,7 +167,7 @@ export function planWhaleRoute(world: WhaleWorld, seed: number): WhaleRoute | nu
     cum,
     length: cum[n],
     capeS: cum[best],
-    cape: { x: capeIsland.cx, z: capeIsland.cz, reach: capeIsland.reach },
+    cape: { x: tip.x, z: tip.z, reach: capeIsland.reach },
   };
 }
 

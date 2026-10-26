@@ -701,11 +701,26 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     sets: ['wow'],
   },
   {
-    id: 'W27',
+    id: 'W28',
     title: 'Whale Surfacing',
-    // 17:45 +0.5 s: the whale's cape pass (TASK-489, D-070), 8.5 s into its surfacing, spout in the air
+    // 17:45 +0.5 s: the whale's cape pass (TASK-489, D-070), 8.5 s into its surfacing, spout in the air:
+    // the postcard overview with the grey whale's back in the open water south-east of the Research cape
     seed: 1001,
     cam: 'overview',
+    time: 17.75,
+    simt: 0.5,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  {
+    id: 'W28b',
+    title: 'Whale Blow',
+    // TASK-489: the same cape pass from the sea east of the whale (raw, looking down 35°): its back beside the
+    // spout column, the Research headland beyond
+    seed: 1001,
+    cam: '232,28,134,198,0,108',
     time: 17.75,
     simt: 0.5,
     quality: 'medium',

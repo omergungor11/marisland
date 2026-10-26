@@ -76,7 +76,7 @@ function springLeft(s: number, omega: number, zeta: number): number {
  */
 export function slapAngle(tau: number): number {
   const S = WHALE.slap;
-  if (tau <= 0 || tau >= S.total) return 0;
+  if (!(tau > 0 && tau < S.total)) return 0;
   const tLift = S.dip.seconds + S.lift.seconds;
   const tWhip = tLift + S.whip.seconds;
   if (tau < S.dip.seconds) return S.dip.deg * DEG * Math.sin((tau / S.dip.seconds) * Math.PI * 0.5);
@@ -126,7 +126,7 @@ export function whalePose(
   out.arch = 0.05 * dive * calm;
   // tail: idle undulation, the slap(s), a lift while diving so the fluke stands up
   const slap = (u >= E.slapAt && m >= 0.5 ? slapAngle(u - E.slapAt) : 0) + slapAngle(clickTau);
-  out.tail = slap * 0.55 + 0.1 * dive * calm;
+  out.tail = slap * 0.55 + 0.1 * dive * calm + 0.16 * (1 - dive) * smooth((u - 3) / 3);
   out.fluke = slap * 0.45 - 0.35 * dive * calm;
   out.wag = W.tailDeg * DEG * m * (1 - dive);
   out.wagPhase = (u / W.period) * Math.PI * 2;
