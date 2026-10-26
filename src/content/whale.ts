@@ -114,7 +114,7 @@ export const WHALE = {
     fin: '#7890AC',
     fluke: '#7C93B0',
     flukeUnder: '#B9C4CF',
-    mouth: '#566A82',
+    mouth: '#7B90AB',
     eye: '#232834',
     eyeLight: '#FFFFFF',
     blush: '#F2B5B0',
