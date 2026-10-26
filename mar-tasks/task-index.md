@@ -311,7 +311,7 @@ Details in `phases/phase-3.md`.
 | TASK-483 | Research quick wins: R12 hedge maze parterres (R3-16), R20 weather roof, R13 launch gantry, R17 bell hour, R16 cap toss, R9 arboretum; seal spot critter; Research lamp set | props | M | COMPLETED (81bc1f5) | M20 |
 | TASK-484 | Coding C18 rim walkway (reuses the TASK-480 primitive) + M22 QA: wow / ladder `--assert`, new or re-framed wow shots per island, QA report | engine | S | COMPLETED (4cc2343, d3b700a; W23–W26, W6 re-frame; `mar-docs/qa/m22-2026-10-24.md`) | TASK-479…483 |
 | TASK-485 | M22 follow-ups (worldgen): story-spot keep-out (C11 windsock on the Coding duck crossing), Marketing bot on the cliff face (walk-graph leak?), W25 billboard hides the carpet, C18 boardwalk night lamp caps (Coding lamp set), W2 gate on grass, W20 mail cable, bigger slalom buoys | worldgen | M | COMPLETED (5a8e7bd; D-065; W2 Research gate tint open) | TASK-484 |
-| TASK-486 | M22 follow-ups (shader): W26 test-firing steam as soft puffs, medium far drift on Marketing / DevOps (far-wall strata), DevOps switchbacks pale by day | shader | S | IN_PROGRESS | TASK-484 |
+| TASK-486 | M22 follow-ups (shader): W26 test-firing steam as soft puffs, medium far drift on Marketing / DevOps (far-wall strata), DevOps switchbacks pale by day | shader | S | COMPLETED (b25dce5; D-066; L-devops medium passes, L-marketing 480 → TASK-487, DevOps day bands open) | TASK-484 |
 | TASK-487 | Ladder metric: L-design near rungs keep measuring structure cells (> 35 % of frame), L-pairs-marketing transmitter parallax; a real pop must still fail | engine | S | IN_PROGRESS | TASK-484 |
 
 ### M23 — Dünya İmza (world signature)
@@ -321,7 +321,7 @@ Details in `phases/phase-3.md`.
 |----|------|-------|------------|--------|--------------|
 | TASK-488 | Reef shoals + shared shelves (`W:D1` + `W:K3`): 3–6 seabed patches at −2…−6 u in the deep gaps, sills (−3 u, never above water) between neighbours < 55 u with a deep boat gap; shoal tint + foam on the water shader (sdf contribution or separate depth tint, 0 programs) | worldgen | M | IN_PROGRESS | TASK-485 |
 | TASK-489 | Whale (`W:D6`): 14 u grey whale mover (not an agent) in a deep channel, closed-form surfacing every 90–150 s (seeded phase): back + spout puffs 6 s, tail slap, dive; passes the Research cape at 17:45; click = tail + splash; ≥ 20 u from boat polylines, outside the reefs; `fadeNear` at T2 | life | M | TODO | TASK-488 (route) |
-| TASK-490 | Relay night scene (`W:B1` + `W:B6` + `W:G7`): 2–3 mini beacons on skerries + Marketing lighthouse sweep in route order (1 s offsets) 18:30–06:30; signal lamps on each island's top relay the 21:00 flashes to the next island; 22:01 fireworks from HQ harbour (6 bursts, culture accents, water reflection; off in rain) | props | M | TODO | TASK-469, TASK-472 |
+| TASK-490 | Relay night scene (`W:B1` + `W:B6` + `W:G7`): 2–3 mini beacons on skerries + Marketing lighthouse sweep in route order (1 s offsets) 18:30–06:30; signal lamps on each island's top relay the 21:00 flashes to the next island; 22:01 fireworks from HQ harbour (6 bursts, culture accents, water reflection; off in rain) | props | M | IN_PROGRESS | TASK-469, TASK-472 |
 | TASK-491 | Culture constellations (`W:G4`): 7 glyph constellations (6–9 bright stars, lines alpha ≤ 0.15) in the sky above each island, 21:00–04:00, lines brighten on Comet Night | shader | S | TODO | TASK-486 |
 | TASK-492 | M23 QA: wow `--assert` + new shots (whale postcard, relay wave W15b, fireworks), ladder low + medium, QA report | qa | S | TODO | TASK-488…491 |
 

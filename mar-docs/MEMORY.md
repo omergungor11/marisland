@@ -10,6 +10,14 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-26 (TASK-486 merged)**: test-firing steam draws on the puff program via placed slots
+  (`Puffs.reserve(n)`, life `aShape.w` < 0 = CPU-driven); any puff alpha change must keep `vEdge = uSoft.x` for
+  the emitters. Far terrain (4 u level) lights from height-texture slope normals (`TERRAIN_FACETS.slopeSpan`) —
+  the coarse mesh laid cliffs back and they read pale far away. Strata are NOT the far-drift cause; the T0 fog
+  ramp in `world-view.ts` is the suspect for L-marketing 480 (→ TASK-487). DevOps switchbacks: colour alone can't
+  fix the pale day bands (darker paint lost the road at night and worsened drift) — needs width/edge in worldgen.
+  `pnpm shots --tag=x` builds from `src` at start: don't edit `src` between chained runs; the same tag with a
+  different `--only` wipes earlier PNGs.
 - **2026-10-26 (TASK-485 merged)**: story-spot keep-out (D-065, `world/gen/story-keepout.ts`, `STORY_KEEP_OUT`)
   drops planner fixtures on a story stage after `finish` (shifts rolled decor variants); new tall avenue defs go in
   `STORY_KEEP_OUT.tall.defs`. Zones don't render on steep faces (earth-wall shading ignores them) — make stairs
