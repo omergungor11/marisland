@@ -17,6 +17,33 @@ pose; only a click adds state. (3) The spout and splash are placed slots of the 
 **Rationale**: the 17:45 cape pass is pinned to the day clock, not to sim time, so the schedule cannot be a pure
 function of `time`. A CPU skin of ≈ 1.8k vertices costs a few µs and avoids a skinned-mesh program.
 **Alternatives**: vertex-shader bend (new program, 17 → 18); sim-time schedule (cannot pin 17:45).
+## D-071: Culture constellations — layout-placed glyph caps in the sky program — 2026-10-26
+
+**Decision** (TASK-491, `W:G4`): the seven glyphs (`content/constellations.ts`) are drawn by the sky
+dome program (0 programs, 0 draw calls): a 18×7 RGBA float data texture (stars + line segments per theme,
+owned by the world scope) and 7 cap uniforms. Each glyph sits on the bearing from the archipelago centre
+to its island at atan(50 u / distance) (clamped 11–26°, so 12–17° on the pinned seeds); HQ, at the centre,
+rides at 28° in the widest bearing gap; any glyph steps down until its disc clears the moon at every
+night hour. Visibility = star alpha × an hour window (fade in 19:45–21:00, full 21:00–04:00, out by
+05:00); lines are an alpha mix of 0.10, 0.15 during Comet Night. Hashed stars dim 60 % inside a cap.
+**Rationale**: placement follows the seed with no worldgen change; the constellation uniforms are one
+module-level set shared by the dome and every beam material (same program). **Impact**: the existing
+night wow frames (W15 postcard sky strip ≈ 0–7°, W24/W25 no sky at all) cannot show them without a
+re-frame; W27 "Constellation Night" is the showcase.
+
+## D-069: Relay night scene — skerry beacons, signal chain, fireworks — 2026-10-26
+
+**Decision** (TASK-490, `W:B1` + `W:B6` + `W:G7`; numbers in `content/signature.ts`):
+- Beacons: a `beaconTower` prop on up to 3 spread-out skerry peaks (picked max-min from the one farthest from
+  HQ). Their beams and the Marketing lighthouse beam reuse the beam program, one call each; the route-order
+  phase lag (1 s per rank of an 8 s turn) is a mesh yaw, so only `uTime` drives them.
+- Signal chain: a culture-mover scene per island peak (night-only mast, so W16 tris don't grow); each island
+  flashes 3 × toward the next in its relay step, the HQ semaphore points at it.
+- Fireworks: a second emissive Bursts pool, closed-form from the culture clock and the world seed (22:00 + the
+  60 s Comet Night, i.e. day second 10; capture `time=21&simt=85`), 6 shells in culture accents, cancelled in
+  rain. The water reflection is a spark glitter at sea level, not a water-shader branch.
+**Impact**: world hashes changed; `interaction.ts` now adds to `counters.particles` instead of overwriting it.
+Open: in live play at high day speed the show re-spawns when birth times drift > 1 s.
 
 ## D-067: Reef shoals and shared-shelf sills — a separate reef mask, gaps measured like LAYOUT — 2026-10-26
 

@@ -168,7 +168,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   group.add(terrain.group);
   const water = createWater(world, textures, d.quality, d.scope);
   group.add(water.mesh);
-  const sky = createSky(d.scene, d.scope, d.quality, seed);
+  const sky = createSky(d.scene, d.scope, d.quality, seed, world.islands);
   if (sky.mesh) group.add(sky.mesh);
   const lights = createLightRig(d.quality, d.scope);
   group.add(lights.group);
