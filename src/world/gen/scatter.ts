@@ -26,6 +26,7 @@ import {
 } from '../types.ts';
 import { slopeAtCell } from './zones.ts';
 import { OCC_STRUCTURE } from './settlements.ts';
+import { pickBeaconSkerries } from './beacons.ts';
 
 /**
  * Prop scatter (ARCHITECTURE §2 step 7): Bridson Poisson per island per rule in
@@ -278,7 +279,14 @@ export function scatterProps(
       return theme.scatterOff.includes(rule.def);
     });
   }
-  for (const islet of world.islets) scatterBody(islet, ISLET_SCATTER[islet.kind], () => false);
+  // M23 (TASK-490): only the picked skerries carry a beacon (the rule's own rng fork, index 1)
+  const beacons = pickBeaconSkerries(world.islands, world.islets);
+  for (const islet of world.islets)
+    scatterBody(
+      islet,
+      ISLET_SCATTER[islet.kind],
+      (rule) => rule.def === 'beaconTower' && !beacons.has(islet.id),
+    );
   return { props: store, occupancy, counts };
 }
 

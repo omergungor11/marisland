@@ -35,6 +35,8 @@ import { PUFF_CHIMNEY, PUFF_SPRING, PUFF_VENT } from './particles/puffs.ts';
 import type { Lod } from '../geo/index.ts';
 import { createLanternPools, type LanternPools } from './night/lantern-pools.ts';
 import { createBeam } from './night/beam.ts';
+import { createBeaconNet } from './night/beacons.ts';
+import { createFireworks } from './particles/fireworks.ts';
 import { createDrones } from './drones.ts';
 import { createMovers } from './movers.ts';
 import { createCultureMovers } from './culture-movers.ts';
@@ -185,6 +187,12 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   const pools = createLanternPools(settlement.props, d.scope, d.renderer ?? null);
   const beam = createBeam(settlement.props, d.scope);
   if (beam.mesh) group.add(beam.mesh);
+  // M23 TASK-490: the skerry beacons join the lighthouse on one turn with a route-order lag; the
+  // 22:01 fireworks over the HQ harbour
+  const beacons = createBeaconNet(settlement.props, world, beam, d.scope);
+  group.add(beacons.group);
+  const fireworks = createFireworks(d.scope, d.quality, world);
+  if (fireworks.mesh) group.add(fireworks.mesh);
   // drone couriers between HQ and the docks (TASK-384)
   const drones = createDrones(world, d.quality, d.scope, seed);
   if (drones.mesh) group.add(drones.mesh);
@@ -388,6 +396,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     lights.update(env, d.camera, _focus);
     sky.update(env, _camPos, time, culture.state, fx.veil);
     beam.update();
+    beacons.update(_camPos);
     drones.update(time);
     movers.update(time, _camPos);
     cultureMovers.update(time, env.hour, env, _camPos, culture.state);
@@ -397,7 +406,10 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     clouds.update(d.getTime(), env, _camPos, tier, fx);
     d.camera.getWorldDirection(_camDir);
     rain.update(fx.rain, env, _camPos, _camDir, camDist, world.windDir, fx.gust);
-    d.counters.particles = clouds.puffs.stats().used + rain.count();
+    d.counters.particles =
+      clouds.puffs.stats().used +
+      rain.count() +
+      fireworks.update(time, culture.state.day, fx.rain, d.camera);
     if (tier !== lastTier) {
       lastTier = tier;
       terrain.onTier(tier);

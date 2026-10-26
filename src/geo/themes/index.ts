@@ -21,6 +21,7 @@ import { M20_HQ_GEO } from './culture-m20-hq.ts';
 import { M20_DESIGN_GEO } from './culture-m20-design.ts';
 import { RIM_GEO } from './rim.ts';
 import { STAIR_GEO } from './stairs.ts';
+import { BEACON_GEO } from './beacon.ts';
 
 export const THEME_GEO: readonly PropGeoDef[] = [
   ...HQ_GEO,
@@ -46,4 +47,6 @@ export const THEME_GEO: readonly PropGeoDef[] = [
   ...CODING_M22_GEO,
   // TASK-485 stair flights
   ...STAIR_GEO,
+  // M23 TASK-490 skerry beacon
+  ...BEACON_GEO,
 ];
