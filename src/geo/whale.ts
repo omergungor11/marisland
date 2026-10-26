@@ -1,12 +1,11 @@
 import * as THREE from 'three';
-import { createRng } from '../core/rng.ts';
 import { WHALE } from '../content/whale.ts';
 
 /**
  * The grey whale mesh (M23 TASK-489): low-poly, vertex-coloured, faceted, built from code. One
  * non-indexed geometry whose vertices the view re-poses on the CPU each frame (a spine of rings:
  * the body bends in the vertical plane, the tail and fluke flex, the flippers paddle) — one hero
- * animal, ≈ 650 triangles, so a CPU skin is cheaper than any extra program. Local frame: +x
+ * animal, ≈ 900 triangles, so a CPU skin is cheaper than any extra program. Local frame: +x
  * forward (the nose), +y up, +z right; the origin is the body-centre ring.
  *
  * Geometry attributes match the lit program (position, normal, color, wind, ao, emissive), so the
@@ -36,13 +35,13 @@ export interface WhaleRig {
 }
 
 /** Ring axis positions (u, nose +), radii; index 0 is the nose apex. The pivot ring is `PIVOT`. */
-const A = [7.0, 6.8, 6.1, 5.2, 4.2, 3.2, 2.1, 1.0, 0.0, -1.1, -2.2, -3.3, -4.2, -5.0, -5.5];
-const R = [0, 0.62, 1.2, 1.65, 1.95, 2.1, 2.15, 2.1, 2.0, 1.8, 1.5, 1.15, 0.85, 0.6, 0.5];
+const A = [7.2, 7.0, 6.5, 5.7, 4.7, 3.6, 2.4, 1.2, 0.0, -1.2, -2.3, -3.3, -4.2, -5.0, -5.7, -6.2];
+const R = [0, 1.1, 1.9, 2.5, 2.85, 3.0, 3.0, 2.8, 2.4, 1.95, 1.5, 1.12, 0.88, 0.72, 0.62, 0.56];
 const PIVOT = 8;
 const RINGS = A.length;
 /** Frame index of the fluke (after the last ring). */
 const FLUKE = RINGS;
-const N = 16;
+const N = 20;
 const TAU = Math.PI * 2;
 const clamp01 = (x: number): number => (x < 0 ? 0 : x > 1 ? 1 : x);
 const smooth = (x: number): number => {
@@ -61,7 +60,6 @@ interface Node {
 
 export function buildWhale(): WhaleRig {
   const C = WHALE.colors;
-  const rng = createRng(489).fork('whale');
   const nodes: Node[] = [];
   const corner: number[] = [];
   const colour: THREE.Color[] = [];
@@ -98,15 +96,13 @@ export function buildWhale(): WhaleRig {
     const row: number[] = [];
     for (let j = 0; j < N; j++) {
       const th = (j / N) * TAU;
-      let ry = R[k] * 0.97;
-      const rz = R[k] * 1.04;
+      const ry = R[k] * 0.97;
+      const rz = R[k] * 1.2;
       let cy = Math.cos(th);
       if (cy < 0) cy *= 0.92; // flatter belly
-      // dorsal knuckles on the peduncle
-      if (j === 0 && k >= 9 && k <= 11) ry *= 1.2;
-      // throat grooves: every other belly line pulled in on the head and chest
+      // throat grooves: the three belly lines pulled in on the head and chest
       let g = 1;
-      if ((j === 7 || j === 8 || j === 9) && k <= 8) g = 1 - 0.06 * (1 - smooth((k - 4) / 5));
+      if (Math.abs(j - N / 2) <= 1 && k <= 8) g = 1 - 0.06 * (1 - smooth((k - 4) / 5));
       row.push(addNode({ k, ox: 0, oy: ry * cy * g, oz: rz * Math.sin(th) * g }));
     }
     ring.push(row);
@@ -116,12 +112,12 @@ export function buildWhale(): WhaleRig {
   const faceColour = (k: number, j: number): string => {
     const c = (j + 0.5) / N; // 0 top .. 0.5 bottom .. 1 top, symmetric
     const ang = Math.min(c, 1 - c) * 2; // 0 at the top, 1 at the bottom
-    const mouthJ = k <= 3 ? 4 : 3;
-    // mouth line: the smiling band along the head, on each side
-    if (k >= 2 && k <= 5 && (j === mouthJ || j === N - 1 - mouthJ)) return C.mouth;
-    if (ang > 0.72) return k <= 8 && j % 2 === 0 ? C.groove : C.belly;
-    if (ang > 0.52) return C.flank;
-    return rng.chance(0.06) ? C.mottle : C.back;
+    if (ang > 0.6) return k <= 8 && j % 2 === 0 ? C.groove : C.belly;
+    if (ang > 0.38) return C.flank;
+    // dorsal ridge: the two top lines from the shoulders to the stock
+    if (ang < 0.12 && k >= 3 && k <= 14) return C.ridge;
+    if (k <= 2) return C.snout;
+    return C.back;
   };
   for (let j = 0; j < N; j++) {
     const j2 = (j + 1) % N;
@@ -140,7 +136,7 @@ export function buildWhale(): WhaleRig {
       ring[RINGS - 1][j],
       cap,
       ring[RINGS - 1][j2],
-      C.back,
+      C.ridge,
       (p) => new THREE.Vector3(-1, p.y * 0.1, p.z * 0.1),
     );
   }
@@ -148,13 +144,17 @@ export function buildWhale(): WhaleRig {
   // --- fluke: a flat double layer in the fluke frame (outline points x back, z across)
   const outline: [number, number][] = [
     [-0.1, 0.45],
-    [-0.9, 1.5],
-    [-1.75, 2.55],
-    [-1.15, 1.1],
-    [-0.95, 0],
-    [-1.15, -1.1],
-    [-1.75, -2.55],
-    [-0.9, -1.5],
+    [-0.8, 1.8],
+    [-1.6, 3.5],
+    [-2.7, 4.6],
+    [-1.9, 2.3],
+    [-1.3, 0.8],
+    [-1.0, 0],
+    [-1.3, -0.8],
+    [-1.9, -2.3],
+    [-2.7, -4.6],
+    [-1.6, -3.5],
+    [-0.8, -1.8],
     [-0.1, -0.45],
   ];
   const th = 0.09;
@@ -162,11 +162,11 @@ export function buildWhale(): WhaleRig {
     outline.map(([x, z]) => addNode({ k: FLUKE, ox: x, oy: layer * th, oz: z }));
   const top = mk(1);
   const bot = mk(-1);
-  const ctop = addNode({ k: FLUKE, ox: -0.45, oy: th, oz: 0 });
-  const cbot = addNode({ k: FLUKE, ox: -0.45, oy: -th, oz: 0 });
+  const ctop = addNode({ k: FLUKE, ox: -0.5, oy: th, oz: 0 });
+  const cbot = addNode({ k: FLUKE, ox: -0.5, oy: -th, oz: 0 });
   for (let i = 0; i < outline.length; i++) {
     const i2 = (i + 1) % outline.length;
-    tri(ctop, top[i2], top[i], C.fluke, fixed(0, 1, 0));
+    tri(ctop, top[i2], top[i], i >= 3 && i <= 9 ? C.flukeEdge : C.fluke, fixed(0, 1, 0));
     tri(cbot, bot[i], bot[i2], C.flukeUnder, fixed(0, -1, 0));
     if (i < outline.length - 1) {
       tri(top[i], top[i2], bot[i2], C.fluke, (p) => new THREE.Vector3(p.x + 1, 0, p.z));
@@ -175,24 +175,25 @@ export function buildWhale(): WhaleRig {
   }
 
   // --- pectoral flippers (paddle about the root on the chest ring)
-  const FIN_K = 5;
+  const FIN_K = 6;
   const fin: [number, number][] = [
-    [0.55, 0],
-    [0.25, 1.2],
-    [-0.7, 2.2],
-    [-1.3, 1.7],
-    [-0.6, 0.9],
-    [-0.5, 0],
+    [0.8, 0],
+    [0.5, 1.2],
+    [-0.3, 2.3],
+    [-1.4, 3.1],
+    [-1.8, 2.1],
+    [-1.7, 1.1],
+    [-1.3, 0],
   ];
   for (const side of [-1, 1]) {
-    const ry = -0.85;
-    const rz = side * 1.95;
+    const ry = -0.15;
+    const rz = side * 3.2;
     const mkf = (layer: number): number[] =>
       fin.map(([x, d]) =>
         addNode({
           k: FIN_K,
           ox: x,
-          oy: ry - 0.32 * d + layer * 0.06,
+          oy: ry + 0.22 * d + layer * 0.09,
           oz: rz + side * d,
           fin: { side, ry, rz },
         }),
@@ -201,7 +202,7 @@ export function buildWhale(): WhaleRig {
     const fb = mkf(-1);
     for (let i = 1; i < fin.length - 1; i++) {
       tri(ft[0], ft[i + 1], ft[i], C.fin, fixed(0, 1, 0));
-      tri(fb[0], fb[i], fb[i + 1], C.fin, fixed(0, -1, 0));
+      tri(fb[0], fb[i], fb[i + 1], C.finUnder, fixed(0, -1, 0));
     }
   }
 
@@ -214,8 +215,9 @@ export function buildWhale(): WhaleRig {
     r: number,
     hex: string,
     sq: [number, number, number] = [1, 1, 1],
+    detail = 0,
   ): void => {
-    const g = ico(r, 0);
+    const g = ico(r, detail);
     const p = g.getAttribute('position');
     const idx: number[] = [];
     for (let i = 0; i < p.count; i++)
@@ -235,9 +237,9 @@ export function buildWhale(): WhaleRig {
     }
   };
   for (const s of [-1, 1]) {
-    blob(3, [0.1, 0.62, s * 1.52], 0.34, C.eye);
-    blob(3, [0.3, 0.8, s * 1.7], 0.11, C.eyeLight);
-    blob(4, [-0.2, -0.28, s * 1.92], 0.4, C.blush, [1, 0.8, 0.35]);
+    blob(3, [0.3, 0.85, s * 2.45], 0.5, C.eye, [1, 1, 1], 1);
+    blob(3, [0.58, 1.1, s * 2.7], 0.16, C.eyeLight);
+    blob(4, [-0.5, -0.1, s * 3.2], 0.5, C.blush, [1, 0.8, 0.35]);
   }
 
   // --- bake: corner list, colours, orient triangles
@@ -284,14 +286,14 @@ export function buildWhale(): WhaleRig {
   const sa = Float32Array.from(A);
   const tail = new THREE.Vector3();
   const pose = (b: WhaleBend, skin = true): void => {
-    // frame angles: pitch − arch·a, the tail bend ramped over the rear half, the vertical undulation
+    // frame angles: pitch − arch·a, the tail bend (+ = up: a positive angle on the rear segments points them down) ramped over the rear half, the vertical undulation
     for (let k = 0; k < RINGS; k++) {
       const a = A[k];
       const ramp = Math.pow(clamp01((0.5 - a) / 6), 1.2);
       const wagW = Math.pow(clamp01((1.5 - a) / 7), 1.5);
-      phi[k] = b.pitch - b.arch * a + b.tail * ramp + b.wag * Math.sin(b.wagPhase - 0.5 * a) * wagW;
+      phi[k] = b.pitch - b.arch * a - b.tail * ramp + b.wag * Math.sin(b.wagPhase - 0.5 * a) * wagW;
     }
-    phi[FLUKE] = phi[RINGS - 1] + b.fluke;
+    phi[FLUKE] = phi[RINGS - 1] - b.fluke;
     sx[PIVOT] = 0;
     sy[PIVOT] = 0;
     for (let k = PIVOT - 1; k >= 0; k--) {
@@ -306,8 +308,8 @@ export function buildWhale(): WhaleRig {
     }
     sx[FLUKE] = sx[RINGS - 1];
     sy[FLUKE] = sy[RINGS - 1];
-    // fluke tip midpoint: the fluke frame, 1.75 behind its root
-    tail.set(sx[FLUKE] - 1.75 * Math.cos(phi[FLUKE]), sy[FLUKE] - 1.75 * Math.sin(phi[FLUKE]), 0);
+    // fluke tip midpoint: the fluke frame, 2.7 behind its root
+    tail.set(sx[FLUKE] - 2.7 * Math.cos(phi[FLUKE]), sy[FLUKE] - 2.7 * Math.sin(phi[FLUKE]), 0);
     if (!skin) return;
     for (let i = 0; i < nodes.length; i++) {
       const n = nodes[i];
@@ -342,4 +344,5 @@ export function buildWhale(): WhaleRig {
   return { geometry, pose, spine: { x: sx, y: sy, a: sa }, tail, tris: nTri };
 }
 
-export const WHALE_RINGS = { count: RINGS, pivot: PIVOT };
+/** The blowhole ring and the skin height above its spine point (render/whale.ts). */
+export const WHALE_RINGS = { count: RINGS, pivot: PIVOT, blowK: 5, blowR: R[5] * 0.97 };

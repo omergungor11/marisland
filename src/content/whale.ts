@@ -5,7 +5,7 @@
  */
 export const WHALE = {
   /** Nose to fluke tips, u (the body ring table in geo/whale.ts is built for this length). */
-  length: 14,
+  length: 16,
   /** Day clock this whale lives on (the culture clock), game hour of the cape pass. */
   capeHour: 17.75,
 
@@ -48,7 +48,7 @@ export const WHALE = {
     depth: -7.5,
     /** Back rises over `rise`, resting with its top `back` u above the sea. */
     rise: 6,
-    back: 1.75,
+    back: 2.9,
     /** Blows (event s) and how long each plume lasts. */
     blows: [5.2, 10.4] as const,
     blowSeconds: [3.2, 2.2] as const,
@@ -74,24 +74,33 @@ export const WHALE = {
   },
 
   /** Idle swim: tail undulation (deg), body roll (deg), bob (u) and their periods (s). */
-  swim: { tailDeg: 7, period: 3.6, rollDeg: 2.4, rollPeriod: 5.2, bob: 0.09, flipperDeg: 12 },
+  swim: {
+    tailDeg: 7,
+    period: 3.6,
+    rollDeg: 2.4,
+    rollPeriod: 5.2,
+    bob: 0.09,
+    flipperDeg: 14,
+    /** Resting tail lift while surfaced, rad: the peduncle curls up so the fluke clears the water. */
+    tailLift: 0.22,
+  },
 
   /** Spout / splash puffs (puff program, placed slots; `edge` = alpha edge of the placed puffs). */
   spout: {
-    puffs: 30,
-    life: 1.9,
-    /** Plume height (u) and base / top diameter. */
-    height: 8,
-    size: [1.5, 3.4] as const,
-    opacity: 0.75,
-    spread: 0.45,
-    edge: 0.8,
-    fadeIn: 0.08,
-    /** Blowhole position on the back: along the axis (a, +x forward) and above the surface. */
+    puffs: 34,
+    life: 2.1,
+    /** Plume height (u) and base / top diameter: one soft, overlapping column. */
+    height: 7.2,
+    size: [1.9, 3.5] as const,
+    opacity: 0.6,
+    spread: 0.22,
+    edge: 0.35,
+    fadeIn: 0.1,
+    /** Blowhole position on the back: lift above the surface of the skin. */
     blowhole: { a: 3.4, lift: 0.1 },
   },
   splash: {
-    puffs: 14,
+    puffs: 10,
     life: 1.5,
     radius: [0.8, 4.2] as const,
     height: 2.8,
@@ -104,20 +113,24 @@ export const WHALE = {
   fade: { near: 44, far: 20 },
 
   /** Pick proxy for the click (spheres along the body axis), u. */
-  pick: { radius: 2.7, samples: 5 },
+  pick: { radius: 3.1, samples: 5 },
 
   colors: {
-    back: '#8CA4C2',
-    flank: '#A9BDD6',
-    belly: '#F2EFE6',
-    groove: '#E6E6DE',
-    fin: '#7890AC',
-    fluke: '#7C93B0',
-    flukeUnder: '#B9C4CF',
-    mouth: '#7B90AB',
-    eye: '#232834',
+    back: '#8AA2C4',
+    /** The dorsal stripe: a darker ridge along the spine, so the body reads long from above. */
+    ridge: '#6B84AA',
+    flank: '#A9BDD8',
+    belly: '#F4F0E4',
+    groove: '#E4E4DA',
+    /** Pale head cap (the rostrum). */
+    snout: '#B9CAE0',
+    fin: '#B4C6E0',
+    finUnder: '#F0EEE6',
+    fluke: '#7F98BC',
+    flukeEdge: '#C4D3E6',
+    flukeUnder: '#C9D2DC',
+    eye: '#1E2430',
     eyeLight: '#FFFFFF',
-    blush: '#F2B5B0',
-    mottle: '#9DB3CE',
+    blush: '#F2A9A6',
   },
 } as const;
