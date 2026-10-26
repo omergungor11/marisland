@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { BLINK } from '../content/activity.ts';
+import { STAIR_FLIGHT } from '../content/stairs.ts';
 import { OFFICE_DEFS, OFFICE_INTERIOR_SHELLS, WORK_SPOTS } from '../content/offices.ts';
 import { PROP_GEO, buildProp } from './index.ts';
 import { THEME_GEO } from './themes/index.ts';
@@ -224,8 +225,15 @@ describe('prop geometry', () => {
           }
           const bb = g.boundingBox!;
           // pipe support posts run down into the slope (TASK-453c; 4.2 u: a run over a terrace
-          // wall's riser, TASK-461), buried on flat ground
-          expect(bb.min.y).toBeGreaterThanOrEqual(def.id === 'pipe' ? -4.3 : -0.05);
+          // wall's riser, TASK-461), buried on flat ground; stair treads carry a skirt that hides
+          // the wall under the flight (TASK-485)
+          const below =
+            def.id === 'pipe'
+              ? -4.3
+              : def.id === 'stairFlight'
+                ? -Math.max(...STAIR_FLIGHT.looks.map((L) => L.skirt)) - 0.05
+                : -0.05;
+          expect(bb.min.y).toBeGreaterThanOrEqual(below);
           const h = def.heights?.[v] ?? def.height;
           expect(bb.max.y).toBeGreaterThanOrEqual(h * 0.65);
           expect(bb.max.y).toBeLessThanOrEqual(h * 1.35);

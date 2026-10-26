@@ -702,7 +702,7 @@ export function buildMailCable(rng: Rng, a: Vec3Like, b: Vec3Like, lod: Lod): TH
     const p = mailCablePoint(a, b, i / n);
     return V(p.x, p.y, p.z);
   });
-  put(acc, tubeAlong(pts, MAIL.cableRadius, lod === 0 ? 4 : 3), [0, 0, 0], ROCK[2], {
+  put(acc, tubeAlong(pts, MAIL.cableRadius, lod === 0 ? 4 : 3), [0, 0, 0], MAIL.cableColor, {
     aoAmt: 0,
     ao: () => 1,
     noJitter: true,

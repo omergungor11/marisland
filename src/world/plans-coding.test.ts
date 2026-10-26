@@ -205,7 +205,8 @@ describe('Coding island plan (TASK-363)', { timeout: 120_000 }, () => {
 
 /** Count range per culture def on the Coding island (30 seeds). */
 const KIT_COUNTS: Record<string, readonly [number, number]> = {
-  pergolaDesk: [4, 4],
+  // TASK-485: a desk on a story spot's stage (the duck crossing's route) yields
+  pergolaDesk: [3, 4],
   whiteboardA: [2, 2],
   // + the M22 nap grove (TASK-479): up to 3 mugs and 6 hammocks beside the turbine-foot ones
   mugStack: [3, 6],

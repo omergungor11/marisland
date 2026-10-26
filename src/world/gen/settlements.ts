@@ -55,6 +55,8 @@ import {
   writePaths,
 } from './paths.ts';
 import { THEME_PLANNERS } from './plans/index.ts';
+import { clearStoryStages, storyKeepOuts } from './story-keepout.ts';
+import { stairFlights } from './stair-flights.ts';
 import {
   add,
   addPad,
@@ -1122,6 +1124,25 @@ export function buildSettlements(input: SettlementInput, rng: Rng): SettlementRe
   for (const [i, z] of spared) ctx.zone[i] = z;
   // late plan passes that need the final footpaths (TASK-480 rim walkway)
   for (const plan of plans) plan.finish?.(built.paths);
+  // story stages stay clear of avenue / kit fixtures that are not the spot's own (TASK-485)
+  const staged = clearStoryStages(
+    ctx.fixtures,
+    plans.flatMap((p) => p.stories ?? []),
+  );
+  ctx.fixtures.length = 0;
+  ctx.fixtures.push(...staged);
+  // steep stair legs over the spared faces get a visible flight (TASK-485)
+  ctx.fixtures.push(
+    ...stairFlights(
+      ctx.h,
+      (id) => input.islands[id].theme,
+      (x, z) => {
+        const zn = ctx.zone[cellOf(ctx, x, z)];
+        return zn === Zone.rock || zn === Zone.cliff;
+      },
+      built.paths,
+    ),
+  );
 
   const fences: Polyline[] = [];
   for (const plan of plans) {
@@ -1215,6 +1236,8 @@ export function markSites(occ: OccupancyGrid, world: WorldData, shapes: Shape[][
       }
   };
   for (const list of shapes) for (const sh of list) markShape(sh, OCC_STRUCTURE, 0.75);
+  // story stages (TASK-485): no trees / bushes on the routes, ground cover stays
+  for (const sp of world.storySpots) for (const sh of storyKeepOuts(sp)) markShape(sh, OCC_PATH, 0);
   for (const p of world.paths)
     for (const q of p.points) markShape(discShape(q.x, q.z, PATHS.halfWidth), OCC_PATH, 0);
 }

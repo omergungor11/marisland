@@ -5,6 +5,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { RIM_POST_LOOKS } from '../content/rim-walkway.ts';
+import { CULTURE_RHYTHM } from '../content/cultures/rhythm.ts';
 import { CODING_RIM_BENCHES, CODING_RIM_WALK } from '../content/themes/coding.ts';
 import { segDist } from './gen/sites.ts';
 import { generateWorld, heightAt, type IslandData, type WorldData, type XZ } from './index.ts';
@@ -39,7 +40,9 @@ describe('Coding C18 rim boardwalk (TASK-484), 30 seeds', { timeout: 120_000 }, 
     expect(P.variant >> 1).toBe(1);
     expect(P.end).toBe(P.variant + 1);
     expect(look.railLen).toBe(P.spacing);
-    expect(look.lamp).toBeNull();
+    // TASK-485: a warm lamp cap, switched by the Coding lamp set
+    expect(look.lamp).not.toBeNull();
+    expect(CULTURE_RHYTHM.coding.lamps.defs).toContain(P.def);
   });
 
   it('a timber walk on the plateau rim, wooden posts every 3 u, gaps at paths', () => {

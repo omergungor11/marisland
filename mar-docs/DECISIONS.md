@@ -23,6 +23,34 @@ narrower than a large isotropic slack.
 **Impact**: `StepMetrics.parallaxCells`; `compareFrames(…, slack, parallax)`; the harness passes `parallaxRatio`
 for each step or pair.
 
+## D-065: Story-spot keep-out and stair flights on spared faces — 2026-10-26
+
+**Decision** (TASK-485): (1) Every story spot has a *stage* derived from the life content (SPOT_CRITTERS
+routes, TABLEAU bots' feet; `world/gen/story-keepout.ts`, numbers `STORY_KEEP_OUT` in
+`content/placement.ts`). After the plans' `finish` pass, planner fixtures on a stage are dropped unless
+they are the spot's own props (its defs / anchors / look-ats within `own` u); tall poles
+(`STORY_KEEP_OUT.tall`) keep a wider stage; scatter trees / bushes avoid stages (OCC_PATH mark).
+Planners may pick a clear stage up front (Coding's duck crossing tries both sides / both pool ends).
+(2) On themes in `STAIR_FLIGHT.byTheme` (Marketing) every steep 'stair' leg gets a `stairFlight` fixture
+(new shared def, look × rise variants, `content/stairs.ts`). TASK-453c spares those faces from the path
+paint and the TASK-391 earth-wall shading ignores zones on steep faces, so the Beacon Rock stairs were
+invisible and their walkers stood on bare cliff (M22 QA "bot on the cliff face", seed 2024): not a
+walk-graph leak. Invariant test: no walk-graph edge on a flight theme climbs > `minGrade` without a flight.
+**Impact**: world hashes change (re-pinned); a duck-crossing stage drops two C11 windsocks per seed;
+W25 re-framed from the north (the giant screen is the boulevard's lee terminus, so every bay-side look
+puts it in front of the carpet).
+
+## D-064: M23 world signature — the whale, constellations and fireworks — 2026-10-26
+
+**Decision** (user, 2026-10-26, `mar-plans/study/world.md` questions 4 and 6):
+- The one big sea animal is the whale (`W:D6`): a world mover, not an agent; it passes the Research cape at
+  17:45, so Research gets no whale of its own (`RS:R8` stays rejected).
+- Night sky: culture constellations (`W:G4`) plus the 22:01 fireworks after the relay (`W:G7`). No aurora (`W:G3`).
+- K3 sills are already decided (D-058: underwater only).
+
+**How**: M23 = TASK-488 (D1 + K3), 489 (D6), 490 (B1 + B6 + G7), 491 (G4), 492 QA. It starts after the M22
+follow-ups (TASK-485…487) merge, so worldgen and shader work don't collide.
+
 ## D-063: Island-agnostic rim walkway primitive — 2026-10-24
 
 **Decision**: Cliff-top boardwalks are one shared worldgen primitive (`world/gen/rim-walkway.ts`, spec type
@@ -32,8 +60,8 @@ at footpaths. It runs in the new `SitePlan.finish` pass, after paths are written
 in `RIM_POST_LOOKS` (append-only: the index is the `rimPost` variant). QA (TASK-480, hazard posts + mint rails)
 and Coding C18 (TASK-484, timber posts + rope rails + two sea-facing benches) use it.
 **Rationale**: WORLD_PLAN reuses the rim walk on several islands; one primitive keeps the rules and tests in one
-place. **Impact**: adding a rim walk changes world hashes (re-pin); the Coding walk is unlit at night until a
-post cap joins the Coding lamp set in `rhythm.ts`.
+place. **Impact**: adding a rim walk changes world hashes (re-pin); the Coding walk was unlit at night until
+TASK-485 gave its posts a warm cap in the Coding lamp set (`rhythm.ts`).
 
 ## D-062: Round 3 for the five islands (M22) — all recommended options; HQ street tint stays — 2026-10-24
 

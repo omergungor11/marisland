@@ -58,7 +58,9 @@ export const CULTURE_RHYTHM: Record<ThemeId, CultureRhythm> = {
       { id: 'hammockHour', hour: 17.5 },
       { id: 'fairyLights', hour: 19.5 },
     ],
-    lamps: { defs: ['pergolaDesk', 'fairyWreath'], on: 19.5, off: 5.5, rampS: 10 },
+    // + the C18 boardwalk posts' lamp caps (TASK-485; `rimPost` is in the QA set too: the shader
+    // takes each instance's nearest island clock, so both islands keep their own window)
+    lamps: { defs: ['pergolaDesk', 'fairyWreath', 'rimPost'], on: 19.5, off: 5.5, rampS: 10 },
   },
   // Ember Smiths: shift siren, hammer hours, shift end, Release Night at 21:00 (40 s)
   devops: {
@@ -182,7 +184,12 @@ export const CULTURE_GATES = {
 
 export type CultureGateId = keyof typeof CULTURE_GATES;
 
-/** Def id → its culture lamp set's theme (prop materials switch those defs to the island clock). */
+/**
+ * Def id → the first culture lamp set listing it (prop materials switch those defs to the island
+ * clock), null when none does. A def may sit in several sets (`rimPost`: QA and Coding); that is
+ * fine because the clock is never taken from this theme: the shader reads the lamp state of each
+ * instance's nearest island (`marCulture`).
+ */
 export function cultureLampTheme(defId: string): ThemeId | null {
   for (const [t, r] of Object.entries(CULTURE_RHYTHM) as [ThemeId, CultureRhythm][])
     if (r.lamps.defs.includes(defId)) return t;
