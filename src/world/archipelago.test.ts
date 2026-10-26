@@ -2,7 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { adjacentPairs } from './gen/layout.ts';
 import { coveness } from './gen/heightfield.ts';
 import { ARCHETYPES } from '../content/islands.ts';
-import { generateWorld, heightAt, Zone, type IslandData, type WorldData } from './index.ts';
+import {
+  generateWorld,
+  heightAt,
+  openSeaAt,
+  reefClearance,
+  routeClearance,
+  Zone,
+  type IslandData,
+  type WorldData,
+} from './index.ts';
+import { REEFS } from '../content/reefs.ts';
 import { perfLimit } from '../test/perf.ts';
 
 // Tests measure wall time; generation itself never reads a clock.
@@ -92,9 +102,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "4ac28a22817fb744",
-          "1001": "936e7e2ad0f56f74",
-          "42": "e493377dfa9e323f",
+          "1": "ca019b76b7e92587",
+          "1001": "fbc6788f7c6f537a",
+          "42": "3d0e55e485bbaf65",
         }
       `);
     },
@@ -313,6 +323,114 @@ describe('archipelago — 30-seed full generation', () => {
   });
 });
 
+describe('reef shoals + shared-shelf sills (TASK-488, W:D1 / W:K3), 30 seeds', () => {
+  const axisLen = (r: { x0: number; z0: number; x1: number; z1: number }): number =>
+    Math.hypot(r.x1 - r.x0, r.z1 - r.z0);
+
+  it(
+    '3–6 shoals and ≤ 3 sills per seed; sills join neighbouring islands',
+    { timeout: 60_000 },
+    () => {
+      let withSill = 0;
+      for (const seed of SEEDS) {
+        const w = world(seed);
+        const shoals = w.reefs.filter((r) => r.kind === 'shoal');
+        const sills = w.reefs.filter((r) => r.kind === 'sill');
+        expect(shoals.length, `seed ${seed} shoals`).toBeGreaterThanOrEqual(REEFS.shoal.count[0]);
+        expect(shoals.length, `seed ${seed} shoals`).toBeLessThanOrEqual(REEFS.shoal.count[1]);
+        expect(sills.length, `seed ${seed} sills`).toBeLessThanOrEqual(REEFS.sill.maxCount);
+        if (sills.length > 0) withSill++;
+        for (const s of sills) {
+          expect(s.islands).toHaveLength(2);
+          expect(axisLen(s)).toBeLessThanOrEqual(REEFS.sill.maxLength);
+        }
+      }
+      expect(withSill, 'seeds with at least one sill').toBeGreaterThanOrEqual(25);
+    },
+  );
+
+  it('reefs stay under water: no reef cell dries, sill + shoal crests ≤ −2 u off the shelf', () => {
+    for (const seed of SEEDS) {
+      const w = world(seed);
+      let wet = 0;
+      let crest = -Infinity;
+      for (let i = 0; i < w.reefWeight.length; i++) {
+        if (w.reefWeight[i] === 0) continue;
+        expect(w.height.data[i], `seed ${seed} reef cell ${i} above water`).toBeLessThan(0);
+        // off the islands' own shelf (natural −0.1…−1.5 u out to ≈ 24 u on leeward coasts)
+        if (w.shoreSdf[i] < -30) crest = Math.max(crest, w.height.data[i]);
+        wet++;
+      }
+      expect(wet, `seed ${seed} reef cells`).toBeGreaterThan(0);
+      expect(crest, `seed ${seed} shallowest reef cell off the shelf`).toBeLessThanOrEqual(-2);
+      // the sill crest itself, sampled along the middle of its axis
+      for (const s of w.reefs.filter((r) => r.kind === 'sill')) {
+        const L = axisLen(s);
+        for (let t = 0.3; t <= 0.7; t += 0.05) {
+          const y = heightAt(w.height, s.x0 + (s.x1 - s.x0) * t, s.z0 + (s.z1 - s.z0) * t);
+          expect(
+            y,
+            `seed ${seed} sill ${s.islands.join('-')} (${L.toFixed(0)} u) at ${t}`,
+          ).toBeLessThanOrEqual(REEFS.sill.maxY + 1e-4);
+        }
+      }
+    }
+  });
+
+  it('boat and ferry routes cross a reef only through a deep gap', { timeout: 60_000 }, () => {
+    // the same seeds without reefs: the natural seabed (reefs run after the shelf pass and
+    // fork their own rng, so nothing before them changes)
+    const sh = REEFS.shoal as { count: readonly [number, number] };
+    const si = REEFS.sill as { maxCount: number };
+    const saved = { count: sh.count, maxCount: si.maxCount };
+    const seeds = SEEDS.slice(0, 12);
+    const natural = new Map<number, WorldData>();
+    try {
+      sh.count = [0, 0];
+      si.maxCount = 0;
+      for (const seed of seeds) natural.set(seed, generateWorld(seed));
+    } finally {
+      sh.count = saved.count;
+      si.maxCount = saved.maxCount;
+    }
+    let crossings = 0;
+    for (const seed of seeds) {
+      const w = world(seed);
+      const w0 = natural.get(seed) as WorldData;
+      expect(w0.reefs).toHaveLength(0);
+      for (const route of w.boatRoutes)
+        for (const p of route.points) {
+          const y = heightAt(w.height, p.x, p.z);
+          const y0 = heightAt(w0.height, p.x, p.z);
+          if (y <= y0 + 0.25) continue; // the reef did not lift the seabed here
+          crossings++;
+          expect(
+            y,
+            `seed ${seed} ${route.kind} over a raised reef at (${p.x.toFixed(0)}, ${p.z.toFixed(0)})`,
+          ).toBeLessThanOrEqual(-(REEFS.gap.depth - 0.5));
+        }
+    }
+    console.info(`route samples over raised seabed (all in deep gaps), 12 seeds: ${crossings}`);
+    expect(crossings).toBeGreaterThan(0);
+  });
+
+  it('open-sea query (TASK-489 whale hook): off reefs, deep, ≥ 20 u from every route', () => {
+    const w = world(SEEDS[0]);
+    for (const r of w.reefs) {
+      const cx = (r.x0 + r.x1) / 2;
+      const cz = (r.z0 + r.z1) / 2;
+      expect(reefClearance(w.reefs, cx, cz)).toBeLessThan(0);
+      expect(openSeaAt(w, cx, cz)).toBe(false);
+    }
+    const p = w.boatRoutes[0].points[0];
+    expect(routeClearance(w.boatRoutes, p.x, p.z)).toBeLessThan(1e-6);
+    expect(openSeaAt(w, p.x, p.z)).toBe(false);
+    // the open sea well outside the archipelago
+    const far = Math.max(...w.islands.map((i) => Math.hypot(i.cx, i.cz) + i.reach)) + 40;
+    expect(openSeaAt(w, far, 0) || openSeaAt(w, -far, 0) || openSeaAt(w, 0, far)).toBe(true);
+  });
+});
+
 describe('bluff coasts (TASK-390), 30 seeds', () => {
   const BLUFFED = (Object.keys(ARCHETYPES) as (keyof typeof ARCHETYPES)[]).filter(
     (a) => ARCHETYPES[a].bluff?.on,
@@ -431,9 +549,10 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // TASK-482 DevOps quick wins (watch tower, pools, columns, switchback roads), re-pinned;
       // TASK-479 Coding quick wins, TASK-481 Marketing, TASK-483 Research quick wins, re-pinned;
       // TASK-484 Coding C18 rim boardwalk + benches, re-pinned; TASK-485 story-spot keep-out,
-      // Beacon Rock stair flights, HQ streets to the waterline, bigger slalom buoys, re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('d32ea5cbf75228cc');
-      expect(generateWorld(1).hashes.world).toBe('c8a28170508f5886');
+      // Beacon Rock stair flights, HQ streets to the waterline, bigger slalom buoys, re-pinned;
+      // TASK-488 reef shoals + sills (routes detour, deep gaps, buoys off crossings), re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('37221b521549e4ec');
+      expect(generateWorld(1).hashes.world).toBe('84c74767b80306cd');
     } finally {
       for (const b of saved) b.on = true;
     }
