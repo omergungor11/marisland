@@ -630,6 +630,76 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     height: 1080,
     sets: ['wow'],
   },
+  {
+    id: 'W15b',
+    title: 'Relay Wave',
+    // TASK-490 (W:B1 + W:B6): the postcard at 21:00 +11 s, DevOps' step: the skerry beacons and the
+    // Marketing lighthouse sweep one after another (1 s lag in route order), the signal lamps sit on
+    // the island peaks and DevOps' lamp throws its first flash toward QA
+    seed: 1001,
+    cam: 'postcard',
+    time: 21,
+    simt: 11.2,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  {
+    id: 'W15c',
+    title: 'Harbour Fireworks',
+    // TASK-490 (W:G7): 22:01 (the relay and the Comet Night are over) +14.9 s into the show, from the
+    // sea south of the Harbour Guild: the finale shells over the bay, sparks glittering on the water,
+    // the island's lit quay below (raw)
+    seed: 1001,
+    cam: '-30,8,200,-30,38,10',
+    time: 21,
+    simt: 99.9,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  {
+    id: 'D-fireworks-rain',
+    title: 'Harbour Fireworks cancelled in rain (W15c clock)',
+    // TASK-490: the show is cancelled in rain — the W15c frame under rain has no shells
+    seed: 1001,
+    cam: '-30,8,200,-30,38,10',
+    time: 21,
+    simt: 99.9,
+    weather: 'rain',
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'W15d',
+    title: 'Skerry Beacon',
+    // TASK-490 (W:B1): a mini lighthouse on a south skerry at 23:00 (raw), its beam sweeping the sea,
+    // the island lights behind it
+    seed: 1001,
+    cam: '-34,19,-104,6,10,-150',
+    time: 23,
+    simt: 4,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  {
+    id: 'W15e',
+    title: 'Signal Lamp',
+    // TASK-490 (W:B6): the Wind Gardens' signal lamp on its peak at 21:00 +31 s (Coding's step, first
+    // flash): the lamp mast, the flash and the ray thrown toward the next island of the chain (raw)
+    seed: 1001,
+    cam: '-82,20,205,-108,13,172',
+    time: 21,
+    simt: 31.2,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
 
   // ---- dev set (960×540) + ci subset (640×360)
   {

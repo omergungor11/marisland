@@ -259,6 +259,20 @@ export const ISLET_SCATTER: Readonly<Record<IsletKind, readonly PlacementRule[]>
       scale: [0.8, 1.3],
       maxPerIsland: 3,
     },
+    // M23 (TASK-490, W:B1): the mini lighthouse on the stack's peak (scatter keeps it to the skerries
+    // picked by world/gen/beacons.ts); `first` so the rock clusters leave its spot
+    {
+      def: 'beaconTower',
+      zones: [rock, cliff],
+      minDist: 4,
+      density: 1,
+      slopeMax: 99,
+      heights: [0, 60],
+      scale: [1, 1],
+      maxPerIsland: 1,
+      atPeak: true,
+      first: true,
+    },
   ],
   sandbar: [
     {
