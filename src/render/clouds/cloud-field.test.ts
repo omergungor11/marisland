@@ -368,6 +368,35 @@ describe('puffs', () => {
     scope.dispose();
   });
 
+  it('reserve: placed slots start hidden, take position / size / opacity, null when full', () => {
+    const scope = new Scope('t');
+    const puffs = createPuffs(scope, 'low');
+    puffs.addEmitter(-3, 4, 0, PUFF_CHIMNEY);
+    const b = puffs.reserve(4)!;
+    puffs.finalize();
+    const first = PUFFS.chimney.slots;
+    expect(puffs.mesh.count).toBe(first + 4);
+    const g = puffs.mesh.geometry;
+    const shape = g.getAttribute('aShape');
+    const origin = g.getAttribute('aOrigin');
+    for (let k = 0; k < 4; k++) {
+      expect(shape.getW(first + k)).toBeLessThan(0); // the shader's placed branch
+      expect(shape.getX(first + k)).toBe(0);
+    }
+    b.set(2, 5, 6, 7, 1.5, 0.4, 0.5);
+    b.set(9, 1, 1, 1, 1, 1, 1); // out of range: ignored
+    b.upload();
+    expect([origin.getX(first + 2), origin.getY(first + 2), origin.getZ(first + 2)]).toEqual([
+      5, 6, 7,
+    ]);
+    expect(shape.getX(first + 2)).toBe(1.5);
+    expect(shape.getY(first + 2)).toBeCloseTo(0.4, 6);
+    expect(shape.getZ(first + 2)).toBeCloseTo(0.5, 6);
+    expect(shape.getX(0)).toBeCloseTo(PUFFS.chimney.size[0], 6); // the emitter untouched
+    expect(puffs.reserve(PUFFS.capacity.low)).toBeNull();
+    scope.dispose();
+  });
+
   it('drops emitters beyond capacity instead of overflowing', () => {
     const scope = new Scope('t');
     const puffs = createPuffs(scope, 'low');

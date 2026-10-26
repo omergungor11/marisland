@@ -34,6 +34,30 @@ export type PuffKind =
   | typeof PUFF_VENT
   | typeof PUFF_MIST;
 
+/**
+ * A block of puff slots a CPU scene places itself every frame (TASK-486: the Research test-firing
+ * steam): world position, size and opacity per slot, drawn with the soft steam look (shader kind
+ * `PUFF_SPRING`, no time function). Slots start hidden (size 0).
+ */
+export interface PlacedPuffs {
+  readonly count: number;
+  /**
+   * Slot `i` (0 ≤ i < count): centre (world), diameter (u, 0 = hidden), opacity (0..1) and the
+   * radial alpha edge (view-facing term at full opacity; `PUFFS.soft.edge` for the emitters).
+   */
+  set(
+    i: number,
+    x: number,
+    y: number,
+    z: number,
+    size: number,
+    opacity: number,
+    edge: number,
+  ): void;
+  /** Upload the block (after a frame's `set` calls). */
+  upload(): void;
+}
+
 export interface Puffs {
   mesh: THREE.InstancedMesh;
   /**
@@ -47,7 +71,9 @@ export interface Puffs {
    * ids are ignored.
    */
   setEmitter(e: number, x: number, y: number, z: number, enabled: boolean): void;
-  /** Upload attributes after `addEmitter` calls. */
+  /** Reserve `n` placed slots (before `finalize`); null when the capacity is used up. */
+  reserve(n: number): PlacedPuffs | null;
+  /** Upload attributes after `addEmitter` / `reserve` calls. */
   finalize(): void;
   /** No CPU work (uTime is shared); kept for API symmetry. */
   update(time: number): void;
@@ -237,6 +263,30 @@ export function createPuffs(
         a.addUpdateRange(r.start * a.itemSize, (r.end - r.start) * a.itemSize);
         a.needsUpdate = true;
       }
+    },
+    reserve(n) {
+      if (used + n > capacity) {
+        dropped += n;
+        return null;
+      }
+      const start = used;
+      // life < 0 marks a placed slot (the vertex shader takes position / size / opacity as given)
+      for (let k = 0; k < n; k++)
+        put(0, -1e3, 0, PUFF_SPRING, (k * 0.618034) % 1, [0, 0, 1, -1], 0, 0);
+      return {
+        count: n,
+        set(i, x, y, z, size, opacity, edge) {
+          if (i < 0 || i >= n) return;
+          aOrigin.setXYZ(start + i, x, y, z);
+          aShape.setXYZ(start + i, size, opacity, edge);
+        },
+        upload() {
+          for (const a of [aOrigin, aShape]) {
+            a.addUpdateRange(start * a.itemSize, n * a.itemSize);
+            a.needsUpdate = true;
+          }
+        },
+      };
     },
     finalize() {
       mesh.count = used;

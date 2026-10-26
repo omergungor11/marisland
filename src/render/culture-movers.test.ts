@@ -57,8 +57,21 @@ describe('culture movers', () => {
   const world = generateWorld(1001);
   const { props } = appendSettlementProps(world);
   let view: CultureMoversView;
+  /** Placed soft puffs (TASK-486): x, y, z, size, opacity per slot; uploads counted. */
+  const placed: number[][] = [];
+  let uploads = 0;
   beforeAll(() => {
     view = createCultureMovers(props, world, new Scope('test'));
+    view.bindPuffs({
+      reserve: (n) => {
+        for (let i = 0; i < n; i++) placed.push([0, 0, 0, 0, 0, 1]);
+        return {
+          count: n,
+          set: (i, x, y, z, size, opacity, edge) => (placed[i] = [x, y, z, size, opacity, edge]),
+          upload: () => void uploads++,
+        };
+      },
+    });
   });
 
   it('parts geometry: one merged mesh, every kind present, no NaN', () => {
@@ -180,14 +193,30 @@ describe('culture movers', () => {
       ofKind(view, kind).filter(
         (m) => Math.hypot(m.elements[12] - pad!.x, m.elements[14] - pad!.z) < 6,
       ).length;
-    view.update(3, 12, env(12), gp, fest());
-    expect(near(PART.blob)).toBe(0);
+    // steam = soft puffs on the puff program (TASK-486), not lit blobs
     const L = M.launch;
+    expect(placed.length).toBe(L.puffs * 2);
+    const steam = (): number[][] =>
+      placed.filter((p) => p[3] > 0 && Math.hypot(p[0] - pad!.x, p[2] - pad!.z) < 6);
+    view.update(3, 12, env(12), gp, fest());
+    expect(steam().length).toBe(0);
     view.update(3, 12, env(12), gp, fest('research', L.ritual, 1.6 / L.seconds));
-    expect(near(PART.blob)).toBeGreaterThanOrEqual(4);
+    expect(near(PART.blob)).toBe(0);
+    const mid = steam();
+    expect(mid.length).toBeGreaterThanOrEqual(12);
+    expect(mid.every((p) => p.every(Number.isFinite) && p[4] > 0 && p[4] <= 1)).toBe(true);
+    // several overlapping puffs of different sizes, not one ball
+    expect(new Set(mid.map((p) => p[3].toFixed(2))).size).toBeGreaterThan(6);
     expect(near(PART.glow)).toBe(1);
+    const up = uploads;
     view.update(3, 12, env(12), gp, fest('research', L.ritual, 3.9 / L.seconds));
     expect(near(PART.glow)).toBe(0);
+    // thinning out at the end of the ritual
+    expect(Math.max(...steam().map((p) => p[4]))).toBeLessThan(0.2);
+    // over: every puff hidden (and uploaded once more)
+    view.update(3, 12, env(12), gp, fest());
+    expect(steam().length).toBe(0);
+    expect(uploads).toBeGreaterThan(up);
 
     // the lecture spot: six caps fly at capToss
     const sp = world.storySpots.find((q) => q.kind === 'lecture' && q.islandId === pad!.islandId);
