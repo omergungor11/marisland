@@ -20,6 +20,7 @@ import { DESIGN_M20_PROP_DEFS, HQ_M20_PROP_DEFS } from './props-themes/m20.ts';
 import { SIGNAGE_PROP_DEFS } from './props-themes/signage.ts';
 import { RIM_PROP_DEFS } from './props-themes/rim.ts';
 import { STAIR_PROP_DEFS } from './props-themes/stairs.ts';
+import { BEACON_PROP_DEFS } from './props-themes/beacon.ts';
 
 export interface PropDef {
   id: string;
@@ -143,6 +144,8 @@ const ALL_DEFS: readonly PropDef[] = [
   ...CODING_M22_PROP_DEFS,
   // TASK-485: the stair flight on steep stair legs over spared faces
   ...STAIR_PROP_DEFS,
+  // M23 (TASK-490): the skerry beacon
+  ...BEACON_PROP_DEFS,
 ];
 
 /**

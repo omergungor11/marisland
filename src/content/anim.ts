@@ -153,8 +153,11 @@ export const HOVER = { color: '#FFE9B0', strength: 0.22, flash: 0.5, flashMs: 30
 
 export type ReactionMotion = 'squash' | 'hop' | 'spin' | 'wobble' | 'emote';
 export type BurstGlyph = 'puff' | 'heart' | 'sparkle' | 'leaf' | 'bang';
-/** ring: radial outward; rise: float up; fall: drift down from the top; pop: small scatter. */
-export type BurstPattern = 'ring' | 'rise' | 'fall' | 'pop';
+/**
+ * ring: radial outward; rise: float up; fall: drift down from the top; pop: small scatter;
+ * sphere: a firework shell (every direction, drag, then a slow droop; TASK-490).
+ */
+export type BurstPattern = 'ring' | 'rise' | 'fall' | 'pop' | 'sphere';
 
 export interface BurstSpec {
   glyph: BurstGlyph;

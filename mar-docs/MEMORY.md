@@ -10,6 +10,10 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-26 (TASK-488 merged)**: reefs run right after `finalizeHeight` (`root.fork('reefs')`); routes then
+  `carveReefGaps` before seamarks. Don't derive "raised" cells from `h.data - natural` after settlements (it
+  catches land pads) — use `ReefField.raised` / `weight`. W4 now 168 / 170 MB medium — little memory headroom.
+  Single-island mode has no reefs (per-theme snapshots unaffected).
 - **2026-10-26 (TASK-486 merged)**: test-firing steam draws on the puff program via placed slots
   (`Puffs.reserve(n)`, life `aShape.w` < 0 = CPU-driven); any puff alpha change must keep `vEdge = uSoft.x` for
   the emitters. Far terrain (4 u level) lights from height-texture slope normals (`TERRAIN_FACETS.slopeSpan`) —

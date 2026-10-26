@@ -561,7 +561,8 @@ export function createInteraction(d: InteractionDeps): Interaction {
           flash ? flash.strength * HOVER.flash : HOVER.strength,
         );
       } else clearHover();
-      d.counters.particles = bursts.update(d.getTime(), camera);
+      // adds to the world view's count (puffs, rain, the fireworks show)
+      d.counters.particles += bursts.update(d.getTime(), camera);
     },
   };
 

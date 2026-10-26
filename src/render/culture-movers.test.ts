@@ -6,6 +6,7 @@ import { CULTURES } from '../content/cultures/index.ts';
 import { CULTURE_MOVERS as M } from '../content/cultures/movers.ts';
 import { RELAY } from '../content/cultures/rhythm.ts';
 import { SEMAPHORE } from '../content/props-themes/m20.ts';
+import { SIGNAL_CHAIN } from '../content/signature.ts';
 import { createEnvState, sampleEnv, type EnvState } from '../env/env-state.ts';
 import { generateWorld } from '../world/index.ts';
 import { THEME_IDS, type ThemeId, type WorldData } from '../world/types.ts';
@@ -321,8 +322,9 @@ describe('culture movers', () => {
       view.update(3, 21, env(21), tower, relay(simt));
       return ofKind(view, PART.glow).length;
     };
-    // every gate's two finial lamps glow all night (TASK-478 rest glow); none by day
-    const rest = 2 * orders.length;
+    // every gate's two finial lamps glow all night (TASK-478 rest glow) and so does the signal lamp
+    // of each of the seven islands (TASK-490 W:B6); none by day
+    const rest = 2 * orders.length + THEME_IDS.length;
     view.update(3, 12, env(12), tower, relay(-5));
     expect(ofKind(view, PART.glow)).toHaveLength(0);
     // +3 = the semaphore lamp and its two arm tips (lit through the relay)
@@ -337,6 +339,25 @@ describe('culture movers', () => {
     // the glow holds to the end of the relay and is gone after the fade
     expect(glows(70 + 2)).toBeGreaterThan(rest);
     expect(glows(70 + RELAY.fadeS + 3)).toBe(rest);
+  });
+
+  it('signal chain: each island throws three flashes toward the next, in its own step', () => {
+    const tower = firstOf(world, props, 'semaphoreTower')!;
+    const glows = (simt: number): number => {
+      view.update(3, 21, env(21), tower, relay(simt));
+      return ofKind(view, PART.glow).length;
+    };
+    const S = SIGNAL_CHAIN;
+    const peak = (i: number): number => S.firstS + i * S.gapS + S.attack * S.flashS;
+    for (let step = 0; step < 7; step++) {
+      // between flashes and after the last one: only the rest lamps; at a flash peak: + ball and ray
+      const quiet = glows(step * 10 + S.firstS + S.flashS + 0.4);
+      for (let i = 0; i < S.flashes; i++)
+        expect(glows(step * 10 + peak(i)), `step ${step + 1} flash ${i + 1}`).toBe(quiet + 2);
+      expect(glows(step * 10 + peak(S.flashes - 1) + S.flashS + 0.5)).toBe(quiet);
+    }
+    // deterministic in the clock
+    expect(glows(23.15)).toBe(glows(23.15));
   });
 
   it('stall keepers: one per goods stall, awake from 06:30, closed form', () => {

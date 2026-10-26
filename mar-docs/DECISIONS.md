@@ -2,6 +2,20 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-067: Reef shoals and shared-shelf sills — a separate reef mask, gaps measured like LAYOUT — 2026-10-26
+
+**Decision** (TASK-488, `W:D1` + `W:K3`): 3–6 shoal blobs (crest −2.4…−4.2 u) in the gaps between islands
+and ≤ 3 sills (crest −3 u, never above −2.4 u) on the Voronoi seam between neighbours, numbers in
+`content/reefs.ts`. Routes pay a reef penalty and `carveReefGaps` deepens raised cells along every route
+(toward −7 u, never below the natural seabed), so boats keep a deep gap.
+- The K3 "< 55 u" threshold is measured the way LAYOUT measures gaps (centre distance minus both `reach`
+  radii), not coast to coast — coast-to-coast gaps are 60–90 u, so K3 would never appear.
+- The water shader tints from a static R8 reef mask (`world.reefWeight` → `textures.reef`, +148 KB, world scope)
+  times a live-depth fade, instead of feeding reefs into the shore sdf: the sdf drives foam rings, swell
+  flattening and mist, which would grow phantom shores, and depth alone can't tell a sill from a natural shelf.
+**Impact**: world hashes changed. The mask is static: a Phase 2 brush that paints a new reef must re-derive
+it. TASK-489's whale route uses `openSeaAt` / `reefClearance` / `routeClearance` from `world/index.ts`.
+
 ## D-066: CPU-placed soft puffs on the puff mesh; far terrain level shades with the grid slope — 2026-10-26
 
 **Decision** (TASK-486): (1) Culture scenes that need steam draw it on the existing puff mesh, not

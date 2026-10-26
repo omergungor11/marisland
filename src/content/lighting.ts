@@ -228,7 +228,13 @@ export const NIGHT = {
   lateOffFraction: 0.3,
   lateOff: [23.0, 23.4] as const,
   /** Prop geos whose lights never go dark late (street/landmark lights). */
-  alwaysOn: ['lanternPost', 'lighthouse', 'clocktower', 'stoneLantern'] as readonly string[],
+  alwaysOn: [
+    'lanternPost',
+    'lighthouse',
+    'clocktower',
+    'stoneLantern',
+    'beaconTower',
+  ] as readonly string[],
   /**
    * Screen class (TASK-305): vertices with `emissive ≥ 1.5` (monitors, bot eyes; mask = emissive − 1,
    * so 2 → 1) glow by day at `screenDay` × the night glow (× emissiveGain on the albedo: stays

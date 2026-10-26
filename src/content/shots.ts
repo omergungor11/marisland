@@ -631,10 +631,79 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     sets: ['wow'],
   },
   {
+    id: 'W15b',
+    title: 'Relay Wave',
+    // TASK-490 (W:B1 + W:B6): the postcard at 21:00 +11 s, DevOps' step: the skerry beacons and the
+    // Marketing lighthouse sweep one after another (1 s lag in route order), the signal lamps sit on
+    // the island peaks and DevOps' lamp throws its first flash toward QA
+    seed: 1001,
+    cam: 'postcard',
+    time: 21,
+    simt: 11.2,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  {
+    id: 'W15c',
+    title: 'Harbour Fireworks',
+    // TASK-490 (W:G7): 22:01 (the relay and the Comet Night are over) +14.9 s into the show, from the
+    // sea south of the Harbour Guild: the finale shells over the bay, sparks glittering on the water,
+    // the island's lit quay below (raw)
+    seed: 1001,
+    cam: '-30,8,200,-30,38,10',
+    time: 21,
+    simt: 99.9,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  {
+    id: 'D-fireworks-rain',
+    title: 'Harbour Fireworks cancelled in rain (W15c clock)',
+    // TASK-490: the show is cancelled in rain — the W15c frame under rain has no shells
+    seed: 1001,
+    cam: '-30,8,200,-30,38,10',
+    time: 21,
+    simt: 99.9,
+    weather: 'rain',
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'W15d',
+    title: 'Skerry Beacon',
+    // TASK-490 (W:B1): a mini lighthouse on a south skerry at 23:00 (raw), its beam sweeping the sea,
+    // the island lights behind it
+    seed: 1001,
+    cam: '-22,34,-112,6,8,-150',
+    time: 23,
+    simt: 4,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  {
+    id: 'W15e',
+    title: 'Signal Lamp',
+    // TASK-490 (W:B6): the Wind Gardens' signal lamp on its peak at 21:00 +31 s (Coding's step, first
+    // flash): the lamp mast, the flash and the ray thrown toward the next island of the chain (raw)
+    seed: 1001,
+    cam: '-84,31,200,-106,10,168',
+    time: 21,
+    simt: 31.2,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  {
     id: 'W27',
     title: 'Whale Surfacing',
-    // 17:45 (+0.5 s): the whale's cape pass (TASK-489, D-070) — the postcard overview with the grey
-    // whale's back up in the open water off the Research cape, 8.5 s into its surfacing, spout in the air
+    // 17:45 +0.5 s: the whale's cape pass (TASK-489, D-070), 8.5 s into its surfacing, spout in the air
     seed: 1001,
     cam: 'overview',
     time: 17.75,

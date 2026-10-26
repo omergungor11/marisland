@@ -6,6 +6,7 @@ import { PROP_DEF_INDEX } from '../content/props.ts';
 import { CULTURES } from '../content/cultures/index.ts';
 import { CULTURE_MOVERS as M } from '../content/cultures/movers.ts';
 import { RELAY } from '../content/cultures/rhythm.ts';
+import { SIGNAL_CHAIN } from '../content/signature.ts';
 import { THEMES } from '../content/themes.ts';
 import { SEMAPHORE, mailCablePoint, type Vec3Like } from '../content/props-themes/m20.ts';
 import { mailLinePairs } from './mail-lines.ts';
@@ -225,6 +226,8 @@ interface Scene {
   pivot: THREE.Matrix4 | null;
   yaw: number;
   run(w: Writer, c: CultureCtx, s: Scene): void;
+  /** Own distance gate (squared, u²) instead of the movers' range (the signal chain). */
+  range2?: number;
   /** Local-frame wind (unit xz) for this anchor's yaw, written by the driver. */
   wl: { x: number; z: number };
 }
@@ -714,6 +717,52 @@ function semaphoreScene(idx: number): Scene['run'] {
 }
 
 /**
+ * Signal chain (M23 TASK-490, W:B6): the lamp on an island's highest point. At night a mast with a
+ * small lamp springs up; in the relay, in its island's step, it throws `flashes` flashes toward the
+ * next island of the chain (a glowing ray along the bearing), so the signal runs island to island
+ * after the HQ semaphore points at that island. World-frame scene; sizes grow with the camera
+ * distance (the lamps are meant to read from the T0 postcard).
+ */
+function signalScene(order: number, lamp: V3, to: V3, accent: string, mast: boolean): Scene['run'] {
+  const S = SIGNAL_CHAIN;
+  const tint = lightened(accent, S.lighten);
+  const dir = new THREE.Vector3(to[0] - lamp[0], to[1] - lamp[1], to[2] - lamp[2]).normalize();
+  const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir);
+  return (w, c) => {
+    const dist = Math.hypot(c.cam.x - lamp[0], c.cam.z - lamp[2]);
+    const px = Math.min(S.maxPx, dist * S.minScreen);
+    const up = smooth((c.night - S.rest.night[0]) / (S.rest.night[1] - S.rest.night[0]));
+    const rise = easeOutBack(up);
+    const u = relayT(c.day) - (order - 1) * RELAY.stepS;
+    let e = 0;
+    if (u >= 0 && u < RELAY.stepS)
+      for (let i = 0; i < S.flashes; i++) {
+        const ph = (u - S.firstS - i * S.gapS) / S.flashS;
+        if (ph < 0 || ph >= 1) continue;
+        e = Math.max(e, ph < S.attack ? ph / S.attack : (1 - ph) / (1 - S.attack));
+      }
+    if (up > 0.01) {
+      if (mast) cable(w, [lamp[0], lamp[1] - S.mast * rise, lamp[2]], lamp, '#FFF4E0');
+      const r = Math.max(S.lampR * S.rest.r, px) * rise;
+      w.put(PART.glow, lamp, [0, 0, 0], r, tint);
+    }
+    if (e > 0.01) {
+      w.put(PART.glow, lamp, [0, 0, 0], Math.max(S.flashR, px * S.flashPx) * e, tint);
+      // a glowing ellipsoid from the lamp along the bearing (`half` = half its length)
+      const half = S.ray.length * 0.5 * e;
+      const rw = Math.max(S.ray.r, px * S.rayPx) * e;
+      w.putQ(
+        PART.glow,
+        [lamp[0] + dir.x * half, lamp[1] + dir.y * half, lamp[2] + dir.z * half],
+        q,
+        [rw, rw, half],
+        tint,
+      );
+    }
+  };
+}
+
+/**
  * HQ culture gate lantern (TASK-469): at its culture's relay step (order x 10 s) the lantern flares
  * into an accent halo and sends out a ring, then holds a glow until the relay is over. The seven
  * gates therefore light up one after another in relay order.
@@ -916,6 +965,7 @@ export function createCultureMovers(
   const watchBeams: THREE.Mesh[] = [];
   let watchMat: THREE.ShaderMaterial | null = null;
   const ids = new Map<number, number>();
+  let semaLamp: V3 | null = null;
   for (let i = 0; i < store.count; i++) {
     const d = store.defId[i];
     if (d < 0 || (store.flags[i] & PropFlag.removed) !== 0) continue;
@@ -959,9 +1009,14 @@ export function createCultureMovers(
       scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 1.87, 0], 4, gateLampScene(v)));
     else if (d === D.stall)
       scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 1.0, 0], 3, keeperScene(v, idx)));
-    else if (d === D.sema)
+    else if (d === D.sema) {
       scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 7.7, 0], 5, semaphoreScene(idx)));
-    else if (d === D.tower && v === 3)
+      // the chain's HQ lamp is the semaphore's own
+      if (idx === 0) {
+        _a.set(...M.semaphore.lamp).applyMatrix4(pv());
+        semaLamp = [_a.x, _a.y, _a.z];
+      }
+    } else if (d === D.tower && v === 3)
       // M22 R17: the bell-cupola tower's two belfry bells + the sound rings
       scenes.push(
         sceneAt(th, pv(), store.rotY[i], [0, RESEARCH_M22.bells.hingeY, 0], 4, campusBellScene()),
@@ -1053,6 +1108,31 @@ export function createCultureMovers(
       }
     }
   }
+  // M23 W:B6 signal chain: a lamp on every island's highest point (HQ: the semaphore lamp), each
+  // flashing toward the next island in relay order in its own step
+  const lampOf = new Map<ThemeId, V3>();
+  for (const th of THEME_OF_ORDER) {
+    const isl = world.islands.find((i) => i.theme === th);
+    if (!isl) continue;
+    lampOf.set(th, [isl.peakX, isl.peakY + SIGNAL_CHAIN.mast, isl.peakZ]);
+  }
+  if (semaLamp) lampOf.set('hq', semaLamp);
+  THEME_OF_ORDER.forEach((th, k) => {
+    const at = lampOf.get(th);
+    const to = lampOf.get(THEME_OF_ORDER[(k + 1) % THEME_OF_ORDER.length]);
+    if (!at || !to) return;
+    const sc = sceneAt(
+      th,
+      new THREE.Matrix4(),
+      0,
+      at,
+      4, // mast, lamp, flash ball, ray
+      signalScene(CULTURES[th].relay.order, at, to, THEMES[th].accent, th !== 'hq'),
+    );
+    sc.pivot = null;
+    sc.range2 = SIGNAL_CHAIN.range * SIGNAL_CHAIN.range;
+    scenes.push(sc);
+  });
   // QA ant trails: story spots of kind antTrail (story-spot frame)
   for (const sp of world.storySpots) {
     if (sp.kind !== 'antTrail') continue;
@@ -1197,7 +1277,7 @@ export function createCultureMovers(
         const dx = s.cx - camPos.x;
         const dy = s.cy - camPos.y;
         const dz = s.cz - camPos.z;
-        if (dx * dx + dy * dy + dz * dz > range2) continue;
+        if (dx * dx + dy * dy + dz * dz > (s.range2 ?? range2)) continue;
         // wind in the anchor's frame (rotation by -yaw)
         const cs = Math.cos(s.yaw);
         const sn = Math.sin(s.yaw);
