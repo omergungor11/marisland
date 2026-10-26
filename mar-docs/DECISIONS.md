@@ -2,6 +2,17 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-064: M23 world signature — the whale, constellations and fireworks — 2026-10-26
+
+**Decision** (user, 2026-10-26, `mar-plans/study/world.md` questions 4 and 6):
+- The one big sea animal is the whale (`W:D6`): a world mover, not an agent; it passes the Research cape at
+  17:45, so Research gets no whale of its own (`RS:R8` stays rejected).
+- Night sky: culture constellations (`W:G4`) plus the 22:01 fireworks after the relay (`W:G7`). No aurora (`W:G3`).
+- K3 sills are already decided (D-058: underwater only).
+
+**How**: M23 = TASK-488 (D1 + K3), 489 (D6), 490 (B1 + B6 + G7), 491 (G4), 492 QA. It starts after the M22
+follow-ups (TASK-485…487) merge, so worldgen and shader work don't collide.
+
 ## D-063: Island-agnostic rim walkway primitive — 2026-10-24
 
 **Decision**: Cliff-top boardwalks are one shared worldgen primitive (`world/gen/rim-walkway.ts`, spec type
