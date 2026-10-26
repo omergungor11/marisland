@@ -40,8 +40,17 @@ export const HQ_M20_PROP_DEFS: readonly PropDef[] = [
 export const DESIGN_M20_PROP_DEFS: readonly PropDef[] = [
   // the island's second tier-1 def (cultureCapOverride.design.tier1 = 2); effective tier 0 by size
   { id: 'conservatory', geo: 'conservatory', tier: 1, variants: 1, footprint: 8, flags: grounded },
-  // variant = pane tint (CONSERVATORY_HUES order below)
-  { id: 'glasshouse', geo: 'glasshouse', tier: 2, variants: 5, footprint: 2.4, flags: grounded },
+  // variant = pane tint (CONSERVATORY_HUES order below). Each house is < 3 u, but the six stand
+  // as one colourful row: drawn from T0 (TASK-493, D-031) so the row does not pop in at 140 u.
+  {
+    id: 'glasshouse',
+    geo: 'glasshouse',
+    tier: 2,
+    variants: 5,
+    footprint: 2.4,
+    flags: grounded,
+    fromT0: true,
+  },
   // spans a stream: no contact blob (the water is under it)
   { id: 'glassBridge', geo: 'glassBridge', tier: 2, variants: 1, footprint: 1.1, flags: 0 },
   { id: 'prismArch', geo: 'prismArch', tier: 2, variants: 1, footprint: 0.8, flags: grounded },

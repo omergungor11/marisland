@@ -260,7 +260,8 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
     if (!e) {
       const def = PROP_DEFS[defIndex];
       e = def;
-      if (fromT0 && def.tier > 0) {
+      if (fromT0 && def.tier > 0 && def.fromT0) e = { ...def, tier: 0 };
+      else if (fromT0 && def.tier > 0) {
         const g = geometryFor(def, variant, 0);
         if (!g.boundingBox) g.computeBoundingBox();
         const size = (g.boundingBox as THREE.Box3).getSize(new THREE.Vector3());

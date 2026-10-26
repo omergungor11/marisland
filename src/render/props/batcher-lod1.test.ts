@@ -28,6 +28,16 @@ const FAKES: PropDef[] = [
   { id: 'fakeBlock', geo: 'fakeBlock', tier: 1, variants: 2, footprint: 2, flags: grounded },
   // small: stays tier 1
   { id: 'fakeSmall', geo: 'barrel', tier: 1, variants: 2, footprint: 0.5, flags: grounded },
+  // small but `fromT0` (TASK-493, a row that reads as one element): effective tier 0 anyway
+  {
+    id: 'fakeRow',
+    geo: 'barrel',
+    tier: 2,
+    variants: 1,
+    footprint: 0.5,
+    flags: grounded,
+    fromT0: true,
+  },
   {
     id: 'fakeInterior',
     geo: 'bench',
@@ -151,6 +161,22 @@ describe('PropBatcher: own LOD1, T0 structures, interiors (TASK-373 / TASK-304)'
     const off = build(makeStore(), { fromT0: false });
     off.setTier(0, 0);
     expect(off.groups.some((g) => g.def.id === 'fakeShellA' && g.mesh.visible)).toBe(false);
+  });
+
+  it('a small `fromT0` def shows from T0 like a large structure (TASK-493)', () => {
+    const store = createPropStore(20);
+    for (let k = 0; k < 6; k++)
+      store.push(PROP_DEF_INDEX.fakeRow, 0, k * 4, 1, 0, 0, 1, 0, 0, grounded);
+    const b = build(store);
+    b.setTier(0, 0);
+    b.update(0, 0, 0);
+    const row = b.groups.filter((g) => g.def.id === 'fakeRow');
+    expect(row.every((g) => g.def.tier === 0)).toBe(true);
+    expect(row.filter((g) => g.mesh.visible).map((g) => g.lod)).toEqual([1]);
+    const off = build(store, { fromT0: false });
+    off.setTier(0, 0);
+    off.update(0, 0, 0);
+    expect(off.groups.some((g) => g.def.id === 'fakeRow' && g.mesh.visible)).toBe(false);
   });
 
   it('an edit-added variant joins the collapsed LOD1 group', () => {

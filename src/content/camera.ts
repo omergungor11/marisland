@@ -190,8 +190,10 @@ export const FRAMING = {
     // the cone's cliff (y 19 between the plateau at 7 and the summit at 29), so 30 → 21 failed on
     // parallax (p95 13.8, blob 1.8 %); 12 u left, 10 u toward the camera is the flat harbour
     // plateau (y 7). Design keeps the slid target (windmill slope): targets beside the conservatory
-    // fail on the dome's parallax (TASK-470 QA), and on the glasshouse row (−8, −28) the drift at 21 u
-    // (9.45) is a real pop: the tier-2 glasshouses are missing at 170 u (TASK-487, D-068).
+    // fail on the dome's parallax (TASK-470 QA). The glasshouse row (−8, −28) was a real pop at
+    // 140 u (TASK-487, D-068); since TASK-493 the row is drawn from T0 and L-design passes there,
+    // but the target pulls the conservatory dome into the frame centre and its LOD1 → LOD0 colour
+    // change fails pair 140 (mean 2.59, blob 0.6 %, low).
     shift: {
       research: { right: 20, back: 8 },
       devops: { right: -12, back: 10 },

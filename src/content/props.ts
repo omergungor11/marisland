@@ -47,6 +47,11 @@ export interface PropDef {
   lod1?: { geo: string; variant: number; size?: readonly [w: number, h: number, d: number] };
   /** Tier-2 office interior shell: never placeable or clusterable, shadows on high only. */
   interior?: true;
+  /**
+   * Drawn from T0 like a large structure (D-031) although one piece is below the size rule: a def
+   * placed as a row / group that reads as one large element (TASK-493, the Design glasshouse row).
+   */
+  fromT0?: true;
 }
 
 const { grounded, windy, groundCover, clusterable } = PropFlag;
