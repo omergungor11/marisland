@@ -24,7 +24,7 @@ import type { PlacedPuffs } from './particles/puffs.ts';
  * dive (life/whale-pose.ts). Every pose is a function of the day seconds + seed, so a capture
  * (`?freeze=1&time=…&simt=…`) replays it exactly; only a click adds state (a slap started at sim
  * time `pokeAt`). One InstancedMesh (count 1) on the existing `mar-lit` program — the vertices are
- * re-posed on the CPU (≈ 650 triangles, a few µs) — hidden between surfacings (no draw call). The
+ * re-posed on the CPU (≈ 900 triangles, a few µs) — hidden between surfacings (no draw call). The
  * spout and the splash are placed slots of the puff program (D-066).
  */
 export interface WhaleView {
@@ -102,15 +102,15 @@ export function createWhale(world: WhaleWorld, seed: number, scope: Scope): Whal
 
   /** Blowhole (world) of the current pose; writes `_p`. */
   const blowhole = (m: THREE.Matrix4): THREE.Vector3 => {
-    const k = 5;
+    const k = WHALE_RINGS.blowK;
     const phi = Math.atan2(
       rig.spine.y[k + 1] - rig.spine.y[k - 1],
       rig.spine.x[k - 1] - rig.spine.x[k + 1],
     );
     return _p
       .set(
-        rig.spine.x[k] - Math.sin(phi) * 2.05,
-        rig.spine.y[k] + Math.cos(phi) * 2.05 + SP.blowhole.lift,
+        rig.spine.x[k] - Math.sin(phi) * WHALE_RINGS.blowR,
+        rig.spine.y[k] + Math.cos(phi) * WHALE_RINGS.blowR + SP.blowhole.lift,
         0,
       )
       .applyMatrix4(m);
@@ -138,7 +138,7 @@ export function createWhale(world: WhaleWorld, seed: number, scope: Scope): Whal
         if (age <= 0 || age >= 1) continue;
         const j = rnd(ev.s | 0, k * 64 + i, 489);
         const j2 = rnd(ev.s | 0, k * 64 + i, 490);
-        const h = SP.height * easeOut(age) * (0.72 + 0.28 * j);
+        const h = SP.height * easeOut(age) * (0.9 + 0.1 * j);
         const side = (j - 0.5) * 2 * SP.spread * (0.4 + age * 1.6);
         const drift = (j2 - 0.5) * 2 * SP.spread * age;
         const size = SP.size[0] + (SP.size[1] - SP.size[0]) * Math.sqrt(age);

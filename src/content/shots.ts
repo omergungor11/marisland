@@ -718,10 +718,11 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   {
     id: 'W28',
     title: 'Whale Surfacing',
-    // 17:45 +0.5 s: the whale's cape pass (TASK-489, D-070), 8.5 s into its surfacing, spout in the air:
-    // the postcard overview with the grey whale's back in the open water south-east of the Research cape
+    // 17:45 +0.5 s: the whale's cape pass (TASK-489, D-070), 8.5 s into its surfacing, spout in the air.
+    // TASK-494: the overview left the whale a few pixels at the corner, so this is a raw cam 34° down from the
+    // north-east: the whale facing us in the open water with its spout, the Research cape beside it for scale
     seed: 1001,
-    cam: 'overview',
+    cam: '230,62,40,170,0,112',
     time: 17.75,
     simt: 0.5,
     quality: 'medium',
@@ -732,10 +733,10 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   {
     id: 'W28b',
     title: 'Whale Blow',
-    // TASK-489: the same cape pass from the sea east of the whale (raw, looking down 35°): its back beside the
-    // spout column, the Research headland beyond
+    // TASK-489: the same cape pass close up (raw, looking down 32° from in front of the whale, TASK-494): its
+    // round face, flippers, tail and the soft spout column
     seed: 1001,
-    cam: '232,28,134,198,0,108',
+    cam: '226,28,76,198,0,110',
     time: 17.75,
     simt: 0.5,
     quality: 'medium',

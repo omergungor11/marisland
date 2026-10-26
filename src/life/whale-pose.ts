@@ -59,8 +59,8 @@ const easeOutSine = (x: number): number => Math.sin(clamp01(x) * Math.PI * 0.5);
 const easeOutCubic = (x: number): number => 1 - Math.pow(1 - clamp01(x), 3);
 const easeInQuad = (x: number): number => clamp01(x) * clamp01(x);
 
-/** Back height at rest: its top is `back` u above the sea (body half height ≈ 1.95 at the middle). */
-export const REST_Y = WHALE.event.back - 1.95;
+/** Back height at rest: its top is `back` u above the sea (body half height ≈ 2.9 at the shoulders). */
+export const REST_Y = WHALE.event.back - 2.9;
 
 /** Underdamped step response remainder (1 → 0) `s` seconds after a step, zero initial velocity. */
 function springLeft(s: number, omega: number, zeta: number): number {
@@ -126,15 +126,16 @@ export function whalePose(
   out.arch = 0.05 * dive * calm;
   // tail: idle undulation, the slap(s), a lift while diving so the fluke stands up
   const slap = (u >= E.slapAt && m >= 0.5 ? slapAngle(u - E.slapAt) : 0) + slapAngle(clickTau);
-  out.tail = slap * 0.55 + 0.1 * dive * calm + 0.16 * (1 - dive) * smooth((u - 3) / 3);
-  out.fluke = slap * 0.45 - 0.35 * dive * calm;
+  out.tail = slap * 0.55 + 0.1 * dive * calm + W.tailLift * (1 - dive) * smooth((u - 3) / 3);
+  out.fluke =
+    slap * 0.45 - 0.35 * dive * calm - 0.9 * W.tailLift * (1 - dive) * smooth((u - 3) / 3);
   out.wag = W.tailDeg * DEG * m * (1 - dive);
   out.wagPhase = (u / W.period) * Math.PI * 2;
   out.roll = W.rollDeg * DEG * m * Math.sin((u / W.rollPeriod) * Math.PI * 2) * (1 - dive);
   out.fin = W.flipperDeg * DEG * calm * Math.sin((u / (W.period * 0.8)) * Math.PI * 2 + 1.1);
   out.y = y;
   out.forward = E.glide * u;
-  out.up = u >= 0 && u <= E.end && y + 2.2 + 6.8 * Math.max(0, -Math.sin(out.pitch)) > -0.3;
+  out.up = u >= 0 && u <= E.end && y + 3 + 6.8 * Math.max(0, -Math.sin(out.pitch)) > -0.3;
   return out;
 }
 

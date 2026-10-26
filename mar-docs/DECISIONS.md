@@ -2,6 +2,25 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-072: Whale polish — a chubby, raised body with surface-breaking flippers and a visible fluke; W28 is a raw cam (amends D-070) — 2026-10-26
+
+**Decision** (TASK-494): (1) The mesh (`geo/whale.ts`) is ≈ 900 triangles (was ≈ 620), still one vertex-coloured
+`InstancedMesh` on `mar-lit`, CPU skin unchanged: a chubby teardrop (20 sides, 16 rings, 1.2 × wider than tall),
+a round head with big eyes, a darker dorsal ridge, light flanks and a cream belly, a slender stock, a 9 u fluke with
+a notch and pale trailing edge, 3.1 u pectoral flippers with an upward dihedral. (2) The back now rests `back` = 2.9 u
+above the sea (`REST_Y = back − 2.9`, was 1.75 − 1.95), so the equator is at the waterline and the flipper roots and
+the stock are at or above it; the flippers paddle ±14° and break the surface. (3) The tail bend sign was wrong:
+`WhaleBend.tail` / `fluke` were documented "+ = up" but the skin sent a positive angle on the rear segments
+down, so the slap lift went under water. The skin now subtracts them; the idle pose curls the stock up
+(`swim.tailLift` 0.22 rad) and flexes the fluke back flat (0.9 × that), so the fluke clears the water while swimming.
+(4) The spout is 34 placed puffs (soft edge 0.35, opacity 0.6, spread 0.22) and the splash 10: still 44 slots.
+(5) W28 left the overview (the whale was a few pixels at the corner) for a raw cam 34° down from the north-east
+(`230,62,40,170,0,112`, 199 calls): the whale faces the camera with the Research cape beside it. W28b is a front
+three-quarter close-up (`226,28,76,198,0,110`, 124 calls). The route, the schedule and the 17:45 pin are unchanged.
+**Rationale**: from above the first lens read as a fish or a submarine: the flippers were 0.5 u under the surface,
+the fluke hung down, and there was no tapered stock. A submerged dark body silhouette was tried as a cost and not
+added (the water alpha already hides what is deeper than ~ 1 u).
+**Alternatives**: a separate flipper / fluke mesh (second draw); raising the whole whale instead of the dihedral.
 ## D-070: The whale — a CPU-skinned world mover on the culture-clock day, one lap per day — 2026-10-26
 
 **Decision** (TASK-489, `W:D6`): (1) One grey whale, a mover (not an agent): `render/whale.ts`, mesh from
