@@ -678,7 +678,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // TASK-490 (W:B1): a mini lighthouse on a south skerry at 23:00 (raw), its beam sweeping the sea,
     // the island lights behind it
     seed: 1001,
-    cam: '-34,19,-104,6,10,-150',
+    cam: '-22,34,-112,6,8,-150',
     time: 23,
     simt: 4,
     quality: 'medium',
@@ -692,7 +692,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // TASK-490 (W:B6): the Wind Gardens' signal lamp on its peak at 21:00 +31 s (Coding's step, first
     // flash): the lamp mast, the flash and the ray thrown toward the next island of the chain (raw)
     seed: 1001,
-    cam: '-82,20,205,-108,13,172',
+    cam: '-84,31,200,-106,10,168',
     time: 21,
     simt: 31.2,
     quality: 'medium',
