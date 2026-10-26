@@ -10,6 +10,11 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-26 (TASK-489 merged)**: the whale (D-070) runs on the culture-clock day, not sim time — one lap per
+  day, 5 surfacings, the first pinned to 17:45 off the Research headland. Its route loop is not in `WorldData` (no
+  re-pin). The lit dither fade inverts when near > far; a mesh meant to be seen must stay outside `fade.near`. A
+  frame with draw calls but zero visible pixels is a NaN vertex. Raw-cam oblique frames over open sea cost
+  330–380 calls — look down at least 25°.
 - **2026-10-26 (TASK-487 merged)**: ladder `drift` is now judged on `fog=0` frames (`<dist>.nofog.png`); the fogged
   value is `driftFog` — compare both before blaming a tier for far drift. Fog depends only on camera distance
   (1.8 % at 170 u, 7.3 % at 480 u on target). Pair IoU forgives structure cells inside their radial parallax
