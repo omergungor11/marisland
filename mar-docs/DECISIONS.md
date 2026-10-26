@@ -2,6 +2,35 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-068: Ladder pair IoU follows the dolly's radial parallax; drift is judged without fog; the drift class filter is not relaxed (amends D-035) — 2026-10-26
+
+**Decision** (TASK-487, `scripts/ladder-metrics.ts`):
+- **Pair IoU**: both ladder cameras sit on one line through the target, so the frame centre is the epipole and a
+  point off the target plane moves only along its radial line. A structure cell that is solid in one frame only
+  is left out of the IoU union when the other frame has structure on its radial corridor (±`slack` cells). The
+  corridor is as wide as the parallax of a point `parallaxH` = 12 u above the plane (`parallaxRatio`, exact
+  for the bottom row's centre, which has the widest parallax). Terrain cells get no corridor. A prop that appears or
+  vanishes with nothing on its corridor still counts, and so does a sideways slide. Step colour metrics are
+  unchanged. L-pairs-marketing 42.4 → 37.6 (the transmitter mast at the frame edge) goes from 0.915 to 0.976.
+- **Drift**: the proposed "structure covers > 35 % of the frame → keep the class filter" rule is rejected. The
+  one case that needed it, a Design target on the glasshouse row (drift 21 u 9.45), is a real pop. The six
+  tier-2 glasshouses (each < 3 u, so not promoted to tier 0) are missing at 170 u and appear at the 140 u
+  boundary (pair 140 mean 2.82 / blob 0.6 %). The rule would have hidden that.
+- The Design ladder target stays on the windmill slope until the glasshouse row is visible from T0 / T1.
+- **Drift without fog**: ladder presets also capture each distance with `fog=0` (new capture param,
+  `<dist>.nofog.png`). The judged drift compares those frames, and the fogged drift is reported as `driftFog`.
+  The D-009 fog depends only on the camera distance, never on the tier. At the target it is 1.8 % at 170 u,
+  6.3 % at 340 u, 7.3 % at 480 u and 6.1 % at 700 u, which was the medium L-marketing far drift: 700 / 480 /
+  340 = 3.97 / 4.24 / 3.48 fogged against 2.20 / 1.91 / 1.47 without fog. It was not the strata, and not the
+  sea-plane mapping, which stays under 2.2 without fog. The fog ramp is unchanged, so the W1 / W11 postcards are
+  untouched. Steps and pairs still use the fogged frames, so a material that fogs differently at a tier still
+  shows at its boundary pair.
+**Rationale**: the TASK-374 calibration gave colour cells a ±1 slack but left the IoU without one, so a thin
+mast sliding 3–4 cells by parallax read as a footprint change. A radial corridor bounded by geometry is
+narrower than a large isotropic slack.
+**Impact**: `StepMetrics.parallaxCells`; `compareFrames(…, slack, parallax)`; `Params.fog`; the harness passes `parallaxRatio`
+for each step or pair.
+
 ## D-071: Culture constellations — layout-placed glyph caps in the sky program — 2026-10-26
 
 **Decision** (TASK-491, `W:G4`): the seven glyphs (`content/constellations.ts`) are drawn by the sky

@@ -10,7 +10,8 @@
  *   with `cam=village`), plus the harness-side
  *   `editpick` check (picking follows `api.edit` / `api.undo` / `propMove`, TASK-213).
  * Writes shots/<set>/{<id>.png, <id>+dt.png, <id>.mask.png, manifest.json, contact.jpg}.
- * `ladder` (D-031, TASK-374): per L-* preset every distance (+ its `debug=mask` frame) into
+ * `ladder` (D-031, TASK-374): per L-* preset every distance (+ its `debug=mask` frame; ladder presets
+ *   also a `fog=0` frame <dist>.nofog.png for the island drift, TASK-487) into
  *   <id>/<dist>.png, the consistency metrics into ladder-<id>.json and a strip ladder-<id>.jpg
  *   (frames / masks / ΔE heat); contact.jpg stacks the strips. Threshold misses are reported always
  *   and fail the run only with `--assert`. One island: `--only=L-coding,L-pairs-coding`.
@@ -33,6 +34,7 @@ import { computeMetrics, isBlank, isMagenta, type ImageMetrics } from './shots-m
 import {
   GRID,
   compareFrames,
+  parallaxRatio,
   regionDrift,
   planeMap,
   stepFailures,
@@ -533,8 +535,13 @@ interface LadderFrame {
   tier?: number;
   calls?: number;
   triangles?: number;
-  /** ΔE2000 of the frame's land mean vs the ladder median (ladder presets only). */
+  /**
+   * Island drift: ΔE2000 of the region's mean vs the drift reference frame (ladder presets only),
+   * judged on the `fog=0` frames (TASK-487: fog depends on the camera distance, not the tier).
+   */
   drift?: number | null;
+  /** The same drift on the fogged frames (reported, not judged). */
+  driftFog?: number | null;
 }
 type StepReport = Omit<StepMetrics, 'heat'> & { far: number; near: number; failures: string[] };
 interface LadderReport {
@@ -591,7 +598,7 @@ async function runLadder(
     console: [],
   };
   const frames: LadderFrame[] = [];
-  const imgs: { frame: Img; mask: Img; png: Buffer; maskPng: Buffer }[] = [];
+  const imgs: { frame: Img; mask: Img; clear?: Img; png: Buffer; maskPng: Buffer }[] = [];
   let deterministic: boolean | undefined;
   for (const d of dists) {
     const fp: ShotPreset = { ...p, cam: `ladder:${L.island}:${d}` };
@@ -619,6 +626,13 @@ async function runLadder(
     const { png: maskPng } = await shoot('&debug=mask');
     writeFileSync(resolve(dir, `${d}.png`), png);
     writeFileSync(resolve(dir, `${d}.mask.png`), maskPng);
+    // the drift frame without distance fog (ladder presets; pairs judge no drift)
+    let clear: Img | undefined;
+    if (!L.pairs.length) {
+      const { png: clearPng } = await shoot('&fog=0');
+      writeFileSync(resolve(dir, `${d}.nofog.png`), clearPng);
+      clear = await decode(clearPng);
+    }
     if (isFirst && deterministic === undefined) {
       deterministic = png.equals((await shoot('')).png);
       if (!deterministic && ASSERT) r.failures.push('non-deterministic: two captures differ');
@@ -646,7 +660,7 @@ async function runLadder(
       calls: snap?.info.calls,
       triangles: snap?.info.triangles,
     });
-    imgs.push({ frame: await decode(png), mask: await decode(maskPng), png, maskPng });
+    imgs.push({ frame: await decode(png), mask: await decode(maskPng), clear, png, maskPng });
   }
 
   // ---- metrics
@@ -678,6 +692,8 @@ async function runLadder(
       far.frame,
       far.mask,
       planeMap(view(dists[k + 1]), view(dists[k])),
+      LADDER_THRESHOLDS.slack,
+      parallaxRatio(view(dists[k + 1]), view(dists[k])),
     );
     heats[k + 1] = m.heat;
     const { heat: _heat, ...rest } = m;
@@ -702,27 +718,34 @@ async function runLadder(
       0,
     );
     const R = imgs[ri];
-    const drift = imgs.map((im, k) =>
-      k === ri
-        ? 0
-        : dists[k] < dists[ri]
-          ? regionDrift(
-              im.frame,
-              im.mask,
-              R.frame,
-              R.mask,
-              planeMap(view(dists[k]), view(dists[ri])),
-            )
-          : regionDrift(
-              R.frame,
-              R.mask,
-              im.frame,
-              im.mask,
-              planeMap(view(dists[ri]), view(dists[k])),
-            ),
-    );
+    // fog grows with the camera distance (D-009 ramp: about 2 % at 170 u, 7 % at 480 u) and never
+    // with the tier, so the judged drift compares the fog=0 frames (TASK-487); the fogged one is
+    // reported beside it
+    const driftOf = (pick: (im: (typeof imgs)[number]) => Img): (number | null)[] =>
+      imgs.map((im, k) =>
+        k === ri
+          ? 0
+          : dists[k] < dists[ri]
+            ? regionDrift(
+                pick(im),
+                im.mask,
+                pick(R),
+                R.mask,
+                planeMap(view(dists[k]), view(dists[ri])),
+              )
+            : regionDrift(
+                pick(R),
+                R.mask,
+                pick(im),
+                im.mask,
+                planeMap(view(dists[ri]), view(dists[k])),
+              ),
+      );
+    const drift = driftOf((im) => im.clear ?? im.frame);
+    const driftFog = driftOf((im) => im.frame);
     drift.forEach((v, k) => {
       frames[k].drift = v;
+      frames[k].driftFog = driftFog[k];
       if (v !== null && v > LADDER_THRESHOLDS.drift)
         report.failures.push(`drift ${dists[k]}: ΔE ${v.toFixed(2)} > ${LADDER_THRESHOLDS.drift}`);
     });

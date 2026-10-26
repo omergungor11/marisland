@@ -423,6 +423,7 @@ export async function boot(): Promise<void> {
         getCameraTarget: (o) => void cam.controls.getTarget(o),
         skyCraft: params.craft,
         birds: params.birds,
+        fog: params.fog,
       });
       liveWorld = wv;
       edits.attach({ world: wv.world, rebuildDirty: (r) => wv.rebuildDirty(r) });
