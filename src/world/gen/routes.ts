@@ -5,6 +5,8 @@ import { HQ_FERRY } from '../../content/cultures/hq.ts';
 import type { DockData, Heightfield, IslandData, Polyline, XZ } from '../types.ts';
 import { heightAt, sampleGrid } from '../types.ts';
 import { gridAStar, resample } from './paths.ts';
+import { reefNodeMask, type ReefField } from './reefs.ts';
+import { REEFS } from '../../content/reefs.ts';
 
 /**
  * Boat routes (ARCHITECTURE §2 step 6, TASK-133): closed loops found by A* on
@@ -21,6 +23,8 @@ export interface RouteInput {
   sdf: Float32Array;
   islands: IslandData[];
   docks: DockData[];
+  /** Reef field (TASK-488): raised nodes cost REEFS.routePenalty more per step. */
+  reefs?: ReefField;
 }
 
 interface Coarse {
@@ -30,9 +34,11 @@ interface Coarse {
   pass: Uint8Array;
   depth: Float32Array;
   repel: Float32Array;
+  /** 1 = a reef raised this node's seabed (gen/reefs.ts `reefNodeMask`). */
+  reef: Uint8Array;
 }
 
-function buildCoarse(h: Heightfield, sdf: Float32Array): Coarse {
+function buildCoarse(h: Heightfield, sdf: Float32Array, reefs?: ReefField): Coarse {
   const k = Math.round(ROUTES.cell / h.cellSize);
   const n = Math.floor((h.n - 1) / k) + 1;
   const pass = new Uint8Array(n * n);
@@ -84,7 +90,8 @@ function buildCoarse(h: Heightfield, sdf: Float32Array): Coarse {
     id++;
   }
   for (let i = 0; i < n * n; i++) if (comp[i] !== bestComp) pass[i] = 0;
-  return { n, k, pass, depth, repel: new Float32Array(n * n) };
+  const reef = reefs ? reefNodeMask(h, reefs, k) : new Uint8Array(n * n);
+  return { n, k, pass, depth, repel: new Float32Array(n * n), reef };
 }
 
 const posOf = (h: Heightfield, c: Coarse, i: number): XZ => {
@@ -152,7 +159,7 @@ function legIn(
       if (!c.pass[to]) return Infinity;
       const d = c.depth[to];
       const pen = d < lo ? (lo - d) * 0.8 : d > hi ? Math.min(2, (d - hi) * 0.08) : 0;
-      return dist * (1 + pen + c.repel[to]);
+      return dist * (1 + pen + c.repel[to] + c.reef[to] * REEFS.routePenalty);
     },
   });
 }
@@ -218,7 +225,7 @@ function smoothLoop(h: Heightfield, sdf: Float32Array, pts: XZ[], keep: Set<numb
 
 export function buildRoutes(input: RouteInput, rng: Rng): Polyline[] {
   const { h, sdf, islands, docks } = input;
-  const c = buildCoarse(h, sdf);
+  const c = buildCoarse(h, sdf, input.reefs);
   // docks a boat can reach: a passable node within dockReach of the dock end
   const stops: { dock: number; node: number; p: XZ; islandId: number }[] = [];
   docks.forEach((d, i) => {

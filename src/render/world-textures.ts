@@ -217,6 +217,12 @@ export interface WorldTextures {
   sdf: THREE.DataTexture;
   zone: THREE.DataTexture;
   /**
+   * Reef mask (TASK-488): R8 per sample, `world.reefWeight` (how far a reef shoal / sill raised
+   * the seabed). Static: the water shader fades it by the live depth, so an edit that digs a reef
+   * out loses the tint. Optional only so older test fakes still type-check.
+   */
+  reef?: THREE.DataTexture;
+  /**
    * Terrain albedo (TASK-372; `albedo` / `palette` / `groundDetail` are always set by
    * `createWorldTextures` — optional only so older test fakes still type-check; the terrain
    * material requires them): RGBA8 sRGB per sample, linear filtering; A = island id
@@ -319,6 +325,8 @@ export function createWorldTextures(
   const sdf = mk(sdfHalf, THREE.HalfFloatType, THREE.LinearFilter, THREE.RGFormat);
   // zones as an R8 copy (the world array may be replaced or edited in place)
   const zone = mk(zoneCopy, THREE.UnsignedByteType, THREE.NearestFilter);
+  const reef = mk(world.reefWeight.slice(), THREE.UnsignedByteType, THREE.LinearFilter);
+  reef.unpackAlignment = 1;
   // albedo: sRGB8_ALPHA8 (hardware decode before filtering), island id in the linear alpha
   const albedoGrid = buildAlbedoGrid(world);
   const albedo = mk(albedoGrid.rgba, THREE.UnsignedByteType, THREE.LinearFilter, THREE.RGBAFormat);
@@ -348,6 +356,7 @@ export function createWorldTextures(
     height,
     sdf,
     zone,
+    reef,
     albedo,
     palette,
     groundDetail() {
