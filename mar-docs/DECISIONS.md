@@ -2,6 +2,25 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-080: DevOps gets all three directions (B Funicular + A Lava + C Onsen/ambient) and a bigger Emberpeak — plan only (amends R2-2) — 2026-10-27
+
+**Decision** (user, note-taking session): R2-2 picked B alone; the user now wants every DevOps idea in
+`study/coding-devops-qa.md` §1: B (D4 funicular, D5 summit bell + red beam, D13 ore cableway), A (D1 lava river,
+D2 lava fall + steam delta, D3 ember bridge), and the ambient / scene pack (D6 crater deck, D7 geyser field,
+D9 onsen town, D10 obsidian beach, D14 smiths' lane, D17 lava-glass kiln, D18 breakwater + tug). Emberpeak may
+grow around the volcano to make room (today `diameter: [90, 120]`, `sizeClass: 'medium'`): a lower apron / ring
+of shelves round the cone, the cone silhouette itself unchanged.
+**Plan**: DevOps is split out of M25 into two milestones. **M25 DevOps I** = island enlargement first (one layout
++ hash re-pin for the whole archipelago), then B + D14 + D9 + D7. **M26 DevOps II** = A (D1/D2/D3, lava ground
+emissive = material change, 0 new programs) + D6 + D17 + D10 + D18. Marketing signature moves to M27, Research
+to M28.
+**Rationale**: Enlarging first means the apron, the lava channel and the funicular stations are laid out once;
+doing B before the growth would re-pin every DevOps plan twice.
+**Impact / risks**: ~+6 defs (funicularRail, funicularCar, bridgeSpan, crater deck, geyserCone, obsidian) → a
+DevOps cap override well past 12/1, decided per task with measured numbers. Layout spacing and every island hash
+re-pin; W5, W31–32, L-devops and all DevOps raw cams go stale. DevOps frames must stay inside the W16 / ladder
+budgets (`shots --assert`). Numbers D-078/D-079 are left to the TASK-497 / TASK-501 branches still in flight.
+
 ## D-076: QA Proving Grounds kit — a reserved stunt yard instead of the second track, three defs at the end of PROP_DEFS (D-059 A, D-062 R3-14) — 2026-10-27
 
 **Decision** (TASK-499): (1) **Kit.** `dropTower` (tier 1, 10 u lattice, v0 crate parked at the top, v1 the empty
