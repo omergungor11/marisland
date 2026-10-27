@@ -25,9 +25,11 @@ instance per (def, variant). (4) **Ferry.** HQ's pier is in a closed bay, so the
 every route sample, the fort ≥ 9 u. The ferry pier is unchanged (`dock` ×1); the H10 mail jetty is not built yet.
 **Alternatives not taken**: boats as an agent kind (agent budget, a kind per variant); a `dock` variant for the comb
 (docks drive the routes, gull perches and the path graph); fixing the pier frame in content (the shore differs per seed).
-**Numbers** (seed 1001, medium): W16 281 → 290 calls, 749k → 757k tris, memory 159 → 160 MB (budget 300 / 170); W2 / W3
-190 / 190; ladder L-hq low max 69 calls, medium 146 calls / 270k tris, `--assert` green. Fort + marina read at T0 (W1 postcard)
-and T1. **Impact**: every island hash re-pins (new stage + new hash key); W16 re-aimed (8 u higher: the masts crowded
+**Numbers** (seed 1001, medium): W16 with the old cam 281 → 290 calls, 749k → 757k tris, memory 159 → 160 MB (budget
+300 / 170); with the re-aimed cam 263 calls / 708k tris. Whole wow set `--assert` green: max calls 266 (Marina Dusk),
+memory peak W27 163 MB (was 162). Ladder L-hq low max 69 calls, medium 146 calls / 270k tris, `--assert` green; ci set
+selftests (regen / ctxloss / edit) green. New LOD0 tris: marinaPier 496 / 340 / 264 / 424 / 412, starFort 1172, sailboat
+v6 / v7 208, v8 126 (LOD1 ≤ 30 %). Fort + marina read at T0 (W1 postcard, E-flood) and T1. **Impact**: every island hash re-pins (new stage + new hash key); W16 re-aimed (8 u higher: the masts crowded
 the foreground); cap 14 for HQ only; the breakwater exists on few seeds (the ferry stop sits at the horn).
 
 ## D-082: QA harbour becomes a customs port — plan only — 2026-10-27
