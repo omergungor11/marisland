@@ -2,6 +2,28 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-077: Mother Kite Train — one CPU-posed mesh on the sky-craft material, two-tone kites, no shader changes — 2026-10-27
+
+**Decision** (TASK-500, CO:C3): seven kites (a larger lead + six followers) fly on a closed-form circular orbit
+(`R` = 0.58 x the Coding island radius, `peakY` + 20 u, lead 2.4 u/s) around the Coding island. Followers trail the
+lead by arc length (7.6 u; kites 8.2 / 6.6 u tall), snake sideways down the line, sink 0.3 u each and bob / roll / pitch out of phase
+(periods jitter +-13 % per seeded kite). Each kite has a bow tail that flutters; a thin 3-sided line (with sag) joins
+the kite centres. The whole train is ONE `InstancedMesh` (one instance at the far fleet anchor, like the Hype Fleet)
+on the existing sky-craft material: kites are rigid, the tails and the line bend, so the 692 triangles are written
+on the CPU each frame (flat normals, fixed-size arrays, skipped when time / camera / motion scale are unchanged).
+Data in `SKY_CRAFT.kiteTrain`, code in `render/kite-train.ts`, created by `createSkyCraft`. Reduced motion reads
+`SHARED.uMotionScale` (the culture movers' channel): sway, bob, roll, snake and tail flutter shrink to 0.3, the orbit
+itself keeps its speed (it is a closed form of the clock). The train fades by a CPU scale inside 26 → 10 u of the camera.
+**Look**: every kite is two-tone blue + gold (odd kites swap the quadrants), and kites bank alternately about their
+spine (+-0.95 rad) so a camera outside the orbit never sees one edge-on. A plain yellow kite read as flat grey on its
+shaded side (the lit program lerps the shade 35 % toward the purple tint, independent of albedo, and its normals come
+from screen derivatives, so vertex normals cannot cheat), the blue half carries the silhouette.
+**Cost**: +1 draw call (W11: the train mesh), 0 programs, 692 tris, 97 KB of dynamic buffers, no shadows; CPU
+0.05 ms per update (7 kites; only when the clock or the camera moved). Excluded from the ladder by `craft=0`
+(TASK-450) like the other sky craft.
+**Rationale**: the plan wanted a blue-yellow dot chain at T0 over Coding, and a proper train at T1 / T2. The
+mesh has no ground-height dependency (`peakY` only), so the worldgen knoll shifts it by at most a few u.
+
 ## D-074: Night effects polish — signal as a beam with a travelling light front, streak-spark fireworks with a mirror reflection, beacons readable from the postcard (amends D-069) — 2026-10-26
 
 **Decision** (TASK-496, M23 QA findings 3, 4, 7): (1) **Signal.** The relay signal is no longer a glowing
