@@ -109,6 +109,16 @@
   - **Gotchas:**
     - Props over 3 u tall draw from T0 regardless of tier.
     - A blocking reservation placed before `campusLots` moves the lots and paths.
+- **TASK-498 done (Wind Tunnel + Kite Day; D-088)**, branch `worktree-agent-af63de4db6501b14b`; re-pins are their own
+  last commit (`test(worldgen): re-pin hashes ...`), redo them at merge if a parallel branch re-pinned too:
+  - **For TASK-502:** presets `D-move-coding-hill` (14:00 +20 s, cam `-80,26,150,-106,13,183`, 14 kites up, the tunnel in the
+    corner), `-tunnel` (day, +20 s) and `-tunnel-night` (21:00 +6 s, cam `-112,9,166,-123.5,10.5,184.7`),
+    `-socks-a/b/c` (sim 4 / 11 / 19 s, cam `-122,15,176.5,-123.5,10.2,185`: the socks visibly change pitch). W7 shows the
+    tunnel at the right edge. The tunnel's axis runs about -x on seed 1001, the fan is at its +x end.
+  - **Gotchas:** the tunnel fixture is rotY = anchor.rotY + pi/2 (local +x = axis), the fan rotY = anchor.rotY (local +z).
+    A windsock-lift vertex carries `aSpin.w` = 5 + k/16 and `wind` 0 (a test counting spinners should expect w = 1 only on
+    the fan blades). `harness --only=` wipes the other frames of the set dir (take all frames you need in one run).
+    The `cultures.test` negative cases now build on the Marketing ledger (Coding has an override).
 - **TASK-497 merge-ready** (`worktree-agent-a24e64327cede359d`, D-075; main merged in). The hash re-pins are a
   commit of their own (`test(worldgen): re-pin …`); redo them at merge if TASK-501 re-pinned too:
   - **For TASK-498 (anchor contract):** `isl.anchors.windTunnel` {x, z, rotY} stands on every seed (30 test

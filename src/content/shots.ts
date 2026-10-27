@@ -201,6 +201,56 @@ const MOVE_SIMT: Record<string, number> = {
   qa: 12,
   research: 12,
 };
+/**
+ * D-move-coding-hill / -tunnel / -tunnel-night (TASK-498 Wind Tunnel + Kite Day, seed 1001): Kite Day
+ * 14:00 + 20 s (all hill kites up, one stuck low), the tunnel with its fan and gust-lifted socks by day
+ * and its blue server light + warm lanterns at night. Raw cameras; re-pin when the layout moves.
+ */
+const TUNNEL_SHOTS: readonly ShotPreset[] = (
+  [
+    ['hill', 'Wind Gardens · 14:00 +20 s Kite Day over the hill', '-80,26,150,-106,13,183', 14, 20],
+    [
+      'tunnel',
+      'Wind Gardens · wind tunnel, fan + windsocks (14:00)',
+      '-112,9,166,-123.5,10.5,184.7',
+      14,
+      20,
+    ],
+    ['socks-a', 'Wind Gardens · tunnel windsocks, sim 4 s', '-122,15,176.5,-123.5,10.2,185', 14, 4],
+    [
+      'socks-b',
+      'Wind Gardens · tunnel windsocks, sim 11 s',
+      '-122,15,176.5,-123.5,10.2,185',
+      14,
+      11,
+    ],
+    [
+      'socks-c',
+      'Wind Gardens · tunnel windsocks, sim 19 s',
+      '-122,15,176.5,-123.5,10.2,185',
+      14,
+      19,
+    ],
+    [
+      'tunnel-night',
+      'Wind Gardens · tunnel night: blue server light + warm park',
+      '-112,9,166,-123.5,10.5,184.7',
+      21,
+      6,
+    ],
+  ] as const
+).map(([id, title, cam, time, simt]) => ({
+  id: `D-move-coding-${id}`,
+  title,
+  seed: 1001,
+  cam,
+  time,
+  simt,
+  deltaT: 0.7,
+  quality: 'medium' as const,
+  sets: ['dev' as const],
+}));
+
 const MOVE_SHOTS: readonly ShotPreset[] = (
   [
     ['hq', 'Harbour Guild · 06:00 bell fanfare', 1001, '-59.04,4.5,-19.82,-52.44,2.8,-16.42', 6],
@@ -1802,6 +1852,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     ];
   }),
   ...MOVE_SHOTS,
+  ...TUNNEL_SHOTS,
   {
     id: 'W-marina-dusk',
     title: 'Marina Dusk',

@@ -29,6 +29,7 @@ import {
   CODING_RIM_WALK,
 } from '../../../content/themes/coding.ts';
 import { THEMES } from '../../../content/themes/index.ts';
+import { TUNNEL_FAN as TF } from '../../../content/themes/coding-tunnel.ts';
 import { FIXTURE_RADIUS, FLATTEN, LOT_FOOTPRINT, PATHS } from '../../../content/settlements.ts';
 import type { Rng } from '../../../core/rng.ts';
 import { smoothstep } from '../../../core/math/index.ts';
@@ -721,6 +722,25 @@ export const planCoding: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
       addShape(ctx, isl, site.sh, true);
       addPad(ctx, isl, site.sh, FLATTEN.discMargin);
       isl.anchors.windTunnel = { x: site.sh.x, z: site.sh.z, rotY: site.a };
+      // TASK-498 (CO:C1): the tunnel (local +x = the axis, downwind: fixture rotY = a + pi/2) and its fan
+      // at the upwind mouth (local +z = downwind: rotY = a); the pad above is its level ground
+      const ax = { x: Math.cos(site.a), z: Math.sin(site.a) };
+      ctx.fixtures.push({
+        defId: 'windTunnel',
+        x: site.sh.x,
+        z: site.sh.z,
+        rotY: site.a + Math.PI / 2,
+        islandId: isl.id,
+        variant: 0,
+      });
+      ctx.fixtures.push({
+        defId: 'tunnelFan',
+        x: site.sh.x - ax.x * TF.mouthGap,
+        z: site.sh.z - ax.z * TF.mouthGap,
+        rotY: site.a,
+        islandId: isl.id,
+        variant: 0,
+      });
     }
   }
 

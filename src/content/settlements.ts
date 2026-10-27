@@ -174,6 +174,9 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   // Coding M22 (TASK-479): windsock avenue pole; fairy wreaths ride their tree (no obstacle of their own)
   windsock: 0.4,
   fairyWreath: 0.1,
+  // M24 (TASK-498): the wind tunnel (a rect pad covers it) and its fan
+  windTunnel: 3.2,
+  tunnelFan: 1.5,
   // DevOps
   coolingTower: 2.6,
   rackRow: 1.6,

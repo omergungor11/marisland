@@ -203,7 +203,14 @@ describe('Coding Kite Hill (TASK-497), 30 seeds', { timeout: 300_000 }, () => {
       expect(shapeDist(sh, h.x, h.z), ctx).toBeGreaterThanOrEqual(
         Math.min(CODING_PLAN.tunnel.fromTop, CODING_PLAN.tunnel.last.fromTop) - 1e-6,
       );
-      for (const f of w.fixtures.filter((f) => f.islandId === isl.id))
+      // the tunnel and its fan (TASK-498) stand ON the pad: one of each, the fan inside the rect
+      const own = w.fixtures.filter(
+        (f) => f.islandId === isl.id && (f.defId === 'windTunnel' || f.defId === 'tunnelFan'),
+      );
+      expect(own.map((f) => f.defId).sort(), ctx).toEqual(['tunnelFan', 'windTunnel']);
+      for (const f of own)
+        expect(shapeDist(sh, f.x, f.z), `${ctx} ${f.defId}`).toBeLessThanOrEqual(0);
+      for (const f of w.fixtures.filter((f) => f.islandId === isl.id && !own.includes(f)))
         expect(shapeDist(sh, f.x, f.z), `${ctx} ${f.defId}`).toBeGreaterThan(0);
       for (const l of w.lots.filter((l) => l.islandId === isl.id))
         expect(shapeDist(sh, l.x, l.z), `${ctx} lot`).toBeGreaterThan(0);

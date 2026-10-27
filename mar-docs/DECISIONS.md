@@ -37,6 +37,43 @@ chase (making it gate on the ship needs a uniform in the shared lit program); wh
 **Rationale**: the cove cannot host the two-belt layout of D-082 next to the pier, and moving the pier first keeps the old campus on most seeds.
 **Alternatives**: two belts (v2 + v3) side by side (28 u of frontage, fits no seed); a single-lane in / out with a reversing ship (reads wrong); a reclaimed
 platform raised from the shelf (land masks would disagree); hard-gating the marquee through a new uniform.
+## D-088: Coding Wind Tunnel + Kite Day (TASK-498, CO:C1) — a windsock lift tag in the shared shader, hill kites as culture-mover scenes, Coding cap 12 / 2 — 2026-10-27
+
+**Decision**: (1) **Defs.** `windTunnel` (tier 1, 1 variant, 14 u lattice half tube: 8 arch ribs, 6 rails, zig-zag braces,
+floor deck, blue server-light strips, two warm lantern posts at the downwind mouth, five windsocks hung from the ridge) and
+`tunnelFan` (tier 2, 3 u: cage, five blades + nose cone on the shared spin tag 1, so it turns with the wind and the gust
+boost like the turbines; NOT the 1.25 test-fan tag). Appended at the very end of `PROP_DEFS` in a marked TASK-498 block;
+they are the 11th-12th Wind Gardens ledger entries, `cultureCapOverride.coding` = 12 defs / 2 tier-1 (giantDuck stays
+tier 1). Both are tall / wide enough to draw from T0 by size (D-031). Geometry `geo/themes/coding-tunnel.ts`, numbers
+`content/themes/coding-tunnel.ts`, defs `content/props-themes/coding-tunnel.ts`. Tunnel 3168 tris (LOD1 772), fan 728 (LOD1 114).
+(2) **Placement.** The plan pushes both as fixtures on the `windTunnel` anchor (D-075 pad, no new pad): the tunnel runs along
+its local +x, so its fixture rotY = anchor.rotY + pi/2 (axis = (cos rotY, sin rotY), downwind); the fan stands 7.55 u
+upwind on the axis with rotY = anchor.rotY (it faces local +z = downwind). `FIXTURE_RADIUS` windTunnel 3.2, tunnelFan 1.5.
+(3) **Windsock lift.** New spin-channel tag `MOTION_TAG.lift = 5`, `aSpin = (ring xyz, 5 + k/16)`: a branch in
+`ACTIVITY_DISPLACE` (activity-glsl.ts) rotates the sock about the ring (object z axis) from a droop of 0.95 rad up to
+horizontal by `smoothstep(0, 0.55, gust)`, the gust sampled `0.7 s x k` late so the five socks lift as a travelling wave
+down the tunnel; reduced motion holds them halfway (`SOCK_LIFT`, content/activity.ts). 0 new programs (the branch lives in the
+shared lit vertex chunk like the tracker / bob tags), no new attribute; tagged geometry stays instanced (far-merge skips it).
+(4) **Kite Day at the hill.** `hillKiteScene` (render/culture-movers.ts): every `kite` v0-2 pole within the hill foot + 4 u
+of the `kiteHill` anchor becomes a culture-mover scene (6 parts: line, kite, tail line, three bows) active in the
+`kites.ritual` (kiteDay, 14:00, 60 s) window. Pole k starts 0.006 of the window after pole k-1 and climbs over 0.2 of it
+(all up by +20 s: 14 kites in the air on seed 1001, 10 hill + 4 rack); fall in the last 0.12. Height 8.5-14 u over the pole,
+downwind drift 0.62, sway and bob x `uMotionScale`. One pole per island (hash of island id and pole count) is the stuck
+kite: it climbs 2.7 u and tugs 1.1 u on a 4.6 s beat, tail dangling, never free. The static pole kite stays drawn (a small
+practice kite on its pole, like the rack's). Closed form in the day clock (rise / fall) and the sim time (wobble).
+(4b) **Night.** The blue light is emissive strips (glow mask 0.7 floor edges, 0.55 ridge, accent colour, same recipe as the
+Server Yard plates); the warm part is the two lantern posts (glow 1) and the island's own park lamps.
+**Cost**: +2 defs, 0 programs, 0 draw calls (movers add no calls; per-kind part meshes already exist), +1 draw group for
+the tunnel (instanced, 1 variant). CPU: Kite Day on 0.030 ms per movers update with 19 scenes / 105 instances (10 hill kite
+scenes = about 0.02 ms, 0.002 ms per kite; off-ritual 0.006 ms). Shots (seed 1001, medium): D-move-coding-tunnel 109 calls,
+W7 229 calls / 652 k tris / 17 programs (programs unchanged). Hash re-pin: world 1001 9fee33b6295d7da8 -> 22607ba828b46119,
+seed 1 1d1beca734b6d8b9 -> a0c03d00cb60a97b (own commit); Coding fixtures +2 (117 / 205 / 218 -> 119 / 207 / 220).
+**Rationale**: a gust-driven lift needs a vertical rotation the wind-sway weight cannot express (it displaces along the
+wind only); the tag channel already hosts per-part rotations, so no program or attribute was added. Hill kites as movers
+follow the rack's kiteScene, so reduced motion and the capture clock come for free.
+**Alternatives**: windsocks as three instances of the `windsock` def (a third def would exceed the 12 cap, and they would
+not lift); a CPU-posed sock mesh (a draw call plus per-frame writes); hiding the pole's baked kite (needs a per-instance
+flag in the shader).
 
 ## D-086: QA Customs Port kit — three defs at the end of PROP_DEFS, QA cap 12 -> 15, ship and crane rig as loose builders (D-082) — 2026-10-27
 

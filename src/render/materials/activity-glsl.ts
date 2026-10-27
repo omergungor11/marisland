@@ -4,6 +4,7 @@ import {
   BEACON,
   MARQUEE,
   MOTION_TAG,
+  SOCK_LIFT,
   OCCUPANCY,
   PULSE,
   SCREEN_ANIM as A,
@@ -71,6 +72,18 @@ export const ACTIVITY_DISPLACE = /* glsl */ `
     marBs = sin(marBt);
     transformed.yz = vec2(marBc * transformed.y - marBs * transformed.z, marBs * transformed.y + marBc * transformed.z);
     transformed.y += ${f(FLOAT_BOB.y)} * sin(marBw) * uMotionScale;
+  } else if (aSpin.w > ${f(T.lift - 0.01)} && aSpin.w < ${f(T.bob - 0.5)}) {
+    // windsock lift (TASK-498): the tag is 5 + k / 16, k = the sock's place in the gust wave. The sock
+    // droops until a gust passes (delayed lag s per place), then rises toward horizontal about the
+    // ring (aSpin.xy, object z axis); reduced motion holds it halfway
+    float marLk = (aSpin.w - ${f(T.lift)}) * ${f(1 / SOCK_LIFT.step)};
+    float marLg = marGustAt(marOrigin.xz, uTime - marLk * ${f(SOCK_LIFT.lag)}, uWind.xy, uGustSpeed, uWind.w, uWind.z);
+    float marLf = mix(${f(SOCK_LIFT.rest)}, smoothstep(${f(SOCK_LIFT.lo)}, ${f(SOCK_LIFT.hi)}, marLg), uMotionScale);
+    float marLa = -${f(SOCK_LIFT.droop)} * (1.0 - marLf);
+    float marLc = cos(marLa);
+    float marLs = sin(marLa);
+    vec2 marLp = transformed.xy - aSpin.xy;
+    transformed.xy = aSpin.xy + vec2(marLc * marLp.x - marLs * marLp.y, marLs * marLp.x + marLc * marLp.y);
   } else if (aSpin.w > ${f(T.tracker - 0.5)} && aSpin.w < ${f(T.tracker + 0.5)}) {
     // sun tracker: rest tilt = (w − 4)·π about x through the pivot; stow when the sun is down
     mat3 marTR = mat3(marM);
