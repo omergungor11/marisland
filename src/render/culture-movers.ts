@@ -6,6 +6,8 @@ import { PROP_DEF_INDEX } from '../content/props.ts';
 import { CULTURES } from '../content/cultures/index.ts';
 import { CULTURE_MOVERS as M } from '../content/cultures/movers.ts';
 import { RELAY } from '../content/cultures/rhythm.ts';
+import { HILL_KITES as HK } from '../content/themes/coding-tunnel.ts';
+import { KITE_HILL } from '../content/islands.ts';
 import { SIGNAL_CHAIN } from '../content/signature.ts';
 import { THEMES } from '../content/themes.ts';
 import { SEMAPHORE, mailCablePoint, type Vec3Like } from '../content/props-themes/m20.ts';
@@ -422,6 +424,71 @@ function kiteScene(variant: number, idx: number): Scene['run'] {
           b % 2 ? col : '#FFF4E0',
         );
       }
+    }
+  };
+}
+
+/**
+ * Kite Day at the hill (M24 TASK-498, D-088): the kite pole on the hill foot sends a big kite up its
+ * line during the `kites.ritual` window (14:00, 60 s). Pole k starts `HK.stagger` of the window after
+ * pole k-1, so the hill fills one kite at a time and all are up well before the window midpoint. The
+ * `stuck` pole's kite never gets free: it climbs a few u and tugs on its line on a beat, tail dangling.
+ * Pole-local frame (+x = downwind); closed form in the day clock (rise / fall) and the sim time (wobble).
+ */
+function hillKiteScene(k: number, stuck: boolean): Scene['run'] {
+  const K = M.kites;
+  return (w, c, s) => {
+    if (c.fest?.id !== K.ritual) return;
+    const ph = c.fest.phase;
+    const p0 = ph - HK.stagger * k;
+    const e =
+      p0 < HK.rise ? smooth(p0 / HK.rise) : ph > 1 - HK.fall ? smooth((1 - ph) / HK.fall) : 1;
+    if (e <= 0) return;
+    const gust = Math.min(1.2, Math.max(0.6, c.wind.s));
+    const A: V3 = [0, HK.anchorY, 0];
+    const dx = s.wl.x;
+    const dz = s.wl.z;
+    let H: number;
+    let size: number = HK.size;
+    if (stuck) {
+      // up, a tug on the beat (a squared half-sine), then back to the snag
+      const beat = Math.max(0, Math.sin((c.time / HK.stuck.period) * Math.PI * 2 + k));
+      H = (HK.stuck.height + HK.stuck.tug * beat * beat * c.motion) * e;
+      size = HK.stuck.size;
+    } else H = HK.height[k % HK.height.length] * e * gust;
+    const sway = HK.sway * c.motion * e * Math.sin(c.time * 0.8 + k * 1.9) * (stuck ? 0.4 : 1);
+    const bob = HK.bob * c.motion * e * Math.sin(c.time * 1.7 + k * 2.3);
+    const T: V3 = [
+      dx * H * HK.drift - dz * sway,
+      HK.anchorY + H + bob,
+      dz * H * HK.drift + dx * sway,
+    ];
+    cable(w, A, T);
+    _a.set(T[0] - A[0], T[1] - A[1], T[2] - A[2]).normalize();
+    const sd = k % 2 ? 1 : -1;
+    _z.set(-dx * 0.6 - dz * 0.9 * sd, 0.35, -dz * 0.6 + dx * 0.9 * sd).normalize();
+    _x.crossVectors(_a, _z).normalize();
+    _z.crossVectors(_x, _a);
+    _bm.makeBasis(_x, _a, _z);
+    _qa.setFromRotationMatrix(_bm);
+    _qb.setFromAxisAngle(_a, 0.14 * c.motion * Math.sin(c.time * 2.1 + k * 1.3));
+    _qa.premultiply(_qb);
+    const col = HK.colors[k % HK.colors.length];
+    w.putQ(PART.kite, T, _qa, size, col);
+    const top: V3 = [T[0], T[1] - 0.55 * size, T[2]];
+    const ts = Math.sin(c.time * 2 + k) * 0.3 * c.motion;
+    const tc = Math.cos(c.time * 1.7 + k) * 0.3 * c.motion;
+    const end: V3 = [top[0] + ts, top[1] - HK.tail * (stuck ? 0.7 : 1), top[2] + tc];
+    cable(w, top, end);
+    for (let b = 1; b <= 3; b++) {
+      const f = b / 3.2;
+      w.put(
+        PART.quad,
+        [top[0] + ts * f, top[1] + (end[1] - top[1]) * f, top[2] + tc * f],
+        [0.4, c.time * 2 + b, b % 2 ? 0.6 : -0.6],
+        0.3,
+        b % 2 ? col : '#FFF4E0',
+      );
     }
   };
 }
@@ -1068,6 +1135,7 @@ export function createCultureMovers(
     rocket: defOf('rocketMonument'),
     drop: defOf('dropTower'),
     track: defOf('testTrack'),
+    kite: defOf('kite'),
   };
   const beams: Beam[] = [];
   const beamAnchors: { x: number; y: number; z: number }[] = [];
@@ -1076,6 +1144,21 @@ export function createCultureMovers(
   // M22 (TASK-482) DevOps watch tower beacons
   const watchBeams: THREE.Mesh[] = [];
   let watchMat: THREE.ShaderMaterial | null = null;
+  // M24 TASK-498 Kite Day: the kite poles on the Kite Hill foot (kite v0-2 within the foot of the
+  // `kiteHill` anchor) each send a kite up; one pole per island, picked by a hash, stays stuck
+  const hillKite = new Map<number, { k: number; stuck: boolean }>();
+  for (const isl of world.islands) {
+    const hp = isl.anchors.kiteHill;
+    if (!hp || D.kite < 0) continue;
+    const poles: number[] = [];
+    for (let i = 0; i < store.count; i++) {
+      if (store.defId[i] !== D.kite || store.islandId[i] !== isl.id) continue;
+      if ((store.flags[i] & PropFlag.removed) !== 0 || store.variant[i] > 2) continue;
+      if (Math.hypot(store.x[i] - hp.x, store.z[i] - hp.z) <= KITE_HILL.foot + 4) poles.push(i);
+    }
+    const stuckAt = poles.length ? hashInts(isl.id, poles.length, 498) % poles.length : -1;
+    poles.forEach((i, k) => hillKite.set(i, { k, stuck: k === stuckAt }));
+  }
   const ids = new Map<number, number>();
   let semaLamp: V3 | null = null;
   for (let i = 0; i < store.count; i++) {
@@ -1096,7 +1179,11 @@ export function createCultureMovers(
       scenes.push(
         sceneAt(th, pv(), store.rotY[i], [0, 2, 0], M.kites.slots.length * 6, kiteScene(v, idx)),
       );
-    else if (d === D.yard) {
+    else if (d === D.kite && hillKite.has(i)) {
+      const hk = hillKite.get(i)!;
+      // the kite climbs well above the pole: its gate centre sits halfway up
+      scenes.push(sceneAt(th, pv(), store.rotY[i], [3, 8, 0], 6, hillKiteScene(hk.k, hk.stuck)));
+    } else if (d === D.yard) {
       scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 4, M.lift.z], 4, liftScene(idx)));
     } else if (d === D.horn)
       scenes.push(
