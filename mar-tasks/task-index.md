@@ -341,6 +341,20 @@ Details in `phases/phase-3.md`.
 | TASK-501 | QA Figure-8 Crash Track + motion (`QA:Q1`, R3-14 two tracks): ramped crash track (testTrack variant ×2) on the SE meadow beside the existing loop, closed-form cart with a ramp parabola and wobbling dummy; drop-tower lift/drop every 20 s with landing squash + ✓ lamp; fan speeds up at the 12:00 siren test | props + life | L | TODO | TASK-499 |
 | TASK-502 | M24 shots + QA: wow presets Kite Hill Afternoon (14:00 +20 s, ≥ 6 kites), Proving Grounds Noon (12:00 +3 s), Fairy Night / Bug Hunt Night refresh; ladder low + medium `--assert`; QA report | qa | S | TODO | TASK-497…501 |
 
+### M25/M26 DevOps I–II · M29 HQ Marina · M30 QA Customs Port
+*D-080, D-081, D-082 (user, 2026-10-27). Run in parallel with M24 at the user's request ("paralel hızlı"); every branch keeps its hash re-pins in one separate commit and appends defs in a marked block at the end of `PROP_DEFS`, the orchestrator reorders at merge. Placement tasks follow once their props + anchors are merged.*
+
+| ID | Task | Agent | Complexity | Status | Dependencies |
+|----|------|-------|-----------|--------|-------------|
+| TASK-503 | Emberpeak growth: lower apron / shelf ring round the cone (silhouette unchanged), layout still fits; anchors for funicular stations, cableway, smiths' lane, onsen town, geyser field, lava channel, obsidian beach, breakwater | worldgen | L | IN_PROGRESS | — |
+| TASK-504 | DevOps M25 props: `funicularRail` + `funicularCar`, ore cableway (mailLine reuse), summit bell + red beam variant, `geyserCone`, onsen house + smiths' lane variants; hooks for movers | props | M | IN_PROGRESS | — |
+| TASK-505 | HQ yacht marina (comb piers, 15–20 moored boats, breakwater, H11 buoys, mast lights) + cove-mouth star fort with H18 lights; placed; Marina Dusk preset | props + worldgen | L | IN_PROGRESS | — |
+| TASK-506 | QA customs port props: Q8 scanner arch, QA cargo ship, quay crane, inspection line + ✓/✗ lamps, Q9 quarantine pontoon (variants of DevOps cargo kit) | props | M | IN_PROGRESS | — |
+| TASK-507 | DevOps M25 placement + motion: funicular line + 2 cars, ore buckets, bell 06:00 + beam, smiths' lane, onsen town, geyser bursts 17:30; Funicular Dawn / Ember Lane Night presets | worldgen + life | L | TODO | TASK-503, TASK-504 |
+| TASK-508 | QA customs port placement + motion: ship route under the arch, crane unload, inspection ✓/✗, rejects to pontoons; Customs Noon preset | worldgen + life | L | TODO | TASK-501, TASK-506 |
+| TASK-509 | M26 DevOps II: lava river (ground emissive), lava fall + steam delta, ember bridge, crater deck, lava-glass kiln, obsidian beach, breakwater + tug | shader + props + worldgen | L | TODO | TASK-507 |
+| TASK-510 | Shots + QA for M25 / M29 / M30: wow presets, ladder low + medium `--assert`, QA report | qa | S | TODO | TASK-505, TASK-507, TASK-508 |
+
 ### M17 — Graphics II: decor & nature
 *Flower fields, fences, lanterns, benches, signs, rocks*
 
