@@ -2,6 +2,17 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-082: QA harbour becomes a customs port — plan only — 2026-10-27
+
+**Decision** (user, picked from an HTML comparison): Palmlagoon's harbour turns commercial as a **customs port**:
+a cargo ship enters under the Q8 scanner arch at the cove mouth, a crane unloads containers onto an inspection
+line (inspectors + ✓/✗ lamps), rejected crates go to the Q9 quarantine pontoons; QA white / mint / yellow with
+hazard stripes. Alternatives not taken: logistics hub feeding ferry routes (`W:B2`), free-trade bazaar.
+**Rationale**: Strengthens QA's "test" identity and differs from DevOps Ember Works' container yard by role
+(DevOps produces and ships, QA checks what arrives), giving an inter-island story.
+**Impact**: Reuses the DevOps crane / container props as variants (~+2 defs incl. Q8 arch, Q9 pontoon); QA cap
+12/1 is already full → override. Stays on the cove + rim side, Proving Grounds layout untouched. Roadmap M30.
+
 ## D-081: HQ gets a yacht marina and a star fort at the cove mouth — plan only — 2026-10-27
 
 **Decision** (user): Hearthholm's cove becomes a **yacht marina**: comb piers along the inner curve of the

@@ -225,7 +225,7 @@ rim'i · `QA:Q17` bug avı 2.0 · `QA:Q10` şamandıra slalomu.
 
 Wow: **Proving Grounds Noon** (12:00 +3 s siren testi), **Bug Hunt Night** (20:30, W18 güçlenmiş).
 
-> **2026-10-27 fikir (yön seçimi bekliyor):** QA limanı ticari limana. Öneri: **gümrük limanı** — kargo
+> **2026-10-27 kullanıcı kararı (D-082):** QA limanı ticari limana: **gümrük limanı** seçildi — kargo
 > gemisi koy ağzında Q8 tarayıcı kemerin altından girer, vinç konteyner indirir, teftiş hattı (müfettiş +
 > ✓/✗ lambası), ✗ olanlar Q9 karantina dubalarına; QA beyaz-nane-sarı + hazard şerit. DevOps Ember Works
 > vinç/konteyner prop'larının varyantı (DevOps üretir-gönderir, QA gelen kargoyu kontrol eder). Alternatifler:
@@ -311,6 +311,7 @@ değişiklikleri orchestrator'da birleşir. Her milestone sonunda `pnpm shots ci
 | 5'' | **M27 Marketing signature** | A: M1+M3+M4+M13 | Round 2 | — | L | props, worldgen, life, qa |
 | 6 | **M28 Research signature** | A: R1+R2+R3+R4 (+ R14) | Round 2, M21 G2 | — | M | worldgen, props, qa |
 | 6' | **M29 HQ Marina + Tabya** (D-081) | yat limanı (tarak iskeleler, yelkenli filosu, dalgakıran, H11 şamandıralar, direk fenerleri) + koy ağzı yıldız tabyası (H18 ile eşli) | M24 | worldgen (yerleşim) → props ∥ life | L | worldgen, props, life, qa |
+| 6'' | **M30 QA Gümrük Limanı** (D-082) | Q8 tarayıcı kemer + kargo gemisi rotası + vinç + teftiş hattı (✓/✗ lamba) + Q9 karantina dubaları; DevOps vinç/konteyner varyantları, QA tonu | M24 | worldgen → props ∥ life | L | worldgen, props, life, qa |
 | 7+ | **M27+ Ambitious** | sırayla: K1 şablonlar · H1 mevsim (TASK-464 sonrası) · B2/B3/B7 trafik · ada ambitious paketleri · sandbox S1–S3 · C2/C3 kameralar | Round 3 | her biri ayrı | L'ler | — |
 
 Notlar:
