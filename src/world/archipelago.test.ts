@@ -102,9 +102,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "edb8fa56247fbe01",
-          "1001": "8f3db0ecc6ddd574",
-          "42": "c4334915ed2a1283",
+          "1": "8bf08fb5771dd1c9",
+          "1001": "a3fe799de5839aad",
+          "42": "ed628e4a96b04468",
         }
       `);
     },
@@ -571,9 +571,10 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // TASK-490 skerry beacon towers (scatter), re-pinned; TASK-499 QA Proving Grounds (stunt yard + kit), TASK-501 crash track fixture + pad, re-pinned;
       // TASK-505 HQ yacht marina stage + fort keep-out + gate-reserved seamarks, re-pinned;
       // TASK-497 Coding Kite Hill (profile lift, hill kites, tunnel pad, fallbacks), re-pinned;
-      // TASK-503 Emberpeak apron ring + growth anchors, re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('9fee33b6295d7da8');
-      expect(generateWorld(1).hashes.world).toBe('1d1beca734b6d8b9');
+      // TASK-503 Emberpeak apron ring + growth anchors, re-pinned; TASK-507 DevOps M25 placement
+      // (funicular + earthworks, cableway, lane, onsen town, geysers), re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('782d9d7688007f02');
+      expect(generateWorld(1).hashes.world).toBe('8f834427fdfd1663');
     } finally {
       for (const b of saved) b.on = true;
     }
