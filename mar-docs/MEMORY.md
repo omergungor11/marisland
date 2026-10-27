@@ -18,6 +18,15 @@
   Fleet anchor trick. Session handover: TASK-497 (worldgen) and TASK-499 (props) were asked to commit WIP on
   their `worktree-agent-*` branches. Check `git worktree list` and the branch tip before resuming; then wave 2
   (498 ∥ 501) and 502 QA.
+- **TASK-499 merged** (QA kit; `cultureCapOverride.qa` 12/1):
+  - **For TASK-501:**
+    - `dropTower` `userData.hooks.crate` {top, rest, size}; `buildDropCrate()` in `geo/themes/qa-proving.ts`.
+    - Animate on variant 1, the empty cradle.
+    - Free ground is `isl.anchors.stunt` + `stuntSize` (no pad).
+  - **Proving Grounds preset:** raw cam ~`120,16,-118,101,14,-128` (seed 1001). The QA plateau is at y ≈ 8.6.
+  - **Gotchas:**
+    - Props over 3 u tall draw from T0 regardless of tier.
+    - A blocking reservation placed before `campusLots` moves the lots and paths.
 - **TASK-497 WIP** (`worktree-agent-a24e64327cede359d` @ `ca271e8`, not merged):
   - **Done:** knoll (`KITE_HILL`, `IslandProfile.lift`), site choice, kites ring, bench, and the
     `anchors.windTunnel` {x,z,rotY} anchor.
