@@ -33,6 +33,10 @@ export const QA_CULTURE: CultureDef = {
     { id: 'flagMast', tier: 2, flags: grounded | windy },
     { id: 'stampDesk', tier: 3, flags: grounded | noShadow },
     { id: 'clipboardWall', tier: 3, flags: grounded | noShadow },
+    // M24 TASK-499 Proving Grounds (D-062 R3-14: cap 12, tier-1 = the drop tower)
+    { id: 'dropTower', tier: 1, flags: grounded },
+    { id: 'testFan', tier: 2, flags: grounded | windy },
+    { id: 'obstacle', tier: 2, flags: grounded },
   ],
   // emitted by world/gen/plans/qa.ts (TASK-424); `defs` = the props the scene stands on
   storySpots: [
@@ -80,6 +84,11 @@ export const QA_CULTURE_SITES = {
       [-3.0, 0.45],
       [-3.0, 1.4],
       [5.1, 0.45],
+      // M24 TASK-499: the Proving Grounds ground shifts the lots; further spots along the wall
+      [-4.1, 0.45],
+      [-4.1, 1.4],
+      [-3.0, 2.3],
+      [5.1, 1.4],
     ] as const,
   },
   /** Inspection booth beside a barrier gate: on the cone side first, (side, along) offsets. */

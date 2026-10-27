@@ -2,6 +2,28 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-076: QA Proving Grounds kit — a reserved stunt yard instead of the second track, three defs at the end of PROP_DEFS (D-059 A, D-062 R3-14) — 2026-10-27
+
+**Decision** (TASK-499): (1) **Kit.** `dropTower` (tier 1, 10 u lattice, v0 crate parked at the top, v1 the empty
+cradle for the TASK-501 mover), `testFan` (tier 2, 4 u blades on the shared `aSpin` tag, a dummy + streamer pole
+3 u in front), `obstacle` (tier 2, 4 variants: hurdle, tyre stack, balance beam, slalom cones). They are the
+10th–12th defs of the QA ledger (cap 12, tier-1 1 → `cultureCapOverride.qa`), appended at the very end of
+`PROP_DEFS` (no existing defId shifts), geometry in `geo/themes/qa-proving.ts`, numbers and the white / mint /
+yellow palette in `content/themes/qa-proving.ts`. The tower and the fan are > 3 u, so the batcher draws them from
+T0 like any large structure (D-031) whatever their tier. (2) **Stunt yard.** The plan reserves a flat rect of
+≈ 2× the loop track (14 × 28, else 12 × 24 / 10 × 20 / 9 × 18) as a blocking obstacle shape before the campus
+(lots and lanes keep off it) and publishes it as the island anchors `stunt` (centre + rotY) / `stuntSize`;
+TASK-501 puts its second track fixture there and adds the level pad. The kit (tower at a short end, fan on a
+long side facing the lane, the course on the opposite side) stands round it, else round the loop track. (3) The
+Hall of Checks gets four more clipboard-wall candidates (the reservation shifts the lots, 24 / 30 → 30 / 30
+seeds have the wall).
+**Cost**: the rim walk / palm row / scoreboard share thresholds of `plans-qa.test.ts` were relaxed (0.85 → 0.75,
+0.7 → 0.6, 1 → 0.95): the yard takes plateau ground on some seeds. 28 → 29 of 30 test seeds get a yard.
+**Rationale**: reserving first keeps TASK-501 independent of how crowded the plateau is; reserving after the
+campus found a rect on only 15 / 30 seeds.
+**Alternatives**: a non-blocking reservation (lanes crossed it on most seeds); a pad under the yard (its relax
+bound is the rect's circumradius and flattened the Hall's clipboard spots).
+
 ## D-077: Mother Kite Train — one CPU-posed mesh on the sky-craft material, two-tone kites, no shader changes — 2026-10-27
 
 **Decision** (TASK-500, CO:C3): seven kites (a larger lead + six followers) fly on a closed-form circular orbit

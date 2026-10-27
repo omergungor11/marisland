@@ -24,6 +24,7 @@ import {
 } from '../../../content/settlements.ts';
 import { CULTURE_BOATS } from '../../../content/life.ts';
 import { QA_PLAN as P, QA_RIM_WALK } from '../../../content/themes/qa.ts';
+import { QA_PROVING, QA_PROVING_PLAN as PV } from '../../../content/themes/qa-proving.ts';
 import { THEMES } from '../../../content/themes/index.ts';
 import type { Rng } from '../../../core/rng.ts';
 import type { IslandData, Polyline, StorySpot, XZ } from '../../types.ts';
@@ -52,6 +53,8 @@ import {
   rectShape,
   relief,
   segDist,
+  sdfAt,
+  shapeCorners,
   shapeDist,
   shapesOverlap,
   siteFree,
@@ -235,6 +238,58 @@ function placeTrack(ctx: SiteCtx, isl: IslandData, yard: XZ): Track | null {
 }
 
 /**
+ * M24 TASK-499 stunt yard: the flat rect reserved for the figure-8 crash track of TASK-501 (≈ 2× the
+ * loop track), on the loop track's side of the island (long axis parallel or across it), far from the
+ * yard. Only a blocking obstacle shape and the island anchors `stunt` ({x, z, rotY}) / `stuntSize`
+ * ({x: w, z: d}) are made here (no pad, no fixture): TASK-501 pushes its
+ * `testTrack` variant fixture at `p` / `rot` and adds the level pad (frame: width `w` along the
+ * prop's x, depth `d` along its z, like `P.track`). The Proving Grounds kit (`inspectors`) stands
+ * round it. Null when no rect fits (the kit then stands round the loop track).
+ */
+interface Stunt extends Track {
+  w: number;
+  d: number;
+}
+
+function placeStuntYard(ctx: SiteCtx, isl: IslandData, track: Track, yard: XZ): Stunt | null {
+  // pass 0 also wants room for the Proving Grounds kit round the rect (`stuntKitPads`, each side)
+  for (const rim of PV.stuntRimClear)
+    for (const pad of PV.stuntKitPads)
+      for (const [w, d] of PV.stunt) {
+        const test = (p: XZ, rot: number): number => {
+          const sh = rectShape(p.x, p.z, rot, w + 2 * pad, d + 2 * pad);
+          if (!onLand(ctx, isl, sh, PV.stuntMinShore)) return Infinity;
+          // inland of the rim walkway and the palm row (their bands start ≈ 8–10 u in from the shore)
+          for (const c of shapeCorners(sh)) if (sdfAt(ctx, c.x, c.z) < rim) return Infinity;
+          // the loop track's own kit (UV lamps, scoreboard, cone pyramid, grandstand) needs its side room
+          if (shapesOverlap(track.sh, sh, PV.stuntTrackGap)) return Infinity;
+          const rl = relief(ctx, sh);
+          if (rl > PV.stuntRelief + pad * 0.1 || !clear(ctx, isl, sh, PV.stuntGap)) return Infinity;
+          return siteFree(ctx, isl, sh) ? rl : Infinity;
+        };
+        const rots = [track.rot, track.rot + Math.PI / 2];
+        const p = bestSample(ctx, isl, track.p, PV.stuntSearch, (q, i) => {
+          if (ctx.sdf[i] < PV.stuntMinShore) return Infinity;
+          const rl = Math.min(test(q, rots[0]), test(q, rots[1]));
+          return (
+            rl +
+            PV.stuntNear * dist(q, track.p) -
+            PV.stuntFar * Math.min(dist(q, yard), PV.stuntFarCap)
+          );
+        });
+        if (!p) continue;
+        const rot = test(p, rots[0]) <= test(p, rots[1]) ? rots[0] : rots[1];
+        const sh = rectShape(p.x, p.z, rot, w, d);
+        addShape(ctx, isl, sh, true);
+        // exposed on the island for TASK-501 and the tests: centre + rotY, and the size as [w, d]
+        isl.anchors.stunt = { x: p.x, z: p.z, rotY: rot };
+        isl.anchors.stuntSize = { x: w, z: d, rotY: 0 };
+        return { p, rot, sh, w, d };
+      }
+  return null;
+}
+
+/**
  * The dockside lab: the stilt lab (THEMES.qa.defSwap stiltHut → testLabStilt) on the harbour cove
  * water nearest the pier root, its boardwalk landing on the cove beach. After the campus lots,
  * so the settlement's lead office stays a land test lab.
@@ -369,6 +424,10 @@ export const planQa: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
 
   // crash-test loop track beside the yard
   const track = placeTrack(ctx, isl, yard);
+  // M24 TASK-499: the flat ground reserved beside the loop track for the figure-8 crash track
+  // (TASK-501). Reserved before the campus so the lots and lanes keep off it; scored toward the far
+  // side of the yard so the factory core keeps its ground (28 of 30 test seeds get one)
+  const stunt = track ? placeStuntYard(ctx, isl, track, yard) : null;
 
   // test labs on lanes from the yard (lane 0 runs down to the pier), then the checkpoints
   campusLots(ctx, isl, plan, { ...P.campus, quadR: R }, rng.fork('campus'), sIdx, yard);
@@ -380,6 +439,7 @@ export const planQa: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
     yard,
     hangars,
     track,
+    stunt,
     tower: tp,
     root: site ? site.root : null,
   });
@@ -509,6 +569,7 @@ interface QaSite {
   yard: XZ;
   hangars: readonly Hangar[];
   track: Track | null;
+  stunt: Stunt | null;
   tower: XZ | null;
   root: XZ | null;
 }
@@ -777,6 +838,94 @@ function inspectors(
           put('dummyBench', sh, rotY, G.variant);
           break stand;
         }
+  }
+
+  // ---- M24 TASK-499 Proving Grounds kit round the stunt yard (else the loop track): the drop tower on a
+  // short end (the one farther from the yard first), the test fan on a long side facing the lane, the
+  // obstacle course in lane order on the side opposite the fan. Side k = the rect turned k quarter
+  // turns: 0 / 2 the long sides, 1 / 3 the ends; its x points out, its z runs along the side. Each
+  // piece is optional (skipped when nothing fits).
+  const fr = s.stunt ?? (s.track ? { ...s.track, w: P.track[0], d: P.track[1] } : null);
+  if (fr) {
+    const PK: KitOpts = { maxRelief: PV.maxRelief, pad: PV.pad, minShore: PV.minShore };
+    const rotK = (k: number): number => fr.rot + (k * Math.PI) / 2;
+    const halfK = (k: number): [number, number] =>
+      k % 2 ? [fr.d / 2, fr.w / 2] : [fr.w / 2, fr.d / 2];
+    /** Point `out` past side k's edge, `along` (fraction of the side's half length) along it. */
+    const atK = (k: number, out: number, along: number): XZ => {
+      const [hx, hz] = halfK(k);
+      return loc(fr.p, rotK(k), hx + out, along * hz);
+    };
+    const yardGap = (k: number): number => dist(atK(k, 0, 0), s.yard);
+    const ends = [1, 3].sort((a, b) => yardGap(b) - yardGap(a));
+    const longs = [0, 2].sort((a, b) => yardGap(b) - yardGap(a));
+    tower: for (const gap of PV.towerGaps)
+      for (const along of PV.towerAlong)
+        for (const k of [...ends, ...longs]) {
+          const p = atK(k, gap, along);
+          const sh = discShape(p.x, p.z, PV.towerR);
+          if (!fits(sh, PK)) continue;
+          put('dropTower', sh, facing(p, fr.p), 0, PV.pad);
+          break tower;
+        }
+    let fanK = -1;
+    fan: for (const gap of PV.fanGaps)
+      for (const along of PV.fanAlong)
+        for (const k of [...longs, ...ends]) {
+          const p = atK(k, gap, along);
+          const rotY = facing(p, atK(k, 0, along));
+          const pole = add(p, dirOf(rotY), QA_PROVING.fan.poleZ);
+          const sh = discShape(p.x, p.z, PV.fanR);
+          const ps = discShape(pole.x, pole.z, PV.poleR);
+          if (!fits(sh, PK) || !fits(ps, PK)) continue;
+          put('testFan', sh, rotY, 0, PV.pad);
+          addShape(ctx, isl, ps, true);
+          fanK = k;
+          break fan;
+        }
+    // obstacle course: the row (side, offset, start) with the most pieces that fit wins
+    interface Piece {
+      variant: number;
+      sh: Shape;
+      rotY: number;
+    }
+    let row: Piece[] = [];
+    const sides = fanK < 0 ? [...longs, ...ends] : [(fanK + 2) % 4, (fanK + 1) % 4, (fanK + 3) % 4];
+    for (const k of sides) {
+      const [hx, hz] = halfK(k);
+      for (const off of PV.courseOffsets)
+        for (const start of PV.courseStarts) {
+          const pieces: Piece[] = [];
+          let z0 = start * hz;
+          for (const c of PV.course) {
+            const along = c.turn ? c.w : c.d;
+            const across = c.turn ? c.d : c.w;
+            const p = loc(fr.p, rotK(k), hx + off + across / 2, z0 + along / 2);
+            z0 += along + PV.courseGap;
+            const rotY = c.turn ? rotK(k) + Math.PI / 2 : rotK(k);
+            const sh = rectShape(p.x, p.z, rotY, c.w, c.d);
+            if (fits(sh, PK)) pieces.push({ variant: c.variant, sh, rotY });
+          }
+          if (pieces.length > row.length) row = pieces;
+        }
+    }
+    for (const c of row) put('obstacle', c.sh, c.rotY, c.variant, PV.pad);
+    // a piece the row could not fit goes wherever it fits beside the yard (any side, offset, spot)
+    for (const c of PV.course) {
+      if (row.some((q) => q.variant === c.variant)) continue;
+      const across = c.turn ? c.d : c.w;
+      place: for (const k of sides)
+        for (const off of PV.courseOffsets)
+          for (const along of PV.courseAlong) {
+            const [hx, hz] = halfK(k);
+            const p = loc(fr.p, rotK(k), hx + off + across / 2, along * hz);
+            const rotY = c.turn ? rotK(k) + Math.PI / 2 : rotK(k);
+            const sh = rectShape(p.x, p.z, rotY, c.w, c.d);
+            if (!fits(sh, PK)) continue;
+            put('obstacle', sh, rotY, c.variant, PV.pad);
+            break place;
+          }
+    }
   }
 
   // ---- Bug Zoo (terrarium v2) near a test lab, door to the nearest lane, its own footpath
