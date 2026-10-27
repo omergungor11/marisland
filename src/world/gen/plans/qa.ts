@@ -79,9 +79,16 @@ function fixture(
   p: XZ,
   rotY: number,
   sh: Shape,
-  o: { block: boolean; pad?: number },
+  o: { block: boolean; pad?: number; variant?: number },
 ): void {
-  ctx.fixtures.push({ defId, x: p.x, z: p.z, rotY, islandId: isl.id });
+  ctx.fixtures.push({
+    defId,
+    x: p.x,
+    z: p.z,
+    rotY,
+    islandId: isl.id,
+    ...(o.variant === undefined ? {} : { variant: o.variant }),
+  });
   addShape(ctx, isl, sh, o.block);
   if (o.pad !== undefined) addPad(ctx, isl, sh, o.pad);
 }
@@ -241,10 +248,10 @@ function placeTrack(ctx: SiteCtx, isl: IslandData, yard: XZ): Track | null {
  * M24 TASK-499 stunt yard: the flat rect reserved for the figure-8 crash track of TASK-501 (≈ 2× the
  * loop track), on the loop track's side of the island (long axis parallel or across it), far from the
  * yard. Only a blocking obstacle shape and the island anchors `stunt` ({x, z, rotY}) / `stuntSize`
- * ({x: w, z: d}) are made here (no pad, no fixture): TASK-501 pushes its
- * `testTrack` variant fixture at `p` / `rot` and adds the level pad (frame: width `w` along the
- * prop's x, depth `d` along its z, like `P.track`). The Proving Grounds kit (`inspectors`) stands
- * round it. Null when no rect fits (the kit then stands round the loop track).
+ * ({x: w, z: d}); TASK-501 puts the `testTrack` variant 1 fixture (figure-8 crash track) at `p` /
+ * `rot` with a level pad `stuntPad` (frame: width `w` along the prop's x, depth `d` along its z, like
+ * `P.track`). The Proving Grounds kit stands round it. Null when no rect fits (the kit then stands
+ * round the loop track).
  */
 interface Stunt extends Track {
   w: number;
@@ -280,8 +287,9 @@ function placeStuntYard(ctx: SiteCtx, isl: IslandData, track: Track, yard: XZ): 
         if (!p) continue;
         const rot = test(p, rots[0]) <= test(p, rots[1]) ? rots[0] : rots[1];
         const sh = rectShape(p.x, p.z, rot, w, d);
-        addShape(ctx, isl, sh, true);
-        // exposed on the island for TASK-501 and the tests: centre + rotY, and the size as [w, d]
+        // M24 TASK-501: the figure-8 crash track (testTrack variant 1) with its level pad
+        fixture(ctx, isl, 'testTrack', p, rot, sh, { block: true, pad: PV.stuntPad, variant: 1 });
+        // exposed on the island for the tests and the movers: centre + rotY, and the size as [w, d]
         isl.anchors.stunt = { x: p.x, z: p.z, rotY: rot };
         isl.anchors.stuntSize = { x: w, z: d, rotY: 0 };
         return { p, rot, sh, w, d };
@@ -865,7 +873,7 @@ function inspectors(
           const p = atK(k, gap, along);
           const sh = discShape(p.x, p.z, PV.towerR);
           if (!fits(sh, PK)) continue;
-          put('dropTower', sh, facing(p, fr.p), 0, PV.pad);
+          put('dropTower', sh, facing(p, fr.p), 1, PV.pad);
           break tower;
         }
     let fanK = -1;

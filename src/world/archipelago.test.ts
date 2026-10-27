@@ -102,9 +102,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "9df8330751a77b88",
-          "1001": "8f5fb2ea227c8d09",
-          "42": "3bf61e28bcd6d815",
+          "1": "b4d90fb976de2b03",
+          "1001": "f9ff75294fcf6118",
+          "42": "b700c2bbdb6c8efe",
         }
       `);
     },
@@ -551,9 +551,9 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // TASK-484 Coding C18 rim boardwalk + benches, re-pinned; TASK-485 story-spot keep-out,
       // Beacon Rock stair flights, HQ streets to the waterline, bigger slalom buoys, re-pinned;
       // TASK-488 reef shoals + sills (routes detour, deep gaps, buoys off crossings), re-pinned;
-      // TASK-490 skerry beacon towers (scatter), re-pinned; TASK-499 QA Proving Grounds (stunt yard + kit), re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('85f1f50abd11e43f');
-      expect(generateWorld(1).hashes.world).toBe('da2dd754fee99a25');
+      // TASK-490 skerry beacon towers (scatter), re-pinned; TASK-499 QA Proving Grounds (stunt yard + kit), TASK-501 crash track fixture + pad, re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('18c09ab8f87ec744');
+      expect(generateWorld(1).hashes.world).toBe('bb958837ffbb53a2');
     } finally {
       for (const b of saved) b.on = true;
     }
