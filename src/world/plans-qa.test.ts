@@ -225,9 +225,9 @@ describe('QA Test Factory plan (TASK-401), 30 seeds', () => {
     });
     expect(got).toMatchInlineSnapshot(`
       [
-        "c6f5261ea443b4fa",
-        "c4db94543db85476",
-        "18a96c97e476063d",
+        "d461cb2342ff8764",
+        "c434aaec32ee6a3c",
+        "3652590f5970ef64",
       ]
     `);
   });
