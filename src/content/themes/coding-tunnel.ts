@@ -53,7 +53,7 @@ export const WIND_TUNNEL = {
     ] as readonly (readonly [string, string])[],
   },
   /** Blue server light: floor-edge strips and the ridge strip (glow mask), warm lantern posts at the mouth. */
-  light: { edge: 0.38, ridge: 0.3, lanternMask: 1, lanternH: 1.45, lanternX: 0.7, lanternZ: 2.95 },
+  light: { edge: 0.7, ridge: 0.55, lanternMask: 1, lanternH: 1.45, lanternX: 0.7, lanternZ: 2.95 },
 } as const;
 
 export const TUNNEL_FAN = {
