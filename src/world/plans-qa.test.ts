@@ -98,7 +98,7 @@ describe('QA Test Factory plan (TASK-401), 30 seeds', () => {
       const fx = w.fixtures.filter((f) => f.islandId === isl.id);
       const hangars = fx.filter((f) => f.defId === 'testHangar');
       const belts = fx.filter((f) => f.defId === 'conveyor');
-      const tracks = fx.filter((f) => f.defId === 'testTrack');
+      const tracks = fx.filter((f) => f.defId === 'testTrack' && !f.variant);
       counts.push(`${hangars.length}/${belts.length}/${tracks.length}`);
       expect(s?.plaza, ctx).not.toBeNull();
       expect(hangars.length, ctx).toBeGreaterThanOrEqual(2);
@@ -223,9 +223,9 @@ describe('QA Test Factory plan (TASK-401), 30 seeds', () => {
     });
     expect(got).toMatchInlineSnapshot(`
       [
-        "8638cfa2eb055937",
-        "a3add7813c0c7c82",
-        "740505622a68f3eb",
+        "c6f5261ea443b4fa",
+        "c4db94543db85476",
+        "18a96c97e476063d",
       ]
     `);
   });
@@ -508,13 +508,21 @@ describe('QA Proving Grounds (TASK-499), 30 seeds', () => {
         QA_PROVING_PLAN.stunt.some(([a, b]) => a === r.w && b === r.d),
         ctx,
       ).toBe(true);
-      const track = w.fixtures.find((f) => f.islandId === isl.id && f.defId === 'testTrack');
+      const track = w.fixtures.find(
+        (f) => f.islandId === isl.id && f.defId === 'testTrack' && !f.variant,
+      );
       expect(track, ctx).toBeDefined();
       expect(Math.hypot(r.p.x - (track as XZ).x, r.p.z - (track as XZ).z), ctx).toBeLessThan(
         QA_PROVING_PLAN.stuntSearch,
       );
       expect(heightAt(w.height, r.p.x, r.p.z), ctx).toBeGreaterThan(1);
-      for (const f of w.fixtures.filter((x) => x.islandId === isl.id))
+      // the figure-8 crash track (TASK-501) is the yard's own fixture: it stands exactly on it
+      const crash = w.fixtures.filter(
+        (f) => f.islandId === isl.id && f.defId === 'testTrack' && f.variant === 1,
+      );
+      expect(crash.length, ctx).toBe(1);
+      expect(Math.hypot(crash[0].x - r.p.x, crash[0].z - r.p.z), ctx).toBeLessThan(1e-6);
+      for (const f of w.fixtures.filter((x) => x.islandId === isl.id && !crash.includes(x)))
         expect(rectDist(r, f), `${ctx} ${f.defId}`).toBeGreaterThan(0);
       for (const l of w.lots.filter((x) => x.islandId === isl.id))
         expect(rectDist(r, l), `${ctx} lot ${l.defId}`).toBeGreaterThan(0);
@@ -536,13 +544,13 @@ describe('QA Proving Grounds (TASK-499), 30 seeds', () => {
       const ctx = `seed ${seed}`;
       expect(t.length, ctx).toBeLessThanOrEqual(1);
       expect(f.length, ctx).toBeLessThanOrEqual(1);
-      // the crate rides the v0 tower (v1, the empty cradle, is TASK-501's)
-      for (const x of t) expect(x.variant ?? 0, ctx).toBe(0);
+      // the empty cradle (v1): the crate rides it as a mover (TASK-501)
+      for (const x of t) expect(x.variant, ctx).toBe(1);
       const variants = o.map((x) => x.variant ?? 0);
       expect(new Set(variants).size, ctx).toBe(variants.length);
       for (const v of variants) expect(v, ctx).toBeLessThan(4);
       // all of it within reach of the stunt yard (else of the loop track)
-      const track = fx.find((x) => x.defId === 'testTrack') as XZ;
+      const track = fx.find((x) => x.defId === 'testTrack' && !x.variant) as XZ;
       const r = stuntOf(w);
       for (const x of [...t, ...f, ...o])
         expect(r ? rectDist(r, x) : Math.hypot(x.x - track.x, x.z - track.z), ctx).toBeLessThan(26);

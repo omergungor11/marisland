@@ -34,7 +34,16 @@ export const QA_PROP_DEFS: readonly PropDef[] = [
   },
   // one 2 u bridge segment; a T1 detail (thin), crates ride it (render/movers.ts)
   { id: 'conveyor', geo: 'conveyor', tier: 1, variants: 1, footprint: 0.6, flags: grounded },
-  { id: 'testTrack', geo: 'testTrack', tier: 0, variants: 1, footprint: 3.5, flags: grounded },
+  // v1 = the figure-8 crash track on the stunt yard (M24 TASK-501): pinned by the QA plan, rolls keep v0
+  {
+    id: 'testTrack',
+    geo: 'testTrack',
+    tier: 0,
+    variants: 2,
+    rollVariants: 1,
+    footprint: 3.5,
+    flags: grounded,
+  },
   // the QA tower: hero landmark (LANDMARK_RENDER.qaTower), ≈ 20 u, the island's one tall vertical
   { id: 'qaTower', geo: 'qaTower', tier: 0, variants: 1, footprint: 1.8, flags: grounded },
 ];

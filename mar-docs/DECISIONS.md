@@ -44,6 +44,33 @@ doing B before the growth would re-pin every DevOps plan twice.
 DevOps cap override well past 12/1, decided per task with measured numbers. Layout spacing and every island hash
 re-pin; W5, W31–32, L-devops and all DevOps raw cams go stale. DevOps frames must stay inside the W16 / ladder
 budgets (`shots --assert`). Numbers D-078/D-079 are left to the TASK-497 / TASK-501 branches still in flight.
+## D-078: QA Proving Grounds motion (TASK-501) — crash track as testTrack v1 with a fixture + pad, movers as culture-mover parts, fan speed-up through one shader uniform — 2026-10-27
+
+**Decision**: (1) **World.** The stunt yard now carries the figure-8 crash track: `testTrack` variant 1 (rollVariants 1,
+so rolls keep the loop track) pushed as a fixture at the reserved rect with a level pad (`stuntPad` 0.6); the drop
+tower is placed as variant 1 (the empty cradle). This changes the fixture list and the heightfield, so the world
+hashes were re-pinned in their own commit (seed 1001 `hashes.world` 85f1f50abd11e43f → 18c09ab8f87ec744, seed 1
+da2dd754fee99a25 → bb958837ffbb53a2). The kit placement and the 30-seed plan thresholds did not move.
+(2) **Track.** The centreline is a lemniscate (`geo/themes/qa-crash.ts`, lobes along z, 6.4 x 14.6 u so it fits the
+smallest 9 x 18 yard): strand A on the ground, strand B over a 1.0 u ramp, a parabolic flight over the crossing
+(slope m up, -m down, apex 1.5 u) and a landing ramp; the flight has no rails. It is the same `TrackPath` as the loop
+track, so the cart pose (`cartFrame`) and the lap clock are shared. Lap 15.1 s, jump at 9.1-10.4 s.
+(3) **Movers.** The cart stays on the `movers` mesh (testTrack variant 1 picks the crash path; +0 draw calls; the
+landing squash scales its basis). The wobbling dummy and the drop-tower crate are culture-mover parts (`PART.dummy`,
+`PART.crate`, scenes in `render/culture-movers.ts`): a part kind draws only while it has instances in range, so a
+view without the Proving Grounds pays nothing. The crate follows rest / lift / hang (shake) / free fall / squash
+(cycle 20 s, phase 3 s), with a dust ring and a glow ball over the foot check lamp. The dummy leans out in turns
+(sideways acceleration of the centreline), back on the ramp / forward on the way down, and springs + hops after the
+landing; all of it is a function of the sim time, reduced motion scales the squash, the lean and the hop and
+lengthens the lift / fall.
+(4) **Fan.** The blades carry spin tag 1.25 (`FAN_SPIN_TAG`); the lit vertex shader adds `uFanSpin` (radians, shared
+uniform written by the culture clock from `fanSpinExtra(day)`) to their wind-driven angle. The bump is a trapezoid of
+speed over the 10 s `sirenTest`, whole turns (4), so the blades speed up to about 4 x and settle with no jump and no
+state. No new program: the uniform and one branch live in the shared lit vertex pars.
+**Rationale**: a pad-less fixture would have floated rails over a 1.8 u relief; CPU-posed meshes for the blades would
+have lost the far (T0) read of the fan; a second movers geometry would have cost a draw call in every QA view.
+**Alternatives**: the crate as a second `InstancedMesh` in `movers.ts` (+1 call); a uniform multiplier on the fan
+angle (jumps when the speed changes); a bigger track filling a 14 x 28 yard (would not fit the 9 x 18 fallback).
 
 ## D-076: QA Proving Grounds kit — a reserved stunt yard instead of the second track, three defs at the end of PROP_DEFS (D-059 A, D-062 R3-14) — 2026-10-27
 

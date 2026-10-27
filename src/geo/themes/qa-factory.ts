@@ -14,7 +14,9 @@ import { Spin, fan, finishSpin, glyph, sawtoothRoof } from '../office-kit.ts';
 import { V, baseBox, cylB, jitterAcc, put, windowAt } from '../parts.ts';
 import type { BuildOpts } from '../types.ts';
 import { addHook } from './hq.ts';
-import { trackPath } from './qa-track.ts';
+import { trackPath, type TrackPath } from './qa-track.ts';
+import { crashPath } from './qa-crash.ts';
+import { PROVING_PAL as PP, QA_PROVING_MOTION as CM } from '../../content/themes/qa-proving.ts';
 import { createRng } from '../../core/rng.ts';
 
 const Y = V(0, 1, 0);
@@ -252,11 +254,12 @@ export function conveyor({ rng, lod }: BuildOpts): THREE.BufferGeometry {
 /** Square tube along a track rail: centreline offset by `side` along r and `lift` along u. */
 function railTube(
   acc: Acc,
-  path: ReturnType<typeof trackPath>,
+  path: TrackPath,
   side: number,
   lift: number,
   r: number,
   color: ColorFn,
+  gap?: readonly boolean[],
 ): void {
   const N = path.p.length;
   const ring = (i: number): THREE.Vector3[] => {
@@ -281,6 +284,11 @@ function railTube(
   let a = ring(0);
   for (let i = 1; i <= N; i++) {
     const b = ring(i);
+    // a flight gap (the crash track's jump) has no rails
+    if (gap && (gap[(i - 1) % N] || gap[i % N])) {
+      a = b;
+      continue;
+    }
     for (let k = 0; k < 4; k++) {
       const a0 = a[k];
       const a1 = a[(k + 1) % 4];
@@ -298,11 +306,140 @@ function railTube(
 }
 
 /**
+ * Figure-8 crash track (testTrack variant 1, M24 TASK-501; centreline qa-crash.ts): a slab with two
+ * foam-padded lobe ends, twin rails along a lemniscate, strand B over a yellow ramp pair (the jump
+ * gap has no rails) and a chequered start gate. The test cart and its dummy (render/movers.ts,
+ * culture-movers.ts) lap it. Frame: long axis z, slab 8.4 x 16.8 so it fits the smallest yard.
+ */
+function crashTrack(rng: BuildOpts['rng'], lod: BuildOpts['lod']): THREE.BufferGeometry {
+  const T = F.track;
+  const acc = jitterAcc(rng, 0.01);
+  const hi = lod === 0;
+  const path = crashPath(hi ? 0.35 : 0.9);
+  const N = path.p.length;
+  const hx = CM.crash.halfX + 1.0;
+  const hz = CM.crash.halfZ + 1.1;
+  put(acc, baseBox(hx * 2, 0.1, hz * 2), [0, 0, 0], T.slab, { aoAmt: 0.15 });
+  // mint border strip on the slab's long edges and the lawn blobs inside the two lobes
+  if (hi)
+    for (const sx of [-1, 1])
+      put(acc, baseBox(0.18, 0.12, hz * 2 - 0.4), [sx * (hx - 0.2), 0, 0], PP.mint, { aoAmt: 0 });
+  for (const sz of [-1, 1])
+    put(acc, baseBox(1.5, 0.12, 2.6), [0, 0, sz * 3.9], T.infield, { aoAmt: 0 });
+  const railCol: ColorFn = (p) => new THREE.Color(p.y > T.railY + 0.15 ? PP.mintDeep : T.rails);
+  const gap = path.air;
+  if (hi) {
+    for (const sd of [-T.gauge / 2, T.gauge / 2])
+      railTube(acc, path, sd, T.railY, T.rail, railCol, gap);
+  } else {
+    railTube(acc, path, 0, T.railY, T.railY - 0.02, railCol, gap);
+  }
+  // ramp decks: a yellow slab along every ramp sample, stilts under the raised part
+  const frame = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const stride = hi ? 1 : 2;
+  for (let i = 0; i < N; i += stride) {
+    const y = path.p[i][1];
+    if (y < 0.02 || gap[i]) continue;
+    const j = (i + stride) % N;
+    const len = Math.hypot(
+      path.p[j][0] - path.p[i][0],
+      path.p[j][1] - path.p[i][1],
+      path.p[j][2] - path.p[i][2],
+    );
+    const r = path.r[i];
+    const u = path.u[i];
+    const t = path.t[i];
+    q.setFromRotationMatrix(
+      frame.makeBasis(V(r[0], r[1], r[2]), V(u[0], u[1], u[2]), V(t[0], t[1], t[2])),
+    );
+    const c = V(path.p[i][0], y + T.railY - 0.09, path.p[i][2]);
+    put(acc, baseBox(T.gauge + 0.5, 0.12, len + 0.04), c, i % (2 * stride) ? PP.mint : PP.yellow, {
+      q,
+      aoAmt: 0,
+    });
+    if (hi && i % 3 === 0 && y > 0.25)
+      for (const sx of [-1, 1])
+        put(
+          acc,
+          baseBox(0.12, y + T.railY - 0.1, 0.12),
+          [
+            path.p[i][0] + r[0] * sx * (T.gauge / 2 + 0.15),
+            0.1,
+            path.p[i][2] + r[2] * sx * (T.gauge / 2 + 0.15),
+          ],
+          PP.white,
+          { aoAmt: 0.1 },
+        );
+  }
+  // sleepers on the flat
+  if (hi)
+    path.p.forEach((p, i) => {
+      if (i % 2 || p[1] > 0.02) return;
+      const t = path.t[i];
+      put(acc, baseBox(T.gauge + 0.34, 0.08, 0.18), [p[0], 0.1, p[2]], T.sleeper, {
+        q: qEuler(0, Math.atan2(t[0], t[2]), 0),
+        aoAmt: 0,
+      });
+    });
+  // foam crash blocks beyond both lobe ends (red / white stacks) and a hazard-yellow landing mat
+  for (const sz of [-1, 1]) {
+    const z = sz * (CM.crash.halfZ + 0.55);
+    put(acc, baseBox(1.9, 0.55, 0.5), [0, 0.1, z], PP.red, { aoAmt: 0.1 });
+    put(acc, baseBox(1.9, 0.1, 0.52), [0, 0.65, z], PP.white, { aoAmt: 0 });
+    if (hi) put(acc, baseBox(1.3, 0.45, 0.5), [0, 0.75, z], PP.red, { aoAmt: 0.1 });
+  }
+  // start gate over sample 0 (the cart waits here): two posts, chequered banner, green lamp
+  const s0 = path.p[0];
+  const t0 = path.t[0];
+  const gq = qEuler(0, Math.atan2(t0[0], t0[2]), 0);
+  const gh = 1.7;
+  const side = [Math.cos(Math.atan2(t0[0], t0[2])), Math.sin(Math.atan2(t0[0], t0[2]))];
+  for (const sx of [-1, 1])
+    put(
+      acc,
+      baseBox(0.14, gh, 0.14),
+      [
+        s0[0] + side[0] * sx * (T.gauge / 2 + 0.35),
+        0.1,
+        s0[2] - side[1] * sx * (T.gauge / 2 + 0.35),
+      ],
+      T.flag,
+      { aoAmt: 0.1 },
+    );
+  const bw = T.gauge + 0.84;
+  const nb = hi ? 8 : 4;
+  for (let k = 0; k < nb; k++)
+    for (let row = 0; row < (hi ? 2 : 1); row++) {
+      const off = -bw / 2 + (k + 0.5) * (bw / nb);
+      put(
+        acc,
+        baseBox(bw / nb, hi ? 0.16 : 0.32, 0.06),
+        [s0[0] + side[0] * off, 0.1 + gh - 0.36 + row * 0.16, s0[2] - side[1] * off],
+        (k + row) % 2 ? T.rails : T.flag,
+        { q: gq, aoAmt: 0 },
+      );
+    }
+  put(
+    acc,
+    new THREE.IcosahedronGeometry(0.13, hi ? 1 : 0),
+    [s0[0], 0.1 + gh + 0.12, s0[2]],
+    T.loop,
+    {
+      emissive: 1,
+      ao: () => 1,
+    },
+  );
+  return acc.finish(rng, false, true);
+}
+
+/**
  * Crash-test loop track (local z = the long axis): concrete slab with a lawn infield, twin
  * rails with a green vertical loop on its A-frame, sleepers on the flat, a chequered start gate
  * and a red crash pad. The test cart (render/movers.ts) laps it.
  */
-export function testTrack({ rng, lod }: BuildOpts): THREE.BufferGeometry {
+export function testTrack({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
+  if (variant === 1) return crashTrack(rng, lod);
   const T = F.track;
   const acc = jitterAcc(rng, 0.01);
   const hi = lod === 0;

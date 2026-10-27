@@ -41,6 +41,8 @@ export const SHARED = {
   uTier: { value: 0 },
   /** 1 while reduced motion is on → wind/swell × 0.3. */
   uMotionScale: { value: 1 },
+  /** Extra blade angle (rad) of the QA test fan (spin tag 1.25), written by the culture clock. */
+  uFanSpin: { value: 0 },
   /** Debug mask mode: 0 = off, 1 = semantic mask. */
   uDebugMask: { value: 0 },
   /** Cloud shadows (TASK-153, chunks/cloud-shadow.glsl.ts): xy = wind offset, z = coverage (0 = off), w = strength. */

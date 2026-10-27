@@ -7,7 +7,7 @@ import { PROVING_PAL, QA_PROVING } from '../../content/themes/qa-proving.ts';
 import { PropFlag } from '../../world/prop-store.ts';
 import { isLargeStructure } from '../../render/props/batcher.ts';
 import { PROP_GEO, buildProp } from '../registry.ts';
-import { buildDropCrate } from './qa-proving.ts';
+import { FAN_SPIN_TAG, buildDropCrate } from './qa-proving.ts';
 
 const tris = (g: THREE.BufferGeometry): number => g.getAttribute('position').count / 3;
 const size = (g: THREE.BufferGeometry): THREE.Vector3 =>
@@ -132,7 +132,8 @@ describe('TASK-499 Proving Grounds geometry', () => {
     let spun = 0;
     let swaying = 0;
     for (let i = 0; i < n; i++) {
-      if (spin.getW(i) === 1) {
+      // tag 1.25 = the fan (TASK-501: the siren test adds turns, shader uFanSpin)
+      if (spin.getW(i) === FAN_SPIN_TAG) {
         spun++;
         expect(spin.getY(i)).toBeCloseTo(hub[1], 4);
         expect(wind[i]).toBe(0);
