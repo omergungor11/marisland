@@ -88,6 +88,10 @@ const VARIANT_TARGET: Record<string, number> = {
   'sailboat:2': 800,
   'sailboat:3': 900,
   'sailboat:4': 650,
+  // TASK-505: the HQ marina sloops (mast-head lamp, cabin, jib) and the tender
+  'sailboat:6': 900,
+  'sailboat:7': 900,
+  'sailboat:8': 300,
 };
 
 /** Props from the buildings/coastal/decor/landmarks families: carry an `emissive` attribute. */
@@ -230,9 +234,12 @@ describe('prop geometry', () => {
           const below =
             def.id === 'pipe'
               ? -4.3
-              : def.id === 'stairFlight'
-                ? -Math.max(...STAIR_FLIGHT.looks.map((L) => L.skirt)) - 0.05
-                : -0.05;
+              : // the marina's pile feet and the fort's plinth reach down past the waterline pivot (TASK-505)
+                def.id === 'marinaPier' || def.id === 'starFort'
+                ? -5
+                : def.id === 'stairFlight'
+                  ? -Math.max(...STAIR_FLIGHT.looks.map((L) => L.skirt)) - 0.05
+                  : -0.05;
           expect(bb.min.y).toBeGreaterThanOrEqual(below);
           const h = def.heights?.[v] ?? def.height;
           expect(bb.max.y).toBeGreaterThanOrEqual(h * 0.65);

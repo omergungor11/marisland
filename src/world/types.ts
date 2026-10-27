@@ -203,6 +203,12 @@ export interface WorldData {
    */
   seamarks: FixtureData[];
   /**
+   * HQ yacht marina (TASK-505; gen/marina.ts): comb piers, breakwater, the cove-mouth star fort, the
+   * moored fleet (`sailboat` variants 6-8) and the channel gates round the ferry stop. All floating
+   * fixtures (render pivot y = 0), appended to the prop store last. Hashed as `hashes.marina`.
+   */
+  marina: FixtureData[];
+  /**
    * Reef shoals + shared-shelf sills (TASK-488, `W:D1` / `W:K3`; gen/reefs.ts): raised seabed
    * between islands, always under water, already baked into `height` (and so into its hash).
    */

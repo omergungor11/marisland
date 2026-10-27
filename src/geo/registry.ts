@@ -75,6 +75,7 @@ import {
   withGlassPavilion,
 } from './themes/culture-design.ts';
 import { bulbString, pontoon } from './themes/marketing-quick.ts';
+import { marinaBoat } from './themes/hq-marina.ts';
 import type { Lod, PropGeoDef } from './types.ts';
 import type * as THREE from 'three';
 
@@ -162,11 +163,20 @@ defs.push(
   // v5 = the Marketing party pontoon (TASK-481, a floating fixture)
   D(
     'sailboat',
-    6,
-    (o) => (o.variant === 5 ? pontoon(o) : o.variant === 4 ? lanternBoat(o) : sailboat(o)),
+    9,
+    (o) =>
+      o.variant >= 6
+        ? marinaBoat(o)
+        : o.variant === 5
+          ? pontoon(o)
+          : o.variant === 4
+            ? lanternBoat(o)
+            : sailboat(o),
     2.8,
     5.2,
     true,
+    // v6 / v7 sloops with a 5.4 u mast, v8 the 3 u tender (TASK-505)
+    [5.2, 5.2, 5.2, 5.2, 5.2, 5.2, 6.2, 6.2, 1.8],
   ),
   D('seaStack', 4, seaStack, 3, 10, false, [6, 10, 15, 9]),
   D('buoy', 3, buoy, 0.4, 0.85, true, [1.1, 1.3, 1.3]),

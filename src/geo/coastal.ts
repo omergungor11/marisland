@@ -175,7 +175,7 @@ export function gridSurface(
   return g;
 }
 
-function hullShape(L: number, W: number): THREE.Shape {
+export function hullShape(L: number, W: number): THREE.Shape {
   const s = new THREE.Shape();
   const h = L / 2;
   const w = W / 2;

@@ -509,6 +509,13 @@ export function appendSettlementProps(world: WorldData): {
       isl,
     );
   }
+  // the HQ yacht marina (TASK-505): piers, breakwater, fort, moored fleet, channel gates. Just before the
+  // districts (which stay last), with pinned variants and no decor rolls, so every earlier store
+  // index and decor stream stays put.
+  for (const fx of world.marina ?? []) {
+    const yaw = Math.atan2(Math.cos(fx.rotY), Math.sin(fx.rotY));
+    push(fx.defId, fx.x, fx.z, yaw, fx.scale ?? 1, fx.islandId, 0, fx.variant ?? 0);
+  }
   // districts (M14b): lattice props over the district rectangle (e.g. solar rows). Last, from
   // their own RNG fork, so every earlier store index and the decor stream stay unchanged.
   const districtOf = perIsland('settlement-districts');

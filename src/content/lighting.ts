@@ -234,6 +234,10 @@ export const NIGHT = {
     'clocktower',
     'stoneLantern',
     'beaconTower',
+    // the HQ marina (TASK-505): finger-end lanterns, the harbour light and the fort's red lamp stay
+    // lit all night (the moored boats' mast lights follow the ordinary lamp ramp)
+    'marinaPier',
+    'starFort',
   ] as readonly string[],
   /**
    * Screen class (TASK-305): vertices with `emissive ≥ 1.5` (monitors, bot eyes; mask = emissive − 1,

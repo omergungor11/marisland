@@ -35,6 +35,9 @@ export const HQ_CULTURE: CultureDef = {
     { id: 'goodsStall', tier: 2, flags: grounded | windy },
     { id: 'semaphoreTower', tier: 2, flags: grounded },
     { id: 'mailLine', tier: 2, flags: grounded },
+    // M29 yacht marina (D-081 / D-085, TASK-505): cap 14 (cultureCapOverride.hq); the fort is the island's one tier-1 def
+    { id: 'marinaPier', tier: 2, flags: noShadow },
+    { id: 'starFort', tier: 1, flags: windy },
   ],
   // ISLAND_CULTURES §2.1 ambient stories (T3); plans/hq.ts emits one spot per kind it could anchor
   storySpots: [

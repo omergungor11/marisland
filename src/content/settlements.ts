@@ -343,6 +343,9 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   goodsStall: 1.2,
   semaphoreTower: 1.0,
   mailLine: 0.8,
+  // HQ yacht marina (TASK-505): water fixtures, planned by gen/marina.ts (never by the lot planner)
+  marinaPier: 1.0,
+  starFort: 7.2,
 };
 
 /** Fixtures that float at the waterline (render pivot y = 0, not the seabed). */
@@ -358,6 +361,9 @@ export const FLOATING_FIXTURES: readonly string[] = [
   'sailboat',
   // QA Q9 quarantine pontoon (TASK-506): pivot at the waterline, bobs as a whole
   'quarantinePontoon',
+  // the HQ marina (TASK-505, D-085): piers, breakwater and the cove-mouth fort stand in the water
+  'marinaPier',
+  'starFort',
 ];
 
 /**

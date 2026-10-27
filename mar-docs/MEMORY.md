@@ -10,6 +10,20 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-27 (M29 TASK-505, HQ yacht marina + star fort; D-085)**: `world/gen/marina.ts` (post-route stage,
+  `world.marina`, `hashes.marina`) + defs `marinaPier` / `starFort` + sailboat v6–v8 (`geo/themes/hq-marina.ts`,
+  numbers `content/themes/hq-marina.ts`). Shots: `pnpm shots dev --only=D-marina-top,D-marina-t1,D-marina-fort,D-marina-dusk,D-marina-top-night`,
+  wow `W-marina-dusk`, `pnpm exec tsx scripts/gallery-shots.ts marina`.
+  - **Gotchas:**
+    - HQ's pier is in a closed bay, so the ferry stop (nearest open-water node) is 26 u from the pier end, at the
+      horn — the fort, breakwater and gates all key off it. The breakwater fits on few seeds (stop / route clearance).
+    - The shore contour is walked on the SDF (3.2 u out); summing |turn| inflates with grid noise, use the signed
+      turn plus a "back to the cove" test (the seaward normal vs the pier end).
+    - Moored boats are fixtures (floating, `tagBob`), not agents: no life budget, instanced per (def, variant).
+    - `settlement-props` pushes `world.marina` just before the districts (the district test wants them last).
+    - Fort: the star outline is concave, so caps are fans from the centre and wall bands use `addPoly` with an outward
+      hint; merlon / slot yaw is `atan2(-e.z, e.x)` (local x along the edge).
+    - geo tests: `marinaPier` / `starFort` reach 5 u below the pivot (pile feet, plinth) — exception in geo.test.
 - **2026-10-27 (M24 wave 1; TASK-500 merged)**: Mother Kite Train (`render/kite-train.ts`, built inside
   `createSkyCraft`, +1 call / +692 tris; `kiteTrainCentre(world, seed, simt)` gives its position for presets).
   The lit program forces flat normals from screen derivatives and mixes 35 % shade tint regardless of albedo, so

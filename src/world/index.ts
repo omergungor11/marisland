@@ -25,6 +25,7 @@ import { buildSettlements, markSites } from './gen/settlements.ts';
 import { buildRoutes } from './gen/routes.ts';
 import { carveReefGaps, planReefs, raiseReefs, reefWeights } from './gen/reefs.ts';
 import { placeSeamarks } from './gen/seamarks.ts';
+import { placeMarina } from './gen/marina.ts';
 import { placeWaterfalls } from './gen/waterfalls.ts';
 import { createOccupancy, scatterProps } from './gen/scatter.ts';
 import { compactPropStore, createPropStore } from './prop-store.ts';
@@ -83,6 +84,7 @@ export const STAGE_HASH_KEYS = [
   'sites',
   'routes',
   'seamarks',
+  'marina',
   'props',
 ] as const;
 
@@ -207,9 +209,23 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
   // a deep gap wherever a route crosses a reef, before the buoys read the depths
   carveReefGaps(height, reefField, boatRoutes);
   const reefWeight = reefWeights(reefField);
+  // HQ yacht marina, star fort and the ferry-stop channel gates (TASK-505): after the routes too
+  const marina = placeMarina(
+    { h: height, sdf, islands, docks: sites.docks, routes: boatRoutes },
+    root.fork('marina'),
+  );
   // channel buoys + sea-stack fields (TASK-474): fixtures on the water, after the routes
   const seamarks = placeSeamarks(
-    { h: height, sdf, islands, islets, docks: sites.docks, routes: boatRoutes, windDir },
+    {
+      h: height,
+      sdf,
+      islands,
+      islets,
+      docks: sites.docks,
+      routes: boatRoutes,
+      windDir,
+      reserved: marina.reserved,
+    },
     root.fork('seamarks'),
   );
   lap('routes');
@@ -237,6 +253,7 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
     moorings: sites.moorings,
     fixtures: sites.fixtures,
     seamarks,
+    marina: marina.fixtures,
     reefs,
     reefWeight,
     fences: sites.fences,
@@ -253,7 +270,7 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
     timings,
   };
   const occupancy = createOccupancy();
-  markSites(occupancy, world, sites.shapes);
+  markSites(occupancy, world, [...sites.shapes, marina.shapes]);
   world.genAux.siteOccupancy = occupancy.data.slice();
   // spare slots for Phase 2 edits; hashes and consumers only read `count` entries
   world.props = compactPropStore(scatterProps(world, occupancy).props, EDIT_PROPS.propHeadroom);
@@ -271,6 +288,7 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
   hashes.sites = hashSites(world);
   hashes.routes = hashPolylines(boatRoutes);
   hashes.seamarks = hashSeamarks(seamarks);
+  hashes.marina = hashSeamarks(marina.fixtures);
   hashes.props = hashProps(world.props);
   hashes.world = combineHashes(hashes, STAGE_HASH_KEYS);
   lap('hash');
