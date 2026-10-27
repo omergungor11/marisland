@@ -18,6 +18,17 @@
   Fleet anchor trick. Session handover: TASK-497 (worldgen) and TASK-499 (props) were asked to commit WIP on
   their `worktree-agent-*` branches. Check `git worktree list` and the branch tip before resuming; then wave 2
   (498 ∥ 501) and 502 QA.
+- **TASK-501 done (Proving Grounds motion; D-078; branch `worktree-agent-ac5d0e036bc84c5da`)**:
+  - **For TASK-502:** presets `D-qa-proving-siren` (12:00 +3 s), `-drop` (+8.95 s, crate in free fall, cart at the ramp
+    crest), `-jump` (+9.7 s, cart over the crossing, crate just landed with dust + lit lamp) use raw cam
+    `124,16,-112,100,9.5,-137` (seed 1001; the yard is 10 x 20 at (100, -136), tower on its north end). From the
+    south / east the testLab roofs block the view. A wow preset can reuse that cam; tower cycle 20 s with `phase` 3
+    (lift 3.5-9.5 s, fall 11.3 s into the cycle), cart lap 15.08 s (launch 9.12, land 10.37).
+  - **Gotchas:** the stunt yard fixture is `testTrack` variant 1 (loop track = variant 0; tests filter on it). The
+    fan's `aSpin.w` is 1.25, not 1 (shader branch for `uFanSpin`); a test that counts spinners must use `FAN_SPIN_TAG`.
+    Culture-mover parts now have 18 kinds (`crate`, `dummy`); `buildDropCrate()` is not used by the mover (the part
+    is built from the same QA_PROVING numbers). `harness --only=` wipes the other frames of the set dir.
+  - **Cost:** culture scenes (tower + dummy) + cart pose ≈ 6 us/frame in range, 0 outside; 0 agents.
 - **TASK-499 merged** (QA kit; `cultureCapOverride.qa` 12/1):
   - **For TASK-501:**
     - `dropTower` `userData.hooks.crate` {top, rest, size}; `buildDropCrate()` in `geo/themes/qa-proving.ts`.
