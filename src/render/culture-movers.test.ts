@@ -83,7 +83,8 @@ describe('culture movers', () => {
     expect(kinds.size).toBe(Object.keys(PART).length);
     for (const a of ['position', 'normal', 'color', 'emissive'])
       expect(g.getAttribute(a).array.every(Number.isFinite)).toBe(true);
-    expect(g.getAttribute('position').count).toBeLessThan(3000);
+    // 18 kinds, each its own instanced mesh (TASK-495): the total only bounds the build cost
+    expect(g.getAttribute('position').count).toBeLessThan(4000);
   });
 
   it('per-kind split (TASK-495): every vertex once, each geometry holds only its own kind', () => {

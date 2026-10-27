@@ -1321,6 +1321,42 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     sets: ['dev'],
   },
   {
+    id: 'D-qa-proving-siren',
+    title: 'Proving Grounds · 12:00 siren test +3 s (T2)',
+    // seed 1001 Proving Grounds (TASK-501): the figure-8 crash track on the stunt yard, the empty-cradle
+    // drop tower at its far end, the test fan and the obstacle course round it; the crate is on its way up, the fan spins up
+    seed: 1001,
+    cam: '124,16,-112,100,9.5,-137',
+    time: 12,
+    simt: 3,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-qa-proving-drop',
+    title: 'Proving Grounds · mid-drop (T2)',
+    // seed 1001 Proving Grounds (TASK-501): the figure-8 crash track on the stunt yard, the empty-cradle
+    // drop tower at its far end, the test fan and the obstacle course round it; the crate in free fall, the cart at the ramp crest
+    seed: 1001,
+    cam: '124,16,-112,100,9.5,-137',
+    time: 12,
+    simt: 8.95,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-qa-proving-jump',
+    title: 'Proving Grounds · cart in the air (T2)',
+    // seed 1001 Proving Grounds (TASK-501): the figure-8 crash track on the stunt yard, the empty-cradle
+    // drop tower at its far end, the test fan and the obstacle course round it; the cart over the crossing, the crate just landed (squash, dust, lit check lamp)
+    seed: 1001,
+    cam: '124,16,-112,100,9.5,-137',
+    time: 12,
+    simt: 9.7,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
     id: 'D-culture-research',
     title: 'Culture · Research Star Academy (T2, 17:45)',
     // seed 1001 Observatory University (TASK-426) at golden hour: the quad with the orrery, the

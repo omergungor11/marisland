@@ -191,6 +191,9 @@ function dropTower({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
 
 /* ---------------------------------- testFan ---------------------------------- */
 
+/** `aSpin.w` of the fan's blades (shader: render/materials/factory.ts, QA siren test). */
+export const FAN_SPIN_TAG = 1.25;
+
 /**
  * Giant test fan facing +z: a white pedestal on a mint foot, a motor drum, five yellow blades (`aSpin`
  * parts, turn about the hub on the z axis) inside a mint cage of rings and spokes. In front, on a
@@ -316,6 +319,9 @@ function testFan({ rng, lod }: BuildOpts): THREE.BufferGeometry {
     });
   }
   const g = finishSpin(acc.finish(rng, false, true), acc, spin);
+  // spin tag 1.25 = the test fan: the siren test adds turns on top of the wind-driven spin (uFanSpin)
+  const tag4 = g.getAttribute('aSpin') as THREE.BufferAttribute;
+  for (let i = 0; i < tag4.count; i++) if (tag4.getW(i) === 1) tag4.setW(i, FAN_SPIN_TAG);
   return addHook(g, 'hub', { center: [hub.x, hub.y, hub.z], axis: [0, 0, 1] });
 }
 

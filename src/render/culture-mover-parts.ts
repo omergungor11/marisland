@@ -5,6 +5,7 @@ import { ROCK, WALLS } from '../content/palette.ts';
 import { OFFICE_COLORS } from '../content/palette-offices.ts';
 import { WORKER_COLORS as WC } from '../content/life.ts';
 import { THEMES } from '../content/themes.ts';
+import { PROVING_PAL as PP, QA_PROVING } from '../content/themes/qa-proving.ts';
 
 /**
  * Part shapes of the culture movers (TASK-431): ONE merged geometry, drawn with the shared creature
@@ -37,6 +38,10 @@ export const PART = {
   bell: 14,
   /** Graduation cap (M22 R16): a flat mortarboard on its skull cap, unit width, tassel on +x. */
   cap: 15,
+  /** QA drop-tower crate (M24 TASK-501): centred cube, banded, with the yoke on top (QA_PROVING.tower.crate). */
+  crate: 16,
+  /** QA crash dummy (M24 TASK-501): seated on the cart, hips at the origin, facing +z, tinted body. */
+  dummy: 17,
 } as const;
 export type PartKind = (typeof PART)[keyof typeof PART];
 
@@ -361,6 +366,50 @@ export function buildPartsGeometry(): THREE.BufferGeometry {
     color: OFFICE_COLORS.gold,
     emissive: 0,
   });
+  // 16 crate: a unit cube (instance tint = wood) with two bands, the yoke and the drop cable
+  const K = QA_PROVING.tower.crate;
+  const cs = K.size;
+  const crateBox = (w: number, h: number, d: number, y: number, color: string | null): void => {
+    pieces.push({
+      geo: new THREE.BoxGeometry(w, h, d).translate(0, y, 0),
+      kind: PART.crate,
+      color,
+      emissive: 0,
+    });
+  };
+  crateBox(cs, cs, cs, 0, null);
+  for (const y of [-cs / 2 + 0.1, cs / 2 - 0.18]) crateBox(cs + 0.04, 0.08, cs + 0.04, y, K.band);
+  crateBox(cs + 0.3, 0.12, 0.2, cs / 2, PP.yellow);
+  crateBox(0.07, 0.4, 0.07, cs / 2 + 0.12, PP.steel);
+  // 17 dummy: legs forward, torso with the chest target, arms to the crate lid, head (tint = body)
+  const dm = (
+    w: number,
+    h: number,
+    d: number,
+    at: readonly [number, number, number],
+    color: string | null,
+  ): void => {
+    pieces.push({
+      geo: new THREE.BoxGeometry(w, h, d).translate(at[0], at[1], at[2]),
+      kind: PART.dummy,
+      color,
+      emissive: 0,
+    });
+  };
+  for (const sx of [-1, 1]) {
+    dm(0.1, 0.1, 0.3, [0.09 * sx, 0.05, 0.14], null);
+    dm(0.07, 0.24, 0.07, [0.2 * sx, 0.3, 0.1], null);
+  }
+  dm(0.32, 0.34, 0.2, [0, 0.25, 0], null);
+  dm(0.09, 0.09, 0.02, [-0.05, 0.3, 0.105], PP.rubber);
+  dm(0.09, 0.09, 0.02, [0.05, 0.2, 0.105], PP.rubber);
+  pieces.push({
+    geo: new THREE.IcosahedronGeometry(0.14, 1).translate(0, 0.55, 0),
+    kind: PART.dummy,
+    color: null,
+    emissive: 0,
+  });
+  dm(0.05, 0.05, 0.05, [0, 0.72, 0], PP.red);
   const done = pieces.map((p) => finish(p));
   const geo = mergeGeometries(done, false);
   for (const d of done) d.dispose();

@@ -12,7 +12,9 @@ import type { WorldData, XZ } from '../world/types.ts';
 import { buildCrateCart } from '../geo/themes/qa-factory.ts';
 import { buildCargoShip } from '../geo/themes/devops-works.ts';
 import { buildWheelRotor } from '../geo/themes/marketing-media.ts';
-import { cartAt, trackPath } from '../geo/themes/qa-track.ts';
+import { cartFrame, newCartFrame, trackPath } from '../geo/themes/qa-track.ts';
+import { crashPath, landingSquash } from '../geo/themes/qa-crash.ts';
+import { SHARED } from './uniforms.ts';
 import { makeDepthMaterial, makeLitMaterial } from './materials/factory.ts';
 import { pierLoop, shipPose, trainAt, type Loop } from './harbour-routes.ts';
 
@@ -173,9 +175,14 @@ export function createMovers(
   const trackDef = PROP_DEF_INDEX.testTrack;
   const belts: Belt[] = [];
   const tracks: THREE.Matrix4[] = [];
+  // M24 TASK-501: testTrack variant 1 is the figure-8 crash track (its own centreline and cart pose)
+  const crashes: boolean[] = [];
   for (let i = 0; i < store.count; i++) {
     if (store.defId[i] === beltDef) belts.push({ m: pivotOf(store, i) });
-    else if (store.defId[i] === trackDef) tracks.push(pivotOf(store, i));
+    else if (store.defId[i] === trackDef) {
+      tracks.push(pivotOf(store, i));
+      crashes.push(store.variant[i] === 1);
+    }
   }
   const rails = world ? railsOf(world, store) : [];
   const cars = DEVOPS_MOVERS.train.cars;
@@ -206,6 +213,9 @@ export function createMovers(
   mesh.customDepthMaterial = scope.add(makeDepthMaterial(features, mat.fade));
   scope.add(mesh);
   const path = trackPath();
+  const crash = crashPath();
+  const loopFrame = newCartFrame();
+  const crashFrame = newCartFrame();
   const beltY = QA_FACTORY.belt.top - QA_FACTORY.crate.chassis;
   const railY = QA_FACTORY.track.railY + QA_FACTORY.track.rail;
   const cs = QA_MOVERS.cartScale;
@@ -241,19 +251,20 @@ export function createMovers(
       _l.makeTranslation(0, beltY, dz);
       mesh.setMatrixAt(k, _m.multiplyMatrices(b.m, _l));
     });
-    const { i, f } = cartAt(path, time);
-    const j = (i + 1) % path.p.length;
-    const lerp3 = (a: number[], b: number[], out: THREE.Vector3): THREE.Vector3 =>
-      out.set(a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f);
-    lerp3(path.t[i], path.t[j], _z).normalize();
-    lerp3(path.u[i], path.u[j], _y).normalize();
-    _x.crossVectors(_y, _z).normalize();
-    _y.crossVectors(_z, _x);
-    lerp3(path.p[i], path.p[j], _p).addScaledVector(_y, railY);
-    _l.makeBasis(_x.multiplyScalar(cs), _y.multiplyScalar(cs), _z.multiplyScalar(cs)).setPosition(
-      _p,
-    );
-    tracks.forEach((t, k) => mesh.setMatrixAt(belts.length + k, _m.multiplyMatrices(t, _l)));
+    const motion = SHARED.uMotionScale.value;
+    const poses = [cartFrame(path, time, loopFrame), cartFrame(crash, time, crashFrame)];
+    const squash = landingSquash(crash, time, motion);
+    tracks.forEach((t, k) => {
+      const isCrash = crashes[k];
+      const fr = poses[isCrash ? 1 : 0];
+      const d = isCrash ? squash : 0;
+      _p.set(fr.p[0], fr.p[1], fr.p[2]).addScaledVector(_y.set(fr.y[0], fr.y[1], fr.y[2]), railY);
+      _x.set(fr.x[0], fr.x[1], fr.x[2]).multiplyScalar(cs * (1 + d * 0.5));
+      _y.set(fr.y[0], fr.y[1], fr.y[2]).multiplyScalar(cs * (1 - d));
+      _z.set(fr.z[0], fr.z[1], fr.z[2]).multiplyScalar(cs * (1 + d * 0.5));
+      _l.makeBasis(_x, _y, _z).setPosition(_p);
+      mesh.setMatrixAt(belts.length + k, _m.multiplyMatrices(t, _l));
+    });
     mesh.instanceMatrix.needsUpdate = true;
   };
   // bounds once (crates stay within their segments, carts within their tracks)

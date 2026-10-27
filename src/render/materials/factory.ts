@@ -161,6 +161,7 @@ uniform float uTime;
 uniform vec4 uWind;
 uniform float uGustSpeed;
 uniform float uMotionScale;
+uniform float uFanSpin;
 uniform vec3 uCameraPos;
 uniform float uFadeNear;
 uniform float uFadeFar;
@@ -215,6 +216,8 @@ const VERTEX_DISPLACE = /* glsl */ `
     float marSG = marGustAt(marOrigin.xz, uTime, uWind.xy, uGustSpeed, uWind.w, uWind.z);
     float marSA = (uTime * ${f((2 * Math.PI) / WINDMILL.secondsPerRev)} * clamp(uWind.z, 0.5, 1.5)
       + marSG * ${f(WINDMILL_GUST_BOOST)}) * uMotionScale;
+    // test fan tag 1.25 (QA siren test, M24 TASK-501): the culture clock's extra turns on top
+    if (aSpin.w > 1.1 && aSpin.w < 1.4) marSA += uFanSpin * uMotionScale;
     float marSc = cos(marSA);
     float marSs = sin(marSA);
     vec2 marSp = transformed.xy - aSpin.xy;
@@ -516,6 +519,7 @@ function sharedVertexUniforms(
     uWind: SHARED.uWind,
     uGustSpeed: SHARED.uGustSpeed,
     uMotionScale: SHARED.uMotionScale,
+    uFanSpin: SHARED.uFanSpin,
     uSunSkyDir: SHARED.uSunSkyDir,
     uCameraPos: SHARED.uCameraPos,
     uFadeNear: fade.uFadeNear,

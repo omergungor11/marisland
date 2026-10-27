@@ -10,7 +10,7 @@
  * `dwell` s at the gate. Everything is a function of the lap clock, so a capture freezes it.
  */
 import { QA_PROVING_MOTION } from '../../content/themes/qa-proving.ts';
-import type { TrackPath } from './qa-track.ts';
+import { cartAt, type TrackPath } from './qa-track.ts';
 
 type V3 = [number, number, number];
 
@@ -177,4 +177,55 @@ export function lapClock(path: TrackPath, time: number): number {
 /** Seconds since the cart landed (the lap clock, wrapped), or −1 before the lap's landing. */
 export function sinceLanding(path: CrashPath, time: number): number {
   return lapClock(path, time) - path.land;
+}
+
+const D = QA_PROVING_MOTION.dummy;
+const clamp = (x: number, a: number, b: number): number => Math.min(b, Math.max(a, x));
+
+/** Cart squash 0 … `squashDepth` (× `motion`) after the landing: a damped bounce that overshoots once. */
+export function landingSquash(path: CrashPath, time: number, motion = 1): number {
+  const e = sinceLanding(path, time) / C.squash;
+  if (e < 0 || e >= 1) return 0;
+  return C.squashDepth * motion * Math.exp(-4 * e) * Math.cos(e * Math.PI * 2.5) * (1 - e);
+}
+
+export interface DummyPose {
+  /** About the cart's local z (sideways lean) and x (forward lean), radians. */
+  roll: number;
+  pitch: number;
+  /** Hop above the seat (u, cart-local). */
+  hop: number;
+}
+
+/**
+ * The riding dummy's lean at sim time `time`: outward in the turns (sideways acceleration), back on
+ * the ramp and forward on the way down, a spring and a hop after the landing, and a slow idle wobble.
+ * `motion` (reduced motion, 0 … 1) scales every term.
+ */
+export function dummyPose(
+  path: CrashPath,
+  time: number,
+  motion: number,
+  out: DummyPose,
+): DummyPose {
+  const { i, f } = cartAt(path, time);
+  const j = (i + 1) % path.p.length;
+  const side = path.side[i] + (path.side[j] - path.side[i]) * f;
+  const slope = path.slope[i] + (path.slope[j] - path.slope[i]) * f;
+  let roll = clamp(side / 2.2, -1, 1) * D.lean;
+  let pitch = -clamp(slope / C.slope, -1, 1) * D.pitch;
+  const dt = sinceLanding(path, time);
+  let hop = 0;
+  if (dt >= 0 && dt < 4 * C.springTau) {
+    const env = Math.exp(-dt / C.springTau);
+    pitch += 0.5 * env * Math.sin(dt * Math.PI * 2 * C.springHz);
+    roll += 0.25 * env * Math.sin(dt * Math.PI * 2 * C.springHz * 1.3 + 1);
+    hop = C.hop * env * Math.abs(Math.sin(dt * Math.PI * C.springHz));
+  }
+  roll += D.idle * Math.sin(time * Math.PI * 2 * D.idleHz);
+  pitch += D.idle * 0.7 * Math.sin(time * Math.PI * 2 * D.idleHz * 1.37 + 1);
+  out.roll = roll * motion;
+  out.pitch = pitch * motion;
+  out.hop = hop * (0.5 + 0.5 * motion);
+  return out;
 }

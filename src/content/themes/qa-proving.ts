@@ -153,7 +153,7 @@ export const QA_PROVING_MOTION = {
    */
   drop: {
     period: 20,
-    phase: 0,
+    phase: 3,
     rest: 3.5,
     lift: 6,
     hang: 1.8,
@@ -161,10 +161,11 @@ export const QA_PROVING_MOTION = {
     squash: 0.7,
     squashDepth: 0.3,
     lamp: 4,
-    lampR: 0.5,
+    /** The lit ✓ lamp ball over the lens: scale of the lens radius at rest and at full glow. */
+    lampScale: [1.1, 1.5],
     lampColor: '#7CFFB0',
     dust: { rings: 2, r0: 0.6, r1: 2.2, life: 0.9, color: '#FFF4E0' },
-    slowMax: 2.5,
+    slowMax: 1.6,
   },
   /**
    * Figure-8 crash track (testTrack variant 1): lemniscate lobes along z (half extents of the

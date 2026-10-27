@@ -26,6 +26,11 @@ import { DEVOPS_MOVERS } from '../content/themes/devops.ts';
 import { DOCK } from '../content/settlements.ts';
 import { pierLoop, shipPose } from './harbour-routes.ts';
 import type { PlacedPuffs } from './particles/puffs.ts';
+import { QA_PROVING, QA_PROVING_MOTION } from '../content/themes/qa-proving.ts';
+import { QA_FACTORY, QA_MOVERS } from '../content/themes/qa.ts';
+import { cartFrame, newCartFrame } from '../geo/themes/qa-track.ts';
+import { crashPath, dummyPose, landingSquash, type DummyPose } from '../geo/themes/qa-crash.ts';
+import { dropState, type DropState } from './qa-proving-motion.ts';
 
 /**
  * Culture movers (M19 TASK-431): closed-form scenes that make each island culture visibly alive.
@@ -268,6 +273,80 @@ function sceneAt(
 }
 
 /* ------------------------------------- scenes ------------------------------------- */
+
+/**
+ * QA drop tower (M24 TASK-501, variant 1 = the empty cradle): the crate rides up the guide rails,
+ * hangs, falls and squashes on the pad with a dust ring, and the foot check lamp glows for a few
+ * seconds. Tower-local frame; closed-form in the sim time (QA_PROVING_MOTION.drop).
+ */
+function dropTowerScene(): Scene['run'] {
+  const DR = QA_PROVING_MOTION.drop;
+  const T = QA_PROVING.tower;
+  const st: DropState = { y: 0, squash: 0, since: -1, lamp: 0 };
+  const lens: V3 = [T.footLamp.x, T.footLamp.h + 0.1 + T.footLamp.r, T.footLamp.z];
+  return (w, c) => {
+    dropState(c.time, c.motion, st);
+    const sq = st.squash;
+    // the foot stays on the pad: the squeezed crate's centre sinks by half the lost height
+    const y = st.y - (T.crate.size / 2) * sq;
+    w.put(PART.crate, [0, y, 0], [0, 0, 0], [1 + sq * 0.5, 1 - sq, 1 + sq * 0.5], T.crate.wood);
+    if (st.since >= 0 && st.since < DR.dust.life) {
+      const ph0 = st.since / DR.dust.life;
+      for (let k = 0; k < DR.dust.rings; k++) {
+        const ph = ph0 - k * 0.18;
+        if (ph < 0) continue;
+        const r = DR.dust.r0 + (DR.dust.r1 - DR.dust.r0) * ph;
+        const tube = Math.max(0.15, 1 - ph);
+        const at: V3 = [0, T.crate.rest - T.crate.size / 2 + 0.12, 0];
+        w.put(PART.ring, at, [0, 0, 0], [r, r * tube, r], DR.dust.color);
+      }
+    }
+    if (st.lamp > 0.01) {
+      const k = DR.lampScale[0] + (DR.lampScale[1] - DR.lampScale[0]) * st.lamp;
+      w.put(PART.glow, lens, [0, 0, 0], T.footLamp.r * k, DR.lampColor);
+    }
+  };
+}
+
+/**
+ * QA figure-8 crash track (M24 TASK-501, testTrack variant 1): the crash dummy riding the test cart
+ * (render/movers.ts poses the cart from the same centreline). Leans out in the turns, back on the
+ * ramp, springs and hops on the landing. Track-local frame.
+ */
+function crashDummyScene(): Scene['run'] {
+  const path = crashPath();
+  const CM = QA_PROVING_MOTION;
+  const cs = QA_MOVERS.cartScale;
+  const fr = newCartFrame();
+  const pose: DummyPose = { roll: 0, pitch: 0, hop: 0 };
+  const basis = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const ql = new THREE.Quaternion();
+  const eu = new THREE.Euler();
+  const pos = new THREE.Vector3();
+  const railY = QA_FACTORY.track.railY + QA_FACTORY.track.rail;
+  return (w, c) => {
+    cartFrame(path, c.time, fr);
+    dummyPose(path, c.time, c.motion, pose);
+    const d = landingSquash(path, c.time, c.motion);
+    pos
+      .set(fr.p[0], fr.p[1], fr.p[2])
+      .addScaledVector(
+        _a.set(fr.y[0], fr.y[1], fr.y[2]),
+        railY + (CM.dummy.seatY * (1 - d) + pose.hop) * cs,
+      );
+    basis.makeBasis(
+      _a.set(fr.x[0], fr.x[1], fr.x[2]),
+      _b.set(fr.y[0], fr.y[1], fr.y[2]),
+      _x.set(fr.z[0], fr.z[1], fr.z[2]),
+    );
+    q.setFromRotationMatrix(basis).multiply(
+      ql.setFromEuler(eu.set(pose.pitch, 0, pose.roll, 'XYZ')),
+    );
+    const sc: V3 = [cs * (1 + d * 0.5), cs * (1 - d), cs * (1 + d * 0.5)];
+    w.putQ(PART.dummy, [pos.x, pos.y, pos.z], q, sc, CM.dummy.color);
+  };
+}
 
 function bellScene(variant: number): Scene['run'] {
   const B = M.bell;
@@ -987,6 +1066,8 @@ export function createCultureMovers(
     mast: defOf('antennaMast'),
     tower: defOf('campusTower'),
     rocket: defOf('rocketMonument'),
+    drop: defOf('dropTower'),
+    track: defOf('testTrack'),
   };
   const beams: Beam[] = [];
   const beamAnchors: { x: number; y: number; z: number }[] = [];
@@ -1034,7 +1115,22 @@ export function createCultureMovers(
       );
     else if (d === D.flag)
       scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 1.2, 0], 1, flagScene()));
-    else if (d === D.cart)
+    else if (d === D.drop && v === 1)
+      scenes.push(
+        sceneAt(
+          th,
+          pv(),
+          store.rotY[i],
+          [0, 5, 0],
+          2 + QA_PROVING_MOTION.drop.dust.rings,
+          dropTowerScene(),
+        ),
+      );
+    else if (d === D.track && v === 1) {
+      const sc = sceneAt(th, pv(), store.rotY[i], [0, 1, 0], 1, crashDummyScene());
+      sc.range2 = (QA_MOVERS.fadeFar + 20) * (QA_MOVERS.fadeFar + 20);
+      scenes.push(sc);
+    } else if (d === D.cart)
       scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 2, 0], 3, balloonScene()));
     else if (d === D.gate)
       scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 1.87, 0], 4, gateLampScene(v)));

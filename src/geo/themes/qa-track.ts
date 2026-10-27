@@ -154,3 +154,39 @@ export function cartAt(path: TrackPath, time: number): { i: number; f: number } 
   }
   return { i: lo, f: (c - tm[lo]) / (tm[hi] - tm[lo]) };
 }
+
+/** The cart's pose in the track frame: position on the centreline and the orthonormal basis (x side, y up, z ahead). */
+export interface CartFrame {
+  p: V3;
+  x: V3;
+  y: V3;
+  z: V3;
+}
+
+export const newCartFrame = (): CartFrame => ({
+  p: [0, 0, 0],
+  x: [1, 0, 0],
+  y: [0, 1, 0],
+  z: [0, 0, 1],
+});
+
+/** Cart pose at sim time `time` (blends the two samples of `cartAt`; writes and returns `out`). */
+export function cartFrame(path: TrackPath, time: number, out: CartFrame): CartFrame {
+  const { i, f } = cartAt(path, time);
+  const j = (i + 1) % path.p.length;
+  const lerp = (a: V3, b: V3, o: V3): V3 => {
+    o[0] = a[0] + (b[0] - a[0]) * f;
+    o[1] = a[1] + (b[1] - a[1]) * f;
+    o[2] = a[2] + (b[2] - a[2]) * f;
+    return o;
+  };
+  const z = norm(lerp(path.t[i], path.t[j], out.z));
+  const y = norm(lerp(path.u[i], path.u[j], out.y));
+  const x = norm(cross(y, z));
+  const y2 = cross(z, x);
+  lerp(path.p[i], path.p[j], out.p);
+  out.x = x;
+  out.y = y2;
+  out.z = z;
+  return out;
+}

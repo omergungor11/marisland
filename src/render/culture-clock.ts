@@ -9,6 +9,7 @@ import {
   type CultureGateId,
 } from '../content/cultures/rhythm.ts';
 import { CULTURE_SLOTS, GATES, SHARED } from './uniforms.ts';
+import { fanSpinExtra } from './qa-proving-motion.ts';
 
 /**
  * Culture clock (M19 TASK-430): evaluates the rhythm tables (content/cultures/rhythm.ts) from the
@@ -186,6 +187,7 @@ export function createCultureClock(
       }
       SHARED.uFestival.value.set(state.relay.phase, state.relay.step, any);
       SHARED.uSeaLamps.value = state.sea;
+      SHARED.uFanSpin.value = fanSpinExtra(state.day);
       for (const g of Object.keys(GATES) as CultureGateId[]) GATES[g].value = state.gates[g];
     },
     dispose() {
@@ -193,6 +195,7 @@ export function createCultureClock(
       for (const v of SHARED.uCultureLamps.value) v.set(0, 0);
       SHARED.uFestival.value.set(0, -1, 0);
       SHARED.uSeaLamps.value = 0;
+      SHARED.uFanSpin.value = 0;
       for (const g of Object.keys(GATES) as CultureGateId[]) GATES[g].value = 1;
     },
   };
