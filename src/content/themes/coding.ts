@@ -195,6 +195,13 @@ export const CODING_PLAN = {
     minLattice: [2, 2] as const,
     /** Smallest block when nothing fits off the Kite Hill (TASK-497): the farm may take its foot. */
     minLatticeHill: [2, 1] as const,
+    /** Patch-grid shifts (share of a cell, u / v) tried in turn for that fallback. */
+    hillShifts: [
+      [0, 0],
+      [0.5, 0],
+      [0, 0.5],
+      [0.5, 0.5],
+    ] as const,
     /** Below this farm area (u²) the other cells of the patch grid take solar blocks too. */
     minArea: 450,
     /** Ground a block may cover: slope, height floor, shore distance, clearance to obstacles. */
@@ -218,8 +225,10 @@ export const CODING_PLAN = {
    * ridge from the Kite Hill turbine toward another knoll turbine, the axis along that ridge. Centres
    * are tried every `step` u along the ridge (both ends at least `endGap` u past the turbine discs,
    * the hill end no nearer the summit than `fromTop` u) at the across `offsets`; flat (relief ≤
-   * `maxRelief`, the pad levels the rest), on land, `gap` u clear of everything. Fallback: round the
-   * hill foot `ring` u out, axis tangent to it. Lowest relief wins, then nearest the ridge midpoint.
+   * `maxRelief`, the pad levels the rest), on land, `gap` u clear of everything. Fallbacks: round the
+   * hill foot `ring` u out, axis tangent to it; any plateau spot within `reach` u; `last` (anywhere on
+   * the island, looser limits), so the anchor stands on every seed. Lowest relief wins, then nearest
+   * the ridge midpoint.
    */
   tunnel: {
     size: [16, 6] as const,
@@ -235,6 +244,8 @@ export const CODING_PLAN = {
     ringSamples: 36,
     reach: 45,
     high: 0.2,
+    /** Last resort when nothing above fits (tight plateaus): anywhere on the island, these limits. */
+    last: { fromTop: 16, maxRelief: 6, gap: 0.4 },
   },
   dock: { maxDist: 20, lee: 40, rowboats: [1, 2] as const },
   /** Lot floor: devPods ringed around the park until this many lots stand. */

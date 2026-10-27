@@ -198,10 +198,10 @@ describe('Coding Kite Hill (TASK-497), 30 seeds', { timeout: 300_000 }, () => {
         expect(Math.abs(heightAt(w.height, c.x, c.z) - y0), ctx).toBeLessThan(0.3);
         expect(heightAt(w.height, c.x, c.z), ctx).toBeGreaterThan(0.3);
       }
-      // off the summit: the hill keeps its top
+      // off the summit: the hill keeps its top (the last-resort tier may come to the foot)
       const h = hillOf(isl);
       expect(shapeDist(sh, h.x, h.z), ctx).toBeGreaterThanOrEqual(
-        CODING_PLAN.tunnel.fromTop - 1e-6,
+        Math.min(CODING_PLAN.tunnel.fromTop, CODING_PLAN.tunnel.last.fromTop) - 1e-6,
       );
       for (const f of w.fixtures.filter((f) => f.islandId === isl.id))
         expect(shapeDist(sh, f.x, f.z), `${ctx} ${f.defId}`).toBeGreaterThan(0);
@@ -214,6 +214,7 @@ describe('Coding Kite Hill (TASK-497), 30 seeds', { timeout: 300_000 }, () => {
           // path samples may cut a grid-cell corner of the blocked pad
           expect(shapeDist(sh, p.x, p.z), `${ctx} path`).toBeGreaterThan(-0.5);
     }
-    expect(sites, 'seeds with a wind tunnel site').toBeGreaterThanOrEqual(27);
+    // TASK-498 builds on it: every seed
+    expect(sites, 'seeds with a wind tunnel site').toBe(SEEDS.length);
   });
 });

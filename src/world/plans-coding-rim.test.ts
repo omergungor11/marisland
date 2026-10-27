@@ -6,6 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { RIM_POST_LOOKS } from '../content/rim-walkway.ts';
 import { CULTURE_RHYTHM } from '../content/cultures/rhythm.ts';
+import { CODING_CULTURE_SITES as CS } from '../content/cultures/coding.ts';
 import { CODING_RIM_BENCHES, CODING_RIM_WALK } from '../content/themes/coding.ts';
 import { segDist } from './gen/sites.ts';
 import { generateWorld, heightAt, type IslandData, type WorldData, type XZ } from './index.ts';
@@ -77,8 +78,10 @@ describe('Coding C18 rim boardwalk (TASK-484), 30 seeds', { timeout: 120_000 }, 
         }
       }
     }
-    // TASK-484 (30 seeds): 28 / 30 have a walk; two small plateaus (852, 1037) have only a stub
-    expect(walks / SEEDS.length).toBeGreaterThanOrEqual(0.85);
+    // TASK-484 (30 seeds): 28 / 30 have a walk; two small plateaus (852, 1037) have only a stub.
+    // TASK-497: the Kite Hill rides out to the rim on the upwind headland and breaks the walk there
+    // (D-075): 24 / 30 (186, 371, 408, 926, 1000, 1037 keep a stub)
+    expect(walks / SEEDS.length).toBeGreaterThanOrEqual(0.75);
   });
 
   it('two benches on the walk, facing the sea, apart, off the paths', () => {
@@ -98,9 +101,18 @@ describe('Coding C18 rim boardwalk (TASK-484), 30 seeds', { timeout: 120_000 }, 
           Math.round((z - w.height.originZ) / w.height.cellSize) * w.height.n +
             Math.round((x - w.height.originX) / w.height.cellSize)
         ];
-      // the rim benches are the only bench v0 fixtures pinned with a variant on Coding
+      // the rim benches are the only bench v0 fixtures pinned with a variant on Coding, but for the
+      // Kite Hill bench (TASK-497): near the summit, facing straight away from it
+      const hill = isl.anchors.kiteHill;
+      const HB = CS.hillBench;
+      const hillBench = (f: { x: number; z: number; rotY: number; variant?: number }): boolean =>
+        !!hill &&
+        f.variant === HB.variant &&
+        Math.hypot(f.x - hill.x, f.z - hill.z) <= HB.r[1] + HB.side + 0.5 &&
+        Math.cos(f.rotY - Math.atan2(f.z - hill.z, f.x - hill.x)) > 0.99;
       const bs = w.fixtures.filter(
-        (f) => f.islandId === isl.id && f.defId === 'bench' && f.variant === B.variant,
+        (f) =>
+          f.islandId === isl.id && f.defId === 'bench' && f.variant === B.variant && !hillBench(f),
       );
       expect(bs.length, ctx).toBeLessThanOrEqual(B.count);
       for (const f of bs) {

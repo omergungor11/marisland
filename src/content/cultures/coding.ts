@@ -127,7 +127,8 @@ export const CODING_CULTURE_SITES = {
      * Kite Hill (TASK-497, `CO:C2`): with a hill the kites stand round its foot instead of the field:
      * pole sites on rings at `ring` u from the foot radius (KITE_HILL.foot; − = up the slope),
      * `samples` bearings each from the downwind side round, taken greedily at least `minGap` u apart
-     * up to `count[1]` poles; the rack stands `rackOut` u outside the foot facing the park.
+     * up to `count[1]` poles; the rack stands `rackOut` u outside the foot facing the hill, on a pad
+     * `rackPad` u past its frame.
      */
     hill: {
       ring: [-3, -1.5, -4.5, 0, -6, 1.5, -7.5, 3] as const,
@@ -138,6 +139,7 @@ export const CODING_CULTURE_SITES = {
       minShore: 3,
       gap: 0.6,
       rackOut: 3,
+      rackPad: 0.5,
     },
   },
   /**
