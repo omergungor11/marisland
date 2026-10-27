@@ -90,7 +90,7 @@ const LIVE_CAMS: Record<(typeof CAMPUS_THEMES)[number][0], string> = {
   coding: '-105.43,17,138.51,-116.43,11,148.51',
   // TASK-402b: over the glasshouse row and the base pods (bots at the terrariums, mast and pods)
   research: '137.71,15,118.1,123.71,8,108.1',
-  devops: '164.75,7.5,21.63,174.75,2.6,9.63',
+  devops: '174.38,7.5,22.53,184.38,2.6,10.53',
   marketing: '-259.02,15,12.2,-235.02,6,4.2',
 };
 
@@ -108,11 +108,11 @@ const STORY_SHOTS: readonly (readonly [string, string, string, number, number])[
   ['signpostDebate', 'Signpost debate · HQ', '-51.04,8.5,-3.82,-48.24,2,-9.62', 14, 6],
   // TASK-484: re-aimed at the turbine-foot nap hammock (moved with the TASK-479 solar halving)
   ['hammockNap', 'Hammock nap · Coding', '-118.5,12.6,179.5,-112.27,9.6,174.58', 14, 6],
-  ['containerNap', 'Container nap · DevOps', '153.71,8.93,-11.08,158.75,6.23,-12.37', 14, 6],
+  ['containerNap', 'Container nap · DevOps', '149.71,10.71,-13.08,154.75,8.01,-14.37', 14, 6],
   ['lighthouseSelfie', 'Selfie · Marketing', '-189.14,28.37,-21.87,-184.03,25.67,-22.88', 14, 6],
   ['gafferTurn', 'Gaffer · Design', '-97.6,24.75,-175.95,-99.57,22.05,-171.13', 14, 6],
   ['teaTime', 'Tea time · Research', '107.45,11.18,90.4,107.05,8.48,95.58', 14, 6],
-  ['onsenCapybara', 'Onsen · DevOps', '164.62,11.23,-28.96,161.64,8.53,-33.22', 14, 6],
+  ['onsenCapybara', 'Onsen · DevOps', '172.57,12.66,-32.01,169.59,9.96,-36.27', 14, 6],
 ] as const;
 
 /**
@@ -124,7 +124,7 @@ const CRITTER_SHOTS: readonly (readonly [string, string, string, number, number]
   [
     'capybara-onsen',
     'Capybara in the onsen · DevOps',
-    '164.29,8.77,-35.94,162.63,7.93,-34.2',
+    '172.24,10.2,-38.99,170.58,9.36,-37.25',
     14,
     6,
   ],
@@ -145,15 +145,15 @@ const CRITTER_SHOTS: readonly (readonly [string, string, string, number, number]
 const W7_CAM = '-165.43,20,145.51,-115.43,13,165.51';
 
 /** D-devops-* (raw, seed 1001 Ember Works; TASK-405), re-pin when that layout changes. */
-const DEVOPS_CAM = '116.75,92,67.09,188.75,2,-20.91';
+const DEVOPS_CAM = '126.38,92,67.99,198.38,2,-20.01';
 /** D-devops-terraces (raw, seed 1001): the data center terraces from the sea north-west of them. */
-const DEVOPS_TERRACE_CAM = '122.75,30,-82.91,164.75,8,-54.91';
+const DEVOPS_TERRACE_CAM = '132.38,30,-82.01,174.38,8,-54.01';
 /** D-devops-harbour (raw, seed 1001): the container yard, CI/CD belt, pier and a cargo ship. */
-const DEVOPS_HARBOUR_CAM = '190.75,20,35.09,164.75,2,5.09';
+const DEVOPS_HARBOUR_CAM = '200.38,20,35.99,174.38,2,5.99';
 /** D-culture-devops (raw, seed 1001; TASK-422): the onsen, quay and gate from the lee sea. */
-const DEVOPS_CULTURE_CAM = '116.75,36,-58.37,164.75,6,-24.37';
+const DEVOPS_CULTURE_CAM = '126.38,36,-57.47,174.38,6,-23.47';
 /** D-culture-devops-onsen (raw, seed 1001; TASK-422): the onsen deck and bath house close up. */
-const DEVOPS_ONSEN_CAM = '143.75,13,-28.37,161.75,7.5,-35.37';
+const DEVOPS_ONSEN_CAM = '151.7,14.43,-31.42,169.7,8.93,-38.42';
 
 /**
  * W9 Research hero (raw, seed 1001 Observatory University; TASK-402b), re-pin when the layout
@@ -211,7 +211,7 @@ const MOVE_SHOTS: readonly ShotPreset[] = (
       'devops',
       'Ember Works · 21:00 Release Night lift + horn',
       1001,
-      '152.15,8,22.93,163.75,4,6.63',
+      '161.78,8,23.83,173.38,4,7.53',
       21,
     ],
     ['marketing', 'Carnival · 17:30 confetti show', 1001, '-251.02,9,6.74,-239.02,6,-9.26', 17.5],
@@ -592,7 +592,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // cone in warm pools, the D5 watch tower's red beacon at the summit, container LED strips and
     // the lit harbour sheds, the steam plume lit from the crater
     seed: 1001,
-    cam: '158,52,22,184,19,-46',
+    cam: '167.63,52,22.9,193.63,19,-45.1',
     time: 21,
     simt: 5,
     quality: 'medium',
