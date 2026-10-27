@@ -201,6 +201,8 @@ export function buildRawLand(
       for (let ix = x0; ix <= x1; ix++) {
         let v = local[(iz - z0) * w + ix - x0];
         if (v > 0) v = terrace(v * scale, p.terrace.step, p.terrace.strength);
+        // absolute lift (Kite Hill): after the normalisation and terraces, so it keeps its height
+        if (v > 0 && profile.lift) v += profile.lift(cellX(ix), cellZ(iz));
         const i = iz * n + ix;
         const cur = raw[i];
         if (v > 0 && v >= cur) islandMap[i] = isl.id + 1;

@@ -334,7 +334,7 @@ Details in `phases/phase-3.md`.
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|------------|--------|--------------|
-| TASK-497 | Coding Kite Hill (`CO:C2`): upwind +4 u knoll in the island profile (hash re-pin), bell turbine on top, 8–12 kite masts round its foot, a bench on the hill path; ridge site anchor for the wind tunnel (`CO:C1`) between the turbines; solar rows halved (R3-12) | worldgen | M | IN_PROGRESS | — |
+| TASK-497 | Coding Kite Hill (`CO:C2`): upwind +4 u knoll in the island profile (hash re-pin), bell turbine on top, 8–12 kite masts round its foot, a bench on the hill path; ridge site anchor for the wind tunnel (`CO:C1`) between the turbines; solar rows halved (R3-12) | worldgen | M | COMPLETED f85dadf | — |
 | TASK-498 | Coding Wind Tunnel + Kite Day (`CO:C1` + `kiteScene`): 14 u lattice half-tube, 3 u fan spinning with the wind, 5 windsocks inside (gusts lift them); Kite Day 14:00 all kites rise, one stuck on the hill; second tier-1 slot (cap 12/2); night = warm park + blue server light | props + life | M | TODO | TASK-497 |
 | TASK-499 | QA Proving Grounds kit (`QA:Q2` + `Q4` + `Q5`): 10 u lattice drop tower (tier-1, R3-14) with crate, 4 u test fan + cage + streamer dummy pole, obstacle course (hurdle, tyre stack, balance beam, cones: one def, 4 variants); toy-factory white-mint-yellow tone | props | M | COMPLETED f8770bb | — |
 | TASK-500 | Mother Kite Train (`CO:C3`): 7-kite train 20 u above Coding on the sky-craft orbit pattern (D-038), reads as a blue-yellow dot chain at T0; W11 +1 call max | life | M | COMPLETED a9a8918 | — |

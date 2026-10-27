@@ -123,6 +123,37 @@ export const CODING_CULTURE_SITES = {
     /** Rack variant 1 has one empty slot: the kite stuck in the Hack Garden hedge. */
     rackVariant: 1,
     rackDuck: [2.3, 0.2] as const,
+    /**
+     * Kite Hill (TASK-497, `CO:C2`): with a hill the kites stand round its foot instead of the field:
+     * pole sites on rings at `ring` u from the foot radius (KITE_HILL.foot; − = up the slope),
+     * `samples` bearings each from the downwind side round, taken greedily at least `minGap` u apart
+     * up to `count[1]` poles; the rack stands `rackOut` u outside the foot facing the hill, on a pad
+     * `rackPad` u past its frame.
+     */
+    hill: {
+      ring: [-3, -1.5, -4.5, 0, -6, 1.5, -7.5, 3] as const,
+      samples: 36,
+      count: [8, 12] as const,
+      minGap: 5,
+      maxRelief: 1.2,
+      minShore: 3,
+      gap: 0.6,
+      rackOut: 3,
+      rackPad: 0.5,
+    },
+  },
+  /**
+   * Kite Hill bench (TASK-497): bench v`variant` beside the path up the hill, `side` u off the path
+   * centreline (its near edge `pathGap` u off the path), facing away from the summit; tried at path points `r` u from the summit (nearest
+   * `r[0]` first), footprint `rect` [w, d], ground relief ≤ `maxRelief` u.
+   */
+  hillBench: {
+    variant: 0,
+    r: [5.5, 12] as const,
+    side: 2.2,
+    pathGap: 0.25,
+    rect: [1.6, 0.7] as const,
+    maxRelief: 0.5,
   },
   garden: {
     /** Hack Garden closed end becomes a `{` (hedge v2 bracketHedge); the entrance two `}`. */

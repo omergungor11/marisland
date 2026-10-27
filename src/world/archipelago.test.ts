@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { adjacentPairs } from './gen/layout.ts';
 import { coveness } from './gen/heightfield.ts';
-import { ARCHETYPES } from '../content/islands.ts';
+import { ARCHETYPES, KITE_HILL } from '../content/islands.ts';
 import {
   generateWorld,
   heightAt,
@@ -102,9 +102,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "bd0b692187f34655",
-          "1001": "1d6422a3a98353a0",
-          "42": "6cb0735aa5931f62",
+          "1": "93339c6b4c2f51d0",
+          "1001": "5a229d2ac3afa189",
+          "42": "881c188b7aa81d0a",
         }
       `);
     },
@@ -248,13 +248,22 @@ describe('archipelago — 30-seed full generation', () => {
             break;
           }
           case 'millbrook':
-            // bluff plateau (TASK-390): 10–12 u peak; 6.5–8 u without the bluff
-            expect(isl.peakY, ctx).toBeLessThanOrEqual(ARCHETYPES.millbrook.bluff?.on ? 12.5 : 8.5);
+            // bluff plateau (TASK-390): 10–12 u peak; 6.5–8 u without the bluff; + the Kite Hill
+            // knoll (TASK-497), added in u after the peak normalisation
+            expect(isl.peakY, ctx).toBeLessThanOrEqual(
+              (ARCHETYPES.millbrook.bluff?.on ? 12.5 : 8.5) + KITE_HILL.height,
+            );
             // theme-first Coding (D-029): the patches are solar gravel (`field` zone) wherever the
             // tech park left clean ground: median ≈ 13 % over these 30 seeds. Patch cells are
             // world-aligned, so a layout shift reshuffles them; TASK-402b (seed 8101 moved 21.3 u)
-            // left one park with no clean patch at all
-            if (sum(zc, [Zone.field]) <= land * 0.02) noSolar.push(seed);
+            // left one park with no clean patch at all. TASK-497: with the Kite Hill the farm may be
+            // a single small block (1.3-1.9 % of the land): a park without solar has no solar
+            // district or no gravel under it
+            if (
+              !w.districts.some((d) => d.islandId === isl.id && d.kind === 'solar') ||
+              sum(zc, [Zone.field]) === 0
+            )
+              noSolar.push(seed);
             expect(isl.anchors.knoll0 && isl.anchors.knoll1 && isl.anchors.pond, ctx).toBeTruthy();
             break;
           case 'mossgrove': {
@@ -300,7 +309,8 @@ describe('archipelago — 30-seed full generation', () => {
       }
     }
     expect(seen.size).toBe(7);
-    // TASK-471 re-roll: 3 of 30 (the old layout's seeds had 1; a shifted seed set had 2)
+    // TASK-471 re-roll: 3 of 30 (the old layout's seeds had 1; a shifted seed set had 2); TASK-497:
+    // the Kite Hill fallback keeps one block on every seed (0 of 30)
     expect(noSolar.length, `Coding parks without solar: ${noSolar.join(', ')}`).toBeLessThanOrEqual(
       3,
     );
@@ -552,9 +562,10 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // Beacon Rock stair flights, HQ streets to the waterline, bigger slalom buoys, re-pinned;
       // TASK-488 reef shoals + sills (routes detour, deep gaps, buoys off crossings), re-pinned;
       // TASK-490 skerry beacon towers (scatter), re-pinned; TASK-499 QA Proving Grounds (stunt yard + kit), TASK-501 crash track fixture + pad, re-pinned;
-      // TASK-505 HQ yacht marina stage + fort keep-out + gate-reserved seamarks, re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('95e6446307ecba6e');
-      expect(generateWorld(1).hashes.world).toBe('f81aefedc978feab');
+      // TASK-505 HQ yacht marina stage + fort keep-out + gate-reserved seamarks, re-pinned;
+      // TASK-497 Coding Kite Hill (profile lift, hill kites, tunnel pad, fallbacks), re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('01989f69b6b4dd5d');
+      expect(generateWorld(1).hashes.world).toBe('e38f51186c288db2');
     } finally {
       for (const b of saved) b.on = true;
     }

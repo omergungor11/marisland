@@ -8,6 +8,8 @@ import { PROP_DEFS } from '../content/props.ts';
 import { FIXTURE_RADIUS } from '../content/settlements.ts';
 import { CODING_CULTURE_SITES as CS } from '../content/cultures/coding.ts';
 import { CODING_CULTURE_PROP_DEFS, TURBINE_HEIGHTS } from '../content/props-themes/coding.ts';
+import { CODING_PLAN } from '../content/themes/coding.ts';
+import { KITE_HILL } from '../content/islands.ts';
 import { appendSettlementProps } from '../render/props/settlement-props.ts';
 import { PINWHEEL_VARIANT } from '../geo/themes/culture-coding-m22.ts';
 import { generateWorld, heightAt, Zone, type IslandData, type WorldData } from './index.ts';
@@ -171,14 +173,19 @@ describe('Coding island plan (TASK-363)', { timeout: 120_000 }, () => {
       const solarRow = PROP_DEFS.findIndex((d) => d.id === 'solarRow');
       let area = 0;
       let rows = 0;
+      let multiRow = false;
+      const L = CODING_PLAN.solar.lattice;
       for (const d of w.districts.filter((x) => x.islandId === isl.id && x.kind === 'solar')) {
         area += d.w * d.d;
+        if (Math.min(d.w, d.d) >= L.pitch + L.depth + 2 * L.margin - 1e-6) multiRow = true;
         const sh = rectShape(d.x, d.z, d.rotY, d.w, d.d);
         for (let i = 0; i < props.count; i++)
           if (props.defId[i] === solarRow && shapeDist(sh, props.x[i], props.z[i]) <= 0) rows++;
       }
-      // one lattice segment stands for a 5 u × 3 u cell (render DISTRICT_LATTICE)
-      expect((rows * 15) / area, `seed ${seed}`).toBeGreaterThanOrEqual(0.6);
+      // one lattice segment stands for a 5 u × 3 u cell (render DISTRICT_LATTICE); a single-row
+      // block (the TASK-497 Kite Hill fallback, `minLatticeHill`) has a margin on both long sides:
+      // 2 segments cover 51 %
+      expect((rows * 15) / area, `seed ${seed}`).toBeGreaterThanOrEqual(multiRow ? 0.6 : 0.5);
     }
   });
 
@@ -213,7 +220,8 @@ const KIT_COUNTS: Record<string, readonly [number, number]> = {
   giantDuck: [1, 1],
   rubberDuck: [2, 4],
   hammock: [1, 9],
-  kite: [0, 6],
+  // TASK-497: 8-12 kites round the Kite Hill foot (instead of the field) + the one stuck in a hedge
+  kite: [0, CS.kites.hill.count[1] + 1],
   kiteRack: [0, 1],
 };
 const CULTURE_DEFS = new Set(CODING_CULTURE_PROP_DEFS.map((d) => d.id));
@@ -265,7 +273,17 @@ describe('Coding Wind Gardens culture (TASK-421)', { timeout: 120_000 }, () => {
         const ys = pts.map((p) => heightAt(w.height, p.x, p.z));
         const at = `${ctx} ${f.defId}@${f.x.toFixed(1)},${f.z.toFixed(1)}`;
         expect(Math.min(...ys), at).toBeGreaterThan(0.3);
-        expect(Math.max(...ys) - Math.min(...ys), at).toBeLessThanOrEqual(r ? 0.45 : 0.6);
+        // TASK-497: the Kite Hill poles stand on its flank (thin poles, CS.kites.hill.maxRelief; the
+        // planner samples 17 points before the pads level the ground, this 6: + 0.15)
+        const hill = isl.anchors.kiteHill;
+        const onHill =
+          f.defId === 'kite' &&
+          !!hill &&
+          Math.hypot(f.x - hill.x, f.z - hill.z) <=
+            KITE_HILL.foot + Math.max(...CS.kites.hill.ring) + 0.5;
+        expect(Math.max(...ys) - Math.min(...ys), at).toBeLessThanOrEqual(
+          onHill ? CS.kites.hill.maxRelief + 0.15 : r ? 0.45 : 0.6,
+        );
         for (const l of lots)
           for (const p of pts) expect(shapeDist(l, p.x, p.z), at).toBeGreaterThan(0);
       }

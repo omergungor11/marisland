@@ -108,8 +108,10 @@ describe('Coding M22 quick wins (TASK-479)', { timeout: 120_000 }, () => {
           `seed ${seed} nap`,
         ).toBe(true);
     }
-    expect(glyphs / SEEDS.length).toBeGreaterThanOrEqual(0.7);
-    expect(groves / SEEDS.length).toBeGreaterThanOrEqual(0.65);
+    // TASK-497 (D-075): the Kite Hill takes ~800 u² of the plateau, the farm keeps a block on every
+    // seed and the Hack Garden may take the hill foot (30 seeds: glyphs 22 → 21, groves 23 → 14)
+    expect(glyphs / SEEDS.length).toBeGreaterThanOrEqual(0.65);
+    expect(groves / SEEDS.length).toBeGreaterThanOrEqual(0.45);
     // the 6 quad-end trees alone: 6 wreaths a seed
     expect(wreathTrees).toBeGreaterThanOrEqual(SEEDS.length * 6);
   });

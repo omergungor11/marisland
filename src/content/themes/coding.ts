@@ -193,6 +193,15 @@ export const CODING_PLAN = {
      */
     lattice: { len: 5, pitch: 3, margin: 1.5, depth: 1.5 },
     minLattice: [2, 2] as const,
+    /** Smallest block when nothing fits off the Kite Hill (TASK-497): the farm may take its foot. */
+    minLatticeHill: [2, 1] as const,
+    /** Patch-grid shifts (share of a cell, u / v) tried in turn for that fallback. */
+    hillShifts: [
+      [0, 0],
+      [0.5, 0],
+      [0, 0.5],
+      [0.5, 0.5],
+    ] as const,
     /** Below this farm area (u²) the other cells of the patch grid take solar blocks too. */
     minArea: 450,
     /** Ground a block may cover: slope, height floor, shore distance, clearance to obstacles. */
@@ -202,6 +211,41 @@ export const CODING_PLAN = {
     clear: 1,
     /** R3-12 (D-062): only this share of the farm blocks stays (the largest), the rest becomes lawn. */
     keep: 0.5,
+  },
+  /**
+   * Kite Hill (TASK-497, `CO:C2`; the knoll itself is KITE_HILL in content/islands.ts). From the
+   * office rows on, a disc `keepOut` u past the hill foot stays free, so no pad's falloff cuts the
+   * flank (the kite ring, the tunnel search and the yard / farm fallbacks lift it). Groves on the
+   * hill turn to lawn. The summit pad tolerates `summitStep` u against a neighbouring pad before the
+   * two are relaxed (Pad.step): a pad never shaves the hill.
+   */
+  hill: { keepOut: 0, summitStep: 99 },
+  /**
+   * Wind tunnel site (TASK-497 for TASK-498, `CO:C1`): a pad `size` [along the axis, across] u on the
+   * ridge from the Kite Hill turbine toward another knoll turbine, the axis along that ridge. Centres
+   * are tried every `step` u along the ridge (both ends at least `endGap` u past the turbine discs,
+   * the hill end no nearer the summit than `fromTop` u) at the across `offsets`; flat (relief ≤
+   * `maxRelief`, the pad levels the rest), on land, `gap` u clear of everything. Fallbacks: round the
+   * hill foot `ring` u out, axis tangent to it; any plateau spot within `reach` u; `last` (anywhere on
+   * the island, looser limits), so the anchor stands on every seed. Lowest relief wins, then nearest
+   * the ridge midpoint.
+   */
+  tunnel: {
+    size: [16, 6] as const,
+    step: 1,
+    offsets: [0, 2, -2, 4, -4, 6, -6] as const,
+    turns: [0, 0.25, -0.25] as const,
+    endGap: 2,
+    fromTop: 18,
+    minShore: 3,
+    maxRelief: 3,
+    gap: 0.8,
+    ring: [-4, 20] as const,
+    ringSamples: 36,
+    reach: 45,
+    high: 0.2,
+    /** Last resort when nothing above fits (tight plateaus): anywhere on the island, these limits. */
+    last: { fromTop: 16, maxRelief: 6, gap: 0.4 },
   },
   dock: { maxDist: 20, lee: 40, rowboats: [1, 2] as const },
   /** Lot floor: devPods ringed around the park until this many lots stand. */
