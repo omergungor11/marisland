@@ -100,7 +100,8 @@ export const PROP_DEFS_BUILDINGS: PropDef[] = [
   // v2 = glass roof (TASK-425): only the gallery the Design plan pins
   d('galleryPavilion', 0, 3, 2.6, grounded, undefined, { rollVariants: 2 }),
   d('dataCenter', 0, 2, 3.6, grounded),
-  d('rackShed', 0, 2, 1.9, grounded),
+  // v2 = DevOps funicular station (M25 TASK-504): only the lot the DevOps plan pins
+  d('rackShed', 0, 3, 1.9, grounded, undefined, { rollVariants: 2 }),
   // v2 = DevOps summit watch tower (M22 TASK-482): only the lot the DevOps plan pins
   d('antennaMast', 0, 3, 1.2, grounded, undefined, { rollVariants: 2 }),
   d('researchHut', 0, 2, 2.1, grounded),

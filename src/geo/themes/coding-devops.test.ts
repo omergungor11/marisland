@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PROP_DEFS } from '../../content/props.ts';
-import { buildProp } from '../registry.ts';
+import { PROP_GEO, buildProp } from '../registry.ts';
 import { CODING_GEO } from './coding.ts';
 import { DEVOPS_GEO } from './devops.ts';
 
@@ -29,7 +29,8 @@ describe('coding + devops structures (TASK-376)', () => {
       const d = PROP_DEFS.find((p) => p.id === g.id);
       expect(d, g.id).toBeDefined();
       expect(d!.geo).toBe(g.id);
-      expect(d!.variants).toBe(g.variants);
+      // geo defs wrapped with extra variants later (onsenHouse stilts, M25) compare via the registry
+      expect(d!.variants).toBe(PROP_GEO[g.id].variants);
     }
   });
   for (const g of GEO) {

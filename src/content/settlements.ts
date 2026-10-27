@@ -93,7 +93,8 @@ export const LOT_ROOFS: Readonly<Record<string, readonly number[]>> = {
   // v2 = glass-roof gallery (TASK-425; a pavilion: open canopy, not in the roof rule)
   galleryPavilion: [3, 6, 6],
   dataCenter: [2, 5],
-  rackShed: [0, 3],
+  // v2 = funicular station (M25 TASK-504; the v0 shed body, so v0's roof)
+  rackShed: [0, 3, 0],
   // v2 = summit watch tower (M22 TASK-482; red hip roof = ROOFS[1], like v0's lamp)
   antennaMast: [1, 4, 1],
   researchHut: [2, 0],

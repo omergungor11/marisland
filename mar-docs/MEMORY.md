@@ -74,6 +74,24 @@
     needs per-variant rects (the def footprint 6.2 is the crane's). The pontoon is the only fixture needing the waterline
     pivot; the quay crane boom reaches +z, so face +z at the water. `tagBob` period is the shared FLOAT_BOB (1.3 s), not
     3.2 s. Worktree has no `node_modules`: symlink the main checkout's.
+- **TASK-504 (DevOps M25 props kit, D-084)**: props only, no placement. For the worldgen / life tasks:
+  - **Defs** (end of `PROP_DEFS`): `funicularRail` v0-2 (pitch 0 / .3 / .6, 3 u horizontal run, pivot = low end, a
+    fall = same piece rotY + pi at the low end), `funicularCar` v0 orange / v1 teal (rail frame, +z along the track,
+    y 0 = rail top), `geyserCone`, `oreBucket` v0 empty / v1 glowing ore (pivot on the ground, grip above).
+  - **Variants:** `rackShed` 2 (station), `onsenHouse` 1 / 2 (stilts / + towels), `goodsStall` 7 (smith), `mailLine`
+    2 / 3 (ore pylon mid / furnace end), `antennaMast` 2 (watch tower + beam head). Pin them by variant; random
+    rolls stay on the old ones (`rollVariants`).
+  - **Hooks** (`userData.hooks`, local frame): `funicularRail.rail {length, pitch, startY, endY, railX}`;
+    `funicularCar.car {length, pitchRef, cabins, lamps, grip}` (mover pitches the mesh about x by atan(slope));
+    `oreBucket.bucket {grip, axis}`; `mailLine` v2/v3 `cable {anchor, back?}` (v3 also `ore {at}`), anchors also in
+    `DEVOPS_M25.ore.anchor`; cable mesh: `buildOreCable(rng, a, b, lod)`; `geyserCone.spout {at, radius, column}` +
+    `emitter`; `antennaMast` v2 `bell {at}`, `beam {at}`; `rackShed` v2 `track {start, end, pitch}`, `wheel
+    {center, axis, r}`; `onsenHouse` `emitter` follows the stilt height.
+  - **Gotchas:** `mailAnchorWorld` indexes `MAIL_LINE.anchor[variant % 2]`, wrong for v2 / v3 (use the hook or
+    `DEVOPS_M25.ore.anchor`). Station stub ends at z 2.0, inside the rackShed lot's 0.8 tolerance. A worktree has no
+    `node_modules`: symlink the main checkout's. The full `pnpm test` times out in the world tests when other agents
+    load the machine; rerun those files alone (`--no-file-parallelism`).
+  - **Showcase:** `?gallery=1&ids=devops25`, `pnpm exec tsx scripts/gallery-shots.ts devops25`.
 - **TASK-499 merged** (QA kit; `cultureCapOverride.qa` 12/1):
   - **For TASK-501:**
     - `dropTower` `userData.hooks.crate` {top, rest, size}; `buildDropCrate()` in `geo/themes/qa-proving.ts`.

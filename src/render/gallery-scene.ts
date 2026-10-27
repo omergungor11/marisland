@@ -7,6 +7,7 @@ import { CODING_M22_SHOWCASE_IDS } from '../content/props-themes/coding.ts';
 import { QA_M24_PROP_IDS } from '../content/props-themes/qa-proving.ts';
 import { QA_M30_PROP_IDS } from '../content/props-themes/qa-customs.ts';
 import { HQ_MARINA_PROP_IDS } from '../content/props-themes/hq-marina.ts';
+import { DEVOPS_M25_PROP_IDS } from '../content/props-themes/devops-m25.ts';
 import { M20_PROP_IDS } from '../content/props-themes/m20.ts';
 import { M22_MARKETING_PROP_IDS } from '../content/themes/marketing.ts';
 import type { CameraWorld } from '../camera/controls.ts';
@@ -25,6 +26,7 @@ function showcaseIds(): readonly string[] | undefined {
   if (raw === 'qa24') return QA_M24_PROP_IDS;
   if (raw === 'qa30') return QA_M30_PROP_IDS;
   if (raw === 'marina') return HQ_MARINA_PROP_IDS;
+  if (raw === 'devops25') return DEVOPS_M25_PROP_IDS;
   return raw === 'm20' ? M20_PROP_IDS : raw.split(',');
 }
 

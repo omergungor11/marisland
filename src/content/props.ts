@@ -24,6 +24,7 @@ import { BEACON_PROP_DEFS } from './props-themes/beacon.ts';
 import { QA_PROVING_PROP_DEFS } from './props-themes/qa-proving.ts';
 import { QA_CUSTOMS_PROP_DEFS } from './props-themes/qa-customs.ts';
 import { HQ_MARINA_PROP_DEFS } from './props-themes/hq-marina.ts';
+import { DEVOPS_M25_PROP_DEFS } from './props-themes/devops-m25.ts';
 
 export interface PropDef {
   id: string;
@@ -160,6 +161,8 @@ const ALL_DEFS: readonly PropDef[] = [
   ...QA_CUSTOMS_PROP_DEFS,
   // M29 (TASK-505, D-085): HQ yacht marina pier + cove-mouth star fort (parallel branches append below)
   ...HQ_MARINA_PROP_DEFS,
+  // ---- TASK-504 (M25 DevOps I, D-084): funicular rail + car, geyser cone, ore bucket ----
+  ...DEVOPS_M25_PROP_DEFS,
 ];
 
 /**

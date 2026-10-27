@@ -75,6 +75,24 @@ world stage hash change — re-pinned in one commit. DevOps raw cams (seed 1001)
 with it: fumarole pools keep off every lot's pad core (`devops-m22.ts`; the summit tower sank 8 u onto a pool's
 level on seed 3630); the reef-route test allows a sample over a natural seabed above the gap floor (≤ +0.5 u);
 pipe open ends < 0.2 (old code spans 0.03–0.20 over 12 seeds).
+## D-084: DevOps M25 props kit — four new defs, five variants of older defs, hooks for movers (TASK-504, D-080 B + D7 + D9 + D14) — 2026-10-27
+
+**Decision**: (1) **New defs**, the 11th-14th entries of the Ember Smiths ledger, appended at the very end of
+`PROP_DEFS` (`content/props-themes/devops-m25.ts`, geometry `geo/themes/devops-m25.ts`, numbers
+`content/themes/devops-m25.ts`): `funicularRail` (tier 2, 3 pitch variants 0 / 0.3 / 0.6 rise per run, 3 u pieces
+on pylons), `funicularCar` (tier 2, 2 liveries, two counter-tilted compartments, lit windows + end lamps),
+`geyserCone` (tier 2, sinter mound 2.1 u, vent hook) and `oreBucket` (tier 3 noShadow, empty / loaded). (2) **Variants
+of existing defs** (wrappers over the stock builder; the older variants are untouched, `rollVariants` keeps random
+rolls on them): `rackShed` 2 = funicular station, `onsenHouse` 1 / 2 = stilts (2 + towel lines), `goodsStall` 7 =
+smith's stall, `mailLine` 2 / 3 = ore pylon (mid-line / furnace end), `antennaMast` 2 = the M22 watch tower plus the
+beam head (lens ring + hood) and `bell` / `beam` hooks. (3) `cultureCapOverride.devops = { defs: 14, tier1: 1 }`.
+**Rationale**: piece length 3 u and a geyser under 3 u wide keep both out of `isLargeStructure` (no T0 promotion,
+no far groups); D-076's pattern (tail append, geometry in `geo/themes`, numbers in `content/themes`) keeps every
+defId and hash pin.
+**Cost**: `onsenHouse` 1 / 2 are 4 u tall and `rackShed` 2 has its own far shape, so they add 3 far groups
+(onsenHouse v1+v2 share one). `OFFICE_DEFS.rackShed.variants` 2 -> 3 and `LOT_ROOFS.rackShed` got a third entry
+(the antennaMast precedent). Several older tests were adjusted to the new variant counts.
+**Not done**: no placement, no movers; they read the hooks listed in MEMORY.
 
 ## D-082: QA harbour becomes a customs port — plan only — 2026-10-27
 

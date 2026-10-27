@@ -21,7 +21,9 @@ export const HQ_M20_PROP_DEFS: readonly PropDef[] = [
     id: 'goodsStall',
     geo: 'goodsStall',
     tier: 2,
-    variants: 7,
+    variants: 8,
+    // v7 = the DevOps smith's stall (M25 TASK-504, D14): pinned by the plan only
+    rollVariants: 7,
     footprint: 1.3,
     flags: grounded | windy,
   },
@@ -34,7 +36,16 @@ export const HQ_M20_PROP_DEFS: readonly PropDef[] = [
     flags: grounded,
   },
   // variant 0 = high end (sorting yard), 1 = low end (pier)
-  { id: 'mailLine', geo: 'mailLine', tier: 2, variants: 2, footprint: 0.9, flags: grounded },
+  // v2 / v3 = DevOps ore cableway mid-line pylon / furnace-end station (M25 TASK-504, D13)
+  {
+    id: 'mailLine',
+    geo: 'mailLine',
+    tier: 2,
+    variants: 4,
+    rollVariants: 2,
+    footprint: 0.9,
+    flags: grounded,
+  },
 ];
 
 export const DESIGN_M20_PROP_DEFS: readonly PropDef[] = [
