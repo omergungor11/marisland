@@ -10,6 +10,26 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-27 SESSION HANDOVER (orchestrator)**: merged to `main` this session, in order: 501, 506, 505, 497, 503,
+  504, 508, 498, 507. M24 dev tasks (497–501) are all done; M25 DevOps I (503, 504, 507), M29 HQ marina (505) and
+  M30 QA customs port (506, 508) are built and placed. Plan decisions D-080 (DevOps all directions + growth),
+  D-081 (HQ marina + star fort), D-082 (QA customs port).
+  - **Next**: one combined QA pass TASK-502 + TASK-510 on a QUIET machine (full 14-preset ladder low + medium
+    `--assert`, wow set, perf). Then TASK-509 (M26 DevOps II lava pack; read rail `levels` via `railFromLevels`,
+    never re-level from the ground). Then M27 Marketing, M28 Research.
+  - **Open user decision**: since TASK-503 Emberpeak looks about as big as HQ from above; ART_BIBLE wants the hero
+    clearly largest. Options: shrink the apron ring, or grow HQ. Not decided.
+  - **Watch**: warm "full world generation time" perf tests sit near the 600 ms limit (seed 1001 ~650 ms under
+    load, pre- and post-merge alike); 126/126 green on a quiet run after 507. W16 medium 272/300 calls, memory peak
+    166/170 MB (W4), W-funicular-dawn 786k/800k tris — budget headroom is nearly gone.
+  - **Nits**: star fort stone reads pale grey; Kite Hill solar rows staggered on the slope; scanner-arch marquee
+    always on (not gated to the ship); pontoons tier 2 vanish at mid range while lobbed crates show; Coding tunnel
+    night strips dim; funicular cars read cream at dawn; breakwater only on 2 seeds; H10 mail jetty not built.
+  - **Merge recipe used** (parallel worktree branches): keep both sides of append-only conflicts (PROP_DEFS tail,
+    FLOATING_FIXTURES, gallery ids, DECISIONS/MEMORY), take HEAD for hash pins with placeholders, then
+    `vitest -u -t "stage hashes are locked"` for the inline snapshot and read "Received" from
+    `-t "TASK-390 bluffs off"` for the literal pins; full suite with `--maxWorkers=4 --testTimeout=240000`; A/B
+    perf against the pre-merge commit in a scratch worktree before blaming a branch.
 - **2026-10-27 (TASK-507, M25 DevOps I placed + moving; D-089)**: `world/gen/plans/devops-m25.ts` (after
   `reserveGrowth`; `finish` runs before the road lanterns), `world/funicular.ts` (grade line, earthworks, `carPose`),
   `render/devops-lines.ts` (cars + buckets, via `createMovers().lines`), scenes in `render/culture-movers.ts`
