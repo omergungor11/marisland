@@ -94,6 +94,8 @@ export const cultureDefsPerIsland = 10;
 /** M20 remade islands (D-057): their own def cap and tier-1 cap instead of the shared ones. */
 export const cultureCapOverride: Readonly<Record<string, { defs: number; tier1: number }>> = {
   // M29 (TASK-505, D-085): 12 + the marina pier and the star fort (the tier-1 slot)
+  // M24 TASK-498 (D-088): Wind Gardens 10 -> 12 (windTunnel = the second tier-1 slot, tunnelFan)
+  coding: { defs: 12, tier1: 2 },
   hq: { defs: 14, tier1: 1 },
   design: { defs: 15, tier1: 2 },
   // TASK-506 (D-086): +3 for the Customs Port (scannerArch, customsYard, quarantinePontoon), all tier 2

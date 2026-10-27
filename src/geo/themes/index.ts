@@ -24,6 +24,7 @@ import { STAIR_GEO } from './stairs.ts';
 import { BEACON_GEO } from './beacon.ts';
 import { QA_PROVING_GEO } from './qa-proving.ts';
 import { QA_CUSTOMS_GEO } from './qa-customs.ts';
+import { CODING_TUNNEL_GEO } from './coding-tunnel.ts';
 import { HQ_MARINA_GEO } from './hq-marina.ts';
 import { DEVOPS_M25_GEO, withOnsenStilts, withOrePylons, withSmithStall } from './devops-m25.ts';
 import { THEME_IDS } from '../../world/types.ts';
@@ -70,6 +71,8 @@ const BASE_THEME_GEO: readonly PropGeoDef[] = [
   ...QA_CUSTOMS_GEO,
   // M29 TASK-505 HQ yacht marina + star fort
   ...HQ_MARINA_GEO,
+  // === TASK-498 (M24): Coding wind tunnel + tunnel fan ===
+  ...CODING_TUNNEL_GEO,
 ];
 
 export const THEME_GEO: readonly PropGeoDef[] = [

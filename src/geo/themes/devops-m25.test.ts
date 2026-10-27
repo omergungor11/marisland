@@ -41,7 +41,8 @@ describe('TASK-504 DevOps M25 defs', () => {
       expect(PROP_DEF_INDEX[d.id]).toBe(first + i);
       expect(PROP_GEO[d.id].variants).toBe(d.variants);
     });
-    expect(first + 4).toBe(PROP_DEFS.length);
+    // later blocks (TASK-498 wind tunnel) append after these four
+    expect(first + 4).toBeLessThanOrEqual(PROP_DEFS.length);
     expect(PROP_DEF_INDEX.dropTower).toBeLessThan(first);
   });
 

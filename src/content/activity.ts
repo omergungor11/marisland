@@ -9,6 +9,8 @@
  *   2          yaw head: rotates about the object y axis into the wind (turbine nacelle)
  *   3          yaw head + spin (turbine rotor: spin about the hub first, then yaw)
  *   4          sun tracker: rotate about the x axis through the pivot `aSpin.xyz` (solar panels)
+ *   5 + k/16   windsock lift (TASK-498): the sock rotates about the pivot `aSpin.xy` (object z axis) from a
+ *              droop up to horizontal as a gust passes; k = place in the wave (SOCK_LIFT)
  *   6          float bob (TASK-481, FLOAT_BOB): heave / roll / pitch about the waterline pivot (object origin)
  *   −k (k ≥ 1) animated surface of kind `k` (SURFACE): screens / LED strips carry
  *              (u, v, aspect, −k) with uv ∈ [0, 1] over the patch (u right, v up seen from the
@@ -53,7 +55,21 @@ export type SurfaceKind = keyof typeof SURFACE;
 export const BLINK = { base: 3, period: 1.0, duty: 0.3 } as const;
 
 /** Spin-channel motion tags (`aSpin.w` > 0). */
-export const MOTION_TAG = { spin: 1, yaw: 2, yawSpin: 3, tracker: 4, bob: 6 } as const;
+export const MOTION_TAG = { spin: 1, yaw: 2, yawSpin: 3, tracker: 4, lift: 5, bob: 6 } as const;
+
+/**
+ * Windsock lift (TASK-498, the wind tunnel socks): rest droop (rad below horizontal), the share of the
+ * droop released with no gust under reduced motion (`rest`), the gust band that maps to full lift
+ * (smoothstep lo..hi), `lag` s of gust delay per place in the wave and the tag step per place.
+ */
+export const SOCK_LIFT = {
+  droop: 0.95,
+  rest: 0.5,
+  lo: 0.0,
+  hi: 0.55,
+  lag: 0.7,
+  step: 1 / 16,
+} as const;
 
 /** Monitor content per department (interiors, theme props). */
 export const THEME_SCREEN: Readonly<Record<ThemeId, SurfaceKind>> = {

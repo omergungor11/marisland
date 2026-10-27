@@ -1,7 +1,7 @@
 /**
- * Rüzgâr Bahçeleri (Wind Gardens). Kit ledger (TASK-411; M22 TASK-479 added the last two): 10 new defs,
- * 9/10 tier >= 2, one tier-1
- * (giantDuck), no tier-0, ORDERED BY PRIORITY (most identity-defining first; if the budget gate
+ * Rüzgâr Bahçeleri (Wind Gardens). Kit ledger (TASK-411; M22 TASK-479 added entries 9-10, M24 TASK-498
+ * the wind tunnel + fan): 12 new defs, 10/12 tier >= 2, two tier-1
+ * (giantDuck, windTunnel), no tier-0, ORDERED BY PRIORITY (most identity-defining first; if the budget gate
  * drops the per-island cap to 6, cut from the end). Geometry: geo/themes/culture-coding.ts.
  * Not ledger entries (variants of existing defs): bracketHedge = hedge v2, windChimeTower =
  * windTurbine v3 (LOD1 identical to v0), pinwheel = kite v3, weather-vane pods = devPod v2 / v3. Story spots, rhythm and relay by waves 2-3.
@@ -36,6 +36,9 @@ export const CODING_CULTURE: CultureDef = {
     // M22 (TASK-479): the windsock avenue (C11) and the fairy-light bulbs on the quad-end trees (C13)
     { id: 'windsock', tier: 2, flags: grounded | windy },
     { id: 'fairyWreath', tier: 2, flags: windy | noShadow },
+    // M24 (TASK-498, C1): the wind tunnel (second tier-1 slot, planner-pinned) and its fan
+    { id: 'windTunnel', tier: 1, flags: grounded },
+    { id: 'tunnelFan', tier: 2, flags: grounded },
   ],
   // emitted by world/gen/plans/coding.ts (TASK-421); `defs` = the props the scene stands on
   storySpots: [

@@ -7,7 +7,8 @@ import type { CultureDef, KitEntry } from './types.ts';
 
 const all = (): CultureDef[] => THEME_IDS.map((t) => CULTURES[t]);
 const entry = (id: string, tier: KitEntry['tier']): KitEntry => ({ id, tier, flags: 0 });
-const withKit = (kit: KitEntry[], base: CultureDef = CULTURES.coding): CultureDef => ({
+// marketing: no cap override (Coding's is 12 / 2 since TASK-498)
+const withKit = (kit: KitEntry[], base: CultureDef = CULTURES.marketing): CultureDef => ({
   ...base,
   kit,
 });

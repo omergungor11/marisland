@@ -25,6 +25,7 @@ import { QA_PROVING_PROP_DEFS } from './props-themes/qa-proving.ts';
 import { QA_CUSTOMS_PROP_DEFS } from './props-themes/qa-customs.ts';
 import { HQ_MARINA_PROP_DEFS } from './props-themes/hq-marina.ts';
 import { DEVOPS_M25_PROP_DEFS } from './props-themes/devops-m25.ts';
+import { CODING_TUNNEL_PROP_DEFS } from './props-themes/coding-tunnel.ts';
 
 export interface PropDef {
   id: string;
@@ -163,6 +164,8 @@ const ALL_DEFS: readonly PropDef[] = [
   ...HQ_MARINA_PROP_DEFS,
   // ---- TASK-504 (M25 DevOps I, D-084): funicular rail + car, geyser cone, ore bucket ----
   ...DEVOPS_M25_PROP_DEFS,
+  // ==== TASK-498 (M24 Coding C1, D-088): wind tunnel (tier 1) + tunnel fan ====
+  ...CODING_TUNNEL_PROP_DEFS,
 ];
 
 /**
