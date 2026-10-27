@@ -87,6 +87,11 @@ export interface RosterEntry {
   radius: number;
   /** Bounding-disc radius. */
   reach: number;
+  /**
+   * Reach the island is placed with (≤ `reach`): an island grown past it (`layoutReachScale`,
+   * TASK-503) is placed as before and then pushed out from the hub by the difference.
+   */
+  placeReach: number;
   sizeClass: 'hero' | 'medium' | 'small' | 'tiny';
 }
 
@@ -144,7 +149,13 @@ export function pickRoster(rng: Rng): RosterEntry[] {
         d = rng.fork('size', ARCHETYPE_ORDER.indexOf(a)).range(range[0], Math.max(range[0], hi));
       }
       const radius = d / 2;
-      return { archetype: a, radius, reach: radius * p.reachScale, sizeClass };
+      return {
+        archetype: a,
+        radius,
+        reach: radius * p.reachScale,
+        placeReach: radius * (p.layoutReachScale ?? p.reachScale),
+        sizeClass,
+      };
     });
   }
 }
@@ -260,22 +271,59 @@ export function centralIndex(discs: readonly Disc[]): number {
 function place(roster: readonly RosterEntry[], rng: Rng): Disc[] | null {
   const discs: (Disc | null)[] = roster.map(() => null);
   const hub = hubIndex(roster);
-  discs[hub] = { x: 0, z: 0, r: roster[hub].reach };
+  discs[hub] = { x: 0, z: 0, r: roster[hub].placeReach };
   const ring = rng.fork('ring').shuffle(roster.map((_, i) => i).filter((i) => i !== hub));
   const H = LAYOUT.hub;
   const base = rng.fork('ring:base').range(0, TAU);
   const slot = (TAU * H.slotDeg) / 360;
   for (let k = 0; k < ring.length; k++) {
     const i = ring[k];
-    const r = roster[i].reach;
+    const r = roster[i].placeReach;
     const dr = rng.fork('slot', i);
     const a = base + k * slot + dr.range(-H.jitterDeg, H.jitterDeg) * (Math.PI / 180);
-    const dist = roster[hub].reach + r + dr.range(H.gap[0], H.gap[1]);
+    const dist = roster[hub].placeReach + r + dr.range(H.gap[0], H.gap[1]);
     discs[i] = { x: Math.cos(a) * dist, z: Math.sin(a) * dist, r };
   }
   const out = discs as Disc[];
   relax(out);
   recentre(out);
+  // TASK-503 (D-083): an island grown past its placement reach (Emberpeak's apron) moves straight
+  // out from the hub by the growth; while a channel is then below `minGap` it steps away from the
+  // tightest neighbour (≤ `growPush` u) with its hub channel held ≤ `growHubGap`. Every other island
+  // keeps its place; `layoutProblem` checks the grown discs (a seed whose grown island still does
+  // not fit takes the next attempt)
+  const h = out[hub];
+  roster.forEach((e, i) => {
+    const g = e.reach - e.placeReach;
+    if (g <= 0) return;
+    const d = out[i];
+    d.r = e.reach;
+    const len = Math.hypot(d.x - h.x, d.z - h.z);
+    if (i === hub || len === 0) return;
+    d.x += ((d.x - h.x) / len) * g;
+    d.z += ((d.z - h.z) / len) * g;
+    for (let s = 0; s < LAYOUT.growPush; s++) {
+      let o: Disc | null = null;
+      let og: number = LAYOUT.minGap;
+      out.forEach((q, j) => {
+        if (j !== i && gapOf(d, q) < og) {
+          og = gapOf(d, q);
+          o = q;
+        }
+      });
+      if (!o) break;
+      const a = o as Disc;
+      const l = Math.hypot(d.x - a.x, d.z - a.z) || 1;
+      d.x += (d.x - a.x) / l;
+      d.z += (d.z - a.z) / l;
+      const over = gapOf(d, h) - LAYOUT.growHubGap;
+      if (over > 0) {
+        const L = Math.hypot(d.x - h.x, d.z - h.z);
+        d.x -= ((d.x - h.x) / L) * over;
+        d.z -= ((d.z - h.z) / L) * over;
+      }
+    }
+  });
   return out;
 }
 

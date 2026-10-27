@@ -10,7 +10,7 @@
  * Every random decision draws from the `rng` it is given; tuning lives in DEVOPS_SITE.
  */
 import type { Rng } from '../../../core/rng.ts';
-import { PATHS } from '../../../content/settlements.ts';
+import { FLATTEN, PATHS } from '../../../content/settlements.ts';
 import { DEVOPS_SITE, FUMAROLE_ZONES } from '../../../content/themes/devops.ts';
 import { heightAt, Zone } from '../../types.ts';
 import type { IslandData, Polyline, XZ } from '../../types.ts';
@@ -25,12 +25,14 @@ import {
   cellOf,
   clear,
   discShape,
+  lotShape,
   dist,
   dirOf,
   onIsland,
   onLand,
   relief,
   sdfAt,
+  shapeDist,
   unit,
   type LinkReq,
   type SiteCtx,
@@ -66,6 +68,11 @@ export function placeFumaroles(ctx: SiteCtx, isl: IslandData, centre: XZ, hub: X
       for (const [k, q] of trio(p, a0).entries()) {
         const sh = discShape(q.x, q.z, F.radii[k] + F.rim);
         if (!onLand(ctx, isl, sh, F.minShore) || !clear(ctx, isl, sh, 1)) return Infinity;
+        // TASK-503: off every lot's pad core, or the relaxation averages the two levels (the
+        // summit tower sank 8 u onto a pool's level on seed 3630)
+        const core = sh.r + F.padMargin + FLATTEN.lotMargin;
+        if (ctx.lots.some((l) => l.islandId === isl.id && shapeDist(lotShape(l), q.x, q.z) < core))
+          return Infinity;
         rel = Math.max(rel, relief(ctx, sh));
       }
       if (rel > maxRelief) return Infinity;

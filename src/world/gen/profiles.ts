@@ -513,6 +513,19 @@ const emberpeak: ProfileFactory = ({ island, rng, noise, windDir }) => {
     }
     return best;
   };
+  // TASK-503 apron: a low ring round the cone foot, tapered away at the harbour shelf (no rolls)
+  const A = ARCHETYPES.emberpeak.apron;
+  const harbourA = shelves.find((S) => S.key === 'harbour')?.a ?? 0;
+  const apronAt = (lx: number, lz: number): number => {
+    if (!A) return RAW_FLOOR;
+    const d = Math.hypot(lx, lz);
+    if (d > A.reach + A.warp + A.edge) return RAW_FLOOR;
+    const off = Math.abs(angDiff(angleOf(lx, lz), harbourA)) * (180 / Math.PI);
+    const R =
+      lerp(A.harbourReach, A.reach, smoothstep(A.harbourDeg[0], A.harbourDeg[1], off)) +
+      A.warp * noise.fbm(lx * 1.7 - 21.1, lz * 1.7 + 5.7, 3);
+    return smoothstep(R, R - A.edge, d) * (A.h + COAST_LEVEL + 0.8) - 0.8;
+  };
   const q: [number, number] = [0, 0];
   const w: [number, number] = [0, 0];
   const sample = (x: number, z: number): number => {
@@ -540,8 +553,8 @@ const emberpeak: ProfileFactory = ({ island, rng, noise, windDir }) => {
     const ds = Math.hypot(lx - spring.x, lz - spring.z) / springR;
     h = lerp(h, springH, smoothstep(1.5, 0.8, ds) * smoothstep(0.5, 2, h));
     // foot shelves: level aprons where the cone is lower, a soft fillet where they meet
-    if (shelves.length > 0) {
-      const sv = shelfAt(lx, lz) + COAST_LEVEL;
+    if (shelves.length > 0 || A) {
+      const sv = Math.max(shelfAt(lx, lz), apronAt(lx, lz)) + COAST_LEVEL;
       if (sv > 0) h = h > 0 ? smax(h, sv, 0.8) : Math.max(h, sv);
     }
     return Math.max(RAW_FLOOR, h - COAST_LEVEL);

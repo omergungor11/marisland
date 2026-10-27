@@ -201,3 +201,37 @@ describe('archipelago layout — 500-seed properties', () => {
     expect(single.islands).toHaveLength(1);
   });
 });
+
+/** TASK-503 (D-083): Emberpeak's apron growth leaves the rest of the archipelago in place. */
+describe('grown island push (TASK-503)', () => {
+  it('every other island keeps its pre-growth centre on ≥ 95 % of 500 seeds; Emberpeak moves out', () => {
+    const p = ARCHETYPES.emberpeak as { reachScale: number; layoutReachScale?: number };
+    const grown = p.reachScale;
+    const before: ReturnType<typeof layout>[] = [];
+    try {
+      p.reachScale = p.layoutReachScale ?? grown;
+      for (let s = 0; s < 500; s++) before.push(layout(s));
+    } finally {
+      p.reachScale = grown;
+    }
+    let kept = 0;
+    for (let s = 0; s < 500; s++) {
+      const a = before[s].islands;
+      const b = layout(s).islands;
+      const same = a.every(
+        (x, k) => x.archetype === 'emberpeak' || (x.cx === b[k].cx && x.cz === b[k].cz),
+      );
+      if (!same) continue;
+      kept++;
+      const e = b.findIndex((x) => x.archetype === 'emberpeak');
+      const hq = b.findIndex((x) => x.archetype === 'hearthholm');
+      const out = (l: IslandData[]) => Math.hypot(l[e].cx - l[hq].cx, l[e].cz - l[hq].cz);
+      // a real channel to the hub, no wider than LAYOUT.growHubGap (or what it was)
+      expect(out(b) - b[e].reach - b[hq].reach, `seed ${s}`).toBeGreaterThanOrEqual(LAYOUT.minGap);
+      expect(out(b) - b[e].reach - b[hq].reach, `seed ${s} hub gap`).toBeLessThanOrEqual(
+        Math.max(LAYOUT.growHubGap, out(a) - a[e].reach - a[hq].reach) + 1e-6,
+      );
+    }
+    expect(kept / 500).toBeGreaterThanOrEqual(0.95);
+  });
+});

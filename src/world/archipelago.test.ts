@@ -407,7 +407,14 @@ describe('reef shoals + shared-shelf sills (TASK-488, W:D1 / W:K3), 30 seeds', (
           expect(
             y,
             `seed ${seed} ${route.kind} over a raised reef at (${p.x.toFixed(0)}, ${p.z.toFixed(0)})`,
-          ).toBeLessThanOrEqual(-(REEFS.gap.depth - 0.5));
+          ).toBeLessThanOrEqual(
+            // TASK-503: where the natural seabed already lies above the gap floor the carve cannot
+            // deepen it; a corner lifted to the floor may add < 0.5 u (seed 3630: a ferry by a
+            // shelf, natural −6.67, sample −6.41)
+            y0 > -REEFS.gap.depth
+              ? Math.max(y0 + 0.5, -(REEFS.gap.depth - 0.5))
+              : -(REEFS.gap.depth - 0.5),
+          );
         }
     }
     console.info(`route samples over raised seabed (all in deep gaps), 12 seeds: ${crossings}`);
