@@ -4,6 +4,10 @@ import { FIXTURE_RADIUS, FLATTEN } from '../content/settlements.ts';
 import { DEVOPS_CULTURE, DEVOPS_CULTURE_SITE } from '../content/cultures/devops.ts';
 import { DEVOPS_SITE, DEVOPS_THEME, FUMAROLE_ZONES } from '../content/themes/devops.ts';
 import { DEVOPS_GROWTH } from '../content/themes/devops-growth.ts';
+import { DEVOPS_M25 } from '../content/themes/devops-m25.ts';
+import { DEVOPS_M25_SITE, oreAnchorWorld } from '../content/themes/devops-m25-site.ts';
+import { mailCablePoint } from '../content/props-themes/m20.ts';
+import { railFromLevels } from './funicular.ts';
 import { anchorChain } from './gen/plans/devops-growth.ts';
 import { leewardness } from './gen/heightfield.ts';
 import {
@@ -313,10 +317,13 @@ describe('DevOps island plan (TASK-364) — 30 seeds', () => {
             'cargoCrate',
             // M22 (TASK-482): D11 basalt column clusters
             'basaltBoulder',
+            // M25 (TASK-507): ore cableway pylons (mailLine v2 / v3), smiths' lane (goodsStall v7)
+            'mailLine',
+            'goodsStall',
           ],
           ctx,
         ).toContain(f.defId);
-      for (const f of d.fences) expect(['pipe', 'rail'], ctx).toContain(f.kind);
+      for (const f of d.fences) expect(['pipe', 'rail', 'funicular'], ctx).toContain(f.kind);
       const p = d.w.props;
       for (let i = 0; i < p.count; i++) {
         if (p.islandId[i] !== d.isl.id) continue;
@@ -413,10 +420,12 @@ describe('DevOps Ember Smiths culture (TASK-422) — 30 seeds', () => {
   /** [min, max] per def on one island; `share` = fraction of seeds with at least one. */
   const RANGES: Record<string, { n: [number, number]; share: number }> = {
     onsenDeck: { n: [0, 1], share: 0.95 },
-    onsenHouse: { n: [0, 1], share: 0.85 },
-    // + the D12 switchback road lanterns on the cone (M22 TASK-482)
+    // + the M25 onsen town (TASK-507: v1 / v2)
+    onsenHouse: { n: [0, 1 + DEVOPS_M25_SITE.onsen.max], share: 0.85 },
+    // + the D12 switchback road lanterns on the cone (M22 TASK-482) and one per funicular
+    // zig-zag vertex (M25 TASK-507: ≤ 6 legs per section, two sections)
     lavaLantern: {
-      n: [0, C.lanterns.quayMax + C.lanterns.railMax + DEVOPS_SITE.switchback.maxLanterns],
+      n: [0, C.lanterns.quayMax + C.lanterns.railMax + DEVOPS_SITE.switchback.maxLanterns + 12],
       share: 0.95,
     },
     ingotStack: { n: [0, C.ingots.count[1]], share: 0.9 },
@@ -483,7 +492,8 @@ describe('DevOps Ember Smiths culture (TASK-422) — 30 seeds', () => {
         const u = { x: (pool.x - f.x) / dist(f, pool), z: (pool.z - f.z) / dist(f, pool) };
         expect(f2.x * u.x + f2.z * u.z, ctx).toBeGreaterThan(0.99);
       }
-      for (const f of d.fixtures.filter((x) => x.defId === 'onsenHouse'))
+      // the TASK-422 bath house (v0); the M25 onsen town houses (v1 / v2) stand on their own bank
+      for (const f of d.fixtures.filter((x) => x.defId === 'onsenHouse' && !x.variant))
         expect(dist(f, pool), ctx).toBeLessThanOrEqual(C.onsen.houseRing[1] + 1);
     }
   });
@@ -756,6 +766,13 @@ describe('Emberpeak growth (TASK-503) — 30 seeds', () => {
     };
     // path-following pieces (switchback lanterns, path lamps) may stand on a reserved strip
     const along = new Set(['lavaLantern', 'lanternPost']);
+    // TASK-507 (M25): each site's own kit stands on it
+    const own: Record<string, string> = {
+      geyserField: 'geyserCone',
+      onsenTown: 'onsenHouse',
+      smithsLane: 'goodsStall',
+      cablewayFrom: 'mailLine',
+    };
     for (const seed of SEEDS) {
       const d = devops(seed);
       if (!d) continue;
@@ -772,9 +789,151 @@ describe('Emberpeak growth (TASK-503) — 30 seeds', () => {
         for (const l of d.lots)
           expect(shapeDist(sh, l.x, l.z), `${ctx} lot ${l.defId}`).toBeGreaterThan(0);
         for (const f of d.fixtures)
-          if (!along.has(f.defId))
+          if (!along.has(f.defId) && f.defId !== own[key])
             expect(shapeDist(sh, f.x, f.z), `${ctx} ${f.defId}`).toBeGreaterThan(0);
       }
     }
+  });
+});
+
+/** M25 DevOps I (TASK-507, D-089): the TASK-504 kit on the TASK-503 sites, over the same 30 seeds. */
+describe('DevOps M25 placement (TASK-507) — 30 seeds', () => {
+  const S = DEVOPS_M25_SITE;
+  const rateOf = (hits: number, n: number): number => hits / Math.max(n, 1);
+
+  it('D4 funicular: rackShed v2 stations, two zig-zag sections climbing between them', () => {
+    let n = 0;
+    let two = 0;
+    let pieces = 0;
+    let off = 0;
+    for (const seed of SEEDS) {
+      const d = devops(seed);
+      if (!d) continue;
+      n++;
+      const ctx = `seed ${seed}`;
+      const st = d.fixtures.filter(
+        (f) => f.defId === 'rackShed' && f.variant === DEVOPS_M25.station.variant,
+      );
+      const secs = d.w.fences.filter((f) => f.kind === 'funicular' && f.islandId === d.isl.id);
+      if (secs.length === 2) two++;
+      if (secs.length > 0) expect(st.length, ctx).toBeGreaterThanOrEqual(secs.length + 1);
+      for (const f of secs) {
+        const L = railFromLevels(f.points, f.levels ?? []);
+        expect(L, ctx).not.toBeNull();
+        if (!L) continue;
+        // both ends at a station's stub; the line climbs; no piece steeper than the rail variants
+        for (const end of [f.points[0], f.points[f.points.length - 1]])
+          expect(Math.min(...st.map((s) => dist(s, end))), ctx).toBeLessThanOrEqual(
+            S.funicular.stubFront + 0.01,
+          );
+        expect(L.pts[L.pts.length - 1].y, ctx).toBeGreaterThan(L.pts[0].y - 0.5);
+        for (const p of L.pieces) {
+          expect(p.variant, ctx).toBeLessThanOrEqual(2);
+          const rise = Math.abs(p.yb - p.ya) / (S.rail.piece * p.scale);
+          expect(Math.abs(rise - p.variant * S.rail.pitchStep), ctx).toBeLessThan(1e-6);
+          // the earthworks put every pivot on the ground (a few spots by a kept obstacle aside)
+          pieces++;
+          if (Math.abs(p.y - heightAt(d.w.height, p.x, p.z)) > 0.35) off++;
+        }
+      }
+    }
+    expect(rateOf(two, n), 'two sections').toBeGreaterThanOrEqual(0.85);
+    expect(off / pieces, 'pivots off the ground').toBeLessThanOrEqual(0.06);
+  });
+
+  it('D13 ore cableway: v3 at both ends, v2 pylons between, buckets clear the ground', () => {
+    let n = 0;
+    let hits = 0;
+    const [v2, v3] = DEVOPS_M25.ore.pylonVariants;
+    for (const seed of SEEDS) {
+      const d = devops(seed);
+      if (!d) continue;
+      n++;
+      const pyl = d.fixtures.filter((f) => f.defId === 'mailLine');
+      if (pyl.length === 0) continue;
+      hits++;
+      const ctx = `seed ${seed}`;
+      expect(pyl.filter((f) => f.variant === v3).length, ctx).toBe(2);
+      expect(pyl.filter((f) => f.variant === v2).length, ctx).toBe(pyl.length - 2);
+      expect(pyl.length, ctx).toBeLessThanOrEqual(S.cableway.maxPylons + 2);
+      // in order along the line: each span from the front seat to the next pylon's back seat
+      const [q, f] = pyl.filter((p) => p.variant === v3);
+      const u = { x: f.x - q.x, z: f.z - q.z };
+      const along = (p: XZ): number => (p.x - q.x) * u.x + (p.z - q.z) * u.z;
+      const chain = [
+        q,
+        ...pyl.filter((p) => p.variant === v2).sort((a, b) => along(a) - along(b)),
+        f,
+      ];
+      const seat = (k: number, back: boolean) => {
+        const p = chain[k];
+        return oreAnchorWorld(
+          p.variant ?? 0,
+          { x: p.x, y: heightAt(d.w.height, p.x, p.z), z: p.z },
+          p.rotY,
+          back,
+        );
+      };
+      for (let k = 0; k + 1 < chain.length; k++) {
+        const a = seat(k, false);
+        const b = seat(k + 1, chain[k + 1].variant === v2);
+        expect(dist(a, b), ctx).toBeLessThanOrEqual(S.cableway.span + 12);
+        for (let t = 0.1; t < 0.95; t += 0.1) {
+          const c = mailCablePoint(a, b, t);
+          expect(
+            c.y - DEVOPS_M25.ore.bucket.grip - heightAt(d.w.height, c.x, c.z),
+            ctx,
+          ).toBeGreaterThan(0.3);
+        }
+      }
+    }
+    expect(rateOf(hits, n)).toBeGreaterThanOrEqual(0.7);
+  });
+
+  it("D14 / D9 / D7: smiths' lane rows, onsen town houses + capybaras, 3–6 geysers", () => {
+    let n = 0;
+    const hits = { lane: 0, town: 0, geysers: 0 };
+    for (const seed of SEEDS) {
+      const d = devops(seed);
+      if (!d) continue;
+      n++;
+      const ctx = `seed ${seed}`;
+      const stalls = d.fixtures.filter((f) => f.defId === 'goodsStall');
+      for (const f of stalls) expect(f.variant, ctx).toBe(DEVOPS_M25.smith.variant);
+      const lane = d.isl.anchors.smithsLane;
+      const size = d.isl.anchors.smithsLaneSize;
+      if (stalls.length >= 3) hits.lane++;
+      if (stalls.length >= 4 && lane && size) {
+        // two rows facing each other across the lane
+        const f0 = { x: Math.cos(lane.rotY), z: Math.sin(lane.rotY) };
+        const sides = new Set(
+          stalls.map((s) => Math.sign((s.x - lane.x) * f0.x + (s.z - lane.z) * f0.z)),
+        );
+        expect(sides.size, ctx).toBe(2);
+        for (const s of stalls) {
+          const side = Math.sign((s.x - lane.x) * f0.x + (s.z - lane.z) * f0.z);
+          const face = { x: Math.cos(s.rotY), z: Math.sin(s.rotY) };
+          expect((face.x * f0.x + face.z * f0.z) * side, ctx).toBeLessThan(-0.99);
+        }
+      }
+      const houses = d.fixtures.filter((f) => f.defId === 'onsenHouse' && f.variant);
+      if (houses.length > 0) {
+        hits.town++;
+        expect(
+          d.w.storySpots.some((sp) => sp.kind === 'onsenTown'),
+          ctx,
+        ).toBe(true);
+        for (const h of houses) expect(DEVOPS_M25.onsen.variants, ctx).toContain(h.variant);
+      }
+      const gs = d.fixtures.filter((f) => f.defId === 'geyserCone');
+      if (gs.length >= S.geysers.min) hits.geysers++;
+      expect(gs.length, ctx).toBeLessThanOrEqual(S.geysers.max);
+      for (let i = 0; i < gs.length; i++)
+        for (let j = i + 1; j < gs.length; j++)
+          expect(dist(gs[i], gs[j]), ctx).toBeGreaterThanOrEqual(S.geysers.spacing - 1e-6);
+    }
+    expect(rateOf(hits.lane, n), 'lane').toBeGreaterThanOrEqual(0.9);
+    expect(rateOf(hits.town, n), 'town').toBeGreaterThanOrEqual(0.9);
+    expect(rateOf(hits.geysers, n), 'geysers').toBeGreaterThanOrEqual(0.8);
   });
 });

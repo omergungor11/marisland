@@ -352,13 +352,13 @@ describe('settlements — 20-seed sweep', () => {
       const coding = w.islands.find((i) => i.theme === 'coding');
       if (w.districts.some((d) => d.islandId === coding?.id && d.kind === 'solar')) solar++;
       // fences are farm-only: no theme plans field fences any more (pipes and the DevOps
-      // foundry rail, TASK-405, are their own kinds; HQ's ridge lookouts, TASK-466, keep a
-      // two-post rail at the bluff edge)
+      // foundry rail, TASK-405, and the funicular, TASK-507, are their own kinds; HQ's ridge
+      // lookouts, TASK-466, keep a two-post rail at the bluff edge)
       const hq = w.islands.find((i) => i.theme === 'hq')?.id;
+      const own = ['pipe', 'rail', 'funicular'];
       expect(
         w.fences.filter(
-          (f) =>
-            f.kind !== 'pipe' && f.kind !== 'rail' && !(f.islandId === hq && f.points.length === 2),
+          (f) => !own.includes(f.kind) && !(f.islandId === hq && f.points.length === 2),
         ).length,
         `seed ${seed} fences`,
       ).toBe(0);

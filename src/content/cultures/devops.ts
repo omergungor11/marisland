@@ -50,6 +50,8 @@ export const DEVOPS_CULTURE: CultureDef = {
     { kind: 'incidentWatch', defs: ['incidentSign'] },
     { kind: 'pagerCrab', defs: ['pagerRock'] },
     { kind: 'anvilHammer', defs: ['anvil', 'smithy'] },
+    // TASK-507 (D9): the capybaras on the onsen town bank (world/gen/plans/devops-m25.ts)
+    { kind: 'onsenTown', defs: ['onsenHouse'] },
   ],
   rhythm: [],
   relay: { order: 2, id: 'releaseNight' },
