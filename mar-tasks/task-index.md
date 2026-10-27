@@ -329,6 +329,18 @@ Details in `phases/phase-3.md`.
 | TASK-495 | Budget headroom: low-tier ladder 350k tri budget missed at tier-2 rungs (L-design 120 u 358k, L-pairs-design 112.8–131.6 u, L-pairs-research 131.6 u — new in M23, find the cause); win back ≥ 5 MB of medium memory (peak W27 169 / 170); with TASK-493 the glasshouse row must fit the same budget | engine | S | COMPLETED (9088213; D-073; cause: uber culture-mover geometry × instances, Design over since TASK-483; low max 305k; memory peak W27 169 → 162 MB) | TASK-492 |
 | TASK-496 | Night effects polish (M23 QA 3/4/7): fireworks read as bursts (filled, short trails, glow) not star-sprite rings, reflection on open water; signal ray reads as a beam toward the next island, not a comet/lightsaber; skerry beams readable in the postcard. Memory and programs must not grow | shader | M | COMPLETED (70b82dc; D-074; W15b/c/e/W15 weak → PASS; memory 0, programs 0, +1–3 calls at night) | TASK-492 |
 
+### M24 — Coding + QA signature
+*D-059 (Coding A Kite Hill & Wind Tunnel, QA A Proving Grounds), D-062 (R3-12, R3-14: cap overrides Coding 12/2, QA 12; Coding solar halved, night warm park + blue server, kite train yes; QA toy-factory tone, two tracks, tier-1 = Q2 tower). WORLD_PLAN §4.3/§4.5/§5 row 4, items in `mar-plans/study/coding-devops-qa.md`. Wave 1: 497 ∥ 499 ∥ 500; wave 2: 498 ∥ 501; then 502 shots + QA.*
+
+| ID | Task | Agent | Complexity | Status | Dependencies |
+|----|------|-------|------------|--------|--------------|
+| TASK-497 | Coding Kite Hill (`CO:C2`): upwind +4 u knoll in the island profile (hash re-pin), bell turbine on top, 8–12 kite masts round its foot, a bench on the hill path; ridge site anchor for the wind tunnel (`CO:C1`) between the turbines; solar rows halved (R3-12) | worldgen | M | IN_PROGRESS | — |
+| TASK-498 | Coding Wind Tunnel + Kite Day (`CO:C1` + `kiteScene`): 14 u lattice half-tube, 3 u fan spinning with the wind, 5 windsocks inside (gusts lift them); Kite Day 14:00 all kites rise, one stuck on the hill; second tier-1 slot (cap 12/2); night = warm park + blue server light | props + life | M | TODO | TASK-497 |
+| TASK-499 | QA Proving Grounds kit (`QA:Q2` + `Q4` + `Q5`): 10 u lattice drop tower (tier-1, R3-14) with crate, 4 u test fan + cage + streamer dummy pole, obstacle course (hurdle, tyre stack, balance beam, cones: one def, 4 variants); toy-factory white-mint-yellow tone | props | M | IN_PROGRESS | — |
+| TASK-500 | Mother Kite Train (`CO:C3`): 7-kite train 20 u above Coding on the sky-craft orbit pattern (D-038), reads as a blue-yellow dot chain at T0; W11 +1 call max | life | M | IN_PROGRESS | — |
+| TASK-501 | QA Figure-8 Crash Track + motion (`QA:Q1`, R3-14 two tracks): ramped crash track (testTrack variant ×2) on the SE meadow beside the existing loop, closed-form cart with a ramp parabola and wobbling dummy; drop-tower lift/drop every 20 s with landing squash + ✓ lamp; fan speeds up at the 12:00 siren test | props + life | L | TODO | TASK-499 |
+| TASK-502 | M24 shots + QA: wow presets Kite Hill Afternoon (14:00 +20 s, ≥ 6 kites), Proving Grounds Noon (12:00 +3 s), Fairy Night / Bug Hunt Night refresh; ladder low + medium `--assert`; QA report | qa | S | TODO | TASK-497…501 |
+
 ### M17 — Graphics II: decor & nature
 *Flower fields, fences, lanterns, benches, signs, rocks*
 
