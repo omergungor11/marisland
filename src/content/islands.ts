@@ -193,6 +193,26 @@ export interface ShelfParams {
   steps?: readonly { key: string; d: number; radial: number; tangential: number; h: number }[];
 }
 
+/**
+ * A low land ring round the cone foot (TASK-503, D-083, Emberpeak → DevOps growth for M25/M26):
+ * level at raw `h` (above the shelf-less cone foot, below the shelves), out to `reach` radius units
+ * away from the harbour; it tapers back to the cone foot over `harbourDeg` (degrees off the harbour
+ * shelf axis) so the harbour shelf stays the quay at the water. The cone itself (peak, crater, rim,
+ * notch) is still shaped in radius units of the unchanged `diameter`, so its silhouette is kept.
+ */
+export interface ApronParams {
+  reach: number;
+  h: number;
+  /** Full reach beyond [1] degrees off the harbour axis, none inside [0]. */
+  harbourDeg: readonly [number, number];
+  /** Radius at the harbour axis (radius units; ≤ the cone foot = no apron there). */
+  harbourReach: number;
+  /** Coast edge softness (radius units). */
+  edge: number;
+  /** Outer edge warp amplitude (radius units, fbm). */
+  warp: number;
+}
+
 export interface ArchetypeParams {
   displayName: string;
   /** Bible diameter range in u; radius = diameter / 2. */
@@ -214,6 +234,12 @@ export interface ArchetypeParams {
    * land cell of the island lies inside it (checked in tests).
    */
   reachScale: number;
+  /**
+   * Reach the layout places the island with (defaults to `reachScale`); a larger `reachScale`
+   * then pushes the island out from the hub by the difference after placement, so a grown island
+   * (TASK-503 Emberpeak apron) leaves every other island where it was.
+   */
+  layoutReachScale?: number;
   /** Windward shelf width in u (leeward = × WATER_BANDS.leewardRingScale). */
   shelfWidth: number;
   /** Beach ramp width in u (0 → beachMax over this distance inland). */
@@ -234,6 +260,8 @@ export interface ArchetypeParams {
   terraces?: TerraceParams;
   /** Flat shelves at the cone foot (Emberpeak only, TASK-405): [harbour, foundry, data center]. */
   shelves?: readonly ShelfParams[];
+  /** Low ring round the cone foot (Emberpeak only, TASK-503). */
+  apron?: ApronParams;
   zones: ZoneRuleParams;
 }
 
@@ -334,8 +362,10 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
     peak: [34, 36],
     heightClass: 'tall',
     colorClass: 'dark',
-    boundsScale: 1.5,
-    reachScale: 1.35,
+    // TASK-503: the apron ring takes the land out to 1.36 r ± 0.14 r (was ≈ 1.27 r at the shelves)
+    boundsScale: 1.72,
+    reachScale: 1.52,
+    layoutReachScale: 1.35,
     shelfWidth: 7,
     beachWidth: 5,
     terrace: { step: 4, strength: 0.2 },
@@ -353,7 +383,7 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
       rimEase: 7.5,
     },
     // TASK-405 "Ember Works": a low harbour shelf on the lee side away from the hot spring and a
-    // two-step foundry terrace further round the same side, on bluff walls; land stays < 1.27 r
+    // two-step foundry terrace further round the same side, on bluff walls; shelves stay < 1.27 r
     shelves: [
       {
         key: 'harbour',
@@ -386,6 +416,17 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
         steps: [{ key: 'datacenterUpper', d: 0.72, radial: 0.13, tangential: 0.22, h: 10 }],
       },
     ],
+    // TASK-503 (D-083): room for the M25/M26 DevOps content (funicular, cableway quarry, geyser
+    // field, onsen town, lava channel + fall, obsidian beach) — a low apron round the cone foot,
+    // below the foundry / data center shelves, open at the harbour cove
+    apron: {
+      reach: 1.36,
+      h: 1.6,
+      harbourDeg: [28, 62],
+      harbourReach: 0.85,
+      edge: 0.1,
+      warp: 0.14,
+    },
     zones: {
       ...DEFAULT_ZONES,
       forestThreshold: 0.45,
@@ -556,6 +597,14 @@ export const LAYOUT = {
    * from it).
    */
   hub: { slotDeg: 60, jitterDeg: 12, gap: [42, 60] as const },
+  /**
+   * TASK-503: an island grown past its placement reach (`layoutReachScale`) is pushed out from the
+   * hub by its growth, then steps (1 u, at most `growPush`) away from any neighbour whose channel
+   * is below `minGap`, its hub channel held ≤ `growHubGap` (wider than ≈ 2 × ISLET_LAYOUT.gap[0] +
+   * an islet, a skerry or the sandbar may land in the ferry channel to HQ).
+   */
+  growPush: 16,
+  growHubGap: 62,
 } as const;
 
 export type IsletKind = 'skerry' | 'sandbar';

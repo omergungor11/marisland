@@ -3,6 +3,8 @@ import { PROP_DEFS } from '../content/props.ts';
 import { FIXTURE_RADIUS, FLATTEN } from '../content/settlements.ts';
 import { DEVOPS_CULTURE, DEVOPS_CULTURE_SITE } from '../content/cultures/devops.ts';
 import { DEVOPS_SITE, DEVOPS_THEME, FUMAROLE_ZONES } from '../content/themes/devops.ts';
+import { DEVOPS_GROWTH } from '../content/themes/devops-growth.ts';
+import { anchorChain } from './gen/plans/devops-growth.ts';
 import { leewardness } from './gen/heightfield.ts';
 import {
   generateWorld,
@@ -614,6 +616,165 @@ describe('DevOps M22 quick wins (TASK-482) — 30 seeds', () => {
         (f) => f.defId === 'lavaLantern' && heightAt(d.w.height, f.x, f.z) >= S.switchback.minY,
       );
       expect(lit.length, ctx).toBeGreaterThanOrEqual(8);
+    }
+  });
+});
+
+/** TASK-503 (D-083): the apron ring + the M25/M26 growth anchors, over the same 30 seeds. */
+describe('Emberpeak growth (TASK-503) — 30 seeds', () => {
+  const G = DEVOPS_GROWTH;
+  const SITES = [
+    'lavaFall',
+    'obsidianBeach',
+    'funicular0',
+    'funicular1',
+    'funicular2',
+    'cablewayFrom',
+    'cablewayTo',
+    'onsenTown',
+    'geyserField',
+    'smithsLane',
+    'craterDeck',
+    'breakwater',
+  ];
+  const RECTS: [string, string][] = [
+    ['geyserField', 'geyserFieldSize'],
+    ['onsenTown', 'onsenTownSize'],
+    ['smithsLane', 'smithsLaneSize'],
+    ['cablewayFrom', 'quarrySize'],
+  ];
+  const turn = (a: number, b: number): number => {
+    const t = Math.abs(a - b) % (2 * Math.PI);
+    return t > Math.PI ? 2 * Math.PI - t : t;
+  };
+
+  it('cone kept (peak 34–36, crater), land out past the old cone foot to windward', () => {
+    for (const seed of SEEDS) {
+      const d = devops(seed);
+      if (!d) continue;
+      const ctx = `seed ${seed}`;
+      expect(d.isl.peakY, ctx).toBeGreaterThanOrEqual(33.5);
+      expect(d.isl.peakY, ctx).toBeLessThanOrEqual(36.5);
+      const c = d.isl.anchors.crater;
+      expect(c, ctx).toBeDefined();
+      // windward rays: the coast lies past the old cone foot (≈ 1.0 r) on most of them
+      let far = 0;
+      for (let k = -4; k <= 4; k++) {
+        const a = d.w.windDir + Math.PI + (k * 12 * Math.PI) / 180;
+        let s = 0;
+        while (heightAt(d.w.height, c.x + Math.cos(a) * s, c.z + Math.sin(a) * s) > 0) s += 0.5;
+        if (s >= 1.15 * d.isl.radius) far++;
+      }
+      expect(far, ctx).toBeGreaterThanOrEqual(6);
+    }
+  });
+
+  it('every growth anchor on ≥ 28 / 30 seeds; rect anchors come with their size', () => {
+    const miss: Record<string, number> = {};
+    for (const seed of SEEDS) {
+      const d = devops(seed);
+      if (!d) continue;
+      for (const k of SITES) if (!d.isl.anchors[k]) miss[k] = (miss[k] ?? 0) + 1;
+      for (const [k, s] of RECTS)
+        expect(!!d.isl.anchors[k], `seed ${seed} ${k} / ${s}`).toBe(!!d.isl.anchors[s]);
+    }
+    for (const [k, m] of Object.entries(miss)) expect(m, k).toBeLessThanOrEqual(2);
+  });
+
+  it('lava channel: notch → windward lip, downhill, off the harbour, no lot on it', () => {
+    for (const seed of SEEDS) {
+      const d = devops(seed);
+      if (!d) continue;
+      const ctx = `seed ${seed}`;
+      const pts = anchorChain(d.isl, 'lavaChannel');
+      if (pts.length === 0) continue;
+      expect(pts.length, ctx).toBeGreaterThanOrEqual(3);
+      expect(dist(pts[0], d.isl.anchors.notch), ctx).toBeLessThan(0.5);
+      const ys = pts.map((p) => heightAt(d.w.height, p.x, p.z));
+      expect(ys[ys.length - 1], ctx).toBeLessThan(ys[0] - 15);
+      for (let k = 1; k < ys.length; k++)
+        // the bend may cross a gully shoulder (≤ 2.5 u); the M26 carve levels the bed
+        expect(ys[k], `${ctx} #${k}`).toBeLessThan(ys[k - 1] + 2.5);
+      const fall = d.isl.anchors.lavaFall;
+      expect(dist(fall, pts[pts.length - 1]), ctx).toBeLessThan(1e-6);
+      const sdf = sampleGrid(d.w.height, d.w.shoreSdf, fall.x, fall.z, -1);
+      expect(sdf, ctx).toBeGreaterThanOrEqual(G.lava.lipShore - 1);
+      expect(sdf, ctx).toBeLessThan(G.lava.lipShore + 2.5);
+      const c = d.isl.anchors.crater;
+      const h = d.isl.anchors.harbour;
+      expect(
+        turn(Math.atan2(fall.z - c.z, fall.x - c.x), Math.atan2(h.z - c.z, h.x - c.x)),
+        ctx,
+      ).toBeGreaterThanOrEqual((G.keepOff.harbour - G.lava.maxDrift - 1) * (Math.PI / 180));
+      // the reserved strip keeps every lot off the channel
+      for (const l of d.lots)
+        for (let k = 0; k + 1 < pts.length; k++) {
+          const mid = { x: (pts[k].x + pts[k + 1].x) / 2, z: (pts[k].z + pts[k + 1].z) / 2 };
+          expect(shapeDist(lotShape(l), mid.x, mid.z), `${ctx} ${l.defId}`).toBeGreaterThan(
+            G.lava.width / 2,
+          );
+        }
+    }
+  });
+
+  it('funicular: three stations climbing one heading; cableway span; breakwater in water', () => {
+    for (const seed of SEEDS) {
+      const d = devops(seed);
+      if (!d) continue;
+      const ctx = `seed ${seed}`;
+      const st = anchorChain(d.isl, 'funicular');
+      if (st.length > 0) {
+        expect(st.length, ctx).toBe(3);
+        const ys = st.map((p) => heightAt(d.w.height, p.x, p.z));
+        expect(ys[0], ctx).toBeLessThan(ys[1]);
+        expect(ys[1], ctx).toBeLessThan(ys[2]);
+        expect(ys[2], ctx).toBeGreaterThanOrEqual(d.isl.peakY - 10);
+        expect(ys[0], ctx).toBeLessThanOrEqual(G.funicular.footY + 1);
+        for (const p of st)
+          for (const l of d.lots)
+            expect(shapeDist(lotShape(l), p.x, p.z), `${ctx} ${l.defId}`).toBeGreaterThan(
+              G.funicular.stationR,
+            );
+      }
+      const from = d.isl.anchors.cablewayFrom;
+      const to = d.isl.anchors.cablewayTo;
+      if (from && to) {
+        expect(dist(from, to), ctx).toBeGreaterThanOrEqual(G.cableway.span[0] - 1);
+        expect(dist(from, to), ctx).toBeLessThanOrEqual(G.cableway.span[1] + 1);
+      }
+      const bw = d.isl.anchors.breakwater;
+      if (bw) expect(heightAt(d.w.height, bw.x, bw.z), ctx).toBeLessThan(-G.breakwater.depth + 0.3);
+    }
+  });
+
+  it('reserved rects: on land, flat enough, no lot or kit piece inside', () => {
+    const relief: Record<string, number> = {
+      geyserField: G.geysers.maxRelief,
+      onsenTown: G.onsen.maxRelief,
+      smithsLane: G.smiths.maxRelief,
+      cablewayFrom: G.cableway.quarryRelief,
+    };
+    // path-following pieces (switchback lanterns, path lamps) may stand on a reserved strip
+    const along = new Set(['lavaLantern', 'lanternPost']);
+    for (const seed of SEEDS) {
+      const d = devops(seed);
+      if (!d) continue;
+      for (const [key, size] of RECTS) {
+        const a = d.isl.anchors[key];
+        const s = d.isl.anchors[size];
+        if (!a || !s) continue;
+        const sh = rectShape(a.x, a.z, a.rotY, s.x, s.z);
+        const ctx = `seed ${seed} ${key}`;
+        const ys = [sh, ...shapeCorners(sh)].map((p) => heightAt(d.w.height, p.x, p.z));
+        expect(Math.min(...ys), ctx).toBeGreaterThan(0.2);
+        // measured at reservation; later neighbours' pads (plant, lodges) may cut an edge deeper
+        expect(Math.max(...ys) - Math.min(...ys), ctx).toBeLessThanOrEqual(relief[key] + 2.5);
+        for (const l of d.lots)
+          expect(shapeDist(sh, l.x, l.z), `${ctx} lot ${l.defId}`).toBeGreaterThan(0);
+        for (const f of d.fixtures)
+          if (!along.has(f.defId))
+            expect(shapeDist(sh, f.x, f.z), `${ctx} ${f.defId}`).toBeGreaterThan(0);
+      }
     }
   });
 });

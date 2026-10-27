@@ -102,9 +102,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "93339c6b4c2f51d0",
-          "1001": "5a229d2ac3afa189",
-          "42": "881c188b7aa81d0a",
+          "1": "edb8fa56247fbe01",
+          "1001": "8f3db0ecc6ddd574",
+          "42": "c4334915ed2a1283",
         }
       `);
     },
@@ -417,7 +417,14 @@ describe('reef shoals + shared-shelf sills (TASK-488, W:D1 / W:K3), 30 seeds', (
           expect(
             y,
             `seed ${seed} ${route.kind} over a raised reef at (${p.x.toFixed(0)}, ${p.z.toFixed(0)})`,
-          ).toBeLessThanOrEqual(-(REEFS.gap.depth - 0.5));
+          ).toBeLessThanOrEqual(
+            // TASK-503: where the natural seabed already lies above the gap floor the carve cannot
+            // deepen it; a corner lifted to the floor may add < 0.5 u (seed 3630: a ferry by a
+            // shelf, natural −6.67, sample −6.41)
+            y0 > -REEFS.gap.depth
+              ? Math.max(y0 + 0.5, -(REEFS.gap.depth - 0.5))
+              : -(REEFS.gap.depth - 0.5),
+          );
         }
     }
     console.info(`route samples over raised seabed (all in deep gaps), 12 seeds: ${crossings}`);
@@ -563,9 +570,10 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // TASK-488 reef shoals + sills (routes detour, deep gaps, buoys off crossings), re-pinned;
       // TASK-490 skerry beacon towers (scatter), re-pinned; TASK-499 QA Proving Grounds (stunt yard + kit), TASK-501 crash track fixture + pad, re-pinned;
       // TASK-505 HQ yacht marina stage + fort keep-out + gate-reserved seamarks, re-pinned;
-      // TASK-497 Coding Kite Hill (profile lift, hill kites, tunnel pad, fallbacks), re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('01989f69b6b4dd5d');
-      expect(generateWorld(1).hashes.world).toBe('e38f51186c288db2');
+      // TASK-497 Coding Kite Hill (profile lift, hill kites, tunnel pad, fallbacks), re-pinned;
+      // TASK-503 Emberpeak apron ring + growth anchors, re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('9fee33b6295d7da8');
+      expect(generateWorld(1).hashes.world).toBe('1d1beca734b6d8b9');
     } finally {
       for (const b of saved) b.on = true;
     }

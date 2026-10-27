@@ -222,7 +222,9 @@ export function renderMinimapPng(world: WorldData, opts: MinimapOptions = {}): B
         put(x, y, [255, 255, 255]);
       }
     }
-    for (const a of Object.values(isl.anchors)) dot(a.x, a.z, [255, 40, 90], 2);
+    // `…Size` anchors carry a [w, d] size, not a position (QA stunt, DevOps growth)
+    for (const [k, a] of Object.entries(isl.anchors))
+      if (!k.endsWith('Size')) dot(a.x, a.z, [255, 40, 90], 2);
     dot(isl.peakX, isl.peakZ, [255, 255, 255], 2);
   }
   return PNG.sync.write(png);

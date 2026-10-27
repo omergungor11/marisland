@@ -346,7 +346,7 @@ Details in `phases/phase-3.md`.
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-503 | Emberpeak growth: lower apron / shelf ring round the cone (silhouette unchanged), layout still fits; anchors for funicular stations, cableway, smiths' lane, onsen town, geyser field, lava channel, obsidian beach, breakwater | worldgen | L | IN_PROGRESS | — |
+| TASK-503 | Emberpeak growth: lower apron / shelf ring round the cone (silhouette unchanged), layout still fits; anchors for funicular stations, cableway, smiths' lane, onsen town, geyser field, lava channel, obsidian beach, breakwater | worldgen | L | COMPLETED 7c3fcd3 | — |
 | TASK-504 | DevOps M25 props: `funicularRail` + `funicularCar`, ore cableway (mailLine reuse), summit bell + red beam variant, `geyserCone`, onsen house + smiths' lane variants; hooks for movers | props | M | IN_PROGRESS | — |
 | TASK-505 | HQ yacht marina (comb piers, 15–20 moored boats, breakwater, H11 buoys, mast lights) + cove-mouth star fort with H18 lights; placed; Marina Dusk preset | props + worldgen | L | IN_PROGRESS | — |
 | TASK-506 | QA customs port props: Q8 scanner arch, QA cargo ship, quay crane, inspection line + ✓/✗ lamps, Q9 quarantine pontoon (variants of DevOps cargo kit) | props | M | IN_PROGRESS | — |

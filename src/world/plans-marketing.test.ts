@@ -235,7 +235,7 @@ describe('Marketing Media Rock plan (TASK-403), 30 seeds', () => {
     expect(got).toMatchInlineSnapshot(`
       [
         "daf79f7b6e0d3c47",
-        "5bd58753dbcdbd77",
+        "bf96bb051fd66ec3",
         "f9258674231a37a2",
       ]
     `);

@@ -61,6 +61,7 @@ import {
 import type { ThemePlanner } from './types.ts';
 import { placeColumns, placeFumaroles, placeRoadLanterns, switchbackLinks } from './devops-m22.ts';
 import { leewardness } from '../heightfield.ts';
+import { reserveGrowth, reserveLava } from './devops-growth.ts';
 import {
   district,
   paintZone,
@@ -94,6 +95,8 @@ export const planDevops: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   if (craterLm >= 0) plan.landmarks.push(craterLm);
   plan.landmarks.push(pool);
   const centre: XZ = crater ?? { x: isl.cx, z: isl.cz };
+  // TASK-503 (D-083): the lava channel strip is reserved before every facility
+  const lava = reserveLava(ctx, isl, centre);
   // TASK-422: the Ember Smiths onsen claims the pool rim before the plant
   const stories: StorySpot[] = [];
   plan.stories = stories;
@@ -153,6 +156,8 @@ export const planDevops: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   // TASK-405: CI/CD belt + paved quay, lava foundry, worker lodges by the quad
   finishHarbour(ctx, isl, containers, yard?.lots ?? [], site?.root ?? null, rng.fork('quay'));
   const furnaces = placeFoundry(ctx, isl, plan, rng.fork('foundry'));
+  // TASK-503: the M25/M26 growth sites, before the kit, lodges and quick wins keep off them
+  reserveGrowth(ctx, isl, centre, lava);
   // TASK-422: the Ember Smiths kit on the harbour, foundry and terraces (before the infill lodges)
   placeCulture(
     ctx,

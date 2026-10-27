@@ -48,6 +48,33 @@ memory peak W27 163 MB (was 162). Ladder L-hq low max 69 calls, medium 146 calls
 selftests (regen / ctxloss / edit) green. New LOD0 tris: marinaPier 496 / 340 / 264 / 424 / 412, starFort 1172, sailboat
 v6 / v7 208, v8 126 (LOD1 ≤ 30 %). Fort + marina read at T0 (W1 postcard, E-flood) and T1. **Impact**: every island hash re-pins (new stage + new hash key); W16 re-aimed (8 u higher: the masts crowded
 the foreground); cap 14 for HQ only; the breakwater exists on few seeds (the ferry stop sits at the horn).
+## D-083: Emberpeak grows an apron ring; a grown island is pushed out from the hub; growth sites are reserved anchors — 2026-10-27
+
+**Decision** (TASK-503, M25 DevOps I step 1, implements the D-080 growth): (1) **Apron.** `emberpeak.apron`
+(`content/islands.ts`) adds a low ring (raw 1.6, ≈ 6.5–7 u on the bluff) round the cone foot out to 1.36 r
+(± 0.14 r low-frequency fbm warp: bays and lobes), tapered back to the cone foot over 28–62° off the harbour shelf axis so the harbour stays the
+quay at the water. `diameter` stays [90, 120] and `sizeClass` 'medium': the cone (peak 34–36, crater, rim, notch)
+is still shaped in units of that radius, so its silhouette is unchanged and HQ keeps the larger radius (hero
+rule). `reachScale` 1.35 → 1.52 (every land cell inside it on the 30 test seeds), `boundsScale` 1.5 → 1.72. The foundry / data center shelves
+(≤ 1.27 r) become terraces above the apron. (2) **Layout.** New `layoutReachScale` (Emberpeak 1.35): the island is
+placed with its old reach, then `place()` pushes it straight out from the hub by its growth and, while a channel
+is below `minGap`, steps (1 u, ≤ `LAYOUT.growPush` 16) away from the tightest neighbour with the hub channel held
+≤ `LAYOUT.growHubGap` 62 (a wider ferry channel could take a skerry / the sandbar); `layoutProblem` checks the grown
+discs. Every other island keeps its exact centre on all 38 test / shot seeds and 482 / 500 seeds (Emberpeak moves
+8–12.6 u; 9.7 u on 1001). The first try (true reach in the ring placement) re-centred the whole archipelago by
+≈ 8 u and re-rolled 12 tests on five other islands. (3) **Growth sites** (`world/gen/plans/devops-growth.ts`,
+numbers in `content/themes/devops-growth.ts`): ordered scored searches (no rng), reserved as non-blocking obstacle
+shapes (lots and kit keep off, paths cross) and published as island anchors — the lava channel before every
+facility, the rest after the foundry (before the kit, lodges, village and M22 quick wins). No fixture, pad or
+zone. Contract in the module header and `mar-docs/MEMORY.md`.
+**Rationale**: D-080 wants the apron / lava / funicular laid out once. A reserved anchor (QA `stunt`, Coding
+`windTunnel` pattern) lets M25/M26 place props without moving any existing lot. Pushing the grown island out
+instead of re-placing the ring keeps the other five campuses, their raw cams and their tuned 30-seed tests.
+**Impact**: Islets, routes, reefs, whale, HQ (compass streets aim at the islands) and Marketing snapshots and every
+world stage hash change — re-pinned in one commit. DevOps raw cams (seed 1001) are stale (+9.7 u). Fixes that came
+with it: fumarole pools keep off every lot's pad core (`devops-m22.ts`; the summit tower sank 8 u onto a pool's
+level on seed 3630); the reef-route test allows a sample over a natural seabed above the gap floor (≤ +0.5 u);
+pipe open ends < 0.2 (old code spans 0.03–0.20 over 12 seeds).
 
 ## D-082: QA harbour becomes a customs port — plan only — 2026-10-27
 

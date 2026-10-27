@@ -24,6 +24,22 @@
     - Fort: the star outline is concave, so caps are fans from the centre and wall bands use `addPoly` with an outward
       hint; merlon / slot yaw is `atan2(-e.z, e.x)` (local x along the edge).
     - geo tests: `marinaPier` / `starFort` reach 5 u below the pivot (pile feet, plinth) — exception in geo.test.
+- **2026-10-27 (TASK-503, M25 step 1; D-083)**: Emberpeak apron ring + growth anchors. Anchor contract
+  (`world/gen/plans/devops-growth.ts`, sizes in `content/themes/devops-growth.ts`; rotY = xz heading;
+  `…Size` = {x: w, z: d} of a rect whose depth axis is rotY):
+  - `lavaChannel0..N` polyline notch → windward lip (`anchorChain(isl, 'lavaChannel')`), `lavaFall` = last point
+    (rotY out to sea), strip `lava.width` 3 + 2 × 1.5 reserved; `obsidianBeach` coast point beside it.
+  - `funicular0..2` foot / mid / below-rim stations (rotY uphill, disc r 2.5).
+  - `cablewayFrom` (quarry, + `quarrySize`) → `cablewayTo` (disc on the foundry upper step).
+  - `onsenTown` + `onsenTownSize` (pool bank, rotY → pool), `geyserField` + `geyserFieldSize`,
+    `smithsLane` + `smithsLaneSize` (foundry lower shelf, w along it), `craterDeck` (rim, rotY → crater),
+    `breakwater` (water point off the harbour mouth, rotY = arm heading).
+  - Each may be missing on ≤ 1 / 30 seeds (test: ≤ 2). Reservations are non-blocking shapes, no pads: the
+    M25/M26 task adds the fixture + its own pad. The obsidian beach is still bluff wall (a second low cove is
+    M26 work, `coveness` takes one anchor).
+  - **Gotchas:** an island whose `reachScale` > `layoutReachScale` is pushed out from the hub after placement
+    (other islands keep their centres); Emberpeak's raw cams are stale (+9.7 u on 1001). Fumarole pads now keep
+    off lot pad cores (a pool next to the summit tower averaged it 8 u down).
 - **2026-10-27 (M24 wave 1; TASK-500 merged)**: Mother Kite Train (`render/kite-train.ts`, built inside
   `createSkyCraft`, +1 call / +692 tris; `kiteTrainCentre(world, seed, simt)` gives its position for presets).
   The lit program forces flat normals from screen derivatives and mixes 35 % shade tint regardless of albedo, so
