@@ -22,6 +22,7 @@ import { RIM_PROP_DEFS } from './props-themes/rim.ts';
 import { STAIR_PROP_DEFS } from './props-themes/stairs.ts';
 import { BEACON_PROP_DEFS } from './props-themes/beacon.ts';
 import { QA_PROVING_PROP_DEFS } from './props-themes/qa-proving.ts';
+import { HQ_MARINA_PROP_DEFS } from './props-themes/hq-marina.ts';
 
 export interface PropDef {
   id: string;
@@ -154,6 +155,8 @@ const ALL_DEFS: readonly PropDef[] = [
   ...BEACON_PROP_DEFS,
   // M24 (TASK-499): QA Proving Grounds drop tower, test fan, obstacle course
   ...QA_PROVING_PROP_DEFS,
+  // M29 (TASK-505, D-085): HQ yacht marina pier + cove-mouth star fort (parallel branches append below)
+  ...HQ_MARINA_PROP_DEFS,
 ];
 
 /**

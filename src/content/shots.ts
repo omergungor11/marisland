@@ -258,6 +258,32 @@ const MOVE_SHOTS: readonly ShotPreset[] = (
   sets: ['dev' as const],
 }));
 
+/**
+ * TASK-505 Marina Dusk (raw, seed 1001, 19:45 +4 s, the lamp ramp just through): from the pier side over
+ * the comb's masts (lamps lit) at the star fort on the horn, its windows and red light on, the flag
+ * flying, the green light of the breakwater head beyond and the ferry buoys over open water.
+ */
+const MARINA_DUSK_CAM = '-30,9,-16,-58,4,10';
+
+/** TASK-505 marina cams: [id, title, cam, game hour, warm-up s]; raw `eye → target`, seed 1001. */
+const MARINA_CAMS: readonly (readonly [string, string, string, number, number])[] = [
+  ['D-marina-top', 'Marina from above · HQ cove', '-45,95,45,-45,0,18', 14, 4],
+  ['D-marina-t1', 'Marina from the sea · HQ cove (T1)', '-125,42,85,-45,0,20', 14, 4],
+  ['D-marina-fort', 'Star fort at the cove mouth · HQ', '-92,16,66,-60,3,40', 14, 4],
+  ['D-marina-dusk', 'Marina dusk · masts and the fort flag', MARINA_DUSK_CAM, 19.75, 4],
+  ['D-marina-top-night', 'Marina from above at night', '-45,95,45,-45,0,18', 20.5, 4],
+];
+const MARINA_SHOTS: readonly ShotPreset[] = MARINA_CAMS.map(([id, title, cam, time, simt]) => ({
+  id,
+  title,
+  seed: 1001,
+  cam,
+  time,
+  simt,
+  quality: 'medium' as const,
+  sets: ['dev' as const],
+}));
+
 export const SHOT_PRESETS: readonly ShotPreset[] = [
   // ---- bible wow shots (1920×1080, medium quality)
   {
@@ -469,7 +495,8 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // crown): from over the bay north-west of the pier, the ferry office / awning at the pier root
     // in front, gates and pennant lines on the plaza, the clock tower whole with sky above it
     seed: 1001,
-    cam: '-45,16,25,-32,7,-21',
+    // TASK-505 (D-085): the marina's masts crowded the lower frame; 8 u higher and 3 u further out
+    cam: '-45,24,28,-32,6,-22',
     time: 9,
     simt: 15,
     quality: 'medium',
@@ -1691,6 +1718,23 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     ];
   }),
   ...MOVE_SHOTS,
+  {
+    id: 'W-marina-dusk',
+    title: 'Marina Dusk',
+    // TASK-505 (D-085): the HQ yacht marina at 19:45 (see MARINA_DUSK_CAM)
+    seed: 1001,
+    cam: MARINA_DUSK_CAM,
+    time: 19.75,
+    simt: 4,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  // ---- TASK-505 (D-085): the HQ yacht marina and the star fort (the "prop showcase" cams of the
+  // marina: `pnpm shots dev --only=D-marina-t0,D-marina-t1,D-marina-fort,D-marina-night`; raw cams,
+  // seed 1001, re-pin when HQ's layout changes)
+  ...MARINA_SHOTS,
 ];
 
 export const SET_DEFAULTS: Record<

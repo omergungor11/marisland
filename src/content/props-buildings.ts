@@ -44,7 +44,8 @@ export const PROP_DEFS_BUILDINGS: PropDef[] = [
   d('dock', 1, 2, 1.1, grounded),
   d('rowboat', 1, 2, 1.2, grounded),
   // v4 = Design lantern boat, v5 = Marketing party pontoon (TASK-481): pinned, never rolled
-  d('sailboat', 0, 6, 2.6, windy | noShadow, undefined, { rollVariants: 2 }),
+  // v6 / v7 = the HQ marina sloops, v8 = the tender (TASK-505): pinned by the marina stage, never rolled
+  d('sailboat', 0, 9, 2.6, windy | noShadow, undefined, { rollVariants: 2 }),
   // variant 3 = the arch (TASK-474 seamarks)
   d('seaStack', 0, 4, 2.6, 0, undefined, { rollVariants: 3 }),
   // T0: the channel buoys (variants 1 red / 2 green, TASK-474) read as night light lines from the

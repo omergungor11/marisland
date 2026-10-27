@@ -2,6 +2,34 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-085: HQ yacht marina + cove-mouth star fort built (TASK-505, M29; builds D-081) — 2026-10-27
+
+**Decision**: (1) **Stage.** `world/gen/marina.ts` runs after the boat routes (like the seamarks): it reads the ferry
+routes, so nothing stands in a channel. From the ferry pier root it walks the shore contour 3.2 u out to sea (SDF
+iso-line) in both directions, 8 u past the pier; the walk whose end is nearer the ferry stop is the main spine and ends
+at the horn at the cove mouth. Spine pieces + a comb of finger piers (12 u, else 8 u) off both spines, a fort on the
+horn tip, a breakwater arm from the fort towards the pier (pieces + a head with the green harbour light), the moored
+fleet, and 4 red/green gate pairs (8 buoys, H11) along the HQ ferry route round its stop. Output is `world.marina`
+(fixtures, hashed as `hashes.marina`, a `STAGE_HASH_KEYS` entry), rendered by `settlement-props.ts` just before the
+districts at pivot y = 0 (`FLOATING_FIXTURES`), so no earlier store index or decor stream moves. The generic seamarks keep
+`HQ_MARINA.gates.reserve` (48 u) round the stop (`reserved` input). Numbers: `content/themes/hq-marina.ts`.
+(2) **Defs** (appended at the end of `PROP_DEFS`, TASK-505 block): `marinaPier` (tier 2, `fromT0`, 5 variants: finger 12 u,
+short finger 8 u, spine piece, breakwater piece, breakwater head) and `starFort` (tier 1, 5-point bastion with sloped walls,
+gun embrasures, a keep with a red light and a fluttering flag, 12 u, so drawn from T0 by size). **HQ cap 12/1 → 14/1**
+(`cultureCapOverride.hq`: +2 defs; the tier-1 slot, empty so far, takes the fort; no second tier-1 needed).
+(3) **Boats are not agents.** The fleet (15–20 on seed 1001, 4–18 elsewhere, cap 20) is fixtures of the existing
+`sailboat` def: v6 / v7 sloops (mast-head lamp, emissive 1, on the ordinary lamp ramp) and v8 the tender, plus the old
+v0 / v1; LOD0 bobs through `tagBob` (the TASK-481 float bob). No life budget, no new draw call per boat: they
+instance per (def, variant). (4) **Ferry.** HQ's pier is in a closed bay, so the ferry stop is the nearest open-water node
+(26 u from the pier end on seed 1001), right in front of the fort. The routes are untouched; the marina keeps ≥ 2.4 u off
+every route sample, the fort ≥ 9 u. The ferry pier is unchanged (`dock` ×1); the H10 mail jetty is not built yet.
+**Alternatives not taken**: boats as an agent kind (agent budget, a kind per variant); a `dock` variant for the comb
+(docks drive the routes, gull perches and the path graph); fixing the pier frame in content (the shore differs per seed).
+**Numbers** (seed 1001, medium): W16 281 → 290 calls, 749k → 757k tris, memory 159 → 160 MB (budget 300 / 170); W2 / W3
+190 / 190; ladder L-hq low max 69 calls, medium 146 calls / 270k tris, `--assert` green. Fort + marina read at T0 (W1 postcard)
+and T1. **Impact**: every island hash re-pins (new stage + new hash key); W16 re-aimed (8 u higher: the masts crowded
+the foreground); cap 14 for HQ only; the breakwater exists on few seeds (the ferry stop sits at the horn).
+
 ## D-082: QA harbour becomes a customs port — plan only — 2026-10-27
 
 **Decision** (user, picked from an HTML comparison): Palmlagoon's harbour turns commercial as a **customs port**:

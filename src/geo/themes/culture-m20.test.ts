@@ -53,7 +53,7 @@ const SMALL = ['cultureGate', 'goodsStall', 'glasshouse', 'glassBridge', 'prismA
 
 describe('TASK-465 ledgers and defs', () => {
   it('HQ 8 + 4 = 12 (cap), Design 10 + 5 = 15 (cap), new entries appended in order, valid', () => {
-    expect(CULTURES.hq.kit.slice(8).map((k) => k.id)).toEqual(HQ_NEW);
+    expect(CULTURES.hq.kit.slice(8, 12).map((k) => k.id)).toEqual(HQ_NEW);
     expect(CULTURES.design.kit.slice(10).map((k) => k.id)).toEqual(DESIGN_NEW);
     expect(CULTURES.hq.kit).toHaveLength(cultureCapOverride.hq.defs);
     expect(CULTURES.design.kit).toHaveLength(cultureCapOverride.design.defs);
@@ -61,7 +61,8 @@ describe('TASK-465 ledgers and defs', () => {
       'rainbowArc',
       'conservatory',
     ]);
-    expect(CULTURES.hq.kit.filter((k) => k.tier === 1)).toHaveLength(0);
+    // TASK-505 (D-085): the star fort is the island's one tier-1 def (cap 14 / 1)
+    expect(CULTURES.hq.kit.filter((k) => k.tier === 1).map((k) => k.id)).toEqual(['starFort']);
     expect(validateCultures([CULTURES.hq, CULTURES.design])).toEqual([]);
   });
 
@@ -72,7 +73,7 @@ describe('TASK-465 ledgers and defs', () => {
     const at = PROP_DEFS.findIndex((d) => d.id === M20_PROP_IDS[0]);
     const last = PROP_DEFS.slice(at, at + all.length).map((d) => d.id);
     expect(last).toEqual(M20_PROP_IDS);
-    for (const k of [...CULTURES.hq.kit.slice(8), ...CULTURES.design.kit.slice(10)]) {
+    for (const k of [...CULTURES.hq.kit.slice(8, 12), ...CULTURES.design.kit.slice(10)]) {
       const d = defOf(k.id);
       expect(d?.tier, k.id).toBe(k.tier);
       expect(d?.flags, k.id).toBe(k.flags);

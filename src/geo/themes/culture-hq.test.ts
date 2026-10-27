@@ -46,6 +46,9 @@ describe('TASK-410 HQ culture kit: defs and ledger', () => {
       'gullPerch',
       'mailbag',
       ...M20_IDS,
+      // M29 yacht marina (TASK-505)
+      'marinaPier',
+      'starFort',
     ]);
     expect([...kit.slice(0, 8).map((k) => k.id)].sort()).toEqual([...KIT_IDS].sort());
     for (const k of kit.slice(0, 8)) {
@@ -160,8 +163,8 @@ describe('TASK-410 hqAnnex v2 (guildHall)', () => {
 });
 
 describe('TASK-410 ferry (sailboat v2)', () => {
-  it('sailboat has 6 variants in the registry (rolls keep 2); v2 is buildable', () => {
-    expect(PROP_GEO.sailboat.variants).toBe(6);
+  it('sailboat has 9 variants in the registry (rolls keep 2); v2 is buildable', () => {
+    expect(PROP_GEO.sailboat.variants).toBe(9);
     const g0 = buildProp('sailboat', 3, 2, 0);
     const g1 = buildProp('sailboat', 3, 2, 1);
     const s = size(g0);

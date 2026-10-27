@@ -23,6 +23,7 @@ import { RIM_GEO } from './rim.ts';
 import { STAIR_GEO } from './stairs.ts';
 import { BEACON_GEO } from './beacon.ts';
 import { QA_PROVING_GEO } from './qa-proving.ts';
+import { HQ_MARINA_GEO } from './hq-marina.ts';
 
 export const THEME_GEO: readonly PropGeoDef[] = [
   ...HQ_GEO,
@@ -52,4 +53,6 @@ export const THEME_GEO: readonly PropGeoDef[] = [
   ...BEACON_GEO,
   // M24 TASK-499 QA Proving Grounds
   ...QA_PROVING_GEO,
+  // M29 TASK-505 HQ yacht marina + star fort
+  ...HQ_MARINA_GEO,
 ];

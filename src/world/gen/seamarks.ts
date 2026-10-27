@@ -33,6 +33,8 @@ export interface SeamarkInput {
   docks: readonly DockData[];
   routes: readonly Polyline[];
   windDir: number;
+  /** Circles kept free of generic buoys (the HQ marina's own channel gates, TASK-505). */
+  reserved?: readonly { x: number; z: number; r: number }[];
 }
 
 interface Sample {
@@ -61,7 +63,7 @@ function arcs(pts: readonly XZ[]): Float64Array {
 }
 
 export function placeSeamarks(input: SeamarkInput, rng: Rng): FixtureData[] {
-  const { h, sdf, islands, islets, docks, routes, windDir } = input;
+  const { h, sdf, islands, islets, docks, routes, windDir, reserved = [] } = input;
   const out: FixtureData[] = [];
   const pierEnds: XZ[] = docks.map((d) => {
     const L = d.segments * DOCK.segment;
@@ -105,6 +107,7 @@ export function placeSeamarks(input: SeamarkInput, rng: Rng): FixtureData[] {
       w.shore >= B.minShore &&
       dockClear(p, B.dockClear) &&
       isletClear(p, B.isletClear) &&
+      reserved.every((c) => dist(p, c) >= c.r) &&
       routeDist(p, ri, arc, B.spacing * 0.6) >= B.routeClear
     );
   };
@@ -155,6 +158,7 @@ export function placeSeamarks(input: SeamarkInput, rng: Rng): FixtureData[] {
       w.shore >= 3 &&
       dockClear(p, S.dockClear) &&
       isletClear(p, S.isletClear) &&
+      reserved.every((c) => dist(p, c) >= c.r) &&
       routeDist(p, -1, 0, 0) >= S.routeClear &&
       buoys.every((b) => dist(p, b) >= S.buoyClear) &&
       rings.every((g) => Math.abs(distC(p, g.isl) - g.r) >= S.ringClear) &&
