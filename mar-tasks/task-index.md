@@ -350,7 +350,7 @@ Details in `phases/phase-3.md`.
 | TASK-504 | DevOps M25 props: `funicularRail` + `funicularCar`, ore cableway (mailLine reuse), summit bell + red beam variant, `geyserCone`, onsen house + smiths' lane variants; hooks for movers | props | M | COMPLETED 45eac0d | — |
 | TASK-505 | HQ yacht marina (comb piers, 15–20 moored boats, breakwater, H11 buoys, mast lights) + cove-mouth star fort with H18 lights; placed; Marina Dusk preset | props + worldgen | L | COMPLETED abeb108 | — |
 | TASK-506 | QA customs port props: Q8 scanner arch, QA cargo ship, quay crane, inspection line + ✓/✗ lamps, Q9 quarantine pontoon (variants of DevOps cargo kit) | props | M | COMPLETED c96fe0c | — |
-| TASK-507 | DevOps M25 placement + motion: funicular line + 2 cars, ore buckets, bell 06:00 + beam, smiths' lane, onsen town, geyser bursts 17:30; Funicular Dawn / Ember Lane Night presets | worldgen + life | L | TODO | TASK-503, TASK-504 |
+| TASK-507 | DevOps M25 placement + motion: funicular line + 2 cars, ore buckets, bell 06:00 + beam, smiths' lane, onsen town, geyser bursts 17:30; Funicular Dawn / Ember Lane Night presets | worldgen + life | L | COMPLETED (D-089) | TASK-503, TASK-504 |
 | TASK-508 | QA customs port placement + motion: ship route under the arch, crane unload, inspection ✓/✗, rejects to pontoons; Customs Noon preset | worldgen + life | L | TODO | TASK-501, TASK-506 |
 | TASK-509 | M26 DevOps II: lava river (ground emissive), lava fall + steam delta, ember bridge, crater deck, lava-glass kiln, obsidian beach, breakwater + tug | shader + props + worldgen | L | TODO | TASK-507 |
 | TASK-510 | Shots + QA for M25 / M29 / M30: wow presets, ladder low + medium `--assert`, QA report | qa | S | TODO | TASK-505, TASK-507, TASK-508 |

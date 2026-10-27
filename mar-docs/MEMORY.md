@@ -10,6 +10,31 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-27 (TASK-507, M25 DevOps I placed + moving; D-089)**: `world/gen/plans/devops-m25.ts` (after
+  `reserveGrowth`; `finish` runs before the road lanterns), `world/funicular.ts` (grade line, earthworks, `carPose`),
+  `render/devops-lines.ts` (cars + buckets, via `createMovers().lines`), scenes in `render/culture-movers.ts`
+  (`smithScene`, `geyserScene`, `switchbackScene`), numbers `content/themes/devops-m25-site.ts`. Shots:
+  `pnpm shots dev --only=D-devops-m25-east,D-devops-funicular,D-devops-funicular-turn,D-devops-smiths-night,D-devops-smiths-close,D-devops-onsen-town,D-devops-geysers`,
+  wow `W-funicular-dawn`, `W-ember-lane-night`.
+  - **Numbers** (30 test seeds): two funicular sections 28/30 (1000: lower only, its top station has no rail;
+    6523: none), cableway 25/30, lane ≥ 3 stalls 30/30, onsen town 29/30, ≥ 4 geysers 27/30. Wow `--assert` green:
+    W16 272 calls / 161 MB, W-funicular-dawn 273 calls / 786 k tris (close to 300 / 800 k: keep its cam high),
+    W-ember-lane-night 114 calls, memory peak W4 166 MB (was 163). Ladder L-devops low 65 / medium 138 calls, pass.
+  - **For TASK-509 (M26):** the lava / crater / obsidian / breakwater anchors are untouched. The funicular owns
+    `world.fences` kind `'funicular'` (points + `levels`; read with `railFromLevels`, never re-level from the ground)
+    and has cut / filled the cone along its legs (± 3.9 u) in `plan.finish`: anything M26 places on the cone after
+    the pads should run its own earthworks the same way (`groundWriter` rules) or stay off the rail strips (the
+    candidate strips are reserved shapes). The heightfield grid is 2 u: an earthwork narrower than ~3 u round a
+    point does not flatten what bilinear sampling sees there. The ember bridge / lava channel never cross it (the heading keeps off).
+  - **For TASK-510 (QA):** seed 1001 lower car turns at its first switchback at sim 5 s (`car.phase` 0.125 is tuned
+    for that); geysers all erupt 17:30–17:30:12 (`shiftEnd` now has `seconds: 12`); hammers 1.1 Hz on hashed phases.
+    Re-aimed: `D-story-containerNap`, `D-culture-devops-onsen`, `D-critter-capybara-onsen`.
+  - **Gotchas:** pads cut walls at the stations and the cone is steeper (0.5–1.0) than the rail (0.6): never level
+    the rail from the raw ground — plan it in `finish` and carve. Earthworks skip other pad cores and cells within
+    1.2 u of other obstacles (the ingot rows, the foundry rail). A lane pad on another level than
+    the foundry rail bends the rail end (falloff 4 u): `placeSmiths` checks `clash` first. `mailLinePairs` must skip
+    v2 / v3 or the ore pylons pair up as HQ mail lines. Duplicate keys in an `as const` content object silently win
+    (a `keep` collision made the beam width 1).
 - **2026-10-27 (M29 TASK-505, HQ yacht marina + star fort; D-085)**: `world/gen/marina.ts` (post-route stage,
   `world.marina`, `hashes.marina`) + defs `marinaPier` / `starFort` + sailboat v6–v8 (`geo/themes/hq-marina.ts`,
   numbers `content/themes/hq-marina.ts`). Shots: `pnpm shots dev --only=D-marina-top,D-marina-t1,D-marina-fort,D-marina-dusk,D-marina-top-night`,

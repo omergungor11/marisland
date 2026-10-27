@@ -2,6 +2,46 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-089: DevOps M25 placed and moving — a graded funicular with earthworks, ore buckets on the mail cable mesh, trip hammers, geysers at the shift end (TASK-507; builds D-080 B + D7 + D9 + D14 on D-083 / D-084) — 2026-10-27
+
+**Decision**: (1) **Stage.** `world/gen/plans/devops-m25.ts` runs right after `reserveGrowth` (before the Ember Smiths
+kit, lodges, village and M22 quick wins, which then keep off it) and puts the TASK-504 kit on the TASK-503 anchors;
+numbers in `content/themes/devops-m25-site.ts` (`DEVOPS_M25_SITE`, `DEVOPS_M25_MOTION`). (2) **D4 funicular as a
+graded mountain railway.** The cone is 0.5–1.0 steep and `funicularRail` climbs at most 0.6, so each section (foot →
+mid, mid → top) is a zig-zag of straight legs (1–7 legs, one- or two-sided swing) cut into whole 3 u pieces (per-leg
+scale 0.75–1.5). Candidates are scored before the pads and their strips reserved; `plan.finish` (after pads and
+paths) picks per section the one with the least earthwork on the final ground, runs a beam search for the rises
+(`world/funicular.ts planRail`: 0 / ±1 / ±2 pitch steps, foot stub → top stub) and **cuts / fills the ground** to
+the grade line (`railEarthworks`, core 1.3 u + 2.6 u blend, never into another pad core or within 1.2 u of another
+obstacle). The joint levels are stored on the polyline (`Polyline.levels`, hashed), `world.fences` kind
+`'funicular'`; settlement-props lays the pieces from them and the cars run on them (`railFromLevels`), so render,
+movers and tests read one rail. A mid anchor that splits the climb badly (share outside 0.3–0.72 or < 10 u from the
+top, e.g. seed 1001) is re-sited on the foot → top line at half height. Stations: rackShed v2 fixtures (pad margin
+0.4), the mid one passed through (front down the line, rail leaves behind it). A lava lantern by every zig-zag
+vertex, outside the car's pivot sweep, where the ground is gentle enough for a post (≈ 60 % of the vertices; the
+2 u grid cannot hold a level stand that close to the rail's earthworks). (3) **Cars.** One car per section (lower orange, upper teal),
+closed form (`carPose`): dwell 6 s, a 30 s one-way trip with each leg eased by length and a 2.4 s pivot at every
+vertex (the car turns on the switchback), counter-moving (lower starts at the foot, upper at the top, both meet at
+the mid station); one instanced mesh per livery on the movers' lit program (`render/devops-lines.ts`). Vertex
+lanterns flare (culture-mover glow) as a car passes at night / dawn. (4) **D13 ore cableway.** mailLine v3 at the
+quarry edge and on `cablewayTo`, v2 pylons ≤ 15 u apart, nudged along the line round obstacles, every span keeping
+the bucket bottoms ≥ 0.9 u over the ground. `mailLinePairs` now skips v2 / v3; `oreLines` chains them and their spans
+join the HQ mail-cable mesh (0 calls). 4 loaded buckets per line ride the sag quarry → furnace, tip into the hopper,
+shrink away and grow back at the quarry (one instanced mesh, no shadow). (5) **D14.** goodsStall v7 rows facing across
+`smithsLane` (pitch 2.3); one strip pad unless its falloff would reach a pad core > 0.8 u off its level (the foundry
+rail), then per-stall pads under the same rule, else level ground only. A trip hammer (culture-mover parts) strikes
+the workpiece at 1.1 Hz on a hashed phase per stall with a flash and 3 sparks (D15) per strike. (6) **D9.** onsenHouse
+v1 / v2 along the `onsenTown` bank facing the pool, a new story kind `onsenTown` with 3 dozing capybaras
+(SPOT_CRITTERS, no tableau bot). (7) **D7.** 3–6 geyserCone on a hashed scatter of `geyserField` (≥ 3.6 u apart, disc
+pads); each erupts on its own hashed 18–30 s timer (6-blob, 6 u water column + 8 soft puffs downwind); the rhythm
+slot `shiftEnd` (17:30) got `seconds: 12`, during which every cone erupts together. (8) **D5** was already built
+(M22: antennaMast v2 bell at the 06:00 shift siren, red beam at night); TASK-504's beam head only needed the lot.
+**Rationale**: earthworks are how real mountain railways climb; keeping the levels in the world data means one rail
+for props, movers and tests. Reusing the mail-cable mesh and culture-mover parts keeps the kit at 0 new programs.
+**Alternatives not taken**: a straight rail on the station heading (buries / floats on every seed), levelling at
+render time from the ground (pads cut walls by the stations), a passing loop on one section (branching rail).
+**Numbers**: see the TASK-507 note in `mar-docs/MEMORY.md`.
+
 ## D-086: QA Customs Port kit — three defs at the end of PROP_DEFS, QA cap 12 -> 15, ship and crane rig as loose builders (D-082) — 2026-10-27
 
 **Decision** (TASK-506, no placement): (1) **Defs** (all tier 2, planner-pinned, ledger entries 13-15; `cultureCapOverride.qa`
