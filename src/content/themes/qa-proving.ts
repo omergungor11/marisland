@@ -138,3 +138,69 @@ export const QA_PROVING_PLAN = {
   courseStarts: [-0.7, -0.4, -1, 0, 0.3] as const,
   courseAlong: [0, 0.5, -0.5, 0.85, -0.85, 0.25, -0.25] as const,
 } as const;
+
+/**
+ * Proving Grounds motion (M24 TASK-501; render/culture-movers.ts + render/movers.ts). Every pose is a
+ * closed-form function of the sim time, so a capture replays it. Lengths in u, times in s.
+ */
+export const QA_PROVING_MOTION = {
+  /**
+   * Drop tower crate (cycle `period`, phase offset `phase`): rests on the pad, rises over `lift` s
+   * (eased), hangs `hang` s (a hair of sway), falls (free fall to the pad with `g`), then squashes on
+   * landing for `squash` s; the ✓ lamp glows for `lamp` s after the landing. The cycle starts with
+   * `rest` s on the pad. Reduced motion lengthens the lift and the fall (up to `slowMax` x) and
+   * softens the squash.
+   */
+  drop: {
+    period: 20,
+    phase: 0,
+    rest: 3.5,
+    lift: 6,
+    hang: 1.8,
+    g: 11,
+    squash: 0.7,
+    squashDepth: 0.3,
+    lamp: 4,
+    lampR: 0.5,
+    lampColor: '#7CFFB0',
+    dust: { rings: 2, r0: 0.6, r1: 2.2, life: 0.9, color: '#FFF4E0' },
+    slowMax: 2.5,
+  },
+  /**
+   * Figure-8 crash track (testTrack variant 1): lemniscate lobes along z (half extents of the
+   * centreline), strand A on the ground, strand B over a ramp that launches the cart in a parabola
+   * over the crossing. Ramp slope, ramp length, foot blend and flight length run along the plan arc.
+   */
+  crash: {
+    halfZ: 7.3,
+    halfX: 3.2,
+    slope: 0.55,
+    ramp: 2.2,
+    foot: 0.7,
+    flight: 3.4,
+    /** Cart speed on the flat (u/s), slow-down k in speed = v sqrt(1 - k y), wait at the gate. */
+    speed: 3.2,
+    slow: 0.22,
+    dwell: 1.5,
+    /** Cart landing squash (s, depth) and the dummy's hop / spring (height, Hz, decay s). */
+    squash: 0.5,
+    squashDepth: 0.22,
+    hop: 0.28,
+    springHz: 2.3,
+    springTau: 0.55,
+  },
+  /** The crash dummy riding the cart (cart-local, before the cart scale). */
+  dummy: {
+    seatY: 0.78,
+    lean: 0.55,
+    pitch: 0.4,
+    idle: 0.06,
+    idleHz: 0.55,
+    color: P.yellow,
+  },
+  /**
+   * Test fan at the siren test: the blades turn `revs` extra turns (a smooth speed bump, `ramp` s up
+   * and down inside the ritual's seconds), so they speed up and settle back with no jump.
+   */
+  fan: { revs: 4, ramp: 2 },
+} as const;

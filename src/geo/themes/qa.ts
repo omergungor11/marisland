@@ -348,6 +348,15 @@ export const QA_GEO: readonly PropGeoDef[] = [
     lod1Of: { 1: 0 },
   },
   { id: 'conveyor', variants: 1, build: conveyor, footprint: 1.0, height: 2.8, windy: false },
-  { id: 'testTrack', variants: 1, build: testTrack, footprint: 7, height: 3.6, windy: false },
+  // variant 1 = the figure-8 crash track (M24 TASK-501), pinned on the stunt yard by the QA plan
+  {
+    id: 'testTrack',
+    variants: 2,
+    build: testTrack,
+    footprint: 7,
+    height: 3.6,
+    heights: [3.6, 2.4],
+    windy: false,
+  },
   { id: 'qaTower', variants: 1, build: qaTower, footprint: 3, height: 20, windy: false },
 ];
