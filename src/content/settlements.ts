@@ -207,6 +207,8 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   pagerRock: 0.6,
   onsenDeck: 0.8,
   onsenHouse: 2,
+  // M25 (TASK-507, D7): the sinter mound of a geyser
+  geyserCone: 1.4,
   // Marketing
   billboardV2: 2.6,
   stage: 3.2,

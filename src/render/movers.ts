@@ -17,6 +17,7 @@ import { crashPath, landingSquash } from '../geo/themes/qa-crash.ts';
 import { SHARED } from './uniforms.ts';
 import { makeDepthMaterial, makeLitMaterial } from './materials/factory.ts';
 import { pierLoop, shipPose, trainAt, type Loop } from './harbour-routes.ts';
+import { createDevopsLines, type DevopsLinesView } from './devops-lines.ts';
 
 /**
  * Closed-form movers of the QA Test Factory (M17b TASK-401): one crate per conveyor segment riding
@@ -40,6 +41,8 @@ export interface MoversView {
   ships: THREE.InstancedMesh | null;
   /** Ferris wheel rotors; null when the world has no ferris wheel. */
   wheels: THREE.InstancedMesh | null;
+  /** DevOps M25 funicular cars + ore buckets (TASK-507, render/devops-lines.ts); null without a world. */
+  lines: DevopsLinesView | null;
   update(time: number, camPos: THREE.Vector3): void;
 }
 
@@ -187,15 +190,18 @@ export function createMovers(
   const rails = world ? railsOf(world, store) : [];
   const cars = DEVOPS_MOVERS.train.cars;
   const ships = world ? createShips(world, quality, scope) : null;
+  const lines = world ? createDevopsLines(world, store, quality, scope) : null;
   const n = belts.length + tracks.length + rails.length * cars;
   if (n === 0)
     return {
       mesh: null,
       wheels: wheels.mesh,
       ships: ships?.mesh ?? null,
+      lines,
       update: (t, c) => {
         wheels.update(t);
         ships?.update(t, c);
+        lines?.update(t, c);
       },
     };
   const features = { instanced: true, dither: true, emissive: true, rim: true };
@@ -230,6 +236,7 @@ export function createMovers(
   const update = (time: number, camPos: THREE.Vector3): void => {
     wheels.update(time);
     ships?.update(time, camPos);
+    lines?.update(time, camPos);
     const far = QA_MOVERS.fadeFar + 20;
     mesh.visible = centres.some((c) => c.distanceToSquared(camPos) < far * far);
     if (!mesh.visible) return;
@@ -271,7 +278,7 @@ export function createMovers(
   update(0, centres[0]);
   mesh.computeBoundingSphere();
   if (mesh.boundingSphere) mesh.boundingSphere.radius += 8;
-  return { mesh, wheels: wheels.mesh, ships: ships?.mesh ?? null, update };
+  return { mesh, wheels: wheels.mesh, ships: ships?.mesh ?? null, lines, update };
 }
 
 /** Cargo ships (TASK-405): `perDock` per DevOps pier whose loop lies in water. */

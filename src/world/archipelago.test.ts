@@ -102,9 +102,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "add85bf89fbfe16c",
-          "1001": "a39b72e69ec3fe3f",
-          "42": "905e55e1077b3cfc",
+          "1": "2afe2f8f1c5f6654",
+          "1001": "d1ed6dc3975a307f",
+          "42": "39a1743f45346858",
         }
       `);
     },
@@ -573,9 +573,10 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // TASK-497 Coding Kite Hill (profile lift, hill kites, tunnel pad, fallbacks), re-pinned;
       // TASK-503 Emberpeak apron ring + growth anchors, re-pinned;
       // TASK-508 QA customs port (quay, arch, pontoons, dredged ship lane), re-pinned;
-      // TASK-498 Coding wind tunnel + fan fixtures, re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('47b32f6a6165dba2');
-      expect(generateWorld(1).hashes.world).toBe('005a991c73cb50d0');
+      // TASK-498 Coding wind tunnel + fan fixtures, re-pinned;
+      // TASK-507 DevOps M25 placement (funicular + earthworks, cableway, lane, onsen town, geysers), re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('1953c181e118273c');
+      expect(generateWorld(1).hashes.world).toBe('a257c9da95566c8d');
     } finally {
       for (const b of saved) b.on = true;
     }

@@ -278,6 +278,8 @@ export interface Polyline {
   stops?: number[];
   /** Ferry routes (M19 TASK-420): seconds the boat rests at each stop. */
   dwell?: number;
+  /** Funicular sections (TASK-507): rail-top height at every piece joint (world/funicular.ts). */
+  levels?: number[];
 }
 
 export interface PathGraph {

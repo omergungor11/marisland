@@ -207,6 +207,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   if (movers.mesh) group.add(movers.mesh);
   if (movers.wheels) group.add(movers.wheels);
   if (movers.ships) group.add(movers.ships);
+  if (movers.lines) group.add(movers.lines.group);
   const cultureMovers = createCultureMovers(settlement.props, world, d.scope);
   group.add(cultureMovers.group);
   const whale = createWhale(world, seed, d.scope);

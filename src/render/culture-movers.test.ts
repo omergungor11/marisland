@@ -14,6 +14,8 @@ import { appendSettlementProps } from './props/settlement-props.ts';
 import { createCultureMovers, type CultureMoversView } from './culture-movers.ts';
 import { PART, buildPartGeometries, buildPartsGeometry } from './culture-mover-parts.ts';
 import { SHARED } from './uniforms.ts';
+import { DEVOPS_M25 } from '../content/themes/devops-m25.ts';
+import { DEVOPS_M25_MOTION } from '../content/themes/devops-m25-site.ts';
 
 /** Prop store position of the first instance of def `id` (null when the seed has none). */
 function firstOf(
@@ -243,7 +245,9 @@ describe('culture movers', () => {
       ).length;
     // steam = soft puffs on the puff program (TASK-486), not lit blobs
     const L = M.launch;
-    expect(placed.length).toBe(L.puffs * 2);
+    // + the M25 geysers' steam (TASK-507)
+    const geysers = world.fixtures.filter((f) => f.defId === 'geyserCone').length;
+    expect(placed.length).toBe(L.puffs * 2 + geysers * DEVOPS_M25_MOTION.geyser.puffs);
     const steam = (): number[][] =>
       placed.filter((p) => p[3] > 0 && Math.hypot(p[0] - pad!.x, p[2] - pad!.z) < 6);
     view.update(3, 12, env(12), gp, fest());
@@ -365,15 +369,20 @@ describe('culture movers', () => {
       if (props.defId[i] === gateDef && props.islandId[i] === hq)
         orders.push(CULTURES[THEME_IDS[props.variant[i] % THEME_IDS.length]].relay.order);
     expect(orders.length).toBeGreaterThanOrEqual(4);
+    // the DevOps M25 trip hammers and switchback lamps (TASK-507) glow below Emberpeak's peak
+    const ember = world.islands.find((i) => i.theme === 'devops')!;
+    const m25 = (m: THREE.Matrix4): boolean =>
+      Math.hypot(m.elements[12] - ember.cx, m.elements[14] - ember.cz) < ember.reach &&
+      m.elements[13] < ember.peakY;
     const glows = (simt: number): number => {
       view.update(3, 21, env(21), tower, relay(simt));
-      return ofKind(view, PART.glow).length;
+      return ofKind(view, PART.glow).filter((m) => !m25(m)).length;
     };
     // every gate's two finial lamps glow all night (TASK-478 rest glow) and so does the signal lamp
     // of each of the seven islands (TASK-490 W:B6); none by day
     const rest = 2 * orders.length + THEME_IDS.length;
     view.update(3, 12, env(12), tower, relay(-5));
-    expect(ofKind(view, PART.glow)).toHaveLength(0);
+    expect(ofKind(view, PART.glow).filter((m) => !m25(m))).toHaveLength(0);
     // +3 = the semaphore lamp and its two arm tips (lit through the relay)
     expect(glows(-5)).toBe(rest);
     let prev = 0;
@@ -392,9 +401,14 @@ describe('culture movers', () => {
     const tower = firstOf(world, props, 'semaphoreTower')!;
     const lamps = SHARED.uLamps.value.z;
     SHARED.uLamps.value.z = 1;
+    // the DevOps M25 trip hammers and switchback lamps (TASK-507) glow below Emberpeak's peak
+    const ember = world.islands.find((i) => i.theme === 'devops')!;
+    const m25 = (m: THREE.Matrix4): boolean =>
+      Math.hypot(m.elements[12] - ember.cx, m.elements[14] - ember.cz) < ember.reach &&
+      m.elements[13] < ember.peakY;
     const glows = (simt: number): number => {
       view.update(3, 21, env(21), tower, relay(simt));
-      return ofKind(view, PART.glow).length;
+      return ofKind(view, PART.glow).filter((m) => !m25(m)).length;
     };
     const signalBeams = (): THREE.Mesh[] =>
       view.group.children.filter(
@@ -428,8 +442,10 @@ describe('culture movers', () => {
   it('stall keepers: one per goods stall, awake from 06:30, closed form', () => {
     const stall = firstOf(world, props, 'goodsStall')!;
     const stallDef = PROP_DEFS.findIndex((d) => d.id === 'goodsStall');
+    // the M25 smiths' stalls (v7) run a trip hammer instead of a keeper (TASK-507)
     let stalls = 0;
-    for (let i = 0; i < props.count; i++) if (props.defId[i] === stallDef) stalls++;
+    for (let i = 0; i < props.count; i++)
+      if (props.defId[i] === stallDef && props.variant[i] !== DEVOPS_M25.smith.variant) stalls++;
     expect(stalls).toBeGreaterThanOrEqual(4);
     view.update(3, 4, env(4), stall, fest());
     expect(ofKind(view, PART.keeper)).toHaveLength(0);
@@ -446,5 +462,64 @@ describe('culture movers', () => {
     view.update(3, 21, env(21), stall, relay(31));
     expect(snapshot(view).every(Number.isFinite)).toBe(true);
     SHARED.uMotionScale.value = 1;
+  });
+  it('M25 (TASK-507): trip hammers at 1.1 Hz, geysers together at the shift end, switchback lamps', () => {
+    const H = DEVOPS_M25_MOTION.hammer;
+    const near = (kind: number, p: { x: number; z: number }, r: number): THREE.Matrix4[] =>
+      ofKind(view, kind).filter((m) => Math.hypot(m.elements[12] - p.x, m.elements[14] - p.z) < r);
+    const stall = world.fixtures.find(
+      (f) => f.defId === 'goodsStall' && f.variant === DEVOPS_M25.smith.variant,
+    )!;
+    expect(stall).toBeDefined();
+    const at = new THREE.Vector3(stall.x, 10, stall.z);
+    // the anvil in world xz (stall frame: local +x = (sin rotY, -cos rotY), +z = (cos, sin))
+    const [ax, , az] = H.anvil;
+    const anvil = {
+      x: stall.x + ax * Math.sin(stall.rotY) + az * Math.cos(stall.rotY),
+      z: stall.z - ax * Math.cos(stall.rotY) + az * Math.sin(stall.rotY),
+    };
+    // the anvil block + the hammer head: the head is the higher one
+    const head = (t: number): number => {
+      view.update(t, 12, env(12), at, fest());
+      const ys = near(PART.blob, anvil, 0.9).map((m) => m.elements[13]);
+      expect(ys).toHaveLength(2);
+      return Math.max(...ys);
+    };
+    const a = head(3);
+    expect(head(3 + H.period)).toBeCloseTo(a, 3);
+    expect(head(3 + H.period * 0.4)).not.toBeCloseTo(a, 3);
+    // one strike flash (a second glow on the anvil, past the workpiece) per stroke
+    let flashes = 0;
+    for (let t = 3; t < 3 + H.period; t += 0.02) {
+      view.update(t, 12, env(12), at, fest());
+      if (near(PART.glow, anvil, 0.9).length > 1) flashes++;
+    }
+    expect(flashes).toBeGreaterThan(0);
+    expect(flashes).toBeLessThan(H.period / 0.02 / 2);
+    // every geyser cone throws its column during the 17:30 shift end
+    const cones = world.fixtures.filter((f) => f.defId === 'geyserCone');
+    expect(cones.length).toBeGreaterThanOrEqual(4);
+    view.update(
+      3,
+      17.5,
+      env(17.5),
+      new THREE.Vector3(cones[0].x, 10, cones[0].z),
+      fest('devops', 'shiftEnd', 0.15),
+    );
+    for (const c of cones) expect(near(PART.blob, c, 1.2).length).toBeGreaterThan(0);
+    // the lower car turns at its first switchback at 5 s: its lantern flares at night only
+    const sec = world.fences.find((f) => f.kind === 'funicular')!;
+    const v = sec.points[1];
+    const lamp = world.fixtures
+      .filter((f) => f.defId === 'lavaLantern')
+      .reduce((a, b) =>
+        Math.hypot(b.x - v.x, b.z - v.z) < Math.hypot(a.x - v.x, a.z - v.z) ? b : a,
+      );
+    expect(Math.hypot(lamp.x - v.x, lamp.z - v.z)).toBeLessThan(5);
+    const cam = new THREE.Vector3(v.x, 15, v.z);
+    view.update(5, 22, env(22), cam, fest());
+    expect(near(PART.glow, lamp, 0.5).length).toBeGreaterThan(0);
+    view.update(5, 12, env(12), cam, fest());
+    expect(near(PART.glow, lamp, 0.5).length).toBe(0);
   });
 });

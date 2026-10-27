@@ -62,6 +62,7 @@ import type { ThemePlanner } from './types.ts';
 import { placeColumns, placeFumaroles, placeRoadLanterns, switchbackLinks } from './devops-m22.ts';
 import { leewardness } from '../heightfield.ts';
 import { reserveGrowth, reserveLava } from './devops-growth.ts';
+import { placeM25 } from './devops-m25.ts';
 import {
   district,
   paintZone,
@@ -158,6 +159,9 @@ export const planDevops: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   const furnaces = placeFoundry(ctx, isl, plan, rng.fork('foundry'));
   // TASK-503: the M25/M26 growth sites, before the kit, lodges and quick wins keep off them
   reserveGrowth(ctx, isl, centre, lava);
+  // TASK-507 (D-089): the M25 kit on those sites (funicular, cableway, smiths' lane, onsen town,
+  // geysers), before the kit and the quick wins keep off it
+  const m25 = placeM25(ctx, isl, plan, rng.fork('m25'), stories);
   // TASK-422: the Ember Smiths kit on the harbour, foundry and terraces (before the infill lodges)
   placeCulture(
     ctx,
@@ -201,7 +205,11 @@ export const planDevops: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   placeColumns(ctx, isl, rng.fork('columns'), (p) => leewardness(isl, ctx.windDir, p.x, p.z));
   if (masts.length > 0)
     plan.links.unshift(...switchbackLinks(ctx, isl, centre, doorOf(ctx.lots[masts[0]]), hub));
-  plan.finish = (paths) => void placeRoadLanterns(ctx, isl, paths);
+  plan.finish = (paths) => {
+    // the funicular earthworks first: the road lanterns stand on the final ground
+    m25.finish();
+    placeRoadLanterns(ctx, isl, paths);
+  };
   return plan;
 };
 

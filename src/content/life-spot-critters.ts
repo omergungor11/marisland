@@ -86,6 +86,12 @@ export const SPOT_CRITTERS: Readonly<Record<string, readonly SpotCritter[]>> = {
   ],
   // DevOps
   onsenCapybara: [c('capybara', 'doze', 1.7, '#B07A4C', { y: 'spot', dx: -0.25 })],
+  // TASK-507 (D9): a capybara family dozing on the onsen town bank (spot +z = toward the pool)
+  onsenTown: [
+    c('capybara', 'doze', 1.8, '#B07A4C', { dx: -1.1, dz: 0.2, turn: 0.4 }),
+    c('capybara', 'doze', 1.5, '#C28A5A', { dx: 0.4, dz: 0.6, turn: -0.3 }),
+    c('capybara', 'doze', 1.1, '#A56E42', { dx: 1.5, dz: -0.1, turn: 0.9 }),
+  ],
   craneCat: [c('cat', 'sit', 1.3, '#4A4654', { y: 'spot' })],
   pagerCrab: [c('crab', 'orbit', 1.3, '#FFFFFF', { reach: 1.2, period: 22 })],
   // Marketing

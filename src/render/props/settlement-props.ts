@@ -16,6 +16,7 @@ import { heightAt, type DistrictKind, type WorldData } from '../../world/types.t
 import { lotLocalToWorld, lotPivotY, lotYaw } from '../../world/lot-frame.ts';
 import { chunkIdAt } from '../../world/gen/scatter.ts';
 import { elbowTurn, levelPipeRun, type PipeSpan } from '../../world/pipe-run.ts';
+import { railFromLevels } from '../../world/funicular.ts';
 
 /**
  * Settlement geometry as prop instances: lots, landmarks, dock segments, fence
@@ -305,6 +306,13 @@ export function appendSettlementProps(world: WorldData): {
   // (TASK-461) are levelled as a whole by world/pipe-run.ts: pitched pieces up and down the
   // slope, joints continuous, risers (knuckle + riser segments + knuckle) where it is too steep
   for (const f of world.fences) {
+    // TASK-507 (D4): a funicular section from its stored joint levels (world/funicular.ts; the
+    // cars of render/movers.ts ride the same rail)
+    if (f.kind === 'funicular') {
+      for (const p of railFromLevels(f.points, f.levels ?? [])?.pieces ?? [])
+        push('funicularRail', p.x, p.z, p.yaw, p.scale, f.islandId, p.y, p.variant);
+      continue;
+    }
     const seg = LINE_SEGMENT[f.kind] ?? LINE_SEGMENT.fence;
     const pts = f.points;
     const n = f.closed ? pts.length : pts.length - 1;

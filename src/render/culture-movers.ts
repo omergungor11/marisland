@@ -35,6 +35,10 @@ import { crashPath, dummyPose, landingSquash, type DummyPose } from '../geo/them
 import { dropState, type DropState } from './qa-proving-motion.ts';
 import { portLayout, type PortLayout } from '../world/gen/customs-port.ts';
 import { ITEM, MAX_ITEMS, customsFrame, newCustomsFrame } from './qa-customs-motion.ts';
+import { DEVOPS_M25 } from '../content/themes/devops-m25.ts';
+import { DEVOPS_M25_MOTION, DEVOPS_M25_SITE } from '../content/themes/devops-m25-site.ts';
+import { carPose, newCarPose, type RailLine } from '../world/funicular.ts';
+import { funicularRails } from './devops-lines.ts';
 
 /**
  * Culture movers (M19 TASK-431): closed-form scenes that make each island culture visibly alive.
@@ -1128,6 +1132,149 @@ function patchScene(
   };
 }
 
+/* --------------------------- DevOps M25 (TASK-507, D-089) --------------------------- */
+
+/** Hashed 0..1 phase of a prop at world (x, z) (the hammer and its sparks share it). */
+const DEVOPS_M25_SITE_LANTERN = Math.max(...DEVOPS_M25_SITE.funicular.lantern);
+const phaseAt = (x: number, z: number, salt: number): number =>
+  hashInts(Math.round(x * 8), Math.round(z * 8), salt) / 4294967296;
+
+/**
+ * D14 smiths' lane (goodsStall v7): a trip hammer behind the anvil block lifts slowly and drops
+ * onto the glowing workpiece at 1.1 Hz, every stall on its own hashed phase; each strike flashes
+ * and throws three ember sparks (D15). Stall frame (+z = the counter front). Reduced motion holds
+ * the hammer raised a little and drops the sparks.
+ */
+function smithScene(phase: number): Scene['run'] {
+  const H = DEVOPS_M25_MOTION.hammer;
+  const [ax, ay, az] = H.anvil;
+  const hinge: V3 = [ax, H.hinge[1], H.hinge[2]];
+  // the head rests on the anvil top at angle `rest` below the horizontal
+  const dy = hinge[1] - (ay + H.head[1]);
+  const dz = az - hinge[2];
+  const arm = Math.hypot(dy, dz);
+  const rest = Math.atan2(dy, dz);
+  const post: V3 = [ax, 0, hinge[2]];
+  return (w, c) => {
+    const u = frac(c.time / H.period + phase);
+    // slow lift to the top, a quick fall, the strike at u = 0.8, a beat of rest
+    const lift = u < 0.6 ? smooth(u / 0.6) : u < 0.8 ? 1 - ((u - 0.6) / 0.2) ** 2 : 0;
+    const th = rest - H.lift * (c.motion > 0.01 ? lift : 0.35);
+    const head: V3 = [ax, hinge[1] - Math.sin(th) * arm, hinge[2] + Math.cos(th) * arm];
+    // the block anvil out front with its glowing workpiece, the hammer on its post
+    w.put(PART.blob, [ax, ay * 0.5, az], [0, 0, 0], [H.block[0], ay * 0.5, H.block[1]], H.iron);
+    w.put(PART.glow, [ax, ay + 0.03, az], [0, 0, 0], H.work, H.flash.color);
+    cable(w, post, hinge, H.iron);
+    cable(w, hinge, head, H.handle);
+    w.put(PART.blob, head, [-th, 0, 0], H.head, H.iron);
+    if (c.motion <= 0.01) return;
+    const since = ((u - 0.8 + 1) % 1) * H.period;
+    if (since < H.flash.life) {
+      const f = 1 - since / H.flash.life;
+      w.put(
+        PART.glow,
+        [ax, ay + 0.1, az],
+        [0, 0, 0],
+        H.flash.r[0] + (H.flash.r[1] - H.flash.r[0]) * f,
+        H.flash.color,
+      );
+    }
+    const P = H.sparks;
+    if (since < P.life)
+      for (let k = 0; k < P.n; k++) {
+        const f = since / P.life;
+        const a = (k / P.n - 0.5) * 2.2 + (rnd(k, Math.floor(c.time / H.period), 77) - 0.5) * 0.5;
+        const sx = Math.sin(a) * P.spread * f;
+        const sz = Math.cos(a) * P.spread * f * 0.8;
+        const sy = P.rise * f * (1.6 - f) * 1.3;
+        w.put(
+          PART.glow,
+          [ax + sx, ay + 0.08 + sy, az + sz],
+          [0, 0, 0],
+          P.size * (1 - f * 0.6),
+          P.color,
+        );
+      }
+  };
+}
+
+/**
+ * D7 geyser (geyserCone): on its own hashed timer the vent throws a `column` u water column
+ * (stacked water blobs swelling up and falling back) with a burst of steam puffs drifting
+ * downwind; at the 17:30 shift end (`ritual`) every cone erupts together. Cone frame.
+ */
+function geyserScene(phase: number, salt: number): Scene['run'] {
+  const G = DEVOPS_M25_MOTION.geyser;
+  const top = DEVOPS_M25.geyser.height;
+  const period = G.period[0] + (G.period[1] - G.period[0]) * phase;
+  return (w, c, s) => {
+    const e =
+      c.fest?.id === G.ritual
+        ? c.fest.phase * G.ritualSeconds
+        : frac(c.time / period + rnd(salt, 3, 91)) * period;
+    if (e > G.erupt + G.puffLife) return;
+    // column height: up in 0.5 s, held with a flicker, down over the last 1.2 s of the eruption
+    const up = smooth(e / 0.5);
+    const down = smooth((G.erupt - e) / 1.2);
+    const m = 0.6 + 0.4 * c.motion;
+    const H = G.column * up * down * m * (1 + 0.06 * c.motion * Math.sin(c.time * 17 + salt));
+    if (H > 0.05)
+      for (let k = 0; k < G.blobs; k++) {
+        const f = (k + 0.5) / G.blobs;
+        const r = G.width * (1.1 - 0.5 * f) * (0.85 + 0.15 * Math.sin(c.time * 11 + k * 1.7));
+        w.put(PART.blob, [0, top + H * f, 0], [0, 0, 0], [r, (H / G.blobs) * 0.95, r], G.color);
+      }
+    // steam: puffs leave the column top and drift downwind as they swell and thin
+    for (let k = 0; k < G.puffs; k++) {
+      const t0 = (k / G.puffs) * G.erupt * 0.8;
+      const u = (e - t0) / G.puffLife;
+      if (u <= 0 || u >= 1) continue;
+      const j = rnd(salt, k, 93);
+      const size = G.puffSize[0] + (G.puffSize[1] - G.puffSize[0]) * Math.sqrt(u) * (0.7 + 0.6 * j);
+      const drift = 2.2 * u * (0.6 + 0.6 * c.wind.s);
+      w.puff(
+        [
+          s.wl.x * drift + (j - 0.5) * 0.8,
+          top + G.column * 0.55 * up + 2.4 * u * (0.6 + j),
+          s.wl.z * drift + (rnd(salt, k, 94) - 0.5) * 0.8,
+        ],
+        size,
+        G.opacity * smooth(u / 0.12) * (1 - u),
+        G.edge,
+      );
+    }
+  };
+}
+
+/**
+ * D4 switchback lamps: at night (and the 06:00 dawn) a lava lantern at a zig-zag vertex flares as
+ * a funicular car comes by, brightest while it turns there. World frame; `lamps` = [section,
+ * vertex joint, x, y, z] of each lantern.
+ */
+function switchbackScene(
+  rails: readonly RailLine[],
+  lamps: readonly (readonly [number, number, number, number, number])[],
+): Scene['run'] {
+  const L = DEVOPS_M25_MOTION.lamp;
+  const pose = newCarPose();
+  return (w, c) => {
+    const dark = c.night > 0.05 ? 1 : c.hour < 6.5 || c.hour > 18.5 ? 0.7 : 0;
+    if (dark <= 0) return;
+    rails.forEach((R, si) => {
+      carPose(R, c.time, si % 2 === 0 ? 0 : 0.5, pose);
+      for (const [sec, , x, y, z] of lamps) {
+        if (sec !== si) continue;
+        const d = Math.hypot(pose.x - x, pose.z - z);
+        const near = smooth((L.radius - d) / (L.radius * 0.6));
+        if (near <= 0.01) continue;
+        const pulse = 0.9 + 0.1 * c.motion * Math.sin(c.time * 7 + x);
+        const r = (L.r[0] + (L.r[1] - L.r[0]) * near) * pulse * dark;
+        w.put(PART.glow, [x, y, z], [0, 0, 0], r, L.color);
+      }
+    });
+  };
+}
+
 /* ------------------------------------ the view ------------------------------------ */
 
 export interface CultureMoversView {
@@ -1186,6 +1333,7 @@ export function createCultureMovers(
     track: defOf('testTrack'),
     customs: defOf('customsYard'),
     kite: defOf('kite'),
+    geyser: defOf('geyserCone'),
   };
   const beams: Beam[] = [];
   const beamAnchors: { x: number; y: number; z: number }[] = [];
@@ -1289,6 +1437,31 @@ export function createCultureMovers(
       scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 2, 0], 3, balloonScene()));
     else if (d === D.gate)
       scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 1.87, 0], 4, gateLampScene(v)));
+    else if (d === D.stall && v === DEVOPS_M25.smith.variant)
+      // M25 TASK-507 (D14): the smiths' trip hammer, its strike flash and sparks
+      scenes.push(
+        sceneAt(
+          th,
+          pv(),
+          store.rotY[i],
+          [...DEVOPS_M25_MOTION.hammer.anvil],
+          6 + DEVOPS_M25_MOTION.hammer.sparks.n,
+          smithScene(phaseAt(store.x[i], store.z[i], 0x5317)),
+        ),
+      );
+    else if (d === D.geyser)
+      // M25 TASK-507 (D7): the eruption on a hashed timer, all together at the shift end
+      scenes.push(
+        sceneAt(
+          th,
+          pv(),
+          store.rotY[i],
+          [0, DEVOPS_M25.geyser.height + 2, 0],
+          DEVOPS_M25_MOTION.geyser.blobs,
+          geyserScene(phaseAt(store.x[i], store.z[i], 0x6e75), idx),
+          DEVOPS_M25_MOTION.geyser.puffs,
+        ),
+      );
     else if (d === D.stall)
       scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 1.0, 0], 3, keeperScene(v, idx)));
     else if (d === D.sema) {
@@ -1482,6 +1655,49 @@ export function createCultureMovers(
     );
     sc.pivot = null; // world-frame parts
     scenes.push(sc);
+  }
+
+  // M25 TASK-507 (D4): the switchback lanterns of the funicular flare as a car passes
+  const rails = funicularRails(world);
+  if (rails.length > 0) {
+    const lantern = defOf('lavaLantern');
+    const lamps: [number, number, number, number, number][] = [];
+    rails.forEach((R, si) => {
+      for (let k = 1; k + 1 < R.legAt.length; k++) {
+        const v = R.pts[R.legAt[k]];
+        let best = -1;
+        let bd = DEVOPS_M25_SITE_LANTERN + 0.5;
+        for (let i = 0; i < store.count; i++) {
+          if (store.defId[i] !== lantern) continue;
+          const dd = Math.hypot(store.x[i] - v.x, store.z[i] - v.z);
+          if (dd < bd) {
+            bd = dd;
+            best = i;
+          }
+        }
+        if (best >= 0)
+          lamps.push([
+            si,
+            k,
+            store.x[best],
+            store.y[best] + DEVOPS_M25_MOTION.lamp.y,
+            store.z[best],
+          ]);
+      }
+    });
+    if (lamps.length > 0) {
+      const mid = rails[0].pts[Math.floor(rails[0].pts.length / 2)];
+      const sc = sceneAt(
+        'devops',
+        new THREE.Matrix4(),
+        0,
+        [mid.x, mid.y, mid.z],
+        lamps.length,
+        switchbackScene(rails, lamps),
+      );
+      sc.pivot = null;
+      scenes.push(sc);
+    }
   }
 
   // M22 Deploy Night (TASK-482): the DevOps cargo ships' horn + masthead flash (movers.ts loops)

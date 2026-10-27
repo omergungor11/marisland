@@ -83,6 +83,7 @@ export function hashPolylines(lines: Polyline[], h = new StageHash()): string {
       .u32(l.points.length);
     for (const p of l.points) h.float(p.x).float(p.z);
     for (const s of l.stops ?? []) h.u32(s);
+    for (const y of l.levels ?? []) h.float(y);
   }
   return h.hex();
 }

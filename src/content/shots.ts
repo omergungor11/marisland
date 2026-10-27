@@ -108,7 +108,8 @@ const STORY_SHOTS: readonly (readonly [string, string, string, number, number])[
   ['signpostDebate', 'Signpost debate · HQ', '-51.04,8.5,-3.82,-48.24,2,-9.62', 14, 6],
   // TASK-497: re-aimed at the turbine-foot nap hammock (the chime turbine moved onto the Kite Hill)
   ['hammockNap', 'Hammock nap · Coding', '-130.97,12.41,160.88,-124.74,9.41,155.96', 14, 6],
-  ['containerNap', 'Container nap · DevOps', '149.71,10.71,-13.08,154.75,8.01,-14.37', 14, 6],
+  // TASK-507: re-aimed at the spot after the TASK-503 Emberpeak push
+  ['containerNap', 'Container nap · DevOps', '173,10,3.3,178,7.3,2', 14, 6],
   ['lighthouseSelfie', 'Selfie · Marketing', '-189.14,28.37,-21.87,-184.03,25.67,-22.88', 14, 6],
   ['gafferTurn', 'Gaffer · Design', '-97.6,24.75,-175.95,-99.57,22.05,-171.13', 14, 6],
   ['teaTime', 'Tea time · Research', '107.45,11.18,90.4,107.05,8.48,95.58', 14, 6],
@@ -124,7 +125,8 @@ const CRITTER_SHOTS: readonly (readonly [string, string, string, number, number]
   [
     'capybara-onsen',
     'Capybara in the onsen · DevOps',
-    '172.24,10.2,-38.99,170.58,9.36,-37.25',
+    // TASK-507: re-aimed (TASK-503 push), a step back from the deck
+    '174.2,10.9,-40.4,170.6,9.3,-37.2',
     14,
     6,
   ],
@@ -153,7 +155,8 @@ const DEVOPS_HARBOUR_CAM = '200.38,20,35.99,174.38,2,5.99';
 /** D-culture-devops (raw, seed 1001; TASK-422): the onsen, quay and gate from the lee sea. */
 const DEVOPS_CULTURE_CAM = '126.38,36,-57.47,174.38,6,-23.47';
 /** D-culture-devops-onsen (raw, seed 1001; TASK-422): the onsen deck and bath house close up. */
-const DEVOPS_ONSEN_CAM = '151.7,14.43,-31.42,169.7,8.93,-38.42';
+// TASK-507: re-aimed from the pool side (the old cam looked through a cooling tower)
+const DEVOPS_ONSEN_CAM = '163.5,14,-27.5,168.5,9,-38.5';
 
 /**
  * W9 Research hero (raw, seed 1001 Observatory University; TASK-402b), re-pin when the layout
@@ -333,6 +336,67 @@ const MARINA_SHOTS: readonly ShotPreset[] = MARINA_CAMS.map(([id, title, cam, ti
   quality: 'medium' as const,
   sets: ['dev' as const],
 }));
+
+/**
+ * TASK-507 wow cams (raw, seed 1001). Funicular Dawn (06:00 + 5 s: the shift siren rings the
+ * summit bell, the lower car turns at its first switchback, its lantern flares): high from the
+ * sea east of Emberpeak down on the whole line, foot to summit (a lower look toward the hub draws
+ * every island behind the cone: 450 calls). Ember Lane Night (21:30): down the smiths' lane aisle toward the open sea, trip
+ * hammers striking with sparks under the lit stalls.
+ */
+const FUNICULAR_DAWN_CAM = '262,60,6,221,17,-23';
+const EMBER_LANE_CAM = '237.4,13.4,-7,243.7,8.2,-11.1';
+
+/**
+ * TASK-507 (D-089) DevOps M25 cams: [id, title, cam, game hour, warm-up s]; raw `eye → target`,
+ * seed 1001 (Emberpeak's east flank: funicular, smiths' lane, ore cableway; the onsen town on the
+ * west bank, the geyser field south). `pnpm shots dev --only=D-devops-m25-east,…`.
+ */
+const DEVOPS_M25_CAMS: readonly (readonly [string, string, string, number, number])[] = [
+  [
+    'D-devops-m25-east',
+    'Emberpeak east flank · funicular, lane, cableway (T1)',
+    '290,40,20,226,12,-16',
+    14,
+    8,
+  ],
+  ['D-devops-funicular', 'Funicular switchbacks · DevOps (T2)', '258,24,-2,229,15,-17', 14, 8],
+  [
+    'D-devops-smiths-night',
+    "Smiths' lane at night · hammers + sparks",
+    '252,13,-2,241,8,-10',
+    21.5,
+    4,
+  ],
+  ['D-devops-onsen-town', 'Onsen town · stilt houses + capybaras', '150,12,-8,168,3,-22', 14, 6],
+  ['D-devops-geysers', 'Geyser field · 17:30 shift end eruption', '205,16,-98,186,8,-76', 17.5, 3],
+  [
+    'D-devops-smiths-close',
+    "Smiths' lane · trip hammers (T3)",
+    '246.5,10.6,-6.2,242,8.6,-11.6',
+    21.5,
+    4,
+  ],
+  [
+    'D-devops-funicular-turn',
+    'Funicular car turning at a switchback',
+    '246,15,-4,235.6,9.5,-11.8',
+    6,
+    5,
+  ],
+];
+const DEVOPS_M25_SHOTS: readonly ShotPreset[] = DEVOPS_M25_CAMS.map(
+  ([id, title, cam, time, simt]) => ({
+    id,
+    title,
+    seed: 1001,
+    cam,
+    time,
+    simt,
+    quality: 'medium' as const,
+    sets: ['dev' as const],
+  }),
+);
 
 export const SHOT_PRESETS: readonly ShotPreset[] = [
   // ---- bible wow shots (1920×1080, medium quality)
@@ -1870,6 +1934,34 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   // marina: `pnpm shots dev --only=D-marina-t0,D-marina-t1,D-marina-fort,D-marina-night`; raw cams,
   // seed 1001, re-pin when HQ's layout changes)
   ...MARINA_SHOTS,
+  // ---- TASK-507 (D-089): the DevOps M25 kit placed and moving
+  {
+    id: 'W-funicular-dawn',
+    title: 'Funicular Dawn',
+    // TASK-507: the lower car turning at a switchback at 06:00 + 5 s (see FUNICULAR_DAWN_CAM)
+    seed: 1001,
+    cam: FUNICULAR_DAWN_CAM,
+    time: 6,
+    simt: 5,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  {
+    id: 'W-ember-lane-night',
+    title: 'Ember Lane Night',
+    // TASK-507: the smiths' trip hammers and sparks at 21:30 (see EMBER_LANE_CAM)
+    seed: 1001,
+    cam: EMBER_LANE_CAM,
+    time: 21.5,
+    simt: 4,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  ...DEVOPS_M25_SHOTS,
 ];
 
 export const SET_DEFAULTS: Record<
