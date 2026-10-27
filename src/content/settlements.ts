@@ -356,6 +356,8 @@ export const FLOATING_FIXTURES: readonly string[] = [
   'rainbowArc',
   // the Marketing party pontoon (sailboat variant 5, TASK-481); no other sailboat is a fixture
   'sailboat',
+  // QA Q9 quarantine pontoon (TASK-506): pivot at the waterline, bobs as a whole
+  'quarantinePontoon',
 ];
 
 /**

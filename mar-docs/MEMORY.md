@@ -18,7 +18,7 @@
   Fleet anchor trick. Session handover: TASK-497 (worldgen) and TASK-499 (props) were asked to commit WIP on
   their `worktree-agent-*` branches. Check `git worktree list` and the branch tip before resuming; then wave 2
   (498 ∥ 501) and 502 QA.
-- **TASK-501 done (Proving Grounds motion; D-078; branch `worktree-agent-ac5d0e036bc84c5da`)**:
+- **TASK-501 merged (Proving Grounds motion; D-078)**:
   - **For TASK-502:** presets `D-qa-proving-siren` (12:00 +3 s), `-drop` (+8.95 s, crate in free fall, cart at the ramp
     crest), `-jump` (+9.7 s, cart over the crossing, crate just landed with dust + lit lamp) use raw cam
     `124,16,-112,100,9.5,-137` (seed 1001; the yard is 10 x 20 at (100, -136), tower on its north end). From the
@@ -29,6 +29,21 @@
     Culture-mover parts now have 18 kinds (`crate`, `dummy`); `buildDropCrate()` is not used by the mover (the part
     is built from the same QA_PROVING numbers). `harness --only=` wipes the other frames of the set dir.
   - **Cost:** culture scenes (tower + dummy) + cart pose ≈ 6 us/frame in range, 0 outside; 0 agents.
+- **TASK-506 merged (QA Customs Port kit, D-086; no placement yet)**:
+  - **Defs** (QA ledger 15 / 15, `cultureCapOverride.qa`; all tier 2): `scannerArch` (1 variant, ship passes along
+    local z, T0 by size), `customsYard` (v0 crane + container, v1 empty rig, v2 / v3 inspection line with check /
+    cross lamp lit, v4 container stack; `rollVariants` 1, pin the rest), `quarantinePontoon` (3 layouts,
+    `FLOATING_FIXTURES`, bob + red beacon lamp). Geometry `geo/themes/qa-customs.ts`, numbers `content/themes/qa-customs.ts`.
+  - **Loose builders for the placement / life task**: `buildQaCargoShip(loaded)` (bow +z, waterline 0, hook
+    `slots.list` of 8 container base centres, yaw pi / 2), `buildQaContainer(i)`, `buildQuayTrolley()` (origin = base),
+    `buildQuaySpreader()` (origin = frame top), `buildQuayCable()` (unit height, scale y).
+  - **Hooks** (`userData.hooks`): arch `pass` / `scan` / `marquee` {count 36} / `lamp`; crane `spreader` {home, up, down, size},
+    `trolley` {home, z, y}, `cable`, `container`; line `belt` {from, to, width}, `lamps` {ok, bad, lit}, `booth`; pontoon
+    `lamp`, `deck`, `crates.stacks`.
+  - **Gotchas**: variants of `customsYard` differ in size (crane 5.5 x 12.8, line 13 x 6, stack 3.8 x 4.9), so the planner
+    needs per-variant rects (the def footprint 6.2 is the crane's). The pontoon is the only fixture needing the waterline
+    pivot; the quay crane boom reaches +z, so face +z at the water. `tagBob` period is the shared FLOAT_BOB (1.3 s), not
+    3.2 s. Worktree has no `node_modules`: symlink the main checkout's.
 - **TASK-499 merged** (QA kit; `cultureCapOverride.qa` 12/1):
   - **For TASK-501:**
     - `dropTower` `userData.hooks.crate` {top, rest, size}; `buildDropCrate()` in `geo/themes/qa-proving.ts`.

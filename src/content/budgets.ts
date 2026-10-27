@@ -95,7 +95,8 @@ export const cultureDefsPerIsland = 10;
 export const cultureCapOverride: Readonly<Record<string, { defs: number; tier1: number }>> = {
   hq: { defs: 12, tier1: 1 },
   design: { defs: 15, tier1: 2 },
-  qa: { defs: 12, tier1: 1 },
+  // TASK-506 (D-086): +3 for the Customs Port (scannerArch, customsYard, quarantinePontoon), all tier 2
+  qa: { defs: 15, tier1: 1 },
 };
 
 /** SwiftShader is ~20–50× slower; time budgets are scaled by this when headless. */
