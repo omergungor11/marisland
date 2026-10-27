@@ -232,6 +232,10 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   flagMast: 0.55,
   stampDesk: 0.75,
   clipboardWall: 1.3,
+  // M24 TASK-499 Proving Grounds (the plan blocks its own discs / rects)
+  dropTower: 2.1,
+  testFan: 1.7,
+  obstacle: 1.2,
   // Marketing Media Rock (TASK-403): the obstacle discs bots and creatures keep clear of
   giantScreen: 2.4,
   antennaTower: 1.7,

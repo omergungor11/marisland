@@ -2,6 +2,69 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-080: DevOps gets all three directions (B Funicular + A Lava + C Onsen/ambient) and a bigger Emberpeak — plan only (amends R2-2) — 2026-10-27
+
+**Decision** (user, note-taking session): R2-2 picked B alone; the user now wants every DevOps idea in
+`study/coding-devops-qa.md` §1: B (D4 funicular, D5 summit bell + red beam, D13 ore cableway), A (D1 lava river,
+D2 lava fall + steam delta, D3 ember bridge), and the ambient / scene pack (D6 crater deck, D7 geyser field,
+D9 onsen town, D10 obsidian beach, D14 smiths' lane, D17 lava-glass kiln, D18 breakwater + tug). Emberpeak may
+grow around the volcano to make room (today `diameter: [90, 120]`, `sizeClass: 'medium'`): a lower apron / ring
+of shelves round the cone, the cone silhouette itself unchanged.
+**Plan**: DevOps is split out of M25 into two milestones. **M25 DevOps I** = island enlargement first (one layout
++ hash re-pin for the whole archipelago), then B + D14 + D9 + D7. **M26 DevOps II** = A (D1/D2/D3, lava ground
+emissive = material change, 0 new programs) + D6 + D17 + D10 + D18. Marketing signature moves to M27, Research
+to M28.
+**Rationale**: Enlarging first means the apron, the lava channel and the funicular stations are laid out once;
+doing B before the growth would re-pin every DevOps plan twice.
+**Impact / risks**: ~+6 defs (funicularRail, funicularCar, bridgeSpan, crater deck, geyserCone, obsidian) → a
+DevOps cap override well past 12/1, decided per task with measured numbers. Layout spacing and every island hash
+re-pin; W5, W31–32, L-devops and all DevOps raw cams go stale. DevOps frames must stay inside the W16 / ladder
+budgets (`shots --assert`). Numbers D-078/D-079 are left to the TASK-497 / TASK-501 branches still in flight.
+
+## D-076: QA Proving Grounds kit — a reserved stunt yard instead of the second track, three defs at the end of PROP_DEFS (D-059 A, D-062 R3-14) — 2026-10-27
+
+**Decision** (TASK-499): (1) **Kit.** `dropTower` (tier 1, 10 u lattice, v0 crate parked at the top, v1 the empty
+cradle for the TASK-501 mover), `testFan` (tier 2, 4 u blades on the shared `aSpin` tag, a dummy + streamer pole
+3 u in front), `obstacle` (tier 2, 4 variants: hurdle, tyre stack, balance beam, slalom cones). They are the
+10th–12th defs of the QA ledger (cap 12, tier-1 1 → `cultureCapOverride.qa`), appended at the very end of
+`PROP_DEFS` (no existing defId shifts), geometry in `geo/themes/qa-proving.ts`, numbers and the white / mint /
+yellow palette in `content/themes/qa-proving.ts`. The tower and the fan are > 3 u, so the batcher draws them from
+T0 like any large structure (D-031) whatever their tier. (2) **Stunt yard.** The plan reserves a flat rect of
+≈ 2× the loop track (14 × 28, else 12 × 24 / 10 × 20 / 9 × 18) as a blocking obstacle shape before the campus
+(lots and lanes keep off it) and publishes it as the island anchors `stunt` (centre + rotY) / `stuntSize`;
+TASK-501 puts its second track fixture there and adds the level pad. The kit (tower at a short end, fan on a
+long side facing the lane, the course on the opposite side) stands round it, else round the loop track. (3) The
+Hall of Checks gets four more clipboard-wall candidates (the reservation shifts the lots, 24 / 30 → 30 / 30
+seeds have the wall).
+**Cost**: the rim walk / palm row / scoreboard share thresholds of `plans-qa.test.ts` were relaxed (0.85 → 0.75,
+0.7 → 0.6, 1 → 0.95): the yard takes plateau ground on some seeds. 28 → 29 of 30 test seeds get a yard.
+**Rationale**: reserving first keeps TASK-501 independent of how crowded the plateau is; reserving after the
+campus found a rect on only 15 / 30 seeds.
+**Alternatives**: a non-blocking reservation (lanes crossed it on most seeds); a pad under the yard (its relax
+bound is the rect's circumradius and flattened the Hall's clipboard spots).
+
+## D-077: Mother Kite Train — one CPU-posed mesh on the sky-craft material, two-tone kites, no shader changes — 2026-10-27
+
+**Decision** (TASK-500, CO:C3): seven kites (a larger lead + six followers) fly on a closed-form circular orbit
+(`R` = 0.58 x the Coding island radius, `peakY` + 20 u, lead 2.4 u/s) around the Coding island. Followers trail the
+lead by arc length (7.6 u; kites 8.2 / 6.6 u tall), snake sideways down the line, sink 0.3 u each and bob / roll / pitch out of phase
+(periods jitter +-13 % per seeded kite). Each kite has a bow tail that flutters; a thin 3-sided line (with sag) joins
+the kite centres. The whole train is ONE `InstancedMesh` (one instance at the far fleet anchor, like the Hype Fleet)
+on the existing sky-craft material: kites are rigid, the tails and the line bend, so the 692 triangles are written
+on the CPU each frame (flat normals, fixed-size arrays, skipped when time / camera / motion scale are unchanged).
+Data in `SKY_CRAFT.kiteTrain`, code in `render/kite-train.ts`, created by `createSkyCraft`. Reduced motion reads
+`SHARED.uMotionScale` (the culture movers' channel): sway, bob, roll, snake and tail flutter shrink to 0.3, the orbit
+itself keeps its speed (it is a closed form of the clock). The train fades by a CPU scale inside 26 → 10 u of the camera.
+**Look**: every kite is two-tone blue + gold (odd kites swap the quadrants), and kites bank alternately about their
+spine (+-0.95 rad) so a camera outside the orbit never sees one edge-on. A plain yellow kite read as flat grey on its
+shaded side (the lit program lerps the shade 35 % toward the purple tint, independent of albedo, and its normals come
+from screen derivatives, so vertex normals cannot cheat), the blue half carries the silhouette.
+**Cost**: +1 draw call (W11: the train mesh), 0 programs, 692 tris, 97 KB of dynamic buffers, no shadows; CPU
+0.05 ms per update (7 kites; only when the clock or the camera moved). Excluded from the ladder by `craft=0`
+(TASK-450) like the other sky craft.
+**Rationale**: the plan wanted a blue-yellow dot chain at T0 over Coding, and a proper train at T1 / T2. The
+mesh has no ground-height dependency (`peakY` only), so the worldgen knoll shifts it by at most a few u.
+
 ## D-075: Coding Kite Hill — an absolute profile lift, the hill outranks the farm, a tunnel pad anchor for TASK-498 — 2026-10-27
 
 **Decision** (TASK-497, `CO:C2` + the `CO:C1` site; D-059 direction A, D-062 R3-12): (1) **Knoll.** The

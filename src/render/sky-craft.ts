@@ -8,6 +8,7 @@ import { THEME_IDS, heightAt, type ThemeId } from '../world/types.ts';
 import type { WorldData } from '../world/index.ts';
 import { buildAirshipGeometry, buildFleetGeometry } from '../geo/sky-craft.ts';
 import type { CultureState } from './culture-clock.ts';
+import { createKiteTrain } from './kite-train.ts';
 import { makeLitMaterial } from './materials/factory.ts';
 
 /**
@@ -408,9 +409,14 @@ export function createSkyCraft(
     };
   }
 
+  // ---- Mother Kite Train (TASK-500): one more mesh on the same material, over the Coding island
+  const train = createKiteTrain(world, seed, mat, anchor, scope);
+  if (train) meshes.push(train.mesh);
+
   const update = (time: number, culture?: CultureState, cam?: THREE.Vector3): void => {
     fleetUpdate?.(time, culture, cam);
     shipUpdate?.(time);
+    train?.update(time, cam);
   };
   update(0);
   return { meshes, update };

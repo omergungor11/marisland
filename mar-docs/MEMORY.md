@@ -10,6 +10,43 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-27 (M24 wave 1; TASK-500 merged)**: Mother Kite Train (`render/kite-train.ts`, built inside
+  `createSkyCraft`, +1 call / +692 tris; `kiteTrainCentre(world, seed, simt)` gives its position for presets).
+  The lit program forces flat normals from screen derivatives and mixes 35 % shade tint regardless of albedo, so
+  a saturated yellow goes grey in shade: use two-tone with blue, or `lift()` like the balloons. A raw-cam
+  oblique frame over open water costs 400+ calls; look down ≥ 30°. Per-frame CPU-written meshes copy the Hype
+  Fleet anchor trick. Session handover: TASK-497 (worldgen) and TASK-499 (props) were asked to commit WIP on
+  their `worktree-agent-*` branches. Check `git worktree list` and the branch tip before resuming; then wave 2
+  (498 ∥ 501) and 502 QA.
+- **TASK-499 merged** (QA kit; `cultureCapOverride.qa` 12/1):
+  - **For TASK-501:**
+    - `dropTower` `userData.hooks.crate` {top, rest, size}; `buildDropCrate()` in `geo/themes/qa-proving.ts`.
+    - Animate on variant 1, the empty cradle.
+    - Free ground is `isl.anchors.stunt` + `stuntSize` (no pad).
+  - **Proving Grounds preset:** raw cam ~`120,16,-118,101,14,-128` (seed 1001). The QA plateau is at y ≈ 8.6.
+  - **Gotchas:**
+    - Props over 3 u tall draw from T0 regardless of tier.
+    - A blocking reservation placed before `campusLots` moves the lots and paths.
+- **TASK-497 WIP** (`worktree-agent-a24e64327cede359d` @ `ca271e8`, not merged):
+  - **Done:** knoll (`KITE_HILL`, `IslandProfile.lift`), site choice, kites ring, bench, and the
+    `anchors.windTunnel` {x,z,rotY} anchor.
+    - The anchor is missing on seeds 371/408/593.
+    - Axis is `(cos rotY, sin rotY)`; +axis is downwind; pad is 16×6.
+  - **Left — 10 failing tests:**
+    - pinwheel fallback in `m22Quick` (1 of 30 seeds has none);
+    - hash re-pins in archipelago and plans-coding;
+    - millbrook peakY bound becomes +4;
+    - kite count range;
+    - seed 1 has 0 solar blocks;
+    - grove floor 0.65 → ~0.57;
+    - rim bench count must exclude the hill bench.
+  - **Then:** merge main, wow, ladder.
+    - Coding raw cams (`MOVE_SHOTS` Kite Day, `D-culture-coding`, maybe W7/`hammockNap`) are likely stale.
+    - D-075 numbers must be re-measured with `keepOut: 0`.
+  - **Gotchas:**
+    - A pad's falloff (margin + 4 u) shaves nearby knoll flanks, so keep pads away from a knoll.
+    - Overlapping pad cores average their heights.
+    - The scratchpad is shared between agents; use per-task subdirs.
 - **2026-10-27 (M23 closed; TASK-495/493 merged)**: M23 world signature is done — reefs, relay night, constellations,
   whale, night-effects polish; QA in `mar-docs/qa/m23-world-signature.md`. Budgets now: medium memory peak W27
   162 / 170 MB, W16 278 calls / 765k tris, low ladder max 305k. An "uber geometry + shader collapse" mesh costs

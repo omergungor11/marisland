@@ -153,4 +153,62 @@ export const SKY_CRAFT = {
     /** Angular-speed factor at the HQ crossing (1 = full speed) and its width (rad of orbit). */
     slow: { floor: 0.22, sigma: 0.24 },
   },
+  /**
+   * Mother Kite Train (TASK-500, CO:C3, D-077): a lead kite plus followers on one line, circling the
+   * Coding island on a closed-form orbit (the sky-craft pattern). Followers trail the lead along the
+   * path by arc length, snake a little sideways down the line and bob out of phase. Sizes in u.
+   */
+  kiteTrain: {
+    theme: 'coding',
+    count: 7,
+    /** Flight height above the island's peak (u) and the orbit radius as a fraction of its radius. */
+    clearance: 20,
+    radiusFrac: 0.58,
+    /** Lead ground speed (u/s) and arc spacing between neighbouring kites (u). */
+    speed: 2.4,
+    spacing: 7.6,
+    /** Kite heights (u): the lead is larger. Width = 0.69 x height. */
+    leadHeight: 8.2,
+    height: 6.6,
+    /** Nose-up pitch of the kite plane (rad). */
+    pitch: 0.85,
+    /** Kites bank about their spine, alternately left / right (rad): the plane faces out of the orbit, never edge-on to a cam outside. */
+    baseRoll: 0.95,
+    /** Followers sink a little each (line sag, u) and the line itself sags between kites (u). */
+    sinkPerKite: 0.3,
+    lineSag: 0.5,
+    lineRadius: 0.1,
+    /** Sideways snake down the line: amplitude at the last kite (u), period (s), lag per kite (rad). */
+    snake: { amp: 1.7, period: 9, lag: 0.85 },
+    /** Idle bob (u, period s), roll and pitch wobble (rad, period s); periods jitter per kite. */
+    bob: { amp: 0.7, period: 5.4 },
+    roll: { amp: 0.12, period: 3.6 },
+    wobble: { amp: 0.07, period: 4.4 },
+    periodJitter: 0.13,
+    /** Tail: segments, length as a multiple of kite height, flutter amplitude (fraction of length), period (s),
+     * ribbon width and bow half-width (fraction of kite height), bow rows (segment indices). */
+    tail: {
+      segments: 8,
+      length: 1.45,
+      flutter: 0.17,
+      period: 1.1,
+      width: 0.08,
+      bows: [2, 4, 6],
+      bow: 0.17,
+    },
+    /** Dither-free near fade, on the CPU like the fleet: kite scale goes to 0 between these distances (u). */
+    fadeNear: 26,
+    fadeFar: 10,
+    /** Colours: every kite is two-tone blue + yellow (alternate kites swap the quadrants), ribbons pale, bows alternate hue. */
+    blue: ['#2C7DE0', '#8EC3F0'],
+    yellow: ['#FFBA24', '#FFD968'],
+    /** The yellow sits in the blue flank shade: pull blue / green down by this factor (as `lift` for the balloons). */
+    yellowLift: 1.3,
+    /** Brightness on the yellow: lit by the sun it clips toward white in the tone map, so it sits below 1. */
+    yellowGain: 1,
+    spar: '#6B4A32',
+    line: '#FFF4E0',
+    /** Phase lag per tail segment (rad): smaller = longer, calmer waves. */
+    tailLag: 1.0,
+  },
 } as const;

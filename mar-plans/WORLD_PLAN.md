@@ -192,6 +192,12 @@ konvoyunun römorkörü ile aynı prop).
 | Signature (B) | D4 + D5 + D13 | 1 L + 1 M + 1 S, 2 def |
 | Ambitious | D6 krater terası, D14, D17 cam ocağı, D18, (A'dan D2 lav şelalesi) | 3 M + 1 S |
 
+> **2026-10-27 kullanıcı kararı (D-080, R2-2'yi değiştirir):** üç yönün hepsi yapılacak (B + A + C/ambient
+> paket: D1–D7, D9, D10, D13, D14, D17, D18) ve Emberpeak volkanın çevresinde büyüyebilir (bugün
+> `diameter: [90, 120]`, medium). Önce ada büyütme (tek layout + hash re-pin), sonra **M25 DevOps I**
+> (B + D14 + D9 + D7), ardından **M26 DevOps II** (A lav + D6 + D17 + D10 + D18). Kültür tavanı ~+6 def,
+> task başında ölçülerek override edilir.
+
 Wow: **Funicular Dawn** (06:00 +5 s siren, kabin switchback'te), **Ember Lane Night** (demirci ritmi + kıvılcım).
 
 ### 4.5 QA · Palmlagoon — Müfettişler Adası
@@ -287,9 +293,11 @@ değişiklikleri orchestrator'da birleşir. Her milestone sonunda `pnpm shots ci
 | 2 | **M22 Beş Ada Quick Wins** | Coding/DevOps/QA/Marketing/Research quick-win paketleri; rim yolu primitifi; lamp set genişletme; wow ID yeniden numaralama | M20 (468 pool shader reuse için) | 5 ada paralel: `plans/<ada>.ts` + `culture-<ada>.ts` ayrı dosyalar | L (5 × ~1 hafta-agent, paralelde 1–2 hafta) | props ×2, worldgen ×2, life, docs |
 | 3 | **M23 Dünya İmza** | D1+K3 resif/şelf, D6 balina, B1+B6+G7 relay gece sahnesi, G4 | Round 1 (K3, balina), TASK-469 (semafor) | shader (D1) ∥ life (D6) ∥ props (B1) | L | shader, worldgen, life, props |
 | 4 | **M24 Coding + QA signature** | A: C1+C2+C3 · A: Q1+Q2+Q4+Q5 + wow preset'leri + ladder re-pin | Round 2 | iki ada paralel | L | worldgen, props, life, qa |
-| 5 | **M25 DevOps + Marketing signature** | B: D4+D5+D13 · A: M1+M3+M4+M13 | Round 2 | iki ada paralel (mailLine mover ortak → önce props) | L | props, worldgen, life, shader, qa |
-| 6 | **M26 Research signature** | A: R1+R2+R3+R4 (+ R14) | Round 2, M21 G2 | — | M | worldgen, props, qa |
-| 7+ | **M27+ Ambitious** | sırayla: K1 şablonlar · H1 mevsim (TASK-464 sonrası) · B2/B3/B7 trafik · ada ambitious paketleri · sandbox S1–S3 · C2/C3 kameralar · DevOps A lav | Round 3 | her biri ayrı | L'ler | — |
+| 5 | **M25 DevOps I** (D-080) | Emberpeak büyütme (koni çevresine alçak apron/raf halkası, tek layout + hash re-pin) → B: D4+D5+D13 + D14 çarşı + D9 onsen kasabası + D7 gayzer | M24 | büyütme önce (worldgen), sonra props ∥ life | L | worldgen, props, life, qa |
+| 5' | **M26 DevOps II** (D-080) | A: D1 lav nehri + D2 lav şelalesi + D3 kor köprüsü + D6 krater terası + D17 cam ocağı + D10 obsidyen plajı + D18 dalgakıran/tug | M25 | shader (lav zemini) ∥ props | L | shader, worldgen, props, life, qa |
+| 5'' | **M27 Marketing signature** | A: M1+M3+M4+M13 | Round 2 | — | L | props, worldgen, life, qa |
+| 6 | **M28 Research signature** | A: R1+R2+R3+R4 (+ R14) | Round 2, M21 G2 | — | M | worldgen, props, qa |
+| 7+ | **M27+ Ambitious** | sırayla: K1 şablonlar · H1 mevsim (TASK-464 sonrası) · B2/B3/B7 trafik · ada ambitious paketleri · sandbox S1–S3 · C2/C3 kameralar | Round 3 | her biri ayrı | L'ler | — |
 
 Notlar:
 - M20-pre küçük ama **zorunlu önce**: 466 pusula yönlerini `ctx.islands`'tan okuyor; layout sonra

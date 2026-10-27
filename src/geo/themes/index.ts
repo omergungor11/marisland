@@ -22,6 +22,7 @@ import { M20_DESIGN_GEO } from './culture-m20-design.ts';
 import { RIM_GEO } from './rim.ts';
 import { STAIR_GEO } from './stairs.ts';
 import { BEACON_GEO } from './beacon.ts';
+import { QA_PROVING_GEO } from './qa-proving.ts';
 
 export const THEME_GEO: readonly PropGeoDef[] = [
   ...HQ_GEO,
@@ -49,4 +50,6 @@ export const THEME_GEO: readonly PropGeoDef[] = [
   ...STAIR_GEO,
   // M23 TASK-490 skerry beacon
   ...BEACON_GEO,
+  // M24 TASK-499 QA Proving Grounds
+  ...QA_PROVING_GEO,
 ];
