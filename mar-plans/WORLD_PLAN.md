@@ -135,6 +135,12 @@ En önemli eklemeler: `HQ:H1` pusula mozaiği · `HQ:H4` sokak malı tezgâhlar�
 Wow: **W20 Pusula Yıldızı** (üstten, 15:00), **W21 Kapılar Yanıyor** (21:00 harbour lane), **W22 Posta Hattı
 Sabahı** (09:00 delta kare).
 
+> **2026-10-27 kullanıcı kararı (D-081):** HQ'ya **yat limanı** — koy iç kavisi boyunca tarak iskeleler,
+> 15–20 yelkenli/kayık, önünde dalgakıran + H11 kanal şamandıraları, akşam direk fenerleri; T0'da "liman
+> adası" okunur. Hilalin koy ağzı ucuna **yıldız tabya** (küçük kale: top mazgalları + bayrak kulesi), H18 koy
+> ağzı fenerleriyle eşli, feribot önünden geçer. D-057 zonlamasını bozmaz (Z3/Z4/Z9 + Z10). HQ tavanı 12/1
+> dolu → tabya ve marina iskelesi için override (~+2 def, tabya tier-1 adayı).
+
 ### 4.2 Design · Mossgrove — **Cam Sera** (seçildi, D-057)
 
 Yönler: **A Cam Sera ✓** · B Fener Ormanı · C Renk Tarlası. Zonlama `hq-design.md` §2.2 (Z1 Sera Meydanı R 10
@@ -219,6 +225,13 @@ rim'i · `QA:Q17` bug avı 2.0 · `QA:Q10` şamandıra slalomu.
 
 Wow: **Proving Grounds Noon** (12:00 +3 s siren testi), **Bug Hunt Night** (20:30, W18 güçlenmiş).
 
+> **2026-10-27 fikir (yön seçimi bekliyor):** QA limanı ticari limana. Öneri: **gümrük limanı** — kargo
+> gemisi koy ağzında Q8 tarayıcı kemerin altından girer, vinç konteyner indirir, teftiş hattı (müfettiş +
+> ✓/✗ lambası), ✗ olanlar Q9 karantina dubalarına; QA beyaz-nane-sarı + hazard şerit. DevOps Ember Works
+> vinç/konteyner prop'larının varyantı (DevOps üretir-gönderir, QA gelen kargoyu kontrol eder). Alternatifler:
+> lojistik dağıtım merkezi (`W:B2` konvoyuna bağlı), serbest ticaret çarşısı. M24 sonrası; Proving Grounds
+> yerleşimine dokunmadan koy + rim tarafında.
+
 ### 4.6 Marketing · Beacon Rock — Karnaval Yayıncıları
 
 Yönler (`marketing-research.md` §1.2): **A Kablolu Karnaval (önerilen)** · B Tahta İskele Lunaparkı ·
@@ -297,6 +310,7 @@ değişiklikleri orchestrator'da birleşir. Her milestone sonunda `pnpm shots ci
 | 5' | **M26 DevOps II** (D-080) | A: D1 lav nehri + D2 lav şelalesi + D3 kor köprüsü + D6 krater terası + D17 cam ocağı + D10 obsidyen plajı + D18 dalgakıran/tug | M25 | shader (lav zemini) ∥ props | L | shader, worldgen, props, life, qa |
 | 5'' | **M27 Marketing signature** | A: M1+M3+M4+M13 | Round 2 | — | L | props, worldgen, life, qa |
 | 6 | **M28 Research signature** | A: R1+R2+R3+R4 (+ R14) | Round 2, M21 G2 | — | M | worldgen, props, qa |
+| 6' | **M29 HQ Marina + Tabya** (D-081) | yat limanı (tarak iskeleler, yelkenli filosu, dalgakıran, H11 şamandıralar, direk fenerleri) + koy ağzı yıldız tabyası (H18 ile eşli) | M24 | worldgen (yerleşim) → props ∥ life | L | worldgen, props, life, qa |
 | 7+ | **M27+ Ambitious** | sırayla: K1 şablonlar · H1 mevsim (TASK-464 sonrası) · B2/B3/B7 trafik · ada ambitious paketleri · sandbox S1–S3 · C2/C3 kameralar | Round 3 | her biri ayrı | L'ler | — |
 
 Notlar:

@@ -2,6 +2,19 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-081: HQ gets a yacht marina and a star fort at the cove mouth — plan only — 2026-10-27
+
+**Decision** (user): Hearthholm's cove becomes a **yacht marina**: comb piers along the inner curve of the
+crescent, a 15–20 sailboat / rowboat fleet, a breakwater with the H11 channel buoys, mast lights at dusk. The
+crescent tip at the cove mouth gets a **small star fort** (gun embrasures + flag tower) paired with the H18
+harbour-entrance lights; the ferry passes in front of it. Alternatives not taken: working fishing / boatyard
+harbour, canal marina (terrain carving vs. D-057 streets); fairy-tale cliff castle, tidal castle on a skerry.
+**Rationale**: The HQ study's main finding is that the archipelago's "harbour" does not read (one pier, empty
+cove); a full marina answers it at T0, and the fort frames the cove mouth without touching D-057 zones
+(Z3/Z4/Z9 + Z10).
+**Impact**: HQ cap 12/1 is full → override (~+2 defs: marina pier variant, fort; fort is a tier-1 candidate).
+Boats are instanced variants; W16 / W21 / W22 framing and the HQ ladder rung need a re-check. Roadmap M29.
+
 ## D-080: DevOps gets all three directions (B Funicular + A Lava + C Onsen/ambient) and a bigger Emberpeak — plan only (amends R2-2) — 2026-10-27
 
 **Decision** (user, note-taking session): R2-2 picked B alone; the user now wants every DevOps idea in
