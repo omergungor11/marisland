@@ -25,6 +25,8 @@ export interface RouteInput {
   docks: DockData[];
   /** Reef field (TASK-488): raised nodes cost REEFS.routePenalty more per step. */
   reefs?: ReefField;
+  /** Discs boats keep out of (M30 TASK-508: the customs port's ship lane, spin spot and pontoons). */
+  keepOut?: readonly { x: number; z: number; r: number }[];
 }
 
 interface Coarse {
@@ -38,7 +40,12 @@ interface Coarse {
   reef: Uint8Array;
 }
 
-function buildCoarse(h: Heightfield, sdf: Float32Array, reefs?: ReefField): Coarse {
+function buildCoarse(
+  h: Heightfield,
+  sdf: Float32Array,
+  reefs?: ReefField,
+  keepOut?: RouteInput['keepOut'],
+): Coarse {
   const k = Math.round(ROUTES.cell / h.cellSize);
   const n = Math.floor((h.n - 1) / k) + 1;
   const pass = new Uint8Array(n * n);
@@ -56,6 +63,14 @@ function buildCoarse(h: Heightfield, sdf: Float32Array, reefs?: ReefField): Coar
       const c = cz * n + cx;
       pass[c] = ok ? 1 : 0;
       depth[c] = -h.data[iz * h.n + ix];
+    }
+  // the customs port's water is the cargo ship's: no boat route node inside it
+  if (keepOut?.length)
+    for (let c = 0; c < n * n; c++) {
+      if (!pass[c]) continue;
+      const x = h.originX + (c % n) * k * h.cellSize;
+      const z = h.originZ + Math.floor(c / n) * k * h.cellSize;
+      if (keepOut.some((q) => Math.hypot(q.x - x, q.z - z) < q.r)) pass[c] = 0;
     }
   // connected components of passable nodes (8-neighbour); boats only use the largest (open sea)
   const comp = new Int32Array(n * n).fill(-1);
@@ -225,7 +240,7 @@ function smoothLoop(h: Heightfield, sdf: Float32Array, pts: XZ[], keep: Set<numb
 
 export function buildRoutes(input: RouteInput, rng: Rng): Polyline[] {
   const { h, sdf, islands, docks } = input;
-  const c = buildCoarse(h, sdf, input.reefs);
+  const c = buildCoarse(h, sdf, input.reefs, input.keepOut);
   // docks a boat can reach: a passable node within dockReach of the dock end
   const stops: { dock: number; node: number; p: XZ; islandId: number }[] = [];
   docks.forEach((d, i) => {

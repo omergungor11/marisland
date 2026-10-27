@@ -2,6 +2,42 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-087: QA Customs Port placement + motion (TASK-508) — compact quay on the cove terrace, port-first planning, ship as culture-mover parts on the day clock — 2026-10-27
+
+**Decision**: (1) **Quay.** The Palmlagoon cove terrace is only ~14 u deep and ~24 u long (a 1.8 u flat shelf in front of a 6 u wall), so the
+quay is compact: crane (`customsYard` v1, the empty rig, facing the water), ONE inspection line (v2) on its +x side, an optional
+container stack (v4, where land allows: all 30 test seeds got one), the scanner arch over the ship lane (floating fixture, pivot at the
+waterline whatever the dredged depth) and 2-3 `quarantinePontoon`s (variant 0 is the landing pontoon). The cross line (v3) is not
+placed: a second belt did not fit the terrace; the cross lamp is lit by a mover glow and the check lamp dimmed by a dark cap while a crate
+fails. `FIXTURE_RADIUS` customsYard 6.2 (the crane's footprint), arch / pontoon 0.05; `scannerArch` joins `FLOATING_FIXTURES`.
+(2) **Planning.** Pure layout maths `world/gen/customs-port.ts` (crane frame: x along the quay, z seaward), planner `gen/plans/qa-customs.ts`.
+`customsCandidates` ranks quay spots from every coast cell in 3 passes (cove r 40, whole rim, roughest pad + nearer pontoon); a port within
+`portCove` (26) of the harbour anchor keeps the original pier (`dockHitsShapes`), else `findDock` takes a new `avoid` list and the pier moves
+off the best port that still leaves one, else the port goes round the rim. The port is committed before the yard / stunt yard / campus
+(strip pad + blocking shape, dredge `carveWater` depth 1.1 along berth, spin disc and lane, water discs as non-blocking shapes) and
+publishes the anchors `customs` (crane x / z / rotY), `customsFlip` (z = lane side), `customsLane` (x = lane variant, z = pass).
+Boat routes take a new `RouteInput.keepOut` (discs round the spin spot, lane and pontoons: no coarse node inside), so ferries never run
+through the ship water. All 30 test seeds get a port: 12 in the cove pass, 15 on the rough passes; 7 of them are far from the cove
+(rim side: 3630, 5208, 7312, 7575, 7838, 8627, 2841). Cost in the older plan statistics: rim-walk share 23 -> 21 of 30 (threshold 0.75 -> 0.65),
+stunt yards 29 -> 25 (0.9 -> 0.8) because the quay's pad and path block take foot-of-bluff ground.
+(3) **Ship route.** In from the open sea along a straight lane 34 deg off the quay, one arc (R 20) onto the line at z 12.6, a slide to the
+berth, unload, slide out, a 180 deg spin on the spot (the hull stays 0.7 u off the quay), then out the way it came: it passes under the arch
+twice. It pops in / out at the lane end with an overshoot scale and spawn ripples.
+(4) **Cycle** (`CUSTOMS_MOTION`, 36 s visit from noon of the culture-clock day, 08:00-20:00, closed form in `ctx.day`, so `?freeze=1&time=12&simt=..`
+replays it): arrive 0-9 (under the arch ~2.5-4.5 s), slide in 9-11.6, crane jobs 11.8-22.3 (3 x 3.5 s: trolley out, spreader down, latch,
+lift, back, set on the belt), slide out 21.1, spin 23.7-26.7, leave 26.7-34.7 (under the arch ~31-33 s). Each crate rides the belt to the
+end (verdict from a hash pattern per visit, >= 1 reject and >= 1 pass): pass = the check lamp pulses, the crate rolls on and is filed
+behind the stack; reject = the cross lamp lights and the crate shrinks and is lobbed (1.1 s, arc, one turn) onto the landing pontoon
+with a squash and a splash; the rejects sink 3.6-5 s into the next visit. Reduced motion (`uMotionScale`) halves the lob arc and the
+sway / bob; the schedule does not change.
+(5) **Render.** Four new culture-mover part kinds (`ship`, `cargo`, `trolley`, `spreader`: the kit's loose builders with their own vertex
+colours, the container body white = instance tint), the scene is `customsPortScene` on the v1 crane (range 90 u). 0 new programs; a kind draws only
+while it has instances, so the port costs nothing outside its range. The marquee chase on the arch stays the existing always-on shader
+chase (making it gate on the ship needs a uniform in the shared lit program); while a ship is under the arch a mover glow lights the scan strip and the crown lens.
+**Rationale**: the cove cannot host the two-belt layout of D-082 next to the pier, and moving the pier first keeps the old campus on most seeds.
+**Alternatives**: two belts (v2 + v3) side by side (28 u of frontage, fits no seed); a single-lane in / out with a reversing ship (reads wrong); a reclaimed
+platform raised from the shelf (land masks would disagree); hard-gating the marquee through a new uniform.
+
 ## D-086: QA Customs Port kit — three defs at the end of PROP_DEFS, QA cap 12 -> 15, ship and crane rig as loose builders (D-082) — 2026-10-27
 
 **Decision** (TASK-506, no placement): (1) **Defs** (all tier 2, planner-pinned, ledger entries 13-15; `cultureCapOverride.qa`

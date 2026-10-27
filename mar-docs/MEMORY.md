@@ -48,6 +48,14 @@
   Fleet anchor trick. Session handover: TASK-497 (worldgen) and TASK-499 (props) were asked to commit WIP on
   their `worktree-agent-*` branches. Check `git worktree list` and the branch tip before resuming; then wave 2
   (498 ∥ 501) and 502 QA.
+- **TASK-508 (Customs Port placement + motion; D-087)**:
+  - **For TASK-510 QA:** presets `W-customs-noon` (12:00 +3 s, ship under the arch) and dev `D-qa-customs-unload` (+14.6 s crane carrying),
+    `-lob` (+23.7 s reject in the air), `-spin` (+25.2 s ship turning), seed 1001 raw cams (crane 69.2,-143.0). The cams are crane-frame points
+    converted with `frameToWorld` (see `world/gen/customs-port.ts`); other seeds need their own (`isl.anchors.customs`). Visit = 36 s from noon.
+  - **Gotchas:** the port is committed BEFORE the yard (the stunt yard / rim walk share dropped, see D-087); crane frame x = (sin rotY, -cos rotY), z = (cos, sin);
+    `customsFlip.z` is the lane side; tier-2 props (pontoons) draw only close in, the ship / crates draw from 90 u; a mover item needs a
+    `FIXTURE`-consistent layout, so change `CUSTOMS_PORT` and the motion together. Never `open(p,'w').write(open(p).read())` (truncates).
+  - **Cost:** customsFrame 0.5 us + ~14 parts ~ 6 us per frame in range, 0 agents, 0 outside; +4 part kinds (ship 272 tris, container 168).
 - **TASK-501 merged (Proving Grounds motion; D-078)**:
   - **For TASK-502:** presets `D-qa-proving-siren` (12:00 +3 s), `-drop` (+8.95 s, crate in free fall, cart at the ramp
     crest), `-jump` (+9.7 s, cart over the crossing, crate just landed with dust + lit lamp) use raw cam

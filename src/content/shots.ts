@@ -1384,6 +1384,54 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     sets: ['dev'],
   },
   {
+    id: 'W-customs-noon',
+    title: 'Customs Noon',
+    // seed 1001 Customs Port (TASK-508, D-087): noon, the cargo ship 3 s into its visit sails under the scanner
+    // arch (scan strip and crown lamp lit) toward the quay; crane, check line and pontoons beyond
+    cam: '35.0,21.6,-118.5,65.4,4.6,-122.1',
+    seed: 1001,
+    time: 12,
+    simt: 3,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow', 'dev'],
+  },
+  {
+    id: 'D-qa-customs-unload',
+    title: 'Customs Port · mid-unload (T2)',
+    // seed 1001 Customs Port (TASK-508): the ship alongside, the crane carrying a container to the check line
+    seed: 1001,
+    cam: '43.0,14.6,-137.5,68.6,5.6,-137.4',
+    time: 12,
+    simt: 14.6,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-qa-customs-lob',
+    title: 'Customs Port · rejected crate in the air (T2)',
+    // seed 1001 Customs Port (TASK-508): the second crate fails the check, the cross lamp is lit and the crate is
+    // lobbed from the end of the line onto the quarantine pontoon
+    seed: 1001,
+    cam: '68.4,12.6,-111.7,72.8,4.6,-130.5',
+    time: 12,
+    simt: 23.7,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
+    id: 'D-qa-customs-spin',
+    title: 'Customs Port · the ship turns on the spot (T2)',
+    // seed 1001 Customs Port (TASK-508): unloaded, the ship slid out and spins to head back out under the arch
+    seed: 1001,
+    cam: '36.4,23.6,-129.7,59.8,3.6,-135.5',
+    time: 12,
+    simt: 25.2,
+    quality: 'medium',
+    sets: ['dev'],
+  },
+  {
     id: 'D-culture-research',
     title: 'Culture · Research Star Academy (T2, 17:45)',
     // seed 1001 Observatory University (TASK-426) at golden hour: the quad with the orrery, the

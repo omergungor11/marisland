@@ -7,7 +7,9 @@ import { RIM_POST_LOOKS } from '../content/rim-walkway.ts';
 import { QA_PLAN, QA_RIM_WALK } from '../content/themes/qa.ts';
 import { QA_PROVING_PLAN } from '../content/themes/qa-proving.ts';
 import { StageHash } from './gen/hash.ts';
-import { generateWorld, heightAt, type WorldData, type XZ } from './index.ts';
+import { CUSTOMS_PORT } from '../content/themes/qa-customs.ts';
+import { frameToWorld, pathAt, portLayout, waterProbes } from './gen/customs-port.ts';
+import { generateWorld, heightAt, planWhaleRoute, type WorldData, type XZ } from './index.ts';
 
 // M17b TASK-401: the QA Test Factory plan (Palmlagoon archetype, bluff plateau), 30 seeds.
 const SEEDS = Array.from({ length: 30 }, (_, k) => 1000 + k * 263);
@@ -223,9 +225,9 @@ describe('QA Test Factory plan (TASK-401), 30 seeds', () => {
     });
     expect(got).toMatchInlineSnapshot(`
       [
-        "c6f5261ea443b4fa",
-        "c4db94543db85476",
-        "18a96c97e476063d",
+        "d461cb2342ff8764",
+        "c434aaec32ee6a3c",
+        "3652590f5970ef64",
       ]
     `);
   });
@@ -299,7 +301,9 @@ describe("QA Inspectors' Island culture (TASK-424), 30 seeds", () => {
       const w = world(seed);
       const { isl } = qaOf(w);
       for (const f of w.fixtures) {
+        // the Customs Port pieces (TASK-508) stand on a cut quay / in the water: their own test below
         if (f.islandId !== isl.id || !(KIT.has(f.defId) || f.defId === 'terrarium')) continue;
+        if (['customsYard', 'scannerArch', 'quarantinePontoon'].includes(f.defId)) continue;
         const ctx = `seed ${seed} ${f.defId} @${f.x.toFixed(1)},${f.z.toFixed(1)}`;
         const y0 = heightAt(w.height, f.x, f.z);
         expect(y0, `${ctx} on land`).toBeGreaterThan(0.4);
@@ -390,8 +394,9 @@ describe('QA quick wins (TASK-480), 30 seeds', () => {
       }
     }
     // TASK-480: a rim crowded with lots / hangars can leave a seed too little walk
-    // (TASK-499: the Proving Grounds stunt yard takes plateau ground too: 0.85 → 0.75)
-    expect(walks / SEEDS.length).toBeGreaterThanOrEqual(0.75);
+    // (TASK-499: the Proving Grounds stunt yard takes plateau ground too: 0.85 → 0.75;
+    // TASK-508: the customs quay's pad and path block take the foot of the bluff: 0.75 → 0.65)
+    expect(walks / SEEDS.length).toBeGreaterThanOrEqual(0.65);
   });
 
   it('Q18 palm rim: palms inland of the walk, near it; two hammocks on the rim', () => {
@@ -527,7 +532,8 @@ describe('QA Proving Grounds (TASK-499), 30 seeds', () => {
       for (const l of w.lots.filter((x) => x.islandId === isl.id))
         expect(rectDist(r, l), `${ctx} lot ${l.defId}`).toBeGreaterThan(0);
     }
-    expect(found / SEEDS.length).toBeGreaterThanOrEqual(0.9);
+    // TASK-508: the customs quay takes cove ground first: 29 → 25 of 30 seeds keep a yard
+    expect(found / SEEDS.length).toBeGreaterThanOrEqual(0.8);
   });
 
   it('one drop tower, one test fan, a course of obstacle variants beside the yard', () => {
@@ -563,3 +569,166 @@ describe('QA Proving Grounds (TASK-499), 30 seeds', () => {
     expect(pieces / SEEDS.length).toBeGreaterThanOrEqual(3);
   });
 });
+
+/** TASK-508 Customs Port: the quay on the lee cove, the arch over the ship lane, the pontoons. */
+describe('QA Customs Port placement (TASK-508), 30 seeds', () => {
+  const portOf = (w: WorldData) => {
+    const { isl } = qaOf(w);
+    const a = isl.anchors.customs;
+    const f = isl.anchors.customsFlip;
+    const l = isl.anchors.customsLane;
+    if (!a || !f || !l) return null;
+    const lay = portLayout({ sl: f.z > 0 ? 1 : -1, lane: l.x });
+    const toWorld = (p: XZ): XZ => frameToWorld(a.x, a.z, a.rotY, p.x, p.z);
+    return { isl, a, lay, toWorld, pass: l.z };
+  };
+  const rectDistTo = (
+    r: { p: { x: number; z: number }; rot: number; w: number; d: number },
+    q: XZ,
+  ): number => {
+    const dx = q.x - r.p.x;
+    const dz = q.z - r.p.z;
+    const u = Math.abs(-dx * Math.sin(r.rot) + dz * Math.cos(r.rot)) - r.w / 2;
+    const v = Math.abs(dx * Math.cos(r.rot) + dz * Math.sin(r.rot)) - r.d / 2;
+    return u > 0 || v > 0 ? Math.hypot(Math.max(u, 0), Math.max(v, 0)) : Math.max(u, v);
+  };
+
+  it('every seed gets a port: crane (v1), one inspection line (v2), a stack (v4), the arch, 2-3 pontoons', () => {
+    const passes = [0, 0, 0];
+    for (const seed of SEEDS) {
+      const w = world(seed);
+      const p = portOf(w);
+      const ctx = `seed ${seed}`;
+      expect(p, ctx).not.toBeNull();
+      if (!p) continue;
+      passes[p.pass]++;
+      const fx = w.fixtures.filter((f) => f.islandId === p.isl.id);
+      const yard = fx.filter((f) => f.defId === 'customsYard');
+      expect(yard.filter((f) => f.variant === 1).length, ctx).toBe(1);
+      expect(yard.filter((f) => f.variant === 2).length, ctx).toBe(1);
+      expect(yard.filter((f) => f.variant === 4).length, ctx).toBeLessThanOrEqual(1);
+      expect(
+        yard.every((f) => [1, 2, 4].includes(f.variant ?? -1)),
+        ctx,
+      ).toBe(true);
+      expect(fx.filter((f) => f.defId === 'scannerArch').length, ctx).toBe(1);
+      const pon = fx.filter((f) => f.defId === 'quarantinePontoon');
+      expect(pon.length, ctx).toBeGreaterThanOrEqual(2);
+      expect(pon.length, ctx).toBeLessThanOrEqual(3);
+      // the quay stands on level land, the pontoons float, the arch and the lane are open water
+      const crane = yard.find((f) => f.variant === 1) as XZ;
+      expect(Math.hypot(crane.x - p.a.x, crane.z - p.a.z), ctx).toBeLessThan(1e-6);
+      expect(heightAt(w.height, crane.x, crane.z), ctx).toBeGreaterThan(0.3);
+      const line = yard.find((f) => f.variant === 2) as XZ;
+      expect(heightAt(w.height, line.x, line.z), ctx).toBeGreaterThan(0.3);
+      expect(
+        Math.abs(heightAt(w.height, line.x, line.z) - heightAt(w.height, crane.x, crane.z)),
+        ctx,
+      ).toBeLessThan(0.6);
+      for (const f of pon) expect(heightAt(w.height, f.x, f.z), ctx).toBeLessThan(-0.15);
+      // crane faces the water: local +z (= rotY) points to open sea
+      const ahead = { x: crane.x + Math.cos(p.a.rotY) * 6, z: crane.z + Math.sin(p.a.rotY) * 6 };
+      expect(heightAt(w.height, ahead.x, ahead.z), ctx).toBeLessThan(0.05);
+    }
+    // the cove itself takes most seeds; the rest fall back to a rougher pad / a nearer pontoon
+    expect(passes[0] + passes[1] + passes[2]).toBe(SEEDS.length);
+    expect(passes[0]).toBeGreaterThanOrEqual(8);
+  });
+
+  it('the ship water is dredged and open: berth, spin disc and lane, clear of land and the pier', () => {
+    for (const seed of SEEDS) {
+      const w = world(seed);
+      const p = portOf(w);
+      if (!p) continue;
+      const ctx = `seed ${seed}`;
+      const docks = w.docks.filter((d) => d.islandId === p.isl.id);
+      for (const pr of waterProbes(p.lay)) {
+        const q = p.toWorld(pr);
+        expect(heightAt(w.height, q.x, q.z), `${ctx} probe ${pr.kind}`).toBeLessThan(-0.7);
+        const near = pr.kind === 'near' || pr.kind === 'ring';
+        if (!near)
+          expect(-sampleShore(w, q), `${ctx} shore ${pr.kind}`).toBeGreaterThan(pr.r * 0.5);
+        for (const d of docks) {
+          const L = d.segments * 2;
+          const a = { x: d.x, z: d.z };
+          const b = { x: d.x + Math.cos(d.rotY) * L, z: d.z + Math.sin(d.rotY) * L };
+          expect(segDist(q, a, b), `${ctx} pier ${pr.kind}`).toBeGreaterThan(pr.r * 0.5);
+        }
+      }
+    }
+  });
+
+  it('keeps off the Proving Grounds stunt yard, its track and the loop track', () => {
+    for (const seed of SEEDS) {
+      const w = world(seed);
+      const p = portOf(w);
+      if (!p) continue;
+      const ctx = `seed ${seed}`;
+      const sp = p.isl.anchors.stunt;
+      const sz = p.isl.anchors.stuntSize;
+      const pts = [{ x: p.a.x, z: p.a.z }, ...p.lay.pontoons.map(p.toWorld), p.toWorld(p.lay.ok)];
+      if (sp && sz)
+        for (const q of pts)
+          expect(rectDistTo({ p: sp, rot: sp.rotY, w: sz.x, d: sz.z }, q), ctx).toBeGreaterThan(6);
+      for (const f of w.fixtures.filter(
+        (x) => x.islandId === p.isl.id && ['dropTower', 'testFan', 'testTrack'].includes(x.defId),
+      ))
+        expect(Math.hypot(f.x - p.a.x, f.z - p.a.z), `${ctx} ${f.defId}`).toBeGreaterThan(6);
+    }
+  });
+
+  it('the ship lane stays clear of the ferry and boat routes', () => {
+    for (const seed of SEEDS) {
+      const w = world(seed);
+      const p = portOf(w);
+      if (!p) continue;
+      const ctx = `seed ${seed}`;
+      const o = { x: 0, z: 0, hx: 0, hz: 0 };
+      const lane: XZ[] = [];
+      for (let d = 0; d <= p.lay.path.length; d += 2)
+        lane.push(p.toWorld(pathAt(p.lay.path, d, o)));
+      for (const r of w.boatRoutes) {
+        let m = Infinity;
+        for (const q of lane)
+          for (const s of r.points) m = Math.min(m, Math.hypot(q.x - s.x, q.z - s.z));
+        expect(m, `${ctx} route`).toBeGreaterThan(CUSTOMS_PORT.keepOut.lane - 2.5); // route smoothing may cut a corner
+      }
+    }
+  });
+
+  it('the whale route keeps off the ship lane', () => {
+    for (const seed of SEEDS.slice(0, 12)) {
+      const w = world(seed);
+      const p = portOf(w);
+      const route = planWhaleRoute(w, seed);
+      if (!p || !route) continue;
+      const o = { x: 0, z: 0, hx: 0, hz: 0 };
+      let m = Infinity;
+      for (let d = 0; d <= p.lay.path.length; d += 3) {
+        const q = p.toWorld(pathAt(p.lay.path, d, o));
+        for (let i = 0; i < route.pts.length; i += 2)
+          m = Math.min(m, Math.hypot(q.x - route.pts[i], q.z - route.pts[i + 1]));
+      }
+      expect(m, `seed ${seed}`).toBeGreaterThan(8);
+    }
+  });
+
+  it('the island plan still has its pier, yard and campus', () => {
+    for (const seed of SEEDS) {
+      const w = world(seed);
+      const { isl, s } = qaOf(w);
+      expect(
+        w.docks.some((d) => d.islandId === isl.id),
+        `seed ${seed}`,
+      ).toBe(true);
+      expect(s?.plaza, `seed ${seed}`).not.toBeNull();
+    }
+  });
+});
+
+function sampleShore(w: WorldData, q: XZ): number {
+  const h = w.height;
+  const ix = Math.round((q.x - h.originX) / h.cellSize);
+  const iz = Math.round((q.z - h.originZ) / h.cellSize);
+  return w.shoreSdf[iz * h.n + ix];
+}
