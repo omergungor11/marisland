@@ -15,6 +15,7 @@ import { chromium } from 'playwright';
 import { CODING_M22_SHOWCASE_IDS } from '../src/content/props-themes/coding.ts';
 import { M20_PROP_IDS } from '../src/content/props-themes/m20.ts';
 import { QA_M24_PROP_IDS } from '../src/content/props-themes/qa-proving.ts';
+import { QA_M30_PROP_IDS } from '../src/content/props-themes/qa-customs.ts';
 import { RESEARCH_M22_PROP_IDS } from '../src/content/props-themes/research.ts';
 import { buildGalleryScene } from '../src/geo/gallery.ts';
 import { PROP_GEO } from '../src/geo/registry.ts';
@@ -32,13 +33,15 @@ const ids =
         ? RESEARCH_M22_PROP_IDS
         : which === 'qa24'
           ? QA_M24_PROP_IDS
-          : which.split(',');
+          : which === 'qa30'
+            ? QA_M30_PROP_IDS
+            : which.split(',');
 const PORT = Number(opt('port') ?? 5199);
 const ROOT = resolve(import.meta.dirname, '..');
 const OUT = resolve(
   ROOT,
   opt('out') ??
-    `shots/gallery-${['m20', 'coding22', 'research', 'qa24'].includes(which) ? which : 'custom'}`,
+    `shots/gallery-${['m20', 'coding22', 'research', 'qa24', 'qa30'].includes(which) ? which : 'custom'}`,
 );
 const BASE = `http://localhost:${PORT}/`;
 

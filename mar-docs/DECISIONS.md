@@ -2,6 +2,24 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-086: QA Customs Port kit — three defs at the end of PROP_DEFS, QA cap 12 -> 15, ship and crane rig as loose builders (D-082) — 2026-10-27
+
+**Decision** (TASK-506, no placement): (1) **Defs** (all tier 2, planner-pinned, ledger entries 13-15; `cultureCapOverride.qa`
+= 15 / tier-1 1, so +3, not the ~+2 of D-082): `scannerArch` (Q8; lattice posts, girder, gable roof, prism lens, a
+marquee bulb loop on both faces, the channel runs along local z), `customsYard` (5 variants: 0 quay crane carrying a
+container, 1 the empty rig, 2 / 3 inspection line with the check / cross lamp lit, 4 loose stack of QA containers),
+`quarantinePontoon` (Q9; 3 layouts, `FLOATING_FIXTURES`, flags 0, `tagBob` + red `tagBeacon` lamp). The arch and the pontoon
+had to be own defs (frame, floating by defId); crane + line + stack share one def as variants (the DevOps crane is part
+of `containerYard`, not a def, so there was nothing to vary). (2) **Not defs**: the cargo ship (`buildQaCargoShip(loaded)`;
+white hull, mint waterline, yellow trim, 8 container slots) and the crane rig (`buildQuayTrolley`, `buildQuaySpreader`,
+`buildQuayCable`, `buildQaContainer(i)`) are loose builders for the TASK-5xx movers, like `buildDropCrate`. (3) Containers are
+the DevOps ones at 0.72 scale (3.6 x 1.5 x 1.5) in white / mint / yellow / sky / deep mint, so ship, spreader, belt and
+stacks share one size. The arch clears the ship by 2.6 u (7.1 vs ship top 4.5, 8.1 clear width vs beam 4.6). (4) Geometry
+`geo/themes/qa-customs.ts`, numbers + palette `content/themes/qa-customs.ts`, defs (TASK-506 block at the tail of
+`PROP_DEFS`) `content/props-themes/qa-customs.ts`, showcase `?gallery=1&ids=qa30`.
+**Rationale**: variants and loose builders keep the ledger at +3 and give the movers hooks without more defs.
+**Alternatives**: separate defs for crane / line / stack (+5 total); baking the ship as a def (a mover, not a fixture).
+
 ## D-082: QA harbour becomes a customs port — plan only — 2026-10-27
 
 **Decision** (user, picked from an HTML comparison): Palmlagoon's harbour turns commercial as a **customs port**:

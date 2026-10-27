@@ -22,6 +22,7 @@ import { RIM_PROP_DEFS } from './props-themes/rim.ts';
 import { STAIR_PROP_DEFS } from './props-themes/stairs.ts';
 import { BEACON_PROP_DEFS } from './props-themes/beacon.ts';
 import { QA_PROVING_PROP_DEFS } from './props-themes/qa-proving.ts';
+import { QA_CUSTOMS_PROP_DEFS } from './props-themes/qa-customs.ts';
 
 export interface PropDef {
   id: string;
@@ -154,6 +155,8 @@ const ALL_DEFS: readonly PropDef[] = [
   ...BEACON_PROP_DEFS,
   // M24 (TASK-499): QA Proving Grounds drop tower, test fan, obstacle course
   ...QA_PROVING_PROP_DEFS,
+  // === TASK-506 (M30): QA Customs Port scanner arch, customs yard, quarantine pontoon ===
+  ...QA_CUSTOMS_PROP_DEFS,
 ];
 
 /**

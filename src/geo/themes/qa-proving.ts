@@ -25,13 +25,13 @@ const Y = V(0, 1, 0);
 type Pt = THREE.Vector3;
 
 /** Square beam from a to b (thickness `th`). */
-function beam(acc: Acc, a: Pt, b: Pt, th: number, color: string): void {
+export function beam(acc: Acc, a: Pt, b: Pt, th: number, color: string): void {
   const d = b.clone().sub(a);
   put(acc, baseBox(th, d.length(), th), a, color, { q: qFromTo(Y, d), aoAmt: 0 });
 }
 
 /** Acc scaled a hair in x / z by the seed (y untouched, so the crate anchors and hooks stay exact). */
-function seedAcc(rng: Rng, amt: number): Acc {
+export function seedAcc(rng: Rng, amt: number): Acc {
   const acc = new Acc();
   const r = rng.fork('jit');
   acc.xf = mat([0, 0, 0], null, [1 + r.range(-amt, amt), 1, 1 + r.range(-amt, amt)]);

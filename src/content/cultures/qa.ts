@@ -37,6 +37,10 @@ export const QA_CULTURE: CultureDef = {
     { id: 'dropTower', tier: 1, flags: grounded },
     { id: 'testFan', tier: 2, flags: grounded | windy },
     { id: 'obstacle', tier: 2, flags: grounded },
+    // M30 TASK-506 Customs Port (D-082/D-086: cap 15)
+    { id: 'scannerArch', tier: 2, flags: grounded },
+    { id: 'customsYard', tier: 2, flags: grounded },
+    { id: 'quarantinePontoon', tier: 2, flags: 0 },
   ],
   // emitted by world/gen/plans/qa.ts (TASK-424); `defs` = the props the scene stands on
   storySpots: [

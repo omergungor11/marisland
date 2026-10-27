@@ -18,6 +18,21 @@
   Fleet anchor trick. Session handover: TASK-497 (worldgen) and TASK-499 (props) were asked to commit WIP on
   their `worktree-agent-*` branches. Check `git worktree list` and the branch tip before resuming; then wave 2
   (498 ∥ 501) and 502 QA.
+- **TASK-506 (QA Customs Port kit, branch `worktree-agent-a13a9fbb83a4211bc`, D-086; no placement yet)**:
+  - **Defs** (QA ledger 15 / 15, `cultureCapOverride.qa`; all tier 2): `scannerArch` (1 variant, ship passes along
+    local z, T0 by size), `customsYard` (v0 crane + container, v1 empty rig, v2 / v3 inspection line with check /
+    cross lamp lit, v4 container stack; `rollVariants` 1, pin the rest), `quarantinePontoon` (3 layouts,
+    `FLOATING_FIXTURES`, bob + red beacon lamp). Geometry `geo/themes/qa-customs.ts`, numbers `content/themes/qa-customs.ts`.
+  - **Loose builders for the placement / life task**: `buildQaCargoShip(loaded)` (bow +z, waterline 0, hook
+    `slots.list` of 8 container base centres, yaw pi / 2), `buildQaContainer(i)`, `buildQuayTrolley()` (origin = base),
+    `buildQuaySpreader()` (origin = frame top), `buildQuayCable()` (unit height, scale y).
+  - **Hooks** (`userData.hooks`): arch `pass` / `scan` / `marquee` {count 36} / `lamp`; crane `spreader` {home, up, down, size},
+    `trolley` {home, z, y}, `cable`, `container`; line `belt` {from, to, width}, `lamps` {ok, bad, lit}, `booth`; pontoon
+    `lamp`, `deck`, `crates.stacks`.
+  - **Gotchas**: variants of `customsYard` differ in size (crane 5.5 x 12.8, line 13 x 6, stack 3.8 x 4.9), so the planner
+    needs per-variant rects (the def footprint 6.2 is the crane's). The pontoon is the only fixture needing the waterline
+    pivot; the quay crane boom reaches +z, so face +z at the water. `tagBob` period is the shared FLOAT_BOB (1.3 s), not
+    3.2 s. Worktree has no `node_modules`: symlink the main checkout's.
 - **TASK-499 merged** (QA kit; `cultureCapOverride.qa` 12/1):
   - **For TASK-501:**
     - `dropTower` `userData.hooks.crate` {top, rest, size}; `buildDropCrate()` in `geo/themes/qa-proving.ts`.
