@@ -102,9 +102,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "9df8330751a77b88",
-          "1001": "8f5fb2ea227c8d09",
-          "42": "3bf61e28bcd6d815",
+          "1": "6be24599fa4e775a",
+          "1001": "184967a3cbda145e",
+          "42": "829ec705fc07ce6b",
         }
       `);
     },
@@ -562,8 +562,9 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // Beacon Rock stair flights, HQ streets to the waterline, bigger slalom buoys, re-pinned;
       // TASK-488 reef shoals + sills (routes detour, deep gaps, buoys off crossings), re-pinned;
       // TASK-490 skerry beacon towers (scatter), re-pinned; TASK-499 QA Proving Grounds (stunt yard + kit), re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('85f1f50abd11e43f');
-      expect(generateWorld(1).hashes.world).toBe('da2dd754fee99a25');
+      // TASK-497 Coding Kite Hill (profile lift, hill kites, tunnel pad, fallbacks), re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('26b393aeee24bed4');
+      expect(generateWorld(1).hashes.world).toBe('f385459330421fc6');
     } finally {
       for (const b of saved) b.on = true;
     }
