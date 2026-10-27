@@ -35,6 +35,11 @@ export const DEVOPS_CULTURE: CultureDef = {
     { id: 'anvil', tier: 3, flags: grounded | noShadow },
     { id: 'pagerRock', tier: 3, flags: grounded | noShadow },
     { id: 'onsenHouse', tier: 1, flags: grounded },
+    // M25 TASK-504 (D-084): funicular, geyser field, ore cableway (cap 14, cultureCapOverride.devops)
+    { id: 'funicularRail', tier: 2, flags: grounded },
+    { id: 'funicularCar', tier: 2, flags: grounded },
+    { id: 'geyserCone', tier: 2, flags: grounded },
+    { id: 'oreBucket', tier: 3, flags: grounded | noShadow },
   ],
   // TASK-422: emitted by world/gen/plans/devops-works.ts placeCulture (world.storySpots)
   storySpots: [

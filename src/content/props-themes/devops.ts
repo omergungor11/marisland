@@ -356,7 +356,16 @@ export const DEVOPS_CULTURE_PROP_DEFS: readonly PropDef[] = [
     flags: grounded | noShadow,
   },
   // the one tier-1 def: a small bath house by the hot spring
-  { id: 'onsenHouse', geo: 'onsenHouse', tier: 1, variants: 1, footprint: 2.2, flags: grounded },
+  // v1 = on stilts over the pool, v2 = stilts + towel lines (M25 TASK-504, D9): pinned by the plan only
+  {
+    id: 'onsenHouse',
+    geo: 'onsenHouse',
+    tier: 1,
+    variants: 3,
+    rollVariants: 1,
+    footprint: 2.2,
+    flags: grounded,
+  },
 ];
 
 /**

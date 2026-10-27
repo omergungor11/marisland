@@ -96,6 +96,8 @@ export const cultureCapOverride: Readonly<Record<string, { defs: number; tier1: 
   hq: { defs: 12, tier1: 1 },
   design: { defs: 15, tier1: 2 },
   qa: { defs: 12, tier1: 1 },
+  // M25 TASK-504 (D-084): the Ember Smiths ledger 10 -> 14 (funicularRail / Car, geyserCone, oreBucket)
+  devops: { defs: 14, tier1: 1 },
 };
 
 /** SwiftShader is ~20–50× slower; time budgets are scaled by this when headless. */

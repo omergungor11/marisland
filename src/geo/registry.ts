@@ -68,6 +68,7 @@ import { giantMushroom, palm, pine, roundTree, treeBlob } from './trees.ts';
 import { THEME_GEO } from './themes/index.ts';
 import { withGuildHall } from './themes/culture-hq.ts';
 import { withOpsShack, withWatchTower } from './themes/devops-m22.ts';
+import { withFunicularStation } from './themes/devops-m25.ts';
 import {
   lanternBoat,
   withCanopyVitray,
@@ -227,7 +228,8 @@ defs.push(
   // roof colour popped to the faceted glass at the T2 swap (top-view ΔE 43, D-031)
   D('galleryPavilion', 3, withGlassPavilion(galleryPavilion), 2.8, 3.6),
   D('dataCenter', 2, dataCenter, 4.0, 3.25),
-  D('rackShed', 2, rackShed, 2.1, 3),
+  // variant 2 = DevOps funicular station (M25 TASK-504), pinned by the DevOps plan only
+  withFunicularStation(D('rackShed', 2, rackShed, 2.1, 3)),
   // variant 2 = DevOps summit watch tower (M22 TASK-482), pinned by the DevOps plan only
   D('antennaMast', 3, withWatchTower(antennaMast), 1.4, 9.2, false, [9.8, 8.6, 12.2]),
   D('researchHut', 2, researchHut, 2.3, 4.4),

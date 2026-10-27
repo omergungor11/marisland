@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { DEVOPS_CULTURE } from '../../content/cultures/devops.ts';
 import { validateCultures, paletteHexes } from '../../content/cultures/validate.ts';
 import { PROP_DEFS } from '../../content/props.ts';
+import { DEVOPS_M25_PROP_DEFS } from '../../content/props-themes/devops-m25.ts';
 import { DEVOPS_CULTURE_KIT, DEVOPS_WORKS } from '../../content/props-themes/devops.ts';
 import { PropFlag } from '../../world/prop-store.ts';
 import { isLargeStructure } from '../../render/props/batcher.ts';
@@ -24,7 +25,10 @@ const MIN_THICK = 0.12;
 describe('TASK-412 Ember Smiths kit', () => {
   it('geo, PropDefs and the culture ledger line up', () => {
     const ids = CULTURE_DEVOPS_GEO.map((d) => d.id);
-    expect(DEVOPS_CULTURE.kit.map((k) => k.id).sort()).toEqual([...ids].sort());
+    // + the four M25 entries (TASK-504, geo/themes/devops-m25.ts)
+    expect(DEVOPS_CULTURE.kit.map((k) => k.id).sort()).toEqual(
+      [...ids, ...DEVOPS_M25_PROP_DEFS.map((d) => d.id)].sort(),
+    );
     for (const k of DEVOPS_CULTURE.kit) {
       const d = defOf(k.id);
       expect(d, k.id).toBeDefined();
@@ -38,7 +42,9 @@ describe('TASK-412 Ember Smiths kit', () => {
 
   it('ledger is ordered by priority: cut to 6 stays valid, the tier-1 def goes first', () => {
     const kit = DEVOPS_CULTURE.kit;
-    expect(kit.at(-1)?.id).toBe('onsenHouse');
+    // the ten TASK-412 entries first (onsenHouse last of them), the M25 entries (TASK-504) after
+    expect(kit[9]?.id).toBe('onsenHouse');
+    expect(kit.slice(10).map((k) => k.id)).toEqual(DEVOPS_M25_PROP_DEFS.map((d) => d.id));
     expect(kit.slice(0, 6).every((k) => k.tier >= 2)).toBe(true);
     expect(validateCultures([{ ...DEVOPS_CULTURE, kit: kit.slice(0, 6) }])).toEqual([]);
     expect(kit.filter((k) => k.tier === 1)).toHaveLength(1);
@@ -95,10 +101,11 @@ describe('TASK-412 Ember Smiths kit', () => {
   }
 
   it('no tier >= 1 kit def is a "large structure" (stays out of the W11 far groups)', () => {
-    for (const k of DEVOPS_CULTURE.kit) {
+    for (const k of DEVOPS_CULTURE.kit.slice(0, 10)) {
       const d = defOf(k.id);
       if (!d) throw new Error(k.id);
-      for (let v = 0; v < d.variants; v++) {
+      // the rolled variants only: onsenHouse 1 / 2 (stilts, M25) are taller than 3 u, plan-pinned
+      for (let v = 0; v < (d.rollVariants ?? d.variants); v++) {
         const s = size(buildProp(k.id, 3, v, 0));
         expect(
           isLargeStructure(d, s),

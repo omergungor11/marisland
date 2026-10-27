@@ -86,7 +86,8 @@ describe('TASK-465 ledgers and defs', () => {
 
   it('variant counts: gate + stall = one per culture, glasshouse = one per pane tint', () => {
     expect(PROP_GEO.cultureGate.variants).toBe(THEME_IDS.length);
-    expect(PROP_GEO.goodsStall.variants).toBe(THEME_IDS.length);
+    // + the DevOps smith's stall (variant 7, M25 TASK-504), plan-pinned
+    expect(PROP_GEO.goodsStall.variants).toBe(THEME_IDS.length + 1);
     expect(PROP_GEO.glasshouse.variants).toBe(GLASSHOUSE_HUES.length);
     expect(GLASSHOUSE_HUES.length).toBeGreaterThanOrEqual(4);
     expect(GLASSHOUSE_HUES.length).toBeLessThanOrEqual(6);

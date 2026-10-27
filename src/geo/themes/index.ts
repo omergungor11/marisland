@@ -23,8 +23,20 @@ import { RIM_GEO } from './rim.ts';
 import { STAIR_GEO } from './stairs.ts';
 import { BEACON_GEO } from './beacon.ts';
 import { QA_PROVING_GEO } from './qa-proving.ts';
+import { DEVOPS_M25_GEO, withOnsenStilts, withOrePylons, withSmithStall } from './devops-m25.ts';
+import { THEME_IDS } from '../../world/types.ts';
 
-export const THEME_GEO: readonly PropGeoDef[] = [
+/** M25 (TASK-504, D-084): extra variants of older defs (onsenHouse 1-2, goodsStall 7, mailLine 2-3). */
+const m25Variants = (d: PropGeoDef): PropGeoDef =>
+  d.id === 'onsenHouse'
+    ? withOnsenStilts(d)
+    : d.id === 'goodsStall'
+      ? withSmithStall(d, THEME_IDS.indexOf('devops'))
+      : d.id === 'mailLine'
+        ? withOrePylons(d)
+        : d;
+
+const BASE_THEME_GEO: readonly PropGeoDef[] = [
   ...HQ_GEO,
   ...CODING_GEO,
   ...MARKETING_GEO,
@@ -52,4 +64,10 @@ export const THEME_GEO: readonly PropGeoDef[] = [
   ...BEACON_GEO,
   // M24 TASK-499 QA Proving Grounds
   ...QA_PROVING_GEO,
+];
+
+export const THEME_GEO: readonly PropGeoDef[] = [
+  ...BASE_THEME_GEO.map(m25Variants),
+  // M25 TASK-504 DevOps funicular, geyser cone, ore bucket
+  ...DEVOPS_M25_GEO,
 ];

@@ -9,10 +9,12 @@
  */
 import * as THREE from 'three';
 import { DEVOPS_M22 } from '../../content/props-themes/devops.ts';
+import { DEVOPS_M25 } from '../../content/themes/devops-m25.ts';
 import { house } from '../buildings.ts';
 import { col, frustum, qEuler, type Acc } from '../kit.ts';
 import { V, baseBox, cylB, jitterAcc, lathe, put } from '../parts.ts';
 import type { BuildOpts, PropBuilder } from '../types.ts';
+import { addHook } from './hq.ts';
 
 /** antennaMast variant that is the watch tower (= DEVOPS_SITE.ridge.towerVariant). */
 export const WATCH_TOWER_VARIANT = 2;
@@ -134,7 +136,30 @@ function watchTower({ rng, lod }: BuildOpts): THREE.BufferGeometry {
     aoAmt: 0,
     ao: () => 1,
   });
-  return acc.finish(rng, false, true);
+  // M25 (TASK-504, D5): the beam head, a lens ring under the lamp and a hood over it; the rotating
+  // red beam itself is the culture mover's (hooks.beam = the lamp centre)
+  const H = DEVOPS_M25.beamHead;
+  put(
+    acc,
+    cylB(H.ringR, H.ringR - 0.04, 0.1, hi ? 8 : 5),
+    [0, T.beaconY - T.beaconR - 0.1, 0],
+    T.steel,
+    {
+      aoAmt: 0.05,
+    },
+  );
+  put(
+    acc,
+    new THREE.ConeGeometry(H.ringR, H.capH, hi ? 8 : 5),
+    [0, T.beaconY + T.beaconR + H.capH / 2, 0],
+    T.roof,
+    {
+      aoAmt: 0,
+    },
+  );
+  const g = acc.finish(rng, false, true);
+  addHook(g, 'bell', { at: [0, T.bellY, 0], radius: T.bellR });
+  return addHook(g, 'beam', { at: [0, T.beaconY, 0], color: T.beacon });
 }
 
 export function withWatchTower(base: PropBuilder): PropBuilder {
