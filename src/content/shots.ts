@@ -106,8 +106,8 @@ const LIVE_CROP: [number, number, number, number] = [0.15, 0.1, 0.85, 0.9];
  */
 const STORY_SHOTS: readonly (readonly [string, string, string, number, number])[] = [
   ['signpostDebate', 'Signpost debate · HQ', '-51.04,8.5,-3.82,-48.24,2,-9.62', 14, 6],
-  // TASK-484: re-aimed at the turbine-foot nap hammock (moved with the TASK-479 solar halving)
-  ['hammockNap', 'Hammock nap · Coding', '-118.5,12.6,179.5,-112.27,9.6,174.58', 14, 6],
+  // TASK-497: re-aimed at the turbine-foot nap hammock (the chime turbine moved onto the Kite Hill)
+  ['hammockNap', 'Hammock nap · Coding', '-130.97,12.41,160.88,-124.74,9.41,155.96', 14, 6],
   ['containerNap', 'Container nap · DevOps', '153.71,8.93,-11.08,158.75,6.23,-12.37', 14, 6],
   ['lighthouseSelfie', 'Selfie · Marketing', '-189.14,28.37,-21.87,-184.03,25.67,-22.88', 14, 6],
   ['gafferTurn', 'Gaffer · Design', '-97.6,24.75,-175.95,-99.57,22.05,-171.13', 14, 6],
@@ -205,8 +205,8 @@ const MOVE_SHOTS: readonly ShotPreset[] = (
   [
     ['hq', 'Harbour Guild · 06:00 bell fanfare', 1001, '-59.04,4.5,-19.82,-52.44,2.8,-16.42', 6],
     ['hq-crane', 'Harbour Guild · crane sack', 1001, '-56.94,5.5,-4.12,-49.94,2,-4.12', 9],
-    // TASK-484: re-aimed at the kite-day spot (the old look framed a turbine mast); the C18 boardwalk on the left
-    ['coding', 'Wind Gardens · 14:00 Kite Day', 1001, '-122,16,170,-110.7,13,182.9', 14],
+    // TASK-497: the Kite Day rack at the Kite Hill foot, up the hill to the chime turbine and its kites
+    ['coding', 'Wind Gardens · 14:00 Kite Day', 1001, '-92,15,147,-97.5,11.5,172', 14],
     [
       'devops',
       'Ember Works · 21:00 Release Night lift + horn',
@@ -1226,8 +1226,8 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   {
     id: 'D-culture-coding',
     title: 'Culture · Coding Wind Gardens (T2, 14:00)',
-    // seed 1001 Millbrook (TASK-421): the Tech Park lawn (pergola desks, giant duck), the chime
-    // pagoda turbine with its hammock and the kite field north of it, from the south-east
+    // seed 1001 Millbrook (TASK-421): the Tech Park lawn (pergola desks, giant duck) and, since
+    // TASK-497, the Kite Hill in front: the chime pagoda turbine on top, kites round its foot
     seed: 1001,
     cam: '-60.43,46,172.05,-106.43,9.5,162.05',
     time: 14,

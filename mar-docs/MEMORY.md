@@ -27,26 +27,23 @@
   - **Gotchas:**
     - Props over 3 u tall draw from T0 regardless of tier.
     - A blocking reservation placed before `campusLots` moves the lots and paths.
-- **TASK-497 WIP** (`worktree-agent-a24e64327cede359d` @ `ca271e8`, not merged):
-  - **Done:** knoll (`KITE_HILL`, `IslandProfile.lift`), site choice, kites ring, bench, and the
-    `anchors.windTunnel` {x,z,rotY} anchor.
-    - The anchor is missing on seeds 371/408/593.
-    - Axis is `(cos rotY, sin rotY)`; +axis is downwind; pad is 16×6.
-  - **Left — 10 failing tests:**
-    - pinwheel fallback in `m22Quick` (1 of 30 seeds has none);
-    - hash re-pins in archipelago and plans-coding;
-    - millbrook peakY bound becomes +4;
-    - kite count range;
-    - seed 1 has 0 solar blocks;
-    - grove floor 0.65 → ~0.57;
-    - rim bench count must exclude the hill bench.
-  - **Then:** merge main, wow, ladder.
-    - Coding raw cams (`MOVE_SHOTS` Kite Day, `D-culture-coding`, maybe W7/`hammockNap`) are likely stale.
-    - D-075 numbers must be re-measured with `keepOut: 0`.
+- **TASK-497 merge-ready** (`worktree-agent-a24e64327cede359d`, D-075; main merged in). The hash re-pins are a
+  commit of their own (`test(worldgen): re-pin …`); redo them at merge if TASK-501 re-pinned too:
+  - **For TASK-498 (anchor contract):** `isl.anchors.windTunnel` {x, z, rotY} stands on every seed (30 test
+    seeds + 100 more checked).
+    - Axis is `(cos rotY, sin rotY)`; +axis is downwind (`cos(rotY − windDir) ≥ 0`).
+    - The pad is `rectShape(x, z, rotY, 6, 16)`: level (corners within 0.3 u), clear of fixtures, lots,
+      turbines and paths, ≥ 16 u from the summit (≥ 18 u except the `tunnel.last` tier).
+    - The Kite Day rack + `kiteDay` story sit just outside the hill foot facing the summit.
+    - On seed 1001 the hill is at (−97.9, 180.2) and the tunnel at (−123.5, 184.7), rotY 2.97.
+  - **Cams:** `D-move-coding` (Kite Day) and `D-story-hammockNap` are re-aimed. `D-culture-coding` and W7
+    still frame the hill well.
   - **Gotchas:**
-    - A pad's falloff (margin + 4 u) shaves nearby knoll flanks, so keep pads away from a knoll.
-    - Overlapping pad cores average their heights.
-    - The scratchpad is shared between agents; use per-task subdirs.
+    - A pad's falloff (margin + 4 u) shaves a knoll flank, so keep padded beds off the hill. Only the
+      pinwheel meadow's last fallback stands on the hill foot, unpadded there.
+    - Planner `relief()` reads heights before the pads level them, so a fixture beside a pad's falloff can
+      end up tilted (the hill rack got its own pad for that).
+    - The hill costs room on ~70 u plateaus: grove 23 → 14 of 30, rim walk 28 → 24, glyphs 22 → 21.
 - **2026-10-27 (M23 closed; TASK-495/493 merged)**: M23 world signature is done — reefs, relay night, constellations,
   whale, night-effects polish; QA in `mar-docs/qa/m23-world-signature.md`. Budgets now: medium memory peak W27
   162 / 170 MB, W16 278 calls / 765k tris, low ladder max 305k. An "uber geometry + shader collapse" mesh costs
