@@ -83,8 +83,9 @@ describe('culture movers', () => {
     expect(kinds.size).toBe(Object.keys(PART).length);
     for (const a of ['position', 'normal', 'color', 'emissive'])
       expect(g.getAttribute(a).array.every(Number.isFinite)).toBe(true);
-    // 18 kinds, each its own instanced mesh (TASK-495): the total only bounds the build cost
-    expect(g.getAttribute('position').count).toBeLessThan(4000);
+    // 22 kinds, each its own instanced mesh (TASK-495): the total only bounds the build cost
+    // (TASK-508 added the customs ship / container / trolley / spreader, ~1700 vertices)
+    expect(g.getAttribute('position').count).toBeLessThan(6000);
   });
 
   it('per-kind split (TASK-495): every vertex once, each geometry holds only its own kind', () => {
@@ -156,10 +157,23 @@ describe('culture movers', () => {
 
   it('QA flag climbs the mast at green light, confetti bursts at the show', () => {
     const mast = firstOf(world, props, 'flagMast')!;
+    // (the customs port on the same island moves with the hour too: leave its parts out of the count)
+    const portParts: number[] = [
+      PART.ship,
+      PART.cargo,
+      PART.trolley,
+      PART.spreader,
+      PART.cable,
+      PART.glow,
+      PART.ring,
+      PART.blob,
+    ];
+    const rest = (): number =>
+      view.stats().instances - portParts.reduce((n, k) => n + ofKind(view, k).length, 0);
     view.update(3, 12, env(12), mast, fest());
-    const idle = view.stats().instances;
+    const idle = rest();
     view.update(3, 16, env(16), mast, fest('qa', 'greenLight'));
-    expect(view.stats().instances).toBeGreaterThan(idle);
+    expect(rest()).toBeGreaterThan(idle);
     const cannon = firstOf(world, props, 'confettiCannon')!;
     view.update(3, 17.5, env(17.5), cannon, fest('marketing', 'goldenHourShow', 0.03));
     const burst = view.stats().instances;

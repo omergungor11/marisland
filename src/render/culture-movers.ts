@@ -31,6 +31,8 @@ import { QA_FACTORY, QA_MOVERS } from '../content/themes/qa.ts';
 import { cartFrame, newCartFrame } from '../geo/themes/qa-track.ts';
 import { crashPath, dummyPose, landingSquash, type DummyPose } from '../geo/themes/qa-crash.ts';
 import { dropState, type DropState } from './qa-proving-motion.ts';
+import { portLayout, type PortLayout } from '../world/gen/customs-port.ts';
+import { ITEM, MAX_ITEMS, customsFrame, newCustomsFrame } from './qa-customs-motion.ts';
 
 /**
  * Culture movers (M19 TASK-431): closed-form scenes that make each island culture visibly alive.
@@ -199,6 +201,9 @@ function rings(
   }
 }
 
+/** The customs port scene draws within this distance of its turn-around spot (u). */
+const QA_CUSTOMS_RANGE = 90;
+
 const SPH = M.secondsPerHour;
 const DAY = 24 * SPH;
 /** Seconds since the Launch Day Relay started (0 .. DAY) at culture-clock day seconds `day`. */
@@ -345,6 +350,50 @@ function crashDummyScene(): Scene['run'] {
     );
     const sc: V3 = [cs * (1 + d * 0.5), cs * (1 - d), cs * (1 + d * 0.5)];
     w.putQ(PART.dummy, [pos.x, pos.y, pos.z], q, sc, CM.dummy.color);
+  };
+}
+
+/**
+ * QA Customs Port (M30 TASK-508, customsYard variant 1 = the empty crane rig): the cargo ship's visit,
+ * the crane unloading three containers, the inspection line's verdicts and the rejected crates lobbed
+ * onto the quarantine pontoon. Crane-local frame; every pose a function of the culture-clock day
+ * seconds (render/qa-customs-motion.ts). Parts: ship, cargo, trolley, spreader (own kinds, drawn only
+ * while a port is in range), cable / glow / ring / blob (shared).
+ */
+function customsPortScene(lay: PortLayout, waterY: number): Scene['run'] {
+  const fr = newCustomsFrame();
+  return (w, c) => {
+    customsFrame(c.day, c.motion, lay, waterY, fr);
+    for (let i = 0; i < fr.n; i++) {
+      const it = fr.items[i];
+      const at: V3 = [it.x, it.y, it.z];
+      const sc: V3 = [it.sx, it.sy, it.sz];
+      switch (it.kind) {
+        case ITEM.ship:
+          w.put(PART.ship, at, [0, it.yaw, 0], sc);
+          break;
+        case ITEM.cargo:
+          w.put(PART.cargo, at, [0, it.yaw, 0], sc, it.hex);
+          break;
+        case ITEM.trolley:
+          w.put(PART.trolley, at, [0, it.yaw, 0], sc);
+          break;
+        case ITEM.spreader:
+          w.put(PART.spreader, at, [0, it.yaw, 0], sc);
+          break;
+        case ITEM.cable:
+          cable(w, at, [it.x1, it.y1, it.z1], it.hex);
+          break;
+        case ITEM.glow:
+          w.put(PART.glow, at, [0, it.yaw, 0], sc, it.hex);
+          break;
+        case ITEM.ring:
+          w.put(PART.ring, at, [0, it.yaw, 0], sc, it.hex);
+          break;
+        default:
+          w.put(PART.blob, at, [0, it.yaw, 0], sc, it.hex);
+      }
+    }
   };
 }
 
@@ -1068,6 +1117,7 @@ export function createCultureMovers(
     rocket: defOf('rocketMonument'),
     drop: defOf('dropTower'),
     track: defOf('testTrack'),
+    customs: defOf('customsYard'),
   };
   const beams: Beam[] = [];
   const beamAnchors: { x: number; y: number; z: number }[] = [];
@@ -1130,6 +1180,24 @@ export function createCultureMovers(
       const sc = sceneAt(th, pv(), store.rotY[i], [0, 1, 0], 1, crashDummyScene());
       sc.range2 = (QA_MOVERS.fadeFar + 20) * (QA_MOVERS.fadeFar + 20);
       scenes.push(sc);
+    } else if (d === D.customs && v === 1) {
+      // M30 TASK-508: the port's layout comes from the island anchors the planner wrote
+      const isl = world.islands[store.islandId[i]];
+      const fl = isl?.anchors.customsFlip;
+      const ln = isl?.anchors.customsLane;
+      if (fl && ln) {
+        const lay = portLayout({ sl: fl.z > 0 ? 1 : -1, lane: ln.x });
+        const sc = sceneAt(
+          th,
+          pv(),
+          store.rotY[i],
+          [lay.spot.x, 2, lay.spot.z],
+          MAX_ITEMS,
+          customsPortScene(lay, -store.y[i] / (store.scale[i] || 1)),
+        );
+        sc.range2 = QA_CUSTOMS_RANGE * QA_CUSTOMS_RANGE;
+        scenes.push(sc);
+      }
     } else if (d === D.cart)
       scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 2, 0], 3, balloonScene()));
     else if (d === D.gate)

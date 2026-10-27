@@ -6,6 +6,13 @@ import { OFFICE_COLORS } from '../content/palette-offices.ts';
 import { WORKER_COLORS as WC } from '../content/life.ts';
 import { THEMES } from '../content/themes.ts';
 import { PROVING_PAL as PP, QA_PROVING } from '../content/themes/qa-proving.ts';
+import {
+  buildQaCargoShip,
+  buildQaContainer,
+  buildQuaySpreader,
+  buildQuayTrolley,
+} from '../geo/themes/qa-customs.ts';
+import { QA_CUSTOMS } from '../content/themes/qa-customs.ts';
 
 /**
  * Part shapes of the culture movers (TASK-431): ONE merged geometry, drawn with the shared creature
@@ -42,6 +49,13 @@ export const PART = {
   crate: 16,
   /** QA crash dummy (M24 TASK-501): seated on the cart, hips at the origin, facing +z, tinted body. */
   dummy: 17,
+  /** QA cargo ship (M30 TASK-508): the bare hull of buildQaCargoShip(false), bow +z, waterline y = 0. */
+  ship: 18,
+  /** QA container (M30 TASK-508): base centre at the origin, length along x, body takes the instance tint. */
+  cargo: 19,
+  /** Quay crane trolley (origin = base) and spreader (origin = frame top centre) of the customs port. */
+  trolley: 20,
+  spreader: 21,
 } as const;
 export type PartKind = (typeof PART)[keyof typeof PART];
 
@@ -55,6 +69,11 @@ interface Piece {
   emissive: number;
   /** Dither-out share per vertex (limb.z; default 0 = solid). */
   cut?: (p: THREE.Vector3) => number;
+  /**
+   * A prop-kit builder geometry (M30 TASK-508): its own vertex colours and emissive are kept; vertices
+   * within `tint` of `tintOf` turn white so the instance colour tints them.
+   */
+  keep?: { tintOf?: string; tint: number };
 }
 
 /** Non-indexed copy with the attribute set every piece shares. */
@@ -69,10 +88,20 @@ function finish(p: Piece): THREE.BufferGeometry {
   const em: number[] = [];
   const pos = g.getAttribute('position');
   const v = new THREE.Vector3();
+  const kc = p.keep?.tintOf ? new THREE.Color(p.keep.tintOf) : null;
+  const kcol = p.keep ? g.getAttribute('color') : null;
+  const kem = p.keep ? g.getAttribute('emissive') : null;
+  const tmp = new THREE.Color();
   for (let i = 0; i < n; i++) {
-    col.push(c.r, c.g, c.b);
+    if (kcol) {
+      tmp.setRGB(kcol.getX(i), kcol.getY(i), kcol.getZ(i));
+      const hit =
+        kc && p.keep && Math.hypot(tmp.r - kc.r, tmp.g - kc.g, tmp.b - kc.b) < p.keep.tint;
+      if (hit) col.push(1, 1, 1);
+      else col.push(tmp.r, tmp.g, tmp.b);
+    } else col.push(c.r, c.g, c.b);
     limb.push(p.kind, 0, p.cut ? p.cut(v.fromBufferAttribute(pos, i)) : 0, 6);
-    em.push(p.emissive);
+    em.push(kem ? kem.getX(i) : p.emissive);
   }
   const out = new THREE.BufferGeometry();
   out.setAttribute('position', g.getAttribute('position'));
@@ -410,6 +439,15 @@ export function buildPartsGeometry(): THREE.BufferGeometry {
     emissive: 0,
   });
   dm(0.05, 0.05, 0.05, [0, 0.72, 0], PP.red);
+  // 18-21 customs port (M30 TASK-508): the kit's loose builders, vertex colours kept; the container body
+  // (white) takes the instance tint
+  const kit = (g: THREE.BufferGeometry, kind: number, tintOf?: string, tint = 0.1): void => {
+    pieces.push({ geo: g, kind, color: null, emissive: 0, keep: { tintOf, tint } });
+  };
+  kit(buildQaCargoShip(false), PART.ship);
+  kit(buildQaContainer(0), PART.cargo, QA_CUSTOMS.container.colors[0], 0.12);
+  kit(buildQuayTrolley(), PART.trolley);
+  kit(buildQuaySpreader(), PART.spreader);
   const done = pieces.map((p) => finish(p));
   const geo = mergeGeometries(done, false);
   for (const d of done) d.dispose();
