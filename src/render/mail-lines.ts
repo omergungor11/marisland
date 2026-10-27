@@ -3,7 +3,10 @@ import type { Scope } from '../core/scope.ts';
 import { createRng } from '../core/rng.ts';
 import { PROP_DEFS, PROP_DEF_INDEX } from '../content/props.ts';
 import { mailAnchorWorld, type Vec3Like } from '../content/props-themes/m20.ts';
+import { DEVOPS_M25 } from '../content/themes/devops-m25.ts';
+import { oreAnchorWorld } from '../content/themes/devops-m25-site.ts';
 import { buildMailCable } from '../geo/themes/culture-m20-hq.ts';
+import { buildOreCable } from '../geo/themes/devops-m25.ts';
 import { PropFlag, type PropStore } from '../world/prop-store.ts';
 import type { PropMaterials } from './materials/prop-materials.ts';
 
@@ -13,6 +16,8 @@ import type { PropMaterials } from './materials/prop-materials.ts';
  * the prop lit program's merged twin (TASK-407 `uMarMerged`: every vertex carries its own origin
  * in `aSpin.xyz`, so the dither fade works per vertex). The same pairs feed the sack mover
  * (render/culture-movers.ts `mailScene`) through `mailLinePairs`.
+ * TASK-507 (D13): the DevOps ore cableway (`mailLine` v2 mid pylons between two v3 end stations)
+ * strings its spans into the same mesh (`oreLines`; render/movers.ts runs the buckets on them).
  */
 
 export interface MailLinePair {
@@ -33,6 +38,8 @@ export function mailLinePairs(store: PropStore): MailLinePair[] {
   const los: number[] = [];
   for (let i = 0; i < store.count; i++) {
     if (store.defId[i] !== def || (store.flags[i] & PropFlag.removed) !== 0) continue;
+    // v2 / v3 are the DevOps ore pylons (oreLines)
+    if (store.variant[i] >= DEVOPS_M25.ore.pylonVariants[0]) continue;
     (store.variant[i] % 2 === 0 ? his : los).push(i);
   }
   const out: MailLinePair[] = [];
@@ -57,6 +64,70 @@ export function mailLinePairs(store: PropStore): MailLinePair[] {
   return out;
 }
 
+/** An ore cableway: its spans quarry → furnace (world cable seats), the furnace hopper. */
+export interface OreLine {
+  islandId: number;
+  spans: { a: Vec3Like; b: Vec3Like }[];
+}
+
+/**
+ * The ore cableways of the store: per island the mailLine v3 end stations and the v2 pylons
+ * between them in order along the line (the furnace end = the one nearer a `foundry` hall).
+ */
+export function oreLines(store: PropStore): OreLine[] {
+  const def = PROP_DEF_INDEX.mailLine;
+  const hall = PROP_DEF_INDEX.foundry;
+  const [v2, v3] = DEVOPS_M25.ore.pylonVariants;
+  if (def === undefined) return [];
+  const by = new Map<number, number[]>();
+  for (let i = 0; i < store.count; i++) {
+    if (store.defId[i] !== def || (store.flags[i] & PropFlag.removed) !== 0) continue;
+    if (store.variant[i] !== v2 && store.variant[i] !== v3) continue;
+    const l = by.get(store.islandId[i]) ?? [];
+    l.push(i);
+    by.set(store.islandId[i], l);
+  }
+  const out: OreLine[] = [];
+  for (const [islandId, idx] of by) {
+    const ends = idx.filter((i) => store.variant[i] === v3);
+    if (ends.length !== 2) continue;
+    // the furnace end: nearer a foundry hall of the island
+    const near = (i: number): number => {
+      let d = Infinity;
+      for (let j = 0; j < store.count; j++)
+        if (store.defId[j] === hall && store.islandId[j] === islandId)
+          d = Math.min(d, Math.hypot(store.x[j] - store.x[i], store.z[j] - store.z[i]));
+      return d;
+    };
+    const [q, f] = near(ends[0]) <= near(ends[1]) ? [ends[1], ends[0]] : ends;
+    const ux = store.x[f] - store.x[q];
+    const uz = store.z[f] - store.z[q];
+    const along = (i: number): number =>
+      (store.x[i] - store.x[q]) * ux + (store.z[i] - store.z[q]) * uz;
+    const chain = [
+      q,
+      ...idx.filter((i) => store.variant[i] === v2).sort((a, b) => along(a) - along(b)),
+      f,
+    ];
+    // store yaw → worldgen heading (local +z = (cos rotY, sin rotY))
+    const seat = (i: number, back: boolean): Vec3Like =>
+      oreAnchorWorld(
+        store.variant[i],
+        { x: store.x[i], y: store.y[i], z: store.z[i] },
+        Math.PI / 2 - store.rotY[i],
+        back,
+      );
+    const spans: OreLine['spans'] = [];
+    for (let k = 0; k + 1 < chain.length; k++)
+      spans.push({
+        a: seat(chain[k], false),
+        b: seat(chain[k + 1], store.variant[chain[k + 1]] === v2),
+      });
+    out.push({ islandId, spans });
+  }
+  return out;
+}
+
 export interface MailCablesView {
   mesh: THREE.InstancedMesh | null;
   pairs: MailLinePair[];
@@ -70,10 +141,12 @@ export function createMailCables(
   materials: PropMaterials,
 ): MailCablesView {
   const pairs = mailLinePairs(store);
-  if (!pairs.length) return { mesh: null, pairs };
-  const parts = pairs.map((p, k) =>
-    buildMailCable(createRng(seed).fork('mail-cable', k), p.a, p.b, 0),
-  );
+  const ore = oreLines(store).flatMap((l) => l.spans);
+  if (!pairs.length && !ore.length) return { mesh: null, pairs };
+  const parts = [
+    ...pairs.map((p, k) => buildMailCable(createRng(seed).fork('mail-cable', k), p.a, p.b, 0)),
+    ...ore.map((p, k) => buildOreCable(createRng(seed).fork('ore-cable', k), p.a, p.b, 0)),
+  ];
   const src = parts.map((g) => (g.index ? g.toNonIndexed() : g));
   const n = src.reduce((a, g) => a + g.getAttribute('position').count, 0);
   const pos = new Float32Array(n * 3);

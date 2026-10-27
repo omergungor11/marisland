@@ -67,7 +67,8 @@ export const CULTURE_RHYTHM: Record<ThemeId, CultureRhythm> = {
     slots: [
       { id: 'shiftSiren', hour: 6, seconds: 10 },
       { id: 'hammerHours', hour: 10 },
-      { id: 'shiftEnd', hour: 17.5 },
+      // TASK-507 (D7): every geyser of the field erupts together for the 12 s shift-end ritual
+      { id: 'shiftEnd', hour: 17.5, seconds: 12 },
       { id: 'releaseNight', hour: 21, seconds: 40 },
     ],
     lamps: {
