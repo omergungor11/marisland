@@ -183,3 +183,105 @@ export const CUSTOMS_VARIANT = {
   lineReject: 3,
   stack: 4,
 } as const;
+
+/**
+ * Customs Port layout (M30 TASK-508; D-087; world/gen/customs-port.ts, plans/qa-customs.ts). Crane frame
+ * (u): origin at the quay crane (customsYard v1), `x` along the quay (the line always on +x), `z`
+ * seaward; the waterline is `shoreZ` seaward of the crane. The cove terrace is only ~14 u deep and
+ * ~24 u long, so the quay is compact: crane + ONE inspection line (v2, the check lamp lit; the cross lamp
+ * is lit by a mover glow), rejected crates lobbed from the belt end onto the landing pontoon, an
+ * optional container stack (v4). The ship sails in from the open sea along a straight lane (`laneDeg`
+ * off the quay, side `sl` = +-1), rounds one arc of radius `turnR` onto the line parallel to the quay at
+ * `laneZ`, slides in to the berth, and leaves the way it came after a spin on the spot.
+ */
+export const CUSTOMS_PORT = {
+  shoreZ: 3.4,
+  /** The land strip that carries the crane and the line (centre x, z, w, d), level pad margin, relief cap. */
+  strip: { x: 5.4, z: -1.7, w: 17.6, d: 4.6, pad: 0.6, relief: 2.4, minShore: 0.2 },
+  /** The optional stack tolerates a rougher pad (relief cap) than the quay. */
+  stackRelief: 3.4,
+  /** The inspection line (customsYard v2) and the optional stacks (v4), tried in order. */
+  okLine: { variant: 2, x: 6.3, z: -1.5 },
+  stacks: [
+    { variant: 4, x: 16.6, z: -1.5, w: 4.4, d: 5.6 },
+    { variant: 4, x: 15.5, z: -7.5, w: 4.4, d: 5.6 },
+    { variant: 4, x: -7.8, z: -1.5, w: 4.4, d: 5.6 },
+    { variant: 4, x: 6.3, z: -9.2, w: 4.4, d: 5.6 },
+  ] as const,
+  /** Crane drop point on the belt (frame z), belt top height. */
+  dropZ: -1.5,
+  beltTop: 0.66,
+  /** Ship berth: centre z, offset of the centre along the quay so bay 1 hangs under the crane. */
+  berthZ: 5.9,
+  bayShift: 0.9,
+  /** The turn-around spot (hull half length 8.5 clears the quay), lane angle, arc radius. */
+  laneZ: 12.6,
+  laneDeg: 34,
+  turnR: 20,
+  /** Lane lengths from the corner V to the spawn point and to the arch, per fallback pass (longest first). */
+  lanes: [
+    { spawn: 31, arch: 19 },
+    { spawn: 24, arch: 14.5 },
+    { spawn: 18, arch: 11 },
+  ] as const,
+  /** Pontoons (frame): the landing one first (variant 0); `lane: true` sits on the side opposite the ship lane. */
+  pontoons: [
+    { variant: 0, x: 14, z: 9, turn: 0.35, lane: false },
+    { variant: 2, x: 21, z: 13.8, turn: -0.3, lane: false },
+    { variant: 1, x: -14.5, z: 17, turn: 0.2, lane: true },
+  ] as const,
+  /** Where a rejected crate rests on the landing pontoon (pontoon frame), stacked crates add `stackH`. */
+  landing: { x: 0.05, z: 1.25, stackH: 0.7 },
+  /** Water depth (u) of the dredged lane and berth. */
+  carveDepth: 1.1,
+  carveCore: 3.1,
+  carveFall: 1.8,
+  /** Discs (u) the boat routes keep out of: round the spin spot, along the lane, round the pontoons. */
+  keepOut: { spot: 11, lane: 7, pontoon: 5 },
+  /** Clearances: other land round the hull on the lane, round the spin spot (centre). */
+  landGap: 3.2,
+  spotClear: 7.2,
+} as const;
+
+/**
+ * Customs Port motion (closed form in the culture-clock day seconds, so a capture replays it). One visit
+ * per `period` s from noon on, `openHour` .. `closeHour` only. Times in s from the visit start.
+ */
+export const CUSTOMS_MOTION = {
+  noon: 12,
+  period: 36,
+  openHour: 8,
+  closeHour: 20,
+  /** Arrival along the lane (ease in / out), slide to the berth. */
+  arrive: { t: 0, dur: 9, easeIn: 1.2, easeOut: 2.6 },
+  slideIn: { t: 9, dur: 2.6 },
+  /** Crane jobs: ship slot ids unloaded (top tier first), start, step durations, return home. */
+  jobs: {
+    slots: [3, 5, 2] as const,
+    start: 11.8,
+    steps: { out: 1, down: 0.5, latch: 0.2, up: 0.5, back: 0.75, set: 0.55 },
+    home: 1.2,
+  },
+  /** Departure: slide out, spin on the spot, sail out. */
+  depart: { t: 21.1, slide: 2.6, spin: 3, leave: 8, easeIn: 2.4 },
+  /** Belt ride speed (u/s), dwell before the ride, lamp pulse length. */
+  belt: { speed: 2.8, dwell: 0.3, pulse: 1.8 },
+  /** Rejected crate flight (s), apex (u), shrink scale at the landing, spin turns. */
+  toss: { dur: 1.1, apex: 3.4, scale: 0.42, turns: 1 },
+  /** The visit before leaves its rejected crates on the pontoon until here, then they sink (s into the next visit). */
+  clear: { t: 3.6, dur: 1.4 },
+  /** Verdict patterns of the three crates (1 = rejected), picked by the visit index. */
+  patterns: [
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1],
+    [1, 0, 1],
+    [0, 1, 1],
+  ] as const,
+  /** Ship bob (u), pop-in / pop-out length (s), ripples. */
+  bob: { y: 0.05, period: 3.1 },
+  pop: 1.3,
+  ripple: { rings: 3, r0: 0.8, r1: 5.5, life: 1.4, color: '#EAFBF3' },
+  scanColor: '#7CFFB0',
+  badColor: '#FF6E7C',
+} as const;

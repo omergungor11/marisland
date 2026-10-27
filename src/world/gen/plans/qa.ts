@@ -43,6 +43,7 @@ import {
   dirOf,
   discShape,
   dist,
+  dockHitsShapes,
   dockWithLink,
   findDock,
   linkLandmark,
@@ -63,6 +64,12 @@ import {
   type SiteCtx,
   type SitePlan,
 } from '../sites.ts';
+import {
+  commitCustomsPort,
+  customsAvoid,
+  customsCandidates,
+  type PortCandidate,
+} from './qa-customs.ts';
 import type { ThemePlanner } from './types.ts';
 
 const TAU = Math.PI * 2;
@@ -378,14 +385,33 @@ export const planQa: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   const harbour = isl.anchors.harbour ?? yardA;
   const plan = newPlan('campus', yardA);
 
-  // Harbour: the pier in the lee cove; the campus' lane 0 climbs from it to the yard
-  const site = findDock(ctx, isl, {
+  // Harbour: the pier in the lee cove; the campus' lane 0 climbs from it to the yard. M30 TASK-508: the
+  // customs port takes the cove first (best-ranked spot that still leaves a pier), the pier keeps off it
+  const dockOpts = {
     near: harbour,
     maxDist: P.dockMaxDist,
     prefer: harbour,
     lee: P.dockLee,
     carve: true,
-  });
+  };
+  // the pier the island had before the port keeps its place when a port fits beside it in the cove;
+  // else the pier moves off the best port that still leaves one, else the port goes round the rim
+  let site = findDock(ctx, isl, dockOpts);
+  const cands = customsCandidates(ctx, isl, harbour);
+  const keep = site;
+  const fits = (c: PortCandidate): boolean => !!keep && !dockHitsShapes(keep, customsAvoid(c));
+  let port: PortCandidate | null =
+    cands.find((c) => dist(c.o, harbour) <= P.portCove && fits(c)) ?? null;
+  if (!port)
+    for (const c of cands) {
+      const moved = findDock(ctx, isl, { ...dockOpts, avoid: customsAvoid(c) });
+      if (moved) {
+        site = moved;
+        port = c;
+        break;
+      }
+    }
+  port ??= cands.find(fits) ?? null;
   dockWithLink(ctx, isl, plan, site, rng.fork('moorings'), { rowboats: 1, sailboats: 0 });
   if (site) {
     plan.hub = site.root;
@@ -393,6 +419,8 @@ export const planQa: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
     // first planks' bilinear ground above the water
     addShape(ctx, isl, discShape(site.root.x, site.root.z, P.dockClear), false);
   }
+  // M30 TASK-508: the customs quay takes the cove before the yard, lanes and lots
+  if (port) commitCustomsPort(ctx, isl, port);
 
   // Factory yard (plaza + network hub)
   const yard = placeYard(ctx, isl, yardA);

@@ -491,6 +491,16 @@ export interface DockSite {
   carve: boolean;
 }
 
+/** True when the pier of `site` (with its turning basin) comes within `DOCK.avoidGap` of a shape. */
+export function dockHitsShapes(site: DockSite, shapes: readonly Shape[]): boolean {
+  const len = site.segments * DOCK.segment + DOCK.basinOffset + DOCK.basinRadius;
+  for (let t = 0; t <= len; t += 2) {
+    const q = add(site.root, site.dir, t);
+    if (shapes.some((sh) => shapeDist(sh, q.x, q.z) < DOCK.avoidGap)) return true;
+  }
+  return false;
+}
+
 export function findDock(
   ctx: SiteCtx,
   isl: IslandData,
@@ -506,6 +516,8 @@ export function findDock(
     endDepth?: number;
     /** Also require the end past the shallow colour band (zone mid/deep). */
     edge?: boolean;
+    /** Shapes the pier (and its turning basin) keeps `DOCK.avoidGap` u off (M30 TASK-508: the customs port). */
+    avoid?: readonly Shape[];
   },
 ): DockSite | null {
   const n = ctx.n;
@@ -562,6 +574,15 @@ export function findDock(
       if (segs < 0 && depthOnly > 0) {
         segs = depthOnly;
         score0 = DOCK.shallowEndPenalty;
+      }
+      if (opts.avoid) {
+        const len = (segs > 0 ? segs : reach) * DOCK.segment + DOCK.basinOffset + DOCK.basinRadius;
+        let hit = false;
+        for (let t = 0; t <= len && !hit; t += 2) {
+          const q = add(root, dir, t);
+          hit = opts.avoid.some((sh) => shapeDist(sh, q.x, q.z) < DOCK.avoidGap);
+        }
+        if (hit) continue;
       }
       let score = score0 + 0.2 * dist(root, opts.prefer);
       if (opts.toward) {

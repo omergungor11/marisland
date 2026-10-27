@@ -343,6 +343,11 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   goodsStall: 1.2,
   semaphoreTower: 1.0,
   mailLine: 0.8,
+  // QA Customs Port (TASK-508): the crane / line / stack share one footprint (the crane's); the arch
+  // and the pontoons stand in the water, no walker reaches them
+  customsYard: 6.2,
+  scannerArch: 0.05,
+  quarantinePontoon: 0.05,
 };
 
 /** Fixtures that float at the waterline (render pivot y = 0, not the seabed). */
@@ -358,6 +363,8 @@ export const FLOATING_FIXTURES: readonly string[] = [
   'sailboat',
   // QA Q9 quarantine pontoon (TASK-506): pivot at the waterline, bobs as a whole
   'quarantinePontoon',
+  // QA Q8 scanner arch (TASK-508): stands over the ship lane, pivot at the waterline whatever the dredged depth
+  'scannerArch',
 ];
 
 /**
@@ -613,6 +620,8 @@ export const DOCK = {
   /** Turning basin carved past every dock end so boat routes can reach it. */
   basinOffset: 3,
   basinRadius: 3.2,
+  /** A pier keeps this far off the `avoid` shapes of findDock (the customs port, M30 TASK-508). */
+  avoidGap: 3.5,
 } as const;
 
 /** Footpaths (ARCHITECTURE §2 step 6). */

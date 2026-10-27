@@ -23,6 +23,7 @@ import { Tag } from './gen/profiles.ts';
 import { buildZones } from './gen/zones.ts';
 import { buildSettlements, markSites } from './gen/settlements.ts';
 import { buildRoutes } from './gen/routes.ts';
+import { portKeepOut } from './gen/customs-port.ts';
 import { carveReefGaps, planReefs, raiseReefs, reefWeights } from './gen/reefs.ts';
 import { placeSeamarks } from './gen/seamarks.ts';
 import { placeWaterfalls } from './gen/waterfalls.ts';
@@ -201,7 +202,14 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
   lap('sites');
 
   const boatRoutes = buildRoutes(
-    { h: height, sdf, islands, docks: sites.docks, reefs: reefField },
+    {
+      h: height,
+      sdf,
+      islands,
+      docks: sites.docks,
+      reefs: reefField,
+      keepOut: portKeepOut(islands),
+    },
     root.fork('routes'),
   );
   // a deep gap wherever a route crosses a reef, before the buoys read the depths

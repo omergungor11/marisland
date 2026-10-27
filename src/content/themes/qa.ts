@@ -113,6 +113,8 @@ export const QA_PLAN = {
   yardLanding: 0.03,
   /** Harbour pier in the lee cove (carved when shallow). */
   dockMaxDist: 24,
+  /** Customs Port (TASK-508): a port within this of the harbour anchor may keep the original pier. */
+  portCove: 26,
   dockLee: 30,
   /** Lots keep this far (u, obstacle disc) from the pier root. */
   dockClear: 5,
