@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { PROP_DEFS, PROP_DEF_INDEX } from '../../content/props.ts';
 import { QA_CULTURE_PROP_DEFS as QA_PROP_DEFS } from '../../content/props-themes/qa.ts';
+import { QA_M24_PROP_IDS, QA_PROVING_PROP_DEFS } from '../../content/props-themes/qa-proving.ts';
 import { CULTURES } from '../../content/cultures/index.ts';
 import { validateCultures } from '../../content/cultures/validate.ts';
 import { PropFlag } from '../../world/prop-store.ts';
@@ -42,10 +43,14 @@ describe('TASK-414 QA culture kit: defs and ledger', () => {
       'flagMast',
       'stampDesk',
       'clipboardWall',
+      // M24 TASK-499 Proving Grounds (ledger 12 / 12, tier-1 = the drop tower)
+      'dropTower',
+      'testFan',
+      'obstacle',
     ]);
-    expect([...kit.map((k) => k.id)].sort()).toEqual([...KIT_IDS].sort());
+    expect([...kit.map((k) => k.id)].sort()).toEqual([...KIT_IDS, ...QA_M24_PROP_IDS].sort());
     for (const k of kit) {
-      const def = QA_PROP_DEFS.find((d) => d.id === k.id);
+      const def = [...QA_PROP_DEFS, ...QA_PROVING_PROP_DEFS].find((d) => d.id === k.id);
       expect(def?.tier, k.id).toBe(k.tier);
       expect(def?.flags, k.id).toBe(k.flags);
       expect((k.flags & PropFlag.noShadow) !== 0, k.id).toBe(k.tier === 3);

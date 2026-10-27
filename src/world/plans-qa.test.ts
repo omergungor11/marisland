@@ -5,6 +5,7 @@ import { FIXTURE_RADIUS } from '../content/settlements.ts';
 import { CULTURE_BOATS } from '../content/life.ts';
 import { RIM_POST_LOOKS } from '../content/rim-walkway.ts';
 import { QA_PLAN, QA_RIM_WALK } from '../content/themes/qa.ts';
+import { QA_PROVING_PLAN } from '../content/themes/qa-proving.ts';
 import { StageHash } from './gen/hash.ts';
 import { generateWorld, heightAt, type WorldData, type XZ } from './index.ts';
 
@@ -222,9 +223,9 @@ describe('QA Test Factory plan (TASK-401), 30 seeds', () => {
     });
     expect(got).toMatchInlineSnapshot(`
       [
-        "a4469af79649fbc8",
-        "00e59e155c4d0bd9",
-        "38a404a72d2c6d20",
+        "8638cfa2eb055937",
+        "a3add7813c0c7c82",
+        "740505622a68f3eb",
       ]
     `);
   });
@@ -240,7 +241,7 @@ describe("QA Inspectors' Island culture (TASK-424), 30 seeds", () => {
     clipboardWall: { n: [0, 1], share: 0.8 },
     inspectionBooth: { n: [0, C.booth.max], share: 0.8 },
     flagMast: { n: [0, 1], share: 0.95 },
-    scoreboard: { n: [0, 2], share: 1 },
+    scoreboard: { n: [0, 2], share: 0.95 },
     dummyBench: { n: [0, C.benches.count[1]], share: 0.95 },
     uvLampPost: { n: [0, C.uvLamps.count[1]], share: 0.95 },
     conePyramid: { n: [0, 1], share: 0.9 },
@@ -389,7 +390,8 @@ describe('QA quick wins (TASK-480), 30 seeds', () => {
       }
     }
     // TASK-480: a rim crowded with lots / hangars can leave a seed too little walk
-    expect(walks / SEEDS.length).toBeGreaterThanOrEqual(0.85);
+    // (TASK-499: the Proving Grounds stunt yard takes plateau ground too: 0.85 → 0.75)
+    expect(walks / SEEDS.length).toBeGreaterThanOrEqual(0.75);
   });
 
   it('Q18 palm rim: palms inland of the walk, near it; two hammocks on the rim', () => {
@@ -421,7 +423,8 @@ describe('QA quick wins (TASK-480), 30 seeds', () => {
         );
       hammocks += hs.length;
     }
-    expect(rows / SEEDS.length, 'palm rows').toBeGreaterThanOrEqual(0.7);
+    // (TASK-499: the palm row follows the walk, which the stunt yard shortens on some seeds: 0.7 → 0.6)
+    expect(rows / SEEDS.length, 'palm rows').toBeGreaterThanOrEqual(0.6);
     expect(hammocks / SEEDS.length, 'hammocks per island').toBeGreaterThanOrEqual(1.6);
   });
 
@@ -470,5 +473,85 @@ describe('QA quick wins (TASK-480), 30 seeds', () => {
       stands += gs.length;
     }
     expect(stands / SEEDS.length).toBeGreaterThanOrEqual(0.8);
+  });
+});
+
+/** TASK-499 Proving Grounds: the stunt yard reservation for TASK-501 and the drop tower / fan / course. */
+describe('QA Proving Grounds (TASK-499), 30 seeds', () => {
+  const stuntOf = (w: WorldData) => {
+    const { isl } = qaOf(w);
+    const p = isl.anchors.stunt;
+    const sz = isl.anchors.stuntSize;
+    return p && sz ? { p, rot: p.rotY, w: sz.x, d: sz.z } : null;
+  };
+  /** Distance outside the rect (negative inside), like the planner's `shapeDist`. */
+  const rectDist = (r: NonNullable<ReturnType<typeof stuntOf>>, q: XZ): number => {
+    const dx = q.x - r.p.x;
+    const dz = q.z - r.p.z;
+    const u = Math.abs(-dx * Math.sin(r.rot) + dz * Math.cos(r.rot));
+    const v = Math.abs(dx * Math.cos(r.rot) + dz * Math.sin(r.rot));
+    const ox = u - r.w / 2;
+    const oz = v - r.d / 2;
+    return ox > 0 || oz > 0 ? Math.hypot(Math.max(ox, 0), Math.max(oz, 0)) : Math.max(ox, oz);
+  };
+
+  it('a flat stunt yard (≈ 2× the loop track) is kept free beside the loop track', () => {
+    let found = 0;
+    for (const seed of SEEDS) {
+      const w = world(seed);
+      const { isl } = qaOf(w);
+      const r = stuntOf(w);
+      if (!r) continue;
+      found++;
+      const ctx = `seed ${seed}`;
+      expect(
+        QA_PROVING_PLAN.stunt.some(([a, b]) => a === r.w && b === r.d),
+        ctx,
+      ).toBe(true);
+      const track = w.fixtures.find((f) => f.islandId === isl.id && f.defId === 'testTrack');
+      expect(track, ctx).toBeDefined();
+      expect(Math.hypot(r.p.x - (track as XZ).x, r.p.z - (track as XZ).z), ctx).toBeLessThan(
+        QA_PROVING_PLAN.stuntSearch,
+      );
+      expect(heightAt(w.height, r.p.x, r.p.z), ctx).toBeGreaterThan(1);
+      for (const f of w.fixtures.filter((x) => x.islandId === isl.id))
+        expect(rectDist(r, f), `${ctx} ${f.defId}`).toBeGreaterThan(0);
+      for (const l of w.lots.filter((x) => x.islandId === isl.id))
+        expect(rectDist(r, l), `${ctx} lot ${l.defId}`).toBeGreaterThan(0);
+    }
+    expect(found / SEEDS.length).toBeGreaterThanOrEqual(0.9);
+  });
+
+  it('one drop tower, one test fan, a course of obstacle variants beside the yard', () => {
+    let towers = 0;
+    let fans = 0;
+    let pieces = 0;
+    for (const seed of SEEDS) {
+      const w = world(seed);
+      const { isl } = qaOf(w);
+      const fx = w.fixtures.filter((f) => f.islandId === isl.id);
+      const t = fx.filter((f) => f.defId === 'dropTower');
+      const f = fx.filter((x) => x.defId === 'testFan');
+      const o = fx.filter((x) => x.defId === 'obstacle');
+      const ctx = `seed ${seed}`;
+      expect(t.length, ctx).toBeLessThanOrEqual(1);
+      expect(f.length, ctx).toBeLessThanOrEqual(1);
+      // the crate rides the v0 tower (v1, the empty cradle, is TASK-501's)
+      for (const x of t) expect(x.variant ?? 0, ctx).toBe(0);
+      const variants = o.map((x) => x.variant ?? 0);
+      expect(new Set(variants).size, ctx).toBe(variants.length);
+      for (const v of variants) expect(v, ctx).toBeLessThan(4);
+      // all of it within reach of the stunt yard (else of the loop track)
+      const track = fx.find((x) => x.defId === 'testTrack') as XZ;
+      const r = stuntOf(w);
+      for (const x of [...t, ...f, ...o])
+        expect(r ? rectDist(r, x) : Math.hypot(x.x - track.x, x.z - track.z), ctx).toBeLessThan(26);
+      towers += t.length;
+      fans += f.length;
+      pieces += o.length;
+    }
+    expect(towers / SEEDS.length).toBeGreaterThanOrEqual(0.9);
+    expect(fans / SEEDS.length).toBeGreaterThanOrEqual(0.9);
+    expect(pieces / SEEDS.length).toBeGreaterThanOrEqual(3);
   });
 });

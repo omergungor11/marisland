@@ -21,6 +21,7 @@ import { SIGNAGE_PROP_DEFS } from './props-themes/signage.ts';
 import { RIM_PROP_DEFS } from './props-themes/rim.ts';
 import { STAIR_PROP_DEFS } from './props-themes/stairs.ts';
 import { BEACON_PROP_DEFS } from './props-themes/beacon.ts';
+import { QA_PROVING_PROP_DEFS } from './props-themes/qa-proving.ts';
 
 export interface PropDef {
   id: string;
@@ -151,6 +152,8 @@ const ALL_DEFS: readonly PropDef[] = [
   ...STAIR_PROP_DEFS,
   // M23 (TASK-490): the skerry beacon
   ...BEACON_PROP_DEFS,
+  // M24 (TASK-499): QA Proving Grounds drop tower, test fan, obstacle course
+  ...QA_PROVING_PROP_DEFS,
 ];
 
 /**
