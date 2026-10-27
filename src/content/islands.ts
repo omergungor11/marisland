@@ -814,5 +814,32 @@ export const PATCHWORK = {
   plateauMask: 0.45,
 } as const;
 
+/**
+ * Millbrook Kite Hill (TASK-497, `CO:C2`, D-075): one smooth knoll on the windward half of the
+ * plateau, added in u AFTER the peak normalisation (so the rest of the plateau keeps its height)
+ * and outside the terraces: `height` u at a flat summit of radius `top`, easing (smoothstep) to 0 at
+ * radius `foot`, faded with the plateau mask toward the coast. Site: the candidate (bearing off the
+ * upwind direction × radius-normalised distance from the centre) that lies farthest upwind with its
+ * centre at least `parkClear` u from the Tech Park footprint — a rect of half extents `park` (along,
+ * across the patch axis) round the pond: the lawn, walk and office rows (CODING_PLAN.park) plus their
+ * flatten margins and falloff, so no pad cuts into the hill — and plateau mask ≥ `minMask` at the
+ * summit; without one, the candidate farthest from that footprint. The hill takes the nearest knoll's
+ * slot (its turbine, the chime tower, stands on the summit); other knolls within `knollClear`
+ * (normalised) are dropped.
+ */
+export const KITE_HILL = {
+  height: 4,
+  top: 4.5,
+  foot: 16,
+  bearings: [0, 0.3, -0.3, 0.6, -0.6, 0.9, -0.9, 1.2, -1.2],
+  lateBearings: [1.5, -1.5, 1.8, -1.8, 2.1, -2.1],
+  dists: [0.56, 0.5, 0.44, 0.38, 0.32, 0.26],
+  park: [20, 14.5],
+  parkClear: 13,
+  minMask: 0.7,
+  shoulder: [0.5, 0.55],
+  knollClear: 0.42,
+} as const;
+
 /** Chunk flag: shallow means water depth below this (u). */
 export const CHUNK_SHALLOW_DEPTH = 35;

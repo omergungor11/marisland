@@ -5,6 +5,7 @@ import { clamp01, lerp, smax, smoothstep } from '../../core/math/index.ts';
 import type { ArchetypeId, FieldPatchData, IslandData, IsletData, IsletKind } from '../types.ts';
 import {
   ARCHETYPES,
+  KITE_HILL,
   PATCHWORK,
   RAW_FLOOR,
   WINDWARD_CLIFF,
@@ -60,6 +61,11 @@ export interface IslandProfile {
   fields?: Omit<FieldPatchData, 'islandId'>[];
   /** Optional field colour per point: 1 + index into palette FIELDS, 0 = none. */
   fieldColor?(x: number, z: number): number;
+  /**
+   * Optional absolute lift (u) added to land cells after the peak normalisation and the terraces
+   * (Millbrook Kite Hill): shapes that must keep their height whatever the island's peak.
+   */
+  lift?(x: number, z: number): number;
   /** Anchors in world u; rotY = facing angle in the xz plane (same convention as windDir). */
   anchors: IslandData['anchors'];
 }
@@ -375,6 +381,73 @@ const millbrook: ProfileFactory = ({ island, rng, noise, windDir }) => {
     warpAt(noise, lx, lz, w);
     return radialMask(Math.hypot(lx / 1.08 + w[0] * 0.25, lz * 1.04 + w[1] * 0.25));
   };
+  // Kite Hill (TASK-497): the farthest-upwind candidate whose foot stays clear of the Tech Park
+  // footprint round the pond (a rect along the patch axis); no draws, so the knolls, pond and
+  // patchwork keep their streams. Local −x = upwind.
+  const H = KITE_HILL;
+  const pondW = fr.toWorld(pond.x, pond.z);
+  const parkGap = (c: { x: number; z: number }): number => {
+    const cw = fr.toWorld(c.x, c.z);
+    const dx = cw.x - pondW.x;
+    const dz = cw.z - pondW.z;
+    const eu = Math.max(0, Math.abs(dx * fc + dz * fs) - H.park[0]);
+    const ev = Math.max(0, Math.abs(-dx * fs + dz * fc) - H.park[1]);
+    return Math.hypot(eu, ev);
+  };
+  // ranks (all clear of the park; else the farthest from it): upwind on full plateau > crosswind /
+  // lee on full plateau > upwind on the plateau edge > crosswind / lee on the edge; within a rank the
+  // farthest upwind. Full plateau = the plateau mask holds round the whole foot (`shoulder`): a knoll
+  // on a falling edge loses its summit inland and sheds the summit pad as a step
+  let hill = { x: -H.dists[H.dists.length - 1], z: 0 };
+  let hs = -Infinity;
+  for (const [late, bearings] of [
+    [0, H.bearings],
+    [1, H.lateBearings],
+  ] as const)
+    for (const b of bearings)
+      for (const d of H.dists) {
+        const c = { x: -Math.cos(b) * d, z: Math.sin(b) * d };
+        if (plateauMask(c.x, c.z) < H.minMask) continue;
+        let shoulder = Infinity;
+        for (let k = 0; k < 8; k++) {
+          const a = (k / 8) * Math.PI * 2;
+          const sr = (H.shoulder[0] * H.foot) / r;
+          shoulder = Math.min(
+            shoulder,
+            plateauMask(c.x + Math.cos(a) * sr, c.z + Math.sin(a) * sr),
+          );
+        }
+        const gap = parkGap(c);
+        const rank = gap < H.parkClear ? 0 : (late ? 1 : 3) + (shoulder < H.shoulder[1] ? 0 : 1);
+        const s = rank > 0 ? rank * 1e3 - c.x * r : gap;
+        if (s > hs) {
+          hs = s;
+          hill = c;
+        }
+      }
+  // the hill takes the nearest knoll's slot (anchor key, turbine); knolls crowding it are dropped
+  let near = 0;
+  knolls.forEach((k, i) => {
+    if (
+      Math.hypot(k.x - hill.x, k.z - hill.z) <
+      Math.hypot(knolls[near].x - hill.x, knolls[near].z - hill.z)
+    )
+      near = i;
+  });
+  const bumps = knolls.filter(
+    (k, i) => i !== near && Math.hypot(k.x - hill.x, k.z - hill.z) >= H.knollClear,
+  );
+  const tops = knolls
+    .map((k, i) => (i === near ? hill : k))
+    .filter((k) => k === hill || bumps.includes(k));
+  const hillR = { top: H.top / r, foot: H.foot / r };
+  const lift = (x: number, z: number): number => {
+    fr.toLocal(x, z, q);
+    const d = Math.hypot(q[0] - hill.x, q[1] - hill.z);
+    if (d >= hillR.foot) return 0;
+    // no plateau fade: near the rim the knoll rides out as a headland (the bluff pass eases the lip)
+    return H.height * smoothstep(hillR.foot, hillR.top, d);
+  };
   const sample = (x: number, z: number): number => {
     fr.toLocal(x, z, q);
     const lx = q[0];
@@ -382,7 +455,7 @@ const millbrook: ProfileFactory = ({ island, rng, noise, windDir }) => {
     const mask = plateauMask(lx, lz);
     const roll = noise.fbm(lx * 1.6 + 7.1, lz * 1.6 - 2.3, 3);
     let h = (6 + 0.6 * roll) * smoothstep(0.03, 0.55, mask);
-    for (const k of knolls) h += 1.9 * gauss2(lx - k.x, lz - k.z, 0.2) * smoothstep(0.3, 0.7, mask);
+    for (const k of bumps) h += 1.9 * gauss2(lx - k.x, lz - k.z, 0.2) * smoothstep(0.3, 0.7, mask);
     const dp = Math.hypot(lx - pond.x, lz - pond.z) / pondR;
     h = lerp(h, 0.9, smoothstep(1.6, 0.9, dp));
     return Math.max(RAW_FLOOR, h - COAST_LEVEL);
@@ -468,13 +541,15 @@ const millbrook: ProfileFactory = ({ island, rng, noise, windDir }) => {
     return a >= 0 && a < nu && b >= 0 && b <= V1 - V0 ? colorGrid[b * nu + a] : 0;
   };
   const anchors: IslandData['anchors'] = {};
-  knolls.forEach((k, i) => {
+  tops.forEach((k, i) => {
     const kw = fr.toWorld(k.x, k.z);
     anchors[`knoll${i}`] = { x: kw.x, z: kw.z, rotY: windDir + Math.PI };
   });
+  const hw = fr.toWorld(hill.x, hill.z);
+  anchors.kiteHill = { x: hw.x, z: hw.z, rotY: windDir + Math.PI };
   const pw = fr.toWorld(pond.x, pond.z);
   anchors.pond = { x: pw.x, z: pw.z, rotY: 0 };
-  return { sample, tag, anchors, fields, fieldColor };
+  return { sample, tag, lift, anchors, fields, fieldColor };
 };
 
 /**

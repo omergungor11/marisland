@@ -2,6 +2,37 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-075: Coding Kite Hill — an absolute profile lift, the hill outranks the farm, a tunnel pad anchor for TASK-498 — 2026-10-27
+
+**Decision** (TASK-497, `CO:C2` + the `CO:C1` site; D-059 direction A, D-062 R3-12): (1) **Knoll.** The
+Millbrook profile gets one smoothstep knoll (`KITE_HILL`, content/islands.ts): +4 u at a flat 4.5 u summit,
+0 at the 16 u foot. It is a new `IslandProfile.lift` added in u *after* the peak normalisation and the
+terraces (buildRawLand), so the plateau keeps its height and the knoll is exactly +4 u whatever the island's
+peak; no plateau fade (near the rim it rides out as a headland, the bluff pass eases the lip). Site: no RNG
+draws (knolls, pond and patchwork keep their streams) — candidates by bearing off the upwind direction ×
+radius-normalised distance, ranked upwind on full plateau > upwind on the plateau edge > crosswind on full
+plateau > crosswind edge, each clear (`parkClear` 13 u) of the Tech Park lawn pad footprint round the pond;
+the farthest upwind wins. The hill takes the nearest knoll's anchor / turbine (always the chime tower), other
+knolls within 0.42 r are dropped; the summit pad never relaxes toward a neighbour (`Pad.step` 99). New
+anchors `kiteHill` and `windTunnel`. (2) **Room.** A keep-out disc (foot + 2 u) is registered before the office
+rows, so no later pad's falloff cuts the flank; the kite ring, tunnel search and the yard / farm fallbacks lift
+it. The Server Yard now goes before the solar farm (it carries the blue server night and the rack cat); the
+farm keeps R3-12's halving (TASK-479's `keep` 0.5, unchanged) and, when nothing fits off the hill, may take the
+foot with single-row blocks (`minLatticeHill`). (3) **Kites.** With a hill the kite field moves to its foot: 8–12
+kites (v0–2) on rings round the foot, the rack + Kite Day story just outside it facing the hill; a bench
+beside the hill path in the plan's `finish` pass. (4) **Tunnel site.** A 16 × 6 u pad (14 u tunnel + 1 u ends)
+on the ridge from the hill turbine toward another knoll turbine, axis along it (±0.25 rad), ≥ 18 u from the
+summit (a pad's falloff would shave the hill); fallbacks round the foot, then any high plateau spot; axis
+turned to lean downwind. Flattened, blocks paths; nothing is placed on it (TASK-498 builds the tunnel).
+**Cost**: 0 defs, 0 programs; +4–7 kite instances on the island (same def). Generation time unchanged within
+noise.
+**Coverage (30 test seeds)**: hill on the upwind half 25 (the rest crosswind where the park fills the windward
+half), rise 4.1–5.6 u over the plateau 24 u out; ≥ 8 hill kites 29; tunnel site 27; Kite Day rack 30; hill
+bench 30. Solar blocks 62 → 41 over 33 seeds (area 47 %), 4 seeds without a block (was 1); yard 30 → 32.
+**Rejected**: lifting a knoll inside the normalised profile (the peak normalisation squashes the plateau to
+pay for it); placing the tunnel before the farm / yard (it took the yard on seed 1001 and 11 of 33 seeds);
+lee-side hills (the bluff cove ramp sinks the summit).
+
 ## D-074: Night effects polish — signal as a beam with a travelling light front, streak-spark fireworks with a mirror reflection, beacons readable from the postcard (amends D-069) — 2026-10-26
 
 **Decision** (TASK-496, M23 QA findings 3, 4, 7): (1) **Signal.** The relay signal is no longer a glowing
