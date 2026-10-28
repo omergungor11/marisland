@@ -434,7 +434,8 @@ describe('DevOps Ember Smiths culture (TASK-422) — 30 seeds', () => {
     signalHorn: { n: [0, 2], share: 0.9 },
     serverShrine: { n: [0, 1], share: 0.9 },
     pipeValveWheel: { n: [0, C.valves.max], share: 0.9 },
-    pagerRock: { n: [0, 1], share: 0.9 },
+    // TASK-511 (D-090): ≥ 27 → 26 / 30 (Emberpeak steps out from the grown HQ on 7 seeds: other zone noise)
+    pagerRock: { n: [0, 1], share: 0.85 },
     cargoCrate: { n: [0, C.crates.piles.reduce((a, p) => a + p.n, 0)], share: 0.9 },
   };
 

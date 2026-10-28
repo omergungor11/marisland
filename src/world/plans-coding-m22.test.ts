@@ -54,13 +54,20 @@ describe('Coding M22 quick wins (TASK-479)', { timeout: 120_000 }, () => {
     }
   });
 
-  it('pinwheel meadow: a grid of kite v3 facing the wind, on level land, on every seed', () => {
+  it('pinwheel meadow: a grid of kite v3 facing the wind, on level land, on all but ≤ 1 seed', () => {
+    // TASK-511 (D-090): seed 186 (the island stepped out from the grown HQ: other zone noise) has no
+    // room for even the smallest grid; at most one seed may miss the meadow
+    let missing = 0;
     for (const seed of SEEDS) {
       const w = world(seed);
       const pins = w.fixtures.filter(
         (f) =>
           f.islandId === codingOf(w).id && f.defId === 'kite' && f.variant === PINWHEEL_VARIANT,
       );
+      if (pins.length === 0) {
+        missing++;
+        continue;
+      }
       expect(pins.length, `seed ${seed}`).toBeGreaterThanOrEqual(20);
       expect(pins.length, `seed ${seed}`).toBeLessThanOrEqual(48);
       for (const p of pins) {
@@ -77,6 +84,7 @@ describe('Coding M22 quick wins (TASK-479)', { timeout: 120_000 }, () => {
       expect(Math.max(...xs) - Math.min(...xs), `seed ${seed}`).toBeLessThan(14);
       expect(Math.max(...zs) - Math.min(...zs), `seed ${seed}`).toBeLessThan(14);
     }
+    expect(missing, 'seeds without a meadow').toBeLessThanOrEqual(1);
   });
 
   it('hedge glyphs, nap grove and wreaths: coverage floors over 30 seeds', () => {
@@ -110,8 +118,9 @@ describe('Coding M22 quick wins (TASK-479)', { timeout: 120_000 }, () => {
     }
     // TASK-497 (D-075): the Kite Hill takes ~800 u² of the plateau, the farm keeps a block on every
     // seed and the Hack Garden may take the hill foot (30 seeds: glyphs 22 → 21, groves 23 → 14)
+    // TASK-511 (D-090): islands that step out from the grown HQ sample other zone noise (groves 14 → 13)
     expect(glyphs / SEEDS.length).toBeGreaterThanOrEqual(0.65);
-    expect(groves / SEEDS.length).toBeGreaterThanOrEqual(0.45);
+    expect(groves / SEEDS.length).toBeGreaterThanOrEqual(0.4);
     // the 6 quad-end trees alone: 6 wreaths a seed
     expect(wreathTrees).toBeGreaterThanOrEqual(SEEDS.length * 6);
   });

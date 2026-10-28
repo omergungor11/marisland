@@ -225,7 +225,7 @@ describe('QA Test Factory plan (TASK-401), 30 seeds', () => {
     });
     expect(got).toMatchInlineSnapshot(`
       [
-        "d461cb2342ff8764",
+        "75798df71da4a72d",
         "c434aaec32ee6a3c",
         "3652590f5970ef64",
       ]
@@ -246,7 +246,8 @@ describe("QA Inspectors' Island culture (TASK-424), 30 seeds", () => {
     scoreboard: { n: [0, 2], share: 0.95 },
     dummyBench: { n: [0, C.benches.count[1]], share: 0.95 },
     uvLampPost: { n: [0, C.uvLamps.count[1]], share: 0.95 },
-    conePyramid: { n: [0, 1], share: 0.9 },
+    // TASK-511 (D-090): ≥ 27 → 25 / 30 (the QA island steps out from the grown HQ on some seeds)
+    conePyramid: { n: [0, 1], share: 0.8 },
     bugJar: { n: [0, 2 + C.jars.labs], share: 1 },
   };
   const dist = (a: XZ, b: XZ): number => Math.hypot(a.x - b.x, a.z - b.z);
@@ -428,8 +429,9 @@ describe('QA quick wins (TASK-480), 30 seeds', () => {
         );
       hammocks += hs.length;
     }
-    // (TASK-499: the palm row follows the walk, which the stunt yard shortens on some seeds: 0.7 → 0.6)
-    expect(rows / SEEDS.length, 'palm rows').toBeGreaterThanOrEqual(0.6);
+    // (TASK-499: the palm row follows the walk, which the stunt yard shortens on some seeds: 0.7 → 0.6;
+    // TASK-511: ≥ 18 → 17 / 30 after the HQ growth: 0.6 → 0.55)
+    expect(rows / SEEDS.length, 'palm rows').toBeGreaterThanOrEqual(0.55);
     expect(hammocks / SEEDS.length, 'hammocks per island').toBeGreaterThanOrEqual(1.6);
   });
 

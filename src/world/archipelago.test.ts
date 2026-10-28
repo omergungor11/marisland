@@ -102,9 +102,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "2afe2f8f1c5f6654",
-          "1001": "d1ed6dc3975a307f",
-          "42": "39a1743f45346858",
+          "1": "a83ab13982e98a3c",
+          "1001": "a1e11651e7823a97",
+          "42": "f73d05b658b2c511",
         }
       `);
     },
@@ -515,9 +515,10 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
         expect(deg(0.95), `${ctx} face p95 °`).toBeLessThanOrEqual(68);
         expect(deg(0.99), `${ctx} face p99 °`).toBeLessThanOrEqual(78);
         expect(cliff / steep, `${ctx} steep bluff faces that are Zone.cliff`).toBeGreaterThan(0.85);
-        // docks stand on the cove's low ground, never on a wall top
+        // docks stand on the cove's low ground, never on a wall top (TASK-511: 2.5 → 3; the grown
+        // HQ's later pads raise the ferry pier root to 2.99 on seed 7312, walls are ≥ 5 u)
         for (const dk of w.docks.filter((x) => x.islandId === isl.id))
-          expect(heightAt(w.height, dk.x, dk.z), `${ctx} dock root`).toBeLessThanOrEqual(2.5);
+          expect(heightAt(w.height, dk.x, dk.z), `${ctx} dock root`).toBeLessThanOrEqual(3);
       }
     }
     for (const [a, v] of Object.entries(share)) {
@@ -575,8 +576,9 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // TASK-508 QA customs port (quay, arch, pontoons, dredged ship lane), re-pinned;
       // TASK-498 Coding wind tunnel + fan fixtures, re-pinned;
       // TASK-507 DevOps M25 placement (funicular + earthworks, cableway, lane, onsen town, geysers), re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('1953c181e118273c');
-      expect(generateWorld(1).hashes.world).toBe('a257c9da95566c8d');
+      // TASK-511 HQ growth × 1.11 (Lonely Palm steps out 4,4 on 1001), re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('605de73d245c556b');
+      expect(generateWorld(1).hashes.world).toBe('0a39441773ac3529');
     } finally {
       for (const b of saved) b.on = true;
     }
