@@ -479,9 +479,9 @@ const MARKETING_M27_CAMS: readonly (readonly [string, string, string, number, nu
   [
     'D-m27-dive-splash',
     'Dive tower: the splash in the pool (T3)',
-    '143,12,-79,133.4,7,-99.1',
+    '134.5,6,-86,130.7,0.5,-98',
     15,
-    30.9,
+    31,
   ],
   ['D-m27-billboard', 'Sea billboard on the far stack (T2)', '139,8,-178,151,4,-155.6', 14, 6],
 ];
