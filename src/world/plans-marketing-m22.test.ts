@@ -84,7 +84,20 @@ describe('Marketing quick wins (TASK-481), 30 seeds', { timeout: 120_000 }, () =
       const stacks = Object.keys(isl.anchors).filter((k) => /^stack\d+$/.test(k));
       const tx = of('antennaTower').filter((f) => f.variant === Q.transmitter.variant);
       expect(stacks.length, `seed ${seed}`).toBeGreaterThanOrEqual(2);
-      expect(tx.length, `seed ${seed}`).toBeGreaterThanOrEqual(stacks.length - 1);
+      // TASK-518 (D-097): the M27 kit takes over every stack that carries a pylon / terminal, the
+      // dive tower or the guyed mast (whose finial / tip lamps blink instead); a v1 mast stays only
+      // on a stack top with none of them
+      const carried = (k: string): boolean => {
+        const t = isl.anchors[k.replace('stack', 'stackTop')];
+        if (!t) return false;
+        const r = isl.anchors[`${k.replace('stack', 'stackTop')}Size`].x + 0.5;
+        return Object.keys(isl.anchors)
+          .filter((a) => /^cable[1-9]\d*$|^diveTower$|^transmitter$/.test(a))
+          .some((a) => Math.hypot(isl.anchors[a].x - t.x, isl.anchors[a].z - t.z) <= r);
+      };
+      expect(tx.length, `seed ${seed}`).toBeGreaterThanOrEqual(
+        stacks.filter((k) => !carried(k)).length - 1,
+      );
       for (const f of tx) {
         expect(heightAt(w.height, f.x, f.z), `seed ${seed}`).toBeGreaterThanOrEqual(
           Q.transmitter.minRise,

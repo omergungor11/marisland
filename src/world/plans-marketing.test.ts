@@ -156,8 +156,8 @@ describe('Marketing Media Rock plan (TASK-403), 30 seeds', () => {
         const y = heightAt(w.height, f.x, f.z);
         return levels.slice(0, 2).some((l) => Math.abs(y - l) < 1.6);
       };
-      // v1 = the transmitters on the sea stacks (TASK-481), not the campus tower
-      const ant = of('antennaTower').filter((f) => f.variant !== 1);
+      // v1 / v2 = the transmitters on the sea stacks (TASK-481 / TASK-518), not the campus tower
+      const ant = of('antennaTower').filter((f) => f.variant !== 1 && f.variant !== 2);
       return (
         ant.length === 1 &&
         onLedge(ant[0]) &&
@@ -234,9 +234,9 @@ describe('Marketing Media Rock plan (TASK-403), 30 seeds', () => {
     });
     expect(got).toMatchInlineSnapshot(`
       [
-        "daf79f7b6e0d3c47",
-        "bf96bb051fd66ec3",
-        "f9258674231a37a2",
+        "5ed3130f9579e15f",
+        "15d6b1c5388c1927",
+        "8cc31f2e2217ca30",
       ]
     `);
   });
