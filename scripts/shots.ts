@@ -697,7 +697,7 @@ async function runLadder(
     );
     heats[k + 1] = m.heat;
     const { heat: _heat, ...rest } = m;
-    const failures = stepFailures(m, pairs);
+    const failures = stepFailures(m, pairs, `${p.id} ${dists[k]}→${dists[k + 1]}`);
     const label = pairs ? `pair ${L.pairs[k / 2]}` : `step ${dists[k]}→${dists[k + 1]}`;
     report.failures.push(...failures.map((f) => `${label}: ${f}`));
     report.steps.push({

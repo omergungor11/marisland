@@ -52,6 +52,8 @@ export interface Budget {
  * low gpuMemoryMB 70 → 76.
  * TASK-511 (D-090): the ×1.11 HQ sits behind the devops ladder; L-devops / L-pairs-devops low
  * 351–355k tris: low triangles 350k → 366k.
+ * D-100 (TASK-519 QA): W27 171 MB = W4's geometry + 0.1 MB texture rounding, W4 / W27 sit on the
+ * line: medium gpuMemoryMB 170 → 172.
  */
 export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
   low: {
@@ -74,7 +76,7 @@ export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
     agents: 60,
     particles: 6_000,
     programs: 20,
-    gpuMemoryMB: 170,
+    gpuMemoryMB: 172,
     jsHeapMB: 180,
     newSeedMs: 800,
   },

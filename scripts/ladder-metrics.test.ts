@@ -86,6 +86,14 @@ describe('ladder metrics: steps', () => {
     expect(stepFailures(m, true)).toEqual([]);
   });
 
+  it('a per-step blob override (D-100) only applies to its own step key', () => {
+    const a = img(meadow);
+    const m = { ...compareFrames(a, landMask, a, landMask, identityMap), blob: 0.017 };
+    expect(stepFailures(m, false)).toEqual(['blob 1.7% > 1.5%']);
+    expect(stepFailures(m, false, 'L-marketing 60→42')).toEqual([]);
+    expect(stepFailures(m, false, 'L-marketing 42→30')).toEqual(['blob 1.7% > 1.5%']);
+  });
+
   it('a centre crop of a scaled scene matches the zoomed frame', () => {
     const r = 0.7;
     const far = img(meadow);

@@ -2,6 +2,20 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-100: TASK-519 QA budget calls — medium gpuMemoryMB 170 → 172, L-marketing 60→42 step blob 2.0 %, four small follow-ups (TASK-520–523) — 2026-10-29
+
+**Decision** (user, from the TASK-519 report `mar-docs/qa/m26-m27-2026-10-28.md`): (1) **Memory.** W27 measured 171 MB
+against the medium 170 line: geometry 62.3 MB = W4's, the +1 is texture rounding (6.6 vs 6.5 MB), not a regression.
+Medium `gpuMemoryMB` 170 → 172 (`src/content/budgets.ts`). (2) **Ladder pop.** L-marketing low ladder step 60→42 blob
+1.7 % > 1.5 %; QA opened both frames and saw no swap (the cable-car pylon and gondola grow on the dolly). A per-step
+override `LADDER_THRESHOLDS.stepBlobAt` (`scripts/ladder-metrics.ts`, keyed `<ladder id> <far>→<near>`) gives this one
+step 2.0 %; every other step keeps 1.5 %. (3) **Follow-ups** opened: TASK-520 dive-splash cam, TASK-521 star fort stone
+colour, TASK-522 sea billboard base, TASK-523 ON AIR vs first cable span.
+**Rationale**: neither fail is visible; raising a global threshold or the whole memory line further would hide real
+regressions elsewhere. The D-m26-obsidian "unreadable beach" finding predates TASK-513 (QA ran on `80c8aa7`); the
+cove (D-098) answers it.
+**Alternatives not taken**: trimming ~2 MB of Beacon geometry; a pylon far-LOD task for the ladder step.
+
 ## D-099: Crater deck couple — the `deckGazer` story spot seats two bots on the deck's benches with idle beats, the DevOps tableau cap is data (TASK-515; builds D-093 (4)) — 2026-10-28
 
 **Decision**: (1) `TABLEAU.deckGazer` = 2 bots on the `craterDeck` benches (spot frame = deck frame: x ±1.05, z 0.1 =

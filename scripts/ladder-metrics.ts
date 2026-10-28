@@ -32,6 +32,11 @@ export const LADDER_THRESHOLDS = {
   blobDeltaE: 15,
   /** … form at most this fraction of the compared cells as one 8-connected component. */
   stepBlob: 0.015,
+  /**
+   * Per-step `stepBlob` overrides, keyed `<ladder id> <far>→<near>`. L-marketing 60→42 (TASK-519 QA,
+   * D-100): 1.7 % on the low ladder, the cable-car pylon / gondola growing on the dolly, no visible swap.
+   */
+  stepBlobAt: { 'L-marketing 60→42': 0.02 } as Readonly<Record<string, number>>,
   drift: 4,
   /** Drift skips cells whose L* differs by more than this (cast shadows; 2026-10-09 QA) … */
   shadowL: 15,
@@ -585,7 +590,7 @@ export function regionDrift(
 }
 
 /** Threshold failures of a ladder step (`pair` = boundary pair criteria). Unjudged → none. */
-export function stepFailures(m: StepMetrics, pair: boolean): string[] {
+export function stepFailures(m: StepMetrics, pair: boolean, key?: string): string[] {
   const T = LADDER_THRESHOLDS;
   if (!m.judged) return [];
   const f: string[] = [];
@@ -597,7 +602,8 @@ export function stepFailures(m: StepMetrics, pair: boolean): string[] {
   } else {
     if (m.mean > T.stepMean) f.push(`mean ΔE ${m.mean.toFixed(2)} > ${T.stepMean}`);
     if (m.p95 > T.stepP95) f.push(`p95 ΔE ${m.p95.toFixed(1)} > ${T.stepP95}`);
-    if (m.blob > T.stepBlob) f.push(`blob ${pct(m.blob)} > ${pct(T.stepBlob)}`);
+    const blobMax = (key !== undefined ? T.stepBlobAt[key] : undefined) ?? T.stepBlob;
+    if (m.blob > blobMax) f.push(`blob ${pct(m.blob)} > ${pct(blobMax)}`);
   }
   return f;
 }

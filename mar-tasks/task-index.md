@@ -372,6 +372,10 @@ Details in `phases/phase-3.md`.
 | TASK-517 | Marketing M27 props: gondola cars + pylon (`mailLine` gondola variant, red / cream), sea-facing `billboardV2` variant (slides surface), vertical ON AIR letters (`billboardV2` v3 instead of `marqueeSign` v3, tier hazard, D-096), `diveTower` def (tier 2, cap 10 → 11), stack-top transmitter (`antennaTower` variant); hooks for movers | props | M | COMPLETED (D-096) | — |
 | TASK-518 | M27 placement + motion: cable line + 3 gondolas (1.6 u/s, 3° gust sway), billboard slides, ON AIR letters light in sequence at 19:00 (0.4 s), diver every 40 s (parabola + splash ring); wow Cable Dusk + On-Air Rock (study §1.4); hash re-pin | worldgen + life | L | COMPLETED (D-097) | TASK-516, TASK-517 |
 | TASK-519 | Shots + QA for M26 / M27: wow + ladder low / medium `--assert`, QA report | qa | S | COMPLETED (see mar-docs/qa/m26-m27-2026-10-28.md) | TASK-518 |
+| TASK-520 | QA follow-up: D-m27-dive-splash camera + sim time so the shot catches the splash ring and the pool (today the stack / pylon hides it) | life | S | TODO | TASK-519 |
+| TASK-521 | QA follow-up: HQ star fort stone colour variation (reads pale lavender-grey, near white, in W-marina-dusk) | props | S | TODO | TASK-519 |
+| TASK-522 | QA follow-up: sea billboard base on the stack face reads as a ledge bracket; bury the foot in the rock or give it a post | props | S | TODO | TASK-519 |
+| TASK-523 | QA follow-up: keep the first cable span from crossing in front of the ON AIR letters (shift the sign along the cliff face or the line's summit seat); hash re-pin | worldgen | S | TODO | TASK-519 |
 
 ### M17 — Graphics II: decor & nature
 *Flower fields, fences, lanterns, benches, signs, rocks*
