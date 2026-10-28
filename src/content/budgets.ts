@@ -50,11 +50,13 @@ export interface Budget {
  * buffer has no depth renderbuffer (−7.9 MB on every medium frame at 1920×1080): W27 169 → 162 MB.
  * D-090 (TASK-502 / 510 QA): the M24 / M25 / M29 / M30 kits put every low ladder rung at 71–74 MB:
  * low gpuMemoryMB 70 → 76.
+ * TASK-511 (D-090): the ×1.11 HQ sits behind the devops ladder; L-devops / L-pairs-devops low
+ * 351–355k tris: low triangles 350k → 366k.
  */
 export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
   low: {
     drawCalls: 170,
-    triangles: 350_000,
+    triangles: 366_000,
     instances: 6_000,
     groundCover: 3_000,
     agents: 25,

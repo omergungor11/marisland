@@ -2,7 +2,7 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
-## D-090: Low gpuMemoryMB 70 → 76; HQ grows to stay the clearly largest island — 2026-10-28
+## D-090: Low gpuMemoryMB 70 → 76, low triangles 350k → 366k; HQ grows to stay the clearly largest island — 2026-10-28
 
 - **Budget**: the TASK-502 / 510 QA pass (`mar-docs/qa/m24-m25-m29-m30-2026-10-27.md`) measured the low ladder
   at 71–74 MB on all 14 presets (calls ≤ 66 / 170, tris ≤ 175k / 350k). The overage is the M24 / M25 / M29 /
@@ -29,6 +29,9 @@
   floors re-baselined, five per-seed bounds widened with the seed named, see the TASK-511 test commit); the whale
   route now also validates its emitted polyline. Rejected: pushing every island out by the growth (moves all
   islands and every raw cam, same ripple), growing HQ into the channels (breaks minGap).
+- **Low triangles**: the bigger HQ behind the devops ladder puts L-devops / L-pairs-devops low at 351–355k tris
+  (was 320–325k): low triangles 350k → 366k (measured + ~3 %, as D-028). User accepted ×1.11 and the widened per-seed
+  bounds (2026-10-28).
 
 ## D-087: QA Customs Port placement + motion (TASK-508) — compact quay on the cove terrace, port-first planning, ship as culture-mover parts on the day clock — 2026-10-27
 
