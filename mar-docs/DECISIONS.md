@@ -2,6 +2,34 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-091: Lava river painted by the terrain program, lava fall on the waterfall ribbon, steam delta as a puff preset (TASK-509a, M26 D1 + D2 shader half) — 2026-10-28
+
+**Decision**: (1) **River = ground art, not a mesh.** `render/lava.ts` packs the channel polyline (≤ `LAVA.maxPoints` 24:
+x, z, ground y, arc length) into terrain uniforms; the ONE terrain program paints a strip of half-width
+`LAVA.halfWidth` 1.5 (the D-083 width 3) + a 0.75 u cooled bank inside an xz box test: cellular crust plates
+(1.45 u) drifting downhill at 0.55 u/s over glowing cracks, crust share 0.4 at the notch → 0.9 at the lip (+0.35
+toward the banks, open molten centre near the notch), hot core toward `#FFC870`, emissive (×1.2 day + 0.75 × uNight,
+pulse 0.85–1.0 travelling downstream) next to the crater glow; ground detail normals off inside the strip. Paints
+only within ± 3 u of the polyline's ground y. The warm night spill on the ground beside it (radius 4) is MAR_DETAIL
+(medium / high); low keeps the stream itself (no bloom there anyway). 0 programs, 0 draw calls, 0 textures.
+(2) **Fall = flow surface modes 2 / 3.** `lavaFalls(world)` turns each flow's `fall` pose into a `WaterfallData`
+(base = first sea cell ≤ 16 u out) and `createWaterfalls` adds it to the existing ribbon mesh with its own style
+(4 u inland, width 3, delta disc radius 1.1 × w + 1.8): mode 2 = molten sheet with dark crust teardrop streaks sliding
+down (0.9 u/s, 2 u spacing), mode 3 = molten core + crust skirt + boiling foam rings. Their glow goes through new
+`marLG` / `marLC` (declared in `LAVA_SURFACE_PRE`) in ACTIVITY_GLOW, day + night. Shared lit program: 0 programs;
++0 draw calls where the island already has waterfalls (seed 1001), else +1 (the ribbon mesh). ~+1.2 k tris.
+(3) **Steam delta** = puff preset `PUFF_DELTA` (PUFFS.delta: 6 slots, 1.0–4.2 u, rise 7), drawn as soft steam with
+shader kind 2.25 so the fragment lights it from below at night like the volcano steam; emitters per fall low 1 /
+medium 2 / high 3.
+(4) **One source.** Every consumer reads `lavaFlows(world)` (`{ islandId, channel, fall }`); today it reads the
+D-083 anchors as they are (temporary wiring), TASK-509c replaces its body with the placed / carved channel.
+**Rationale**: D-080 asked for "lava ground emissive = material change, 0 new programs"; ground art (D-057 compass,
+TASK-481 carpet) is the codebase's pattern for decals on the terrain, and it follows the heightfield (no z-fight,
+no acne: there is no second surface). The waterfall ribbon already solves the wall profile (gap, throw, no z-fight).
+**Impact**: Programs low 9 / medium 17 unchanged; wow `--assert` green (W16 289 calls, W-funicular-dawn 756 k tris).
+New dev cams `D-lava-channel(-night)`, `D-lava-fall(-night)` (seed 1001). The waterfall flow-tag GLSL pin is
+unchanged (the lava declarations are cut out like the culture ones). World data and hashes untouched.
+
 ## D-090: Low gpuMemoryMB 70 → 76, low triangles 350k → 366k; HQ grows to stay the clearly largest island — 2026-10-28
 
 - **Budget**: the TASK-502 / 510 QA pass (`mar-docs/qa/m24-m25-m29-m30-2026-10-27.md`) measured the low ladder

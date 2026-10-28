@@ -353,7 +353,7 @@ Details in `phases/phase-3.md`.
 | TASK-507 | DevOps M25 placement + motion: funicular line + 2 cars, ore buckets, bell 06:00 + beam, smiths' lane, onsen town, geyser bursts 17:30; Funicular Dawn / Ember Lane Night presets | worldgen + life | L | COMPLETED (D-089) | TASK-503, TASK-504 |
 | TASK-508 | QA customs port placement + motion: ship route under the arch, crane unload, inspection ✓/✗, rejects to pontoons; Customs Noon preset | worldgen + life | L | COMPLETED (D-087) | TASK-501, TASK-506 |
 | TASK-509 | M26 DevOps II: lava river (ground emissive), lava fall + steam delta, ember bridge, crater deck, lava-glass kiln, obsidian beach, breakwater + tug | shader + props + worldgen | L | SPLIT → 509a/b/c | TASK-507, TASK-511 |
-| TASK-509a | M26 shader: lava river ground (emissive channel along the `lavaChannel` strip, crust + flow), lava fall + steam delta at `lavaFall` | shader | M | IN PROGRESS | TASK-511 |
+| TASK-509a | M26 shader: lava river ground (emissive channel along the `lavaChannel` strip, crust + flow), lava fall + steam delta at `lavaFall` | shader | M | COMPLETED (D-091) | TASK-511 |
 | TASK-509b | M26 props: ember bridge, crater deck, lava-glass kiln, obsidian beach decor, breakwater + tug; hooks for movers | props | M | IN PROGRESS | TASK-511 |
 | TASK-509c | M26 placement + motion on the D-083 anchors (earthworks per `groundWriter`, rail via `railFromLevels`), tug route, kiln glow; wow preset(s); hash re-pin | worldgen + life | L | TODO | TASK-509a, TASK-509b |
 | TASK-510 | Shots + QA for M25 / M29 / M30: wow presets, ladder low + medium `--assert`, QA report | qa | S | COMPLETED 187eefb (D-090) | TASK-505, TASK-507, TASK-508 |
