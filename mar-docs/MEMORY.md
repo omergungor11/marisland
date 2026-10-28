@@ -10,6 +10,10 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-28 (TASK-512, wow presets)**: `W-kite-hill-afternoon` (14:00 +20 s), `W-proving-grounds-noon` (12:00 +3 s),
+  `W-fairy-night` (22:00 +4 s; the Coding fairy-light grove + hammock nappers: there is no separate "fairy" creature
+  content, only the TASK-479 wreaths) are in `shots.ts`; `W-ember-lane-night` re-framed from high over the lane
+  (the two stall rows face each other; low cams from either aisle end hit the mine cart / terrain). Raw cams, seed 1001.
 - **2026-10-28 (TASK-511, HQ growth; D-090)**: `ARCHETYPES.hearthholm.growth` 1.11; `place()` in `gen/layout.ts`
   steps out only islands whose hub channel falls below minGap, grid-snapped. Seed 1001: only Lonely Palm moved
   (+4,+4). 36 raw cams re-aimed in `content/shots.ts`; W-funicular-dawn steeper (tris), W15d on the new beacon skerry.
