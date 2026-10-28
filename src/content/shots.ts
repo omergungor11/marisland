@@ -422,6 +422,15 @@ const DEVOPS_M25_CAMS: readonly (readonly [string, string, string, number, numbe
   ['D-m26-deck', 'Crater deck + stargazer (T3)', '220,40,-24,209,33.5,-32', 14, 6],
   ['D-m26-kiln-night', 'Lava-glass kiln at night (T3)', '242,12.5,-9.5,250,7.8,-16', 21.5, 6],
   ['D-m26-obsidian', 'Obsidian beach · sea stacks + tide pool (T2)', '264,10,-93,246,2,-77', 14, 6],
+  // TASK-513: the black-sand cove carved into the bluff there (floor origin 244.6,-76.2, out to sea
+  // heading 5.48), three-quarter view from the shelf
+  [
+    'D-obsidian-cove',
+    'Obsidian black-sand cove in the bluff (T2)',
+    '257,13,-97.6,243,1.5,-75',
+    16,
+    6,
+  ],
   ['D-m26-tug', 'Tug leading the cargo ship + smoke (T2)', '131,9,31,145,1.5,17', 14, 20],
 ];
 /**
