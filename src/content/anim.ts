@@ -64,6 +64,11 @@ export const PUFFS = {
   vent: { spawn: 0.7, slots: 4, size: [0.25, 1.1], rise: 3.5, drift: 1.5, jitter: 0.12 },
   /** Waterfall spray at the plunge (TASK-395): low, wide, slow soft puffs. */
   mist: { spawn: 0.8, slots: 4, size: [0.9, 2.6], rise: 2.2, drift: 2, jitter: 0.9 },
+  /**
+   * Lava-fall steam delta (TASK-509a): hissing soft steam where the lava meets the sea, taller than
+   * the waterfall mist; lit from below by the lava at night (the volcano steam's glow).
+   */
+  delta: { spawn: 0.7, slots: 6, size: [1.0, 4.2], rise: 7, drift: 5, jitter: 1.1 },
   /** Ring-puff burp on steam emitters every `period` s. */
   burp: { period: 40, ring: 7, life: 3.5, radius: 7, rise: 6, size: [3, 6.5], pulse: 1.5 },
   /** Fraction of a puff's life spent fading (dither) at the end. */

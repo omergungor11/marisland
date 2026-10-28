@@ -24,6 +24,7 @@ import {
   GROUND_ART_PARS_GLSL,
   groundArtUniforms,
 } from './ground-art.ts';
+import { LAVA_COLOR_GLSL, LAVA_EMISSIVE_GLSL, LAVA_PARS_GLSL, lavaUniforms } from '../lava.ts';
 
 /**
  * Editor brush ring (TASK-212), shared by every terrain material like `HOVER_UNIFORMS`:
@@ -49,6 +50,8 @@ export const BRUSH_UNIFORMS = {
  *  (i) the editor brush ring (TASK-212, `BRUSH_UNIFORMS`): off (`uBrush.w == 0`) → no-op,
  *  (j) ground art (TASK-468, ground-art.ts): the HQ compass mosaic (every quality) and the Design
  *      prism-arch light pools (MAR_PRISM, not on low).
+ *  (k) the Emberpeak lava river (TASK-509a, render/lava.ts): crust plates over glowing cracks along
+ *      the channel polyline (every quality), the warm night spill beside it (MAR_DETAIL).
  * One program per quality level; all chunks share one material instance.
  */
 export interface TerrainMaterial {
@@ -110,6 +113,7 @@ export function createTerrainMaterial(
     uBrushCol: BRUSH_UNIFORMS.uBrushCol,
     uBrushBad: BRUSH_UNIFORMS.uBrushBad,
     ...groundArtUniforms(world),
+    ...lavaUniforms(world),
   };
   const caustics = quality !== 'low';
   const prism = quality !== 'low';
@@ -173,6 +177,7 @@ ${CLOUD_SHADOW_GLSL}
 ${NIGHT_GLSL}
 ${MIST_GLSL}
 ${GROUND_ART_PARS_GLSL}
+${LAVA_PARS_GLSL}
 vec2 marTerrainUv(vec2 xz) {
   return ((xz - uTerrainGrid.xy) * uTerrainGrid.z + 0.5) / uTerrainGrid.w;
 }
@@ -192,6 +197,7 @@ float marCaustic(vec2 p, float t) {
   float marZone = floor(texture2D(uTerrainZone, marUv).r * 255.0 + 0.5);
 ${GROUND_COLOR_GLSL}
 ${GROUND_ART_COLOR_GLSL}
+${LAVA_COLOR_GLSL}
   {
     // (d) wet-sand lap: the wet edge advances ${f(F.lapAdvance)} u with the 4.5 s lap
     float sdf = texture2D(uTerrainSdf, marUv).r;
@@ -241,7 +247,8 @@ ${GROUND_ART_COLOR_GLSL}
       float pulse = ${f((CRATER_GLOW.pulse[0] + CRATER_GLOW.pulse[1]) / 2)} + ${f((CRATER_GLOW.pulse[1] - CRATER_GLOW.pulse[0]) / 2)} * sin(uTime * ${f((2 * Math.PI) / CRATER_GLOW.period)});
       totalEmissiveRadiance += uCraterColor * (cm * cm * pulse * (${f(CRATER_GLOW.day)} + ${f(CRATER_GLOW.night)} * uNight) * (1.0 - uDebugMask));
     }
-  }`,
+  }
+${LAVA_EMISSIVE_GLSL}`,
       )
       .replace(
         '#include <opaque_fragment>',
