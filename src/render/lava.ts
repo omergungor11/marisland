@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { LAVA as L } from '../content/lava.ts';
-import { anchorChain } from '../world/gen/plans/devops-growth.ts';
 import { heightAt, type WorldData, type XZ } from '../world/index.ts';
 
 /**
@@ -28,18 +27,19 @@ export interface LavaFlow {
 }
 
 /**
- * The lava flows of a world. TEMPORARY wiring (TASK-509a): the D-083 Emberpeak anchors
- * (`lavaChannel0..N`, `lavaFall`) as they are; TASK-509c replaces the body with its placed /
- * carved channel (same shape), and every consumer follows.
+ * The lava flows of a world: the carved beds TASK-509c records as `world.fences` kind 'lava' (source →
+ * lip, the points on the bed; world/gen/plans/devops-m26.ts), each with the fall on its island's
+ * `lavaFall` anchor (the lip, rotY out to sea) when that anchor ends the line.
  */
 export function lavaFlows(world: WorldData): LavaFlow[] {
   const out: LavaFlow[] = [];
-  for (const isl of world.islands) {
-    if (isl.archetype !== 'emberpeak') continue;
-    const channel = anchorChain(isl, 'lavaChannel');
-    if (channel.length < 2) continue;
-    const f = isl.anchors.lavaFall;
-    out.push({ islandId: isl.id, channel, fall: f ? { x: f.x, z: f.z, rotY: f.rotY } : null });
+  for (const f of world.fences) {
+    if (f.kind !== 'lava' || f.points.length < 2) continue;
+    const a = world.islands[f.islandId]?.anchors.lavaFall;
+    const lip = f.points[f.points.length - 1];
+    const fall =
+      a && Math.hypot(a.x - lip.x, a.z - lip.z) < 0.5 ? { x: a.x, z: a.z, rotY: a.rotY } : null;
+    out.push({ islandId: f.islandId, channel: f.points, fall });
   }
   return out;
 }

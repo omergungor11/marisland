@@ -2,6 +2,46 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-093: DevOps M26 placed and moving — a carved lava bed with one planned bridge, the deck and kiln on late earthworks / pads, the breakwater kept off the boat routes, the tug escorting the cargo ship (TASK-509c; builds D-080 A + D6 / D10 / D17 / D18 on D-083, D-091, D-092) — 2026-10-28
+
+**Decision**: (1) **Stage.** `world/gen/plans/devops-m26.ts` runs right after `placeM25` (the kit, lodges, village and M22
+quick wins keep off it); its `finish` runs in `plan.finish` after the funicular earthworks, before the road lanterns.
+Numbers `content/themes/devops-m26-site.ts` (`DEVOPS_M26_SITE`, `DEVOPS_M26_MOTION`). (2) **D1 lava bed.** Carved late
+along the `lavaChannel` anchors (groundWriter rules): bed `depth` 0.5 u below the ground, levelled across a 1.7 u core,
+cut back over 2.3 u, never climbing downstream (shoulders cut ≤ 3.2 u), ≥ 0.9 u; recorded as `world.fences` kind
+`'lava'` with the bed height per point in `levels` (hashed). `render/lava.ts lavaFlows` now reads that line (+ the
+`lavaFall` anchor when it ends the line), settlement-props skips the kind. (3) **D3 one bridge, planned (the TASK-467
+glass-bridge pattern).** Existing footpaths crossed the channel on 8 / 30 seeds, all high on the cone where the banks
+differ 3.5–6.5 u (a level 9 u bridge cannot sit there). Instead the most level crossing of the lower reach (banks
+± 3.9 u within 1 u, gentle footing, deck clear) gets an emberBridge v0 at plan time; the bed is blocked for paths
+± 2.2 u except under the deck and both ends get a path link, so paths cross only on it. In `finish` the pivot is
+planned (`FixtureData.y`, new optional field = render pivot y; mean bank height), the abutments are levelled to it and
+ramped up to the deck ends, the arch keeps the bed. v1 (rail bridge) is not placed: no track crosses the channel (the
+funicular and foundry rail keep off it). (4) **D6 deck** on the `craterDeck` anchor without a pad (a pad falloff bent
+the funicular rail by the top station: "pivots off the ground" 6.3 % > 6 %): in `finish` the pivot slides ≤ 1 u to the
+least floor relief, then late earthworks level the floor ground; a `deckGazer` story spot (one bot at the telescope:
+the island's 6-bot tableau cap is full, a couple would be skipped). (5) **D17 kiln** on a rect pad beside the smiths'
+lane (ring 5–22 u, mouth toward the lane centre or ≤ 0.55 rad off it, pad clash rule of the lane), chimney smoke
+(FIXTURE_EMITTERS) and a night mouth glow (culture-mover scene). (6) **D10 obsidian**: sea stacks on the shelf in front
+of the bluff (seabed −1.6…−0.25), a tide-pool slab at the waterline, shard clusters and a cairn on the bluff top; the
+bluff stays (no second low cove). (7) **D18 breakwater** near the anchor: variant head / straight / short, shifted
+toward the shore / along the arm until every footprint sample's seabed lies between the foot (−2.6 + 0.25, buried)
+and −0.3, ≥ 6 u off the piers; boat routes get keep-out discs along it (world/index.ts `breakwaterKeepOut`, 5.5 u).
+(8) **D18 tug** = sailboat v9 drawn in `render/movers.ts` next to the cargo ships (+1 instanced mesh, same program) and
+**escorting the first cargo ship** of each DevOps pier loop (`harbour-routes.ts tugPose`: off its bow quarter, 3.5 u
+to the loop's inside), funnel smoke as placed puffs born along that closed-form path (culture-movers scene).
+**Rationale**: one planned crossing is the only way to get a level bridge on the cone (and is the codebase's creek
+pattern). A life-boat tug on its own loop (the first try, life/tug.ts + a CULTURE_BOATS entry as TASK-509b suggested)
+crossed the cargo ships' stadium on every seed (≤ 1 u apart); escorting the ship on the same closed form can never
+collide and is what the 509b `route { lead }` hook hinted at.
+**Alternatives not taken**: bridges at the existing crossings (banks 3.5–6.5 u apart); a pad under the deck (bends the
+rail); the tug as a life agent on a breakwater racetrack (crosses the cargo loop); carving a black-sand cove (bluff
+coast, zone repaint: out of scope).
+**Numbers / cost**: 30 test seeds: lava bed + fall 29 / 30 (3104 has no channel anchors), bridge 28 / 29 channels,
+deck 30, kiln 29, obsidian ≥ 4 pieces 29, breakwater 28 (foot buried on all), tug 30 / 30 pier loops. M26 plan +
+finish ≈ 3 ms per world. Wow `--assert` green (W16 290 / 300 calls, memory peak 169 / 170 MB W4 / W27,
+W-lava-river-dusk 155 calls / 601 k tris). World hashes re-pinned (1001 `ca2196116a8f94c7`, 1 `69eeb588528e1744`).
+
 ## D-092: DevOps M26 lava-pack props — five defs at the tail of PROP_DEFS, the tug as sailboat variant 9, DevOps cap 14 -> 19 (TASK-509b; builds D-080 A + D3 / D6 / D10 / D17 / D18 on D-083) — 2026-10-28
 
 **Decision** (no placement, TASK-509c places them): (1) **Defs** (all tier 2, planner-pinned, ledger entries 15-19,

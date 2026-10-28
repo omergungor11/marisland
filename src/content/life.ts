@@ -775,6 +775,8 @@ export const TABLEAU: Readonly<Record<string, readonly TableauBotSpec[]>> = {
   ],
   containerNap: [{ dx: 0, dz: 0, turn: 0, pose: 'nap', atSpot: true }],
   onsenCapybara: [{ dx: 1.2, dz: 0.7, turn: Math.PI, pose: 'stand', atSpot: true }],
+  // TASK-509c: behind the crater deck telescope (DEVOPS_M26.deck.scope z 1.35), looking in
+  deckGazer: [{ dx: 0.05, dz: 0.75, turn: 0, pose: 'gaze', atSpot: true }],
   // Marketing
   lighthouseSelfie: [{ dx: 0, dz: 0, turn: 0, pose: 'selfie', atSpot: true }],
   mascotWave: [{ dx: 0, dz: 2.6, turn: Math.PI, pose: 'wave', atSpot: true }],

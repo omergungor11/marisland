@@ -58,6 +58,8 @@ export const DEVOPS_CULTURE: CultureDef = {
     { kind: 'anvilHammer', defs: ['anvil', 'smithy'] },
     // TASK-507 (D9): the capybaras on the onsen town bank (world/gen/plans/devops-m25.ts)
     { kind: 'onsenTown', defs: ['onsenHouse'] },
+    // TASK-509c (D6): a stargazer at the crater deck telescope (world/gen/plans/devops-m26.ts)
+    { kind: 'deckGazer', defs: ['craterDeck'] },
   ],
   rhythm: [],
   relay: { order: 2, id: 'releaseNight' },

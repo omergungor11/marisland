@@ -24,6 +24,7 @@ import { buildZones } from './gen/zones.ts';
 import { buildSettlements, markSites } from './gen/settlements.ts';
 import { buildRoutes } from './gen/routes.ts';
 import { portKeepOut } from './gen/customs-port.ts';
+import { breakwaterKeepOut } from './gen/plans/devops-m26.ts';
 import { carveReefGaps, planReefs, raiseReefs, reefWeights } from './gen/reefs.ts';
 import { placeSeamarks } from './gen/seamarks.ts';
 import { placeMarina } from './gen/marina.ts';
@@ -210,7 +211,8 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
       islands,
       docks: sites.docks,
       reefs: reefField,
-      keepOut: portKeepOut(islands),
+      // TASK-509c: and no route through the DevOps breakwater
+      keepOut: [...portKeepOut(islands), ...breakwaterKeepOut(sites.fixtures)],
     },
     root.fork('routes'),
   );

@@ -313,6 +313,8 @@ export function appendSettlementProps(world: WorldData): {
         push('funicularRail', p.x, p.z, p.yaw, p.scale, f.islandId, p.y, p.variant);
       continue;
     }
+    // TASK-509c (D1): the lava bed is ground art (render/lava.ts paints it), no segment props
+    if (f.kind === 'lava') continue;
     const seg = LINE_SEGMENT[f.kind] ?? LINE_SEGMENT.fence;
     const pts = f.points;
     const n = f.closed ? pts.length : pts.length - 1;
@@ -441,11 +443,14 @@ export function appendSettlementProps(world: WorldData): {
     const def = PROP_DEFS[PROP_DEF_INDEX[fx.defId]];
     if (!def) continue;
     const bank = BANK_FIXTURES[fx.defId];
-    const y = FLOATING_FIXTURES.includes(fx.defId)
-      ? 0
-      : bank === undefined
-        ? undefined
-        : bankY(h, fx, bank);
+    // a planned pivot (TASK-509c: the ember bridge over the lava bed) wins over the ground rules
+    const y =
+      fx.y ??
+      (FLOATING_FIXTURES.includes(fx.defId)
+        ? 0
+        : bank === undefined
+          ? undefined
+          : bankY(h, fx, bank));
     // rolled even when the planner chose one: keeps the island's decor stream stable
     const rolled = decorOf(fx.islandId).int(0, rolls(def) - 1);
     const v = fx.variant !== undefined && fx.variant < def.variants ? fx.variant : rolled;

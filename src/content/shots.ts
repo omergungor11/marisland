@@ -349,6 +349,11 @@ const FUNICULAR_DAWN_CAM = '254,67,0,221,17,-23';
 // over the lane's open end, looking down the aisle between the two stall rows so the lit stalls, hammers,
 // sparks, lanterns and the funicular car all read (low cams from either aisle end hit the mine cart)
 const EMBER_LANE_CAM = '233,19,3,242,6,-10';
+/**
+ * TASK-509c (D-093) Lava River Dusk (19:40): from the sea off the windward bluff, up the lava fall and
+ * the carved river to the notch, the ember bridge glowing over it, steam rising off the delta.
+ */
+const LAVA_RIVER_DUSK_CAM = '238,38,-114,225,5,-79';
 
 /**
  * TASK-512 wow cams (raw, seed 1001), re-pin when the layouts move. Kite Hill Afternoon (14:00 +20 s,
@@ -409,6 +414,15 @@ const DEVOPS_M25_CAMS: readonly (readonly [string, string, string, number, numbe
   ['D-lava-channel-night', 'Lava river at night (T1)', '262,46,-118,218,12,-60', 21.5, 6],
   ['D-lava-fall', 'Lava fall + steam delta (T2)', '248,11,-106,230,3,-82', 14, 6],
   ['D-lava-fall-night', 'Lava fall + steam delta at night (T2)', '248,11,-106,230,3,-82', 21.5, 6],
+  // TASK-509c (D-093): the M26 lava pack placed (seed 1001: bridge 228.6,-76.8 over the carved bed,
+  // deck 211,-30.6 on the rim, kiln 250,-16 by the smiths' lane, obsidian beach 245,-76, tug leading
+  // the cargo ship off the pier head 159,23)
+  ['D-m26-bridge', 'Ember bridge over the lava bed (T3)', '238,12,-88,228.6,7.4,-76.8', 14, 6],
+  ['D-m26-bridge-night', 'Ember bridge at night (T3)', '238,12,-88,228.6,7.4,-76.8', 21.5, 6],
+  ['D-m26-deck', 'Crater deck + stargazer (T3)', '220,40,-24,209,33.5,-32', 14, 6],
+  ['D-m26-kiln-night', 'Lava-glass kiln at night (T3)', '242,12.5,-9.5,250,7.8,-16', 21.5, 6],
+  ['D-m26-obsidian', 'Obsidian beach · sea stacks + tide pool (T2)', '264,10,-93,246,2,-77', 14, 6],
+  ['D-m26-tug', 'Tug leading the cargo ship + smoke (T2)', '131,9,31,145,1.5,17', 14, 20],
 ];
 const DEVOPS_M25_SHOTS: readonly ShotPreset[] = DEVOPS_M25_CAMS.map(
   ([id, title, cam, time, simt]) => ({
@@ -1982,6 +1996,19 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     cam: EMBER_LANE_CAM,
     time: 21.5,
     simt: 4,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  {
+    id: 'W-lava-river-dusk',
+    title: 'Lava River Dusk',
+    // TASK-509c: the lava fall, the river and the ember bridge at 19:40 (see LAVA_RIVER_DUSK_CAM)
+    seed: 1001,
+    cam: LAVA_RIVER_DUSK_CAM,
+    time: 19.67,
+    simt: 6,
     quality: 'medium',
     width: 1920,
     height: 1080,

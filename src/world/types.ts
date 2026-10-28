@@ -436,6 +436,11 @@ export interface FixtureData {
   variant?: number;
   /** Instance scale (unset = 1): the Research arboretum's oversized round tree (M22 TASK-483). */
   scale?: number;
+  /**
+   * Pivot height (world) planned by the placer for a fixture that does not stand on the ground under
+   * its pivot (TASK-509c: the ember bridge over the carved lava bed); unset = ground / waterline / bank.
+   */
+  y?: number;
 }
 
 export interface SettlementData {

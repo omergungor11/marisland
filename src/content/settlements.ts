@@ -209,6 +209,13 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   onsenHouse: 2,
   // M25 (TASK-507, D7): the sinter mound of a geyser
   geyserCone: 1.4,
+  // M26 (TASK-509c): the ember bridge is walked over (worldgen levels its abutments); the crater
+  // deck drum, the kiln + rack, an obsidian piece, the breakwater mole (in the sea)
+  emberBridge: 0.05,
+  craterDeck: 2.3,
+  glassKiln: 2.2,
+  obsidianShard: 0.8,
+  devopsBreakwater: 2.6,
   // Marketing
   billboardV2: 2.6,
   stage: 3.2,
