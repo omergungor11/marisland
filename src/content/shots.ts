@@ -84,12 +84,12 @@ const CAMPUS_THEMES = [
  * container yard, yard bots (the old west-shore rack yard moved onto the harbour shelf).
  */
 const LIVE_CAMS: Record<(typeof CAMPUS_THEMES)[number][0], string> = {
-  hq: '-66.04,14,-13.36,-46.04,1.4,-16.36',
+  hq: '-76.26,14,-11.72,-56.26,1.4,-14.72',
   qa: '89.4,23,-169.44,101.1,9,-157.14',
   design: '-93.87,30,-177.26,-100.87,17,-159.26',
   coding: '-105.43,17,138.51,-116.43,11,148.51',
   // TASK-402b: over the glasshouse row and the base pods (bots at the terrariums, mast and pods)
-  research: '137.71,15,118.1,123.71,8,108.1',
+  research: '141.71,15,122.1,127.71,8,112.1',
   devops: '174.38,7.5,22.53,184.38,2.6,10.53',
   marketing: '-259.02,15,12.2,-235.02,6,4.2',
 };
@@ -105,14 +105,14 @@ const LIVE_CROP: [number, number, number, number] = [0.15, 0.1, 0.85, 0.9];
  * Each looks at a story spot whose person is a tableau bot (content/life.ts TABLEAU).
  */
 const STORY_SHOTS: readonly (readonly [string, string, string, number, number])[] = [
-  ['signpostDebate', 'Signpost debate · HQ', '-51.04,8.5,-3.82,-48.24,2,-9.62', 14, 6],
+  ['signpostDebate', 'Signpost debate · HQ', '-59.72,8.5,-1.11,-56.92,2,-6.91', 14, 6],
   // TASK-497: re-aimed at the turbine-foot nap hammock (the chime turbine moved onto the Kite Hill)
   ['hammockNap', 'Hammock nap · Coding', '-130.97,12.41,160.88,-124.74,9.41,155.96', 14, 6],
   // TASK-507: re-aimed at the spot after the TASK-503 Emberpeak push
   ['containerNap', 'Container nap · DevOps', '173,10,3.3,178,7.3,2', 14, 6],
   ['lighthouseSelfie', 'Selfie · Marketing', '-189.14,28.37,-21.87,-184.03,25.67,-22.88', 14, 6],
   ['gafferTurn', 'Gaffer · Design', '-97.6,24.75,-175.95,-99.57,22.05,-171.13', 14, 6],
-  ['teaTime', 'Tea time · Research', '107.45,11.18,90.4,107.05,8.48,95.58', 14, 6],
+  ['teaTime', 'Tea time · Research', '111.45,11.18,94.4,111.05,8.48,99.58', 14, 6],
   ['onsenCapybara', 'Onsen · DevOps', '172.57,12.66,-32.01,169.59,9.96,-36.27', 14, 6],
 ] as const;
 
@@ -121,7 +121,7 @@ const STORY_SHOTS: readonly (readonly [string, string, string, number, number])[
  * (life-spot-critters.ts SPOT_CRITTERS): [id, title, cam, game hour, warm-up s].
  */
 const CRITTER_SHOTS: readonly (readonly [string, string, string, number, number])[] = [
-  ['cat-timetable', 'Cat on the timetable · HQ', '-58.05,5.6,-7.71,-54,3.35,-10.58', 14, 6],
+  ['cat-timetable', 'Cat on the timetable · HQ', '-66.73,5.6,-5,-62.68,3.35,-7.87', 14, 6],
   [
     'capybara-onsen',
     'Capybara in the onsen · DevOps',
@@ -131,7 +131,7 @@ const CRITTER_SHOTS: readonly (readonly [string, string, string, number, number]
     6,
   ],
   ['fox-orb', 'Fox and the glass orb · Design', '-105.87,23,-166.72,-109.87,21.5,-170.12', 14, 6],
-  ['owl-night', 'Owl at the box · Research', '129.48,9.76,111.3,126.33,8.89,109.77', 22, 6],
+  ['owl-night', 'Owl at the box · Research', '133.48,9.76,115.3,130.33,8.89,113.77', 22, 6],
   ['ladybugs-zoo', 'Ladybugs at the Bug Zoo · QA', '83.29,12.4,-159.49,80.1,9.01,-165.72', 14, 6],
   [
     'gull-bowl',
@@ -164,10 +164,10 @@ const DEVOPS_ONSEN_CAM = '163.5,14,-27.5,168.5,9,-38.5';
  * south-west (the channel off HQ) toward the open sea behind the summit; the old ENE look had
  * HQ's plateau in frame (841 k triangles > 800 k).
  */
-const W9_CAM = '72,21,52,116,15,100';
+const W9_CAM = '76,21,56,120,15,104';
 
 /** W14 campus at golden hour (raw, seed 1001; TASK-402b, re-aimed from the SW in TASK-471): pier, quad, gardens and the summit observatory, open sea behind. */
-const W14_CAM = '59,46,70,112,5,108';
+const W14_CAM = '63,46,74,116,5,112';
 
 /**
  * D-desk camera (raw `x,y,z,tx,ty,tz`), re-pin when the seed 1001 layout changes (TASK-396: +4 u
@@ -182,11 +182,11 @@ const DESK_CAM = '-116.33,13,142.55,-118.93,10.2,145.51';
  * faces the clocktower's wall (TASK-393 height), so a fixed T3 look west from the HQ quad over the
  * coffee kiosk, flower bed and crab to the reeds, foam line and sea. Re-pin when the layout changes.
  */
-const MACRO_CAM = '-40.24,7.4,-15.12,-49.74,2,-11.02';
+const MACRO_CAM = '-48.98,7.4,-11.81,-58.48,2,-7.71';
 
 /** D-culture-hq cameras (raw, seed 1001 Harbour Guild; TASK-420), re-pin when HQ's layout changes. */
-const HQ_CULTURE_CAM = '-27.54,33,23.68,-46.04,1.2,-12.82';
-const HQ_CULTURE_NIGHT_CAM = '-34.04,12,6.18,-45.04,1.2,-12.82';
+const HQ_CULTURE_CAM = '-36.33,33,22.1,-54.83,1.2,-14.4';
+const HQ_CULTURE_NIGHT_CAM = '-42.83,12,4.6,-53.83,1.2,-14.4';
 
 /**
  * D-move-* (TASK-431 culture movers): close frames with a deltaT pair so the ambient motion (rings,
@@ -256,8 +256,8 @@ const TUNNEL_SHOTS: readonly ShotPreset[] = (
 
 const MOVE_SHOTS: readonly ShotPreset[] = (
   [
-    ['hq', 'Harbour Guild · 06:00 bell fanfare', 1001, '-59.04,4.5,-19.82,-52.44,2.8,-16.42', 6],
-    ['hq-crane', 'Harbour Guild · crane sack', 1001, '-56.94,5.5,-4.12,-49.94,2,-4.12', 9],
+    ['hq', 'Harbour Guild · 06:00 bell fanfare', 1001, '-67.83,4.5,-18.18,-61.23,2.8,-14.78', 6],
+    ['hq-crane', 'Harbour Guild · crane sack', 1001, '-65.62,5.5,-1.41,-58.62,2,-1.41', 9],
     // TASK-497: the Kite Day rack at the Kite Hill foot, up the hill to the chime turbine and its kites
     ['coding', 'Wind Gardens · 14:00 Kite Day', 1001, '-92,15,147,-97.5,11.5,172', 14],
     [
@@ -316,15 +316,15 @@ const MOVE_SHOTS: readonly ShotPreset[] = (
  * the comb's masts (lamps lit) at the star fort on the horn, its windows and red light on, the flag
  * flying, the green light of the breakwater head beyond and the ferry buoys over open water.
  */
-const MARINA_DUSK_CAM = '-30,9,-16,-58,4,10';
+const MARINA_DUSK_CAM = '-34.62,9,-15.17,-62.62,4,10.83';
 
 /** TASK-505 marina cams: [id, title, cam, game hour, warm-up s]; raw `eye → target`, seed 1001. */
 const MARINA_CAMS: readonly (readonly [string, string, string, number, number])[] = [
-  ['D-marina-top', 'Marina from above · HQ cove', '-45,95,45,-45,0,18', 14, 4],
-  ['D-marina-t1', 'Marina from the sea · HQ cove (T1)', '-125,42,85,-45,0,20', 14, 4],
-  ['D-marina-fort', 'Star fort at the cove mouth · HQ', '-92,16,66,-60,3,40', 14, 4],
+  ['D-marina-top', 'Marina from above · HQ cove', '-49.95,95,44.27,-49.95,0,17.27', 14, 4],
+  ['D-marina-t1', 'Marina from the sea · HQ cove (T1)', '-129.95,42,84.27,-49.95,0,19.27', 14, 4],
+  ['D-marina-fort', 'Star fort at the cove mouth · HQ', '-96.37,16,70.2,-64.37,3,44.2', 14, 4],
   ['D-marina-dusk', 'Marina dusk · masts and the fort flag', MARINA_DUSK_CAM, 19.75, 4],
-  ['D-marina-top-night', 'Marina from above at night', '-45,95,45,-45,0,18', 20.5, 4],
+  ['D-marina-top-night', 'Marina from above at night', '-49.95,95,44.27,-49.95,0,17.27', 20.5, 4],
 ];
 const MARINA_SHOTS: readonly ShotPreset[] = MARINA_CAMS.map(([id, title, cam, time, simt]) => ({
   id,
@@ -341,10 +341,10 @@ const MARINA_SHOTS: readonly ShotPreset[] = MARINA_CAMS.map(([id, title, cam, ti
  * TASK-507 wow cams (raw, seed 1001). Funicular Dawn (06:00 + 5 s: the shift siren rings the
  * summit bell, the lower car turns at its first switchback, its lantern flares): high from the
  * sea east of Emberpeak down on the whole line, foot to summit (a lower look toward the hub draws
- * every island behind the cone: 450 calls). Ember Lane Night (21:30): down the smiths' lane aisle toward the open sea, trip
+ * every island behind the cone: 450 calls; TASK-511: 10° steeper, the grown HQ took it to 832k tris). Ember Lane Night (21:30): down the smiths' lane aisle toward the open sea, trip
  * hammers striking with sparks under the lit stalls.
  */
-const FUNICULAR_DAWN_CAM = '262,60,6,221,17,-23';
+const FUNICULAR_DAWN_CAM = '254,67,0,221,17,-23';
 const EMBER_LANE_CAM = '237.4,13.4,-7,243.7,8.2,-11.1';
 
 /**
@@ -610,7 +610,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // in front, gates and pennant lines on the plaza, the clock tower whole with sky above it
     seed: 1001,
     // TASK-505 (D-085): the marina's masts crowded the lower frame; 8 u higher and 3 u further out
-    cam: '-45,24,28,-32,6,-22',
+    cam: '-56.77,24,29.1,-43.77,6,-20.9',
     time: 9,
     simt: 15,
     quality: 'medium',
@@ -671,7 +671,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // the gates at the street mouths, clock tower, stalls, bay sand on the left (refined
     // D-compass-top: centred on the plaza + gates, 82 u up)
     seed: 1001,
-    cam: '-35,82,-8,-34,1.4,-31',
+    cam: '-45,82,-11.52,-44,1.4,-34.52',
     time: 15.5,
     simt: 4,
     quality: 'medium',
@@ -687,7 +687,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // dome in front, the glasshouse rainbow row, two arches with their rainbow pools thrown away
     // from the sun, the Atelier Tree, two spray rainbows and open sea behind (≈ 160 calls)
     seed: 6006,
-    cam: '94,52,-116,126,16,-168',
+    cam: '96,52,-118,128,16,-170',
     time: 17.75,
     simt: 4,
     quality: 'medium',
@@ -702,7 +702,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // lanterns at the street mouths, the clock tower and the post yard; the semaphore on the
     // summit sits off-frame (66 u from the plaza: a frame holding both reads as dark, empty land)
     seed: 1001,
-    cam: '-36,55,25,-20,4,-25',
+    cam: '-40.33,55,25.04,-24.33,4,-24.96',
     time: 21,
     simt: 5,
     quality: 'medium',
@@ -763,7 +763,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // Research 12:00 +3 s: the R13 launch gantry on the headland during the test firing (trench
     // steam), the R12 hedge-maze parterres, the R17 belfry tower and the arboretum behind
     seed: 1001,
-    cam: '80,12,135,97,7,121',
+    cam: '84,12,139,101,7,125',
     time: 12,
     simt: 3,
     quality: 'medium',
@@ -793,7 +793,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // sea south of the Harbour Guild: the finale shells over the bay (TASK-496: low and far enough that
     // their mirror image on the open water below shares the frame), the island's lit quay between (raw)
     seed: 1001,
-    cam: '-30,2.2,275,-30,7,10',
+    cam: '-32.01,2.2,274.81,-32.01,7,9.81',
     time: 21,
     simt: 99.9,
     quality: 'medium',
@@ -806,7 +806,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     title: 'Harbour Fireworks cancelled in rain (W15c clock)',
     // TASK-490: the show is cancelled in rain — the W15c frame under rain has no shells
     seed: 1001,
-    cam: '-30,8,200,-30,38,10',
+    cam: '-32.01,8,199.81,-32.01,38,9.81',
     time: 21,
     simt: 99.9,
     weather: 'rain',
@@ -816,10 +816,11 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   {
     id: 'W15d',
     title: 'Skerry Beacon',
-    // TASK-490 (W:B1): a mini lighthouse on a south skerry at 23:00 (raw), its beam sweeping the sea,
+    // TASK-490 (W:B1): a mini lighthouse on a south skerry at 23:00 (raw; TASK-511: the grown HQ moved
+    // the islets, now the skerry at -110,-63), its beam sweeping the sea,
     // the island lights behind it
     seed: 1001,
-    cam: '-22,34,-112,6,8,-150',
+    cam: '-136,34,-28.3,-108,8,-66.3',
     time: 23,
     simt: 4,
     quality: 'medium',
@@ -864,7 +865,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // TASK-494: the overview left the whale a few pixels at the corner, so this is a raw cam 34° down from the
     // north-east: the whale facing us in the open water with its spout, the Research cape beside it for scale
     seed: 1001,
-    cam: '230,62,40,170,0,112',
+    cam: '234,62,44,174,0,116',
     time: 17.75,
     simt: 0.5,
     quality: 'medium',
@@ -931,7 +932,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     seed: 1001,
     // TASK-396: the `shore` orbit looks through the taller clocktower; a raw 40 u look west over
     // the kiosk sandbar, its foam bands and the ferry pier (tower just out of frame, right)
-    cam: '-15.44,21,-0.36,-50.04,1,-0.36',
+    cam: '-19.98,21,1.27,-54.58,1,1.27',
     time: 14,
     simt: 2,
     deltaT: 2,
@@ -1552,7 +1553,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // faculty pennants and the tea trolley at the library, the comet-night observatory with its
     // telescope terrace, the bell-cupola tower
     seed: 1001,
-    cam: '114.71,22,120.1,105.71,8,97.1',
+    cam: '118.71,22,124.1,109.71,8,101.1',
     time: 17.75,
     simt: 4,
     quality: 'medium',
@@ -1564,7 +1565,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // seed 1001: the observatory with its slit open, the telescope + book-pile stool and the
     // comet board on its terrace, the owl box behind the dome
     seed: 1001,
-    cam: '95.71,24,89.1,118.71,9,98.1',
+    cam: '99.71,24,93.1,122.71,9,102.1',
     time: 22,
     simt: 4,
     quality: 'medium',
@@ -1725,7 +1726,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-compass-top',
     title: 'Compass mosaic · HQ plaza from above (15:00)',
     seed: 1001,
-    cam: '-36,70,-8,-36,1.4,-28',
+    cam: '-46.31,70,-7.37,-46.31,1.4,-27.37',
     time: 15,
     simt: 4,
     quality: 'medium',
@@ -1735,7 +1736,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-prism-golden',
     title: 'Prism pools · Design Prism Walk at golden hour (17:15)',
     seed: 6006,
-    cam: '112,26,-182,122,18,-162',
+    cam: '114,26,-184,124,18,-164',
     time: 17.25,
     simt: 4,
     quality: 'medium',
@@ -1745,7 +1746,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-prism-night',
     title: 'Prism pools + conservatory glass · Design at night (21:30)',
     seed: 6006,
-    cam: '112,26,-182,122,18,-162',
+    cam: '114,26,-184,124,18,-164',
     time: 21.5,
     simt: 4,
     quality: 'medium',
@@ -1804,7 +1805,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'E-panel',
     title: 'Edit panel · place',
     seed: 1001,
-    cam: '-22.94,70,68.04,-36.94,6,-31.96',
+    cam: '-33.25,70,68.39,-47.25,6,-31.61',
     time: 15,
     simt: 2,
     width: 1280,
@@ -1818,7 +1819,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'E-hill',
     title: 'Hill behind the village',
     seed: 1001,
-    cam: '-22.94,70,68.04,-36.94,6,-31.96',
+    cam: '-33.25,70,68.39,-47.25,6,-31.61',
     time: 15,
     simt: 2,
     edit: EDIT_LOGS.hill,
