@@ -3,7 +3,7 @@
  * a prop can be judged on its own (no world needed). One image per def (a row of every variant at
  * LOD0 + LOD1) and one close 3/4 view of variant 0 LOD0.
  *
- *   pnpm exec tsx scripts/gallery-shots.ts [m20|coding22|research|qa24|marina|devops25|devops26|id,id,...] [--port=5199] [--out=shots/gallery-m20]
+ *   pnpm exec tsx scripts/gallery-shots.ts [m20|coding22|research|qa24|marina|devops25|devops26|marketing27|id,id,...] [--port=5199] [--out=shots/gallery-m20]
  *
  * Starts its own `vite` dev server on `--port` (killed at the end; a server already on the port is
  * reused and left alone). Software GL (swiftshader), so no GPU is needed.
@@ -19,6 +19,7 @@ import { QA_M30_PROP_IDS } from '../src/content/props-themes/qa-customs.ts';
 import { HQ_MARINA_PROP_IDS } from '../src/content/props-themes/hq-marina.ts';
 import { DEVOPS_M25_PROP_IDS } from '../src/content/props-themes/devops-m25.ts';
 import { DEVOPS_M26_PROP_IDS } from '../src/content/props-themes/devops-m26.ts';
+import { MARKETING_M27_PROP_IDS } from '../src/content/props-themes/marketing-m27.ts';
 import { RESEARCH_M22_PROP_IDS } from '../src/content/props-themes/research.ts';
 import { buildGalleryScene } from '../src/geo/gallery.ts';
 import { PROP_GEO } from '../src/geo/registry.ts';
@@ -44,13 +45,15 @@ const ids =
                 ? DEVOPS_M25_PROP_IDS
                 : which === 'devops26'
                   ? DEVOPS_M26_PROP_IDS
-                  : which.split(',');
+                  : which === 'marketing27'
+                    ? MARKETING_M27_PROP_IDS
+                    : which.split(',');
 const PORT = Number(opt('port') ?? 5199);
 const ROOT = resolve(import.meta.dirname, '..');
 const OUT = resolve(
   ROOT,
   opt('out') ??
-    `shots/gallery-${['m20', 'coding22', 'research', 'qa24', 'qa30', 'marina', 'devops25', 'devops26'].includes(which) ? which : 'custom'}`,
+    `shots/gallery-${['m20', 'coding22', 'research', 'qa24', 'qa30', 'marina', 'devops25', 'devops26', 'marketing27'].includes(which) ? which : 'custom'}`,
 );
 const BASE = `http://localhost:${PORT}/`;
 
@@ -149,6 +152,22 @@ async function main(): Promise<void> {
         960,
         720,
       );
+      // a close 3/4 view of every other variant (`--variants`, default for marketing27: the cable car,
+      // the sea signs and the guyed mast are variants of old defs)
+      if (args.includes('--variants') || which === 'marketing27')
+        for (let v = 1; v < def.variants; v++) {
+          const it = row.find((r) => r.variant === v && r.lod === 0);
+          if (!it) continue;
+          const hv = def.heights?.[v] ?? def.height;
+          const dv = Math.max(def.footprint * 2.6, hv * 1.6, 6);
+          await shoot(
+            id,
+            `${id}-v${v}-close`,
+            [it.x + dv * 0.55, hv * 0.55 + dv * 0.2, z + dv * 0.9, it.x, hv * 0.5, z],
+            960,
+            720,
+          );
+        }
       // straight-on from +z (the front: gate passage, stall counter, bay doorway) at eye height
       await shoot(
         id,

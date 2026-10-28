@@ -9,7 +9,16 @@ const { grounded, windy, noShadow } = PropFlag;
 
 export const MARKETING_PROP_DEFS: readonly PropDef[] = [
   // T0: must read from the far tier (billboard face = emissive-2 screen class; M14c slideshow)
-  { id: 'billboardV2', geo: 'billboardV2', tier: 0, variants: 2, footprint: 2.6, flags: grounded },
+  // v2 sea billboard, v3 ON AIR neon (TASK-517, D-096): pinned by the plan, never rolled
+  {
+    id: 'billboardV2',
+    geo: 'billboardV2',
+    tier: 0,
+    variants: 4,
+    rollVariants: 2,
+    footprint: 2.6,
+    flags: grounded,
+  },
   // clifftop stage deck (T0 structure >= 3 u)
   { id: 'stage', geo: 'stage', tier: 0, variants: 2, footprint: 3.2, flags: grounded | windy },
   // TASK-403: one variant (the boulevard and fair hold many poles: one LOD0 group, not two)
@@ -44,12 +53,12 @@ export const MARKETING_PROP_DEFS: readonly PropDef[] = [
   // TASK-403 Media Rock: structures >= 3 u read from T0 (D-031); one variant unless noted. The
   // ones standing on their own plinth / deck skip the contact blob (one draw call per LOD0 group)
   { id: 'giantScreen', geo: 'giantScreen', tier: 0, variants: 1, footprint: 4.2, flags: 0 },
-  // v1 = the short transmitter on a sea stack (TASK-481), pinned by the plan
+  // v1 = the short transmitter on a sea stack (TASK-481), v2 = the guyed stack-1 mast (TASK-517), pinned by the plan
   {
     id: 'antennaTower',
     geo: 'antennaTower',
     tier: 0,
-    variants: 2,
+    variants: 3,
     rollVariants: 1,
     footprint: 1.7,
     flags: 0,

@@ -59,7 +59,8 @@ describe('TASK-504 DevOps M25 defs', () => {
     expect(PROP_GEO.rackShed.variants).toBe(3);
     expect(PROP_GEO.onsenHouse.variants).toBe(3);
     expect(PROP_GEO.goodsStall.variants).toBe(8);
-    expect(PROP_GEO.mailLine.variants).toBe(4);
+    // TASK-517 (D-096) added the Marketing cable car v4 / v5 / v6
+    expect(PROP_GEO.mailLine.variants).toBe(7);
   });
 
   it('ledger: 19 defs = the DevOps cap override, one tier-1, valid', () => {

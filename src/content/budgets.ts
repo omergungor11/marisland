@@ -107,6 +107,8 @@ export const cultureCapOverride: Readonly<Record<string, { defs: number; tier1: 
   // M25 TASK-504 (D-084): the Ember Smiths ledger 10 -> 14 (funicularRail / Car, geyserCone, oreBucket)
   // TASK-509b (D-092): +5 for the lava pack (emberBridge, craterDeck, glassKiln, obsidianShard, devopsBreakwater)
   devops: { defs: 19, tier1: 1 },
+  // M27 TASK-517 (D-096): the Beacon Rock ledger 10 -> 11 (diveTower; the cable car, sea signs and guyed mast are variants)
+  marketing: { defs: 11, tier1: 1 },
 };
 
 /** SwiftShader is ~20–50× slower; time budgets are scaled by this when headless. */

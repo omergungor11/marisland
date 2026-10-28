@@ -8,6 +8,7 @@ import { isLargeStructure } from '../../render/props/batcher.ts';
 import { PropFlag } from '../../world/prop-store.ts';
 import { buildProp } from '../registry.ts';
 import { MARKETING_CULTURE_GEO } from './culture-marketing.ts';
+import { MARKETING_M27_GEO } from './marketing-m27.ts';
 
 const verts = (g: THREE.BufferGeometry): number => g.getAttribute('position').count;
 const size = (g: THREE.BufferGeometry): THREE.Vector3 => {
@@ -29,7 +30,8 @@ describe('TASK-413 Carnival Broadcasters kit', () => {
     expect(validateCultures([MARKETING_CULTURE])).toEqual([]);
     const ids = MARKETING_CULTURE.kit.map((k) => k.id);
     expect(ids).toEqual(expect.arrayContaining(MARKETING_CULTURE_GEO.map((d) => d.id)));
-    expect(ids).toHaveLength(MARKETING_CULTURE_GEO.length);
+    // + the M27 dive tower (TASK-517, cap override 11)
+    expect(ids).toHaveLength(MARKETING_CULTURE_GEO.length + MARKETING_M27_GEO.length);
     for (const k of MARKETING_CULTURE.kit) {
       const d = PROP_DEFS.find((p) => p.id === k.id);
       expect(d, k.id).toBeDefined();

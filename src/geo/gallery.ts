@@ -28,8 +28,12 @@ export function buildGalleryScene(only?: readonly string[]): {
     let spacing = Math.max(1.5, 3 * def.footprint);
     if (only) {
       // showcase: space by the real plan size (wide gates, 15 u conservatories)
-      const bb = buildProp(def.id, 1, 0, 0).boundingBox;
-      if (bb) spacing = Math.max(spacing, Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) + 1.5);
+      // (every variant: a tall sign or a pylon with its landing is wider than variant 0)
+      for (let v = 0; v < def.variants; v++) {
+        const bb = buildProp(def.id, 1, v, 0).boundingBox;
+        if (bb)
+          spacing = Math.max(spacing, Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) + 1.5);
+      }
     }
     z += spacing / 2;
     let col = 0;

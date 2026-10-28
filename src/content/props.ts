@@ -27,6 +27,7 @@ import { HQ_MARINA_PROP_DEFS } from './props-themes/hq-marina.ts';
 import { DEVOPS_M25_PROP_DEFS } from './props-themes/devops-m25.ts';
 import { CODING_TUNNEL_PROP_DEFS } from './props-themes/coding-tunnel.ts';
 import { DEVOPS_M26_PROP_DEFS } from './props-themes/devops-m26.ts';
+import { MARKETING_M27_PROP_DEFS } from './props-themes/marketing-m27.ts';
 
 export interface PropDef {
   id: string;
@@ -169,6 +170,8 @@ const ALL_DEFS: readonly PropDef[] = [
   ...CODING_TUNNEL_PROP_DEFS,
   // ---- TASK-509b (M26 DevOps II, D-092): ember bridge, crater deck, glass kiln, obsidian decor, breakwater ----
   ...DEVOPS_M26_PROP_DEFS,
+  // ---- TASK-517 (M27 Marketing, D-096): the dive tower (the cable car, sea signs and the guyed mast are variants) ----
+  ...MARKETING_M27_PROP_DEFS,
 ];
 
 /**

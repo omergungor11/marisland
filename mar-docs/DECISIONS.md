@@ -2,6 +2,34 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-096: Marketing M27 signature props — the cable car, sea billboard, ON AIR neon and guyed mast as variants of old defs, one new def `diveTower`, Marketing cap 10 -> 11 (TASK-517; builds D-094 on D-059 A / D-062 R3-15) — 2026-10-28
+
+**Decision** (no placement, TASK-518 places and moves them): (1) **Cable car = `mailLine` v4 / v5 / v6** (ledger-free,
+def variants 4 -> 7, rolls stay on 0-1): v4 sea pylon (9 u red / white lattice, two sheaves front / back like the ore mid
+pylon, a boarding landing beside the line flush with the gondola floor), v5 / v6 gondola cabin (red / cream liveries,
+lit panes + roof bulbs at night). `render/mail-lines.ts` already skips variants >= 2, so the HQ mail pairs ignore them.
+(2) **Sea billboard = `billboardV2` v2** (6 x 3 u, SURFACE.slides, tied back to the rock face with four rods; hooks `screen`
+= the surface rect, `mount` = a point on the rock plane). (3) **ON AIR = `billboardV2` v3, NOT `marqueeSign` v3** (deviation
+from D-094 / the study): the batcher fixes a def's effective tier ONCE per def from the first variant it sees (`effDef`),
+`marqueeSign` is a tier-2 def of 2.5 u signs, so a 9 u cliff sign there would be hidden beyond ~160 u (the W4 camera) or, if
+built first, drag every boulevard sign to T0. `billboardV2` is already tier 0. Still ledger-free. 5 plates top to bottom
+(O N, gap, A I R; the study's "4 letters" was an approximation of ON AIR), each plate carrying its stroke letter as a
+separate emissive slot (`1.00 + 0.01 k`, lamp class) and one contiguous vertex range (`letters` hook); a steel spine tied
+back to wall plates. (4) **`diveTower`** = the only new def: tier 2 (large structure, so drawn from T0 by size), pinned,
+`grounded | windy`, ledger entry 11 (`cultureCapOverride.marketing` = { 11, 1 }); 5 u deck, rails, ladder, gold springboard,
+pennant, lamp. (5) **Stack-1 transmitter = `antennaTower` v2**: the v1 lattice (`transmitterMast` got optional
+`T` + `extras` params, v1 output untouched) 8.2 u tall, two guy tiers, blinking tip (SURFACE.beacon at LOD0) with a `lamp`
+hook. (6) Gallery: `?gallery=1&ids=marketing27` / `pnpm exec tsx scripts/gallery-shots.ts marketing27` (also per-variant
+close-ups; row spacing now uses the widest variant).
+**Rationale**: variants keep the ledger and the def count flat; the one new def is what the study allowed (cap 11); the tier
+hazard is a property of the batcher, not of the content.
+**Alternatives not taken**: `marqueeSign` v3 (tier hazard above); a `cliffSign` def (tier 1 -> second tier-1 slot, cap
+override); per-letter sub-meshes (a companion def for nothing the vertex ranges cannot do); a new SURFACE kind for the letter
+sequence (any unknown kind > beacon falls into the beacon branch of the shader chain, so TASK-518 must add the kind AND its
+branch together).
+**Numbers**: tris LOD0 / LOD1: pylon 1064 / 232, gondola 352 / 67 (both liveries), sea billboard 348 / 94, ON AIR 648 / 192,
+guyed mast 848 / 206 (v1 776 / 170), dive tower 992 / 212.
+
 ## D-094: M27 Marketing signature plan (Cable Carnival) + M26 follow-ups — plan only — 2026-10-28
 
 - **M27 scope** (from D-059 direction A and D-062 R3-15, no new user decision needed): `MK:M1` cable car (gondola

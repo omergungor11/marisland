@@ -27,6 +27,7 @@ import { QA_CUSTOMS_GEO } from './qa-customs.ts';
 import { CODING_TUNNEL_GEO } from './coding-tunnel.ts';
 import { HQ_MARINA_GEO } from './hq-marina.ts';
 import { DEVOPS_M26_GEO } from './devops-m26.ts';
+import { MARKETING_M27_GEO, withCableCar, withGuyedMast, withSeaSigns } from './marketing-m27.ts';
 import { DEVOPS_M25_GEO, withOnsenStilts, withOrePylons, withSmithStall } from './devops-m25.ts';
 import { THEME_IDS } from '../../world/types.ts';
 
@@ -37,8 +38,12 @@ const m25Variants = (d: PropGeoDef): PropGeoDef =>
     : d.id === 'goodsStall'
       ? withSmithStall(d, THEME_IDS.indexOf('devops'))
       : d.id === 'mailLine'
-        ? withOrePylons(d)
-        : d;
+        ? withCableCar(withOrePylons(d))
+        : d.id === 'billboardV2'
+          ? withSeaSigns(d)
+          : d.id === 'antennaTower'
+            ? withGuyedMast(d)
+            : d;
 
 const BASE_THEME_GEO: readonly PropGeoDef[] = [
   ...HQ_GEO,
@@ -82,4 +87,6 @@ export const THEME_GEO: readonly PropGeoDef[] = [
   ...DEVOPS_M25_GEO,
   // M26 TASK-509b DevOps ember bridge, crater deck, glass kiln, obsidian decor, breakwater
   ...DEVOPS_M26_GEO,
+  // M27 TASK-517 Marketing dive tower
+  ...MARKETING_M27_GEO,
 ];
