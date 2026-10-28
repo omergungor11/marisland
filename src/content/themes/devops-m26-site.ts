@@ -49,9 +49,37 @@ export const DEVOPS_M26_SITE = {
    * D10 obsidian beach (the windward bluff beside the fall): sea stacks on the shallow shelf in front
    * (seabed in `stackDepth`), a tide-pool slab at the waterline, shard clusters and a cairn on the
    * bluff top. Searched on the anchor rect (`DEVOPS_GROWTH.obsidian.size`, depth axis = out to sea)
-   * grown by `reach` seaward.
+   * grown by `reach` seaward. With a cove (TASK-513) the clusters and the cairn stand on its floor.
    */
   obsidian: {
+    /**
+     * TASK-513 black-sand cove: a notch carved into the bluff at the anchor (frame: s out to sea,
+     * q along the coast). Floor = |q| ≤ `halfW`, s ≥ −back (back corners rounded by `corner`), its
+     * ground cut (never raised) to a beach sloping from `backY` at the back to `frontY` at s =
+     * `frontS` (≈ the waterline; ≥ FLATTEN.minHeight); the walls blend back to the bluff over
+     * `wall`. Cut late (plan.finish, groundWriter rules), planned at plan time: the deepest `backs`
+     * (the D13 quarry often sits ~13 u behind the anchor), then the first centre slid `slide` u
+     * along the coast whose floor is `gap` + the groundWriter keep-off clear of every other
+     * obstacle and pad falloff; its rect is reserved and blocked for paths. Floor = black sand; the walls repaint by slope:
+     * cliff above ZONE_RULES.cliffSlope, black sand up to `sandTop`, rock above `rockSlope`.
+     */
+    cove: {
+      halfW: 5,
+      backs: [6, 5, 4] as const,
+      corner: 3,
+      wall: 2.5,
+      frontS: 4,
+      backY: 1.1,
+      frontY: 0.45,
+      slide: [0, 2, -2, 4, -4, 6, -6] as const,
+      gap: 0.4,
+      sandTop: 1.6,
+    },
+    /** Cove floor pieces (clusters, cairn): ground height range, kept `inset` u off the walls. */
+    floorY: [0.4, 1.4] as const,
+    inset: 1.2,
+    /** Slab samples run this far past the cove's `frontS` (the waterline step into the shelf). */
+    slabOut: 2,
     reach: 8,
     /** Variants: cluster 0, stack 1, slab 2, cairn 3; how many of each (in this order). */
     want: [
@@ -63,7 +91,8 @@ export const DEVOPS_M26_SITE = {
     stackDepth: [-1.6, -0.25] as const,
     slabY: [-0.15, 0.7] as const,
     landY: 1.2,
-    landRelief: 0.9,
+    /** Ground relief under each piece's disc (per variant): the piece sits, nothing floats. */
+    maxRelief: [0.9, 1.0, 0.9, 0.9] as const,
     spacing: [3.2, 3.0, 2.6, 2.6] as const,
     radius: [1.0, 0.9, 1.2, 0.5] as const,
     tries: 60,

@@ -1137,28 +1137,100 @@ describe('DevOps M26 placement (TASK-509c) — 30 seeds', () => {
     expect(rateOf(hits.kilnLevel, hits.kiln), 'kiln on its level pad').toBeGreaterThanOrEqual(0.9);
   });
 
-  it('D10 obsidian: sea stacks in the shelf water, the slab at the waterline, shards on the bluff top', () => {
+  it('D10 obsidian + TASK-513 black-sand cove: a low notch in the bluff, every piece seated', () => {
     let n = 0;
+    let coves = 0;
     let hits = 0;
     const O = S.obsidian;
+    const C = O.cove;
+    /** Ground relief under a piece's disc (centre + 8 samples at r and r / 2, like the planner). */
+    const reliefAt = (w: WorldData, p: XZ, r: number): number => {
+      const ys = [yAt(w, p)];
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2;
+        for (const rr of [r, r / 2])
+          ys.push(yAt(w, { x: p.x + Math.cos(a) * rr, z: p.z + Math.sin(a) * rr }));
+      }
+      return Math.max(...ys) - Math.min(...ys);
+    };
     for (const seed of SEEDS) {
       const d = devops(seed);
       if (!d || !d.isl.anchors.obsidianBeach) continue;
       n++;
       const ctx = `seed ${seed}`;
-      const sh = d.fixtures.filter((f) => f.defId === 'obsidianShard');
+      const cove = d.isl.anchors.obsidianCove;
+      const size = d.isl.anchors.obsidianCoveSize;
+      const f = cove ? { x: Math.cos(cove.rotY), z: Math.sin(cove.rotY) } : { x: 1, z: 0 };
+      const at = (s: number, q: number): XZ =>
+        cove ? { x: cove.x + f.x * s - f.z * q, z: cove.z + f.z * s + f.x * q } : { x: 0, z: 0 };
+      const frame = (p: XZ): { s: number; q: number } =>
+        cove
+          ? {
+              s: (p.x - cove.x) * f.x + (p.z - cove.z) * f.z,
+              q: -(p.x - cove.x) * f.z + (p.z - cove.z) * f.x,
+            }
+          : { s: 0, q: 0 };
+      if (cove && size) {
+        coves++;
+        const back = size.z;
+        expect(size.x, ctx).toBeCloseTo(2 * C.halfW);
+        expect(C.backs, ctx).toContain(back);
+        // the floor: a low black-sand beach from the back down to the waterline
+        // (the planner's floor distance: open to the sea, back corners rounded)
+        const out = (s: number, q: number): number =>
+          Math.hypot(
+            Math.max(0, Math.abs(q) - (C.halfW - C.corner)),
+            Math.max(0, C.corner - back - s),
+          ) - C.corner;
+        for (let s = -back; s <= C.frontS - 1; s += 1)
+          for (let q = -C.halfW; q <= C.halfW; q += 1) {
+            if (out(s, q) > -1) continue;
+            const p = at(s, q);
+            const y = yAt(d.w, p);
+            expect(y, `${ctx} floor s ${s} q ${q}`).toBeLessThanOrEqual(C.backY + 0.3);
+            // (zones are nearest-sample on the 2 u grid: away from the wall foot, on dry land)
+            if (out(s, q) <= -2 && sampleGrid(d.w.height, d.w.shoreSdf, p.x, p.z, -1) > 1.5)
+              expect(zoneAt(d.w.height, d.w.zone, p.x, p.z), `${ctx} s ${s} q ${q}`).toBe(
+                Zone.sandBlack,
+              );
+          }
+        // a real notch: the bluff still stands behind and beside it
+        const behind = yAt(d.w, at(-back - C.wall - 2, 0));
+        expect(behind - C.backY, `${ctx} back wall`).toBeGreaterThanOrEqual(2);
+        // no footpath crosses the floor (planned around the blocked cove)
+        for (const pl of d.w.paths) {
+          if (pl.islandId !== d.isl.id) continue;
+          for (const p of pl.points) {
+            const { s, q } = frame(p);
+            const inFloor = s >= -back && s <= C.frontS && Math.abs(q) <= C.halfW;
+            expect(inFloor, `${ctx} path through the cove`).toBe(false);
+          }
+        }
+      }
+      const sh = d.fixtures.filter((x) => x.defId === 'obsidianShard');
       if (sh.length >= 4) hits++;
-      for (const f of sh) {
-        const y = yAt(d.w, f);
-        if (f.variant === 1) {
+      for (const x of sh) {
+        const v = x.variant ?? 0;
+        const y = yAt(d.w, x);
+        // seated: no edge of the piece hangs over a drop
+        expect(reliefAt(d.w, x, O.radius[v]), `${ctx} v${v} relief`).toBeLessThanOrEqual(
+          O.maxRelief[v] + 0.05,
+        );
+        if (v === 1) {
           expect(y, ctx).toBeGreaterThanOrEqual(O.stackDepth[0]);
           expect(y, ctx).toBeLessThanOrEqual(O.stackDepth[1]);
-        } else if (f.variant === 2) {
+        } else if (v === 2) {
           expect(y, ctx).toBeGreaterThanOrEqual(O.slabY[0]);
           expect(y, ctx).toBeLessThanOrEqual(O.slabY[1]);
+        } else if (cove) {
+          // on the cove floor's black sand, off the walls
+          expect(y, ctx).toBeGreaterThanOrEqual(O.floorY[0]);
+          expect(y, ctx).toBeLessThanOrEqual(O.floorY[1]);
+          expect(zoneAt(d.w.height, d.w.zone, x.x, x.z), ctx).toBe(Zone.sandBlack);
         } else expect(y, ctx).toBeGreaterThanOrEqual(O.landY - 0.3);
       }
     }
+    expect(rateOf(coves, n), 'cove carved').toBeGreaterThanOrEqual(0.9);
     expect(rateOf(hits, n), '≥ 4 pieces').toBeGreaterThanOrEqual(0.9);
   });
 
