@@ -72,6 +72,7 @@ import {
   type Shape,
   type SiteCtx,
 } from '../sites.ts';
+import { reserveBeaconAnchors } from './marketing-anchors.ts';
 import type { ThemePlanner } from './types.ts';
 
 const TAU = Math.PI * 2;
@@ -614,6 +615,9 @@ export const planMarketing: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   // ---- M22 quick wins (TASK-481): after everything else, from their own forks, so the rest of
   // the plan keeps its layout
   quickWins(ctx, isl, rng.fork('quick'), { site, street: { a: access, u, len: L } });
+  // ---- M27 anchors (TASK-516): late, on the final ground (pads levelled, paths carved), so every
+  // piece above keeps its place and the cliff / stack faces are the ones rendered
+  plan.finish = (paths) => reserveBeaconAnchors(ctx, isl, lh, heightAt(ctx.h, lh.x, lh.z), paths);
   return plan;
 };
 

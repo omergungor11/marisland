@@ -102,8 +102,12 @@ export interface IslandData {
   maxZ: number;
   /** Bounding-disc radius in u: every land cell of the island lies within it of (cx, cz). */
   reach: number;
-  /** Anchor points filled by later stages (settlements). Radians for facing. */
-  anchors: Record<string, { x: number; z: number; rotY: number }>;
+  /**
+   * Anchor points filled by later stages (settlements). Radians for facing. `y` (world u) where
+   * the publisher sets it (TASK-516 Beacon Rock: ground y of stack tops / cable pivots, board and
+   * neon centres off the ground, 0 for the dive pool).
+   */
+  anchors: Record<string, { x: number; z: number; rotY: number; y?: number }>;
 }
 
 export type IsletKind = 'skerry' | 'sandbar';
