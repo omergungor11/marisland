@@ -111,8 +111,12 @@ export function bulbString({ rng, lod }: BuildOpts): THREE.BufferGeometry {
  * LOD0), a platform with a dish and a drum, a whip mast and the red tip lamp that blinks
  * (`beacon` tag, LOD0). Short enough for a 6 u rock top (`transmitter.height`).
  */
-export function transmitterMast({ rng, lod }: BuildOpts): THREE.BufferGeometry {
-  const T = Q.transmitter;
+export function transmitterMast(
+  { rng, lod }: BuildOpts,
+  T: { height: number; foot: number; top: number } = Q.transmitter,
+  /** TASK-517 (antennaTower v2): guy wires and the tip-lamp hook, added before the geometry is finished. */
+  extras?: (acc: Acc, H: number) => void,
+): THREE.BufferGeometry {
   const hi = lod === 0;
   const acc = new Acc();
   const H = T.height;
@@ -170,6 +174,7 @@ export function transmitterMast({ rng, lod }: BuildOpts): THREE.BufferGeometry {
   const first = accVerts(acc);
   put(acc, new THREE.IcosahedronGeometry(hi ? 0.17 : 0.2, 0), [0, H + 1.55, 0], K.redLamp, lit);
   const count = accVerts(acc) - first;
+  extras?.(acc, H);
   const g = acc.finish(rng, false, true);
   if (hi) tagBeacon(g, { first, count });
   return g;

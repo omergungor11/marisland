@@ -218,6 +218,8 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   devopsBreakwater: 2.6,
   // Marketing
   billboardV2: 2.6,
+  // M27 (TASK-517): the dive tower stands on a sea-stack top (footing 2.9 u, legs 1.15 u out)
+  diveTower: 1.6,
   stage: 3.2,
   bannerPole: 0.4,
   megaphoneKiosk: 1.4,

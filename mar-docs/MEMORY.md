@@ -10,6 +10,36 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-28 (TASK-517, M27 Marketing props; D-096)**: geometry `geo/themes/marketing-m27.ts`, numbers
+  `content/themes/marketing-m27.ts` (`MARKETING_M27`), def `content/props-themes/marketing-m27.ts`. Gallery:
+  `pnpm exec tsx scripts/gallery-shots.ts marketing27` (shots/gallery-marketing27, per-variant `*-vN-close`). **For TASK-518:**
+  - **Defs / variants** (all pinned, never rolled): `mailLine` v4 sea pylon, v5 gondola red, v6 gondola cream; `billboardV2`
+    v2 sea billboard, v3 ON AIR neon (NOT `marqueeSign` v3: the batcher fixes a def's tier once from the first variant it
+    builds, so a 9 u sign on tier-2 `marqueeSign` would vanish beyond ~160 u or drag every boulevard sign to T0);
+    `antennaTower` v2 guyed transmitter; new def `diveTower` (tier 2, drawn from T0 by size, last in PROP_DEFS, Marketing
+    ledger 11 / cap override 11; add its radius in `FIXTURE_RADIUS` = 1.6, already there).
+  - **Frames** (local, front = +z, rotY as the other fixtures): pylon crossarm along z, cable `anchor` front (z +0.8) /
+    `back` (z -0.8) at y 9.45, boarding `landing { at, size, y 6.95 }` on +x beside the line (gondola floor = anchorY -
+    grip = 6.95); gondola pivot = cabin floor, `gondola { grip [0,2.5,0] (wheel centre on the cable), pivot [0,2.32,0]
+    (hanger pin: swing about it), axis [0,0,1] (the cable), swingDeg 3, floor [0,0,0] }`, `lamps.list` roof bulbs; sea
+    billboard stands at z 0, rock face plane z = -1.15 (`mount { face, normal, reach }`, `screen` = the SURFACE.slides rect,
+    6 x 3 at y 3.05); ON AIR rock plane z = -1.0, `letters.list` = [{ index 0..4 top to bottom, char, first, count (vertex
+    range of the lit strokes), center, size, slot }], `glow { slotBase 1, slotStep 0.01 }`, `size`, `mount`; dive tower:
+    deck y 5, board runs +z, `board { tip [0,5.39,3], from, len }`, `ladder { foot (on the ground, z -1.28), top }`,
+    `splash { dir [0,0,1], ahead 3.2 }` (add the stack height + deck for the drop), `deck`, `flag`, `lamps`; guyed mast:
+    `lamp { at [0,9.75,0], r }` (beacon-tagged at LOD0, SURFACE.beacon), `guys { eyes, radius 2.1 }` (3 eye blocks, keep
+    2.5 u of rock around the pivot, or the guys hang over the sea).
+  - **Letter sequence**: letters are separate vertex ranges and separate emissive values (1.00, 1.01 ... 1.04), but the lit
+    shader stagger is per INSTANCE (origin hash), so sequenced switch-on needs shader / tag work: a new `SURFACE` kind must
+    be added with its branch in `CULTURE_SURFACE` (kinds above `beacon` currently fall into the beacon branch). Option
+    without new tags: `tagRange(g, {first, count}, [k, 5, 0, -kind])` per letter.
+  - **Gotchas**: `mailLinePairs` skips variants >= 2 (the cable car never pairs as an HQ mail line); `oreLines` only takes
+    v2 / v3; `buildOreCable` / `buildMailCable` work for sea spans (parabola, sag clamp 1.6 u; the cable car needs a
+    rope-free steel cable: `buildOreCable` is the one without flags). The gallery row spacing now uses the widest variant.
+    `transmitterMast(o, T?, extras?)` is the shared builder of antennaTower v1 / v2.
+  - **Gondolas are movers, never store props**: `mailLine`'s effective tier comes from its first-seen variant (pylons are
+    large, so the def is T0); a 2.65 u gondola in the PropStore seen first would turn the whole def tier 2. Build the mover
+    mesh with `buildProp('mailLine', seed, 5 | 6, lod)` (culture-m20.test pins v5 / v6 as not large).
 - **2026-10-28 (TASK-509c, M26 placed + moving; D-093; TASK-509 done)**: `world/gen/plans/devops-m26.ts` (after `placeM25`;
   `finish` after the funicular, before the road lanterns), numbers `content/themes/devops-m26-site.ts`. Lava bed =
   `world.fences` kind `'lava'` + `levels` (render reads it through `lavaFlows`); ONE emberBridge per island, planned

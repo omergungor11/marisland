@@ -34,6 +34,8 @@ export const MARKETING_CULTURE: CultureDef = {
     { id: 'selfieSpot', tier: 2, flags: grounded },
     { id: 'posterRoll', tier: 3, flags: grounded | noShadow },
     { id: 'megaphoneStand', tier: 3, flags: grounded | noShadow },
+    // M27 TASK-517 (D-096): the dive tower on the third sea stack
+    { id: 'diveTower', tier: 2, flags: grounded | windy },
   ],
   // emitted by world/gen/plans/marketing.ts (TASK-423); `defs` = the props the scene stands on
   storySpots: [

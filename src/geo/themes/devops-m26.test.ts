@@ -47,7 +47,8 @@ describe('TASK-509b DevOps M26 defs', () => {
       expect(PROP_DEF_INDEX[d.id]).toBe(first + i);
       expect(PROP_GEO[d.id].variants).toBe(d.variants);
     });
-    expect(first + 5).toBe(PROP_DEFS.length);
+    // (TASK-517 appended the Marketing dive tower after them)
+    expect(first + 5).toBe(PROP_DEF_INDEX.diveTower);
     expect(PROP_DEF_INDEX.oreBucket).toBeLessThan(first);
   });
 

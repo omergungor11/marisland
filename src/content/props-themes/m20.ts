@@ -37,11 +37,12 @@ export const HQ_M20_PROP_DEFS: readonly PropDef[] = [
   },
   // variant 0 = high end (sorting yard), 1 = low end (pier)
   // v2 / v3 = DevOps ore cableway mid-line pylon / furnace-end station (M25 TASK-504, D13)
+  // v4 / v5 / v6 = Marketing cable car sea pylon / red gondola / cream gondola (M27 TASK-517, MK:M1)
   {
     id: 'mailLine',
     geo: 'mailLine',
     tier: 2,
-    variants: 4,
+    variants: 7,
     rollVariants: 2,
     footprint: 0.9,
     flags: grounded,
