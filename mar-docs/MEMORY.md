@@ -10,6 +10,10 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-29 (TASK-523, ON AIR out of the cable corridor; D-102)**: `corridorMargin` in
+  `world/gen/plans/marketing-anchors.ts` (numbers `MARKETING_ANCHORS.neon.corridor`), checked in `neonFace`; test
+  `beacon-kit.test.ts` "ON AIR keeps out of the cable corridor". Seed 2024's sign moved 3.1 u (z -111.5 → -114.6), the
+  D-m27-onair cams follow it. `view` 30° loses seed 4156 (no clear face), so 25°.
 - **2026-10-28 (TASK-513, obsidian black-sand cove; D-098)**: `planCove` / `carveCove` / `placeObsidian` in
   `world/gen/plans/devops-m26.ts` (plan time: reserve + path block; `finish`: carve, repaint, decor), numbers
   `DEVOPS_M26_SITE.obsidian.cove`. Anchors `obsidianCove` (floor origin, rotY out to sea) + `obsidianCoveSize`

@@ -27,7 +27,8 @@
  *   { x: pool radius, z: shallowest seabed depth inside the pool (u below sea level) }.
  * - `onAir`: point on the letter-column plane on the windward cliff (y = column centre), rotY = the
  *   face's outward normal; `onAirSize` = { x: usable width, z: usable vertical extent }; the cliff
- *   lies behind the plane by 0 … `neon.maxGap` over that rect.
+ *   lies behind the plane by 0 … `neon.maxGap` over that rect; the rect keeps out of the cable
+ *   corridor seen from the sea (`corridorMargin` ≥ 0, `neon.corridor`; TASK-523, D-102).
  * Any anchor is missing when its site does not fit (tests track the rates). No rng is drawn.
  */
 import { MARKETING_ANCHORS as A } from '../../../content/themes/marketing-anchors.ts';
@@ -729,6 +730,7 @@ export function reserveBeaconAnchors(
     }
   });
   let firstSpan: [XZ, XZ] | null = null;
+  let line: { tracks: XZ[][]; station: XZ } | null = null;
   if (chain) {
     const pts = [
       chain.station,
@@ -747,10 +749,18 @@ export function reserveBeaconAnchors(
         addShape(ctx, isl, rectShape(m.x, m.z, heading(a, b), C.strip, dist(a, b)), false);
       }
       firstSpan = [pts[0], pts[1]];
+      line = {
+        tracks: trackSeats(
+          pts,
+          pts.map((p) => heightAt(ctx.h, p.x, p.z)),
+          rots,
+        ),
+        station: pts[0],
+      };
     }
   }
   // ---- ON AIR neon on the windward cliff
-  const neon = neonFace(ctx, isl, summit, top, firstSpan);
+  const neon = neonFace(ctx, isl, summit, top, firstSpan, line);
   if (neon) {
     setAnchor(isl, 'onAir', neon.p, neon.h, neon.y);
     setSize(isl, 'onAirSize', neon.w, neon.ht);
@@ -806,13 +816,17 @@ function billboardFace(ctx: SiteCtx, t: StackTop): Face | null {
   return best;
 }
 
-/** M4: the letter column on the windward cliff, nearest the view heading. */
+/**
+ * M4: the letter column on the windward cliff, nearest the view heading, off the first span and
+ * out of the cable corridor (`corridorMargin`, TASK-523).
+ */
 function neonFace(
   ctx: SiteCtx,
   isl: IslandData,
   summit: XZ,
   top: number,
   span: [XZ, XZ] | null,
+  line: { tracks: XZ[][]; station: XZ } | null,
 ): Face | null {
   const N = A.neon;
   const need = N.letters * N.letter + 2 * N.pad;
@@ -861,6 +875,8 @@ function neonFace(
         const ends = [add(p, tx, -w / 2), p, add(p, tx, w / 2)];
         if (ends.some((q) => segDist(q, span[0], span[1]) < N.cableClear)) continue;
       }
+      // TASK-523: out of the cable corridor as seen from the sea (both tracks, the station)
+      if (line && corridorMargin(p, h, w, line.tracks, line.station) < 0) continue;
       const s = turn(h, windward + N.viewDeg * DEG) + 0.05 * face.gap - 0.02 * (w + ext);
       if (s < bs) {
         bs = s;
@@ -870,6 +886,59 @@ function neonFace(
     }
   }
   return best;
+}
+
+/**
+ * TASK-523 (D-102): worst margin (u, ≥ 0 = clear) of a sign rect (plane centre `p`, outward
+ * heading `rot`, width `w`) against the cable corridor `tracks` (xz polylines of both tracks) and
+ * the summit station disc at `station`, by `neon.corridor` (see content). Infinity when nothing
+ * is near.
+ */
+export function corridorMargin(
+  p: XZ,
+  rot: number,
+  w: number,
+  tracks: readonly (readonly XZ[])[],
+  station: XZ | null,
+): number {
+  const K2 = A.neon.corridor;
+  const n = dirOf(rot);
+  const tv = Math.tan(K2.view * DEG);
+  const frame = (q: XZ): [number, number] => {
+    const dx = q.x - p.x;
+    const dz = q.z - p.z;
+    return [dx * n.x + dz * n.z, Math.abs(dz * n.x - dx * n.z)];
+  };
+  let m = Infinity;
+  for (const t of tracks)
+    for (let k = 0; k + 1 < t.length; k++) {
+      // the part of the span inside the window (d is linear along it), sampled ends included
+      const d0 = frame(t[k])[0];
+      const d1 = frame(t[k + 1])[0];
+      let u0 = 0;
+      let u1 = 1;
+      if (Math.abs(d1 - d0) > 1e-9) {
+        const ua = (-K2.back - d0) / (d1 - d0);
+        const ub = (K2.depth - d0) / (d1 - d0);
+        u0 = Math.max(0, Math.min(ua, ub));
+        u1 = Math.min(1, Math.max(ua, ub));
+      } else if (d0 < -K2.back || d0 > K2.depth) continue;
+      if (u1 < u0) continue;
+      const L = dist(t[k], t[k + 1]) * (u1 - u0);
+      const steps = Math.max(1, Math.ceil(L / (C.step / 2)));
+      for (let i = 0; i <= steps; i++) {
+        const u = u0 + ((u1 - u0) * i) / steps;
+        const q = { x: t[k].x + (t[k + 1].x - t[k].x) * u, z: t[k].z + (t[k + 1].z - t[k].z) * u };
+        const [d, l] = frame(q);
+        m = Math.min(m, l - K2.half - w / 2 - K2.gap - Math.max(d, 0) * tv);
+      }
+    }
+  if (station) {
+    const [d, l] = frame(station);
+    if (d >= -K2.back - C.station.r && d <= K2.depth + C.station.r)
+      m = Math.min(m, l - C.station.r - w / 2 - K2.gap - Math.max(d, 0) * tv);
+  }
+  return m;
 }
 
 /** Boat-route keep-out discs (no coarse route node inside) round the dive pool. */

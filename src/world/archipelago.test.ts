@@ -104,7 +104,7 @@ describe('archipelago — 30-seed full generation', () => {
         {
           "1": "0cff0fdc1ec79190",
           "1001": "c02ba17a2300b32f",
-          "42": "5d95f8c038a8d5d9",
+          "42": "7c1165c814cdad82",
         }
       `);
     },

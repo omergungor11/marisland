@@ -375,7 +375,7 @@ Details in `phases/phase-3.md`.
 | TASK-520 | QA follow-up: D-m27-dive-splash camera + sim time so the shot catches the splash ring and the pool (today the stack / pylon hides it) | life | S | TODO | TASK-519 |
 | TASK-521 | QA follow-up: HQ star fort stone colour variation (reads pale lavender-grey, near white, in W-marina-dusk) | props | S | TODO | TASK-519 |
 | TASK-522 | QA follow-up: sea billboard base on the stack face reads as a ledge bracket; bury the foot in the rock or give it a post | props | S | TODO | TASK-519 |
-| TASK-523 | QA follow-up: keep the first cable span from crossing in front of the ON AIR letters (shift the sign along the cliff face or the line's summit seat); hash re-pin | worldgen | S | TODO | TASK-519 |
+| TASK-523 | QA follow-up: keep the first cable span from crossing in front of the ON AIR letters (shift the sign along the cliff face or the line's summit seat); hash re-pin | worldgen | S | COMPLETED | TASK-519 |
 
 ### M17 — Graphics II: decor & nature
 *Flower fields, fences, lanterns, benches, signs, rocks*
