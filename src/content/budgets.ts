@@ -48,6 +48,8 @@ export interface Budget {
  * mesh per part kind (an instance drew all 970 part triangles before), low ladder tier-2 rungs
  * Design 120 u 358k → 303k, Research 131.6 u 351k → 305k tris; the composer's ping-pong output
  * buffer has no depth renderbuffer (−7.9 MB on every medium frame at 1920×1080): W27 169 → 162 MB.
+ * D-090 (TASK-502 / 510 QA): the M24 / M25 / M29 / M30 kits put every low ladder rung at 71–74 MB:
+ * low gpuMemoryMB 70 → 76.
  */
 export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
   low: {
@@ -58,7 +60,7 @@ export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
     agents: 25,
     particles: 2_000,
     programs: 12,
-    gpuMemoryMB: 70,
+    gpuMemoryMB: 76,
     jsHeapMB: 120,
     newSeedMs: 1500,
   },

@@ -2,6 +2,19 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-090: Low gpuMemoryMB 70 → 76; HQ grows to stay the clearly largest island — 2026-10-28
+
+- **Budget**: the TASK-502 / 510 QA pass (`mar-docs/qa/m24-m25-m29-m30-2026-10-27.md`) measured the low ladder
+  at 71–74 MB on all 14 presets (calls ≤ 66 / 170, tris ≤ 175k / 350k). The overage is the M24 / M25 / M29 /
+  M30 kit geometry, a deliberate content cost, not a leak. Low gpuMemoryMB 70 → 76 (measured + ~3 %, as D-028).
+- **Island size**: since TASK-503's apron ring, Emberpeak reads as large as HQ in W1 (both ≈ 400 × 350 px, the
+  dark cone the strongest mass). ART_BIBLE wants the hero clearly largest. User choice: grow HQ (~20–25 %),
+  keep Emberpeak and its TASK-503 / 507 anchors untouched. Rejected: shrinking the apron (re-places the
+  funicular / lane / onsen anchors), relaxing the rule.
+- **Presets**: TASK-502's Kite Hill Afternoon, Proving Grounds Noon and Fairy Night wow presets were never added
+  (the content exists only as dev presets); they are added after the HQ growth, together with a re-framed
+  `W-ember-lane-night` (too close, hammers / stalls unreadable).
+
 ## D-087: QA Customs Port placement + motion (TASK-508) — compact quay on the cove terrace, port-first planning, ship as culture-mover parts on the day clock — 2026-10-27
 
 **Decision**: (1) **Quay.** The Palmlagoon cove terrace is only ~14 u deep and ~24 u long (a 1.8 u flat shelf in front of a 6 u wall), so the

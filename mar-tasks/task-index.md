@@ -339,7 +339,7 @@ Details in `phases/phase-3.md`.
 | TASK-499 | QA Proving Grounds kit (`QA:Q2` + `Q4` + `Q5`): 10 u lattice drop tower (tier-1, R3-14) with crate, 4 u test fan + cage + streamer dummy pole, obstacle course (hurdle, tyre stack, balance beam, cones: one def, 4 variants); toy-factory white-mint-yellow tone | props | M | COMPLETED f8770bb | — |
 | TASK-500 | Mother Kite Train (`CO:C3`): 7-kite train 20 u above Coding on the sky-craft orbit pattern (D-038), reads as a blue-yellow dot chain at T0; W11 +1 call max | life | M | COMPLETED a9a8918 | — |
 | TASK-501 | QA Figure-8 Crash Track + motion (`QA:Q1`, R3-14 two tracks): ramped crash track (testTrack variant ×2) on the SE meadow beside the existing loop, closed-form cart with a ramp parabola and wobbling dummy; drop-tower lift/drop every 20 s with landing squash + ✓ lamp; fan speeds up at the 12:00 siren test | props + life | L | COMPLETED 98da9b4…754b4d6 | TASK-499 |
-| TASK-502 | M24 shots + QA: wow presets Kite Hill Afternoon (14:00 +20 s, ≥ 6 kites), Proving Grounds Noon (12:00 +3 s), Fairy Night / Bug Hunt Night refresh; ladder low + medium `--assert`; QA report | qa | S | TODO | TASK-497…501 |
+| TASK-502 | M24 shots + QA: wow presets Kite Hill Afternoon (14:00 +20 s, ≥ 6 kites), Proving Grounds Noon (12:00 +3 s), Fairy Night / Bug Hunt Night refresh; ladder low + medium `--assert`; QA report | qa | S | COMPLETED 187eefb (3 wow presets missing → TASK-512) | TASK-497…501 |
 
 ### M25/M26 DevOps I–II · M29 HQ Marina · M30 QA Customs Port
 *D-080, D-081, D-082 (user, 2026-10-27). Run in parallel with M24 at the user's request ("paralel hızlı"); every branch keeps its hash re-pins in one separate commit and appends defs in a marked block at the end of `PROP_DEFS`, the orchestrator reorders at merge. Placement tasks follow once their props + anchors are merged.*
@@ -352,8 +352,10 @@ Details in `phases/phase-3.md`.
 | TASK-506 | QA customs port props: Q8 scanner arch, QA cargo ship, quay crane, inspection line + ✓/✗ lamps, Q9 quarantine pontoon (variants of DevOps cargo kit) | props | M | COMPLETED c96fe0c | — |
 | TASK-507 | DevOps M25 placement + motion: funicular line + 2 cars, ore buckets, bell 06:00 + beam, smiths' lane, onsen town, geyser bursts 17:30; Funicular Dawn / Ember Lane Night presets | worldgen + life | L | COMPLETED (D-089) | TASK-503, TASK-504 |
 | TASK-508 | QA customs port placement + motion: ship route under the arch, crane unload, inspection ✓/✗, rejects to pontoons; Customs Noon preset | worldgen + life | L | COMPLETED (D-087) | TASK-501, TASK-506 |
-| TASK-509 | M26 DevOps II: lava river (ground emissive), lava fall + steam delta, ember bridge, crater deck, lava-glass kiln, obsidian beach, breakwater + tug | shader + props + worldgen | L | TODO | TASK-507 |
-| TASK-510 | Shots + QA for M25 / M29 / M30: wow presets, ladder low + medium `--assert`, QA report | qa | S | TODO | TASK-505, TASK-507, TASK-508 |
+| TASK-509 | M26 DevOps II: lava river (ground emissive), lava fall + steam delta, ember bridge, crater deck, lava-glass kiln, obsidian beach, breakwater + tug | shader + props + worldgen | L | TODO | TASK-507, TASK-511 |
+| TASK-510 | Shots + QA for M25 / M29 / M30: wow presets, ladder low + medium `--assert`, QA report | qa | S | COMPLETED 187eefb (D-090) | TASK-505, TASK-507, TASK-508 |
+| TASK-511 | HQ grows ~20–25 % so it reads clearly largest in W1 (Emberpeak + TASK-503/507 anchors untouched); layout fit, re-pin hashes, re-aim raw cams that moved (D-090) | worldgen | M | TODO | TASK-510 |
+| TASK-512 | Wow presets Kite Hill Afternoon, Proving Grounds Noon, Fairy Night; re-frame W-ember-lane-night (D-090) | life | S | TODO | TASK-511 |
 
 ### M17 — Graphics II: decor & nature
 *Flower fields, fences, lanterns, benches, signs, rocks*
