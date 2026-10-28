@@ -90,8 +90,9 @@
     cells within 1.2 u of any non-own shape: the bridge rect must be "own" for the lava carve or the bed stays unscooped
     under the arch. A pad near the funicular top station bends its rail (test "pivots off the ground" ≤ 6 %): the deck has
     late earthworks only. The DevOps cargo-ship stadium (`pierLoop`, 40 × 18 u off the pier head) owns the harbour water:
-    any other boat path there crosses it; escort on the same closed form instead. The DevOps island's tableau cap (6
-    bots) is full: a 2-bot story spot appended last is skipped, so the deck has one stargazer.
+    any other boat path there crosses it; escort on the same closed form instead. The DevOps island's tableau cap is
+    data (`TABLEAU_MAX_BY_THEME`, 7 since TASK-515/D-099): a story spot whose bots do not fit is skipped whole, so raise
+    the cap when adding a tableau. Close bots turn to face a near camera (`gaze`/`wave`), so a preset shows them facing it.
   - **Open (509a nits, content-only tuning partly done):** delta steam puffs made smaller (`PUFFS.delta` size 0.8–3.0,
     rise 6); the delta bullseye and the abrupt channel start were fixed in TASK-514 (D-091 bullet). The
     obsidian "beach" is still the bluff (no cove carve).

@@ -2,6 +2,21 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-099: Crater deck couple — the `deckGazer` story spot seats two bots on the deck's benches with idle beats, the DevOps tableau cap is data (TASK-515; builds D-093 (4)) — 2026-10-28
+
+**Decision**: (1) `TABLEAU.deckGazer` = 2 bots on the `craterDeck` benches (spot frame = deck frame: x ±1.05, z 0.1 =
+`DEVOPS_M26.deck.bench`; feet at `dy` 0.47 = seat top 0.53 − 0.06 sink, the office-seat convention), both facing the
+crater. A unit test pins the offsets to the prop's `bench` numbers. The telescope stays decor (scope z 1.35 sits
+between the two bots). (2) **Cap as data**: `tableauMax(scale, theme?)` reads `TABLEAU_MAX_BY_THEME` (`devops: 7`) at
+medium+ (low stays 2); `planTableaus` takes `max` as a number or `(theme) => cap`. DevOps now holds exactly 7. No new
+agents: tableau bots come from the same ambient slots (+1 bot net). (3) **Idle beats**: new optional
+`TableauBotSpec.beats = { cycle, steps: [{ to, pose, yaw }] }`, evaluated in closed form on the bot's tableau timer
+(`t % cycle`), the step picks the pose and a yaw off the spot heading (toward the partner); ritual poses still win.
+New pose `huddle` (resting arms, 0.2 rad bow). Cycle 18 s: 0–5 left gazes / right relaxed; 5–7.5 both lean in toward
+each other (yaw ∓0.9); 7.5–12 right points (wave arm) / left listens; 12–16 both gaze (shared look); 16–18 both glance
+at each other (∓0.35). **Rationale**: a cap exception per theme is data, not a loop change; beats are reusable by any
+tableau and cost one `find` over 5 steps per bot per frame. World hashes unchanged (story spot data untouched).
+
 ## D-098: Emberpeak obsidian black-sand cove — a late cut-only notch in the windward bluff, floor repainted black sand, the obsidian decor placed in finish on the final ground (TASK-513; builds D-093 (6) on D-083 / D-091 / D-092) — 2026-10-28
 
 **Decision**: (1) **Plan time** (`placeM26` → `planCove`, before the kit / lodges / village / columns keep off it): at
