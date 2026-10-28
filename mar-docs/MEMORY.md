@@ -10,6 +10,21 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-28 (TASK-518, M27 placed + moving; D-097)**: kit on the anchors in `world/gen/plans/marketing-m27.ts`
+  (Marketing `finish`, after `reserveBeaconAnchors`), loop model `world/cable-car.ts`, gondolas
+  `render/beacon-lines.ts` (via `createMovers().beacon`), cable spans = `createMailCables(..., loops).beacon`,
+  diver = `diverScene` in `render/culture-movers.ts`, ON AIR = `SURFACE.neon` + `NEON_SEQ`. Numbers
+  `content/themes/marketing-m27-site.ts`. Shots (seed 2024): `pnpm shots dev --only=D-m27-cable,D-m27-gondola,
+  D-m27-onair-night,D-m27-onair-seq,D-m27-dive,D-m27-dive-splash,D-m27-billboard`, wow `W-cable-dusk`, `W-on-air-rock`.
+  - **Reconciled:** seat 9.45 over every pivot, hang 2.5 (the built pylon / gondola); `MARKETING_ANCHORS` reads
+    `MARKETING_M27`. The v4 pylon was rebuilt (crossarm over the cable, sheaves at ±1.25): as built a cabin went
+    through the lattice. Line = loop of two tracks (`beaconTracks`), v7 = terminal (bullwheel + landing).
+  - **Gotchas:** the diver phase is `phaseAt(x, z, 0x0d17)`: seed 2024's diver stands on the board tip at simt
+    ~27.5, flies at ~29, splashes at ~30.9 (frames 0.5 s off miss it). Stack tops are 2–3.8 u: a real pylon +
+    a guyed mast rarely fit together (transmitter 16 / 22 three-stack seeds, was 21 with 0.8 u discs), the dive
+    tower drops to 0.75 scale on 4 / 27. All M22 v1 stack masts are gone (every stack carries a piece); the
+    pylon finials blink instead. A separate merged cable mesh is needed for any mailLine-variant cable seen
+    past ~120 u (the def is tier 2). The culture-movers keeper test now ignores keepers within 12 u of a dive tower.
 - **2026-10-28 (TASK-517, M27 Marketing props; D-096)**: geometry `geo/themes/marketing-m27.ts`, numbers
   `content/themes/marketing-m27.ts` (`MARKETING_M27`), def `content/props-themes/marketing-m27.ts`. Gallery:
   `pnpm exec tsx scripts/gallery-shots.ts marketing27` (shots/gallery-marketing27, per-variant `*-vN-close`). **For TASK-518:**
