@@ -424,6 +424,52 @@ const DEVOPS_M25_CAMS: readonly (readonly [string, string, string, number, numbe
   ['D-m26-obsidian', 'Obsidian beach · sea stacks + tide pool (T2)', '264,10,-93,246,2,-77', 14, 6],
   ['D-m26-tug', 'Tug leading the cargo ship + smoke (T2)', '131,9,31,145,1.5,17', 14, 20],
 ];
+/**
+ * TASK-518 (D-097): the Beacon Rock M27 kit placed and moving, seed 2024 (summit terminal
+ * 164,-106; stack pylons 139.4,-102 / 135.4,-127; far terminal 153.1,-150.8; dive tower
+ * 136.8,-100.7 → pool 130,-97.5; transmitter 132.9,-125.7; sea billboard 151,4,-155.6; ON AIR
+ * 157.1,17.7,-111.5 facing -x). `simt` picks the moment: gondola 0 on the first span at 10 s, the
+ * diver in the air at ~29.5 s, all five letters lit 1.6-8.3 s into each 9 s spell-out.
+ */
+const MARKETING_M27_CAMS: readonly (readonly [string, string, string, number, number])[] = [
+  ['D-m27-cable', 'Cable car line over the sea stacks (T1)', '92,34,-150,148,14,-122', 14, 12],
+  [
+    'D-m27-gondola',
+    'Gondola on the first span, close (T3)',
+    '141,22.5,-94,149.4,20,-102.6',
+    14,
+    10,
+  ],
+  ['D-m27-onair-night', 'ON AIR cliff neon at night (T2)', '128,20,-108,157,17.7,-111.5', 21.5, 6],
+  [
+    'D-m27-onair-seq',
+    'ON AIR spelling out, 3 letters lit (T2)',
+    '128,20,-108,157,17.7,-111.5',
+    21.5,
+    9.9,
+  ],
+  ['D-m27-dive', 'Dive tower: the diver in the air (T3)', '143,12,-79,133.4,10,-99.1', 15, 29],
+  [
+    'D-m27-dive-splash',
+    'Dive tower: the splash in the pool (T3)',
+    '143,12,-79,133.4,7,-99.1',
+    15,
+    30.9,
+  ],
+  ['D-m27-billboard', 'Sea billboard on the far stack (T2)', '139,8,-178,151,4,-155.6', 14, 6],
+];
+const MARKETING_M27_SHOTS: readonly ShotPreset[] = MARKETING_M27_CAMS.map(
+  ([id, title, cam, time, simt]) => ({
+    id,
+    title,
+    seed: 2024,
+    cam,
+    time,
+    simt,
+    quality: 'medium' as const,
+    sets: ['dev' as const],
+  }),
+);
 const DEVOPS_M25_SHOTS: readonly ShotPreset[] = DEVOPS_M25_CAMS.map(
   ([id, title, cam, time, simt]) => ({
     id,
@@ -2014,6 +2060,36 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     height: 1080,
     sets: ['wow'],
   },
+  {
+    id: 'W-cable-dusk',
+    title: 'Cable Dusk',
+    // TASK-518 (study W20): from the south-west sea at ~90 u, pitch ~18°, 19:15: the stacks, the
+    // gondola line with a cabin between the summit and the first stack, ON AIR, the summit glow
+    seed: 2024,
+    cam: '78,42,-170,150,14,-118',
+    time: 19.25,
+    simt: 12,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  {
+    id: 'W-on-air-rock',
+    title: 'On-Air Rock',
+    // TASK-518 (study W21): the W4 side but further west so the ON AIR face (normal -x) reads
+    // (~45° instead of W4's ~65°), 22:00, two frames 0.6 s apart (the stack lamps blink)
+    seed: 2024,
+    cam: '96,52,-44,185,14,-108',
+    time: 22,
+    simt: 3,
+    deltaT: 0.6,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  ...MARKETING_M27_SHOTS,
   ...DEVOPS_M25_SHOTS,
   // ---- TASK-512: the three wow presets TASK-502 specified (D-090)
   {

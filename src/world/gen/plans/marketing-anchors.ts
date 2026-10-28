@@ -17,7 +17,8 @@
  *   seat = y + `cable.seat.station` (ends) or `cable.seat.pylon` (mid). rotY: the ends face along
  *   the line (0 → 1, N-1 → N-2); a mid pylon = the bisector of its arriving and leaving headings.
  *   `beaconCable(isl)` returns the seats; `cablePoint` the sagged curve; spans are straight in xz.
- * - `transmitter`: mast pivot on a stack top (y = ground), rotY = seaward.
+ * - `transmitter`: mast pivot on a stack top (y = ground), rotY = the mast heading that stands its
+ *   three guy eyes (`guyEyes`) on the top, nearest seaward (TASK-518).
  * - `seaBillboard`: point on the board plane at its centre (y = board centre), rotY = the face's
  *   outward normal; `seaBillboardSize` = { x: board width, z: board height }. The stack face lies
  *   behind the plane by 0 … `billboard.maxGap` over the whole board.
@@ -95,6 +96,57 @@ export function beaconCable(isl: IslandData): P3[] {
     ...p,
     y: p.y + (k === 0 || k === out.length - 1 ? C.seat.station : C.seat.pylon),
   }));
+}
+
+/** Headings of a line's pieces: the ends face along the line, a mid pylon = the bisector. */
+export function lineRots(pts: readonly XZ[]): number[] {
+  const n = pts.length;
+  return pts.map((p, k) =>
+    k === 0
+      ? heading(p, pts[1])
+      : k === n - 1
+        ? heading(p, pts[n - 2])
+        : bisector(heading(pts[k - 1], p), heading(p, pts[k + 1])),
+  );
+}
+
+/** Local +x of a fixture heading `rot` in world xz (local +z = (cos rot, sin rot)). */
+export const sideOf = (rot: number): XZ => ({ x: Math.sin(rot), z: -Math.cos(rot) });
+
+/**
+ * The loop's two tracks (TASK-518) over the pivots `pts` (ground `ys`, headings `rots`): cable
+ * seats ± `track` across each piece, in line order 0 → N−1. Track 0 runs on the summit station's
+ * local +x side (its landing), track 1 on the other, which is the far terminal's local +x side.
+ */
+export function trackSeats(
+  pts: readonly XZ[],
+  ys: readonly number[],
+  rots: readonly number[] = lineRots(pts),
+): [P3[], P3[]] {
+  const n = pts.length;
+  const out: [P3[], P3[]] = [[], []];
+  pts.forEach((p, k) => {
+    const s = sideOf(rots[k]);
+    const sg = (k === n - 1 ? -1 : 1) * C.track;
+    const y = ys[k] + (k === 0 || k === n - 1 ? C.seat.station : C.seat.pylon);
+    out[0].push({ x: p.x + s.x * sg, y, z: p.z + s.z * sg });
+    out[1].push({ x: p.x - s.x * sg, y, z: p.z - s.z * sg });
+  });
+  return out;
+}
+
+/** The two tracks of an island's cable line from its anchors (empty when absent). */
+export function beaconTracks(isl: IslandData): [P3[], P3[]] {
+  const pts: XZ[] = [];
+  const ys: number[] = [];
+  const rots: number[] = [];
+  for (let k = 0; isl.anchors[`cable${k}`]; k++) {
+    const a = isl.anchors[`cable${k}`];
+    pts.push({ x: a.x, z: a.z });
+    ys.push(a.y ?? 0);
+    rots.push(a.rotY);
+  }
+  return pts.length < 2 ? [[], []] : trackSeats(pts, ys, rots);
 }
 
 /**
@@ -284,25 +336,86 @@ interface Site {
 
 /**
  * Lay out a stack top: the cable piece (radius `pr`, through which the spans to `nbrs` run) as
- * near the centre as it fits, and the role prop (`qr` disc at one of `qs`) off the spans by
- * `qClear`. Null when they do not fit.
+ * near the centre as it fits, and the role prop (one of `qs`, ≥ `minD` from the piece and `ok`)
+ * off the spans by `qClear`. Null when they do not fit.
  */
 function layTop(
   t: StackTop,
   pr: number,
   nbrs: readonly XZ[],
   qs: readonly XZ[],
-  qr: number,
+  minD: number,
   qClear: number,
+  ok: (p: XZ, q: XZ) => boolean = () => true,
 ): Site | null {
   if (qs.length === 0) return { pylon: topCands(t, pr)[0] ?? null, prop: null };
   for (const p of topCands(t, pr))
     for (const q of qs) {
-      if (dist(p, q) < pr + qr + 0.3) continue;
+      if (dist(p, q) < minD) continue;
       if (nbrs.some((b) => segDist(q, p, b) < qClear)) continue;
+      if (!ok(p, q)) continue;
       return { pylon: p, prop: q };
     }
   return null;
+}
+
+/**
+ * Two square footprints (centre, half size, heading of local +z) at least `gap` apart: a
+ * separating axis among the four edge normals.
+ */
+export function squaresApart(
+  a: XZ,
+  ha: number,
+  ra: number,
+  b: XZ,
+  hb: number,
+  rb: number,
+  gap: number,
+): boolean {
+  const axes = [dirOf(ra), sideOf(ra), dirOf(rb), sideOf(rb)];
+  const da = [dirOf(ra), sideOf(ra)];
+  const db = [dirOf(rb), sideOf(rb)];
+  const proj = (u: XZ, e: XZ[], h: number): number =>
+    h * (Math.abs(u.x * e[0].x + u.z * e[0].z) + Math.abs(u.x * e[1].x + u.z * e[1].z));
+  return axes.some(
+    (u) =>
+      Math.abs(u.x * (b.x - a.x) + u.z * (b.z - a.z)) >= proj(u, da, ha) + proj(u, db, hb) + gap,
+  );
+}
+
+/**
+ * Guy eye feet of the transmitter (antennaTower v2, drawn at `scale`) at `q`, mast heading `rot`
+ * (world xz).
+ */
+export function guyEyes(q: XZ, rot: number, scale = 1): XZ[] {
+  const G = A.transmitter.guy;
+  const sx = sideOf(rot);
+  const sz = dirOf(rot);
+  return [0, 1, 2].map((k) => {
+    const a = (k / 3) * TAU + G.phase;
+    const lx = Math.sin(a) * G.radius * scale;
+    const lz = Math.cos(a) * G.radius * scale;
+    return { x: q.x + sx.x * lx + sz.x * lz, z: q.z + sx.z * lx + sz.z * lz };
+  });
+}
+
+/**
+ * Mast headings (nearest `pref` first) whose three guy eyes stand on ground within
+ * `guy.below` / `guy.above` of the pivot ground.
+ */
+function guyTurns(ctx: SiteCtx, q: XZ, pref: number, scale: number): number[] {
+  const G = A.transmitter.guy;
+  const y0 = heightAt(ctx.h, q.x, q.z);
+  const out: number[] = [];
+  for (let i = 0; i < G.turns; i++) {
+    const rot = pref + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * (TAU / G.turns);
+    const ok = guyEyes(q, rot, scale).every((e) => {
+      const y = heightAt(ctx.h, e.x, e.z);
+      return y >= y0 - G.below && y <= y0 + G.above;
+    });
+    if (ok) out.push(rot);
+  }
+  return out;
 }
 
 /** The stack sites in chain order and the summit station (centres only, before the top layout). */
@@ -323,25 +436,28 @@ function chainOk(
   from: number,
   to = pts.length - 1,
 ): boolean {
-  const seat = (k: number): P3 => ({
-    x: pts[k].x,
-    z: pts[k].z,
-    y:
-      heightAt(ctx.h, pts[k].x, pts[k].z) +
-      (k === 0 || k === pts.length - 1 ? C.seat.station : C.seat.pylon),
-  });
+  // both tracks of the loop (TASK-518): seats ± track across every piece
+  const tracks = trackSeats(
+    pts,
+    pts.map((p) => heightAt(ctx.h, p.x, p.z)),
+  );
   for (let k = from; k < to; k++) {
-    const a = seat(k);
-    const b = seat(k + 1);
-    const L = dist(a, b);
+    const L = dist(pts[k], pts[k + 1]);
     if (L > C.maxSpan || L < 2 * C.endSkip) return false;
-    if (k > 0 && turn(heading(pts[k - 1], a), heading(a, b)) > C.maxTurn * DEG) return false;
-    if (segDist(lh, a, b) < C.towerClear) return false;
-    if (spanMargin(ctx.h, a, b) < 0) return false;
-    for (let s = C.endSkip; s <= L - C.endSkip + 1e-6; s += C.step) {
-      const c = cablePoint(a, b, s / L);
-      if (c.y - heightAt(ctx.h, c.x, c.z) > 10) continue;
-      if (summit.some((sh) => shapeDist(sh, c.x, c.z) < C.shapeGap)) return false;
+    if (k > 0 && turn(heading(pts[k - 1], pts[k]), heading(pts[k], pts[k + 1])) > C.maxTurn * DEG)
+      return false;
+    for (const tr of tracks) {
+      const a = tr[k];
+      const b = tr[k + 1];
+      if (segDist(lh, a, b) < C.towerClear) return false;
+      if (spanMargin(ctx.h, a, b) < 0) return false;
+      const La = dist(a, b);
+      for (let s = C.endSkip; s <= La - C.endSkip + 1e-6; s += C.step) {
+        const c = cablePoint(a, b, s / La);
+        // the cabin floor far above an obstacle (the 2.2 u hang + 10 u of TASK-516) passes it
+        if (c.y - C.hang - heightAt(ctx.h, c.x, c.z) > 7.8) continue;
+        if (summit.some((sh) => shapeDist(sh, c.x, c.z) < C.shapeGap)) return false;
+      }
     }
   }
   return true;
@@ -481,25 +597,79 @@ export function reserveBeaconAnchors(
         res = { site: { pylon: pr ? (topCands(t, pr)[0] ?? null) : null, prop: null }, extra: bb };
     } else if (role === 'transmitter') {
       const T = A.transmitter;
-      const qs: XZ[] = [];
-      if (pr === 0) qs.push(t.c);
-      else
-        for (let i = 0; i < 24; i++) {
-          // round the rim from the seaward side
-          const h = t.sea + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * (TAU / 24);
-          qs.push(add(t.c, dirOf(h), t.r - T.r));
-        }
-      const site = pr ? layTop(t, pr, nb, qs, T.r, T.clear) : { pylon: null, prop: t.c };
-      if (site && site.prop) res = { site };
-    } else {
-      const D = A.diveTower;
-      for (const pool of divePools(ctx, t, spansAt(t))) {
-        const site = pr ? layTop(t, pr, nb, [pool.q], D.r, D.clear) : { pylon: null, prop: pool.q };
-        if (site && site.prop) {
-          res = { site, extra: pool };
+      // the guys need rock all round (TASK-518): the full mast first, then smaller ones
+      for (const sc of T.scales) {
+        const qr = T.r * sc;
+        const qs: XZ[] = [];
+        if (pr === 0) qs.push(t.c);
+        else
+          for (let i = 0; i < 24; i++) {
+            // round the rim from the seaward side
+            const h = t.sea + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * (TAU / 24);
+            qs.push(add(t.c, dirOf(h), t.r - qr));
+          }
+        // then the rest of the top, centre first
+        qs.push(...topCands(t, qr).filter((_, i) => i % 4 === 0));
+        // mast turns whose three guy eyes stand on the top, per candidate (cached)
+        const turns = new Map<XZ, number[]>();
+        const turnsAt = (q: XZ): number[] => {
+          let l = turns.get(q);
+          if (!l) turns.set(q, (l = guyTurns(ctx, q, t.sea, sc)));
+          return l;
+        };
+        const eyesOff = (p: XZ | null, q: XZ): number | null =>
+          turnsAt(q).find(
+            (rot) =>
+              !p ||
+              guyEyes(q, rot, sc).every(
+                (e) => dist(e, p) >= pr + T.guy.gap && segDist(p, e, q) >= pr * 0.75,
+              ),
+          ) ?? null;
+        let site: Site | null = null;
+        let rot: number | null = null;
+        if (pr) {
+          site = layTop(
+            t,
+            pr,
+            nb,
+            qs,
+            pr + qr + A.topGap,
+            T.clear,
+            (p, q) => eyesOff(p, q) !== null,
+          );
+          if (site?.prop) rot = eyesOff(site.pylon, site.prop);
+        } else
+          for (const q of qs) {
+            rot = eyesOff(null, q);
+            if (rot !== null) {
+              site = { pylon: null, prop: q };
+              break;
+            }
+          }
+        if (site && site.prop && rot !== null) {
+          res = { site, extra: { rot, sc } };
           break;
         }
       }
+    } else {
+      const D = A.diveTower;
+      // the two lattices' square footprints apart (pylon heading from its spans, tower → pool);
+      // the full tower first, then smaller ones (TASK-518)
+      const pRot = (p: XZ): number =>
+        nb.length === 2 ? bisector(heading(nb[0], p), heading(p, nb[1])) : heading(p, nb[0] ?? t.c);
+      const pools = divePools(ctx, t, spansAt(t));
+      scales: for (const sc of D.scales)
+        for (const pool of pools) {
+          const site = pr
+            ? layTop(t, pr, nb, [pool.q], D.minApart * sc, D.clear, (p, q) =>
+                squaresApart(p, C.pylonHalf, pRot(p), q, D.half * sc, pool.h, D.gap),
+              )
+            : { pylon: null, prop: pool.q };
+          if (site && site.prop) {
+            res = { site, extra: { pool, sc } };
+            break scales;
+          }
+        }
     }
     sites.set(key, res as never);
     return !!res;
@@ -538,11 +708,15 @@ export function reserveBeaconAnchors(
     if (!r) return;
     if (r.site.pylon) pylonOf.set(t, r.site.pylon);
     const y = (p: XZ): number => heightAt(ctx.h, p.x, p.z);
-    if (roles[i] === 'transmitter' && r.site.prop)
-      setAnchor(isl, 'transmitter', r.site.prop, t.sea, y(r.site.prop));
+    if (roles[i] === 'transmitter' && r.site.prop) {
+      const { rot, sc } = r.extra as { rot: number; sc: number };
+      setAnchor(isl, 'transmitter', r.site.prop, rot, y(r.site.prop));
+      setSize(isl, 'transmitterSize', sc, sc);
+    }
     if (roles[i] === 'dive' && r.site.prop) {
-      const pool = r.extra as Pool;
+      const { pool, sc } = r.extra as { pool: Pool; sc: number };
       setAnchor(isl, 'diveTower', r.site.prop, pool.h, y(r.site.prop));
+      setSize(isl, 'diveTowerSize', sc, sc);
       setAnchor(isl, 'divePool', pool.pool, pool.h, 0);
       setSize(isl, 'divePoolSize', A.diveTower.poolR, pool.depth);
       addShape(ctx, isl, discShape(pool.pool.x, pool.pool.z, A.diveTower.poolR), false);
@@ -563,15 +737,8 @@ export function reserveBeaconAnchors(
     // the top layout moves a pivot ≤ the top radius: re-check the whole line (none if it fails)
     if (chainOk(ctx, lh, summitShapes, pts, 0)) {
       const n = pts.length;
-      pts.forEach((p, k) => {
-        const rot =
-          k === 0
-            ? heading(p, pts[1])
-            : k === n - 1
-              ? heading(p, pts[n - 2])
-              : bisector(heading(pts[k - 1], p), heading(p, pts[k + 1]));
-        setAnchor(isl, `cable${k}`, p, rot, heightAt(ctx.h, p.x, p.z));
-      });
+      const rots = lineRots(pts);
+      pts.forEach((p, k) => setAnchor(isl, `cable${k}`, p, rots[k], heightAt(ctx.h, p.x, p.z)));
       addShape(ctx, isl, discShape(pts[0].x, pts[0].z, C.station.r), false);
       for (let k = 0; k + 1 < n; k++) {
         const a = pts[k];

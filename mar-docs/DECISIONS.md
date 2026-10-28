@@ -2,6 +2,54 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-097: Beacon Rock M27 placed and moving — the cable car is a two-track loop on the built geometry (seat 9.45, hang 2.5), real footprints on the stack tops, a spell-out neon kind, the diver as a culture-mover scene (TASK-518; builds D-095 / D-096) — 2026-10-28
+
+**Reconciliation (anchors vs props).** One truth = the built geometry: cable seat **9.45 u over every pivot** (station
+and pylon; was 6.5 / 7.5), gondola floor **2.5 u under the cable** (was 2.2), so the floor stands 6.95 u over a
+pivot, flush with the terminal landing. `MARKETING_ANCHORS.cable.seat / hang / track` now read
+`MARKETING_M27` (one number, two readers). Higher seats only add clearance (30 seeds: min floor margin 2.4 u on
+both tracks, was 0.6). **The v4 pylon could not be ridden as built**: its crossarm ran ALONG the line with both
+sheaves on the axis, so a passing cabin went through the 9 u lattice (half-width 0.4 u at cabin height) and the
+crossarm (just under the grip). TASK-518 rebuilt the head: crossarm across the line ABOVE the cable
+(`armOver` 0.42), one sheave per track at x = ±`track` 1.25 on an outer bracket; the line became a **loop**
+(out on the summit station's local +x track, back on the other; real gondola lifts work this way, and three
+cabins on one single cable would have had to pass through each other). New **`mailLine` v7 = terminal**: the
+same tower with a horizontal bullwheel (radius = track, at the seat height; the cabins turn round behind the
+tower) and the boarding landing beside its +x track (moved out to x 1.95–3.15). The landing left v4. The pylon
+finial is now the red aviation lamp with the `beacon` blink (the M22 stack masts it replaces blinked).
+**Footprints.** TASK-516 reserved 0.8 / 1.0 u discs; the props need more: pylon r 1.3 (lattice corners), the
+pylon and the dive tower must keep their **square leg footprints apart** (SAT, `squaresApart`, gap 0.1), the
+transmitter's three guy eyes (r 2.1) must stand on the top (ground −0.45…+0.3 of the pivot, off the pylon) at a
+mast heading the anchor now publishes (`transmitter.rotY` = guy frame, no longer "seaward"); the dive tower and
+the mast fall back to smaller scales (`diveTowerSize` / `transmitterSize`: 1 / 0.85 / 0.75 and 1 / 0.85 / 0.7)
+before giving up. Spans are checked on both tracks; the span strip is 4 u.
+**Placement** (`world/gen/plans/marketing-m27.ts`, in the Marketing `finish` after the anchors): terminals v7 at
+both ends, v4 on mid anchors, pivot y = anchor ground; sea billboard (v2) and ON AIR (v3) scaled to the anchor
+rect and pushed out so the prop's rock plane (local z = −reach × s) lies on the anchor plane; dive tower and
+guyed mast at their anchors and scales. Every M22 `antennaTower` v1 within a carrying stack top (+1.5 u) is
+dropped (on the 30 test seeds that is all 83: every stack now carries a piece).
+**Motion.** `world/cable-car.ts` (pure): the loop as spans (the `cablePoint` parabola) + bullwheel half-turns, a
+time table (speed 1.6, 0.6 into each sheave within 1.6 u, 0.8 round a wheel, a 4 s dwell at each landing);
+three cabins ride it a third of a period apart (detachable grips: they never meet), swing 3° about the cable in
+gusts and kick 4° in pitch when braking. `render/beacon-lines.ts`: two instanced meshes (liveries) on the shared
+lit program, fade 300–340 u; the cable spans are a second merged mesh in `render/mail-lines.ts` with the same
+fade (the mailLine def's tier-2 fade would drop the cable at ~120 u under drawn gondolas). **ON AIR**: new
+`SURFACE.neon` (14) with its own branch in `CULTURE_SURFACE` (before the beacon one); each letter tagged
+(index, 5, 0, −14); while the lamp class is on, letters light 0.4 s apart, hold, go dark 0.7 s, every 9 s
+(`NEON_SEQ`). The study's "19:00 in sequence" became this repeating spell-out on the culture lamp set (it
+switches on with the island at dusk); a one-off switch-on would need a "since lamps on" clock in the shader.
+**Diver**: a culture-mover scene on `diveTower` (keeper body + rings + blobs, no agent, no tableau slot): every
+40 s, 07:00–20:00, ladder → board → bounces → parabola into the pool centre → 2 rings + 4 drops → swims back.
+The fish jump's water splat is not reused (culture movers are closed form, the splat is stepped); its ring /
+drop look is. **Programs** low 9 / medium 17 unchanged.
+**Numbers (30 test seeds)**: line 30 / 30 (≥ 3 pieces 28; 60 terminals, 47 mid pylons), sea billboard 30 (scale
+0.55–1.00), ON AIR 30 (scale 0.76–1.06), dive tower 27 / 30 (was 29; 4 at scale 0.75), transmitter 16 / 22
+three-stack seeds (was 21 with 0.8 u discs; 2 at scale 0.7), M22 v1 masts 83 → 0. Loop 51–196 u, period
+48–145 s. Gondola floor margin ≥ 2.4 u on both tracks. Cost ≈ 8 ms per world. World hashes re-pinned (1001
+`d642226645e9ee4a`, 1 `731ef6a0436dee96`). Wow `--assert` green: W16 290 / 300 calls, memory peak W4 / W27
+170 / 170 MB, W-cable-dusk 285 calls / 723 k tris / 163 MB, W-on-air-rock 223 calls / 576 k / 165 MB. Low ladder:
+budgets green, L-pairs-marketing green after the terminal LOD1 fix, L-marketing step 60→42 blob 1.7 % > 1.5 % (open). Medium ladder 14 / 14 green (memory 87 MB).
+
 ## D-096: Marketing M27 signature props — the cable car, sea billboard, ON AIR neon and guyed mast as variants of old defs, one new def `diveTower`, Marketing cap 10 -> 11 (TASK-517; builds D-094 on D-059 A / D-062 R3-15) — 2026-10-28
 
 **Decision** (no placement, TASK-518 places and moves them): (1) **Cable car = `mailLine` v4 / v5 / v6** (ledger-free,

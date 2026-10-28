@@ -19,6 +19,7 @@ import { DEVOPS_M25_MOTION } from '../content/themes/devops-m25-site.ts';
 import { DEVOPS_M26_MOTION } from '../content/themes/devops-m26-site.ts';
 import { DOCK } from '../content/settlements.ts';
 import { pierLoop } from './harbour-routes.ts';
+import { MARKETING_M27_MOTION } from '../content/themes/marketing-m27-site.ts';
 
 /** Prop store position of the first instance of def `id` (null when the seed has none). */
 function firstOf(
@@ -455,6 +456,44 @@ describe('culture movers', () => {
     SHARED.uLamps.value.z = lamps;
   });
 
+  it('M27 diver (TASK-518): climbs, leaps into the pool, splashes; by day only, closed form', () => {
+    const dive = firstOf(world, props, 'diveTower');
+    expect(dive).not.toBeNull();
+    if (!dive) return;
+    const isl = world.islands.find((i) => i.theme === 'marketing');
+    const pool = isl?.anchors.divePool;
+    expect(pool).toBeDefined();
+    if (!pool) return;
+    const D = MARKETING_M27_MOTION.diver;
+    let up = 0;
+    let rings = 0;
+    let air = 0;
+    for (let t = 0; t < D.period; t += 0.25) {
+      view.update(t, 12, env(12), dive, fest());
+      const bots = ofKind(view, PART.keeper)
+        .map((m) => new THREE.Vector3().setFromMatrixPosition(m))
+        .filter((p) => Math.hypot(p.x - dive.x, p.z - dive.z) < 12);
+      if (bots.some((p) => p.y > dive.y + 2)) up++;
+      // in the air over the water between the tower and the pool
+      if (bots.some((p) => Math.hypot(p.x - pool.x, p.z - pool.z) < 4 && p.y > 1)) air++;
+      rings += ofKind(view, PART.ring).filter(
+        (m) =>
+          new THREE.Vector3()
+            .setFromMatrixPosition(m)
+            .distanceTo(new THREE.Vector3(pool.x, 0, pool.z)) < 0.5,
+      ).length;
+    }
+    expect(up).toBeGreaterThan(10);
+    expect(air).toBeGreaterThan(0);
+    expect(rings).toBeGreaterThan(0);
+    view.update(9, 3, env(3), dive, fest());
+    expect(
+      ofKind(view, PART.keeper).filter(
+        (m) => new THREE.Vector3().setFromMatrixPosition(m).distanceTo(dive) < 12,
+      ),
+    ).toHaveLength(0);
+  });
+
   it('stall keepers: one per goods stall, awake from 06:30, closed form', () => {
     const stall = firstOf(world, props, 'goodsStall')!;
     const stallDef = PROP_DEFS.findIndex((d) => d.id === 'goodsStall');
@@ -466,7 +505,16 @@ describe('culture movers', () => {
     view.update(3, 4, env(4), stall, fest());
     expect(ofKind(view, PART.keeper)).toHaveLength(0);
     view.update(3, 12, env(12), stall, fest());
-    expect(ofKind(view, PART.keeper)).toHaveLength(stalls);
+    // the M27 diver (TASK-518) is a keeper body too, near its dive tower: not a stall keeper
+    const diveDef = PROP_DEFS.findIndex((d) => d.id === 'diveTower');
+    const nearDive = (m: THREE.Matrix4): boolean => {
+      const p = new THREE.Vector3().setFromMatrixPosition(m);
+      for (let i = 0; i < props.count; i++)
+        if (props.defId[i] === diveDef && Math.hypot(p.x - props.x[i], p.z - props.z[i]) < 12)
+          return true;
+      return false;
+    };
+    expect(ofKind(view, PART.keeper).filter((m) => !nearDive(m))).toHaveLength(stalls);
     expect(ofKind(view, PART.limb)).toHaveLength(stalls * 2);
     const a = snapshot(view);
     view.update(3.5, 12, env(12), stall, fest());

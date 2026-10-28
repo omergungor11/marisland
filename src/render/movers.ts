@@ -21,6 +21,7 @@ import { buildProp } from '../geo/index.ts';
 import { DEVOPS_M26 } from '../content/themes/devops-m26.ts';
 import { DEVOPS_M26_MOTION } from '../content/themes/devops-m26-site.ts';
 import { createDevopsLines, type DevopsLinesView } from './devops-lines.ts';
+import { createBeaconLines, type BeaconLinesView } from './beacon-lines.ts';
 
 /**
  * Closed-form movers of the QA Test Factory (M17b TASK-401): one crate per conveyor segment riding
@@ -48,6 +49,8 @@ export interface MoversView {
   wheels: THREE.InstancedMesh | null;
   /** DevOps M25 funicular cars + ore buckets (TASK-507, render/devops-lines.ts); null without a world. */
   lines: DevopsLinesView | null;
+  /** Beacon Rock cable car gondolas (TASK-518, render/beacon-lines.ts); null without a line. */
+  beacon: BeaconLinesView | null;
   update(time: number, camPos: THREE.Vector3): void;
 }
 
@@ -196,6 +199,7 @@ export function createMovers(
   const cars = DEVOPS_MOVERS.train.cars;
   const ships = world ? createShips(world, quality, scope) : null;
   const lines = world ? createDevopsLines(world, store, quality, scope) : null;
+  const beacon = world ? createBeaconLines(world, quality, scope) : null;
   const n = belts.length + tracks.length + rails.length * cars;
   if (n === 0)
     return {
@@ -204,10 +208,12 @@ export function createMovers(
       ships: ships?.mesh ?? null,
       tugs: ships?.tugs ?? null,
       lines,
+      beacon,
       update: (t, c) => {
         wheels.update(t);
         ships?.update(t, c);
         lines?.update(t, c);
+        beacon?.update(t, c);
       },
     };
   const features = { instanced: true, dither: true, emissive: true, rim: true };
@@ -243,6 +249,7 @@ export function createMovers(
     wheels.update(time);
     ships?.update(time, camPos);
     lines?.update(time, camPos);
+    beacon?.update(time, camPos);
     const far = QA_MOVERS.fadeFar + 20;
     mesh.visible = centres.some((c) => c.distanceToSquared(camPos) < far * far);
     if (!mesh.visible) return;
@@ -290,6 +297,7 @@ export function createMovers(
     ships: ships?.mesh ?? null,
     tugs: ships?.tugs ?? null,
     lines,
+    beacon,
     update,
   };
 }

@@ -124,7 +124,7 @@ describe('TASK-465 geometry', () => {
         const d = defOf(id);
         if (!d) throw new Error(id);
         // TASK-517: the Marketing gondolas (mailLine v5 / v6) are mover meshes, never stored props
-        if (id === 'mailLine' && v >= 5)
+        if (id === 'mailLine' && (v === 5 || v === 6))
           expect(isLargeStructure(d, s0), `${id} v${v} is large`).toBe(false);
         else if (SMALL.includes(id)) expect(isLargeStructure(d, s0), `${id} is large`).toBe(false);
         else expect(isLargeStructure(d, s0), `${id} should be effective tier 0`).toBe(true);

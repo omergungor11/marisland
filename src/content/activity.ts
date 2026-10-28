@@ -43,6 +43,8 @@ export const SURFACE = {
   stained: 12,
   /** Warning-light blink (TASK-481): lit `duty` of every `period` s, phase per instance; (0, 0, 0, −13). */
   beacon: 13,
+  /** Neon letter spell-out (TASK-518, the ON AIR cliff sign): (letter index, letter count, 0, −14). */
+  neon: 14,
 } as const;
 export type SurfaceKind = keyof typeof SURFACE;
 
@@ -180,6 +182,14 @@ export const MARQUEE = { group: 3, rate: 5, off: 0.3, offAlbedo: 0.7 } as const;
  * lamp class (emissive 1, culture lamp set).
  */
 export const BEACON = { period: 1.2, duty: 0.4, off: 0.12, offAlbedo: 0.55 } as const;
+
+/**
+ * Neon spell-out (TASK-518, MK:M4 ON AIR): while the lamp class is on (night, culture lamp set) the
+ * letters light one after another `step` s apart, hold the word until `period` − `dark`, go dark
+ * for `dark` s and spell it again. Unlit letters dim to `off` (glow) and `offAlbedo`. Time = the
+ * surface clock (reduced motion slows it, as every surface).
+ */
+export const NEON_SEQ = { step: 0.4, period: 9, dark: 0.7, off: 0.04, offAlbedo: 0.45 } as const;
 
 /**
  * Stained glass (TASK-440, Design stainedScreen / canopy vitray / glass pavilion). Day: the sun

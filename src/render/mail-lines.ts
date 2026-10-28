@@ -8,6 +8,8 @@ import { oreAnchorWorld } from '../content/themes/devops-m25-site.ts';
 import { buildMailCable } from '../geo/themes/culture-m20-hq.ts';
 import { buildOreCable } from '../geo/themes/devops-m25.ts';
 import { PropFlag, type PropStore } from '../world/prop-store.ts';
+import type { CableLoop } from '../world/cable-car.ts';
+import { MARKETING_M27_MOTION } from '../content/themes/marketing-m27-site.ts';
 import type { PropMaterials } from './materials/prop-materials.ts';
 
 /**
@@ -131,22 +133,61 @@ export function oreLines(store: PropStore): OreLine[] {
 export interface MailCablesView {
   mesh: THREE.InstancedMesh | null;
   pairs: MailLinePair[];
+  /** The Beacon Rock cable car spans (TASK-518; null without a line), faded like its gondolas. */
+  beacon: THREE.InstancedMesh | null;
 }
 
-/** The cables of every mail line pair as one mesh (null when the world has none). */
+/**
+ * The cables of every mail line pair as one mesh (null when the world has none). TASK-518: the
+ * Beacon Rock cable car's spans (both tracks of each loop, world/cable-car.ts) are a second mesh
+ * on a merged twin faded like the gondolas (`MARKETING_M27_MOTION.gondola`; the mailLine def's own
+ * tier-2 fade would drop the cable at ~120 u under gondolas still drawn); the bullwheel turns are
+ * the terminals' own rims.
+ */
 export function createMailCables(
   store: PropStore,
   seed: number,
   scope: Scope,
   materials: PropMaterials,
+  loops: readonly CableLoop[] = [],
 ): MailCablesView {
   const pairs = mailLinePairs(store);
   const ore = oreLines(store).flatMap((l) => l.spans);
-  if (!pairs.length && !ore.length) return { mesh: null, pairs };
-  const parts = [
-    ...pairs.map((p, k) => buildMailCable(createRng(seed).fork('mail-cable', k), p.a, p.b, 0)),
-    ...ore.map((p, k) => buildOreCable(createRng(seed).fork('ore-cable', k), p.a, p.b, 0)),
-  ];
+  const spans = loops.flatMap((L) => L.pieces.flatMap((p) => (p.kind === 'span' ? [p] : [])));
+  const def = PROP_DEFS[PROP_DEF_INDEX.mailLine];
+  const mesh =
+    pairs.length || ore.length
+      ? mergedCables(
+          [
+            ...pairs.map((p, k) =>
+              buildMailCable(createRng(seed).fork('mail-cable', k), p.a, p.b, 0),
+            ),
+            ...ore.map((p, k) => buildOreCable(createRng(seed).fork('ore-cable', k), p.a, p.b, 0)),
+          ],
+          scope,
+          materials.mergedFor(def).material,
+          'mail-cables',
+        )
+      : null;
+  const G = MARKETING_M27_MOTION.gondola;
+  const beacon = spans.length
+    ? mergedCables(
+        spans.map((p, k) => buildOreCable(createRng(seed).fork('beacon-cable', k), p.a, p.b, 0)),
+        scope,
+        materials.mergedFor({ ...def, fade: [G.fadeNear, G.fadeFar] }).material,
+        'beacon-cables',
+      )
+    : null;
+  return { mesh, pairs, beacon };
+}
+
+/** Cable geometries merged into one static mesh (world frame) on a merged-twin material. */
+function mergedCables(
+  parts: THREE.BufferGeometry[],
+  scope: Scope,
+  material: THREE.Material,
+  name: string,
+): THREE.InstancedMesh {
   const src = parts.map((g) => (g.index ? g.toNonIndexed() : g));
   const n = src.reduce((a, g) => a + g.getAttribute('position').count, 0);
   const pos = new Float32Array(n * 3);
@@ -187,15 +228,14 @@ export function createMailCables(
   geo.setAttribute('wind', new THREE.BufferAttribute(wind, 1));
   geo.computeBoundingSphere();
   geo.computeBoundingBox();
-  const mats = materials.mergedFor(PROP_DEFS[PROP_DEF_INDEX.mailLine]);
   // an InstancedMesh of one identity instance: the instanced lit program, no new one
-  const mesh = new THREE.InstancedMesh(geo, mats.material, 1);
+  const mesh = new THREE.InstancedMesh(geo, material, 1);
   mesh.setMatrixAt(0, new THREE.Matrix4());
   mesh.computeBoundingSphere();
-  mesh.name = 'mail-cables';
+  mesh.name = name;
   mesh.castShadow = false;
   mesh.receiveShadow = false;
   mesh.frustumCulled = true;
   scope.add(mesh);
-  return { mesh, pairs };
+  return mesh;
 }

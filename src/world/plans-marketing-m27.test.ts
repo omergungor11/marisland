@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { MARKETING_ANCHORS as A } from '../content/themes/marketing-anchors.ts';
 import { anchorChain } from './gen/plans/devops-growth.ts';
-import { beaconCable, beaconSeaKeepOut, spanMargin } from './gen/plans/marketing-anchors.ts';
+import {
+  beaconCable,
+  beaconSeaKeepOut,
+  beaconTracks,
+  spanMargin,
+} from './gen/plans/marketing-anchors.ts';
 import { generateWorld, heightAt, zoneAt, Zone, type WorldData, type XZ } from './index.ts';
 import type { IslandData } from './types.ts';
 
@@ -75,7 +80,9 @@ describe('Beacon Rock M27 anchors (TASK-516), 30 seeds', { timeout: 240_000 }, (
     const three = SEEDS.filter((s) => tops(mkt(world(s))).length >= 3);
     expect(three.length).toBeGreaterThanOrEqual(18);
     const tx = three.filter((s) => !!mkt(world(s)).anchors.transmitter).length;
-    expect(tx / three.length).toBeGreaterThanOrEqual(0.9);
+    // TASK-518 (D-097): the real footprints (9 u pylon lattice, guys 2.1 u out on rock) fit
+    // beside a pylon on fewer of the 2–3 u stack tops (TASK-516 counted 0.8 u discs: 21 / 22)
+    expect(tx / three.length).toBeGreaterThanOrEqual(0.7);
     // every profile stack has a usable top on most seeds
     let stacks = 0;
     let withTop = 0;
@@ -122,16 +129,20 @@ describe('Beacon Rock M27 anchors (TASK-516), 30 seeds', { timeout: 240_000 }, (
         expect(heightAt(w.height, p.x, p.z), `seed ${s}`).toBeGreaterThan(A.stack.minTop - 0.5);
         expect(topAt(isl, p), `seed ${s}`).not.toBeNull();
       }
-      // farther and farther out is not required, but every span is clear on the final ground
+      // farther and farther out is not required, but every span of both tracks (TASK-518) is
+      // clear on the final ground
       const seats = beaconCable(isl);
+      for (const tr of beaconTracks(isl))
+        for (let k = 0; k + 1 < tr.length; k++) {
+          expect(
+            spanMargin(w.height, tr[k], tr[k + 1]),
+            `seed ${s} span ${k}`,
+          ).toBeGreaterThanOrEqual(-0.05);
+          expect(segDist(lm, tr[k], tr[k + 1]), `seed ${s}`).toBeGreaterThanOrEqual(
+            A.cable.towerClear - 1e-6,
+          );
+        }
       for (let k = 0; k + 1 < seats.length; k++) {
-        expect(
-          spanMargin(w.height, seats[k], seats[k + 1]),
-          `seed ${s} span ${k}`,
-        ).toBeGreaterThanOrEqual(-0.05);
-        expect(segDist(lm, seats[k], seats[k + 1]), `seed ${s}`).toBeGreaterThanOrEqual(
-          A.cable.towerClear - 1e-6,
-        );
         expect(
           Math.hypot(seats[k + 1].x - seats[k].x, seats[k + 1].z - seats[k].z),
         ).toBeLessThanOrEqual(A.cable.maxSpan);
@@ -149,8 +160,8 @@ describe('Beacon Rock M27 anchors (TASK-516), 30 seeds', { timeout: 240_000 }, (
       expect(turn(isl.anchors.cable0.rotY, h01)).toBeLessThan(1e-6);
       const hb = Math.atan2(pts[n - 2].z - pts[n - 1].z, pts[n - 2].x - pts[n - 1].x);
       expect(turn(isl.anchors[`cable${n - 1}`].rotY, hb)).toBeLessThan(1e-6);
-      // no mail line anywhere near (they are on HQ / Emberpeak)
-      for (const f of w.fixtures.filter((f) => f.defId === 'mailLine'))
+      // no mail line anywhere near (they are on HQ / Emberpeak; v4 / v7 are this line's own)
+      for (const f of w.fixtures.filter((f) => f.defId === 'mailLine' && (f.variant ?? 0) < 4))
         for (let k = 0; k + 1 < n; k++)
           expect(segDist(f, pts[k], pts[k + 1]), `seed ${s}`).toBeGreaterThan(10);
     }

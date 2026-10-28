@@ -4,7 +4,14 @@
  * the summit lip and the windward cliff face, publishes island anchors and reserves their shapes
  * (scatter and seamarks keep off). No prop, pad or zone is placed here: TASK-518 puts the TASK-517
  * props on the anchors. Distances in u, angles in degrees.
+ *
+ * TASK-518 (D-097) reconciled the line with the built cable car (content/themes/marketing-m27.ts):
+ * the cable sits on the pylon / terminal head (`anchorY` 9.45 over every pivot), the gondola floor
+ * hangs `grip` 2.5 under it, and the line is a loop of two tracks ± `track` off the pylon axis, so
+ * every clearance is checked on both tracks; the footprints grew to the real props.
  */
+import { MARKETING_M27 as K } from './marketing-m27.ts';
+
 export const MARKETING_ANCHORS = {
   /**
    * Sea-stack tops (profile anchors `stack0…`): the top = the cells within `topTol` of the highest
@@ -23,11 +30,13 @@ export const MARKETING_ANCHORS = {
    * from every summit obstacle. Spans ≤ `maxSpan`, turn at a pylon ≤ `maxTurn`.
    */
   cable: {
-    seat: { station: 6.5, pylon: 7.5 },
+    seat: { station: K.pylon.anchorY, pylon: K.pylon.anchorY },
     sagFrac: 0.03,
     sagMin: 0.35,
     sagMax: 1.6,
-    hang: 2.2,
+    hang: K.gondola.grip,
+    /** Lateral offset of the two tracks (the loop) from the pylon axis. */
+    track: K.pylon.track,
     clearWater: 6.5,
     clearLand: 1,
     step: 0.5,
@@ -38,11 +47,13 @@ export const MARKETING_ANCHORS = {
     maxTurn: 125,
     /** Summit station: a disc on the plateau (≥ top − `drop`, relief ≤ `relief`), `search` u round the tower. */
     station: { r: 2, search: 18, drop: 2, relief: 1.2, gap: 0.5 },
-    /** Footprint radius of a mid pylon and of the far station on a stack top. */
-    pylonR: 0.8,
+    /** Footprint radius of a mid pylon (lattice corners) and of the far station on a stack top. */
+    pylonR: 1.3,
+    /** Square half size of the pylon lattice at its foot (+ the bar), for the footprint tests. */
+    pylonHalf: K.pylon.foot + 0.1,
     farR: 1.5,
     /** Reserved strip width along every span (scatter keeps off; seamark discs every `discStep`). */
-    strip: 3,
+    strip: 4,
     discStep: 4,
   },
   /**
@@ -51,18 +62,41 @@ export const MARKETING_ANCHORS = {
    * `diveTower` (M13 platform) stand on a stack top beside its pylon (`r` footprint), ≥ `clear` u
    * horizontally off every span; `seaBillboard` (M3) hangs on the seaward face.
    */
-  transmitter: { r: 0.8, clear: 1.3 },
+  transmitter: {
+    r: 1,
+    clear: 2.4,
+    /**
+     * Guy eyes (antennaTower v2, three at `radius`, 120° apart, `phase` rad off local +z): each on
+     * the top within `below` / `above` of the pivot ground and `gap` off the pylon footprint; the
+     * mast turns (rotY, `turns` steps) until all three fit.
+     */
+    guy: { radius: K.guyed.radius, phase: 0.5, below: 0.45, above: 0.3, gap: 0.3, turns: 36 },
+    /** Mast scales tried in order (a smaller mast, shorter guys); published as `transmitterSize`. */
+    scales: [1, 0.85, 0.7] as const,
+  },
+  /** Gap between a stack's cable piece and its role prop footprint. */
+  topGap: 0.45,
   /**
    * Dive tower: platform pivot on the top rim (`r` footprint), facing a splash pool in the sea
    * `reach` u out from the pivot; pool disc `poolR`, seabed ≥ `depth` below sea level on every
    * sample (centre ≥ `centreDepth`), ≥ `shore` off the coast, off the spans by `clear`
    * (platform) / `poolClear` (pool disc); pool heading ≥ `spanOff` off every span heading.
    * `platformH`: the platform top over the stack top (the dive height = top + platformH; a contract
-   * number for TASK-517 / 518, the gondola floor over a pylon is seat.pylon − hang = 5.3).
+   * number for TASK-517 / 518, the gondola floor over a pylon is seat.pylon − hang = 6.95).
    */
   diveTower: {
     r: 1,
     clear: 1.8,
+    /**
+     * Square half size of the tower's legs at the foot (+ the bar) and the least centre distance to
+     * a pylon (`C.pylonHalf`); the two squares (each on its heading) keep `gap` apart (TASK-518).
+     * A tower that does not fit beside its pylon is tried at the smaller `scales` (published as
+     * `diveTowerSize`; the dive height is platformH × scale).
+     */
+    half: K.dive.legFoot + 0.1,
+    minApart: 2,
+    gap: 0.1,
+    scales: [1, 0.85, 0.75] as const,
     reach: [4, 9] as const,
     poolR: 2.5,
     depth: 2,

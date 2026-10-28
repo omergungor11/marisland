@@ -27,6 +27,7 @@ const BUDGET: Record<string, number> = {
   'mailLine:4': 1300,
   'mailLine:5': 450,
   'mailLine:6': 450,
+  'mailLine:7': 1300,
   'billboardV2:2': 450,
   'billboardV2:3': 800,
   'antennaTower:2': 1000,
@@ -45,7 +46,7 @@ describe('TASK-517 Marketing M27 defs', () => {
 
   it('variants of old defs: geo and PropDef agree, random rolls keep the old variants', () => {
     for (const [id, variants, roll] of [
-      ['mailLine', 7, 2],
+      ['mailLine', 8, 2],
       ['billboardV2', 4, 2],
       ['antennaTower', 3, 1],
     ] as const) {
@@ -81,6 +82,7 @@ describe('TASK-517 per-variant budgets, bounds, determinism', () => {
     ['mailLine', 4],
     ['mailLine', 5],
     ['mailLine', 6],
+    ['mailLine', 7],
     ['billboardV2', 2],
     ['billboardV2', 3],
     ['antennaTower', 2],
@@ -117,21 +119,38 @@ describe('TASK-517 per-variant budgets, bounds, determinism', () => {
 });
 
 describe('TASK-517 cable car (mailLine 4 / 5 / 6)', () => {
-  it('sea pylon: cable seats front / back on the sheaves, 9 u tall, landing flush with the gondola floor', () => {
-    const g = buildProp('mailLine', 5, F.pylon.variant, 0);
-    const h = hooks(g);
-    expect(h.cable.anchor).toEqual([0, F.pylon.anchorY, F.pylon.sheaveZ]);
-    expect(h.cable.back).toEqual([0, F.pylon.anchorY, -F.pylon.sheaveZ]);
-    expect(h.sheaves.list).toHaveLength(2);
-    expect(box(g).max.y).toBeGreaterThan(F.pylon.anchorY);
-    expect(box(g).max.y).toBeGreaterThan(9);
-    // the gondola floor hangs `grip` under the cable seat
-    const floorY = F.pylon.anchorY - F.gondola.grip;
-    expect(Math.abs(h.landing.y - floorY)).toBeLessThan(0.15);
-    // the landing is beside the line, clear of the cabin half width
-    expect(h.landing.at[0] - h.landing.size[0] / 2).toBeGreaterThan(F.gondola.w / 2 + 0.1);
-    // never mistaken for an HQ mail pylon (render/mail-lines.ts skips variants >= 2)
-    expect(F.pylon.variant).toBeGreaterThanOrEqual(2);
+  it('pylon / terminal: two track seats at x = ±track, the grips pass under the crossarm, beside the tower', () => {
+    for (const v of [F.pylon.variant, F.pylon.terminal]) {
+      const g = buildProp('mailLine', 5, v, 0);
+      const h = hooks(g);
+      expect(h.cable.right).toEqual([F.pylon.track, F.pylon.anchorY, 0]);
+      expect(h.cable.left).toEqual([-F.pylon.track, F.pylon.anchorY, 0]);
+      expect(h.cable.terminal).toBe(v === F.pylon.terminal);
+      expect(box(g).max.y).toBeGreaterThan(F.pylon.anchorY + F.pylon.armOver);
+      // a cabin on either track clears the lattice (half-width at the cabin's heights) and the head
+      const floorY = F.pylon.anchorY - F.gondola.grip;
+      const halfAt = (y: number): number =>
+        F.pylon.foot + (F.pylon.top - F.pylon.foot) * Math.min(1, Math.max(0, (y - 0.2) / 8.7));
+      expect(F.pylon.track - F.gondola.w / 2).toBeGreaterThan(halfAt(floorY) * Math.SQRT2 + 0.05);
+      // nothing of the tower inside the grip's path (x within the carrier bar, y grip ± 0.2)
+      const pos = arr(g, 'position');
+      for (let i = 0; i < pos.length; i += 3) {
+        const [x, y, z] = [pos[i], pos[i + 1], pos[i + 2]];
+        if (Math.abs(Math.abs(x) - F.pylon.track) > 0.09 || Math.abs(z) > 0.6) continue;
+        if (y > F.pylon.anchorY + 0.25 && y < F.pylon.anchorY + F.pylon.armOver - 0.01)
+          throw new Error(`v${v}: vertex in the grip path at ${x}, ${y}, ${z}`);
+      }
+      // never mistaken for an HQ mail pylon (render/mail-lines.ts skips variants >= 2)
+      expect(v).toBeGreaterThanOrEqual(2);
+    }
+    // the terminal's landing is flush with the gondola floor, beside the +x track's cabin
+    const t = hooks(buildProp('mailLine', 5, F.pylon.terminal, 0));
+    expect(Math.abs(t.landing.y - (F.pylon.anchorY - F.gondola.grip))).toBeLessThan(0.15);
+    expect(t.landing.at[0] - t.landing.size[0] / 2).toBeGreaterThan(
+      F.pylon.track + F.gondola.w / 2 + 0.1,
+    );
+    expect(hooks(buildProp('mailLine', 5, F.pylon.variant, 0)).landing).toBeUndefined();
+    expect(hooks(buildProp('mailLine', 5, F.pylon.variant, 0)).sheaves.list).toHaveLength(2);
   });
 
   it('gondolas: grip over the pivot, hanger pin below the grip, swing axis = the cable (z), two liveries', () => {
@@ -206,6 +225,17 @@ describe('TASK-517 ON AIR neon (billboardV2 3)', () => {
     const lit = Array.from(em).filter((x) => x > 0).length;
     expect(lit).toBe(list.reduce((n, l) => n + l.count, 0));
     expect(hooks(g).glow).toEqual({ slotBase: F.onAir.slot.base, slotStep: F.onAir.slot.step });
+    // TASK-518: every letter vertex carries the neon spell-out tag (index, count, 0, -neon)
+    const spin = arr(g, 'aSpin');
+    for (const l of list)
+      for (let i = l.first; i < l.first + l.count; i++) {
+        expect(spin[i * 4]).toBe(l.index);
+        expect(spin[i * 4 + 1]).toBe(list.length);
+        expect(spin[i * 4 + 3]).toBe(-SURFACE.neon);
+      }
+    let tagged = 0;
+    for (let i = 3; i < spin.length; i += 4) if (spin[i] === -SURFACE.neon) tagged++;
+    expect(tagged).toBe(lit);
     expect(hooks(g).mount.reach).toBe(F.onAir.reach);
     expect(box(g).min.z).toBeLessThanOrEqual(-F.onAir.reach);
     // letters are ~1.4 u (the study's 1.4 u / letter): 1.2 u strokes on 1.5 u plates
