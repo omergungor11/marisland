@@ -263,9 +263,19 @@ function starFort({ rng, lod }: BuildOpts): THREE.BufferGeometry {
   const course = starRing(1.0, 0.45);
   const top = starRing(F.topScale, H);
   // plinth below the water, a darker stone course at the waterline, the cream battered wall
-  band(acc, foot, water, P.stoneDark);
-  band(acc, water, course, P.stoneShade);
-  band(acc, course, top, F.stone);
+  const SB = F.stoneBands;
+  band(acc, foot, water, SB.plinth);
+  band(acc, water, course, SB.moss);
+  // warm courses up the batter (fewer at LOD1), then the light coping band under the parapet
+  const ringAt = (t: number): Pt[] => starRing(1 + (F.topScale - 1) * t, 0.45 + (H - 0.45) * t);
+  const courses = hi ? SB.courses : [SB.courses[0], SB.courses[2]];
+  let prev = course;
+  for (const c of courses) {
+    const ring = ringAt(hi ? c.t : c.t === SB.courses[0].t ? 0.5 : c.t);
+    band(acc, prev, ring, c.color);
+    prev = ring;
+  }
+  band(acc, prev, top, SB.coping);
   cap(acc, top, H, F.court.color);
 
   // keep (the flag tower): an octagonal shaft, windows, the lantern gallery with the red light, a coral roof
@@ -340,7 +350,7 @@ function starFort({ rng, lod }: BuildOpts): THREE.BufferGeometry {
       const yaw = Math.atan2(-e.z, e.x);
       const inset = out.clone().multiplyScalar(-PA.d / 2 - 0.02);
       // sill
-      put(acc, baseBox(len, 0.3, PA.d), mid.clone().add(inset), P.stoneLight, {
+      put(acc, baseBox(len, 0.3, PA.d), mid.clone().add(inset), SB.merlon, {
         q: qEuler(0, yaw, 0),
         aoAmt: 0.05,
       });
@@ -348,7 +358,7 @@ function starFort({ rng, lod }: BuildOpts): THREE.BufferGeometry {
       for (let i = 0; i < PA.perFace; i++) {
         const t = -len / 2 + PA.w / 2 + i * (PA.w + gap);
         const p = mid.clone().add(inset).add(e.clone().multiplyScalar(t));
-        put(acc, baseBox(PA.w, PA.h, PA.d), p.clone().setY(H + 0.3), P.stoneLight, {
+        put(acc, baseBox(PA.w, PA.h, PA.d), p.clone().setY(H + 0.3), SB.merlon, {
           q: qEuler(0, yaw, 0),
           aoAmt: 0.08,
         });
