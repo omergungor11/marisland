@@ -105,7 +105,8 @@ export const cultureCapOverride: Readonly<Record<string, { defs: number; tier1: 
   // TASK-506 (D-086): +3 for the Customs Port (scannerArch, customsYard, quarantinePontoon), all tier 2
   qa: { defs: 15, tier1: 1 },
   // M25 TASK-504 (D-084): the Ember Smiths ledger 10 -> 14 (funicularRail / Car, geyserCone, oreBucket)
-  devops: { defs: 14, tier1: 1 },
+  // TASK-509b (D-092): +5 for the lava pack (emberBridge, craterDeck, glassKiln, obsidianShard, devopsBreakwater)
+  devops: { defs: 19, tier1: 1 },
 };
 
 /** SwiftShader is ~20–50× slower; time budgets are scaled by this when headless. */

@@ -10,6 +10,30 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-28 (TASK-509b, M26 props; D-092)**: defs at the tail of `PROP_DEFS` (`content/props-themes/devops-m26.ts`,
+  geometry `geo/themes/devops-m26.ts`, numbers `content/themes/devops-m26.ts`): `emberBridge` v0 foot / v1 rail,
+  `craterDeck`, `glassKiln`, `obsidianShard` v0 cluster / v1 stack / v2 pool slab / v3 cairn, `devopsBreakwater` v0 8 u /
+  v1 5 u / v2 head; tug = `sailboat` v9. Gallery: `pnpm exec tsx scripts/gallery-shots.ts devops26`. **For TASK-509c:**
+  - **Frames** (rotY = the anchor heading, apply as the other fixtures do): bridge spans local **z** (9 u long, clear
+    span 3.6 u, deck top y 1.0 + 0.1 over the bank; the lava runs along x under the arch; body skirt 0.5 below the pivot;
+    v1 carries a track along z, gauge 1.1 = `railTrack`, hook `track { from, to, y, gauge }`); deck front (crater side)
+    = **+z**, entry steps at -z, floor y 0.62, r 2.3 (fits the 2.5 disc), skirt 0.6; kiln front (mouth) = **+z**, pivot
+    between kiln and rack (x -3.2..+3.2), 3.8 u deep; breakwater runs along **z**, pivot at the waterline, centred, foot
+    -2.6, v2's round end + light at +z; shards / stack are rotationally free.
+  - **Hooks** (`g.userData.hooks`): bridge `span`, `channel { halfWidth 1.5 }`, `lamps.list`, v1 `track`; deck `view`,
+    `seats.list` (two seat tops: the "couple looking in"), `scope { at, dir }`, `lamps.list`, `entry`, `floor`; kiln
+    `mouth { at, size }`, `smoke` = `chimney { at }`, `lamps.list` (6 hung rack lanterns, flare at night), `front`;
+    obsidian v2 `pool`; breakwater `crest`, v2 `light { at }` / `end`; tug `smoke`, `tow`, `bow`, `lamp`,
+    `route { speed 1.8, lead 7 }`.
+  - **Tug route**: sailboat variant 9 (`DEVOPS_M26.tug.variant`), no CULTURE_BOATS entry yet: add one next to
+    `ferry` / `patrol` (`content/life.ts`) and a leading / escorting lane in front of the cargo ship; `sailboatGeometry`
+    (`life/boats.ts`) already builds any sailboat variant, `sailboat` stays in FLOATING_FIXTURES.
+  - **Placement**: bridge has no `BANK_FIXTURES` entry (glassBridge's axis is x, this one z); ground both abutments
+    yourself. Lava strip 3 + 2 x 1.5 u (`devops-growth.ts`) vs the 9 u bridge: the bridge reaches 3 u past the strip on
+    both sides, the abutments need a level pad. `craterDeck` / `glassKiln` / `devopsBreakwater` are large structures
+    (T0 draw, +3 far groups); bridge / shards are not.
+  - **Not covered**: no night-time render of the new props (the gallery has no lamps ramp); judge the 1.6 seams / mouth glow
+    in the placed night shot.
 - **2026-10-28 (TASK-512, wow presets)**: `W-kite-hill-afternoon` (14:00 +20 s), `W-proving-grounds-noon` (12:00 +3 s),
   `W-fairy-night` (22:00 +4 s; the Coding fairy-light grove + hammock nappers: there is no separate "fairy" creature
   content, only the TASK-479 wreaths) are in `shots.ts`; `W-ember-lane-night` re-framed from high over the lane

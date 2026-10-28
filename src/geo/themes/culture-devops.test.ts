@@ -5,6 +5,7 @@ import { DEVOPS_CULTURE } from '../../content/cultures/devops.ts';
 import { validateCultures, paletteHexes } from '../../content/cultures/validate.ts';
 import { PROP_DEFS } from '../../content/props.ts';
 import { DEVOPS_M25_PROP_DEFS } from '../../content/props-themes/devops-m25.ts';
+import { DEVOPS_M26_PROP_DEFS } from '../../content/props-themes/devops-m26.ts';
 import { DEVOPS_CULTURE_KIT, DEVOPS_WORKS } from '../../content/props-themes/devops.ts';
 import { PropFlag } from '../../world/prop-store.ts';
 import { isLargeStructure } from '../../render/props/batcher.ts';
@@ -25,9 +26,13 @@ const MIN_THICK = 0.12;
 describe('TASK-412 Ember Smiths kit', () => {
   it('geo, PropDefs and the culture ledger line up', () => {
     const ids = CULTURE_DEVOPS_GEO.map((d) => d.id);
-    // + the four M25 entries (TASK-504, geo/themes/devops-m25.ts)
+    // + the four M25 entries (TASK-504, geo/themes/devops-m25.ts) and the five M26 ones (TASK-509b)
     expect(DEVOPS_CULTURE.kit.map((k) => k.id).sort()).toEqual(
-      [...ids, ...DEVOPS_M25_PROP_DEFS.map((d) => d.id)].sort(),
+      [
+        ...ids,
+        ...DEVOPS_M25_PROP_DEFS.map((d) => d.id),
+        ...DEVOPS_M26_PROP_DEFS.map((d) => d.id),
+      ].sort(),
     );
     for (const k of DEVOPS_CULTURE.kit) {
       const d = defOf(k.id);
@@ -44,7 +49,10 @@ describe('TASK-412 Ember Smiths kit', () => {
     const kit = DEVOPS_CULTURE.kit;
     // the ten TASK-412 entries first (onsenHouse last of them), the M25 entries (TASK-504) after
     expect(kit[9]?.id).toBe('onsenHouse');
-    expect(kit.slice(10).map((k) => k.id)).toEqual(DEVOPS_M25_PROP_DEFS.map((d) => d.id));
+    expect(kit.slice(10).map((k) => k.id)).toEqual([
+      ...DEVOPS_M25_PROP_DEFS.map((d) => d.id),
+      ...DEVOPS_M26_PROP_DEFS.map((d) => d.id),
+    ]);
     expect(kit.slice(0, 6).every((k) => k.tier >= 2)).toBe(true);
     expect(validateCultures([{ ...DEVOPS_CULTURE, kit: kit.slice(0, 6) }])).toEqual([]);
     expect(kit.filter((k) => k.tier === 1)).toHaveLength(1);
