@@ -11,7 +11,9 @@
  *   bridge, is for a track over the bed: no seed has one, the funicular and foundry rail keep off.)
  * - D6 crater deck on `craterDeck` (disc pad) + a stargazer story spot (`deckGazer`, finish).
  * - D17 glass kiln beside the smiths' lane, mouth toward the lane (rect pad).
- * - D10 obsidian decor on the `obsidianBeach` rect and the shelf in front of it.
+ * - D10 obsidian decor on the `obsidianBeach` rect and the shelf in front of it; TASK-513 carves a
+ *   black-sand cove into the bluff there (planned + path-blocked here, cut and repainted in finish,
+ *   `obsidianCove` anchor = floor centre, rotY out to sea) and the decor is placed in finish on it.
  * - D18 breakwater near the `breakwater` anchor where its rubble foot stays buried in the seabed.
  * Missing anchors skip a piece. Every random choice draws from `rng`.
  */
@@ -21,8 +23,10 @@ import { DEVOPS_M26_SITE } from '../../../content/themes/devops-m26-site.ts';
 import { DEVOPS_GROWTH } from '../../../content/themes/devops-growth.ts';
 import { DEVOPS_CULTURE } from '../../../content/cultures/devops.ts';
 import { FLATTEN } from '../../../content/settlements.ts';
+import { ZONE_RULES } from '../../../content/islands.ts';
 import { DEVOPS_M25_SITE } from '../../../content/themes/devops-m25-site.ts';
-import { heightAt } from '../../types.ts';
+import { heightAt, Zone } from '../../types.ts';
+import { slopeAtCell } from '../zones.ts';
 import type { IslandData, StorySpot, XZ } from '../../types.ts';
 import { anchorChain } from './devops-growth.ts';
 import {
@@ -58,12 +62,14 @@ const smooth = (t: number): number => {
 export interface M26Result {
   deck: boolean;
   kiln: boolean;
-  obsidian: number;
+  /** TASK-513: a black-sand cove was planned at the obsidian beach (carved in `finish`). */
+  cove: boolean;
   breakwater: boolean;
   bridge: boolean;
   /**
    * Late pass (plan.finish, after the funicular earthworks, before the road lanterns): carves the
-   * lava bed, builds the bridge over it and adds the deck's story spot.
+   * lava bed, builds the bridge over it, adds the deck's story spot, carves the obsidian cove and
+   * places the obsidian decor on the final ground.
    */
   finish(): void;
 }
@@ -78,13 +84,14 @@ export function placeM26(
   const deck = placeCraterDeck(ctx, isl);
   const bridge = planBridge(ctx, isl, plan);
   const kiln = placeKiln(ctx, isl);
-  const obsidian = placeObsidian(ctx, isl, rng.fork('obsidian'));
+  const cove = planCove(ctx, isl);
+  const obsidianRng = rng.fork('obsidian');
   const breakwater = placeBreakwater(ctx, isl);
   return {
     deck: deck !== null,
     bridge: bridge !== null,
     kiln,
-    obsidian,
+    cove: cove !== null,
     breakwater,
     finish: () => {
       const bed = carveLava(ctx, isl, plan, bridge ? [bridge.sh] : []);
@@ -93,6 +100,8 @@ export function placeM26(
         deckGround(ctx, isl, deck);
         deckStory(deck, isl, stories);
       }
+      if (cove) carveCove(ctx, isl, cove);
+      placeObsidian(ctx, isl, obsidianRng, cove);
     },
   };
 }
@@ -541,35 +550,153 @@ function placeKiln(ctx: SiteCtx, isl: IslandData): boolean {
 /* ----------------------------------- D10 obsidian beach ----------------------------------- */
 
 /**
- * Obsidian decor on the beach rect and the shelf in front (out to `reach`): per variant in `want`
- * order, hashed tries until its count is met — sea stacks with the seabed in `stackDepth`, the slab
- * at the waterline (`slabY`), clusters / the cairn on gentle land above `landY`.
+ * The planned cove: floor-frame origin `c` (s = 0, q = 0), out to sea `f`, along the coast `t`,
+ * floor back edge at s = −`back`.
  */
-function placeObsidian(ctx: SiteCtx, isl: IslandData, rng: Rng): number {
+interface Cove {
+  c: XZ;
+  f: XZ;
+  t: XZ;
+  back: number;
+  /** The beach reservation + the cove rect: the carve's own ground. */
+  own: Shape[];
+}
+
+/**
+ * TASK-513: the deepest cove (`backs`) at the obsidian anchor, slid along the coast by `slide`,
+ * whose floor is clear of every other obstacle's groundWriter keep-off and of pad falloff (the
+ * walls may clip against them); its rect (walls included) is reserved and blocked for footpaths
+ * (they walk round the notch, none is cut by it later). Anchors: `obsidianCove` = floor-frame origin
+ * (rotY out to sea), `obsidianCoveSize` = {x: floor width, z: back depth}. Null = the bluff stays.
+ */
+function planCove(ctx: SiteCtx, isl: IslandData): Cove | null {
+  const C = S.obsidian.cove;
+  const a = isl.anchors.obsidianBeach;
+  if (!a) return null;
+  const f = dirOf(a.rotY);
+  const t = { x: -f.z, z: f.x };
+  const res = ctx.shapes[isl.id].filter((o) => dist(o, a) < 0.05);
+  for (const back of C.backs)
+    for (const sl of C.slide) {
+      const c = add(a, t, sl);
+      const backP = add(c, f, -back);
+      if (!onIsland(ctx, isl, backP.x, backP.z) || sdfAt(ctx, backP.x, backP.z) <= 0) continue;
+      const mf = add(c, f, (C.frontS - back) / 2);
+      const floor = rectShape(mf.x, mf.z, a.rotY, 2 * C.halfW, C.frontS + back);
+      if (!clearOf(ctx, isl, floor, C.gap + DEVOPS_M25_SITE.rail.keepOff, res)) continue;
+      const pad = ctx.pads.some(
+        (p) => p.islandId === isl.id && shapesOverlap(p.shape, floor, p.margin + FLATTEN.falloff),
+      );
+      if (pad) continue;
+      const s0 = -back - C.wall;
+      const m = add(c, f, (s0 + C.frontS) / 2);
+      const sh = rectShape(m.x, m.z, a.rotY, 2 * (C.halfW + C.wall), C.frontS - s0);
+      addShape(ctx, isl, sh, true);
+      isl.anchors.obsidianCove = { x: c.x, z: c.z, rotY: a.rotY };
+      isl.anchors.obsidianCoveSize = { x: 2 * C.halfW, z: back, rotY: 0 };
+      return { c, f, t, back, own: [...res, sh] };
+    }
+  return null;
+}
+
+/** Cove frame coordinates of `p`: s out to sea, q along the coast. */
+const coveFrame = (cove: Cove, p: XZ): { s: number; q: number } => ({
+  s: (p.x - cove.c.x) * cove.f.x + (p.z - cove.c.z) * cove.f.z,
+  q: (p.x - cove.c.x) * cove.t.x + (p.z - cove.c.z) * cove.t.z,
+});
+
+/** Distance outside the cove floor (≤ 0 inside; open to the sea, back corners rounded). */
+function coveOut(cove: Cove, s: number, q: number): number {
+  const C = S.obsidian.cove;
+  const rc = C.corner;
+  return (
+    Math.hypot(Math.max(0, Math.abs(q) - (C.halfW - rc)), Math.max(0, rc - cove.back - s)) - rc
+  );
+}
+
+/** Beach height of the cove floor at `s` (linear from the back to the waterline). */
+function coveFloor(cove: Cove, s: number): number {
+  const C = S.obsidian.cove;
+  const u = Math.max(0, Math.min(1, (s + cove.back) / (C.frontS + cove.back)));
+  return C.backY + (C.frontY - C.backY) * u;
+}
+
+/**
+ * TASK-513 (finish): cuts the cove (groundWriter rules, cut only: the bluff ground round other
+ * obstacles stays) and repaints it: floor black sand, walls by slope (cliff / black sand / rock).
+ */
+function carveCove(ctx: SiteCtx, isl: IslandData, cove: Cove): void {
+  const C = S.obsidian.cove;
+  const h = ctx.h;
+  const write = groundWriter(ctx, isl, cove.own);
+  const touched: { i: number; floor: boolean }[] = [];
+  const R = Math.hypot(C.halfW + C.wall, cove.back + C.wall + C.frontS);
+  cellsNear(ctx, cove.c, R, (i, p) => {
+    const { s, q } = coveFrame(cove, p);
+    // seaward the notch is open, but no headland beyond the waterline is cut
+    if (s > C.frontS + C.wall) return;
+    const out = coveOut(cove, s, q);
+    if (out > C.wall) return;
+    const before = h.data[i];
+    write(i, coveFloor(cove, s), out <= 0 ? 1 : 1 - smooth(out / C.wall), true);
+    // floor cells already below the beach (the bluff foot) are repainted too
+    const land = ctx.islandMap[i] === isl.id + 1 && ctx.sdf[i] > 0;
+    if (h.data[i] !== before || (out <= 0 && land)) touched.push({ i, floor: out <= 0 });
+  });
+  for (const { i, floor } of touched) {
+    const slope = slopeAtCell(h, i % h.n, Math.floor(i / h.n));
+    if (floor) ctx.zone[i] = Zone.sandBlack;
+    else if (slope > ZONE_RULES.cliffSlope) ctx.zone[i] = Zone.cliff;
+    else if (h.data[i] <= C.sandTop) ctx.zone[i] = Zone.sandBlack;
+    else if (slope > ZONE_RULES.rockSlope) ctx.zone[i] = Zone.rock;
+  }
+}
+
+/**
+ * Obsidian decor (finish, on the final ground) on the beach rect and the shelf in front (out to
+ * `reach`): per variant in `want` order, hashed tries until its count is met — sea stacks with the
+ * seabed in `stackDepth`, the slab at the waterline (`slabY`), clusters / the cairn on gentle land
+ * above `landY`; with a cove the slab sits at its waterline and the clusters / cairn on its floor.
+ * Every piece's ground relief stays within `maxRelief` (seated: no edge floats).
+ */
+function placeObsidian(ctx: SiteCtx, isl: IslandData, rng: Rng, cove: Cove | null): number {
   const O = S.obsidian;
+  const C = O.cove;
   const a = isl.anchors.obsidianBeach;
   if (!a) return 0;
   const [w, d] = DEVOPS_GROWTH.obsidian.size;
   const f = dirOf(a.rotY);
   const t = { x: -f.z, z: f.x };
-  // the beach reservation is the decor's own ground
-  const own = ctx.shapes[isl.id].filter((o) => dist(o, a) < 0.05);
+  // the beach reservation (and the cove) is the decor's own ground
+  const own = cove?.own ?? ctx.shapes[isl.id].filter((o) => dist(o, a) < 0.05);
+  // sample box per variant in the anchor frame (or the cove frame): [q0, q1, s0, s1]
+  const box = (v: number): readonly [number, number, number, number] => {
+    if (!cove || v === 1) return [-w / 2, w / 2, -d / 2, d / 2 + O.reach];
+    if (v === 2) return [-C.halfW, C.halfW, 0, C.frontS + O.slabOut];
+    return [-C.halfW + O.inset, C.halfW - O.inset, -cove.back + O.inset, C.frontS - O.inset];
+  };
+  const o = cove ? cove.c : a;
   const put: { p: XZ; v: number }[] = [];
   for (const [v, count] of O.want) {
+    const [q0, q1, s0, s1] = box(v);
     let got = 0;
     for (let k = 0; k < O.tries && got < count; k++) {
-      const p = add(add(a, t, rng.range(-w / 2, w / 2)), f, rng.range(-d / 2, d / 2 + O.reach));
+      const p = add(add(o, t, rng.range(q0, q1)), f, rng.range(s0, s1));
       const rot = rng.range(0, Math.PI * 2);
-      if (put.some((o) => dist(o.p, p) < Math.max(O.spacing[o.v], O.spacing[v]))) continue;
+      if (put.some((e) => dist(e.p, p) < Math.max(O.spacing[e.v], O.spacing[v]))) continue;
       const y = heightAt(ctx.h, p.x, p.z);
       const sh = discShape(p.x, p.z, O.radius[v]);
+      if (relief(ctx, sh) > O.maxRelief[v]) continue;
       if (v === 1) {
         if (y < O.stackDepth[0] || y > O.stackDepth[1]) continue;
       } else if (v === 2) {
         if (y < O.slabY[0] || y > O.slabY[1]) continue;
       } else {
-        if (y < O.landY || !onIsland(ctx, isl, p.x, p.z)) continue;
-        if (relief(ctx, sh) > O.landRelief || !clearOf(ctx, isl, sh, 0.4, own)) continue;
+        if (!onIsland(ctx, isl, p.x, p.z) || !clearOf(ctx, isl, sh, 0.4, own)) continue;
+        if (cove) {
+          const { s, q } = coveFrame(cove, p);
+          if (y < O.floorY[0] || y > O.floorY[1] || coveOut(cove, s, q) > -O.inset) continue;
+        } else if (y < O.landY) continue;
       }
       ctx.fixtures.push({
         defId: 'obsidianShard',

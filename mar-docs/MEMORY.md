@@ -10,6 +10,11 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-28 (TASK-513, obsidian black-sand cove; D-098)**: `planCove` / `carveCove` / `placeObsidian` in
+  `world/gen/plans/devops-m26.ts` (plan time: reserve + path block; `finish`: carve, repaint, decor), numbers
+  `DEVOPS_M26_SITE.obsidian.cove`. Anchors `obsidianCove` (floor origin, rotY out to sea) + `obsidianCoveSize`
+  ({x: width, z: back depth}). Shots (seed 1001): `pnpm shots dev --only=D-obsidian-cove,D-m26-obsidian,D-lava-fall`.
+  Cove 27 / 29 anchor seeds (3367, 6523: the D13 quarry rect sits on the floor at every slide / depth).
 - **2026-10-28 (TASK-518, M27 placed + moving; D-097)**: kit on the anchors in `world/gen/plans/marketing-m27.ts`
   (Marketing `finish`, after `reserveBeaconAnchors`), loop model `world/cable-car.ts`, gondolas
   `render/beacon-lines.ts` (via `createMovers().beacon`), cable spans = `createMailCables(..., loops).beacon`,
@@ -626,6 +631,15 @@
 - Shot presets are data in `src/content/shots.ts`; both the harness (`scripts/shots.ts`) and the app read them — keep them in sync
 
 ## Known Issues / Gotchas
+- **Any coast zone / height edit on a bluff island reshuffles its water falls** (TASK-513): `placeWaterfalls`
+  draws `r.next()` jitter per candidate lip cell (cells next to `Zone.cliff`) and the fall count after them, so new
+  cliff cells (the obsidian cove walls) shift every pick and the count: seed 1001 Emberpeak went 1 → 3 water falls
+  (none near the cove on 30 seeds). Expect it in shots, not a bug of the edit; a per-cell hash jitter would fix it
+  but reshuffles every island once.
+- **Late carves in `plan.finish` and zones**: zones are built before the sites, so a late cut keeps the old
+  zone (green / cliff) unless the carve repaints it; a cut-only `groundWriter` skips cells already below the
+  target, so repaint by region (the floor), not only by "cells written". `groundWriter` also clamps to
+  `FLATTEN.minHeight` 0.4: a beach target under 0.4 would RAISE the cells between 0 and 0.4.
 - **Two pads at different levels dip the ground between them** (TASK-466): a padded prop whose core
   overlaps another pad's core (the plaza, a lot) with `step` set is NOT relaxed to it, and
   `applyPads` blends the two plateaus by weight: a gate pad inside the plaza rim made a 1 u dip under

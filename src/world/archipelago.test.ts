@@ -102,9 +102,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "7dd5277f78fb8bf1",
-          "1001": "500a41c8b2dc4333",
-          "42": "c096f56f585efe5b",
+          "1": "0cff0fdc1ec79190",
+          "1001": "c02ba17a2300b32f",
+          "42": "5d95f8c038a8d5d9",
         }
       `);
     },
@@ -580,8 +580,9 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // TASK-509c DevOps M26 (lava bed + bridge, deck, kiln, obsidian, breakwater + route keep-out), re-pinned
       // TASK-516 Beacon Rock M27 anchors (reserved stack tops / station / spans, pool route keep-out), re-pinned
       // TASK-518 Beacon Rock M27 kit placed (two-track line, real footprints, M22 stack masts dropped), re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('d642226645e9ee4a');
-      expect(generateWorld(1).hashes.world).toBe('731ef6a0436dee96');
+      // TASK-513 Emberpeak obsidian black-sand cove (notch carved + repainted, decor re-seated), re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('8eb01fbd737b70d2');
+      expect(generateWorld(1).hashes.world).toBe('7a43ec9b43747651');
     } finally {
       for (const b of saved) b.on = true;
     }
