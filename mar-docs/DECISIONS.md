@@ -2,6 +2,18 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-094: M27 Marketing signature plan (Cable Carnival) + M26 follow-ups — plan only — 2026-10-28
+
+- **M27 scope** (from D-059 direction A and D-062 R3-15, no new user decision needed): `MK:M1` cable car (gondola
+  variant of `mailLine`, pylons, 3 gondolas), `MK:M3` sea-facing billboard on stack 2, `MK:M4` vertical ON AIR neon on
+  the windward cliff face, `MK:M13` diving tower on stack 3 (one new tier-2 def, Marketing cap 10 → 11), stack 1
+  transmitter. Fair stays on ledge2. Wow shots from `study/marketing-research.md` §1.4 (Cable Dusk, On-Air Rock).
+- **Order** (the M25 pattern): TASK-516 anchors (worldgen, pure data) ∥ TASK-517 props → TASK-518 placement + motion
+  (hash re-pin) → TASK-519 QA for M26 + M27.
+- **M26 follow-ups** the user asked for after TASK-509c: TASK-513 obsidian black-sand cove, TASK-514 lava shader
+  polish (runs now, render-only), TASK-515 crater-deck couple (DevOps tableau cap 6 → 7). 513 / 515 wait until
+  TASK-518 has merged, so only one branch at a time re-pins world hashes.
+
 ## D-093: DevOps M26 placed and moving — a carved lava bed with one planned bridge, the deck and kiln on late earthworks / pads, the breakwater kept off the boat routes, the tug escorting the cargo ship (TASK-509c; builds D-080 A + D6 / D10 / D17 / D18 on D-083, D-091, D-092) — 2026-10-28
 
 **Decision**: (1) **Stage.** `world/gen/plans/devops-m26.ts` runs right after `placeM25` (the kit, lodges, village and M22

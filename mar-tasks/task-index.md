@@ -359,6 +359,19 @@ Details in `phases/phase-3.md`.
 | TASK-510 | Shots + QA for M25 / M29 / M30: wow presets, ladder low + medium `--assert`, QA report | qa | S | COMPLETED 187eefb (D-090) | TASK-505, TASK-507, TASK-508 |
 | TASK-511 | HQ grows ~20–25 % so it reads clearly largest in W1 (Emberpeak + TASK-503/507 anchors untouched); layout fit, re-pin hashes, re-aim raw cams that moved (D-090) | worldgen | M | COMPLETED | TASK-510 |
 | TASK-512 | Wow presets Kite Hill Afternoon, Proving Grounds Noon, Fairy Night; re-frame W-ember-lane-night (D-090) | life | S | COMPLETED | TASK-511 |
+| TASK-513 | M26 follow-up: obsidian beach as a low black-sand cove (heightfield notch + zone repaint at `obsidianBeach`, decor re-seated), hash re-pin | worldgen | M | TODO | TASK-509c |
+| TASK-514 | M26 follow-up: lava shader polish — soften the bullseye delta foam rings, blend the channel start into the crater glow at the notch | shader | S | IN PROGRESS | TASK-509c |
+| TASK-515 | M26 follow-up: crater-deck couple (2-bot tableau on the two seats; DevOps tableau cap 6 → 7) | life | S | TODO | TASK-509c |
+
+### M27 — Marketing signature (Cable Carnival)
+*D-094: D-059 direction A + D-062 R3-15 (ON AIR neon, fair stays on ledge2, diving tower 1 def, cap 11). Study `mar-plans/study/marketing-research.md` §1 (M1, M3, M4, M13, wow §1.4).*
+
+| ID | Task | Agent | Complexity | Status | Dependencies |
+|----|------|-------|-----------|--------|-------------|
+| TASK-516 | Beacon Rock anchors (pure data): the three sea stacks as stations (stack 1 transmitter top, stack 2 sea-facing billboard face, stack 3 dive platform + splash pool), cable-car line summit lip → stacks with pylon sites, windward cliff-face neon anchor (normal from `Zone.cliff` + SDF gradient); 30-seed anchor tests | worldgen | M | IN PROGRESS | — |
+| TASK-517 | Marketing M27 props: gondola cars + pylon (`mailLine` gondola variant, red / cream), sea-facing `billboardV2` variant (slides surface), vertical ON AIR letters (`marqueeSign` v3, glyphs), `diveTower` def (tier 2, cap 10 → 11), stack-top transmitter (`antennaTower` variant); hooks for movers | props | M | IN PROGRESS | — |
+| TASK-518 | M27 placement + motion: cable line + 3 gondolas (1.6 u/s, 3° gust sway), billboard slides, ON AIR letters light in sequence at 19:00 (0.4 s), diver every 40 s (parabola + splash ring); wow Cable Dusk + On-Air Rock (study §1.4); hash re-pin | worldgen + life | L | TODO | TASK-516, TASK-517 |
+| TASK-519 | Shots + QA for M26 / M27: wow + ladder low / medium `--assert`, QA report | qa | S | TODO | TASK-518 |
 
 ### M17 — Graphics II: decor & nature
 *Flower fields, fences, lanterns, benches, signs, rocks*
