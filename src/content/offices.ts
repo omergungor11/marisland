@@ -11,6 +11,7 @@
 import type { LotKind, ThemeId } from '../world/types.ts';
 import { COOLING_TOWER_HEIGHTS, DEVOPS_WORKS } from './props-themes/devops.ts';
 import { QA_FACTORY } from './themes/qa.ts';
+import { KILN_CHIMNEY } from './themes/devops-m26-site.ts';
 
 export interface OfficeDef {
   theme: ThemeId;
@@ -400,6 +401,8 @@ export const FIXTURE_EMITTERS: Readonly<Record<string, readonly (readonly Emitte
   // Glass & Light hot shop (TASK-425): smoke off the copper stack top, every heat variant (geo
   // hook culture-design.ts hotShop `userData.hooks.emitter`)
   hotShop: [[{ x: -0.7, y: 2.68, z: -0.58, preset: 'chimney' }]],
+  // DevOps lava-glass kiln (TASK-509c, D17): smoke off the chimney top (glassKiln `smoke` hook)
+  glassKiln: [[{ ...KILN_CHIMNEY, preset: 'chimney' }]],
   // Star Academy mini volcano terrariums (TASK-426): steam from the crater (geo hook
   // culture-research.ts miniVolcanoTerrarium `userData.hooks.emitter`, per variant)
   miniVolcanoTerrarium: [

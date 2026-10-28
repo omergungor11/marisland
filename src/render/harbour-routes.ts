@@ -115,15 +115,30 @@ export function pierLoop(h: Heightfield, root: XZ, dir: XZ, length: number): Loo
 /** Smooth 0 → 1 with zero speed at both ends (mean speed 1). */
 const ease = (x: number): number => x - Math.sin(2 * Math.PI * x) / (2 * Math.PI);
 
-/** Ship `k` of `n` on loop `L` at `time`: stop at s0 for `dwell`, then one eased lap. */
-export function shipPose(L: Loop, time: number, k: number, n: number): Pose {
+/** Arc length of ship `k` of `n` on loop `L` at `time`: stop at s0 for `dwell`, then one eased lap. */
+export function shipArc(L: Loop, time: number, k: number, n: number): number {
   const S = M.ship;
   const lap = (L.P / S.speed) * 1.15;
   const T = lap + S.dwell;
   let u = (time + (k * T) / n) % T;
   if (u < 0) u += T;
-  const s = u < S.dwell ? L.s0 : L.s0 + L.P * ease((u - S.dwell) / lap);
-  return loopPose(L, s);
+  return u < S.dwell ? L.s0 : L.s0 + L.P * ease((u - S.dwell) / lap);
+}
+
+/** Ship `k` of `n` on loop `L` at `time` (see `shipArc`). */
+export function shipPose(L: Loop, time: number, k: number, n: number): Pose {
+  return loopPose(L, shipArc(L, time, k, n));
+}
+
+/**
+ * The DevOps tug (TASK-509c, D18) escorting the first cargo ship of loop `L`: `lead` u ahead of its
+ * centre and `side` u to the inside of the loop (seaward of the berth: it waits off the ship's bow
+ * while the ship lies at the pier head, then takes it round, off the other ship's lane).
+ */
+export function tugPose(L: Loop, time: number, lead: number, side: number): Pose {
+  const p = loopPose(L, shipArc(L, time, 0, M.ship.perDock) + lead);
+  // the loop turns toward +f from +t: its inside is (hz, −hx) everywhere
+  return { x: p.x + p.hz * side, z: p.z - p.hx * side, hx: p.hx, hz: p.hz };
 }
 
 /**

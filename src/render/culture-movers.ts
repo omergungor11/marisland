@@ -26,7 +26,8 @@ import { RESEARCH_M22 } from '../content/props-themes/research.ts';
 import { lotYaw } from '../world/lot-frame.ts';
 import { DEVOPS_MOVERS } from '../content/themes/devops.ts';
 import { DOCK } from '../content/settlements.ts';
-import { pierLoop, shipPose } from './harbour-routes.ts';
+import { pierLoop, shipPose, tugPose, type Loop } from './harbour-routes.ts';
+import { DEVOPS_M26_MOTION, KILN_MOUTH, TUG_FUNNEL } from '../content/themes/devops-m26-site.ts';
 import type { PlacedPuffs } from './particles/puffs.ts';
 import { QA_PROVING, QA_PROVING_MOTION } from '../content/themes/qa-proving.ts';
 import { QA_FACTORY, QA_MOVERS } from '../content/themes/qa.ts';
@@ -1275,6 +1276,57 @@ function switchbackScene(
   };
 }
 
+/**
+ * D17 glass kiln (TASK-509c): at night the furnace mouth breathes a warm glow (two incommensurate
+ * sines on a hashed phase; reduced motion holds it). Kiln frame.
+ */
+function kilnScene(phase: number): Scene['run'] {
+  const K = DEVOPS_M26_MOTION.kiln;
+  const at: V3 = [KILN_MOUTH.x, KILN_MOUTH.y, KILN_MOUTH.z];
+  const tau = Math.PI * 2;
+  return (w, c) => {
+    if (c.night <= 0.05) return;
+    const b =
+      0.5 +
+      c.motion *
+        (0.3 * Math.sin((c.time * tau) / K.period[0] + phase * tau) +
+          0.2 * Math.sin((c.time * tau) / K.period[1] + phase * 11.3));
+    w.put(PART.glow, at, [0, 0, 0], (K.r[0] + (K.r[1] - K.r[0]) * b) * c.night, K.color);
+  };
+}
+
+/**
+ * D18 tug smoke (TASK-509c): `n` puffs born at the funnel top one after another, each left where the
+ * funnel was when it was born (the tug's closed-form pose, harbour-routes.ts `tugPose`), rising and
+ * drifting downwind as it swells and thins. World frame.
+ */
+function tugSmokeScene(L: Loop): Scene['run'] {
+  const S = DEVOPS_M26_MOTION.tugSmoke;
+  const T = DEVOPS_M26_MOTION.tug;
+  const step = S.life / S.n;
+  return (w, c) => {
+    const k0 = Math.floor(c.time / step);
+    for (let j = 0; j < S.n; j++) {
+      const born = (k0 - j) * step;
+      const u = (c.time - born) / S.life;
+      if (u <= 0 || u >= 1) continue;
+      const p = tugPose(L, born, T.lead, T.side);
+      const r = rnd(k0 - j, 7, 509);
+      const drift = S.drift * u * (0.5 + 0.7 * c.wind.s);
+      w.puff(
+        [
+          p.x + p.hx * TUG_FUNNEL.z + c.wind.x * drift + (r - 0.5) * 0.3,
+          TUG_FUNNEL.y - T.draft + S.rise * u * (0.8 + 0.4 * r),
+          p.z + p.hz * TUG_FUNNEL.z + c.wind.z * drift,
+        ],
+        S.size[0] + (S.size[1] - S.size[0]) * Math.sqrt(u),
+        S.opacity * smooth(u / 0.12) * (1 - u),
+        S.edge,
+      );
+    }
+  };
+}
+
 /* ------------------------------------ the view ------------------------------------ */
 
 export interface CultureMoversView {
@@ -1334,6 +1386,7 @@ export function createCultureMovers(
     customs: defOf('customsYard'),
     kite: defOf('kite'),
     geyser: defOf('geyserCone'),
+    kiln: defOf('glassKiln'),
   };
   const beams: Beam[] = [];
   const beamAnchors: { x: number; y: number; z: number }[] = [];
@@ -1447,6 +1500,18 @@ export function createCultureMovers(
           [...DEVOPS_M25_MOTION.hammer.anvil],
           6 + DEVOPS_M25_MOTION.hammer.sparks.n,
           smithScene(phaseAt(store.x[i], store.z[i], 0x5317)),
+        ),
+      );
+    else if (d === D.kiln)
+      // M26 TASK-509c (D17): the furnace mouth glow at night
+      scenes.push(
+        sceneAt(
+          th,
+          pv(),
+          store.rotY[i],
+          [KILN_MOUTH.x, KILN_MOUTH.y, KILN_MOUTH.z],
+          1,
+          kilnScene(phaseAt(store.x[i], store.z[i], 0x6b11)),
         ),
       );
     else if (d === D.geyser)
@@ -1727,6 +1792,18 @@ export function createCultureMovers(
       sc.pivot = null;
       scenes.push(sc);
     }
+    // TASK-509c (D18): the smoke of the tug leading ship 0 (movers.ts draws the tug)
+    const smoke = sceneAt(
+      'devops',
+      new THREE.Matrix4(),
+      0,
+      mid,
+      0,
+      tugSmokeScene(L),
+      DEVOPS_M26_MOTION.tugSmoke.n,
+    );
+    smoke.pivot = null;
+    scenes.push(smoke);
   }
 
   const meshes: THREE.InstancedMesh[] = [];

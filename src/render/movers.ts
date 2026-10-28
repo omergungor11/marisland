@@ -16,7 +16,10 @@ import { cartFrame, newCartFrame, trackPath } from '../geo/themes/qa-track.ts';
 import { crashPath, landingSquash } from '../geo/themes/qa-crash.ts';
 import { SHARED } from './uniforms.ts';
 import { makeDepthMaterial, makeLitMaterial } from './materials/factory.ts';
-import { pierLoop, shipPose, trainAt, type Loop } from './harbour-routes.ts';
+import { pierLoop, shipPose, trainAt, tugPose, type Loop } from './harbour-routes.ts';
+import { buildProp } from '../geo/index.ts';
+import { DEVOPS_M26 } from '../content/themes/devops-m26.ts';
+import { DEVOPS_M26_MOTION } from '../content/themes/devops-m26-site.ts';
 import { createDevopsLines, type DevopsLinesView } from './devops-lines.ts';
 
 /**
@@ -39,6 +42,8 @@ export interface MoversView {
   mesh: THREE.InstancedMesh | null;
   /** Cargo ships (null when no DevOps pier has a loop in water). */
   ships: THREE.InstancedMesh | null;
+  /** DevOps tugs leading the first ship of each loop (TASK-509c; null with the ships). */
+  tugs: THREE.InstancedMesh | null;
   /** Ferris wheel rotors; null when the world has no ferris wheel. */
   wheels: THREE.InstancedMesh | null;
   /** DevOps M25 funicular cars + ore buckets (TASK-507, render/devops-lines.ts); null without a world. */
@@ -197,6 +202,7 @@ export function createMovers(
       mesh: null,
       wheels: wheels.mesh,
       ships: ships?.mesh ?? null,
+      tugs: ships?.tugs ?? null,
       lines,
       update: (t, c) => {
         wheels.update(t);
@@ -278,7 +284,14 @@ export function createMovers(
   update(0, centres[0]);
   mesh.computeBoundingSphere();
   if (mesh.boundingSphere) mesh.boundingSphere.radius += 8;
-  return { mesh, wheels: wheels.mesh, ships: ships?.mesh ?? null, lines, update };
+  return {
+    mesh,
+    wheels: wheels.mesh,
+    ships: ships?.mesh ?? null,
+    tugs: ships?.tugs ?? null,
+    lines,
+    update,
+  };
 }
 
 /** Cargo ships (TASK-405): `perDock` per DevOps pier whose loop lies in water. */
@@ -286,7 +299,11 @@ function createShips(
   world: WorldData,
   quality: Quality,
   scope: Scope,
-): { mesh: THREE.InstancedMesh; update(time: number, camPos: THREE.Vector3): void } | null {
+): {
+  mesh: THREE.InstancedMesh;
+  tugs: THREE.InstancedMesh;
+  update(time: number, camPos: THREE.Vector3): void;
+} | null {
   const S = DEVOPS_MOVERS.ship;
   const loops: Loop[] = [];
   for (const d of world.docks) {
@@ -310,6 +327,15 @@ function createShips(
   mesh.castShadow = quality !== 'low';
   mesh.customDepthMaterial = scope.add(makeDepthMaterial(features, mat.fade));
   scope.add(mesh);
+  // TASK-509c (D18): one tug per loop (sailboat v9: bow +z, keel at y 0), same program
+  const TG = DEVOPS_M26_MOTION.tug;
+  const tugGeo = scope.add(buildProp('sailboat', world.seed, DEVOPS_M26.tug.variant, 0));
+  tugGeo.translate(0, -TG.draft, 0);
+  const tugs = new THREE.InstancedMesh(tugGeo, mat, loops.length);
+  tugs.name = 'tugs';
+  tugs.castShadow = mesh.castShadow;
+  tugs.customDepthMaterial = mesh.customDepthMaterial;
+  scope.add(tugs);
   const centres = loops.map(
     (L) =>
       new THREE.Vector3(
@@ -321,6 +347,7 @@ function createShips(
   const update = (time: number, camPos: THREE.Vector3): void => {
     const far = DEVOPS_MOVERS.fadeFar + 20;
     mesh.visible = centres.some((c) => c.distanceToSquared(camPos) < far * far);
+    tugs.visible = mesh.visible;
     if (!mesh.visible) return;
     loops.forEach((L, li) => {
       for (let k = 0; k < S.perDock; k++) {
@@ -332,11 +359,21 @@ function createShips(
         _l.makeBasis(_x, _y, _z).setPosition(_p);
         mesh.setMatrixAt(li * S.perDock + k, _l);
       }
+      const p = tugPose(L, time, TG.lead, TG.side);
+      _x.set(p.hz, 0, -p.hx);
+      _y.set(0, 1, 0);
+      _z.set(p.hx, 0, p.hz);
+      _p.set(p.x, TG.bob * Math.sin(time * 1.7 + li), p.z);
+      _l.makeBasis(_x, _y, _z).setPosition(_p);
+      tugs.setMatrixAt(li, _l);
     });
     mesh.instanceMatrix.needsUpdate = true;
+    tugs.instanceMatrix.needsUpdate = true;
   };
   update(0, centres[0]);
-  mesh.computeBoundingSphere();
-  if (mesh.boundingSphere) mesh.boundingSphere.radius += S.straight + S.turnR * 2;
-  return { mesh, update };
+  for (const m of [mesh, tugs]) {
+    m.computeBoundingSphere();
+    if (m.boundingSphere) m.boundingSphere.radius += S.straight + S.turnR * 2;
+  }
+  return { mesh, tugs, update };
 }
