@@ -10,6 +10,25 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-28 (TASK-509c, M26 placed + moving; D-093; TASK-509 done)**: `world/gen/plans/devops-m26.ts` (after `placeM25`;
+  `finish` after the funicular, before the road lanterns), numbers `content/themes/devops-m26-site.ts`. Lava bed =
+  `world.fences` kind `'lava'` + `levels` (render reads it through `lavaFlows`); ONE emberBridge per island, planned
+  (bed blocked for paths except under the deck, both ends linked), pivot in the new `FixtureData.y`; deck slides ≤ 1 u
+  + late earthworks (no pad); kiln rect pad by the lane; obsidian decor on the shelf / bluff; breakwater where its foot
+  is buried, boat routes kept 5.5 u off it (`breakwaterKeepOut`); tug drawn in `render/movers.ts`, escorting cargo ship
+  0 (`harbour-routes.ts tugPose`), smoke + kiln glow in `render/culture-movers.ts`. Shots:
+  `pnpm shots dev --only=D-m26-bridge,D-m26-bridge-night,D-m26-deck,D-m26-kiln-night,D-m26-obsidian,D-m26-tug` (seed
+  1001 raw cams), wow `W-lava-river-dusk`; the 509a lava cams did not need re-aiming (anchors unchanged).
+  - **Gotchas:** existing paths crossed the channel only high on the cone with banks 3.5–6.5 u apart: a level bridge only
+    fits on the apron, so plan it and block the bed (never bridge where a path happens to cross). The groundWriter skips
+    cells within 1.2 u of any non-own shape: the bridge rect must be "own" for the lava carve or the bed stays unscooped
+    under the arch. A pad near the funicular top station bends its rail (test "pivots off the ground" ≤ 6 %): the deck has
+    late earthworks only. The DevOps cargo-ship stadium (`pierLoop`, 40 × 18 u off the pier head) owns the harbour water:
+    any other boat path there crosses it; escort on the same closed form instead. The DevOps island's tableau cap (6
+    bots) is full: a 2-bot story spot appended last is skipped, so the deck has one stargazer.
+  - **Open (509a nits, content-only tuning partly done):** delta steam puffs made smaller (`PUFFS.delta` size 0.8–3.0,
+    rise 6); the delta foam-ring bullseye and the abrupt channel start at the notch are shader work (not done). The
+    obsidian "beach" is still the bluff (no cove carve).
 - **2026-10-28 (TASK-509b, M26 props; D-092)**: defs at the tail of `PROP_DEFS` (`content/props-themes/devops-m26.ts`,
   geometry `geo/themes/devops-m26.ts`, numbers `content/themes/devops-m26.ts`): `emberBridge` v0 foot / v1 rail,
   `craterDeck`, `glassKiln`, `obsidianShard` v0 cluster / v1 stack / v2 pool slab / v3 cairn, `devopsBreakwater` v0 8 u /
