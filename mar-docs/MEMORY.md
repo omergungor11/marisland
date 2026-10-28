@@ -10,6 +10,17 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-28 (TASK-511, HQ growth; D-090)**: `ARCHETYPES.hearthholm.growth` 1.11; `place()` in `gen/layout.ts`
+  steps out only islands whose hub channel falls below minGap, grid-snapped. Seed 1001: only Lonely Palm moved
+  (+4,+4). 36 raw cams re-aimed in `content/shots.ts`; W-funicular-dawn steeper (tris), W15d on the new beacon skerry.
+  - **Gotchas:** zone noise (`zones.ts`) is sampled in WORLD coords, so an island moved even by whole grid cells
+    gets other forest / meadow patches and its planners re-roll (grid-snapping only keeps the heightfield and
+    anchors). Islets are dart-thrown off the island discs: any layout change moves the skerries (and the
+    beacon skerry W15d frames). The cove's `flattest` search is in absolute u: scale it with any HQ size change or
+    the cove eats the hill. Re-aim tool idea: match the old / new HQ features (fixtures, lots, landmarks) near
+    each cam target and move the cam by their median shift; non-HQ islands move by their centre delta.
+  - **Watch:** TASK-511 widened five per-seed test bounds (seeds 186, 334, 593, 4682, 7312, 6523 named in the
+    tests): planner robustness follow-up if the user wants them back. Medium memory peak now 169 / 170 MB (W4, W27).
 - **2026-10-27 SESSION HANDOVER (orchestrator)**: merged to `main` this session, in order: 501, 506, 505, 497, 503,
   504, 508, 498, 507. M24 dev tasks (497–501) are all done; M25 DevOps I (503, 504, 507), M29 HQ marina (505) and
   M30 QA customs port (506, 508) are built and placed. Plan decisions D-080 (DevOps all directions + growth),

@@ -354,7 +354,7 @@ Details in `phases/phase-3.md`.
 | TASK-508 | QA customs port placement + motion: ship route under the arch, crane unload, inspection ✓/✗, rejects to pontoons; Customs Noon preset | worldgen + life | L | COMPLETED (D-087) | TASK-501, TASK-506 |
 | TASK-509 | M26 DevOps II: lava river (ground emissive), lava fall + steam delta, ember bridge, crater deck, lava-glass kiln, obsidian beach, breakwater + tug | shader + props + worldgen | L | TODO | TASK-507, TASK-511 |
 | TASK-510 | Shots + QA for M25 / M29 / M30: wow presets, ladder low + medium `--assert`, QA report | qa | S | COMPLETED 187eefb (D-090) | TASK-505, TASK-507, TASK-508 |
-| TASK-511 | HQ grows ~20–25 % so it reads clearly largest in W1 (Emberpeak + TASK-503/507 anchors untouched); layout fit, re-pin hashes, re-aim raw cams that moved (D-090) | worldgen | M | TODO | TASK-510 |
+| TASK-511 | HQ grows ~20–25 % so it reads clearly largest in W1 (Emberpeak + TASK-503/507 anchors untouched); layout fit, re-pin hashes, re-aim raw cams that moved (D-090) | worldgen | M | COMPLETED | TASK-510 |
 | TASK-512 | Wow presets Kite Hill Afternoon, Proving Grounds Noon, Fairy Night; re-frame W-ember-lane-night (D-090) | life | S | TODO | TASK-511 |
 
 ### M17 — Graphics II: decor & nature
