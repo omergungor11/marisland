@@ -54,8 +54,8 @@ export const DEVOPS_M25 = {
     pitchRef: 0.45,
     cabin: { w: 1.4, h: 1.45, d: 1.95, z: 1.15 },
     livery: [
-      { body: M25_PAL.orange, roof: M25_PAL.cream, stripe: M25_PAL.iron },
-      { body: M25_PAL.teal, roof: M25_PAL.cream, stripe: M25_PAL.iron },
+      { body: M25_PAL.red, roof: M25_PAL.orangeDeep, stripe: M25_PAL.iron },
+      { body: M25_PAL.teal, roof: M25_PAL.orange, stripe: M25_PAL.iron },
     ] as const,
   },
   /** D13 ore cableway: mailLine variants 2 (mid-line pylon) and 3 (furnace station) + the bucket def. */
