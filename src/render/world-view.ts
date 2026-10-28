@@ -44,6 +44,7 @@ import { createWhale, type WhaleView } from './whale.ts';
 import { createSkyCraft } from './sky-craft.ts';
 import { createWaterfalls } from './waterfalls.ts';
 import { createMailCables } from './mail-lines.ts';
+import { cableLoops } from '../world/cable-car.ts';
 import type { DirtyRegion } from '../world/edit-types.ts';
 import type { SubImageRenderer } from './gl-subimage.ts';
 import { createPropMirror, type PropMirror } from './props/prop-mirror.ts';
@@ -209,6 +210,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   if (movers.ships) group.add(movers.ships);
   if (movers.tugs) group.add(movers.tugs);
   if (movers.lines) group.add(movers.lines.group);
+  if (movers.beacon) group.add(movers.beacon.group);
   const cultureMovers = createCultureMovers(settlement.props, world, d.scope);
   group.add(cultureMovers.group);
   const whale = createWhale(world, seed, d.scope);
@@ -274,9 +276,10 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   const pm = createPropMaterials(d.scope);
   // HQ mail line cables (TASK-466): one static merged mesh on the props' merged-twin material
   const cables = d.propMaterial
-    ? { mesh: null }
-    : createMailCables(settlement.props, seed, d.scope, pm);
+    ? { mesh: null, beacon: null }
+    : createMailCables(settlement.props, seed, d.scope, pm, cableLoops(world.islands));
   if (cables.mesh) group.add(cables.mesh);
+  if (cables.beacon) group.add(cables.beacon);
   const props = createPropBatcher(scatter.props, {
     scope: d.scope,
     seed,

@@ -40,6 +40,8 @@ import { DEVOPS_M25 } from '../content/themes/devops-m25.ts';
 import { DEVOPS_M25_MOTION, DEVOPS_M25_SITE } from '../content/themes/devops-m25-site.ts';
 import { carPose, newCarPose, type RailLine } from '../world/funicular.ts';
 import { funicularRails } from './devops-lines.ts';
+import { MARKETING_M27 } from '../content/themes/marketing-m27.ts';
+import { MARKETING_M27_MOTION } from '../content/themes/marketing-m27-site.ts';
 
 /**
  * Culture movers (M19 TASK-431): closed-form scenes that make each island culture visibly alive.
@@ -1327,6 +1329,134 @@ function tugSmokeScene(L: Loop): Scene['run'] {
   };
 }
 
+/**
+ * M13 diver (TASK-518, MK:M13): every `period` s a bot climbs the dive tower's ladder, walks out to
+ * the board tip, bounces, leaps and falls on a parabola into the pool (local +z `poolZ`, the
+ * sea at local y `waterY`), turning head first; rings spread and droplets fly where it went in
+ * (the fish-jump splash: rings + 4 drops), then it swims back toward the stack, fading. Tower
+ * frame; closed form in the sim time (MARKETING_M27_MOTION.diver).
+ */
+function diverScene(poolZ: number, waterY: number, phase: number): Scene['run'] {
+  const D = MARKETING_M27_MOTION.diver;
+  const T = MARKETING_M27.dive;
+  const hd = T.deck / 2;
+  const tipZ = hd - T.board.from + T.board.len - 0.2;
+  const tipY = T.deckY + 0.22 + T.board.rise + 0.05;
+  const ladder0: V3 = [0, 0.22, T.ladder.z - 0.32];
+  const ladder1: V3 = [0, T.deckY, -hd + 0.15];
+  const vy = Math.sqrt(2 * D.gravity * D.lift);
+  // flight time to the water: tipY + vy t − g t² / 2 = waterY
+  const fall = tipY - waterY;
+  const flight = (vy + Math.sqrt(vy * vy + 2 * D.gravity * fall)) / D.gravity;
+  const t1 = D.climb;
+  const t2 = t1 + D.walk;
+  const t3 = t2 + D.bounce;
+  const t4 = t3 + flight;
+  const S = D.splash;
+  return (w, c) => {
+    if (c.hour < D.hours[0] || c.hour >= D.hours[1]) return;
+    const u = (((c.time / D.period + phase) % 1) + 1) % 1;
+    const t = u * D.period;
+    const m = c.motion;
+    if (t < t3) {
+      // ladder → deck → board → bounces
+      let p: V3;
+      let pitch = 0;
+      if (t < t1) {
+        const f = t / t1;
+        const step = 0.06 * m * Math.abs(Math.sin(f * Math.PI * 9));
+        p = [
+          ladder0[0],
+          ladder0[1] + (ladder1[1] - ladder0[1]) * f + step,
+          ladder0[2] + (ladder1[2] - ladder0[2]) * f,
+        ];
+        pitch = -0.15;
+      } else if (t < t2) {
+        const f = smooth((t - t1) / D.walk);
+        const z = ladder1[2] + (tipZ - ladder1[2]) * f;
+        const y =
+          z > hd - T.board.from
+            ? T.deckY + 0.22 + T.board.rise * ((z - hd + T.board.from) / T.board.len)
+            : T.deckY;
+        p = [0, y + 0.05 * m * Math.abs(Math.sin((t - t1) * 9)), z];
+      } else {
+        const f = (t - t2) / D.bounce;
+        p = [0, tipY + 0.28 * m * Math.abs(Math.sin(f * Math.PI * D.bounces)), tipZ];
+      }
+      const sc = D.scale * (t < 0.4 ? easeOutBack(t / 0.4) : 1);
+      w.put(PART.keeper, p, [pitch, 0, 0], sc, D.colour);
+      return;
+    }
+    if (t < t4) {
+      // the leap: forward to the pool centre, up `lift`, down head first
+      const tf = t - t3;
+      const f = tf / flight;
+      const y = tipY + vy * tf - 0.5 * D.gravity * tf * tf;
+      const z = tipZ + (poolZ - tipZ) * f;
+      // tuck forward through the fall: feet first at take-off, head first at the water
+      const pitch = Math.PI * smooth(f * 1.15);
+      // the keeper's centre (~0.6 u up) is the turning point
+      const h = 0.6 * D.scale;
+      w.put(
+        PART.keeper,
+        [0, y + h - Math.cos(pitch) * h, z - Math.sin(pitch) * h],
+        [pitch, 0, 0],
+        D.scale,
+        D.colour,
+      );
+      return;
+    }
+    // splash rings and droplets at the pool centre, then a swim back fading
+    const ts = t - t4;
+    if (ts < S.life) {
+      const ph0 = ts / S.life;
+      for (let k = 0; k < S.rings; k++) {
+        const ph = ph0 - k * 0.22;
+        if (ph < 0) continue;
+        const r = S.r0 + (S.r1 - S.r0) * Math.sqrt(ph);
+        w.put(
+          PART.ring,
+          [0, waterY + 0.06, poolZ],
+          [0, 0, 0],
+          [r, r * Math.max(0.2, 1 - ph), r],
+          S.colour,
+        );
+      }
+      for (let k = 0; k < S.drops; k++) {
+        const a = (k / S.drops) * Math.PI * 2 + phase * 6.28;
+        const tt = ts * 1.4;
+        const y = waterY + S.up * tt - 0.5 * D.gravity * tt * tt;
+        if (y < waterY) continue;
+        const rr = 0.9 * tt * 1.6;
+        w.put(
+          PART.blob,
+          [Math.cos(a) * rr, y, poolZ + Math.sin(a) * rr],
+          [0, 0, 0],
+          0.09,
+          S.colour,
+        );
+      }
+    }
+    const tw = ts - S.life * 0.5;
+    if (tw > 0 && tw < D.swim) {
+      const f = tw / D.swim;
+      const sc = D.scale * (1 - smooth((f - 0.6) / 0.4));
+      if (sc > 0.01)
+        w.put(
+          PART.keeper,
+          [
+            0.25 * m * Math.sin(tw * 3),
+            waterY - 0.85 * D.scale + 0.04 * m * Math.sin(tw * 5),
+            poolZ - 1.6 * f,
+          ],
+          [0, Math.PI, 0],
+          sc,
+          D.colour,
+        );
+    }
+  };
+}
+
 /* ------------------------------------ the view ------------------------------------ */
 
 export interface CultureMoversView {
@@ -1387,6 +1517,7 @@ export function createCultureMovers(
     kite: defOf('kite'),
     geyser: defOf('geyserCone'),
     kiln: defOf('glassKiln'),
+    dive: defOf('diveTower'),
   };
   const beams: Beam[] = [];
   const beamAnchors: { x: number; y: number; z: number }[] = [];
@@ -1502,7 +1633,24 @@ export function createCultureMovers(
           smithScene(phaseAt(store.x[i], store.z[i], 0x5317)),
         ),
       );
-    else if (d === D.kiln)
+    else if (d === D.dive) {
+      // M27 TASK-518 (MK:M13): the diver, into the pool straight ahead (the island's divePool)
+      const pool = world.islands[store.islandId[i]]?.anchors.divePool;
+      if (pool) {
+        const sc = store.scale[i] || 1;
+        const poolZ = Math.hypot(pool.x - store.x[i], pool.z - store.z[i]) / sc;
+        scenes.push(
+          sceneAt(
+            th,
+            pv(),
+            store.rotY[i],
+            [0, 3, poolZ / 2],
+            1 + MARKETING_M27_MOTION.diver.splash.rings + MARKETING_M27_MOTION.diver.splash.drops,
+            diverScene(poolZ, -store.y[i] / sc, phaseAt(store.x[i], store.z[i], 0x0d17)),
+          ),
+        );
+      }
+    } else if (d === D.kiln)
       // M26 TASK-509c (D17): the furnace mouth glow at night
       scenes.push(
         sceneAt(
