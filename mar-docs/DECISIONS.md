@@ -29,6 +29,15 @@ fallback the task allowed; not needed at 25°, and it would re-route the whole c
 the view wedge (the old check: 3.2 u on seed 2024 and still overlapped from the side camera). **Residual**: from
 D-m27-gondola's close camera (≈ 52° off the face normal) one thin cable still crosses the letter column; the cabin no
 longer covers it.
+## D-101: TASK-521 star fort stone + TASK-522 sea billboard foot — 2026-10-29
+
+**Decision**: (1) `starFort` body is no longer one cream band: dark plinth, mossy waterline course, three warm sandstone
+courses (CLIFF_STRATA / sand) and a light coping band, merlons warm cream (`STAR_FORT.stoneBands`, data in
+`content/themes/hq-marina.ts`). Tris 1172 / 170 -> 1232 / 210 (LOD0 / LOD1). (2) Sea billboard (`billboardV2` v2) foot:
+a rock-coloured footing block buried behind the rock face plane plus two flared pedestals with steel cap plates and two
+boulders (`seaBoard.foot`). Tris 348 / 94 -> 428 / 110. Placement, footprint and tiers unchanged (world hashes the same).
+**Rationale**: the pale wall read lavender-grey at dusk; the thin slab read as a ledge bracket. The prop contract keeps
+min y >= -0.05, so the "burying" goes backwards into the rock, not down below the pivot.
 
 ## D-100: TASK-519 QA budget calls — medium gpuMemoryMB 170 → 172, L-marketing 60→42 step blob 2.0 %, four small follow-ups (TASK-520–523) — 2026-10-29
 

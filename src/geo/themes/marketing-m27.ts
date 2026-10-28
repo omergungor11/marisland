@@ -368,13 +368,43 @@ function seaBillboard({ rng, lod }: BuildOpts): THREE.BufferGeometry {
   const acc = new Acc();
   const cy = B.y + B.h / 2;
   const px = B.w / 2 - 0.75;
-  put(acc, baseBox(B.w + 0.4, 0.3, B.reach + 0.7), [0, 0, -B.reach / 2 + 0.15], C.plinth, {
-    aoAmt: 0.25,
-  });
-  for (const x of [-px, px])
-    put(acc, cylB(0.17, 0.13, B.y + 0.35, hi ? 8 : 4, true), [x, 0.3, 0], C.deskDark, {
-      aoAmt: 0.2,
-    });
+  // anchored foot: a footing buried in the rock, stout pedestals with steel cap plates, boulders
+  const FT = B.foot;
+  const fd = B.reach + FT.into + FT.front;
+  put(
+    acc,
+    baseBox(B.w + 0.3, FT.sink + FT.top, fd),
+    [0, -FT.sink, (FT.front - B.reach - FT.into) / 2],
+    FT.block,
+    {
+      aoAmt: 0.3,
+    },
+  );
+  const capY = B.y - 0.17 - 0.12;
+  for (const x of [-px, px]) {
+    put(
+      acc,
+      cylB(FT.pedR[0], FT.pedR[1], capY + FT.pedSink, hi ? 6 : 4),
+      [x, -FT.pedSink, -0.1],
+      FT.pedestal,
+      {
+        aoAmt: 0.2,
+      },
+    );
+    if (hi) put(acc, baseBox(1.1, 0.12, 0.7), [x, capY, -0.05], C.steel, { aoAmt: 0.1 });
+  }
+  if (hi)
+    for (const sx of [-1, 1])
+      put(
+        acc,
+        new THREE.IcosahedronGeometry(0.55, 0),
+        [sx * (B.w / 2 + 0.1), 0.5, -0.1],
+        FT.boulder,
+        {
+          q: qEuler(0.4 * sx, 0.7, 0),
+          aoAmt: 0.2,
+        },
+      );
   put(acc, baseBox(B.w + 0.34, B.h + 0.34, 0.2), [0, B.y - 0.17, -0.03], CREAM, { aoAmt: 0.1 });
   const board0 = accVerts(acc);
   put(acc, new THREE.PlaneGeometry(B.w, B.h), [0, cy, 0.085], MK, {

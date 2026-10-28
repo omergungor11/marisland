@@ -5,7 +5,7 @@
  * (world/gen/marina.ts). Defs: content/props-themes/hq-marina.ts. Colours come from the bible
  * palette tables (palette.ts / palette-offices.ts) and the HQ accent; nothing here is logic.
  */
-import { EMISSIVE, GRASS, ROCK, ROOFS, WALLS, WOOD } from '../palette.ts';
+import { CLIFF_STRATA, EMISSIVE, GRASS, ROCK, ROOFS, WALLS, WOOD } from '../palette.ts';
 import { OFFICE_PAL } from '../palette-offices.ts';
 
 const HQ = OFFICE_PAL.hq[0];
@@ -95,6 +95,23 @@ export const STAR_FORT = {
   light: { r: 0.4, color: P.red },
   stone: P.stone,
   stoneEdge: P.stoneLight,
+  /**
+   * Stone of the fort walls (TASK-521, D-101): the plinth under the water, a mossy waterline
+   * course, then warm sandstone courses (`courses`, bottom to top, each up to its wall-height
+   * fraction `t`, colours alternate) and a light coping band under the parapet. Merlons are warm
+   * cream: the pure-white WALLS[1] read lavender-grey at dusk.
+   */
+  stoneBands: {
+    plinth: ROCK[2],
+    moss: '#8FA571',
+    courses: [
+      { t: 0.32, color: CLIFF_STRATA[0] },
+      { t: 0.62, color: '#E6C9A0' },
+      { t: 0.88, color: CLIFF_STRATA[0] },
+    ],
+    coping: WALLS[3],
+    merlon: WALLS[0],
+  },
   slot: ROCK[2],
   roof: P.coral,
   trim: P.blue,

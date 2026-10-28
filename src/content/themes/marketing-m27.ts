@@ -12,6 +12,7 @@
  *   antennaTower  v2 guyed stack transmitter
  * New def: diveTower (tier 2, Marketing ledger 10 -> 11).
  */
+import { CLIFF_STRATA, WALLS } from '../palette.ts';
 import { MEDIA_ROCK } from './marketing.ts';
 
 const K = MEDIA_ROCK.colors;
@@ -83,7 +84,29 @@ export const MARKETING_M27 = {
    * M3 sea billboard (`billboardV2` v2): 6 x 3 u board standing on two short posts at the foot of
    * a rock face and tied back to it. Local z = out to sea, the rock face plane is z = -reach.
    */
-  seaBoard: { variant: 2, w: 6, h: 3, y: 1.55, reach: 1.15 },
+  seaBoard: {
+    variant: 2,
+    w: 6,
+    h: 3,
+    y: 1.55,
+    reach: 1.15,
+    /**
+     * Anchored foot (TASK-522, D-101): a footing block running `into`
+     * u behind the rock face plane (the pivot rule keeps y >= 0), two flared pedestals up to the board, a steel cap plate
+     * on each, and a boulder at either end of the footing.
+     */
+    foot: {
+      sink: 0.05,
+      top: 0.4,
+      into: 0.6,
+      front: -0.4,
+      pedSink: 0.05,
+      pedR: [0.8, 0.36] as const,
+      block: CLIFF_STRATA[0],
+      pedestal: WALLS[0],
+      boulder: CLIFF_STRATA[1],
+    },
+  },
   /**
    * M4 ON AIR neon (`billboardV2` v3): `word` stacked top to bottom, each letter on its own dark
    * plate, a steel spine tied back to the cliff. Letters are separate emissive slots: letter k
