@@ -155,13 +155,13 @@ function windTunnel({ rng, lod }: BuildOpts): THREE.BufferGeometry {
   // blue server light: strips along the floor edges and the ridge (glow mask), no day change
   const Lg = T.light;
   for (const sz of [-1, 1])
-    put(acc, baseBox(L - 0.5, 0.05, 0.14), [0, T.floorY + 0.03, sz * (R - 0.55)], P.server, {
+    put(acc, baseBox(L - 0.5, 0.05, Lg.edgeW), [0, T.floorY + 0.03, sz * (R - 0.55)], P.server, {
       emissive: Lg.edge,
       ao: () => 1,
       aoAmt: 0,
       noJitter: true,
     });
-  put(acc, baseBox(L - 0.6, 0.05, 0.2), [0, T.floorY + R + 0.12, 0], P.server, {
+  put(acc, baseBox(L - 0.6, 0.05, Lg.ridgeW), [0, T.floorY + R + 0.12, 0], P.server, {
     emissive: Lg.ridge,
     ao: () => 1,
     aoAmt: 0,
