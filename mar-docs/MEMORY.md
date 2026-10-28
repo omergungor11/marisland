@@ -40,6 +40,22 @@
   - **Gondolas are movers, never store props**: `mailLine`'s effective tier comes from its first-seen variant (pylons are
     large, so the def is T0); a 2.65 u gondola in the PropStore seen first would turn the whole def tier 2. Build the mover
     mesh with `buildProp('mailLine', seed, 5 | 6, lod)` (culture-m20.test pins v5 / v6 as not large).
+- **2026-10-28 (TASK-516, M27 Beacon Rock anchors; D-095)**: `world/gen/plans/marketing-anchors.ts` runs in the
+  Marketing plan's `finish`; numbers `content/themes/marketing-anchors.ts`. Contract in D-095 / the module header.
+  **For TASK-517 (props):** the line assumes cable seats 6.5 u over the station pivots and 7.5 u over a mid pylon
+  (pivot = ground), gondola floor 2.2 u under the cable; footprints: summit station r 2, far station r 1.5, mid pylon
+  r 0.8, transmitter r 0.8, dive platform r 1.0 (top 5 u over the stack top). Mid pylons are **angle stations** (the
+  line turns 1–115°, median 76°): the head must read from any side. The billboard hangs on a stack face (width 3–7,
+  height 3–6, face up to 2.4 u behind the plane: give it struts / a back frame); the neon column is 2–4 u wide.
+  **For TASK-518 (placement):** read the anchors, never re-search; `beaconCable(isl)` = seats, `cablePoint` = curve
+  (same parabola as mailCablePoint), turns at mid pylons need a pause / corner like the funicular zig-zags. The
+  M22 quick-win transmitter (`antennaTower` v1) still stands on EVERY stack's highest cell: drop it on stacks that
+  carry an M27 pylon / station / dive tower and put the M27 transmitter on the `transmitter` anchor (2-stack seeds
+  have none). If the diver / gondolas need more clearance, change `MARKETING_ANCHORS` (tests read it). Anchors may
+  carry `y` now (optional field on `IslandData.anchors`).
+  - **Gotchas:** measuring cliff faces before `applyPads` is wrong (the tower pad bulges the lip). A boat-route
+    keep-out anywhere re-routes the global tours (seed 7312's breakwater bound widened). The minimap
+    (`world/debug/minimap.ts`) is the only anchor overlay (no 3D one), so no dev shot was added.
 - **2026-10-28 (TASK-509c, M26 placed + moving; D-093; TASK-509 done)**: `world/gen/plans/devops-m26.ts` (after `placeM25`;
   `finish` after the funicular, before the road lanterns), numbers `content/themes/devops-m26-site.ts`. Lava bed =
   `world.fences` kind `'lava'` + `levels` (render reads it through `lavaFlows`); ONE emberBridge per island, planned

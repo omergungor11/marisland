@@ -30,6 +30,53 @@ branch together).
 **Numbers**: tris LOD0 / LOD1: pylon 1064 / 232, gondola 352 / 67 (both liveries), sea billboard 348 / 94, ON AIR 648 / 192,
 guyed mast 848 / 206 (v1 776 / 170), dive tower 992 / 212.
 
+## D-095: Beacon Rock M27 anchors — stack tops, an angle-station cable line, one role per stack, the ON AIR face plane (TASK-516; builds D-059 A / D-062 R3-15 / D-094 on the D-083 anchor pattern) — 2026-10-28
+
+**Decision**: (1) **Stage.** `world/gen/plans/marketing-anchors.ts` (`reserveBeaconAnchors`) runs in the Marketing
+plan's `finish` (pads levelled, footpaths carved), so every earlier Marketing piece keeps its place and the faces it
+measures are the rendered ground. Numbers `content/themes/marketing-anchors.ts` (`MARKETING_ANCHORS`). No rng is drawn;
+no prop, pad or zone is placed. Reserved as non-blocking shapes (scatter keeps off): every stack top disc, the summit
+station disc, a 3 u strip along every span, the pool disc, the billboard / neon rects. `world/index.ts`: boat routes
+keep off the pool (`beaconRouteKeepOut`, pool r + 3; seed 2024's tour ran 2 u from it), seamarks keep off the pool
+and the spans (`beaconSeaKeepOut`). `IslandData.anchors` entries may carry an optional `y` (world u).
+(2) **Contract** (rotY = xz heading (cos, sin); `…Size` = two numbers, not a position):
+- `stackTop{k}` (k = the profile's `stack{k}`): flat-top centre, y = top, rotY = seaward (summit → stack);
+  `stackTop{k}Size` = { x: r, z: r }, r = usable radius (ring within 0.6 u of the top; ≥ 1.2, top ≥ 3).
+- `cable0..N-1` (`anchorChain(isl, 'cable')`): 0 = summit lip station (disc r 2, off the paths, ≥ 7 u from the
+  tower), N-1 = far station on the last stack (footprint r 1.5), between = mid pylons on stack tops (r 0.8).
+  y = pivot ground; **cable seat = y + 6.5 (ends) / + 7.5 (mid)**, sag = span × 0.03 in [0.35, 1.6] (`cablePoint`,
+  the mailCablePoint parabola), gondola hangs 2.2 u. rotY: ends face along the line, a mid pylon = bisector.
+  Clearances checked on the final ground: gondola floor ≥ 6.5 over the sea (boat masts ≤ 6), ≥ 1 over ground /
+  stack tops, ≥ 5 u horizontally off the Broadcast Tower, off summit obstacles; spans ≤ 60, turns ≤ 125°.
+  `beaconCable(isl)` returns the seats.
+- `transmitter` (pivot on a stack top, rotY seaward), ≥ 1.3 u off every span.
+- `seaBillboard` (board-plane centre, y = board centre, rotY = outward normal) + `seaBillboardSize` { x: width,
+  z: height }; the stack face lies 0…2.4 u behind the plane over the board.
+- `diveTower` (platform pivot on the top rim, rotY → pool, ≥ 1.8 u off every span) + `divePool` (centre, y = 0)
+  + `divePoolSize` { x: radius 2.5, z: shallowest seabed depth }; pool 4–9 u out, ≥ 50° off the span headings.
+  `platformH` 5 is the contract dive height over the stack top.
+- `onAir` (letter-column plane centre on the windward cliff, y = column centre, rotY = outward normal from the
+  shore-SDF gradient) + `onAirSize` { x: width, z: vertical extent ≥ 4 × 1.4 + 2 × 0.4 = 6.4 }; cliff 0…2.5 u
+  behind the plane, nothing poking through, ≥ 60 % Zone.cliff, ≥ 4 u off the first span, heading nearest
+  windward − 40° (the W4 side).
+(3) **Line shape.** The 2–4 stacks sit in a ±43° fan round the windward side, so a line "over the stacks" sweeps
+along the arc: chain = the most stacks that clear, smoothest order (total turn) first; mid pylons are **angle
+stations** (30 seeds: turn median 76°, max 115°). (4) **Roles**, one stack each: most roles, the billboard
+preferably on the far station's stack (its top is free for the station), the dive tower off it; a stack top holds
+its pylon and its role prop side by side. With only 2 stacks the transmitter is the one left out.
+**Numbers (30 test seeds)**: cable 30 / 30 (≥ 2 stacks on 28; 77 of 83 stack tops on the line), billboard 30 / 30,
+dive tower + pool 29 / 30 (5208: 2 stacks, no deep pool), ON AIR 30 / 30 (extent 6.4–8.9 u, width 2–4 u),
+transmitter 21 / 22 seeds with ≥ 3 stacks (0 / 8 two-stack seeds); stack tops 83 / 83. Seeds 1–40: cable 40,
+billboard 40, dive 39, neon 40. Gondola floor margin min 0.6 u, pool depth 2.0–2.6 u. Cost ≈ 7 ms per world.
+World hashes re-pinned (1001 `91698eee39027f56`, 1 `e9ac9ccdc8e865c6`); the pool keep-out re-routes the global
+tours, so the DevOps breakwater route bound is 1.5 → 2 u for seed 7312 only.
+**Rationale**: the D-083 pattern (scored ordered searches, reserved shapes, anchors) lets TASK-517 / 518 build on
+fixed sites; running in `finish` was needed because the tower's pad bulges the cliff lip after the plan (seed 6523's
+neon plane had rock in front of it when measured before the pads).
+**Alternatives not taken**: a monotonic outward chain (most seeds kept 1 stack, the fan forces the turn); `maxTurn`
+80° (same); measuring before the pads (wrong faces); no route keep-out (a tour within 3.2 u of the pool centre on 6 / 31
+seeds, the wow seed among them).
+
 ## D-094: M27 Marketing signature plan (Cable Carnival) + M26 follow-ups — plan only — 2026-10-28
 
 - **M27 scope** (from D-059 direction A and D-062 R3-15, no new user decision needed): `MK:M1` cable car (gondola

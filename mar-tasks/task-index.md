@@ -368,7 +368,7 @@ Details in `phases/phase-3.md`.
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-516 | Beacon Rock anchors (pure data): the three sea stacks as stations (stack 1 transmitter top, stack 2 sea-facing billboard face, stack 3 dive platform + splash pool), cable-car line summit lip → stacks with pylon sites, windward cliff-face neon anchor (normal from `Zone.cliff` + SDF gradient); 30-seed anchor tests | worldgen | M | IN PROGRESS | — |
+| TASK-516 | Beacon Rock anchors (pure data): the three sea stacks as stations (stack 1 transmitter top, stack 2 sea-facing billboard face, stack 3 dive platform + splash pool), cable-car line summit lip → stacks with pylon sites, windward cliff-face neon anchor (normal from `Zone.cliff` + SDF gradient); 30-seed anchor tests | worldgen | M | COMPLETED (D-095) | — |
 | TASK-517 | Marketing M27 props: gondola cars + pylon (`mailLine` gondola variant, red / cream), sea-facing `billboardV2` variant (slides surface), vertical ON AIR letters (`billboardV2` v3 instead of `marqueeSign` v3, tier hazard, D-096), `diveTower` def (tier 2, cap 10 → 11), stack-top transmitter (`antennaTower` variant); hooks for movers | props | M | COMPLETED (D-096) | — |
 | TASK-518 | M27 placement + motion: cable line + 3 gondolas (1.6 u/s, 3° gust sway), billboard slides, ON AIR letters light in sequence at 19:00 (0.4 s), diver every 40 s (parabola + splash ring); wow Cable Dusk + On-Air Rock (study §1.4); hash re-pin | worldgen + life | L | TODO | TASK-516, TASK-517 |
 | TASK-519 | Shots + QA for M26 / M27: wow + ladder low / medium `--assert`, QA report | qa | S | TODO | TASK-518 |

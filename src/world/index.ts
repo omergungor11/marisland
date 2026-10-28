@@ -25,6 +25,7 @@ import { buildSettlements, markSites } from './gen/settlements.ts';
 import { buildRoutes } from './gen/routes.ts';
 import { portKeepOut } from './gen/customs-port.ts';
 import { breakwaterKeepOut } from './gen/plans/devops-m26.ts';
+import { beaconRouteKeepOut, beaconSeaKeepOut } from './gen/plans/marketing-anchors.ts';
 import { carveReefGaps, planReefs, raiseReefs, reefWeights } from './gen/reefs.ts';
 import { placeSeamarks } from './gen/seamarks.ts';
 import { placeMarina } from './gen/marina.ts';
@@ -212,7 +213,12 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
       docks: sites.docks,
       reefs: reefField,
       // TASK-509c: and no route through the DevOps breakwater
-      keepOut: [...portKeepOut(islands), ...breakwaterKeepOut(sites.fixtures)],
+      // TASK-516: and none through the Beacon Rock dive pool
+      keepOut: [
+        ...portKeepOut(islands),
+        ...breakwaterKeepOut(sites.fixtures),
+        ...beaconRouteKeepOut(islands),
+      ],
     },
     root.fork('routes'),
   );
@@ -234,7 +240,8 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
       docks: sites.docks,
       routes: boatRoutes,
       windDir,
-      reserved: marina.reserved,
+      // TASK-516: and off the Beacon Rock dive pool and cable spans
+      reserved: [...marina.reserved, ...beaconSeaKeepOut(islands)],
     },
     root.fork('seamarks'),
   );

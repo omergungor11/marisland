@@ -102,9 +102,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "9eb09d2ac2e4e4fa",
-          "1001": "5f6f76cca23f75d7",
-          "42": "50649f1e85335816",
+          "1": "6a5dc21eaf7ec258",
+          "1001": "8d5d5236103a0b2e",
+          "42": "c06523d2840da6ed",
         }
       `);
     },
@@ -578,8 +578,9 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // TASK-507 DevOps M25 placement (funicular + earthworks, cableway, lane, onsen town, geysers), re-pinned
       // TASK-511 HQ growth × 1.11 (Lonely Palm steps out 4,4 on 1001), re-pinned
       // TASK-509c DevOps M26 (lava bed + bridge, deck, kiln, obsidian, breakwater + route keep-out), re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('ca2196116a8f94c7');
-      expect(generateWorld(1).hashes.world).toBe('69eeb588528e1744');
+      // TASK-516 Beacon Rock M27 anchors (reserved stack tops / station / spans, pool route keep-out), re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('91698eee39027f56');
+      expect(generateWorld(1).hashes.world).toBe('e9ac9ccdc8e865c6');
     } finally {
       for (const b of saved) b.on = true;
     }
