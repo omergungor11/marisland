@@ -27,7 +27,7 @@
     any other boat path there crosses it; escort on the same closed form instead. The DevOps island's tableau cap (6
     bots) is full: a 2-bot story spot appended last is skipped, so the deck has one stargazer.
   - **Open (509a nits, content-only tuning partly done):** delta steam puffs made smaller (`PUFFS.delta` size 0.8–3.0,
-    rise 6); the delta foam-ring bullseye and the abrupt channel start at the notch are shader work (not done). The
+    rise 6); the delta bullseye and the abrupt channel start were fixed in TASK-514 (D-091 bullet). The
     obsidian "beach" is still the bluff (no cove carve).
 - **2026-10-28 (TASK-509b, M26 props; D-092)**: defs at the tail of `PROP_DEFS` (`content/props-themes/devops-m26.ts`,
   geometry `geo/themes/devops-m26.ts`, numbers `content/themes/devops-m26.ts`): `emberBridge` v0 foot / v1 rail,

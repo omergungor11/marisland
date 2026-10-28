@@ -103,6 +103,13 @@ no acne: there is no second surface). The waterfall ribbon already solves the wa
 **Impact**: Programs low 9 / medium 17 unchanged; wow `--assert` green (W16 289 calls, W-funicular-dawn 756 k tris).
 New dev cams `D-lava-channel(-night)`, `D-lava-fall(-night)` (seed 1001). The waterfall flow-tag GLSL pin is
 unchanged (the lava declarations are cut out like the culture ones). World data and hashes untouched.
+- **TASK-514 (2026-10-28)**: delta disc (mode 3) is now a broken, boiling steam / foam patch (two world-space
+  value-noise layers `marVf` + noise-warped bands drifting out, ragged rim and core, inner foam tinted warm and glowing
+  `rimGlow` at night) instead of the water fall's concentric rings (water foam untouched); the river's first segment
+  runs `LAVA.source.reach` 4.5 u back past the notch, fading in with a ragged edge, up to 1.8 × wider and molten over
+  the first 4 u, so the stream pours out of the crater glow (no rounded cap). Numbers `LAVA.source` / `LAVA.fall.delta`;
+  0 programs / 0 calls / 0 tris (low 9 / medium 17); wow `--assert` green (W-lava-river-dusk 155 calls, W-funicular-dawn
+  768 k tris). The flow-tag GLSL pin is unchanged (FLOW_SURFACE is cut out of it).
 
 ## D-090: Low gpuMemoryMB 70 → 76, low triangles 350k → 366k; HQ grows to stay the clearly largest island — 2026-10-28
 

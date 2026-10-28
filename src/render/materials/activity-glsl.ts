@@ -114,19 +114,28 @@ const LC = LAVA.colors;
  * Lava modes of the flow kind (TASK-509a, D-091; render/lava.ts + waterfalls.ts). Sheet (z 2): x =
  * across, y = arc length — staggered cooled crust plates sliding slowly down over molten lava, hot
  * core down the middle, lacy edges; glow weight `marLG` × colour `marLC` for ACTIVITY_GLOW (day + night).
- * Delta disc (z 3): x = radius fraction, y = radius — a molten core and broken crust rings drifting out.
+ * Delta disc (z 3): x = radius fraction, y = radius — a ragged molten core in a hissing, broken patch
+ * of steam / foam (TASK-514: boiling value noise + noise-warped bands drifting out, ragged rim, warm
+ * inner foam lit by the lava), not the water fall's concentric rings.
  */
+const DL = LF.delta;
 const LAVA_FLOW = /* glsl */ `if (vMarSurf.z > 2.5) {
-        float marRn = vMarSurf.x;
-        float marRp = fract((vMarSurf.y - marSt * ${f(LF.delta.speed)}) / ${f(RG.spacing)});
-        float marRh = marHf(floor(vMarCloudXZ * 1.5) + vMarSurfSeed * 13.0);
-        if (marRn > ${f(RG.core)} && (marRp > (1.0 - marRn) * (0.5 + 0.6 * marRh) || marRn > 0.97)) discard;
-        // molten core cooling to a crust skirt; the broken rings outside are boiling foam
-        float marCore = 1.0 - smoothstep(0.15, ${f(RG.core + 0.1)}, marRn);
-        float marSkirt = 1.0 - smoothstep(${f(RG.core)}, ${f(RG.core + 0.2)}, marRn);
-        marC.rgb = mix(mix(${v3(WF.colors.foam)}, ${v3(LC.crustRim)}, 0.3 * marSkirt), ${v3(LC.lava)} * 0.55, marCore);
-        marLC = mix(${v3(LC.lava)}, ${v3(LC.hot)}, marCore * marCore * 0.6);
-        marLG = marCore * ${f(LF.glow.disc)} * (${f(LF.glow.day)} + ${f(LF.glow.night)} * uNight);
+        // two boiling noise layers in world space (drifting apart), bands warped by them drifting out
+        vec2 marDq = vMarCloudXZ * ${f(DL.scale)} + vMarSurfSeed * 37.0;
+        float marN1 = marVf(marDq + vec2(marSt, -0.7 * marSt) * ${f(DL.boil)});
+        float marN2 = marVf(marDq * 2.3 + 5.7 - vec2(0.6 * marSt, marSt) * ${f(DL.boil * 1.4)});
+        float marRn = vMarSurf.x + ${f(DL.rag)} * (marN2 - 0.5) * smoothstep(${f(DL.core)}, 1.0, vMarSurf.x);
+        float marBd = 0.5 + 0.5 * sin((vMarSurf.y + 1.8 * (marN1 - 0.5) - marSt * ${f(DL.speed)}) * ${f((2 * Math.PI) / DL.spacing)});
+        float marFm = 0.6 * marN1 + 0.28 * marN2 + 0.12 * marBd;
+        float marCore = 1.0 - smoothstep(${f(DL.core * 0.5)}, ${f(DL.core)}, marRn + 0.25 * (marN1 - 0.5));
+        if (marCore < 0.5 && (marFm < ${f(DL.cut)} + ${f(DL.fall)} * marRn || marRn > 0.97)) discard;
+        // foam: grey shade in the hollows, white crests; the inner part warmed by the lava under it
+        float marWm = (1.0 - smoothstep(${f(DL.core)}, ${f(DL.core + DL.warm)}, marRn)) * (0.6 + 0.4 * marN2);
+        vec3 marSc = mix(${v3(LC.steamShade)}, ${v3(LC.steam)}, smoothstep(0.45, 0.8, marFm));
+        marSc = mix(marSc, mix(${v3(LC.lava)}, ${v3(LC.hot)}, 0.85), 0.4 * marWm);
+        marC.rgb = mix(marSc, mix(${v3(LC.crustRim)}, ${v3(LC.lava)} * 0.55, smoothstep(0.35, 0.6, marN2 + 0.3)), marCore);
+        marLC = mix(${v3(LC.lava)}, ${v3(LC.hot)}, marCore * 0.6);
+        marLG = (marCore * (0.6 + 0.4 * marN1) + ${f(DL.rimGlow)} * marWm * (1.0 - marCore)) * ${f(LF.glow.disc)} * (${f(LF.glow.day)} + ${f(LF.glow.night)} * uNight);
       } else {
         float marLx = vMarSurf.x * 3.0 + 0.3 * sin(vMarSurf.y * 0.9 + vMarSurfSeed * 6.2831853);
         float marLane = floor(marLx);
@@ -321,6 +330,14 @@ float marHf(vec2 p) {
   vec3 p3 = fract(vec3(p.xyx) * 0.1031);
   p3 += dot(p3, p3.yzx + 33.33);
   return fract((p3.x + p3.y) * p3.z);
+}
+/** Value noise on marHf (smooth, [0, 1]): the lava delta's boiling foam (TASK-514). */
+float marVf(vec2 p) {
+  vec2 i = floor(p);
+  vec2 u = fract(p);
+  u = u * u * (3.0 - 2.0 * u);
+  return mix(mix(marHf(i), marHf(i + vec2(1.0, 0.0)), u.x),
+             mix(marHf(i + vec2(0.0, 1.0)), marHf(i + vec2(1.0, 1.0)), u.x), u.y);
 }
 ${pick('marCodeInk', INK.code)}
 ${pick('marPastel', INK.canvas)}
