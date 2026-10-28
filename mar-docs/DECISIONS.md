@@ -2,6 +2,13 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-101: Diver splash ring life 1.6 → 2.2 s so the dive-splash shot catches it (TASK-520) — 2026-10-29
+
+**Decision.** `MARKETING_M27_MOTION.diver.splash.life` 1.6 → 2.2 s (`src/content/themes/marketing-m27-site.ts`); the 40 s
+cadence is unchanged. The pool is not behind the stack: it lies ~22 u ahead-left of the tower, so `D-m27-dive-splash`
+now shoots it from a low camera `134.5,6,-86 → 130.7,0.5,-98` at sim 31.0 s (ring + 3-4 drops). The swim-back starts
+at `life / 2`, so it now begins 0.3 s later.
+
 ## D-100: TASK-519 QA budget calls — medium gpuMemoryMB 170 → 172, L-marketing 60→42 step blob 2.0 %, four small follow-ups (TASK-520–523) — 2026-10-29
 
 **Decision** (user, from the TASK-519 report `mar-docs/qa/m26-m27-2026-10-28.md`): (1) **Memory.** W27 measured 171 MB

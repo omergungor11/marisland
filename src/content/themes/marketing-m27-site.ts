@@ -59,6 +59,6 @@ export const MARKETING_M27_MOTION = {
     swim: 3,
     colour: K.gondola.livery[0][0],
     scale: 0.85,
-    splash: { life: 1.6, rings: 2, r0: 0.3, r1: 2.2, drops: 4, up: 3.2, colour: '#F4FBFF' },
+    splash: { life: 2.2, rings: 2, r0: 0.3, r1: 2.2, drops: 4, up: 3.2, colour: '#F4FBFF' },
   },
 } as const;
