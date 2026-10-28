@@ -49,6 +49,7 @@ three-stack seeds (was 21 with 0.8 u discs; 2 at scale 0.7), M22 v1 masts 83 →
 `d642226645e9ee4a`, 1 `731ef6a0436dee96`). Wow `--assert` green: W16 290 / 300 calls, memory peak W4 / W27
 170 / 170 MB, W-cable-dusk 285 calls / 723 k tris / 163 MB, W-on-air-rock 223 calls / 576 k / 165 MB. Low ladder:
 budgets green, L-pairs-marketing green after the terminal LOD1 fix, L-marketing step 60→42 blob 1.7 % > 1.5 % (open). Medium ladder 14 / 14 green (memory 87 MB).
+**User decisions (2026-10-28)**: transmitter 16 / 22 accepted as is (no stack skipped); the L-marketing 1.7 % pop goes to TASK-519 QA (a pylon far-LOD task only if QA sees it); ON AIR keeps the repeating 9 s spell-out (no one-shot 19:00 switch-on).
 
 ## D-096: Marketing M27 signature props — the cable car, sea billboard, ON AIR neon and guyed mast as variants of old defs, one new def `diveTower`, Marketing cap 10 -> 11 (TASK-517; builds D-094 on D-059 A / D-062 R3-15) — 2026-10-28
 
