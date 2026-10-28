@@ -6,7 +6,7 @@
  * palette tables (ART_BIBLE §2 emissive lava `#FF6A3D`, window `#FFC870`, DevOps basalt).
  * Distances in u, speeds in u/s, glows are emissive gains over the palette colour (linear).
  */
-import { EMISSIVE } from './palette.ts';
+import { EMISSIVE, ROCK, WATER } from './palette.ts';
 import { DEVOPS_CULTURE_KIT as K } from './props-themes/devops.ts';
 import { DEVOPS_GROWTH } from './themes/devops-growth.ts';
 
@@ -25,6 +25,13 @@ export const LAVA = {
    * banks (the edges cool first); the centre line stays molten longer (`coreOpen` near the notch).
    */
   crust: { source: 0.4, lip: 0.9, edge: 0.35, coreOpen: 0.5 },
+  /**
+   * Source head (TASK-514): the strip runs `reach` u back past the notch toward the crater rim (the
+   * crater glow fades out ~4 u behind it on seed 1001), fading in over that run with a ragged noise
+   * edge (`rag`, u) instead of a rounded cap; over the first `blend` u it is up to `widen` × wider and
+   * molten (crust share − `open`), so the stream pours out of the crater glow.
+   */
+  source: { reach: 4.5, blend: 4, widen: 0.8, open: 0.55, rag: 1.4 },
   colors: {
     /** Molten lava (cracks, open stream) and its hot core. */
     lava: EMISSIVE.lava,
@@ -34,6 +41,9 @@ export const LAVA = {
     crustRim: K.basaltDark,
     /** Cooled banks either side (slightly lighter, glassy). */
     bank: K.basaltDark,
+    /** Hissing steam / foam patch on the delta and its grey shade. */
+    steam: WATER.foam,
+    steamShade: ROCK[0],
   },
   /**
    * Emissive gain (× colour): cracks and open lava by day / at night (night = day + `night` × uNight),
@@ -52,8 +62,27 @@ export const LAVA = {
     spacing: 2,
     /** Emissive gain of the sheet (day / added at night) and of the delta disc core. */
     glow: { day: 1.1, night: 0.7, disc: 0.9 },
-    /** Delta disc on the water: radius = width × `radius` + `pad`; cooled crust ring expansion u/s. */
-    delta: { radius: 1.1, pad: 1.8, speed: 0.35 },
+    /**
+     * Delta disc on the water: radius = width × `radius` + `pad`. TASK-514: a broken, boiling steam /
+     * foam patch, not rings — two value-noise layers (`scale` per u, drifting `boil` u/s) + bands
+     * warped by the noise drifting out at `speed` u/s (`spacing` u); foam kept where the mix beats
+     * `cut` + `fall` × radius (ragged edge `rag`); `core` = molten centre (radius fraction, noisy
+     * edge); the inner `warm` of the foam is tinted by the lava and glows `rimGlow` × the disc glow.
+     */
+    delta: {
+      radius: 1.1,
+      pad: 1.8,
+      speed: 0.35,
+      spacing: 1.3,
+      scale: 0.85,
+      boil: 0.25,
+      cut: 0.26,
+      fall: 0.34,
+      rag: 0.3,
+      core: 0.3,
+      warm: 0.35,
+      rimGlow: 0.45,
+    },
     /** Steam emitters at the foot (PUFFS.delta) per quality, spread across the delta. */
     steamEmitters: { low: 1, medium: 2, high: 3 },
   },

@@ -56,7 +56,7 @@ export function lavaUniforms(world: WorldData): Record<string, THREE.IUniform> {
   const flow = lavaFlows(world)[0];
   if (flow) {
     const n = Math.min(flow.channel.length, L.maxPoints);
-    const pad = L.halfWidth + L.bank + L.spill.radius;
+    const pad = L.halfWidth * (1 + SR.widen) + L.bank + L.spill.radius + SR.reach;
     let s = 0;
     let x0 = Infinity;
     let z0 = Infinity;
@@ -89,6 +89,7 @@ const f = (v: number): string => v.toFixed(5);
 const FL = L.flow;
 const CR = L.crust;
 const G = L.glow;
+const SR = L.source;
 
 /**
  * Pars (after the ground pars: uses `marHash12` / `marVNoise`). `marLavaCell` = cellular noise of the
@@ -143,12 +144,14 @@ export const LAVA_COLOR_GLSL = /* glsl */ `
       vec2 ab = b.xy - a.xy;
       float l2 = max(dot(ab, ab), 1e-4);
       vec2 ap = vMarWorld.xz - a.xy;
-      float t = clamp(dot(ap, ab) / l2, 0.0, 1.0);
+      // the first segment runs on back past the notch (the source head, TASK-514)
+      float l1 = sqrt(l2);
+      float t = clamp(dot(ap, ab) / l2, k == 0 ? -${f(SR.reach)} / l1 : 0.0, 1.0);
       vec2 q = ap - ab * t;
       float d = dot(q, q);
       if (d < marBd) {
         marBd = d;
-        marAl = a.w + t * sqrt(l2);
+        marAl = a.w + t * l1;
         marAc = sign(ab.x * ap.y - ab.y * ap.x) * sqrt(d);
         marGy = mix(a.z, b.z, t);
       }
@@ -158,10 +161,14 @@ export const LAVA_COLOR_GLSL = /* glsl */ `
     if (marHy > 0.0) {
       float marE = max(0.6 * max(length(marDPx.xz), length(marDPy.xz)), 0.04);
       float marU = clamp(marAl / max(uLavaInfo.y, 1.0), 0.0, 1.0);
+      // source head (TASK-514): wider and molten over the first few u, fading in from behind the
+      // notch with a ragged edge, so the stream pours out of the crater glow (no rounded cap)
+      float marHd = 1.0 - smoothstep(0.0, ${f(SR.blend)}, marAl);
+      float marSrc = smoothstep(-${f(SR.reach)}, 0.0, marAl + ${f(SR.rag)} * (marVNoise(vMarWorld.xz * 0.9) - 0.5));
       // banks wobble a little along the stream (organic, not a ruler)
-      float marHw = ${f(L.halfWidth)} * (0.9 + 0.2 * marVNoise(vec2(marAl * 0.35, 3.1)));
-      float marIn = (1.0 - smoothstep(marHw - marE, marHw + marE, marLd)) * marHy;
-      float marBk = (1.0 - smoothstep(marHw + ${f(L.bank)} - marE, marHw + ${f(L.bank)} + marE, marLd)) * marHy;
+      float marHw = ${f(L.halfWidth)} * (0.9 + 0.2 * marVNoise(vec2(marAl * 0.35, 3.1))) * (1.0 + ${f(SR.widen)} * marHd);
+      float marIn = (1.0 - smoothstep(marHw - marE, marHw + marE, marLd)) * marHy * marSrc;
+      float marBk = (1.0 - smoothstep(marHw + ${f(L.bank)} - marE, marHw + ${f(L.bank)} + marE, marLd)) * marHy * marSrc * marSrc;
       marLavaSp = (1.0 - smoothstep(marHw, marHw + ${f(L.spill.radius)}, marLd)) * marHy * (1.0 - marBk);
       if (marBk > 0.0) {
         // cooled banks: glassy basalt with a faint lighter speckle
@@ -180,7 +187,7 @@ export const LAVA_COLOR_GLSL = /* glsl */ `
         // cooling: crusted share grows downstream; the centre stays open near the notch
         float marOpen = (1.0 - abs(marAc) / marHw) * ${f(CR.coreOpen)} * (1.0 - marU);
         float marEdge = abs(marAc) / marHw;
-        float marCov = mix(${f(CR.source)}, ${f(CR.lip)}, marU) + ${f(CR.edge)} * marEdge * marEdge - marOpen;
+        float marCov = mix(${f(CR.source)}, ${f(CR.lip)}, marU) + ${f(CR.edge)} * marEdge * marEdge - marOpen - ${f(SR.open)} * marHd;
         float marPlate = step(marCl.y, marCov);
         // plate: dark crust, lighter towards its rim, a warm edge where it meets a crack
         float marRim = 1.0 - smoothstep(0.0, 0.45, marCl.x);
