@@ -434,6 +434,31 @@ describe('workers: bot culture (TASK-432)', () => {
     }
   });
 
+  it('TASK-515: the deck couple sits on the two craterDeck benches; DevOps keeps 7 tableau bots at medium+', async () => {
+    const { planTableaus } = await import('./workers-world.ts');
+    const { tableauMax, TABLEAU } = await import('../content/life.ts');
+    const { DEVOPS_M26 } = await import('../content/themes/devops-m26.ts');
+    const B = DEVOPS_M26.deck.bench;
+    const couple = TABLEAU.deckGazer;
+    expect(couple).toHaveLength(2);
+    expect(couple.map((b) => b.dx).sort()).toEqual([-B.x, B.x]);
+    for (const b of couple) {
+      expect(b.dz).toBeCloseTo(B.z, 6);
+      // feet 0.06 into the seat top (seat plank top = seatH + 0.07 over the floor)
+      expect(b.dy).toBeCloseTo(B.seatH + 0.07 - 0.06, 6);
+      expect(b.beats!.steps.at(-1)!.to).toBe(b.beats!.cycle);
+    }
+    const w = world(1001);
+    for (const q of [0.75, 1]) {
+      const isl = w.islands.findIndex((i) => i.theme === 'devops');
+      const bots = planTableaus(w, (th) => tableauMax(q, th)).filter((t) => t.island === isl);
+      expect(bots.length).toBe(7);
+      expect(bots.filter((t) => t.kind === 'deckGazer')).toHaveLength(2);
+    }
+    expect(tableauMax(0.5, 'devops')).toBe(2);
+    expect(tableauMax(1, 'research')).toBe(6);
+  });
+
   it('keeps the agent cap and the aSeed encoding with tableau bots awake', () => {
     const r = rig(1001, 'high', 2, new THREE.Vector3(105, 12, 35));
     run(r, 120);

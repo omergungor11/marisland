@@ -901,11 +901,21 @@ export class Workers extends LandKind {
         tb.ritual && this.ctx.festival(THEME_ORDER[this.themeOf[i]])?.id === tb.ritual.id
           ? tb.ritual
           : null;
-      const pose = rit ? rit.pose : tb.pose;
-      const ps = POSES[pose];
       this.timer[i] += dt;
       const t = this.timer[i];
-      want = tb.hd;
+      // idle beats (TASK-515): the step of the cycle picks the pose and a yaw toward the partner
+      let beatYaw = 0;
+      let beatPose = tb.pose;
+      if (tb.beats) {
+        const c = t % tb.beats.cycle;
+        const st =
+          tb.beats.steps.find((o) => c < o.to) ?? tb.beats.steps[tb.beats.steps.length - 1];
+        beatPose = st.pose;
+        beatYaw = st.yaw ?? 0;
+      }
+      const pose = rit ? rit.pose : beatPose;
+      const ps = POSES[pose];
+      want = tb.hd + beatYaw;
       if (tb.pace) {
         // M22 R12: back and forth along the spot's +z axis, a pause at each end (closed form in `t`)
         const P = tb.pace;

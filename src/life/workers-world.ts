@@ -12,6 +12,7 @@ import {
   VILLAGERS,
   WORKERS,
   type ItineraryStep,
+  type TableauBotSpec,
 } from '../content/life.ts';
 import {
   INTERIOR_OF,
@@ -241,6 +242,7 @@ export interface TableauBot {
   item?: ItineraryStep['item'];
   pace?: { reach: number; speed: number; pause: number };
   ritual?: { id: string; pose: string };
+  beats?: TableauBotSpec['beats'];
   /** Bots sharing a story spot: `group` is the spot, `k` the bot's rank in it (chat partners alternate). */
   group: number;
   k: number;
@@ -252,8 +254,8 @@ export interface TableauBot {
  * to the nearest fixture of that def within 6 u.
  */
 export function planTableaus(
-  world: Pick<WorldData, 'storySpots' | 'fixtures'>,
-  max: number,
+  world: Pick<WorldData, 'storySpots' | 'fixtures'> & { islands?: readonly { theme: string }[] },
+  max: number | ((theme: string) => number),
 ): TableauBot[] {
   const out: TableauBot[] = [];
   const per = new Map<number, number>();
@@ -261,7 +263,8 @@ export function planTableaus(
     const bots = TABLEAU[sp.kind];
     if (!bots) return;
     const have = per.get(sp.islandId) ?? 0;
-    if (have + bots.length > max) return;
+    const cap = typeof max === 'number' ? max : max(world.islands?.[sp.islandId]?.theme ?? '');
+    if (have + bots.length > cap) return;
     per.set(sp.islandId, have + bots.length);
     bots.forEach((b, k) => {
       const p = lotLocalToWorld({ x: sp.pos.x, z: sp.pos.z, rotY: sp.rotY }, b.dx, b.dz);
@@ -288,6 +291,7 @@ export function planTableaus(
         item: b.item,
         pace: b.pace,
         ritual: b.ritual,
+        beats: b.beats,
         group,
         k,
       });
@@ -437,7 +441,7 @@ export function planAmbient(
 ): WorkerSpawn[] {
   const out: WorkerSpawn[] = [];
   if (!(scale > 0)) return out;
-  const tableaus = planTableaus(ctx.world, tableauMax(scale));
+  const tableaus = planTableaus(ctx.world, (th) => tableauMax(scale, th));
   ctx.world.islands.forEach((isl, id) => {
     const comp = comps[id] ?? -1;
     if (comp < 0 && (base.anchors[id]?.length ?? 0) < 1) return;
