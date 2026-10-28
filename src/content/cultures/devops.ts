@@ -40,6 +40,12 @@ export const DEVOPS_CULTURE: CultureDef = {
     { id: 'funicularCar', tier: 2, flags: grounded },
     { id: 'geyserCone', tier: 2, flags: grounded },
     { id: 'oreBucket', tier: 3, flags: grounded | noShadow },
+    // M26 TASK-509b (D-092): ember bridge, crater deck, glass kiln, obsidian beach decor, breakwater
+    { id: 'emberBridge', tier: 2, flags: grounded },
+    { id: 'craterDeck', tier: 2, flags: grounded },
+    { id: 'glassKiln', tier: 2, flags: grounded },
+    { id: 'obsidianShard', tier: 2, flags: grounded | noShadow },
+    { id: 'devopsBreakwater', tier: 2, flags: noShadow },
   ],
   // TASK-422: emitted by world/gen/plans/devops-works.ts placeCulture (world.storySpots)
   storySpots: [

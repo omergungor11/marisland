@@ -62,9 +62,10 @@ describe('TASK-504 DevOps M25 defs', () => {
     expect(PROP_GEO.mailLine.variants).toBe(4);
   });
 
-  it('ledger: 14 defs = the DevOps cap override, one tier-1, valid', () => {
-    expect(cultureCapOverride.devops).toEqual({ defs: 14, tier1: 1 });
-    expect(DEVOPS_CULTURE.kit).toHaveLength(14);
+  it('ledger: 19 defs = the DevOps cap override, one tier-1, valid', () => {
+    // TASK-509b (D-092) raised the cap 14 -> 19 (the lava pack)
+    expect(cultureCapOverride.devops).toEqual({ defs: 19, tier1: 1 });
+    expect(DEVOPS_CULTURE.kit).toHaveLength(19);
     expect(validateCultures([DEVOPS_CULTURE])).toEqual([]);
     for (const d of DEVOPS_M25_PROP_DEFS) {
       const k = DEVOPS_CULTURE.kit.find((e) => e.id === d.id);

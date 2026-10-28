@@ -26,6 +26,7 @@ import { QA_PROVING_GEO } from './qa-proving.ts';
 import { QA_CUSTOMS_GEO } from './qa-customs.ts';
 import { CODING_TUNNEL_GEO } from './coding-tunnel.ts';
 import { HQ_MARINA_GEO } from './hq-marina.ts';
+import { DEVOPS_M26_GEO } from './devops-m26.ts';
 import { DEVOPS_M25_GEO, withOnsenStilts, withOrePylons, withSmithStall } from './devops-m25.ts';
 import { THEME_IDS } from '../../world/types.ts';
 
@@ -79,4 +80,6 @@ export const THEME_GEO: readonly PropGeoDef[] = [
   ...BASE_THEME_GEO.map(m25Variants),
   // M25 TASK-504 DevOps funicular, geyser cone, ore bucket
   ...DEVOPS_M25_GEO,
+  // M26 TASK-509b DevOps ember bridge, crater deck, glass kiln, obsidian decor, breakwater
+  ...DEVOPS_M26_GEO,
 ];

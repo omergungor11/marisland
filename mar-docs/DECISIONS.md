@@ -2,6 +2,28 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-092: DevOps M26 lava-pack props — five defs at the tail of PROP_DEFS, the tug as sailboat variant 9, DevOps cap 14 -> 19 (TASK-509b; builds D-080 A + D3 / D6 / D10 / D17 / D18 on D-083) — 2026-10-28
+
+**Decision** (no placement, TASK-509c places them): (1) **Defs** (all tier 2, planner-pinned, ledger entries 15-19,
+`cultureCapOverride.devops` = { 19, 1 }, so +5 inside the D-080 "~+6" estimate): `emberBridge` (v0 footbridge, v1 rail
+bridge; 9 x 2.4 u, spans local z, segmental stone arch with a lava-lit soffit and glowing cracks), `craterDeck`
+(octagonal 4.6 u platform: caged rail on the crater side, open entry + steps behind, 2 benches, telescope, 2 lava
+lanterns), `glassKiln` (terracotta beehive kiln, molten mouth, chimney, rack of lava-glass lanterns in the DevOps accents
++ a bench; ~6.3 x 3.8 u, front +z), `obsidianShard` (v0 shard cluster, v1 sea stack 2.7 u, v2 tide-pool slab, v3 cairn;
+noShadow) and `devopsBreakwater` (v0 8 u, v1 5 u + ladder, v2 6 u head with the red harbour light; FLOATING_FIXTURES).
+(2) **Tug = `sailboat` variant 9** (`tugBoat`, 4.6 x 1.9 u, bow +z, keel y = 0; PropDef variants 9 -> 10, rolls stay on
+0-1), like the ferry (v2) and patrol boat (v3): no def, so the boat movers read it by variant. Hooks `smoke` (funnel top),
+`tow`, `bow`, `lamp`, `route { speed, lead }` (hints from `content/themes/devops-m26.ts`). (3) **Emissive**: lamp glass
+= 1 (night lamps ramp); lava seams, soffit and the furnace mouth = 1.6 (molten class, dim by day too). (4) Numbers
+`content/themes/devops-m26.ts` (`DEVOPS_M26`, `M26_PAL`), geometry `geo/themes/devops-m26.ts`, defs
+`content/props-themes/devops-m26.ts`, showcase `?gallery=1&ids=devops26` / `gallery-shots.ts devops26`.
+**Rationale**: variants keep the ledger at +5; skirts below the pivot (bridge 0.5, deck 0.6, breakwater foot -2.6) hide
+the gap on a slope / seabed like the marina piles, so the geo test floor is widened for exactly those three ids.
+**Cost**: `craterDeck`, `glassKiln` and `devopsBreakwater` exceed 3 u in plan or height, so `isLargeStructure` draws them
+from T0 (3 more far groups once placed; one instance each per island); the bridge (2.5 u wide) and the shards do not.
+**Not done**: no placement, no movers, no `BANK_FIXTURES` entry for the bridge (its span axis is local z, the glass
+bridge's is x: 509c decides how to ground the two abutments).
+
 ## D-090: Low gpuMemoryMB 70 → 76, low triangles 350k → 366k; HQ grows to stay the clearly largest island — 2026-10-28
 
 - **Budget**: the TASK-502 / 510 QA pass (`mar-docs/qa/m24-m25-m29-m30-2026-10-27.md`) measured the low ladder

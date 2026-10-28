@@ -377,6 +377,8 @@ export const FLOATING_FIXTURES: readonly string[] = [
   'starFort',
   // QA Q8 scanner arch (TASK-508): stands over the ship lane, pivot at the waterline whatever the dredged depth
   'scannerArch',
+  // DevOps D18 breakwater (TASK-509b, D-092): a rubble mole standing in the water, crest over the waterline
+  'devopsBreakwater',
 ];
 
 /**
