@@ -33,6 +33,7 @@ island's water falls: seed 1001 Emberpeak has 3 instead of 1 (one now visible in
 existing black sand reads a shade lighter, which is what makes the notch readable); a pad under the cove (falloff
 would reach the quarry / lava strip and raise ground); keeping the decor at plan time (it would stand on the pre-carve
 bluff).
+**User decisions (2026-10-28)**: the waterfall reshuffle is accepted (no per-cell hash jitter); the cove floor keeps the existing black sand (no new obsidian ground colour).
 
 ## D-097: Beacon Rock M27 placed and moving — the cable car is a two-track loop on the built geometry (seat 9.45, hang 2.5), real footprints on the stack tops, a spell-out neon kind, the diver as a culture-mover scene (TASK-518; builds D-095 / D-096) — 2026-10-28
 
