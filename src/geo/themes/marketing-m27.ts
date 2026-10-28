@@ -159,11 +159,10 @@ function seaPylon({ rng, lod }: BuildOpts, terminal: boolean): THREE.BufferGeome
     }
   } else {
     // bullwheel: a rim at the seat height, spokes to a drum on the king post
-    const rim = new THREE.TorusGeometry(tr, hi ? 0.07 : 0.1, hi ? 4 : 3, hi ? 20 : 10).rotateX(
-      Math.PI / 2,
-    );
+    // the same silhouette at both LODs (the wheel reads from far: a lighter LOD1 popped at T3)
+    const rim = new THREE.TorusGeometry(tr, 0.08, 3, hi ? 20 : 10).rotateX(Math.PI / 2);
     put(acc, rim, [0, sy, 0], P.red, { aoAmt: 0 });
-    const spokes = hi ? 4 : 2;
+    const spokes = 4;
     for (let k = 0; k < spokes; k++) {
       const a = (k * Math.PI) / spokes;
       const d = V(Math.cos(a) * tr, 0, Math.sin(a) * tr);
@@ -229,8 +228,13 @@ function seaPylon({ rng, lod }: BuildOpts, terminal: boolean): THREE.BufferGeome
       for (let y = 0.6; y < L.y - 0.2; y += 0.42)
         bar(acc, V(lxl, y, -0.24), V(lxl, y, 0.24), 0.04, P.steel, 0);
     } else {
-      put(acc, baseBox(0.12, 0.92, L.depth), [L.x1 - 0.06, L.y, 0], P.cream, { aoAmt: 0 });
-      put(acc, baseBox(0.1, L.y - 0.2, 0.6), [L.x1 + 0.02, 0.2, 0], P.steel, { aoAmt: 0 });
+      // far: the outer rail as a thin board, the side rails as bars, the ladder as a strip
+      put(acc, baseBox(0.06, 0.92, L.depth), [L.x1 - 0.06, L.y, 0], P.cream, { aoAmt: 0 });
+      for (const z of [-1, 1])
+        put(acc, baseBox(lw, 0.06, 0.06), [lx, L.y + 0.89, z * (L.depth / 2 - 0.06)], P.cream, {
+          aoAmt: 0,
+        });
+      put(acc, baseBox(0.06, L.y - 0.2, 0.55), [L.x1 + 0.02, 0.2, 0], P.steel, { aoAmt: 0 });
     }
   }
   const g = acc.finish(rng, false, true);
