@@ -240,6 +240,13 @@ export interface ArchetypeParams {
    * (TASK-503 Emberpeak apron) leaves every other island where it was.
    */
   layoutReachScale?: number;
+  /**
+   * Radius multiplier applied after the roster roll (TASK-511, D-090; the hub only). The rolled
+   * diameter still caps the others (`heroDominance`) and places the layout; then every other
+   * island is pushed straight out from the hub by the reach growth (snapped to the height grid),
+   * so the channels to the hub and every other island's shape stay as they were.
+   */
+  growth?: number;
   /** Windward shelf width in u (leeward = × WATER_BANDS.leewardRingScale). */
   shelfWidth: number;
   /** Beach ramp width in u (0 → beachMax over this distance inland). */
@@ -284,6 +291,8 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
     colorClass: 'green',
     boundsScale: 1.55,
     reachScale: 1.4,
+    // TASK-511 (D-090): the hero reads clearly largest next to Emberpeak's apron (radius × 1.11 = +23 % area)
+    growth: 1.11,
     shelfWidth: 8,
     beachWidth: 7,
     terrace: { step: 3, strength: 0.2 },

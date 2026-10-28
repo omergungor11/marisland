@@ -8,7 +8,7 @@ import {
   generateLayout,
   nearestGaps,
 } from './gen/layout.ts';
-import { THEME_IDS, type IslandData, type IsletData } from './types.ts';
+import { CELL_SIZE, THEME_IDS, type IslandData, type IsletData } from './types.ts';
 import { THEME_BY_ARCHETYPE } from '../content/themes.ts';
 import { perfLimit } from '../test/perf.ts';
 
@@ -71,8 +71,10 @@ describe('archipelago layout — 500-seed properties', () => {
       for (const i of islands) {
         const [lo, hi] = ARCHETYPES[i.archetype].diameter;
         const lo2 = ARCHETYPES[i.archetype].demotedDiameter?.[0] ?? lo;
-        expect(i.radius * 2, ctx).toBeGreaterThanOrEqual(Math.min(lo, lo2) - 1e-9);
-        expect(i.radius * 2, ctx).toBeLessThanOrEqual(hi + 1e-9);
+        // TASK-511: a grown archetype (HQ) is its rolled diameter × growth
+        const g = ARCHETYPES[i.archetype].growth ?? 1;
+        expect(i.radius * 2, ctx).toBeGreaterThanOrEqual(Math.min(lo, lo2) * g - 1e-9);
+        expect(i.radius * 2, ctx).toBeLessThanOrEqual(hi * g + 1e-9);
       }
       // spacing: bounding discs never overlap (gap ≥ 40 u), one connected cluster
       const discs = islands.map(disc);
@@ -233,5 +235,50 @@ describe('grown island push (TASK-503)', () => {
       );
     }
     expect(kept / 500).toBeGreaterThanOrEqual(0.95);
+  });
+});
+
+/** TASK-511 (D-090): HQ grows by `growth`; only islands whose hub channel fell below minGap step out. */
+describe('grown hub (TASK-511)', () => {
+  it('same layouts as the ungrown hub; moved islands step out on the height grid, channels ≥ minGap', () => {
+    const p = ARCHETYPES.hearthholm as { growth?: number };
+    const grown = p.growth ?? 1;
+    expect(grown).toBeGreaterThan(1);
+    const before: ReturnType<typeof layout>[] = [];
+    try {
+      p.growth = 1;
+      for (let s = 0; s < 500; s++) before.push(layout(s));
+    } finally {
+      p.growth = grown;
+    }
+    let same = 0;
+    let moved = 0;
+    for (let s = 0; s < 500; s++) {
+      const a = before[s].islands;
+      const b = layout(s).islands;
+      const hq = b.findIndex((x) => x.archetype === 'hearthholm');
+      expect(b[hq].radius / a[hq].radius, `seed ${s}`).toBeCloseTo(grown, 9);
+      // the same placement attempt: every island within a growth step of where it was
+      const step = 2 * (b[hq].reach - a[hq].reach) + 4 * CELL_SIZE;
+      if (!a.every((x, k) => Math.hypot(x.cx - b[k].cx, x.cz - b[k].cz) <= step)) continue;
+      same++;
+      for (let k = 0; k < b.length; k++) {
+        const dx = (b[k].cx - a[k].cx) / CELL_SIZE;
+        const dz = (b[k].cz - a[k].cz) / CELL_SIZE;
+        expect(Math.abs(dx - Math.round(dx)), `seed ${s} island ${k} x on the grid`).toBeLessThan(
+          1e-6,
+        );
+        expect(Math.abs(dz - Math.round(dz)), `seed ${s} island ${k} z on the grid`).toBeLessThan(
+          1e-6,
+        );
+        if (k !== hq && (dx !== 0 || dz !== 0)) moved++;
+        if (k === hq) continue;
+        const gap = Math.hypot(b[k].cx - b[hq].cx, b[k].cz - b[hq].cz) - b[k].reach - b[hq].reach;
+        expect(gap, `seed ${s} island ${k} hub channel`).toBeGreaterThanOrEqual(LAYOUT.minGap);
+      }
+    }
+    expect(same / 500).toBeGreaterThanOrEqual(0.95);
+    // most islands keep their place (on 64 test seeds: 132 of 372 step out)
+    expect(moved / (same * 6)).toBeLessThan(0.5);
   });
 });

@@ -409,7 +409,16 @@ function applyBluffs(
     const ca = bluffOf(isl)?.coveAnchor;
     const a = ca ? isl.anchors[ca.key] : undefined;
     if (!ca || !a) continue;
-    const c = ca.flattest ? flattestDisc(h, sdf, islandMap, isl, a, ca.flattest) : a;
+    // TASK-511 (D-090): a grown island searches its grown disc (the pre-growth cove, scaled)
+    const g = ARCHETYPES[isl.archetype].growth ?? 1;
+    const f = ca.flattest;
+    const scaled = f && {
+      search: f.search * g,
+      grow: f.grow * g,
+      minShore: f.minShore * g,
+      r: f.r * g,
+    };
+    const c = scaled ? flattestDisc(h, sdf, islandMap, isl, a, scaled) : a;
     isl.anchors.cove = { x: c.x, z: c.z, rotY: 0 };
   }
   const low = data.slice();

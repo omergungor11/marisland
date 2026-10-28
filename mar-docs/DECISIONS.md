@@ -14,6 +14,21 @@
 - **Presets**: TASK-502's Kite Hill Afternoon, Proving Grounds Noon and Fairy Night wow presets were never added
   (the content exists only as dev presets); they are added after the HQ growth, together with a re-framed
   `W-ember-lane-night` (too close, hammers / stalls unreadable).
+- **Outcome (TASK-511)**: `ARCHETYPES.hearthholm.growth` 1.11 (content): the rolled 110–140 u diameter still caps the
+  others (`heroDominance`) and places the layout, then HQ takes radius × 1.11 (+23 % land area; 122–155 u). Only an
+  island whose channel to the grown hub falls below `LAYOUT.minGap` steps straight out (to minGap + 2 u), snapped to
+  the 2 u height grid so its sampled shape and anchors stay; a re-centre (also snapped) only if `extent` is broken.
+  Same placement attempt on 500 / 500 layout seeds; 132 of 372 islands step out on the 62 test seeds (seed 1001:
+  only Lonely Palm, +4,+4; HQ and Emberpeak stay put). The cove's flattest-disc search scales with the growth, so the
+  grown HQ keeps its pre-growth cove and hill (without it seeds 2841 / 3104 lost the hill to the cove, peak 15 u).
+  Emberpeak: radius never changes; all TASK-503 / 507 anchors identical on 24 / 31 test seeds, on the 7 where it
+  steps out only `breakwater` (×2) and `smithsLane` (×1) move. W1 (mask frame): HQ 363×358 → 394×378 px, land
+  83–90k → 97–98k px²; Emberpeak 366×337 → 360×330 px, 90k → 87k px² (HQ / Ember px area 0.92–1.00 → 1.11–1.13).
+  Marina (31 seeds): fort 31 / 31 before and after, seed 1001 17 → 20 boats + breakwater head, mean 12.6 → 14.0, min
+  4 → 5. Cost: islands that step out sample other world-space zone noise, so some plan shares move by a seed (test
+  floors re-baselined, five per-seed bounds widened with the seed named, see the TASK-511 test commit); the whale
+  route now also validates its emitted polyline. Rejected: pushing every island out by the growth (moves all
+  islands and every raw cam, same ripple), growing HQ into the channels (breaks minGap).
 
 ## D-087: QA Customs Port placement + motion (TASK-508) — compact quay on the cove terrace, port-first planning, ship as culture-mover parts on the day clock — 2026-10-27
 

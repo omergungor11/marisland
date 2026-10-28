@@ -1,7 +1,7 @@
 import type { Rng } from '../../core/rng.ts';
 import { TAU } from '../../core/math/index.ts';
 import type { ArchetypeId, IslandData, IsletData, IsletKind } from '../types.ts';
-import { WORLD_SIZE } from '../types.ts';
+import { CELL_SIZE, WORLD_SIZE } from '../types.ts';
 import { ARCHETYPES, ISLET_LAYOUT, ISLETS, LAYOUT, NAME_SYLLABLES } from '../../content/islands.ts';
 import { THEME_BY_ARCHETYPE } from '../../content/themes.ts';
 
@@ -148,12 +148,12 @@ export function pickRoster(rng: Rng): RosterEntry[] {
         const hi = Math.min(range[1], heroD * LAYOUT.heroDominance);
         d = rng.fork('size', ARCHETYPE_ORDER.indexOf(a)).range(range[0], Math.max(range[0], hi));
       }
-      const radius = d / 2;
+      const radius = (d / 2) * (p.growth ?? 1);
       return {
         archetype: a,
         radius,
         reach: radius * p.reachScale,
-        placeReach: radius * (p.layoutReachScale ?? p.reachScale),
+        placeReach: (d / 2) * (p.layoutReachScale ?? p.reachScale),
         sizeClass,
       };
     });
@@ -295,11 +295,11 @@ function place(roster: readonly RosterEntry[], rng: Rng): Disc[] | null {
   const h = out[hub];
   roster.forEach((e, i) => {
     const g = e.reach - e.placeReach;
-    if (g <= 0) return;
+    if (g <= 0 || i === hub) return;
     const d = out[i];
     d.r = e.reach;
     const len = Math.hypot(d.x - h.x, d.z - h.z);
-    if (i === hub || len === 0) return;
+    if (len === 0) return;
     d.x += ((d.x - h.x) / len) * g;
     d.z += ((d.z - h.z) / len) * g;
     for (let s = 0; s < LAYOUT.growPush; s++) {
@@ -324,6 +324,25 @@ function place(roster: readonly RosterEntry[], rng: Rng): Disc[] | null {
       }
     }
   });
+  // TASK-511 (D-090): then a grown hub (Hearthholm `growth`) takes its full reach, and only an
+  // island whose channel to it fell below `minGap` steps straight out from it (to `minGap` + one
+  // grid cell); the steps and the re-centre a grown layout may need to stay inside `extent` snap
+  // to the height grid, so every other island keeps its sampled shape and anchors
+  const gh = roster[hub].reach - roster[hub].placeReach;
+  if (gh > 0) {
+    h.r = roster[hub].reach;
+    out.forEach((d, i) => {
+      const need = LAYOUT.minGap - gapOf(d, h);
+      const len = Math.hypot(d.x - h.x, d.z - h.z);
+      if (i === hub || need <= 0 || len === 0) return;
+      const step = (need + CELL_SIZE) / len / CELL_SIZE;
+      d.x += Math.round((d.x - h.x) * step) * CELL_SIZE;
+      d.z += Math.round((d.z - h.z) * step) * CELL_SIZE;
+    });
+    const ext = LAYOUT.extent;
+    if (out.some((d) => Math.abs(d.x) + d.r > ext || Math.abs(d.z) + d.r > ext))
+      recentre(out, CELL_SIZE);
+  }
   return out;
 }
 
@@ -433,8 +452,8 @@ function relax(discs: Disc[]): void {
   }
 }
 
-/** Centre the bounding box of all discs on the origin. */
-function recentre(discs: Disc[]): void {
+/** Centre the bounding box of all discs on the origin (the shift a multiple of `snap` when set). */
+function recentre(discs: Disc[], snap = 0): void {
   let x0 = Infinity;
   let x1 = -Infinity;
   let z0 = Infinity;
@@ -445,8 +464,12 @@ function recentre(discs: Disc[]): void {
     z0 = Math.min(z0, d.z - d.r);
     z1 = Math.max(z1, d.z + d.r);
   }
-  const mx = (x0 + x1) / 2;
-  const mz = (z0 + z1) / 2;
+  let mx = (x0 + x1) / 2;
+  let mz = (z0 + z1) / 2;
+  if (snap > 0) {
+    mx = Math.round(mx / snap) * snap;
+    mz = Math.round(mz / snap) * snap;
+  }
   for (const d of discs) {
     d.x -= mx;
     d.z -= mz;
