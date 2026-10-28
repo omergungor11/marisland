@@ -420,6 +420,21 @@ const DEVOPS_M25_CAMS: readonly (readonly [string, string, string, number, numbe
   ['D-m26-bridge', 'Ember bridge over the lava bed (T3)', '238,12,-88,228.6,7.4,-76.8', 14, 6],
   ['D-m26-bridge-night', 'Ember bridge at night (T3)', '238,12,-88,228.6,7.4,-76.8', 21.5, 6],
   ['D-m26-deck', 'Crater deck + stargazer (T3)', '220,40,-24,209,33.5,-32', 14, 6],
+  // TASK-515: the couple on the deck benches, close (spot 211,-30.6), day and dusk
+  [
+    'D-m26-deck-couple',
+    'Crater deck couple on the benches (T3)',
+    '215,36.2,-25,211,34,-30.6',
+    14,
+    6,
+  ],
+  [
+    'D-m26-deck-couple-dusk',
+    'Crater deck couple at dusk (T3)',
+    '215,36.2,-25,211,34,-30.6',
+    18.6,
+    6,
+  ],
   ['D-m26-kiln-night', 'Lava-glass kiln at night (T3)', '242,12.5,-9.5,250,7.8,-16', 21.5, 6],
   ['D-m26-obsidian', 'Obsidian beach · sea stacks + tide pool (T2)', '264,10,-93,246,2,-77', 14, 6],
   // TASK-513: the black-sand cove carved into the bluff there (floor origin 244.6,-76.2, out to sea

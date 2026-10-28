@@ -708,6 +708,8 @@ export const POSES: Readonly<Record<string, { code: number; lean?: number; lie?:
   // tableau-only
   slump: { code: 7, lean: -0.85 },
   peer: { code: 5, lean: -0.5 },
+  /** TASK-515: leaning in toward a partner (resting arms, a small bow). */
+  huddle: { code: 7, lean: -0.2 },
 };
 
 /**
@@ -742,7 +744,16 @@ export interface TableauBotSpec {
   pace?: { reach: number; speed: number; pause: number };
   /** While the island's ritual `id` runs the bot takes this pose instead (M22 R16: the cap toss). */
   ritual?: { id: string; pose: string };
+  /**
+   * Idle beats (TASK-515): the bot cycles through `steps` every `cycle` s (closed form in its tableau
+   * clock); a step holds until `to` (s into the cycle) with `pose`, and turns `yaw` rad off `turn`
+   * (+ = toward the spot's -x side, − = toward +x; a partner glance / lean-in).
+   */
+  beats?: { cycle: number; steps: readonly { to: number; pose: string; yaw?: number }[] };
 }
+
+/** The crater deck couple's seats (deck-local, matches geo/themes/devops-m26 `F.deck.bench`). */
+const DECK_COUPLE = { benchX: 1.05, benchZ: 0.1, dy: 0.47 } as const;
 
 /** The two lecture students cheer (arms up) while the caps fly (M22 R16, culture movers capToss). */
 const CAP_TOSS_POSE = { id: 'capToss', pose: 'wave' } as const;
@@ -775,8 +786,46 @@ export const TABLEAU: Readonly<Record<string, readonly TableauBotSpec[]>> = {
   ],
   containerNap: [{ dx: 0, dz: 0, turn: 0, pose: 'nap', atSpot: true }],
   onsenCapybara: [{ dx: 1.2, dz: 0.7, turn: Math.PI, pose: 'stand', atSpot: true }],
-  // TASK-509c: behind the crater deck telescope (DEVOPS_M26.deck.scope z 1.35), looking in
-  deckGazer: [{ dx: 0.05, dz: 0.75, turn: 0, pose: 'gaze', atSpot: true }],
+  // TASK-515: a couple on the crater deck's two benches (DEVOPS_M26.deck.bench x ±1.05, z 0.1, seat
+  // top 0.53 over the floor; feet 0.06 into the plank like the office seats), facing the crater
+  deckGazer: [
+    {
+      dx: -DECK_COUPLE.benchX,
+      dz: DECK_COUPLE.benchZ,
+      turn: 0,
+      pose: 'stand',
+      atSpot: true,
+      dy: DECK_COUPLE.dy,
+      beats: {
+        cycle: 18,
+        steps: [
+          { to: 5, pose: 'gaze' },
+          { to: 7.5, pose: 'huddle', yaw: -0.9 },
+          { to: 12, pose: 'stand' },
+          { to: 16, pose: 'gaze' },
+          { to: 18, pose: 'stand', yaw: -0.35 },
+        ],
+      },
+    },
+    {
+      dx: DECK_COUPLE.benchX,
+      dz: DECK_COUPLE.benchZ,
+      turn: 0,
+      pose: 'stand',
+      atSpot: true,
+      dy: DECK_COUPLE.dy,
+      beats: {
+        cycle: 18,
+        steps: [
+          { to: 5, pose: 'stand' },
+          { to: 7.5, pose: 'huddle', yaw: 0.9 },
+          { to: 12, pose: 'wave', yaw: 0.2 },
+          { to: 16, pose: 'gaze' },
+          { to: 18, pose: 'stand', yaw: 0.35 },
+        ],
+      },
+    },
+  ],
   // Marketing
   lighthouseSelfie: [{ dx: 0, dz: 0, turn: 0, pose: 'selfie', atSpot: true }],
   mascotWave: [{ dx: 0, dz: 2.6, turn: Math.PI, pose: 'wave', atSpot: true }],
@@ -828,7 +877,11 @@ export const RITUAL_SPEED: Readonly<Record<string, Readonly<Record<string, numbe
  * so a small plan keeps most of its slots for the walkers. Medium = high so Research fits its
  * lecture (3) and tea time (2).
  */
-export const tableauMax = (ambientScale: number): number => (ambientScale >= 0.75 ? 6 : 2);
+export const tableauMax = (ambientScale: number, theme?: string): number =>
+  ambientScale >= 0.75 ? (theme && TABLEAU_MAX_BY_THEME[theme]) || 6 : 2;
+
+/** Per-theme tableau cap at medium+ quality (TASK-515: DevOps keeps the crater deck couple on top of its 5). */
+export const TABLEAU_MAX_BY_THEME: Readonly<Record<string, number>> = { devops: 7 };
 
 /** Ground workers may stand on outside the path graph (outpost loops). */
 export const WORKER_ZONES = [
