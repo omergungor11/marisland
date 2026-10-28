@@ -30,23 +30,32 @@ export const M27_PAL = {
 
 export const MARKETING_M27 = {
   /**
-   * M1 cable car, on the `mailLine` system. The sea pylon (v4) is a red / white lattice 9 u tall
-   * with a crossarm along z carrying two sheaves (the cable arrives at `anchor` in front and leaves
-   * at `back`, like the DevOps ore mid pylon) and a boarding landing beside the line. Gondolas
-   * (v5 red, v6 cream) hang on the cable: the pivot is on the cabin floor, the carrier wheels sit
-   * `grip` above it; the cable axis is local z.
+   * M1 cable car, on the `mailLine` system: a LOOP (two tracks, gondolas out on one, back on the
+   * other; TASK-518 / D-097). The pylon (v4, mid / angle pylon) is a red / white lattice 9 u tall
+   * with a crossarm along x OVER the cable carrying one sheave per track at x = ±`track` (the
+   * gondolas pass beside the tower, never through it); the terminal (v7, both ends of the line)
+   * is the same tower with a horizontal bullwheel of radius `track` at the seat height (the cable
+   * turns round it behind the tower, local -z) and a boarding landing beside the +x track.
+   * Gondolas (v5 red, v6 cream) hang on the cable: the pivot is on the cabin floor, the carrier
+   * wheels sit `grip` above it; the cable axis is local z.
    */
   pylon: {
     variant: 4,
+    /** Terminal (end station) variant: bullwheel + landing. */
+    terminal: 7,
     height: 9,
     /** Half-width of the lattice at the plinth / at the head. */
     foot: 0.95,
     top: 0.26,
-    /** Cable seat height over the pivot and the crossarm offset to the front / back sheave. */
+    /** Cable seat height over the pivot (both variants; = MARKETING_ANCHORS.cable.seat). */
     anchorY: 9.45,
-    sheaveZ: 0.8,
-    /** Boarding landing beside the line: floor height (= the gondola floor), x range, depth. */
-    landing: { y: 6.95, x0: 0.82, x1: 2.35, depth: 1.5 },
+    /** Lateral offset of each track (sheave / bullwheel radius) from the tower axis. */
+    track: 1.25,
+    /** Crossarm height over the seat (the grips pass under it), sheave radius. */
+    armOver: 0.42,
+    sheaveR: 0.24,
+    /** Terminal landing beside the +x track: floor height (= the gondola floor), x range, depth. */
+    landing: { y: 6.95, x0: 1.95, x1: 3.15, depth: 1.5 },
   },
   gondola: {
     variants: [5, 6] as const,

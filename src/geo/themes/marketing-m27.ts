@@ -5,8 +5,9 @@
  * 1 u = 1 m. Nothing is placed here (TASK-518 places and moves them).
  *
  * New def: diveTower. Variants of existing defs (wrappers; every older variant keeps its builder):
- *   mailLine 4      sea pylon 9 u (red / white lattice, two sheaves, boarding landing beside the line)
+ *   mailLine 4      sea pylon 9 u (red / white lattice, crossarm over the two tracks, a sheave each)
  *   mailLine 5 / 6  gondola cabin, red / cream livery (a mover mesh: pivot on the cabin floor)
+ *   mailLine 7      terminal (TASK-518): the pylon with a bullwheel and a landing beside the +x track
  *   billboardV2 2   sea billboard 6 x 3 u, standing at a rock face and tied back to it
  *   billboardV2 3   vertical ON AIR neon, 5 lit letters on dark plates, spine tied back to a cliff
  *   antennaTower 2  guyed stack transmitter (the v1 lattice, taller, two guy tiers, blinking tip)
@@ -17,8 +18,8 @@
  * or, if it were seen first, drag every boulevard sign to T0. billboardV2 is a tier-0 def.
  *
  * Hooks (userData.hooks, local frame, scale 1):
- *  - mailLine v4: cable { anchor, back } (the ore mid-pylon shape), landing { at, size [x, z], y },
- *    sheaves [[x,y,z]...].
+ *  - mailLine v4 / v7: cable { right, left, terminal } (the two track seats at x = ±track),
+ *    sheaves [[x,y,z]...] (v4), landing { at, size [x, z], y } (v7 only).
  *  - mailLine v5 / v6: gondola { grip, pivot, axis, swingDeg, height }: `grip` = carrier wheel
  *    centre on the cable, `pivot` = hanger pin the cabin swings about, `axis` = the cable direction
  *    (the swing axis), `floor` = cabin floor centre; lamps { list } = the roof bulbs.
@@ -46,7 +47,8 @@ import { accVerts } from './coding.ts';
 import { beam } from './culture-hq.ts';
 import { addHook } from './hq.ts';
 import { transmitterMast } from './marketing-quick.ts';
-import { tagSlides } from './surface-tags.ts';
+import { tagBeacon, tagRange, tagSlides } from './surface-tags.ts';
+import { SURFACE } from '../../content/activity.ts';
 
 const Y = V(0, 1, 0);
 type Pt = THREE.Vector3;
@@ -75,7 +77,7 @@ const bandsOf =
  * `back`, so it works as an end tower and as a mid tower), and a boarding landing with rails beside
  * the line, flush with the gondola floor, reached by a ladder. Front = +z.
  */
-function seaPylon({ rng, lod }: BuildOpts): THREE.BufferGeometry {
+function seaPylon({ rng, lod }: BuildOpts, terminal: boolean): THREE.BufferGeometry {
   const S = F.pylon;
   const hi = lod === 0;
   const H = S.height;
@@ -119,92 +121,124 @@ function seaPylon({ rng, lod }: BuildOpts): THREE.BufferGeometry {
       }
     }
   }
-  // head: red block and hip cap, crossarm along z, two sheaves, a gold finial
+  // head: red block and hip cap, a crossarm along x OVER the cable (the grips pass under it), one
+  // sheave per track hung on an outer bracket (v4) or a horizontal bullwheel (v7), a gold finial
+  const sy = S.anchorY;
+  const tr = S.track;
+  const armY = sy + S.armOver;
   put(acc, baseBox(0.62, 0.32, 0.62), [0, H - 0.2, 0], P.red, { aoAmt: 0.05 });
-  put(acc, baseBox(0.24, 0.24, 2.1), [0, H + 0.16, 0], P.cream, { aoAmt: 0 });
-  put(acc, new THREE.ConeGeometry(0.5, 0.42, 4).translate(0, 0.21, 0), [0, H + 0.28, 0], P.red, {
+  put(acc, new THREE.ConeGeometry(0.42, 0.36, 4).translate(0, 0.18, 0), [0, H + 0.12, 0], P.red, {
     q: qEuler(0, Math.PI / 4, 0),
     aoAmt: 0,
   });
-  const sy = S.anchorY;
+  // king post up to the crossarm
+  put(acc, baseBox(0.22, armY - H, 0.22), [0, H, 0], P.cream, { aoAmt: 0 });
   const sheaves: [number, number, number][] = [];
-  for (const z of [S.sheaveZ, -S.sheaveZ]) {
-    put(
-      acc,
-      new THREE.CylinderGeometry(0.27, 0.27, 0.12, hi ? 10 : 6).rotateZ(Math.PI / 2),
-      [0, sy, z],
-      P.steel,
-      { aoAmt: 0 },
-    );
-    if (hi)
+  if (!terminal) {
+    put(acc, baseBox(2 * tr + 0.7, 0.22, 0.26), [0, armY, 0], P.cream, { aoAmt: 0 });
+    for (const sx of [1, -1]) {
+      const x = sx * tr;
+      // bracket down the outer side to the sheave axle
+      put(acc, baseBox(0.08, armY - sy + 0.04, 0.16), [x + sx * 0.2, sy, 0], P.steel, { aoAmt: 0 });
       put(
         acc,
-        new THREE.CylinderGeometry(0.08, 0.08, 0.2, 5).rotateZ(Math.PI / 2),
-        [0, sy, z],
-        P.gold,
-        {
-          aoAmt: 0,
-        },
+        new THREE.CylinderGeometry(S.sheaveR, S.sheaveR, 0.1, hi ? 10 : 6).rotateZ(Math.PI / 2),
+        [x, sy - S.sheaveR, 0],
+        P.steel,
+        { aoAmt: 0 },
       );
-    sheaves.push([0, sy, z]);
+      if (hi)
+        put(
+          acc,
+          new THREE.CylinderGeometry(0.07, 0.07, 0.42, 5).rotateZ(Math.PI / 2),
+          [x + sx * 0.1, sy - S.sheaveR, 0],
+          P.gold,
+          { aoAmt: 0 },
+        );
+      sheaves.push([x, sy, 0]);
+    }
+  } else {
+    // bullwheel: a rim at the seat height, spokes to a drum on the king post
+    const rim = new THREE.TorusGeometry(tr, hi ? 0.07 : 0.1, hi ? 4 : 3, hi ? 20 : 10).rotateX(
+      Math.PI / 2,
+    );
+    put(acc, rim, [0, sy, 0], P.red, { aoAmt: 0 });
+    const spokes = hi ? 4 : 2;
+    for (let k = 0; k < spokes; k++) {
+      const a = (k * Math.PI) / spokes;
+      const d = V(Math.cos(a) * tr, 0, Math.sin(a) * tr);
+      bar(acc, V(0, sy + 0.05, 0).sub(d), V(0, sy + 0.05, 0).add(d), 0.07, P.cream, 0);
+    }
+    put(acc, cylB(0.3, 0.3, armY - sy + 0.1, hi ? 8 : 5), [0, sy - 0.05, 0], P.red, { aoAmt: 0 });
+    put(acc, baseBox(0.9, 0.2, 0.9), [0, armY, 0], P.cream, { aoAmt: 0 });
   }
-  put(acc, new THREE.IcosahedronGeometry(hi ? 0.1 : 0.14, 0), [0, H + 0.74, 0], P.gold, {
+  // the red aviation lamp on top blinks (beacon tag, LOD0) like the M22 stack masts it replaces
+  if (hi) put(acc, cylB(0.03, 0.03, 0.32, 4), [0, armY + 0.12, 0], P.steel, { aoAmt: 0 });
+  const lamp0 = accVerts(acc);
+  put(acc, new THREE.IcosahedronGeometry(hi ? 0.13 : 0.16, 0), [0, armY + 0.45, 0], P.neon, {
     ...lit,
     emissive: 1,
   });
-  // boarding landing beside the line: a slab on two brackets from the leg, rails, ladder down
+  const lampN = accVerts(acc) - lamp0;
+  // terminal: boarding landing beside the +x track, a slab on two brackets from the leg, rails,
+  // ladder down
   const L = S.landing;
   const lx = (L.x0 + L.x1) / 2;
   const lw = L.x1 - L.x0;
-  put(acc, baseBox(lw, 0.14, L.depth), [lx, L.y - 0.14, 0], WOOD.planks, { aoAmt: 0.1 });
-  put(acc, baseBox(lw, 0.06, L.depth + 0.08), [lx, L.y - 0.2, 0], P.red, { aoAmt: 0 });
-  for (const z of [-1, 1])
-    bar(
-      acc,
-      V(half(L.y - 1.2) * 0.9, L.y - 1.15, z * (L.depth / 2 - 0.1)),
-      V(L.x0 + 0.2, L.y - 0.2, z * (L.depth / 2 - 0.1)),
-      hi ? 0.09 : 0.14,
-      P.steel,
-    );
-  const railY = L.y + 0.92;
-  if (hi) {
-    for (const [x, z] of [
-      [L.x1 - 0.06, L.depth / 2 - 0.06],
-      [L.x1 - 0.06, -L.depth / 2 + 0.06],
-      [L.x0 + 0.1, L.depth / 2 - 0.06],
-      [L.x0 + 0.1, -L.depth / 2 + 0.06],
-    ])
-      put(acc, cylB(0.04, 0.04, 0.92, 4), [x, L.y, z], P.steel, { aoAmt: 0 });
-    bar(
-      acc,
-      V(L.x1 - 0.06, railY, L.depth / 2 - 0.06),
-      V(L.x1 - 0.06, railY, -L.depth / 2 + 0.06),
-      0.05,
-      P.cream,
-      0,
-    );
+  if (terminal) {
+    put(acc, baseBox(lw, 0.14, L.depth), [lx, L.y - 0.14, 0], WOOD.planks, { aoAmt: 0.1 });
+    put(acc, baseBox(lw, 0.06, L.depth + 0.08), [lx, L.y - 0.2, 0], P.red, { aoAmt: 0 });
     for (const z of [-1, 1])
       bar(
         acc,
-        V(L.x0 + 0.1, railY, z * (L.depth / 2 - 0.06)),
-        V(L.x1 - 0.06, railY, z * (L.depth / 2 - 0.06)),
+        V(half(L.y - 1.6) * 0.9, L.y - 1.55, z * (L.depth / 2 - 0.1)),
+        V(L.x0 + 0.25, L.y - 0.2, z * (L.depth / 2 - 0.1)),
+        hi ? 0.09 : 0.14,
+        P.steel,
+      );
+    const railY = L.y + 0.92;
+    if (hi) {
+      for (const [x, z] of [
+        [L.x1 - 0.06, L.depth / 2 - 0.06],
+        [L.x1 - 0.06, -L.depth / 2 + 0.06],
+        [L.x0 + 0.1, L.depth / 2 - 0.06],
+        [L.x0 + 0.1, -L.depth / 2 + 0.06],
+      ])
+        put(acc, cylB(0.04, 0.04, 0.92, 4), [x, L.y, z], P.steel, { aoAmt: 0 });
+      bar(
+        acc,
+        V(L.x1 - 0.06, railY, L.depth / 2 - 0.06),
+        V(L.x1 - 0.06, railY, -L.depth / 2 + 0.06),
         0.05,
         P.cream,
         0,
       );
-    // ladder from the landing's outer edge to the plinth
-    const lxl = L.x1 + 0.02;
-    for (const z of [-0.24, 0.24])
-      bar(acc, V(lxl, 0.25, z), V(lxl, L.y - 0.1, z), 0.05, P.steel, 0);
-    for (let y = 0.6; y < L.y - 0.2; y += 0.42)
-      bar(acc, V(lxl, y, -0.24), V(lxl, y, 0.24), 0.04, P.steel, 0);
-  } else {
-    put(acc, baseBox(0.12, 0.92, L.depth), [L.x1 - 0.06, L.y, 0], P.cream, { aoAmt: 0 });
-    put(acc, baseBox(0.1, L.y - 0.2, 0.6), [L.x1 + 0.02, 0.2, 0], P.steel, { aoAmt: 0 });
+      for (const z of [-1, 1])
+        bar(
+          acc,
+          V(L.x0 + 0.1, railY, z * (L.depth / 2 - 0.06)),
+          V(L.x1 - 0.06, railY, z * (L.depth / 2 - 0.06)),
+          0.05,
+          P.cream,
+          0,
+        );
+      // ladder from the landing's outer edge to the plinth
+      const lxl = L.x1 + 0.02;
+      for (const z of [-0.24, 0.24])
+        bar(acc, V(lxl, 0.25, z), V(lxl, L.y - 0.1, z), 0.05, P.steel, 0);
+      for (let y = 0.6; y < L.y - 0.2; y += 0.42)
+        bar(acc, V(lxl, y, -0.24), V(lxl, y, 0.24), 0.04, P.steel, 0);
+    } else {
+      put(acc, baseBox(0.12, 0.92, L.depth), [L.x1 - 0.06, L.y, 0], P.cream, { aoAmt: 0 });
+      put(acc, baseBox(0.1, L.y - 0.2, 0.6), [L.x1 + 0.02, 0.2, 0], P.steel, { aoAmt: 0 });
+    }
   }
   const g = acc.finish(rng, false, true);
-  addHook(g, 'cable', { anchor: [0, sy, S.sheaveZ], back: [0, sy, -S.sheaveZ] });
-  addHook(g, 'landing', { at: [lx, L.y, 0], size: [lw, L.depth], y: L.y });
+  if (hi) tagBeacon(g, { first: lamp0, count: lampN });
+  addHook(g, 'lamp', { at: [0, armY + 0.45, 0] });
+  // the two tracks' seats (right = +x, left = -x); a terminal's cable turns round the bullwheel
+  addHook(g, 'cable', { right: [tr, sy, 0], left: [-tr, sy, 0], terminal });
+  if (terminal) addHook(g, 'landing', { at: [lx, L.y, 0], size: [lw, L.depth], y: L.y });
   return addHook(g, 'sheaves', { list: sheaves });
 }
 
@@ -549,6 +583,14 @@ function onAirSign({ rng, lod }: BuildOpts): THREE.BufferGeometry {
     yTop -= pitch;
   }
   const g = acc.finish(rng, false, true);
+  // spell-out (TASK-518): each letter's strokes carry (index, count, 0, -SURFACE.neon)
+  for (const l of letters)
+    tagRange(g, { first: l.first as number, count: l.count as number }, [
+      l.index as number,
+      n,
+      0,
+      -SURFACE.neon,
+    ]);
   addHook(g, 'letters', { list: letters });
   addHook(g, 'glow', { slotBase: O.slot.base, slotStep: O.slot.step });
   addHook(g, 'mount', {
@@ -767,23 +809,23 @@ function extend(
 
 /** Heights of the added variants (u, measured from the finished LOD0 geometry; the geo test checks them). */
 export const M27_HEIGHTS = {
-  pylon: 9.9,
+  pylon: 10.35,
   gondola: 2.65,
   seaBoard: 5.2,
   onAir: 9.3,
   guyed: 9.9,
 } as const;
 
-/** mailLine 4 / 5 / 6: the cable car pylon and the two gondolas. */
+/** mailLine 4 / 5 / 6 / 7: the cable car pylon, the two gondolas, the terminal (TASK-518). */
 export function withCableCar(def: PropGeoDef): PropGeoDef {
   const [g0, g1] = F.gondola.variants;
   return extend(
     def,
-    def.variants + 3,
-    [M27_HEIGHTS.pylon, M27_HEIGHTS.gondola, M27_HEIGHTS.gondola],
+    def.variants + 4,
+    [M27_HEIGHTS.pylon, M27_HEIGHTS.gondola, M27_HEIGHTS.gondola, M27_HEIGHTS.pylon],
     (o) =>
-      o.variant === F.pylon.variant
-        ? seaPylon(o)
+      o.variant === F.pylon.variant || o.variant === F.pylon.terminal
+        ? seaPylon(o, o.variant === F.pylon.terminal)
         : o.variant === g0 || o.variant === g1
           ? gondola(o)
           : def.build(o),

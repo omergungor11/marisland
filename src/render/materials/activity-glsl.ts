@@ -3,6 +3,7 @@ import {
   LEDS,
   BEACON,
   MARQUEE,
+  NEON_SEQ,
   MOTION_TAG,
   SOCK_LIFT,
   OCCUPANCY,
@@ -209,11 +210,17 @@ const nightTint = new THREE.Color(1, 1, 1).lerp(
 );
 /**
  * Culture kinds (TASK-440), spliced in front of the flow kind (`… else` + the older chain).
+ * Neon (TASK-518): letter `vMarSurf.x` lights `x × step` s into the spell-out cycle (dims by night only).
  * Marquee: bulb `vMarSurf.x` of `vMarSurf.y` is lit when it is in the chase's current group,
  * the others dim (albedo and glow weight). Stained: flags the day transmission for ACTIVITY_GLOW
  * (it needs the shaded normal) and tints the night lamp glow toward the studio light.
  */
-export const CULTURE_SURFACE = /* glsl */ `if (marK > ${f(SURFACE.beacon - 0.5)}) {
+export const CULTURE_SURFACE = /* glsl */ `if (marK > ${f(SURFACE.neon - 0.5)}) {
+      float marNp = mod(marSt, ${f(NEON_SEQ.period)});
+      float marNo = step(vMarSurf.x * ${f(NEON_SEQ.step)}, marNp) * step(marNp, ${f(NEON_SEQ.period - NEON_SEQ.dark)});
+      marC.rgb = diffuseColor.rgb * mix(${f(NEON_SEQ.offAlbedo)}, 1.0, max(marNo, 1.0 - uLamps.x));
+      marC.a = mix(${f(NEON_SEQ.off)}, 1.0, marNo);
+    } else if (marK > ${f(SURFACE.beacon - 0.5)}) {
       float marBc = step(fract(marSt / ${f(BC.period)} + vMarSurfSeed), ${f(BC.duty)});
       marC.rgb = diffuseColor.rgb * mix(${f(BC.offAlbedo)}, 1.0, marBc);
       marC.a = mix(${f(BC.off)}, 1.0, marBc);
