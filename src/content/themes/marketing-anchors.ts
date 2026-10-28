@@ -148,6 +148,15 @@ export const MARKETING_ANCHORS = {
     arc: 55,
     headStep: 5,
     cableClear: 4,
+    /**
+     * TASK-523 (D-102): the sign keeps out of the cable corridor as seen from the sea. In the
+     * sign's frame (d = out along the normal, l = across the face) every sample of both tracks
+     * (± the gondola half width `half`) with −`back` ≤ d ≤ `depth` keeps |l| ≥ w/2 + `gap` +
+     * max(d, 0) · tan(`view`): clear for every camera within `view`° of the face normal (the
+     * D-m27-gondola / W-cable-dusk side views) over the near part of the line, where the cabins
+     * hang at the letters' height. The summit station disc (`C.station.r`) keeps the same gap.
+     */
+    corridor: { gap: 1.5, view: 25, depth: 14, back: 8, half: K.gondola.w / 2 },
     /** Minimum share of the face samples that are Zone.cliff. */
     cliffShare: 0.6,
   },

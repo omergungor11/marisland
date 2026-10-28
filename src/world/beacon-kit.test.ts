@@ -8,7 +8,7 @@ import {
 import { MARKETING_QUICK as Q } from '../content/themes/marketing.ts';
 import { cableLoop, gondolaPose, newGondolaPose } from './cable-car.ts';
 import { anchorChain } from './gen/plans/devops-growth.ts';
-import { guyEyes, squaresApart } from './gen/plans/marketing-anchors.ts';
+import { beaconTracks, guyEyes, squaresApart } from './gen/plans/marketing-anchors.ts';
 import { ON_AIR_COLUMN } from './gen/plans/marketing-m27.ts';
 import { generateWorld, heightAt, type WorldData } from './index.ts';
 import type { FixtureData, IslandData } from './types.ts';
@@ -144,6 +144,59 @@ describe('Beacon Rock M27 kit placement (TASK-518), 30 seeds', { timeout: 240_00
           );
       }
     }
+  });
+
+  it('ON AIR keeps out of the cable corridor seen from the sea (TASK-523, D-102)', () => {
+    // in the sign's frame (d out along the normal, l across): every sample of both tracks
+    // within [−back, depth] of the plane stays |l| ≥ w/2 + gondola half + gap + d⁺ · tan(view),
+    // the summit station disc likewise; checked on the published anchors, independent of the
+    // planner's sampling (0.25 u along every span of both tracks)
+    const Q2 = A.neon.corridor;
+    const tv = Math.tan((Q2.view * Math.PI) / 180);
+    let placed = 0;
+    let lines = 0;
+    for (const s of SEEDS) {
+      const w = world(s);
+      const isl = mkt(w);
+      const on = isl.anchors.onAir;
+      const sz = isl.anchors.onAirSize;
+      const tracks = beaconTracks(isl);
+      if (tracks[0].length >= 2) lines++;
+      if (!on || !sz) continue;
+      placed++;
+      const n = { x: Math.cos(on.rotY), z: Math.sin(on.rotY) };
+      const frame = (q: { x: number; z: number }) => {
+        const dx = q.x - on.x;
+        const dz = q.z - on.z;
+        return { d: dx * n.x + dz * n.z, l: Math.abs(dz * n.x - dx * n.z) };
+      };
+      let worst = Infinity;
+      for (const t of tracks)
+        for (let k = 0; k + 1 < t.length; k++) {
+          const L = Math.hypot(t[k + 1].x - t[k].x, t[k + 1].z - t[k].z);
+          for (let u = 0; u <= L; u += 0.25) {
+            const f = frame({
+              x: t[k].x + ((t[k + 1].x - t[k].x) * u) / L,
+              z: t[k].z + ((t[k + 1].z - t[k].z) * u) / L,
+            });
+            if (f.d < -Q2.back || f.d > Q2.depth) continue;
+            worst = Math.min(worst, f.l - Q2.half - sz.x / 2 - Q2.gap - Math.max(f.d, 0) * tv);
+          }
+        }
+      const c0 = isl.anchors.cable0;
+      if (c0) {
+        const f = frame(c0);
+        if (f.d >= -Q2.back - A.cable.station.r && f.d <= Q2.depth + A.cable.station.r)
+          worst = Math.min(
+            worst,
+            f.l - A.cable.station.r - sz.x / 2 - Q2.gap - Math.max(f.d, 0) * tv,
+          );
+      }
+      // the planner samples every 0.5 u: allow the chord between its samples
+      expect(worst, `seed ${s}`).toBeGreaterThanOrEqual(-0.05);
+    }
+    expect(placed).toBe(SEEDS.length);
+    expect(lines).toBe(SEEDS.length);
   });
 
   it('the M22 masts left every stack top carrying a piece; the guyed mast stands its eyes on rock', () => {

@@ -2,6 +2,28 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-102: ON AIR keeps out of the cable corridor seen from the sea — the sign moves along the cliff, the line stays (TASK-523; builds D-095 / D-097) — 2026-10-29
+
+**Decision**: the QA nit (TASK-519 §3 D-m27-gondola: the first span and its cabins pass in front of the ON AIR letters)
+is fixed by moving the **sign**, not the line. `neonFace` (`world/gen/plans/marketing-anchors.ts`) now also needs
+`corridorMargin(p, rot, w, tracks, station) ≥ 0`: in the sign's frame (d out along the face normal, l across) every
+sample of **both tracks** (all spans, clipped to −`back` ≤ d ≤ `depth`) keeps |l| ≥ w/2 + gondola half width + `gap` +
+max(d, 0) · tan(`view`), and the summit station disc (r 2) the same. So the sign is clear for any camera within `view`°
+of its normal over the near part of the line, where the cabins hang at letter height. Numbers in
+`MARKETING_ANCHORS.neon.corridor` = { gap 1.5, view 25°, depth 14, back 8, half = gondola w / 2 }. The search is
+unchanged otherwise (headings round windward, nearest windward − 40° wins, narrower widths tried); the old
+`cableClear` 4 u check against the first span's centre line stays. Seed 2024: the sign moves 3.1 u along the cliff
+(157.1, -111.5 → 157.1, -114.6, heading 176° → 180°); D-m27-onair-night / -seq cams re-aimed by the same 3.1 u.
+**Numbers (30 test seeds)**: corridor clear before 17 / 30 (worst −10.5 u, seed 7049; 2024 −3.7 u), after 30 / 30
+(min margin 0.07 u); ON AIR placed 30 / 30 → 30 / 30, line 30 / 30 → 30 / 30 (13 signs moved; the rest kept their place).
+World hashes: only seed 42 moved among the pinned seeds (archipelago `42` → `7c1165c814cdad82`, Marketing per-island
+`133c5b2e8edddbdd`); seeds 1 / 1001 and the bluffs-off hashes are unchanged (their signs were already clear).
+**Alternatives not taken**: `view` 30° (seed 4156 has no clear face, 29 / 30); moving the line's summit seat (the
+fallback the task allowed; not needed at 25°, and it would re-route the whole chain); a plain distance check without
+the view wedge (the old check: 3.2 u on seed 2024 and still overlapped from the side camera). **Residual**: from
+D-m27-gondola's close camera (≈ 52° off the face normal) one thin cable still crosses the letter column; the cabin no
+longer covers it.
+
 ## D-100: TASK-519 QA budget calls — medium gpuMemoryMB 170 → 172, L-marketing 60→42 step blob 2.0 %, four small follow-ups (TASK-520–523) — 2026-10-29
 
 **Decision** (user, from the TASK-519 report `mar-docs/qa/m26-m27-2026-10-28.md`): (1) **Memory.** W27 measured 171 MB

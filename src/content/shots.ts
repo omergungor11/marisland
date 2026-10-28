@@ -448,8 +448,9 @@ const DEVOPS_M25_CAMS: readonly (readonly [string, string, string, number, numbe
  * TASK-518 (D-097): the Beacon Rock M27 kit placed and moving, seed 2024 (summit terminal
  * 164,-106; stack pylons 139.4,-102 / 135.4,-127; far terminal 153.1,-150.8; dive tower
  * 136.8,-100.7 → pool 130,-97.5; transmitter 132.9,-125.7; sea billboard 151,4,-155.6; ON AIR
- * 157.1,17.7,-111.5 facing -x). `simt` picks the moment: gondola 0 on the first span at 10 s, the
- * diver in the air at ~29.5 s, all five letters lit 1.6-8.3 s into each 9 s spell-out.
+ * 157.1,17.7,-114.6 facing -x: TASK-523 moved it 3.1 u along the cliff, out of the cable
+ * corridor). `simt` picks the moment: gondola 0 on the first span at 10 s, the diver in the air
+ * at ~29.5 s, all five letters lit 1.6-8.3 s into each 9 s spell-out.
  */
 const MARKETING_M27_CAMS: readonly (readonly [string, string, string, number, number])[] = [
   ['D-m27-cable', 'Cable car line over the sea stacks (T1)', '92,34,-150,148,14,-122', 14, 12],
@@ -460,11 +461,17 @@ const MARKETING_M27_CAMS: readonly (readonly [string, string, string, number, nu
     14,
     10,
   ],
-  ['D-m27-onair-night', 'ON AIR cliff neon at night (T2)', '128,20,-108,157,17.7,-111.5', 21.5, 6],
+  [
+    'D-m27-onair-night',
+    'ON AIR cliff neon at night (T2)',
+    '128,20,-111.1,157.1,17.7,-114.6',
+    21.5,
+    6,
+  ],
   [
     'D-m27-onair-seq',
     'ON AIR spelling out, 3 letters lit (T2)',
-    '128,20,-108,157,17.7,-111.5',
+    '128,20,-111.1,157.1,17.7,-114.6',
     21.5,
     9.9,
   ],
