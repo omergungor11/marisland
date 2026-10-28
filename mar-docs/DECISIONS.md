@@ -2,6 +2,38 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-098: Emberpeak obsidian black-sand cove — a late cut-only notch in the windward bluff, floor repainted black sand, the obsidian decor placed in finish on the final ground (TASK-513; builds D-093 (6) on D-083 / D-091 / D-092) — 2026-10-28
+
+**Decision**: (1) **Plan time** (`placeM26` → `planCove`, before the kit / lodges / village / columns keep off it): at
+the `obsidianBeach` anchor (frame s out to sea, q along the coast) the deepest floor of `backs` 6 / 5 / 4 u behind the
+anchor, slid 0 / ±2 / ±4 / ±6 u along the coast, whose floor rect (10 u wide, back → s = +4) is clear of every other
+obstacle by gap + the groundWriter keep-off and of every pad's margin + falloff. The whole cove rect (walls
+included) is reserved and path-blocked, so no footpath is ever cut. Anchors `obsidianCove` (floor origin, rotY out to
+sea) + `obsidianCoveSize` ({x: 10, z: back}). (2) **Finish** (after the lava bed / bridge / deck): cut-only
+groundWriter carve, floor = rounded-rect (corner 3) open to the sea, beach sloping linearly 1.1 u at the back → 0.45 u
+at s = +4 (≥ FLATTEN.minHeight 0.4, so nothing is raised), walls blended over 2.5 u back to the bluff (≈ 5–6 u high).
+Zones repainted: floor cells → `Zone.sandBlack` (also floor cells already below the beach), wall cells by slope:
+cliff > ZONE_RULES.cliffSlope, else black sand ≤ 1.6 u, else rock > rockSlope. The existing `SAND.black` /
+`blackSand` ground is the colour (no new palette entry). (3) **Decor in finish** on the final ground (same
+`m26/obsidian` rng): stacks on the shelf as before; with a cove the slab samples its floor / waterline (s 0 … +6),
+the clusters and the cairn its floor (y 0.4–1.4, 1.2 u off the walls, on black sand); every piece's relief under its
+disc ≤ `maxRelief` (0.9 / 1.0 / 0.9 / 0.9). Without a cove the old bluff-top rules apply.
+**Rationale**: a late cut (the D-093 lava-bed pattern) never fights the pads and keeps the funicular / lava / deck /
+kiln / breakwater ground (groundWriter keep-off); checking only the floor (walls may clip) is what lets the cove fit
+beside the D13 quarry rect, which sits ~13 u behind the anchor on most seeds (centred 6 u-deep coves: 20 / 29).
+**Numbers**: 30 test seeds: cove 27 / 29 anchor seeds (3367, 6523: the 12 × 9 quarry rect lies on every floor
+candidate), ≥ 4 pieces ≥ 90 %, every piece seated; no water fall within 14 u of a cove. Carve + decor < 1 ms per world
+(warm full world 390–510 ms on seeds 1 / 42 / 1001 / 1337 / 2024). Wow `--assert` green 42 / 42 (calls peak 294
+W-marina-dusk, tris peak 783 k W16, memory peak 170 / 170 MB W4 / W27). World hashes re-pinned (bluffs-off 1001
+`8eb01fbd737b70d2`, 1 `7a43ec9b43747651`; stage snapshot 1 `0cff0fdc1ec79190`, 42 `5d95f8c038a8d5d9`, 1001
+`c02ba17a2300b32f`). Dev cam `D-obsidian-cove` (seed 1001).
+**Side effect**: `placeWaterfalls` jitter is drawn per candidate lip cell, so the cove's new cliff cells reshuffle the
+island's water falls: seed 1001 Emberpeak has 3 instead of 1 (one now visible in W1 on the SW coast by the village).
+**Alternatives not taken**: a new darker sand colour (the cove floor would merge with the dark cliff walls; the
+existing black sand reads a shade lighter, which is what makes the notch readable); a pad under the cove (falloff
+would reach the quarry / lava strip and raise ground); keeping the decor at plan time (it would stand on the pre-carve
+bluff).
+
 ## D-097: Beacon Rock M27 placed and moving — the cable car is a two-track loop on the built geometry (seat 9.45, hang 2.5), real footprints on the stack tops, a spell-out neon kind, the diver as a culture-mover scene (TASK-518; builds D-095 / D-096) — 2026-10-28
 
 **Reconciliation (anchors vs props).** One truth = the built geometry: cable seat **9.45 u over every pivot** (station
@@ -160,7 +192,7 @@ the island's 6-bot tableau cap is full, a couple would be skipped). (5) **D17 ki
 lane (ring 5–22 u, mouth toward the lane centre or ≤ 0.55 rad off it, pad clash rule of the lane), chimney smoke
 (FIXTURE_EMITTERS) and a night mouth glow (culture-mover scene). (6) **D10 obsidian**: sea stacks on the shelf in front
 of the bluff (seabed −1.6…−0.25), a tide-pool slab at the waterline, shard clusters and a cairn on the bluff top; the
-bluff stays (no second low cove). (7) **D18 breakwater** near the anchor: variant head / straight / short, shifted
+bluff stays (no second low cove). *(TASK-513 / D-098 later carves a black-sand cove there and re-seats the decor.)* (7) **D18 breakwater** near the anchor: variant head / straight / short, shifted
 toward the shore / along the arm until every footprint sample's seabed lies between the foot (−2.6 + 0.25, buried)
 and −0.3, ≥ 6 u off the piers; boat routes get keep-out discs along it (world/index.ts `breakwaterKeepOut`, 5.5 u).
 (8) **D18 tug** = sailboat v9 drawn in `render/movers.ts` next to the cargo ships (+1 instanced mesh, same program) and

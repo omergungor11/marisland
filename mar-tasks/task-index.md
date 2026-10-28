@@ -359,7 +359,7 @@ Details in `phases/phase-3.md`.
 | TASK-510 | Shots + QA for M25 / M29 / M30: wow presets, ladder low + medium `--assert`, QA report | qa | S | COMPLETED 187eefb (D-090) | TASK-505, TASK-507, TASK-508 |
 | TASK-511 | HQ grows ~20–25 % so it reads clearly largest in W1 (Emberpeak + TASK-503/507 anchors untouched); layout fit, re-pin hashes, re-aim raw cams that moved (D-090) | worldgen | M | COMPLETED | TASK-510 |
 | TASK-512 | Wow presets Kite Hill Afternoon, Proving Grounds Noon, Fairy Night; re-frame W-ember-lane-night (D-090) | life | S | COMPLETED | TASK-511 |
-| TASK-513 | M26 follow-up: obsidian beach as a low black-sand cove (heightfield notch + zone repaint at `obsidianBeach`, decor re-seated), hash re-pin | worldgen | M | TODO | TASK-509c |
+| TASK-513 | M26 follow-up: obsidian beach as a low black-sand cove (heightfield notch + zone repaint at `obsidianBeach`, decor re-seated), hash re-pin | worldgen | M | COMPLETED (D-098) | TASK-509c |
 | TASK-514 | M26 follow-up: lava shader polish — soften the bullseye delta foam rings, blend the channel start into the crater glow at the notch | shader | S | COMPLETED | TASK-509c |
 | TASK-515 | M26 follow-up: crater-deck couple (2-bot tableau on the two seats; DevOps tableau cap 6 → 7) | life | S | TODO | TASK-509c |
 
