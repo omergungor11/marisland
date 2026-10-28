@@ -16,6 +16,9 @@ import { PART, buildPartGeometries, buildPartsGeometry } from './culture-mover-p
 import { SHARED } from './uniforms.ts';
 import { DEVOPS_M25 } from '../content/themes/devops-m25.ts';
 import { DEVOPS_M25_MOTION } from '../content/themes/devops-m25-site.ts';
+import { DEVOPS_M26_MOTION } from '../content/themes/devops-m26-site.ts';
+import { DOCK } from '../content/settlements.ts';
+import { pierLoop } from './harbour-routes.ts';
 
 /** Prop store position of the first instance of def `id` (null when the seed has none). */
 function firstOf(
@@ -245,9 +248,22 @@ describe('culture movers', () => {
       ).length;
     // steam = soft puffs on the puff program (TASK-486), not lit blobs
     const L = M.launch;
-    // + the M25 geysers' steam (TASK-507)
+    // + the M25 geysers' steam (TASK-507) + the M26 tug funnel smoke per DevOps pier loop (TASK-509c)
     const geysers = world.fixtures.filter((f) => f.defId === 'geyserCone').length;
-    expect(placed.length).toBe(L.puffs * 2 + geysers * DEVOPS_M25_MOTION.geyser.puffs);
+    const loops = world.docks.filter(
+      (d) =>
+        world.islands[d.islandId]?.theme === 'devops' &&
+        pierLoop(
+          world.height,
+          d,
+          { x: Math.cos(d.rotY), z: Math.sin(d.rotY) },
+          d.segments * DOCK.segment,
+        ),
+    ).length;
+    expect(loops).toBeGreaterThan(0);
+    expect(placed.length).toBe(
+      L.puffs * 2 + geysers * DEVOPS_M25_MOTION.geyser.puffs + loops * DEVOPS_M26_MOTION.tugSmoke.n,
+    );
     const steam = (): number[][] =>
       placed.filter((p) => p[3] > 0 && Math.hypot(p[0] - pad!.x, p[2] - pad!.z) < 6);
     view.update(3, 12, env(12), gp, fest());

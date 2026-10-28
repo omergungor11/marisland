@@ -1,12 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { PROP_DEFS } from '../content/props.ts';
-import { FIXTURE_RADIUS, FLATTEN } from '../content/settlements.ts';
+import { DOCK, FIXTURE_RADIUS, FLATTEN } from '../content/settlements.ts';
 import { DEVOPS_CULTURE, DEVOPS_CULTURE_SITE } from '../content/cultures/devops.ts';
-import { DEVOPS_SITE, DEVOPS_THEME, FUMAROLE_ZONES } from '../content/themes/devops.ts';
+import {
+  DEVOPS_MOVERS,
+  DEVOPS_SITE,
+  DEVOPS_THEME,
+  FUMAROLE_ZONES,
+} from '../content/themes/devops.ts';
 import { DEVOPS_GROWTH } from '../content/themes/devops-growth.ts';
 import { DEVOPS_M25 } from '../content/themes/devops-m25.ts';
 import { DEVOPS_M25_SITE, oreAnchorWorld } from '../content/themes/devops-m25-site.ts';
 import { mailCablePoint } from '../content/props-themes/m20.ts';
+import { DEVOPS_M26 } from '../content/themes/devops-m26.ts';
+import { DEVOPS_M26_MOTION, DEVOPS_M26_SITE } from '../content/themes/devops-m26-site.ts';
+import { DEVOPS_WORKS } from '../content/props-themes/devops.ts';
+import { pierLoop, shipPose, tugPose } from '../render/harbour-routes.ts';
 import { railFromLevels } from './funicular.ts';
 import { anchorChain } from './gen/plans/devops-growth.ts';
 import { leewardness } from './gen/heightfield.ts';
@@ -80,6 +89,15 @@ function devops(seed: number) {
 }
 
 const rate = (hits: number, n: number): number => hits / n;
+
+/** The M26 lava-pack defs (TASK-509b / 509c). */
+const M26_DEFS = new Set([
+  'emberBridge',
+  'craterDeck',
+  'glassKiln',
+  'obsidianShard',
+  'devopsBreakwater',
+]);
 
 describe('DevOps island plan (TASK-364) — 30 seeds', () => {
   it(
@@ -323,7 +341,9 @@ describe('DevOps island plan (TASK-364) — 30 seeds', () => {
           ],
           ctx,
         ).toContain(f.defId);
-      for (const f of d.fences) expect(['pipe', 'rail', 'funicular'], ctx).toContain(f.kind);
+      // TASK-509c: + the carved lava bed (kind 'lava', ground art)
+      for (const f of d.fences)
+        expect(['pipe', 'rail', 'funicular', 'lava'], ctx).toContain(f.kind);
       const p = d.w.props;
       for (let i = 0; i < p.count; i++) {
         if (p.islandId[i] !== d.isl.id) continue;
@@ -504,7 +524,9 @@ describe('DevOps Ember Smiths culture (TASK-422) — 30 seeds', () => {
       const d = devops(seed);
       if (!d) continue;
       for (const f of d.fixtures) {
-        if (!KIT.has(f.defId)) continue;
+        // the M26 lava pack (bridge over the bed, deck on the rim, decor / mole in the sea) has its
+        // own grounding rules: TASK-509c tests below
+        if (!KIT.has(f.defId) || M26_DEFS.has(f.defId)) continue;
         const ctx = `seed ${seed} ${f.defId} @${f.x.toFixed(1)},${f.z.toFixed(1)}`;
         const y0 = heightAt(d.w.height, f.x, f.z);
         expect(y0, `${ctx} on land`).toBeGreaterThan(0.3);
@@ -936,5 +958,274 @@ describe('DevOps M25 placement (TASK-507) — 30 seeds', () => {
     expect(rateOf(hits.lane, n), 'lane').toBeGreaterThanOrEqual(0.9);
     expect(rateOf(hits.town, n), 'town').toBeGreaterThanOrEqual(0.9);
     expect(rateOf(hits.geysers, n), 'geysers').toBeGreaterThanOrEqual(0.8);
+  });
+});
+
+/** M26 DevOps II (TASK-509c, D-093): the TASK-509b lava pack on the TASK-503 sites, 30 seeds. */
+describe('DevOps M26 placement (TASK-509c) — 30 seeds', () => {
+  const S = DEVOPS_M26_SITE;
+  const rateOf = (hits: number, n: number): number => hits / Math.max(n, 1);
+  const yAt = (w: WorldData, p: XZ): number => heightAt(w.height, p.x, p.z);
+  const segD = (p: XZ, a: XZ, b: XZ): number => {
+    const dx = b.x - a.x;
+    const dz = b.z - a.z;
+    const l2 = dx * dx + dz * dz || 1;
+    const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / l2));
+    return Math.hypot(p.x - a.x - dx * t, p.z - a.z - dz * t);
+  };
+  const crossing = (a: XZ, b: XZ, c: XZ, d: XZ): XZ | null => {
+    const r = { x: b.x - a.x, z: b.z - a.z };
+    const q = { x: d.x - c.x, z: d.z - c.z };
+    const den = r.x * q.z - r.z * q.x;
+    if (Math.abs(den) < 1e-9) return null;
+    const t = ((c.x - a.x) * q.z - (c.z - a.z) * q.x) / den;
+    const v = ((c.x - a.x) * r.z - (c.z - a.z) * r.x) / den;
+    return t >= 0 && t <= 1 && v >= 0 && v <= 1 ? { x: a.x + r.x * t, z: a.z + r.z * t } : null;
+  };
+
+  it('D1 lava bed: on the channel anchors, points on the bed, below the banks, never climbing', () => {
+    let n = 0;
+    let lines = 0;
+    let inner = 0;
+    let below = 0;
+    for (const seed of SEEDS) {
+      const d = devops(seed);
+      if (!d) continue;
+      const pts = anchorChain(d.isl, 'lavaChannel');
+      if (pts.length < 2) continue;
+      n++;
+      const ctx = `seed ${seed}`;
+      const bed = d.fences.filter((f) => f.kind === 'lava');
+      expect(bed.length, ctx).toBe(1);
+      lines++;
+      const { points, levels = [] } = bed[0];
+      expect(points, ctx).toEqual(pts);
+      expect(levels.length, ctx).toBe(points.length);
+      points.forEach((p, k) => {
+        // the terrain paints within ± 3 u of the sampled ground: the samples sit on the bed
+        expect(Math.abs(yAt(d.w, p) - levels[k]), `${ctx} #${k}`).toBeLessThanOrEqual(1.5);
+        if (k > 0) expect(levels[k], `${ctx} #${k}`).toBeLessThanOrEqual(levels[k - 1] + 1e-6);
+      });
+      for (let k = 1; k + 1 < points.length; k++) {
+        const a = points[k];
+        const b = points[k + 1];
+        const l = Math.hypot(b.x - a.x, b.z - a.z);
+        const nx = -(b.z - a.z) / l;
+        const nz = (b.x - a.x) / l;
+        const banks =
+          (yAt(d.w, { x: a.x + nx * 3.4, z: a.z + nz * 3.4 }) +
+            yAt(d.w, { x: a.x - nx * 3.4, z: a.z - nz * 3.4 })) /
+          2;
+        inner++;
+        if (yAt(d.w, a) < banks) below++;
+      }
+    }
+    expect(rateOf(lines, n)).toBe(1);
+    expect(n).toBeGreaterThanOrEqual(28);
+    expect(rateOf(below, inner), 'bed below its banks').toBeGreaterThanOrEqual(0.85);
+  });
+
+  it('D3 ember bridge: v0 across the bed, abutments seated, the arch over the lava, paths only cross there', () => {
+    let n = 0;
+    let hits = 0;
+    const B = DEVOPS_M26.bridge;
+    for (const seed of SEEDS) {
+      const d = devops(seed);
+      if (!d) continue;
+      const bed = d.fences.find((f) => f.kind === 'lava');
+      if (!bed) continue;
+      n++;
+      const ctx = `seed ${seed}`;
+      const br = d.fixtures.filter((f) => f.defId === 'emberBridge');
+      expect(br.length, ctx).toBeLessThanOrEqual(1);
+      const b = br[0];
+      const pts = bed.points;
+      if (b) {
+        hits++;
+        expect(b.variant, ctx).toBe(B.variants[0]);
+        expect(b.y, ctx).toBeDefined();
+        const y = b.y ?? 0;
+        const span = { x: Math.cos(b.rotY), z: Math.sin(b.rotY) };
+        const at = (s: number): XZ => ({ x: b.x + span.x * s, z: b.z + span.z * s });
+        // on the channel, the span across it
+        expect(Math.min(...pts.slice(1).map((q, k) => segD(b, pts[k], q))), ctx).toBeLessThan(0.05);
+        // abutments: the ground inside the body (skirt below the pivot … under the deck)
+        for (const s of [-4.2, -3, 3, 4.2]) {
+          const g = yAt(d.w, at(s)) - y;
+          expect(g, `${ctx} s ${s}`).toBeGreaterThanOrEqual(-B.skirt);
+          expect(g, `${ctx} s ${s}`).toBeLessThanOrEqual(B.deckY);
+        }
+        // the arch spans the carved bed
+        expect(yAt(d.w, b) - y, ctx).toBeLessThanOrEqual(-0.3);
+        // both ends are linked to the path network
+        for (const sg of [1, -1]) {
+          const pin = at(sg * (B.length / 2 + S.bridge.pin));
+          const near = d.w.paths.some(
+            (p) =>
+              p.islandId === d.isl.id &&
+              p.points.some((q) => Math.hypot(q.x - pin.x, q.z - pin.z) < 2.5),
+          );
+          expect(near, `${ctx} end ${sg}`).toBe(true);
+        }
+      }
+      // no footpath crosses the bed but over the bridge
+      for (const p of d.w.paths) {
+        if (p.islandId !== d.isl.id) continue;
+        for (let i = 0; i + 1 < p.points.length; i++)
+          for (let k = 0; k + 1 < pts.length; k++) {
+            const X = crossing(pts[k], pts[k + 1], p.points[i], p.points[i + 1]);
+            if (X) expect(b ? Math.hypot(X.x - b.x, X.z - b.z) : Infinity, ctx).toBeLessThan(2.5);
+          }
+      }
+    }
+    expect(rateOf(hits, n), 'bridge').toBeGreaterThanOrEqual(0.9);
+  });
+
+  it('D6 / D17: the crater deck on the rim with its stargazer; the kiln beside the lane, mouth to it', () => {
+    let n = 0;
+    const hits = { deck: 0, kiln: 0, kilnLevel: 0 };
+    for (const seed of SEEDS) {
+      const d = devops(seed);
+      if (!d) continue;
+      n++;
+      const ctx = `seed ${seed}`;
+      const deck = d.fixtures.find((f) => f.defId === 'craterDeck');
+      const a = d.isl.anchors.craterDeck;
+      if (deck && a) {
+        hits.deck++;
+        expect(Math.hypot(deck.x - a.x, deck.z - a.z), ctx).toBeLessThanOrEqual(1.5);
+        const ys = [yAt(d.w, deck)];
+        for (let k = 0; k < 8; k++)
+          ys.push(
+            yAt(d.w, {
+              x: deck.x + Math.cos(k * 0.785) * DEVOPS_M26.deck.r,
+              z: deck.z + Math.sin(k * 0.785) * DEVOPS_M26.deck.r,
+            }),
+          );
+        expect(Math.max(...ys) - Math.min(...ys), `${ctx} deck floor`).toBeLessThanOrEqual(1.5);
+        const spot = d.w.storySpots.find((s) => s.kind === 'deckGazer' && s.islandId === d.isl.id);
+        expect(spot, ctx).toBeDefined();
+        expect(
+          Math.hypot((spot?.pos.x ?? 0) - deck.x, (spot?.pos.z ?? 0) - deck.z),
+          ctx,
+        ).toBeLessThan(0.01);
+        expect((spot?.pos.y ?? 0) - yAt(d.w, deck), ctx).toBeCloseTo(DEVOPS_M26.deck.floorY, 5);
+      }
+      const kiln = d.fixtures.find((f) => f.defId === 'glassKiln');
+      const lane = d.isl.anchors.smithsLane ?? d.isl.anchors.foundry;
+      if (kiln && lane) {
+        hits.kiln++;
+        const to = { x: lane.x - kiln.x, z: lane.z - kiln.z };
+        const l = Math.hypot(to.x, to.z);
+        expect(l, ctx).toBeLessThanOrEqual(30);
+        const face = (to.x * Math.cos(kiln.rotY) + to.z * Math.sin(kiln.rotY)) / l;
+        expect(face, ctx).toBeGreaterThanOrEqual(Math.cos(S.kiln.turn) - 1e-6);
+        const c = {
+          x: kiln.x + Math.cos(kiln.rotY) * S.kiln.z,
+          z: kiln.z + Math.sin(kiln.rotY) * S.kiln.z,
+        };
+        const ys = [c, ...shapeCorners(rectShape(c.x, c.z, kiln.rotY, S.kiln.w, S.kiln.d))].map(
+          (p) => yAt(d.w, p),
+        );
+        const rel = Math.max(...ys) - Math.min(...ys);
+        expect(rel, ctx).toBeLessThanOrEqual(1.3);
+        if (rel <= 0.35) hits.kilnLevel++;
+      }
+    }
+    expect(rateOf(hits.deck, n), 'deck').toBeGreaterThanOrEqual(0.93);
+    expect(rateOf(hits.kiln, n), 'kiln').toBeGreaterThanOrEqual(0.9);
+    expect(rateOf(hits.kilnLevel, hits.kiln), 'kiln on its level pad').toBeGreaterThanOrEqual(0.9);
+  });
+
+  it('D10 obsidian: sea stacks in the shelf water, the slab at the waterline, shards on the bluff top', () => {
+    let n = 0;
+    let hits = 0;
+    const O = S.obsidian;
+    for (const seed of SEEDS) {
+      const d = devops(seed);
+      if (!d || !d.isl.anchors.obsidianBeach) continue;
+      n++;
+      const ctx = `seed ${seed}`;
+      const sh = d.fixtures.filter((f) => f.defId === 'obsidianShard');
+      if (sh.length >= 4) hits++;
+      for (const f of sh) {
+        const y = yAt(d.w, f);
+        if (f.variant === 1) {
+          expect(y, ctx).toBeGreaterThanOrEqual(O.stackDepth[0]);
+          expect(y, ctx).toBeLessThanOrEqual(O.stackDepth[1]);
+        } else if (f.variant === 2) {
+          expect(y, ctx).toBeGreaterThanOrEqual(O.slabY[0]);
+          expect(y, ctx).toBeLessThanOrEqual(O.slabY[1]);
+        } else expect(y, ctx).toBeGreaterThanOrEqual(O.landY - 0.3);
+      }
+    }
+    expect(rateOf(hits, n), '≥ 4 pieces').toBeGreaterThanOrEqual(0.9);
+  });
+
+  it('D18 breakwater: foot buried in the seabed, crest clear, off the piers and routes; the tug leads the ship', () => {
+    let n = 0;
+    let hits = 0;
+    const W = S.breakwater;
+    const D = DEVOPS_M26.breakwater;
+    for (const seed of SEEDS) {
+      const d = devops(seed);
+      if (!d) continue;
+      n++;
+      const ctx = `seed ${seed}`;
+      const bw = d.fixtures.filter((f) => f.defId === 'devopsBreakwater');
+      expect(bw.length, ctx).toBeLessThanOrEqual(1);
+      const b = bw[0];
+      if (!b) continue;
+      hits++;
+      const half = D.length[b.variant ?? 0] / 2;
+      const arm = { x: Math.cos(b.rotY), z: Math.sin(b.rotY) };
+      const e0 = { x: b.x - arm.x * half, z: b.z - arm.z * half };
+      const e1 = { x: b.x + arm.x * half, z: b.z + arm.z * half };
+      for (let s = -half; s <= half + 1e-6; s += 0.5)
+        for (let q = -D.footW / 2; q <= D.footW / 2 + 1e-6; q += D.footW / 8) {
+          const y = yAt(d.w, { x: b.x + arm.x * s - arm.z * q, z: b.z + arm.z * s + arm.x * q });
+          // the rubble foot (footY) stays under the seabed, the crest stands in water
+          expect(y, `${ctx} s ${s} q ${q}`).toBeGreaterThanOrEqual(D.footY);
+          expect(y, `${ctx} s ${s} q ${q}`).toBeLessThan(0);
+        }
+      for (const dk of d.w.docks) {
+        if (dk.islandId !== d.isl.id) continue;
+        const end = {
+          x: dk.x + Math.cos(dk.rotY) * dk.segments * DOCK.segment,
+          z: dk.z + Math.sin(dk.rotY) * dk.segments * DOCK.segment,
+        };
+        for (let k = 0; k <= 8; k++) {
+          const p = { x: dk.x + ((end.x - dk.x) * k) / 8, z: dk.z + ((end.z - dk.z) * k) / 8 };
+          expect(segD(p, e0, e1), ctx).toBeGreaterThanOrEqual(W.pierClear - 0.01);
+        }
+        // the tug escorts ship 0 round the harbour loop: never in a ship's hull (its centre outside
+        // the hull box grown by half the tug), never on the breakwater crest, always in water
+        const L = pierLoop(
+          d.w.height,
+          dk,
+          { x: Math.cos(dk.rotY), z: Math.sin(dk.rotY) },
+          dk.segments * DOCK.segment,
+        );
+        if (!L) continue;
+        const T = DEVOPS_M26.tug;
+        const C = DEVOPS_WORKS.ship;
+        for (let t = 0; t < 120; t += 0.5) {
+          const tug = tugPose(L, t, DEVOPS_M26_MOTION.tug.lead, DEVOPS_M26_MOTION.tug.side);
+          for (let k = 0; k < DEVOPS_MOVERS.ship.perDock; k++) {
+            const sh = shipPose(L, t, k, DEVOPS_MOVERS.ship.perDock);
+            const along = Math.abs((tug.x - sh.x) * sh.hx + (tug.z - sh.z) * sh.hz);
+            const across = Math.abs((tug.x - sh.x) * -sh.hz + (tug.z - sh.z) * sh.hx);
+            const inHull = along < C.l / 2 + T.length / 2 && across < C.beam / 2 + T.beam / 2;
+            expect(inHull, `${ctx} t ${t} ship ${k}`).toBe(false);
+          }
+          expect(segD(tug, e0, e1), `${ctx} t ${t}`).toBeGreaterThan(D.crestW / 2 + T.beam);
+          expect(yAt(d.w, tug), `${ctx} t ${t}`).toBeLessThan(-0.5);
+        }
+      }
+      // no boat route through it
+      for (const r of d.w.boatRoutes)
+        for (const p of r.points) expect(segD(p, e0, e1), ctx).toBeGreaterThan(W.keepOut - 1.5);
+    }
+    expect(rateOf(hits, n), 'breakwater').toBeGreaterThanOrEqual(0.9);
   });
 });
