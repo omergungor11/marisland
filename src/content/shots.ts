@@ -345,7 +345,20 @@ const MARINA_SHOTS: readonly ShotPreset[] = MARINA_CAMS.map(([id, title, cam, ti
  * hammers striking with sparks under the lit stalls.
  */
 const FUNICULAR_DAWN_CAM = '254,67,0,221,17,-23';
-const EMBER_LANE_CAM = '237.4,13.4,-7,243.7,8.2,-11.1';
+// TASK-512: the first take (and D-devops-smiths-night) filled the frame with two striped roofs; now high
+// over the lane's open end, looking down the aisle between the two stall rows so the lit stalls, hammers,
+// sparks, lanterns and the funicular car all read (low cams from either aisle end hit the mine cart)
+const EMBER_LANE_CAM = '233,19,3,242,6,-10';
+
+/**
+ * TASK-512 wow cams (raw, seed 1001), re-pin when the layouts move. Kite Hill Afternoon (14:00 +20 s,
+ * the Kite Day kites up round the hill foot) from D-move-coding-hill; Proving Grounds Noon (12:00 +3 s,
+ * the siren test) from D-qa-proving-siren; Fairy Night (22:00) down a row of the Tech Park's
+ * fairy-light grove (the wreathed quad-end trees, TASK-479 C13) with the fireflies about.
+ */
+const KITE_HILL_CAM = '-62,20,152,-100,17,177';
+const PROVING_NOON_CAM = '124,16,-112,100,9.5,-137';
+const FAIRY_NIGHT_CAM = '-140,4.5,144,-152,5,154';
 
 /**
  * TASK-507 (D-089) DevOps M25 cams: [id, title, cam, game hour, warm-up s]; raw `eye → target`,
@@ -1963,6 +1976,46 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     sets: ['wow'],
   },
   ...DEVOPS_M25_SHOTS,
+  // ---- TASK-512: the three wow presets TASK-502 specified (D-090)
+  {
+    id: 'W-kite-hill-afternoon',
+    title: 'Kite Hill Afternoon',
+    // 14:00 + 20 s Kite Day: the hill kites up round the knoll's foot (see KITE_HILL_CAM)
+    seed: 1001,
+    cam: KITE_HILL_CAM,
+    time: 14,
+    simt: 20,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  {
+    id: 'W-proving-grounds-noon',
+    title: 'Proving Grounds Noon',
+    // 12:00 + 3 s siren test: crate on its way up the drop tower, the fan spinning up (see PROVING_NOON_CAM)
+    seed: 1001,
+    cam: PROVING_NOON_CAM,
+    time: 12,
+    simt: 3,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  {
+    id: 'W-fairy-night',
+    title: 'Fairy Night',
+    // 22:00: the Tech Park's fairy-light grove, wreathed trees glowing, fireflies about (see FAIRY_NIGHT_CAM)
+    seed: 1001,
+    cam: FAIRY_NIGHT_CAM,
+    time: 22,
+    simt: 4,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
 ];
 
 export const SET_DEFAULTS: Record<
