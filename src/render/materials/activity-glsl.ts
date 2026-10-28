@@ -17,6 +17,7 @@ import {
 } from '../../content/activity.ts';
 import { FLOAT_BOB } from '../../content/anim.ts';
 import { WATERFALL_LOOK as WF } from '../../content/waterfalls.ts';
+import { LAVA } from '../../content/lava.ts';
 import { MERGED_FACADE_BIAS, MERGED_FACADE_SCALE } from '../props/far-merge.ts';
 
 /**
@@ -107,6 +108,50 @@ export const PULSE_ONLY = ` && -aSpin.w < ${f(SURFACE.pulse + 0.5)}`;
 
 const FL = WF.flow;
 const RG = WF.ring;
+const LF = LAVA.fall;
+const LC = LAVA.colors;
+/**
+ * Lava modes of the flow kind (TASK-509a, D-091; render/lava.ts + waterfalls.ts). Sheet (z 2): x =
+ * across, y = arc length — staggered cooled crust plates sliding slowly down over molten lava, hot
+ * core down the middle, lacy edges; glow weight `marLG` × colour `marLC` for ACTIVITY_GLOW (day + night).
+ * Delta disc (z 3): x = radius fraction, y = radius — a molten core and broken crust rings drifting out.
+ */
+const LAVA_FLOW = /* glsl */ `if (vMarSurf.z > 2.5) {
+        float marRn = vMarSurf.x;
+        float marRp = fract((vMarSurf.y - marSt * ${f(LF.delta.speed)}) / ${f(RG.spacing)});
+        float marRh = marHf(floor(vMarCloudXZ * 1.5) + vMarSurfSeed * 13.0);
+        if (marRn > ${f(RG.core)} && (marRp > (1.0 - marRn) * (0.5 + 0.6 * marRh) || marRn > 0.97)) discard;
+        // molten core cooling to a crust skirt; the broken rings outside are boiling foam
+        float marCore = 1.0 - smoothstep(0.15, ${f(RG.core + 0.1)}, marRn);
+        float marSkirt = 1.0 - smoothstep(${f(RG.core)}, ${f(RG.core + 0.2)}, marRn);
+        marC.rgb = mix(mix(${v3(WF.colors.foam)}, ${v3(LC.crustRim)}, 0.3 * marSkirt), ${v3(LC.lava)} * 0.55, marCore);
+        marLC = mix(${v3(LC.lava)}, ${v3(LC.hot)}, marCore * marCore * 0.6);
+        marLG = marCore * ${f(LF.glow.disc)} * (${f(LF.glow.day)} + ${f(LF.glow.night)} * uNight);
+      } else {
+        float marLx = vMarSurf.x * 3.0 + 0.3 * sin(vMarSurf.y * 0.9 + vMarSurfSeed * 6.2831853);
+        float marLane = floor(marLx);
+        float marLy = (vMarSurf.y - marSt * ${f(LF.speed)}) / ${f(LF.spacing)} + 0.37 * marLane;
+        float marLh = marHf(vec2(marLane, floor(marLy)) + vMarSurfSeed * 13.0);
+        float marFe = abs(vMarSurf.x * 2.0 - 1.0);
+        float marFw = (1.0 - 0.12 * (0.5 + 0.5 * sin(vMarSurf.y * 1.9 - marSt * ${f(LF.speed * 1.7)} + vMarSurfSeed * 6.2831853)))
+          * sqrt(clamp(vMarSurf.y / ${f(FL.cap)}, 0.0, 1.0));
+        if (marFe > marFw) discard;
+        // crust streaks: long teardrops of cooled skin sliding down each lane (head leading, thin
+        // tail), ~70 % of the cells; the rest of the sheet is molten
+        float marFl = 0.55 + 0.3 * marLh;
+        float marFy = (fract(marLy) - 0.5 * marFl) / (0.5 * marFl);
+        float marFx = (fract(marLx) * 2.0 - 1.0) / ((0.45 + 0.25 * marLh) * (0.3 + 0.7 * clamp(0.5 + 0.5 * marFy, 0.0, 1.0)));
+        float marPd = (marFx * marFx + marFy * marFy - 1.0) * 0.25;
+        float marPl = step(marLh, 0.7) * step(marPd, 0.0);
+        float marHot = clamp(1.0 - marFe * 1.6, 0.0, 1.0);
+        // far away the streaks (sub-pixel) average into an even glowing sheet
+        float marFa = smoothstep(0.15, 0.6, fwidth(vMarSurf.y) / ${f(LF.spacing)});
+        float marMol = mix(1.0 - marPl, 0.55, marFa);
+        // skin: lighter crust in the middle, darker toward its edge
+        marC.rgb = mix(mix(${v3(LC.crustRim)}, ${v3(LC.crust)}, smoothstep(-0.2, 0.0, marPd)), ${v3(LC.lava)} * 0.55, marMol);
+        marLC = mix(${v3(LC.lava)}, ${v3(LC.hot)}, marHot * 0.7);
+        marLG = (marMol + 0.35 * (1.0 - marMol) * smoothstep(-0.07, 0.0, marPd)) * (${f(LF.glow.day)} + ${f(LF.glow.night)} * uNight);
+      }`;
 /**
  * Flow kind (TASK-395), spliced in front of the surface chain (`… else` + the pre-TASK-395
  * chain, which kinds 1–9 still run unchanged). Waterfall sheet (`vMarSurf.z` 0): x = across
@@ -115,7 +160,9 @@ const RG = WF.ring;
  * fraction, y = radius (u) — a solid core and outward-running broken rings. uTime only.
  */
 export const FLOW_SURFACE = /* glsl */ `if (marK > ${f(SURFACE.flow - 0.5)}) {
-      if (vMarSurf.z < 0.5) {
+      if (vMarSurf.z > 1.5) {
+      ${LAVA_FLOW}
+      } else if (vMarSurf.z < 0.5) {
         float marLu = vMarSurf.x * ${f(FL.lanes)} + 0.3 * sin(vMarSurf.y * 1.3 + vMarSurfSeed * 6.2831853);
         float marLh = marHf(vec2(floor(marLu), vMarSurfSeed * 71.0 + 3.0));
         float marFs = vMarSurf.y - marSt * ${f(FL.speed)} * (0.8 + 0.4 * marLh);
@@ -196,6 +243,11 @@ export function stainedDayGlow(
   }
   return g;
 }
+
+/** Declarations of the lava flow modes' glow (TASK-509a; in front of ACTIVITY_SURFACE's body). */
+export const LAVA_SURFACE_PRE = /* glsl */ `
+  float marLG = 0.0;
+  vec3 marLC = vec3(0.0);`;
 
 /** Declarations of the culture kinds' outputs (in front of ACTIVITY_SURFACE's body). */
 export const CULTURE_SURFACE_PRE = /* glsl */ `
@@ -440,7 +492,7 @@ vec3 marSlide(float idx, vec2 uv, float asp, vec3 base, float lt) {
 /** Fragment, after `#include <color_fragment>`: may rewrite `diffuseColor.rgb`. */
 export const ACTIVITY_SURFACE = /* glsl */ `
   float marSG = 1.0;
-  float marPG = 0.0;${CULTURE_SURFACE_PRE}
+  float marPG = 0.0;${LAVA_SURFACE_PRE}${CULTURE_SURFACE_PRE}
   if (vMarSurf.w > 0.5 && uDebugMask < 0.5) {
     float marK = floor(vMarSurf.w + 0.5);
     float marSt = uTime * mix(0.3, 1.0, uMotionScale);
@@ -492,6 +544,8 @@ export const ACTIVITY_SURFACE = /* glsl */ `
 /** FRAG_OUTGOING additions: pipe pulse glow at night (× lamps; day is a tint only). */
 export const ACTIVITY_GLOW = /* glsl */ `
   outgoingLight += ${v3(PULSE.color)} * (marPG * ${f(PULSE.nightGlow)} * uLamps.x);
+  // lava fall / delta (TASK-509a): glows by day and brighter at night
+  outgoingLight += marLC * (marLG * (1.0 - uDebugMask));
   if (marStain > 0.5 && uSunSkyDir.y > 0.0) {
     // stained glass (TASK-440): a low sun behind the pane shines through it (s = to the sun)
     // NaN-safe (one NaN pixel blacks the frame through bloom): no normalize of a possibly-zero

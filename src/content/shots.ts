@@ -397,6 +397,18 @@ const DEVOPS_M25_CAMS: readonly (readonly [string, string, string, number, numbe
     6,
     5,
   ],
+  // TASK-509a (D-091): the lava river down the windward slope (notch 210,-46 → lip 232,-86) and the
+  // lava fall + steam delta at the lip, day and night
+  [
+    'D-lava-channel',
+    'Lava river · notch to the windward lip (T1)',
+    '262,46,-118,218,12,-60',
+    14,
+    6,
+  ],
+  ['D-lava-channel-night', 'Lava river at night (T1)', '262,46,-118,218,12,-60', 21.5, 6],
+  ['D-lava-fall', 'Lava fall + steam delta (T2)', '248,11,-106,230,3,-82', 14, 6],
+  ['D-lava-fall-night', 'Lava fall + steam delta at night (T2)', '248,11,-106,230,3,-82', 21.5, 6],
 ];
 const DEVOPS_M25_SHOTS: readonly ShotPreset[] = DEVOPS_M25_CAMS.map(
   ([id, title, cam, time, simt]) => ({

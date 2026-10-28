@@ -223,8 +223,9 @@ void main() {
     // chimney smoke a touch greyer than steam
     float g = (0.3 + 0.7 * (0.5 + 0.5 * n.y)) * (vKind < 0.5 ? 0.55 : 1.0);
     gl_FragColor = marSoftShade(clamp(g, 0.0, 1.0), n, vW);
-    if (vKind > 0.5 && vKind < 1.5 && uNight > 0.0) {
-      // volcano steam at night: the low, young puffs catch the crater glow from below
+    if (((vKind > 0.5 && vKind < 1.5) || (vKind > 2.1 && vKind < 2.5)) && uNight > 0.0) {
+      // volcano steam at night: the low, young puffs catch the crater glow from below (and the
+      // lava-fall delta steam, kind 2.25, TASK-509a, the lava's)
       float young = clamp((vOpacity - uSoft.z) / max(uSoft.y - uSoft.z, 1e-3), 0.0, 1.0);
       gl_FragColor.rgb += uSteamGlow * (uNight * young * young * (0.6 + 0.4 * max(-n.y, 0.0)));
     }

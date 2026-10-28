@@ -11,10 +11,12 @@ import {
   CULTURE_SURFACE,
   CULTURE_SURFACE_PRE,
   FLOW_SURFACE,
+  LAVA_SURFACE_PRE,
   PULSE_ONLY,
 } from './materials/activity-glsl.ts';
-import type { Puffs } from './particles/puffs.ts';
-import { createWaterfalls } from './waterfalls.ts';
+import { LAVA } from '../content/lava.ts';
+import { PUFF_DELTA, type Puffs } from './particles/puffs.ts';
+import { createWaterfalls, lavaFalls } from './waterfalls.ts';
 
 const world = generateWorld(1001);
 const sha = (s: string): string => createHash('sha256').update(s).digest('hex').slice(0, 16);
@@ -38,7 +40,10 @@ describe('waterfall flow tag (TASK-395)', () => {
     // pre-TASK-395 ACTIVITY_SURFACE / ACTIVITY_VARY: re-pin only for a deliberate surface change
     expect(ACTIVITY_SURFACE.split(FLOW_SURFACE)).toHaveLength(2);
     // (TASK-440's culture kinds are cut out as well: they run in front of the flow branch)
-    const base = ACTIVITY_SURFACE.replace(CULTURE_SURFACE_PRE, '').replace(CULTURE_SURFACE, '');
+    // (and TASK-509a's lava glow declarations, used only by the flow branch's lava modes)
+    const base = ACTIVITY_SURFACE.replace(LAVA_SURFACE_PRE, '')
+      .replace(CULTURE_SURFACE_PRE, '')
+      .replace(CULTURE_SURFACE, '');
     expect(sha(base.replace(FLOW_SURFACE, ''))).toBe('32236d315ac038b6');
     expect(ACTIVITY_VARY.split(PULSE_ONLY)).toHaveLength(2);
     expect(sha(ACTIVITY_VARY.replace(PULSE_ONLY, ''))).toBe('e285bbfd2d54f04f');
@@ -66,7 +71,8 @@ describe('waterfall renderer (TASK-395)', () => {
       const x = pos.getX(i);
       const y = pos.getY(i);
       const z = pos.getZ(i);
-      if (spin.getZ(i) > 0.5) {
+      // discs (foam 1, lava delta 3) lie on the water; sheets (water 0, lava 2) hover off the ground
+      if (Math.round(spin.getZ(i)) % 2 === 1) {
         expect(y).toBeCloseTo(L.foam.y, 5);
         continue;
       }
@@ -74,7 +80,8 @@ describe('waterfall renderer (TASK-395)', () => {
       // never inside the ground (no z-fight with the face / the plateau)
       expect(y - heightAt(world.height, x, z)).toBeGreaterThan(0.05);
     }
-    expect(sheet).toBe(world.waterfalls.length * (L.rows + 1) * (L.cols + 1));
+    const falls = world.waterfalls.length + lavaFalls(world).length;
+    expect(sheet).toBe(falls * (L.rows + 1) * (L.cols + 1));
     scope.dispose();
   });
 
@@ -83,7 +90,13 @@ describe('waterfall renderer (TASK-395)', () => {
       const scope = new Scope('test');
       const puffs = fakePuffs();
       createWaterfalls(world, q, scope, puffs);
-      expect(puffs.added).toHaveLength(world.waterfalls.length * L.mistEmitters[q]);
+      const lava = lavaFalls(world).length;
+      expect(puffs.added).toHaveLength(
+        world.waterfalls.length * L.mistEmitters[q] + lava * LAVA.fall.steamEmitters[q],
+      );
+      expect(puffs.added.filter((e) => e[3] === PUFF_DELTA)).toHaveLength(
+        lava * LAVA.fall.steamEmitters[q],
+      );
       scope.dispose();
     }
   });
@@ -94,5 +107,28 @@ describe('waterfall renderer (TASK-395)', () => {
     const pa = a.geometry.getAttribute('position').array;
     const pb = b.geometry.getAttribute('position').array;
     expect(Array.from(pa)).toEqual(Array.from(pb));
+  });
+});
+
+describe('lava fall (TASK-509a)', () => {
+  it('seed 1001 has one lava fall off the D-083 lip, reaching the sea', () => {
+    const falls = lavaFalls(world);
+    expect(falls).toHaveLength(1);
+    const f = falls[0];
+    const lip = world.islands.find((i) => i.archetype === 'emberpeak')!.anchors.lavaFall;
+    expect(f.x).toBe(lip.x);
+    expect(f.z).toBe(lip.z);
+    expect(heightAt(world.height, f.baseX, f.baseZ)).toBeLessThan(0);
+    expect(Math.hypot(f.baseX - f.x, f.baseZ - f.z)).toBeLessThan(16);
+  });
+
+  it('tags the lava sheet / delta with flow modes 2 / 3', () => {
+    const scope = new Scope('lava');
+    const mesh = createWaterfalls(world, 'medium', scope, fakePuffs()).mesh!;
+    const spin = mesh.geometry.getAttribute('aSpin');
+    const modes = new Set<number>();
+    for (let i = 0; i < spin.count; i++) modes.add(Math.round(spin.getZ(i)));
+    expect([...modes].sort()).toEqual([0, 1, 2, 3]);
+    scope.dispose();
   });
 });

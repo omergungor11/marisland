@@ -27,12 +27,19 @@ export const PUFF_RING = 3;
 export const PUFF_VENT = 5;
 /** Waterfall mist (TASK-395): a preset drawn as soft steam (shader kind `PUFF_SPRING`), PUFFS.mist sizes. */
 export const PUFF_MIST = 6;
+/**
+ * Lava-fall steam delta (TASK-509a): soft steam (shader path of `PUFF_SPRING`) with PUFFS.delta
+ * sizes, drawn as shader kind `PUFF_DELTA_SHADER` so the fragment lights it from below at night.
+ */
+export const PUFF_DELTA = 7;
+export const PUFF_DELTA_SHADER = 2.25;
 export type PuffKind =
   | typeof PUFF_CHIMNEY
   | typeof PUFF_STEAM
   | typeof PUFF_SPRING
   | typeof PUFF_VENT
-  | typeof PUFF_MIST;
+  | typeof PUFF_MIST
+  | typeof PUFF_DELTA;
 
 /**
  * A block of puff slots a CPU scene places itself every frame (TASK-486: the Research test-firing
@@ -87,6 +94,7 @@ const KIND_CFG = {
   [PUFF_SPRING]: PUFFS.spring,
   [PUFF_VENT]: PUFFS.vent,
   [PUFF_MIST]: PUFFS.mist,
+  [PUFF_DELTA]: PUFFS.delta,
 } as const;
 /** Preset → `aKind` (the shader branch). */
 const SHADER_KIND: Record<PuffKind, number> = {
@@ -95,6 +103,7 @@ const SHADER_KIND: Record<PuffKind, number> = {
   [PUFF_SPRING]: PUFF_SPRING,
   [PUFF_VENT]: PUFF_SPRING,
   [PUFF_MIST]: PUFF_SPRING,
+  [PUFF_DELTA]: PUFF_DELTA_SHADER,
 };
 
 export function createPuffs(

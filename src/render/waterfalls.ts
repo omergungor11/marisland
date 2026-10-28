@@ -5,7 +5,9 @@ import { SURFACE } from '../content/activity.ts';
 import { WATERFALL_LOOK as L } from '../content/waterfalls.ts';
 import { heightAt, type WaterfallData, type WorldData } from '../world/index.ts';
 import { makeLitMaterial } from './materials/factory.ts';
-import { PUFF_MIST, type Puffs } from './particles/puffs.ts';
+import { PUFF_DELTA, PUFF_MIST, type Puffs } from './particles/puffs.ts';
+import { LAVA } from '../content/lava.ts';
+import { lavaFlows } from './lava.ts';
 
 /**
  * Waterfalls off the bluff lips (M17b TASK-395). Every fall is a ribbon that runs from a short
@@ -15,6 +17,8 @@ import { PUFF_MIST, type Puffs } from './particles/puffs.ts';
  * the sky craft: no new program, +1 draw call); the look is the `flow` surface kind
  * (`aSpin = (u, v, mode, −SURFACE.flow)`, materials/activity-glsl.ts) driven by uTime only.
  * Mist rises from the plunge through the shared puff emitters (PUFF_MIST).
+ * TASK-509a: the lava falls (`lavaFlows(world)`, render/lava.ts) join the same mesh as flow modes
+ * 2 / 3 (molten sheet, delta disc) with soft steam (PUFF_DELTA) at their feet.
  */
 export interface WaterfallsView {
   mesh: THREE.InstancedMesh | null;
@@ -30,13 +34,17 @@ interface Builder {
 }
 
 /** Sheet centre line in (s along the fall, y): dense samples, then arc-length resampled rows. */
-export function fallProfile(world: WorldData, f: WaterfallData): { s: number[]; y: number[] } {
+export function fallProfile(
+  world: WorldData,
+  f: WaterfallData,
+  inland: number = L.inland,
+): { s: number[]; y: number[] } {
   const dx = Math.cos(f.rotY);
   const dz = Math.sin(f.rotY);
   const tx = -dz;
   const tz = dx;
   const half = (f.width * L.spread) / 2;
-  const s0 = -L.inland;
+  const s0 = -inland;
   const s1 = Math.hypot(f.baseX - f.x, f.baseZ - f.z) + L.gap + 4;
   const ground: number[] = [];
   for (let s = s0 - L.gap; s <= s1 + L.gap + 1e-6; s += DS) {
@@ -102,12 +110,37 @@ function tri(b: Builder, a: number, c: number, d: number, n: THREE.Vector3): voi
 
 const _n = new THREE.Vector3();
 
-function addFall(b: Builder, world: WorldData, f: WaterfallData): { x: number; z: number } {
+/** Water fall (modes 0 / 1) or lava fall (modes 2 / 3, TASK-509a). */
+interface FallStyle {
+  inland: number;
+  mode: number;
+  radius: number;
+  pad: number;
+}
+const WATER_STYLE: FallStyle = {
+  inland: L.inland,
+  mode: 0,
+  radius: L.foam.radius,
+  pad: L.foam.pad,
+};
+const LAVA_STYLE: FallStyle = {
+  inland: LAVA.fall.inland,
+  mode: 2,
+  radius: LAVA.fall.delta.radius,
+  pad: LAVA.fall.delta.pad,
+};
+
+function addFall(
+  b: Builder,
+  world: WorldData,
+  f: WaterfallData,
+  st: FallStyle = WATER_STYLE,
+): { x: number; z: number } {
   const dx = Math.cos(f.rotY);
   const dz = Math.sin(f.rotY);
   const tx = -dz;
   const tz = dx;
-  const { s, y } = fallProfile(world, f);
+  const { s, y } = fallProfile(world, f, st.inland);
   const rows = s.length;
   const cols = L.cols;
   const start = b.pos.length / 3;
@@ -129,7 +162,7 @@ function addFall(b: Builder, world: WorldData, f: WaterfallData): { x: number; z
       const bulge = L.bulge * (1 - (u * 2 - 1) ** 2);
       const ss = s[r] + ns * bulge;
       b.pos.push(f.x + dx * ss + tx * o, y[r] + ny * bulge, f.z + dz * ss + tz * o);
-      b.spin.push(u, v, 0, -SURFACE.flow);
+      b.spin.push(u, v, st.mode, -SURFACE.flow);
       b.seed.push(f.seed);
     }
   }
@@ -147,19 +180,19 @@ function addFall(b: Builder, world: WorldData, f: WaterfallData): { x: number; z
   // foam disc where the sheet meets the water
   const cx = f.x + dx * s[rows - 1];
   const cz = f.z + dz * s[rows - 1];
-  const R = f.width * L.foam.radius + L.foam.pad;
+  const R = f.width * st.radius + st.pad;
   const seg = L.foam.segments;
   const ring = L.foam.rings;
   const centre = b.pos.length / 3;
   b.pos.push(cx, L.foam.y, cz);
-  b.spin.push(0, 0, 1, -SURFACE.flow);
+  b.spin.push(0, 0, st.mode + 1, -SURFACE.flow);
   b.seed.push(f.seed);
   for (let k = 1; k <= ring; k++) {
     const rn = k / ring;
     for (let i = 0; i < seg; i++) {
       const a = (i / seg) * Math.PI * 2 + f.seed * 6.283;
       b.pos.push(cx + Math.cos(a) * R * rn, L.foam.y, cz + Math.sin(a) * R * rn);
-      b.spin.push(rn, rn * R, 1, -SURFACE.flow);
+      b.spin.push(rn, rn * R, st.mode + 1, -SURFACE.flow);
       b.seed.push(f.seed);
     }
   }
@@ -181,7 +214,8 @@ export function createWaterfalls(
   puffs: Puffs,
 ): WaterfallsView {
   const falls = world.waterfalls;
-  if (!falls.length) return { mesh: null };
+  const lava = lavaFalls(world);
+  if (!falls.length && !lava.length) return { mesh: null };
   const b: Builder = { pos: [], spin: [], seed: [], idx: [] };
   const mist = L.mistEmitters[quality];
   for (const f of falls) {
@@ -193,6 +227,19 @@ export function createWaterfalls(
         0.3,
         foot.z + Math.cos(f.rotY) * o,
         PUFF_MIST,
+      );
+    }
+  }
+  const steam = LAVA.fall.steamEmitters[quality];
+  for (const f of lava) {
+    const foot = addFall(b, world, f, LAVA_STYLE);
+    for (let m = 0; m < steam; m++) {
+      const o = steam > 1 ? (m / (steam - 1) - 0.5) * f.width * 1.6 : 0;
+      puffs.addEmitter(
+        foot.x - Math.sin(f.rotY) * o,
+        0.4,
+        foot.z + Math.cos(f.rotY) * o,
+        PUFF_DELTA,
       );
     }
   }
@@ -216,4 +263,38 @@ export function createWaterfalls(
   mesh.computeBoundingSphere();
   scope.add(mesh);
   return { mesh };
+}
+
+/**
+ * The lava falls as waterfall records (TASK-509a): the lip from `lavaFlows`, the base where the
+ * ground first drops below the sea along the fall heading (≤ 16 u out; none = no fall).
+ */
+export function lavaFalls(world: WorldData): WaterfallData[] {
+  const out: WaterfallData[] = [];
+  for (const fl of lavaFlows(world)) {
+    const p = fl.fall;
+    if (!p) continue;
+    const dx = Math.cos(p.rotY);
+    const dz = Math.sin(p.rotY);
+    let run = -1;
+    for (let s = 0; s <= 16; s += 0.25)
+      if (heightAt(world.height, p.x + dx * s, p.z + dz * s) < -L.foam.y) {
+        run = s;
+        break;
+      }
+    if (run < 0) continue;
+    out.push({
+      islandId: fl.islandId,
+      x: p.x,
+      y: heightAt(world.height, p.x, p.z),
+      z: p.z,
+      rotY: p.rotY,
+      baseX: p.x + dx * run,
+      baseZ: p.z + dz * run,
+      width: LAVA.fall.width,
+      stream: false,
+      seed: (((fl.islandId * 0.618034 + 0.31) % 1) + 1) % 1,
+    });
+  }
+  return out;
 }

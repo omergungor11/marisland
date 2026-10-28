@@ -34,6 +34,17 @@
     (T0 draw, +3 far groups); bridge / shards are not.
   - **Not covered**: no night-time render of the new props (the gallery has no lamps ramp); judge the 1.6 seams / mouth glow
     in the placed night shot.
+- **2026-10-28 (TASK-509a, lava shader; D-091)**: river painted by the terrain program, fall on the waterfall ribbon.
+  - **API for TASK-509c:** everything reads `lavaFlows(world)` in `render/lava.ts` → `{ islandId, channel: XZ[]
+    (notch → lip), fall: { x, z, rotY } | null }[]`. Today it reads the D-083 anchors; 509c replaces only that body
+    (e.g. from its placed / carved channel). The terrain packs the FIRST flow (≤ 24 points, ground y sampled from
+    the heightfield when the material is built, so a carve before render is picked up); `lavaFalls(world)`
+    (`render/waterfalls.ts`) makes the ribbon (base = first sea cell ≤ 16 u along rotY, else no fall). Numbers:
+    `content/lava.ts` (`LAVA`), steam `PUFFS.delta`. Shots: `pnpm shots dev --only=D-lava-channel,D-lava-channel-night,D-lava-fall,D-lava-fall-night`.
+  - **Gotchas:** the strip paints only within ± 3 u of the polyline's ground y (`heightBand`), so a deep carve
+    must keep the samples on the bed. The lip anchor sits ON the wall face (y ≈ 3, top ≈ 6.5), hence the 4 u
+    `fall.inland`. Sheet modes: 0 water, 1 foam disc, 2 lava sheet, 3 lava delta (`aSpin.z`). Puff shader kind 2.25 =
+    soft steam lit by the lava at night. The waterfall GLSL pin cuts out `LAVA_SURFACE_PRE` like the culture pre.
 - **2026-10-28 (TASK-512, wow presets)**: `W-kite-hill-afternoon` (14:00 +20 s), `W-proving-grounds-noon` (12:00 +3 s),
   `W-fairy-night` (22:00 +4 s; the Coding fairy-light grove + hammock nappers: there is no separate "fairy" creature
   content, only the TASK-479 wreaths) are in `shots.ts`; `W-ember-lane-night` re-framed from high over the lane
