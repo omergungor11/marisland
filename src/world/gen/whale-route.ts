@@ -121,6 +121,23 @@ export function planWhaleRoute(world: WhaleWorld, seed: number): WhaleRoute | nu
       }
       prev = cur;
     }
+    // TASK-511: then the emitted polyline (R.points chords) at 1 u: a chord can dip under the
+    // depth floor between the spline samples
+    prev = point(0);
+    for (let k = 1; k <= R.points && bad < 0; k++) {
+      const f = (k / R.points) * R.angles;
+      const cur = point(f);
+      const n = Math.max(1, Math.ceil(Math.hypot(cur[0] - prev[0], cur[1] - prev[1])));
+      for (let j = 1; j <= n; j++) {
+        const x = prev[0] + ((cur[0] - prev[0]) * j) / n;
+        const z = prev[1] + ((cur[1] - prev[1]) * j) / n;
+        if (!open(x, z)) {
+          bad = Math.floor(f - (0.5 * R.angles) / R.points) % R.angles;
+          break;
+        }
+      }
+      prev = cur;
+    }
     if (bad < 0) break;
     if (iter === 39) return null;
     for (let k = -1; k <= 2; k++) {
