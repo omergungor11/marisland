@@ -79,6 +79,9 @@ const TARGET: Record<string, number> = {
  * the glass chime line (glass drops on cords) and the Atelier Tree's canopy vitray.
  */
 const VARIANT_TARGET: Record<string, number> = {
+  // TASK-525 (D-106): the Research teal stair lantern (cage, cap, finial) and the rim telescope deck
+  'lanternPost:3': 260,
+  'tripodTelescope:2': 1600,
   'bunting:3': 1500,
   // TASK-481: the Marketing bulb string (13 bulbs, cable, two poles) and the party pontoon
   'bunting:4': 400,

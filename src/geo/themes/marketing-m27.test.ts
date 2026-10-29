@@ -35,9 +35,9 @@ const BUDGET: Record<string, number> = {
 };
 
 describe('TASK-517 Marketing M27 defs', () => {
-  it('diveTower is the last def, geo and PropDef agree', () => {
+  it('diveTower is the last M27 def (the M28 sundial follows), geo and PropDef agree', () => {
     expect(MARKETING_M27_PROP_DEFS.map((d) => d.id)).toEqual(['diveTower']);
-    expect(PROP_DEF_INDEX.diveTower).toBe(PROP_DEFS.length - 1);
+    expect(PROP_DEF_INDEX.diveTower).toBe(PROP_DEF_INDEX.sundial - 1);
     expect(PROP_GEO.diveTower.variants).toBe(PROP_DEFS[PROP_DEF_INDEX.diveTower].variants);
     expect(PROP_GEO.diveTower.windy).toBe(
       (PROP_DEFS[PROP_DEF_INDEX.diveTower].flags & PropFlag.windy) !== 0,

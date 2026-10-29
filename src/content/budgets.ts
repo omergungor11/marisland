@@ -111,6 +111,8 @@ export const cultureCapOverride: Readonly<Record<string, { defs: number; tier1: 
   devops: { defs: 19, tier1: 1 },
   // M27 TASK-517 (D-096): the Beacon Rock ledger 10 -> 11 (diveTower; the cable car, sea signs and guyed mast are variants)
   marketing: { defs: 11, tier1: 1 },
+  // M28 TASK-525 (D-106): the Star Academy ledger 10 -> 11 (sundial; the rim telescope deck and the stair lantern are variants)
+  research: { defs: 11, tier1: 1 },
 };
 
 /** SwiftShader is ~20–50× slower; time budgets are scaled by this when headless. */

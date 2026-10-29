@@ -10,6 +10,24 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-29 (TASK-525 M28 props, D-106) - For TASK-526**: defs/variants (no placement yet). Frames are local, scale 1,
+  hooks in `geometry.userData.hooks`; numbers `RESEARCH_M28` (`content/themes/research-m28.ts`).
+  `sundial` (new def, tier 2, footprint 3.0, ~2.97 u tall, 6 u disc): **gnomon blade along local +z** (plane x = 0, high
+  end `tip` at z +0.45, foot at z -1.6; hook `gnomon { axis [0,0,1], base, tip, height 2.5 }`), **brass noon line** on
+  x = 0 from `noonLine.from` (z 0.45, y 0.385) to `.to` (z 1.97, the XII plate), `plates.list` = 12 { n, numeral, at,
+  angleDeg } clockwise seen from above (XII +z, III -x, VI -z, IX +x). Yaw the prop so local +z points AWAY from the
+  noon sun (north for a northern sun; check the sim sun path, the study assumes it); real shadow must meet the line at
+  12:00 (±3 deg). Shadow at noon falls beyond the tip along +z, so `noon.inner` 1.97 is where the line meets XII.
+  `tripodTelescope` v2 = rim deck (3 x 2 u, deck top y 0.42, front/step +z, sea side -z with rails on -z and both
+  sides): hooks `deck { center, size [3,2], y }`, `scope { at, dir, eyepiece }`, `bot { at [0.2, 0.42, 0.5], face PI,
+  look (barrel dir, unit), pose 'gaze' }` (face = atan2(dx, dz), PI looks to -z), `entry { at [0,0,1.38], dir [0,0,1] }`.
+  Pin v2 only (random rolls: `rollVariants 2`). The deck is NOT in `offices.ts` / `settlements.ts` frames: those are keyed
+  by defId and give `tripodTelescope` a bot at z 1.4 for every variant, so add a per-variant frame or use hook `bot`.
+  `lanternPost` v3 = teal stair lantern (1.96 u, `rollVariants 3` keeps 0-2 for rolls): one emissive 1 gem at
+  `lamp { at [0, 1.34, 0], r 0.17 }`; its lamp set is the island's (Research), the def's night light pool applies too.
+  Gotchas: footprints are per def (0.9 / 0.4), so give the planner the deck radius (~1.8) and the dial radius (3.0)
+  yourself; the deck min extent must stay < 3 u (the batcher promotes a def to T0 on the first variant it sees, D-096);
+  LOD1 of v2 is its own deck. Gallery: `pnpm exec tsx scripts/gallery-shots.ts research28`.
 - **2026-10-29 (M28 planned, D-104)**: Research signature = R1 summit crag + R2 Star Stair + R3 sundial + R4 rim decks,
   TASK-524 ∥ 525 → 526 → 527. R12 maze / R18 seal / whale / comet were already shipped (M22–M23), don't redo them.
   All 25 merged agent worktrees + branches removed. Next free D-number in parallel briefs: 524 → D-105, 525 → D-106.

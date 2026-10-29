@@ -282,12 +282,20 @@ const ngon = (cx: number, cy: number, rx: number, ry: number, n: number, a0 = 0,
  * leg. v0 brass-banded refractor (cream tube, dew shield, finder scope, counterweight) aiming at
  * the sky; v1 fat teal Newtonian reflector with a side eyepiece. ~1.5 u high.
  */
-function tripodTelescope({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
+function tripodTelescope(o: BuildOpts): THREE.BufferGeometry {
+  return tripodTelescopeAt(o);
+}
+
+/** The tripod telescope with an optional aim (TASK-525: the rim deck aims it out to sea, yaw PI). */
+export function tripodTelescopeAt(
+  { rng, lod, variant }: BuildOpts,
+  aim?: { yaw: number; e: number },
+): THREE.BufferGeometry {
   const hi = lod === 0;
   const acc = cultureAcc(rng, lod);
   const refr = variant === 0;
-  const yaw = refr ? 0.35 : -0.55;
-  const e = refr ? 0.95 : 0.7;
+  const yaw = aim?.yaw ?? (refr ? 0.35 : -0.55);
+  const e = aim?.e ?? (refr ? 0.95 : 0.7);
   const R = 0.62;
   const topY = 0.85;
   // legs, spreader, feet

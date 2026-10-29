@@ -35,7 +35,8 @@ describe('TASK-416 Star Academy kit', () => {
     expect(validateCultures([RESEARCH_CULTURE])).toEqual([]);
     const ids = RESEARCH_CULTURE.kit.map((k) => k.id);
     expect(ids).toEqual(expect.arrayContaining(RESEARCH_CULTURE_GEO.map((d) => d.id)));
-    expect(ids).toHaveLength(RESEARCH_CULTURE_GEO.length);
+    // + the M28 sundial (TASK-525, D-106; its geo is research-m28.ts)
+    expect(ids).toHaveLength(RESEARCH_CULTURE_GEO.length + 1);
     expect(ids.slice(0, 6)).toEqual([
       'tripodTelescope',
       'chalkboard',
@@ -60,7 +61,8 @@ describe('TASK-416 Star Academy kit', () => {
   for (const def of RESEARCH_CULTURE_GEO) {
     const pd = PROP_DEFS.find((p) => p.id === def.id);
     it(`${def.id}: PropDef lines up`, () => {
-      expect(pd?.variants).toBe(def.variants);
+      // tripodTelescope gets the rim deck as variant 2 (TASK-525)
+      expect(pd?.variants).toBe(def.variants + (def.id === 'tripodTelescope' ? 1 : 0));
       expect(pd ? (pd.flags & PropFlag.windy) !== 0 : null).toBe(def.windy);
       expect(pd?.footprint).toBeCloseTo(def.footprint, 5);
     });

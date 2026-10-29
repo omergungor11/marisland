@@ -59,7 +59,8 @@ export const PROP_DEFS_BUILDINGS: PropDef[] = [
   d('messageBottle', 3, 1, 0.15, grounded),
   // decor
   d('fence', 2, 2, 0.8, grounded),
-  d('lanternPost', 2, 3, 0.4, grounded),
+  // v3 = the Research teal stair lantern (M28 TASK-525), pinned by the Research plan only
+  d('lanternPost', 2, 4, 0.4, grounded, undefined, { rollVariants: 3 }),
   d('laundryLine', 2, 3, 2.0, grounded | windy),
   // v3 = Design glass chime line (TASK-425), v4 = Marketing marquee bulb string (TASK-481): only
   // where the plans pin them

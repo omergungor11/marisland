@@ -2,6 +2,34 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-106: Research M28 signature props — the sundial is the one new def, the rim telescope deck is `tripodTelescope` v2, the teal stair lantern is `lanternPost` v3, Research cap 10 -> 11 (TASK-525; builds D-104 on D-059 A / D-062 R3-16) — 2026-10-29
+
+**Decision** (no placement, TASK-526 places and aims them): (1) **`sundial`** = the only new def: tier 2 `grounded`,
+planner-pinned, ledger entry 11 (`cultureCapOverride.research` = { 11, 1 }, the tier-1 slot stays free). A 6 u stepped
+stone dial (six discs, each its own plane, brass inlay bands), 12 raised hour plates with Roman numerals I-XII built from
+thin ink strokes (a three-glyph stroke font I / V / X; `signage.ts` has no numeral glyphs, only theme icons), a brass noon
+line and a verdigris triangle gnomon blade 2.5 u over the dial field. **The blade lies along local +z** (plane x = 0, high
+end at +z, style sloping down to -z), XII and the noon line are on +z too; TASK-526 yaws the prop so local +z points away
+from the noon sun. The numerals run clockwise seen from above, 30 deg apart (a stylised clock face; only the noon line is
+exact, ±3 deg). It is a large structure (6 u), so the batcher draws it from T0 by size. (2) **Rim deck = `tripodTelescope`
+v2** (not `selfieSpot` v2 as the study suggested): a Research def of the same tier (2), so the batcher's per-def tier
+(D-096 hazard) cannot flip because of it, the Research life frames (`gaze`, `look: 'tripodTelescope'`) already speak
+about it, and a Marketing def would drag the Marketing selfie bot frame (`offices.ts selfieSpot`) onto a Research island.
+The deck stays under `STRUCTURE_MIN_SIZE` in both plan extents and in height (a test pins it), so it never promotes the
+def to T0. `tripodTelescope` got `rollVariants: 2` (random rolls keep v0 / v1) and an exported `tripodTelescopeAt(opts,
+aim)` (the default aim is unchanged, v0 / v1 bytes identical). LOD1 is the deck's own, not variant 0's (tier 2 never
+reaches the far merge, D-049). (3) **Teal stair lantern = `lanternPost` v3** (`rollVariants: 3`, tier 2): teal post on a
+stone footing, a cage with one emissive 1 gem (the Research lamp set lights it like every `lanternPost`, and it keeps the
+def's night light pool), teal cap, brass finial, 1.96 u. Hooks `lamp { at, r }`, `top`. (4) Gallery: `?gallery=1&ids=research28`
+/ `pnpm exec tsx scripts/gallery-shots.ts research28` (also the per-variant close-ups).
+**Rationale**: variants keep the ledger flat; the one new def is what R3-1 allowed. **Alternatives not taken**: `selfieSpot`
+v2 (above); a full 15 deg / hour equatorial dial (a half circle of plates, harder to read from the sea and the study only
+asks for the noon meeting); per-numeral sub-meshes (stroke vertices are cheap flat boxes).
+**Numbers** (tris LOD0 / LOD1): sundial 1492 / 332, rim deck 1494 / 481 (the refractor is ~900 of them), stair lantern
+236 / 32. World hashes unchanged (only appended a def, grew two variant counts behind `rollVariants`).
+**Residual / for TASK-526**: footprint of `tripodTelescope` is 0.9 and of `lanternPost` 0.4 for every variant; the deck
+(3 x 2) and the sundial (r 3) are bigger, so the plan must use the anchors' own radii (the sundial def footprint 3.0 is right).
+
 ## D-104: M28 Research signature plan (Summit Observatory) — plan only — 2026-10-29
 
 - **Scope** (D-059 direction A; user 2026-10-29: silhouette = R1 only, signature + the D-062 R3-16 items): `R1`

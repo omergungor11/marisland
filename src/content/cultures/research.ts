@@ -1,5 +1,6 @@
 /**
- * Yıldız Akademisi (Star Academy). Kit ledger (TASK-416): 10 new defs, 10/10 tier >= 2, no tier-1,
+ * Yıldız Akademisi (Star Academy). Kit ledger (TASK-416): 10 new defs (M28 TASK-525, D-106: +1 `sundial`
+ * = 11, cap override), 11/11 tier >= 2, no tier-1,
  * no tier-0, ORDERED BY PRIORITY (most identity-defining first; if the budget gate drops the
  * per-island cap to 6, cut from the end: the first six are tripodTelescope, chalkboard, orrery,
  * lectureSteps, teaTrolley, weatherBalloonCart). Geometry: geo/themes/culture-research.ts. The
@@ -37,6 +38,8 @@ export const RESEARCH_CULTURE: CultureDef = {
     { id: 'pigeonPerch', tier: 3, flags: grounded | noShadow },
     { id: 'bookCart', tier: 3, flags: grounded | noShadow },
     { id: 'miniVolcanoTerrarium', tier: 3, flags: grounded | noShadow },
+    // M28 TASK-525 (D-106): the 11th entry, the meridian sundial (cap override 11 / 1 in budgets.ts)
+    { id: 'sundial', tier: 2, flags: grounded },
   ],
   // emitted by world/gen/plans/research.ts (TASK-426); `defs` = the props the scene stands on
   storySpots: [

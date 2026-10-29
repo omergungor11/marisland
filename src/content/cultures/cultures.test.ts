@@ -7,7 +7,7 @@ import type { CultureDef, KitEntry } from './types.ts';
 
 const all = (): CultureDef[] => THEME_IDS.map((t) => CULTURES[t]);
 const entry = (id: string, tier: KitEntry['tier']): KitEntry => ({ id, tier, flags: 0 });
-// research: no cap override (Marketing got 11 / 1 with TASK-517, Coding 12 / 2 with TASK-498)
+// research: 11 / 1 with TASK-525 (Marketing got 11 / 1 with TASK-517, Coding 12 / 2 with TASK-498)
 const withKit = (kit: KitEntry[], base: CultureDef = CULTURES.research): CultureDef => ({
   ...base,
   kit,
@@ -44,7 +44,8 @@ describe('culture contract (TASK-408)', () => {
   });
 
   it('negative: over the cap, tier-0, too many tier-1, low tier-2+ share, bad colour all fail', () => {
-    const over = Array.from({ length: cultureDefsPerIsland + 1 }, (_, i) => entry(`o${i}`, 3));
+    const cap = cultureCapOverride.research?.defs ?? cultureDefsPerIsland;
+    const over = Array.from({ length: cap + 1 }, (_, i) => entry(`o${i}`, 3));
     expect(validateCultures([withKit(over)]).join()).toMatch(/cap/);
     expect(validateCultures([withKit([entry('z', 0), entry('y', 3)])]).join()).toMatch(/tier-0/);
     expect(

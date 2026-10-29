@@ -198,7 +198,9 @@ export const RESEARCH_CULTURE_PROP_DEFS: readonly PropDef[] = [
     id: 'tripodTelescope',
     geo: 'tripodTelescope',
     tier: 2,
-    variants: 2,
+    // v2 = the rim telescope deck (M28 TASK-525), pinned by the Research plan only
+    variants: 3,
+    rollVariants: 2,
     footprint: 0.9,
     flags: grounded,
   },
