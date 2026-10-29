@@ -256,10 +256,12 @@ function rimDeck(o: BuildOpts): THREE.BufferGeometry {
       { aoAmt: 0.08 },
     );
   }
-  // two steps at the front (+z): the upper one against the deck, the lower one out front
+  // two steps at the front (+z): the upper one up to the boards' underside (no gap under the deck
+  // edge), the lower one out front
   const sd = D.step.depth / 2;
-  put(acc, baseBox(D.step.w, top * 0.5, sd), [0, 0, hd + sd / 2], P.stoneDark, { aoAmt: 0.15 });
-  put(acc, baseBox(D.step.w, top * 0.25, sd), [0, 0, hd + sd * 1.5], P.stone, { aoAmt: 0.15 });
+  const sh = top - 0.1;
+  put(acc, baseBox(D.step.w, sh, sd), [0, 0, hd + sd / 2], P.stoneDark, { aoAmt: 0.15 });
+  put(acc, baseBox(D.step.w, sh / 2, sd), [0, 0, hd + sd * 1.5], P.stone, { aoAmt: 0.15 });
   // rails: back (sea, -z) and both sides full, the front open at the step
   const ex = hw - 0.08;
   const ez = hd - 0.08;
