@@ -42,6 +42,8 @@ import { carPose, newCarPose, type RailLine } from '../world/funicular.ts';
 import { funicularRails } from './devops-lines.ts';
 import { MARKETING_M27 } from '../content/themes/marketing-m27.ts';
 import { MARKETING_M27_MOTION } from '../content/themes/marketing-m27-site.ts';
+import { RESEARCH_M28 } from '../content/themes/research-m28.ts';
+import { RESEARCH_M28_MOTION } from '../content/themes/research-m28-site.ts';
 
 /**
  * Culture movers (M19 TASK-431): closed-form scenes that make each island culture visibly alive.
@@ -1027,6 +1029,50 @@ function gateLampScene(variant: number): Scene['run'] {
 }
 
 /**
+ * Research rim deck gazer (M28 TASK-526): a worker-bot figure on the deck's `bot` hook (deck
+ * frame, facing the scope at −z), leaning into the eyepiece with its hands up at the tube; every
+ * `period` s on its own hashed phase it straightens, looks up at the sky with a slow head sweep and
+ * goes back to the scope. Closed-form in the sim time.
+ */
+function deckGazerScene(phase: number): Scene['run'] {
+  const G = RESEARCH_M28_MOTION.gazer;
+  const B = RESEARCH_M28.deck;
+  const tint = lightened(THEMES.research.accent, M.keeper.lighten);
+  // ± jitter on the period, from the same hash
+  const period = G.period * (1 + G.jitter * (2 * frac(phase * 7.31) - 1));
+  return (w, c) => {
+    const m = c.motion;
+    const u = frac(c.time / period + phase) * period;
+    const g = u < G.up ? smooth(u / G.ease) * smooth((G.up - u) / G.ease) : 0;
+    const pitch = G.lean + (G.look - G.lean) * g;
+    const yaw = Math.PI + G.sweep * g * Math.sin(((u - G.ease) / G.up) * Math.PI * 2) * m;
+    const bob = G.bob * m * Math.sin((c.time / G.bobPeriod + phase) * Math.PI * 2);
+    const sc = G.scale;
+    const P: V3 = [B.bot.x, B.top + bob, B.bot.z];
+    w.put(PART.keeper, P, [pitch, yaw, 0], sc, tint);
+    // shoulders ride the lean (facing = (sin yaw, cos yaw): −z at rest)
+    const sh = M.keeper.shoulder;
+    const fwd = sh[1] * sc * Math.sin(pitch);
+    const up = sh[1] * sc * Math.cos(pitch);
+    const fx = Math.sin(yaw);
+    const fz = Math.cos(yaw);
+    const arm = G.armsScope + (G.armsUp - G.armsScope) * g;
+    for (const side of [-1, 1] as const)
+      w.put(
+        PART.limb,
+        [
+          P[0] + side * sh[0] * sc * fz + fx * fwd,
+          P[1] + up,
+          P[2] - side * sh[0] * sc * fx + fz * fwd,
+        ],
+        [arm + pitch, yaw, 0.12 * side],
+        sc,
+        tint,
+      );
+  };
+}
+
+/**
  * HQ stall keeper (TASK-469): a worker-bot figure behind the counter. Awake from `open` to
  * midnight (springs in, shrinks out), idles with a bob and nod, fiddles with the goods, beckons now
  * and then, turns to and waves at a close camera and cheers at its culture's relay step.
@@ -1518,6 +1564,7 @@ export function createCultureMovers(
     geyser: defOf('geyserCone'),
     kiln: defOf('glassKiln'),
     dive: defOf('diveTower'),
+    scope: defOf('tripodTelescope'),
   };
   const beams: Beam[] = [];
   const beamAnchors: { x: number; y: number; z: number }[] = [];
@@ -1677,6 +1724,18 @@ export function createCultureMovers(
       );
     else if (d === D.stall)
       scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 1.0, 0], 3, keeperScene(v, idx)));
+    else if (d === D.scope && v === RESEARCH_M28.deck.variant)
+      // M28 TASK-526 (R4): the rim deck's gazer on the variant's bot hook
+      scenes.push(
+        sceneAt(
+          th,
+          pv(),
+          store.rotY[i],
+          [RESEARCH_M28.deck.bot.x, 1.2, RESEARCH_M28.deck.bot.z],
+          3,
+          deckGazerScene(phaseAt(store.x[i], store.z[i], 0x5c0e)),
+        ),
+      );
     else if (d === D.sema) {
       scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 7.7, 0], 5, semaphoreScene(idx)));
       // the chain's HQ lamp is the semaphore's own

@@ -9,7 +9,12 @@
  * graph have node −1: they leave from where they stand and need a clear straight line).
  */
 import { ACTIVITY } from '../content/life.ts';
-import { OFFICE_DEFS, WORK_SPOTS, type WorkPose } from '../content/offices.ts';
+import {
+  NO_WORK_SPOT_VARIANTS,
+  OFFICE_DEFS,
+  WORK_SPOTS,
+  type WorkPose,
+} from '../content/offices.ts';
 import { lotLocalToWorld } from '../world/lot-frame.ts';
 import type { WorldData } from '../world/types.ts';
 import { lineOk, type Mask, type WalkGraph } from './land-world.ts';
@@ -115,6 +120,7 @@ export function buildStops(
   (world.fixtures ?? []).forEach((f, fi) => {
     const spots = WORK_SPOTS[f.defId];
     if (!spots || f.defId in OFFICE_DEFS) return;
+    if (NO_WORK_SPOT_VARIANTS[f.defId]?.includes(f.variant ?? -1)) return;
     const comp = comps[f.islandId] ?? -1;
     // the structure's own footprint (tag fi + 1) does not block its work spots
     const own: Mask = (x, z) => stopMask(x, z, fi + 1);

@@ -20,6 +20,11 @@ import { DEVOPS_M26_MOTION } from '../content/themes/devops-m26-site.ts';
 import { DOCK } from '../content/settlements.ts';
 import { pierLoop } from './harbour-routes.ts';
 import { MARKETING_M27_MOTION } from '../content/themes/marketing-m27-site.ts';
+import { RESEARCH_M28 } from '../content/themes/research-m28.ts';
+import { RESEARCH_M28_MOTION } from '../content/themes/research-m28-site.ts';
+
+/** tripodTelescope def index (the M28 rim deck is its variant 2). */
+const scopeDef = PROP_DEFS.findIndex((d) => d.id === 'tripodTelescope');
 
 /** Prop store position of the first instance of def `id` (null when the seed has none). */
 function firstOf(
@@ -502,8 +507,21 @@ describe('culture movers', () => {
     for (let i = 0; i < props.count; i++)
       if (props.defId[i] === stallDef && props.variant[i] !== DEVOPS_M25.smith.variant) stalls++;
     expect(stalls).toBeGreaterThanOrEqual(4);
+    // the M28 rim deck gazers (TASK-526) are keeper bodies + limbs too, on their decks, day and
+    // night: not stall keepers
+    const nearDeck = (m: THREE.Matrix4): boolean => {
+      const p = new THREE.Vector3().setFromMatrixPosition(m);
+      for (let i = 0; i < props.count; i++)
+        if (
+          props.defId[i] === scopeDef &&
+          props.variant[i] === RESEARCH_M28.deck.variant &&
+          Math.hypot(p.x - props.x[i], p.z - props.z[i]) < 3
+        )
+          return true;
+      return false;
+    };
     view.update(3, 4, env(4), stall, fest());
-    expect(ofKind(view, PART.keeper)).toHaveLength(0);
+    expect(ofKind(view, PART.keeper).filter((m) => !nearDeck(m))).toHaveLength(0);
     view.update(3, 12, env(12), stall, fest());
     // the M27 diver (TASK-518) is a keeper body too, near its dive tower: not a stall keeper
     const diveDef = PROP_DEFS.findIndex((d) => d.id === 'diveTower');
@@ -514,8 +532,10 @@ describe('culture movers', () => {
           return true;
       return false;
     };
-    expect(ofKind(view, PART.keeper).filter((m) => !nearDive(m))).toHaveLength(stalls);
-    expect(ofKind(view, PART.limb)).toHaveLength(stalls * 2);
+    expect(ofKind(view, PART.keeper).filter((m) => !nearDive(m) && !nearDeck(m))).toHaveLength(
+      stalls,
+    );
+    expect(ofKind(view, PART.limb).filter((m) => !nearDeck(m))).toHaveLength(stalls * 2);
     const a = snapshot(view);
     view.update(3.5, 12, env(12), stall, fest());
     expect(snapshot(view)).not.toEqual(a);
@@ -526,6 +546,53 @@ describe('culture movers', () => {
     view.update(3, 21, env(21), stall, relay(31));
     expect(snapshot(view).every(Number.isFinite)).toBe(true);
     SHARED.uMotionScale.value = 1;
+  });
+  it('M28 (TASK-526): one gazer per rim deck on its bot hook, looking up every ≈ 8 s', () => {
+    const G = RESEARCH_M28_MOTION.gazer;
+    const decks: number[] = [];
+    for (let i = 0; i < props.count; i++)
+      if (props.defId[i] === scopeDef && props.variant[i] === RESEARCH_M28.deck.variant)
+        decks.push(i);
+    expect(decks.length).toBeGreaterThanOrEqual(2);
+    const i = decks[0];
+    const at = new THREE.Vector3(props.x[i], props.y[i] + 2, props.z[i]);
+    // the hook in world: deck frame local +x = (sin rotY, -cos rotY), +z = (cos, sin) (FixtureData)
+    const f = world.fixtures.find(
+      (q) => Math.hypot(q.x - props.x[i], q.z - props.z[i]) < 1e-3 && q.defId === 'tripodTelescope',
+    )!;
+    const B = RESEARCH_M28.deck.bot;
+    const hook = {
+      x: f.x + B.x * Math.sin(f.rotY) + B.z * Math.cos(f.rotY),
+      z: f.z - B.x * Math.cos(f.rotY) + B.z * Math.sin(f.rotY),
+    };
+    const near = (): THREE.Matrix4[] =>
+      ofKind(view, PART.keeper).filter(
+        (m) => Math.hypot(m.elements[12] - props.x[i], m.elements[14] - props.z[i]) < 3,
+      );
+    // pitch of the body: its up axis (matrix column 1) tilted off +y
+    const tilt = (m: THREE.Matrix4): number =>
+      Math.acos(
+        Math.min(1, m.elements[5] / Math.hypot(m.elements[4], m.elements[5], m.elements[6])),
+      );
+    let lean = 0;
+    let up = 0;
+    for (let t = 0; t < G.period * 1.2; t += 0.25) {
+      view.update(t, 22, env(22), at, fest());
+      const b = near();
+      expect(b).toHaveLength(1);
+      expect(Math.hypot(b[0].elements[12] - hook.x, b[0].elements[14] - hook.z)).toBeLessThan(0.05);
+      // leaning into the scope, or straightened and looking up (tilted back)
+      if (Math.abs(tilt(b[0]) - G.lean) < 0.05) lean++;
+      if (Math.abs(tilt(b[0]) - Math.abs(G.look)) < 0.05) up++;
+    }
+    expect(lean).toBeGreaterThan(5);
+    expect(up).toBeGreaterThan(0);
+    // closed form: the same time twice is the same pose
+    view.update(4.25, 22, env(22), at, fest());
+    const a = near()[0].clone();
+    view.update(7.5, 22, env(22), at, fest());
+    view.update(4.25, 22, env(22), at, fest());
+    expect(near()[0].equals(a)).toBe(true);
   });
   it('M25 (TASK-507): trip hammers at 1.1 Hz, geysers together at the shift end, switchback lamps', () => {
     const H = DEVOPS_M25_MOTION.hammer;
