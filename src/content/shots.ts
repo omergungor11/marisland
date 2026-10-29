@@ -497,6 +497,35 @@ const MARKETING_M27_SHOTS: readonly ShotPreset[] = MARKETING_M27_CAMS.map(
     sets: ['dev' as const],
   }),
 );
+/**
+ * TASK-526 (D-107): the Research M28 kit on seed 1001 (Star Stair foot 115.6,93.4 → switchbacks
+ * 113.5,99.8 / 119.2,96.9 → top 118.2,100.2 at 15.3 u; dome 122,104; meridian dial 125.2,5.8,92.2;
+ * rim decks 130.3,96.5 / 130.8,120). Raw cameras; re-pin when the layout moves.
+ */
+const RESEARCH_M28_CAMS: readonly (readonly [string, string, string, number, number])[] = [
+  ['D-m28-stair', 'Star Stair: stone flights and teal lanterns (T2)', '102,17,84,117,10,98', 16, 6],
+  [
+    'D-m28-stair-night',
+    'Star Stair at night: the lantern chain (T2)',
+    '102,17,84,117,10,98',
+    22.08,
+    6,
+  ],
+  ['D-m28-sundial', 'Meridian dial at 12:00 (T2)', '127.5,13,83.5,125.2,6,92.2', 12, 6],
+  ['D-m28-deck', 'Rim deck gazer (T3)', '137,9.5,93.5,130.3,6.8,96.5', 15, 6],
+];
+const RESEARCH_M28_SHOTS: readonly ShotPreset[] = RESEARCH_M28_CAMS.map(
+  ([id, title, cam, time, simt]) => ({
+    id,
+    title,
+    seed: 1001,
+    cam,
+    time,
+    simt,
+    quality: 'medium' as const,
+    sets: ['dev' as const],
+  }),
+);
 const DEVOPS_M25_SHOTS: readonly ShotPreset[] = DEVOPS_M25_CAMS.map(
   ([id, title, cam, time, simt]) => ({
     id,
@@ -2118,6 +2147,36 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   },
   ...MARKETING_M27_SHOTS,
   ...DEVOPS_M25_SHOTS,
+  ...RESEARCH_M28_SHOTS,
+  // ---- TASK-526 (D-107): the Research M28 wow presets (study W-star-stair-night / W-meridian-noon)
+  {
+    id: 'W-star-stair-night',
+    title: 'Star Stair Night',
+    // near the W9 camera, 22:05 (Comet Night): the crag and the lit dome, the lantern chain up
+    // the stair's switchbacks
+    seed: 1001,
+    cam: '113,30,61,117,12,98',
+    time: 22.08,
+    simt: 6,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  {
+    id: 'W-meridian-noon',
+    title: 'Meridian Noon',
+    // high 3/4 from the noon-sun side (≈ 70 u, pitch ≈ 40°) at 12:00: the gnomon's shadow on the
+    // brass noon line, the rim decks and their gazers, the crag
+    seed: 1001,
+    cam: '139,51,40.5,124,7,96',
+    time: 12,
+    simt: 6,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
   // ---- TASK-512: the three wow presets TASK-502 specified (D-090)
   {
     id: 'W-kite-hill-afternoon',
