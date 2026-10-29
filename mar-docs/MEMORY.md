@@ -10,6 +10,20 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-29 (TASK-526 M28 kit placed + moving, D-107) - For TASK-527 (QA)**: placement `world/gen/plans/research-m28.ts`
+  (`placeSummitKit`, Research `finish` after `reserveResearchAnchors`), numbers `content/themes/research-m28-site.ts`
+  (`RESEARCH_M28_SITE` / `RESEARCH_M28_MOTION`), gazers `deckGazerScene` in `render/culture-movers.ts`, big dish tiers
+  `RESEARCH_SITE.base.dish`. Shots (seed 1001): wow `W-star-stair-night` (22:05), `W-meridian-noon` (12:00); dev
+  `pnpm shots dev --only=D-m28-stair,D-m28-stair-night,D-m28-sundial,D-m28-deck`. Look at: the stair reads as stone
+  flights + 6 teal lanterns on the tread edge (W9 / W14 / both wow), the dial's noon line (the 12:00 sun is 86° high:
+  the blade's shadow is a 0.16 u stub under its tip, not readable at wow distance; it is exact, a test pins it),
+  the gazer leaning into the scope / looking up every ≈ 8 s (D-m28-deck, T3), the big dish back on 1001 (0.8 scale,
+  behind the dome in W14). Known nits: the comet is not in W-star-stair-night (Comet Night sits at bearing 160°,
+  the camera looks ~75°, and 22:05 is 2 s into its 60 s ritual); a small blurred green patch remains at the crag foot
+  left of the dial in W-meridian-noon; W-meridian-noon looks from the dial's open (north-east) side, not from the
+  south (the dial sits on the crag's anti-sun side); the 1001 stair foot link crosses the quad (one rim lantern
+  yielded). `SitePlan.finish` may return paths now (painted, joined to the graph by `appendPaths`). Ladder
+  `FRAMING.ladder.shift.research` not re-checked (L-research not shot in 526).
 - **2026-10-29 (TASK-525 M28 props, D-106) - For TASK-526**: defs/variants (no placement yet). Frames are local, scale 1,
   hooks in `geometry.userData.hooks`; numbers `RESEARCH_M28` (`content/themes/research-m28.ts`).
   `sundial` (new def, tier 2, footprint 3.0, ~2.97 u tall, 6 u disc): **gnomon blade along local +z** (plane x = 0, high
