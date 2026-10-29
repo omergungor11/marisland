@@ -9,8 +9,10 @@
  * - a formal garden on the lower lawn: a grid of hedge parterres around a sculpture, topiary
  *   lines, flower beds, benches, a pergola walk toward the quad;
  * - the glasshouse district: a row of terrariums with the biodome conservatory at one end;
- * - the research base on the headland (lab pods, small dish, weather mast) and the big radio
- *   dish on the spur behind the summit;
+ * - the research base on the headland: lab pods, the big radio dish (M28 TASK-524: it stood on
+ *   the spur behind the summit, a small dish took its slot here) and the weather mast;
+ * - M28 (TASK-524): the meridian ledge, the Star Stair and the rim deck anchors
+ *   (research-anchors.ts);
  * - sculptures on the avenues (atom, DNA helix, rocket), the cove pier with the research vessel;
  * - path links from every door to the quad hub;
  * - the Star Academy culture (M19 TASK-426, `academy`): the comet-night observatory and the bell
@@ -61,6 +63,13 @@ import {
   type SiteCtx,
   type SitePlan,
 } from '../sites.ts';
+import {
+  planStair,
+  reserveMeridian,
+  reserveResearchAnchors,
+  reserveRimDecks,
+  reserveStairLanding,
+} from './research-anchors.ts';
 import type { ThemePlanner } from './types.ts';
 
 const DEG = Math.PI / 180;
@@ -72,7 +81,7 @@ const radiusOf = (def: string): number => FIXTURE_RADIUS[def] ?? 0.5;
 /** Pad level groups (Pad.group): each district is one level, districts differ by ≤ padStep. */
 /** chalkboard variant 3 = the arboretum specimen plate (props-themes/research.ts RESEARCH_M22.plate). */
 const PLATE_VARIANT = 3;
-const LEVEL = { summit: 1, quad: 2, garden: 3, glass: 4, base: 5, dish: 6, tip: 7 } as const;
+const LEVEL = { summit: 1, quad: 2, garden: 3, glass: 4, base: 5, tip: 7 } as const;
 
 interface Put {
   /** Obstacle shape (default: the FIXTURE_RADIUS disc). */
@@ -104,7 +113,15 @@ function put(ctx: SiteCtx, isl: IslandData, defId: string, p: XZ, rotY: number, 
   if (o.pad !== undefined) addPad(ctx, isl, sh, o.pad, S.padStep, o.group);
 }
 
-/** On land, clear of everything placed so far and level enough. */
+/**
+ * M28 (TASK-524): the summit pad keeps its own level (`observatory.padStep`) on the steep crag,
+ * so a piece keeps its footprint `observatory.keep` u off the summit pad core (its falloff would
+ * tilt the piece's floor toward the crag top), per district (`planResearch` resets the disc).
+ * `fits` and the academy's `roomy` keep off it.
+ */
+const summitKeep = new WeakMap<IslandData, Shape>();
+
+/** On land, clear of everything placed so far, off the summit pad core and level enough. */
 function fits(
   ctx: SiteCtx,
   isl: IslandData,
@@ -116,9 +133,11 @@ function fits(
   // the cove ramp (pier → plateau) stays open
   if (sdfAt(ctx, sh.x, sh.z) < S.coveKeep && coveness(isl, ctx.windDir, sh.x, sh.z) > 0.6)
     return false;
+  const keep = summitKeep.get(isl);
   return (
     onLand(ctx, isl, sh, minShore) &&
     clear(ctx, isl, sh, S.gap, inPlaza) &&
+    !(keep && shapesOverlap(keep, sh, 0)) &&
     (maxRelief === Infinity || relief(ctx, sh) <= maxRelief)
   );
 }
@@ -169,8 +188,6 @@ export const planResearch: ThemePlanner = ({ ctx, isl, rng }) => {
   addPad(ctx, isl, discShape(quad.x, quad.z, Q.radius), FLATTEN.discMargin, S.padStep, LEVEL.quad);
   const axis = obs ? unit(quad, obs) : unit(quad, A.summit);
   const a0 = ang(axis.x, axis.z);
-  // the hub pin: just in front of the fountain on the observatory avenue
-  pin(plan, add(quad, axis, radiusOf(Q.fountain) + 1.4));
   put(ctx, isl, Q.fountain, quad, a0 + Math.PI);
   if (obs) {
     const door = ang(-axis.x, -axis.z);
@@ -179,7 +196,8 @@ export const planResearch: ThemePlanner = ({ ctx, isl, rng }) => {
       sh: discShape(obs.x, obs.z, O.radius),
       variant: CS.observatoryVariant,
     });
-    addPad(ctx, isl, discShape(obs.x, obs.z, O.pad), FLATTEN.discMargin, S.padStep, LEVEL.summit);
+    addPad(ctx, isl, discShape(obs.x, obs.z, O.pad), O.padMargin, O.padStep, LEVEL.summit);
+    summitKeep.set(isl, discShape(obs.x, obs.z, O.pad + O.padMargin + O.keep.ring));
     pin(plan, add(obs, dirOf(door), O.radius + S.doorGap + 0.6));
   }
 
@@ -203,6 +221,13 @@ export const planResearch: ThemePlanner = ({ ctx, isl, rng }) => {
   const aH = ang(harbourAt.x - quad.x, harbourAt.z - quad.z);
   // the harbour avenue (pier root → quad rim) stays free: a lane nothing else may stand on
   const toHarbour = unit(quad, harbourAt);
+  // the hub pin (the first link: it seeds the network), just in front of the fountain on the
+  // harbour avenue (M28 TASK-524: the observatory avenue side now ends at the crag face, a pocket)
+  plan.links.unshift({
+    pin: add(quad, toHarbour, radiusOf(Q.fountain) + 1.4),
+    kind: 'path',
+    done: () => undefined,
+  });
   const avenueLen = dist(quad, harbourAt) - Q.radius;
   const lane: XZ[] = [];
   for (let t = 0; t <= avenueLen; t += 1) lane.push(add(harbourAt, toHarbour, -t));
@@ -213,12 +238,30 @@ export const planResearch: ThemePlanner = ({ ctx, isl, rng }) => {
   quadRing(ctx, isl, quad, a0, [a0, aH, aG]);
   quadDecor(ctx, isl, quad, [a0, aH, aG]);
 
+  // ---- M28 (TASK-524), after the quad ring, before the districts keep off them: the Star Stair
+  // (R2: the landing on the summit ring and the legs up the crag face) and the meridian terrace
+  // (R3) at the crag's foot
+  const obsCore = O.pad + O.padMargin;
+  if (obs) reserveStairLanding(ctx, isl, obs, quad);
+  const stair = obs ? planStair(ctx, isl, obs, obsCore, quad, Q.radius + FLATTEN.discMargin) : null;
+  const meridian = obs ? reserveMeridian(ctx, isl, obs, obsCore, quad) : null;
+  // the districts keep their footprints off the summit pad (O.keep: each district its own reach)
+  const keepOff = (k: number): void => {
+    if (obs) summitKeep.set(isl, discShape(obs.x, obs.z, obsCore + k));
+  };
+
   // ---- the rest of the campus, each from its own fork
+  keepOff(O.keep.garden);
   const g = formalGarden(ctx, isl, plan, garden, quad, rng.fork('garden'));
+  keepOff(O.keep.glass);
   glasshouses(ctx, isl, plan, A.glasshouse ?? garden, g, rng.fork('glasshouse'));
-  bigDish(ctx, isl, plan, A.spur, obs, rng.fork('dish'));
+  keepOff(O.keep.districts);
   launchGantry(ctx, isl, plan, A.headland);
+  keepOff(O.keep.base);
   researchBase(ctx, isl, plan, A.headland, rng.fork('base'));
+  keepOff(O.keep.districts);
+  // M28 R4 (TASK-524): the rim deck sites on the lip the districts left
+  const decks = reserveRimDecks(ctx, isl);
   if (g) gardenEnds(ctx, isl, g);
   sculptureWalk(ctx, isl, quad, obs, g, harbourAt, rng.fork('sculptures'));
 
@@ -239,6 +282,19 @@ export const planResearch: ThemePlanner = ({ ctx, isl, rng }) => {
   // the path pins' connectivity check sees the blocked rim
   const obsDoor = obs ? add(obs, unit(obs, quad), O.radius + S.doorGap + 0.6) : null;
   const gate = g ? add(g.c, g.u, g.half + 1.2) : null;
+  // M28 anchors on the final ground (TASK-524): the meridian, the Star Stair, the rim decks
+  plan.finish = (paths) =>
+    reserveResearchAnchors(
+      ctx,
+      isl,
+      obs,
+      quad,
+      Q.radius + FLATTEN.discMargin,
+      stair,
+      meridian,
+      decks,
+      paths,
+    );
   plan.stories = academy(ctx, isl, rng.fork('culture'), {
     quad,
     obs,
@@ -565,7 +621,7 @@ function glasshouses(
   }
 }
 
-/** Lab pods, a small dish and the weather mast around a yard on the headland. */
+/** Lab pods, the big dish and the weather mast around a yard on the headland. */
 function researchBase(
   ctx: SiteCtx,
   isl: IslandData,
@@ -613,14 +669,31 @@ function researchBase(
     }
     if (best && best.items.length >= B.minItems) break;
   }
-  if (!best || best.items.length === 0) return;
-  for (const it of best.items) {
-    const toYard = unit(it.p, best.yard);
-    // dishes look out to sea (away from the yard), everything else faces the yard
-    const rot = it.def === 'radioDish' ? ang(-toYard.x, -toYard.z) : ang(toYard.x, toYard.z);
-    put(ctx, isl, it.def, it.p, rot, { pad: 1.2, variant: it.variant, group: LEVEL.base });
+  if (best && best.items.length > 0) {
+    for (const it of best.items) {
+      const toYard = unit(it.p, best.yard);
+      // dishes look out to sea (away from the yard), everything else faces the yard
+      const rot = it.def === 'radioDish' ? ang(-toYard.x, -toYard.z) : ang(toYard.x, toYard.z);
+      put(ctx, isl, it.def, it.p, rot, { pad: 1.2, variant: it.variant, group: LEVEL.base });
+    }
+    pin(plan, best.yard);
   }
-  pin(plan, best.yard);
+  // M28 (TASK-524): the big dish is the headland's landmark: when the yard had no room for it,
+  // the free spot nearest the headland within `dish.reach`, `dish.summitOff` off the summit (it
+  // must not stand by the crag again), bowl out to sea
+  const D = B.items.find((it) => it.def === 'radioDish');
+  if (!D || best?.items.some((it) => it.def === D.def)) return;
+  const r = radiusOf(D.def);
+  const summit = isl.anchors.summit;
+  const p = bestSample(ctx, isl, anchor, B.dish.reach, (q) =>
+    (!summit || dist(q, summit) >= B.dish.summitOff) &&
+    fits(ctx, isl, discShape(q.x, q.z, r), B.minShore, B.maxRelief)
+      ? dist(q, anchor)
+      : Infinity,
+  );
+  if (!p) return;
+  const out = unit({ x: isl.cx, z: isl.cz }, p);
+  put(ctx, isl, D.def, p, ang(out.x, out.z), { pad: 1.2, variant: D.variant, group: LEVEL.base });
 }
 
 /**
@@ -666,46 +739,6 @@ function launchGantry(ctx: SiteCtx, isl: IslandData, plan: SitePlan, anchor: XZ 
         });
         return;
       }
-}
-
-/** The big radio dish on the spur, bowl toward the sea, and small dishes beside it. */
-function bigDish(
-  ctx: SiteCtx,
-  isl: IslandData,
-  plan: SitePlan,
-  anchor: XZ | undefined,
-  obs: XZ | null,
-  rng: Rng,
-): void {
-  if (!anchor) return;
-  const D = S.dish;
-  const r = radiusOf(D.def);
-  const p = bestSample(ctx, isl, anchor, D.search, (q) => {
-    if (!fits(ctx, isl, discShape(q.x, q.z, r), D.minShore, D.maxRelief)) return Infinity;
-    // out on the spur (far from the island centre), not hugging the observatory
-    return (
-      -0.5 * dist(q, { x: isl.cx, z: isl.cz }) + dist(q, anchor) - (obs ? 0.1 * dist(q, obs) : 0)
-    );
-  });
-  if (!p) return;
-  const out = unit({ x: isl.cx, z: isl.cz }, p);
-  const rot = ang(out.x, out.z);
-  put(ctx, isl, D.def, p, rot, { pad: FLATTEN.discMargin, variant: 0, group: LEVEL.dish });
-  pin(plan, add(p, out, -(r + S.doorGap)));
-  const rs = radiusOf(D.def) * 0.55;
-  const cand = ring(p, D.smallRing[0], D.smallRing[1], 1.25, 16, rng.range(0, 1)).filter((q) =>
-    fits(ctx, isl, discShape(q.x, q.z, rs), D.minShore, D.maxRelief),
-  );
-  cand.sort((a, b) => dist(a, anchor) - dist(b, anchor));
-  for (let k = 0; k < D.small && k < cand.length; k++) {
-    const q = cand[k];
-    put(ctx, isl, D.def, q, rot + rng.range(-0.4, 0.4), {
-      sh: discShape(q.x, q.z, rs),
-      pad: 0.8,
-      variant: 1,
-      group: LEVEL.dish,
-    });
-  }
 }
 
 /** Atom on the observatory avenue, DNA helix toward the garden, rocket on the harbour approach. */
@@ -845,7 +878,9 @@ function academy(ctx: SiteCtx, isl: IslandData, rng: Rng, s: AcademySite): Story
     (Number.isNaN(maxRelief) || reliefAround(sh) <= maxRelief) &&
     opensPins(sh);
   /** `free` without the relief and the path-pin flood fill (the cheap tests, for wide searches). */
+  const keep = summitKeep.get(isl);
   const roomy = (sh: Shape, gap: number, minShore: number): boolean =>
+    !(keep && shapesOverlap(keep, sh, 0)) &&
     !(sdfAt(ctx, sh.x, sh.z) < S.coveKeep && coveness(isl, ctx.windDir, sh.x, sh.z) > 0.6) &&
     onLand(ctx, isl, sh, minShore) &&
     clear(ctx, isl, sh, gap, false) &&
@@ -1157,10 +1192,23 @@ function academy(ctx: SiteCtx, isl: IslandData, rng: Rng, s: AcademySite): Story
   }
   // a cord crosses a walk: no pad of its own (a terrace step on a ramp breaks the climb), so the
   // whole strip must lie inside one district core (the rigid cord needs both poles level)
-  pennants(ctx, isl, quad, lib, s.avenues, (sh) => (inPadCore(sh) ? 'core' : null), opensPins, {
-    ground: (sh) => groundOf(sh),
-    ok: offWalks,
-  });
+  // (M28 TASK-524: by the steep crag a cord keeps a sample cell inside the core, as the ground
+  // past the core edge climbs the crag face)
+  const byCrag = (sh: Shape): boolean =>
+    !!s.obs && dist(sh, s.obs) < S.observatory.pad + S.observatory.padMargin + CS.pennants.cragNear;
+  pennants(
+    ctx,
+    isl,
+    quad,
+    lib,
+    s.avenues,
+    (sh) => (inPadCore(sh, byCrag(sh) ? ctx.h.cellSize / 2 : 0) ? 'core' : null),
+    opensPins,
+    {
+      ground: (sh) => groundOf(sh),
+      ok: offWalks,
+    },
+  );
 
   // ---- summit: the comet watch (telescope + book-pile stool + the comet board) and the owl box,
   // on the flat terrace round the dome (inside the observatory pad's core: no pads of their own)

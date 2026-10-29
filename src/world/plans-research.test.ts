@@ -158,7 +158,9 @@ describe('Research Observatory University plan (TASK-402b) — 30 seeds', () => 
       if (sc.filter((id) => d.of(id).length > 0).length >= 3) sculptures++;
     }
     expect(n).toBeGreaterThan(20);
-    expect(halls3 / n, '≥ 3 faculty halls').toBeGreaterThanOrEqual(0.75);
+    // M28 TASK-524 (D-105): the summit crag's pad keeps the quad ring's crag-side slot off its
+    // core, so that slot stays empty a little more often (22 / 30, was 24 / 30)
+    expect(halls3 / n, '≥ 3 faculty halls').toBeGreaterThanOrEqual(0.7);
     expect(gardens8 / n, 'the full 3 × 3 garden').toBeGreaterThanOrEqual(0.75);
     expect(glass / n, 'glasshouse row').toBeGreaterThanOrEqual(0.75);
     expect(base / n, 'research base').toBeGreaterThanOrEqual(0.75);
