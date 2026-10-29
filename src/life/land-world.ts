@@ -7,7 +7,7 @@ import { CATS, CRABS, LAND, SHEEP, VILLAGERS, lifeWeight } from '../content/life
 import { DESIGN_CULTURE_SITE } from '../content/cultures/design.ts';
 import { PROP_DEFS } from '../content/props.ts';
 import { GLASS_BRIDGE, glassBridgeDeckY } from '../content/props-themes/m20.ts';
-import { FIXTURE_RADIUS, LANDMARKS } from '../content/settlements.ts';
+import { FIXTURE_RADIUS, FIXTURE_VARIANT_RADIUS, LANDMARKS } from '../content/settlements.ts';
 import type { Rng } from '../core/rng.ts';
 import { PropFlag } from '../world/prop-store.ts';
 import { Zone, type SettlementData, ZONE_COUNT } from '../world/types.ts';
@@ -122,7 +122,9 @@ export function buildSolids(
     if (r > 0) sol.disc(m.x, m.z, r + LAND.landmarkMargin);
   }
   (w.fixtures ?? []).forEach((f, k) => {
-    sol.disc(f.x, f.z, (FIXTURE_RADIUS[f.defId] ?? 0.6) + margins.solid, k + 1);
+    // (a variant bigger than its def: the Research rim deck, TASK-526)
+    const r = FIXTURE_VARIANT_RADIUS[f.defId]?.[f.variant ?? -1] ?? FIXTURE_RADIUS[f.defId] ?? 0.6;
+    sol.disc(f.x, f.z, r + margins.solid, k + 1);
   });
   for (const d of w.docks ?? []) {
     const len = d.segments * 2;

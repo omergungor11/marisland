@@ -70,6 +70,7 @@ import {
   reserveRimDecks,
   reserveStairLanding,
 } from './research-anchors.ts';
+import { placeSummitKit } from './research-m28.ts';
 import type { ThemePlanner } from './types.ts';
 
 const DEG = Math.PI / 180;
@@ -283,7 +284,8 @@ export const planResearch: ThemePlanner = ({ ctx, isl, rng }) => {
   const obsDoor = obs ? add(obs, unit(obs, quad), O.radius + S.doorGap + 0.6) : null;
   const gate = g ? add(g.c, g.u, g.half + 1.2) : null;
   // M28 anchors on the final ground (TASK-524): the meridian, the Star Stair, the rim decks
-  plan.finish = (paths) =>
+  // and the M28 kit on them (TASK-526): the Star Stair path comes back to the settlement pass
+  plan.finish = (paths) => {
     reserveResearchAnchors(
       ctx,
       isl,
@@ -295,6 +297,8 @@ export const planResearch: ThemePlanner = ({ ctx, isl, rng }) => {
       decks,
       paths,
     );
+    return placeSummitKit(ctx, isl, paths, plan.stories ?? []);
+  };
   plan.stories = academy(ctx, isl, rng.fork('culture'), {
     quad,
     obs,
@@ -683,17 +687,26 @@ function researchBase(
   // must not stand by the crag again), bowl out to sea
   const D = B.items.find((it) => it.def === 'radioDish');
   if (!D || best?.items.some((it) => it.def === D.def)) return;
-  const r = radiusOf(D.def);
   const summit = isl.anchors.summit;
-  const p = bestSample(ctx, isl, anchor, B.dish.reach, (q) =>
-    (!summit || dist(q, summit) >= B.dish.summitOff) &&
-    fits(ctx, isl, discShape(q.x, q.z, r), B.minShore, B.maxRelief)
-      ? dist(q, anchor)
-      : Infinity,
-  );
-  if (!p) return;
-  const out = unit({ x: isl.cx, z: isl.cz }, p);
-  put(ctx, isl, D.def, p, ang(out.x, out.z), { pad: 1.2, variant: D.variant, group: LEVEL.base });
+  for (const T of B.dish) {
+    const r = radiusOf(D.def) * T.scale;
+    const p = bestSample(ctx, isl, anchor, T.reach, (q) =>
+      (!summit || dist(q, summit) >= T.summitOff) &&
+      fits(ctx, isl, discShape(q.x, q.z, r), B.minShore, B.maxRelief)
+        ? dist(q, anchor)
+        : Infinity,
+    );
+    if (!p) continue;
+    const out = unit({ x: isl.cx, z: isl.cz }, p);
+    put(ctx, isl, D.def, p, ang(out.x, out.z), {
+      sh: discShape(p.x, p.z, r),
+      pad: 1.2,
+      variant: D.variant,
+      group: LEVEL.base,
+      ...(T.scale !== 1 ? { scale: T.scale } : {}),
+    });
+    return;
+  }
 }
 
 /**

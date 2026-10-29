@@ -7,6 +7,7 @@
  */
 import type { LotKind, LotRole, ThemeId } from '../world/types.ts';
 import { OFFICE_DEFS } from './offices.ts';
+import { RESEARCH_M28_SITE } from './themes/research-m28-site.ts';
 
 const OFFICE_IDS = Object.keys(OFFICE_DEFS);
 
@@ -316,6 +317,8 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   scholarStatue: 1.1,
   rocketMonument: 1.9,
   radioDish: 3.2,
+  // Research M28 (TASK-526): the meridian dial disc (its PropDef footprint)
+  sundial: 3.0,
   labPod: 2.8,
   fountain: 1.9,
   hedgeParterre: 2.4,
@@ -366,6 +369,15 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   customsYard: 6.2,
   scannerArch: 0.05,
   quarantinePontoon: 0.05,
+};
+
+/**
+ * Variants with a footprint of their own (def → variant → radius, u), where FIXTURE_RADIUS (per
+ * def) is too small: the Research rim telescope deck (tripodTelescope v2, a 3 × 2 u platform;
+ * TASK-526). Life's solids read it.
+ */
+export const FIXTURE_VARIANT_RADIUS: Readonly<Record<string, Readonly<Record<number, number>>>> = {
+  tripodTelescope: { [RESEARCH_M28_SITE.deck.variant]: RESEARCH_M28_SITE.deck.footprint },
 };
 
 /** Fixtures that float at the waterline (render pivot y = 0, not the seabed). */

@@ -31,7 +31,7 @@ export function stairFlights(
       const ya = heightAt(h, a.x, a.z);
       const yb = heightAt(h, b.x, b.z);
       const rise = Math.abs(yb - ya);
-      const flight = rise / len > S.minGrade;
+      const flight = rise / len > (S.looks[look].minGrade ?? S.minGrade);
       if (!flight && !bare((a.x + b.x) / 2, (a.z + b.z) / 2)) continue;
       const [lo, hi] = ya <= yb ? [a, b] : [b, a];
       // merged links walk the same leg twice: one flight

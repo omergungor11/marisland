@@ -5,6 +5,7 @@
  * `stairFlight` fixture (placed by world/gen/stair-flights.ts, geometry geo/themes/stairs.ts).
  * Lengths in u.
  */
+import { CAMPUS_PALETTE as CP } from './themes/research.ts';
 
 /**
  * One theme's flight look. Flight = treads between two stringers, a hand rail on both sides;
@@ -21,6 +22,8 @@ export interface StairFlightLook {
   railY: number;
   railR: number;
   skirt: number;
+  /** This look's flight threshold (|rise| / run), when not the shared `minGrade`. */
+  minGrade?: number;
 }
 
 export const STAIR_FLIGHT = {
@@ -40,7 +43,7 @@ export const STAIR_FLIGHT = {
   /** Riser height of one step (u, before scaling); the step count is rise / step rounded. */
   step: 0.32,
   /** Theme → look row (themes not listed get no flights). */
-  byTheme: { marketing: 0 } as Readonly<Record<string, number>>,
+  byTheme: { marketing: 0, research: 1 } as Readonly<Record<string, number>>,
   looks: [
     // 0 · Marketing (Beacon Rock): red-painted decking (the theme's stair paint), cream risers,
     // dark stringers and a gold rail
@@ -53,6 +56,20 @@ export const STAIR_FLIGHT = {
       railY: 0.85,
       railR: 0.035,
       skirt: 0.5,
+    },
+    // 1 · Research Star Stair (TASK-526, D-107): campus stone treads, stucco risers, dark stone
+    // stringers and a gold rail; every leg steeper than 0.2 gets a flight (the stair is carved
+    // at one grade, so its gentler foot legs read as steps too)
+    {
+      tread: CP.stone,
+      riser: CP.stucco,
+      stringer: CP.stoneDark,
+      rail: CP.gold,
+      width: 1.5,
+      railY: 0.85,
+      railR: 0.035,
+      skirt: 0.6,
+      minGrade: 0.2,
     },
   ] as readonly StairFlightLook[],
 } as const;

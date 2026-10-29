@@ -5,6 +5,7 @@ import { RESEARCH_CULTURE_PROP_DEFS, RESEARCH_M22 } from '../content/props-theme
 import { MAZE, mazeOf } from '../content/props-themes/research-maze.ts';
 import { FIXTURE_RADIUS } from '../content/settlements.ts';
 import { RESEARCH_SITE } from '../content/themes/research.ts';
+import { isSummitKit } from './gen/plans/research-m28.ts';
 import { generateWorld, heightAt, Zone, type FixtureData, type WorldData } from './index.ts';
 
 /** Research "Observatory University" plan (TASK-402b) over 30 seeds. */
@@ -48,7 +49,9 @@ function research(seed: number) {
   if (!isl) return null;
   const on = <T extends { islandId: number }>(a: readonly T[]): T[] =>
     a.filter((x) => x.islandId === isl.id);
-  const fixtures = on(w.fixtures);
+  // (the M28 Summit Observatory kit on the TASK-524 anchors has its own tests:
+  // world/plans-research-m28.test.ts)
+  const fixtures = on(w.fixtures).filter((f) => !isSummitKit(f));
   const of = (id: string): FixtureData[] => fixtures.filter((f) => f.defId === id);
   return {
     w,
@@ -522,7 +525,8 @@ describe('Research M22 quick wins (TASK-483) — 30 seeds', { timeout: 120_000 }
       );
       expect(plates.length, `seed ${d.w.seed} plates`).toBeLessThanOrEqual(CS.arbor.species.length);
       if (plates.length >= 3 && species.size >= 3) ok++;
-      for (const f of d.fixtures.filter((q) => q.scale !== undefined))
+      // (and the big dish, smaller on a tight headland: TASK-526)
+      for (const f of d.fixtures.filter((q) => q.scale !== undefined && q.defId !== 'radioDish'))
         expect(f.defId, `seed ${d.w.seed}`).toBe('roundTree');
     }
     expect(ok / n, 'arboretum with ≥ 3 species').toBeGreaterThanOrEqual(0.85);

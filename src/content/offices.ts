@@ -321,6 +321,15 @@ export const WORK_SPOTS: Readonly<Record<string, readonly WorkSpot[]>> = {
   stiltHut: [{ x: 0.9, z: 1.9, face: 0, pose: 'look', sit: BENCH }],
 };
 
+/**
+ * Fixture variants whose WORK_SPOTS (keyed by def) do not apply: the Research rim telescope deck
+ * (tripodTelescope v2, TASK-526) has its bot on the deck (the variant's `bot` hook), drawn by the
+ * deck gazer scene (render/culture-movers.ts), not the tripod's ground spot at z 1.4.
+ */
+export const NO_WORK_SPOT_VARIANTS: Readonly<Record<string, readonly number[]>> = {
+  tripodTelescope: [2],
+};
+
 /** Shells with a tier-2 interior; the index is the `officeInterior` variant. */
 export const OFFICE_INTERIOR_SHELLS: readonly string[] = [
   'hqOffice',

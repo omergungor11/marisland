@@ -3,9 +3,13 @@ import { FIXTURE_RADIUS, FLATTEN } from '../content/settlements.ts';
 import { STAIR_FLIGHT } from '../content/stairs.ts';
 import { RESEARCH_ANCHORS as R } from '../content/themes/research-anchors.ts';
 import { RESEARCH_SITE } from '../content/themes/research.ts';
+import { createEnvState, sampleEnv } from '../env/env-state.ts';
+import { RESEARCH_M28 } from '../content/themes/research-m28.ts';
+import { RESEARCH_M28_SITE } from '../content/themes/research-m28-site.ts';
 import { anchorPoints, stairOf } from './gen/plans/research-anchors.ts';
+import { isSummitKit } from './gen/plans/research-m28.ts';
 import { discShape, rectShape, shapesOverlap } from './gen/sites.ts';
-import { generateWorld, heightAt, sampleGrid, type WorldData, type XZ } from './index.ts';
+import { generateWorld, heightAt, sampleGrid, Zone, type WorldData, type XZ } from './index.ts';
 
 /** Research M28 anchors (TASK-524, D-105): Star Stair, meridian terrace, rim decks — 30 seeds. */
 const SEEDS = Array.from({ length: 30 }, (_, k) => 1000 + k * 263);
@@ -25,13 +29,19 @@ function research(seed: number) {
   const w = world(seed);
   const isl = w.islands.find((i) => i.theme === 'research');
   if (!isl) throw new Error(`seed ${seed}: no Research island`);
-  const fixtures = w.fixtures.filter((f) => f.islandId === isl.id);
+  const all = w.fixtures.filter((f) => f.islandId === isl.id);
+  // (the anchors keep off everything but the kit TASK-526 placed on them; the Star Stair is a
+  // path of its own)
+  const fixtures = all.filter((f) => !isSummitKit(f));
+  const kit = all.filter(isSummitKit);
   const obs = fixtures.find((f) => f.defId === 'observatory');
   const quad = w.settlements.find((s) => s.islandId === isl.id)?.plaza;
   if (!obs || !quad) throw new Error(`seed ${seed}: no observatory / quad`);
   const H = (p: XZ): number => heightAt(w.height, p.x, p.z);
-  const paths = w.paths.filter((p) => p.islandId === isl.id);
-  return { w, isl, fixtures, obs, quad, H, paths };
+  const island = w.paths.filter((p) => p.islandId === isl.id);
+  const paths = island.filter((p) => p.kind !== 'stair');
+  const stairPath = island.filter((p) => p.kind === 'stair');
+  return { w, isl, fixtures, kit, obs, quad, H, paths, stairPath };
 }
 
 const segDist = (p: XZ, a: XZ, b: XZ): number => {
@@ -248,5 +258,222 @@ describe('Research M28 anchors (TASK-524) — 30 seeds', { timeout: 120_000 }, (
       if (dist(dish, isl.anchors.headland) < 16) onHead++;
     }
     expect(onHead / SEEDS.length, 'big dish on the headland').toBeGreaterThanOrEqual(0.85);
+  });
+});
+
+/** The M28 kit on the anchors (TASK-526, D-107) — the 30 seeds and the shot seed 1001. */
+const KIT_SEEDS = [...SEEDS, 1001];
+const KS = RESEARCH_M28_SITE;
+
+/** Walk-graph node nearest `p` (and its distance). */
+function nodeAt(w: WorldData, p: XZ): { node: number; d: number } {
+  const g = w.pathGraph.nodes;
+  let node = -1;
+  let d = Infinity;
+  for (let i = 0; i < g.length / 2; i++) {
+    const e = Math.hypot(g[i * 2] - p.x, g[i * 2 + 1] - p.z);
+    if (e < d) {
+      d = e;
+      node = i;
+    }
+  }
+  return { node, d };
+}
+
+describe('Research M28 kit on the anchors (TASK-526)', { timeout: 120_000 }, () => {
+  it('the big dish stands on every seed (TASK-524 lost it on 1001 / 1263 / 4945)', () => {
+    for (const seed of KIT_SEEDS) {
+      const { isl, fixtures } = research(seed);
+      const dish = fixtures.find((f) => f.defId === 'radioDish' && (f.variant ?? 0) === 0);
+      expect(dish, `seed ${seed} big dish`).toBeDefined();
+      // (the yard dish keeps the TASK-524 bound; the fallback tiers their own, ≥ 12)
+      expect(dist(dish!, isl.anchors.summit), `seed ${seed} dish off the summit`).toBeGreaterThan(
+        10,
+      );
+      expect(dish!.scale ?? 1, `seed ${seed} dish scale`).toBeGreaterThanOrEqual(0.7);
+    }
+  });
+
+  it('the Star Stair is one stair path over the anchors, joined to the campus walk graph', () => {
+    for (const seed of KIT_SEEDS) {
+      const { w, isl, stairPath } = research(seed);
+      const ctx = `seed ${seed}`;
+      expect(stairPath.length, `${ctx} one stair path`).toBe(1);
+      const pts = stairPath[0].points;
+      const st = stairOf(isl);
+      // every anchor vertex is a path point, in order; the legs in ≈ 2 u pieces
+      let at = -1;
+      for (const v of st) {
+        const k = pts.findIndex((q) => dist(q, v) < 1e-6);
+        expect(k, `${ctx} vertex on the path`).toBeGreaterThan(at);
+        at = k;
+      }
+      const iFoot = pts.findIndex((q) => dist(q, st[0]) < 1e-6);
+      const iTop = pts.findIndex((q) => dist(q, st[3]) < 1e-6);
+      for (let k = iFoot; k < iTop; k++)
+        expect(dist(pts[k], pts[k + 1]), `${ctx} piece`).toBeLessThanOrEqual(KS.stair.step * 1.5);
+      // the foot is linked to the network: the path starts on a node of another path
+      expect(iFoot, `${ctx} foot linked`).toBeGreaterThan(0);
+      // and the hub reaches the top landing over the graph
+      const hub = w.settlements.find((s) => s.islandId === isl.id)!.hub.node;
+      const top = nodeAt(w, st[3]);
+      expect(top.d, `${ctx} top node`).toBeLessThan(1e-3);
+      const n = w.pathGraph.nodes.length / 2;
+      const adj: number[][] = Array.from({ length: n }, () => []);
+      const e = w.pathGraph.edges;
+      for (let i = 0; i < e.length; i += 2) {
+        adj[e[i]].push(e[i + 1]);
+        adj[e[i + 1]].push(e[i]);
+      }
+      const seen = new Uint8Array(n);
+      const q = [hub];
+      seen[hub] = 1;
+      while (q.length > 0)
+        for (const m of adj[q.pop()!])
+          if (!seen[m]) {
+            seen[m] = 1;
+            q.push(m);
+          }
+      expect(seen[top.node], `${ctx} hub → top landing`).toBe(1);
+    }
+  });
+
+  it('every stair piece steeper than the look threshold carries a stone flight', () => {
+    const look = STAIR_FLIGHT.byTheme.research;
+    const min = STAIR_FLIGHT.looks[look].minGrade ?? STAIR_FLIGHT.minGrade;
+    for (const seed of KIT_SEEDS) {
+      const { kit, stairPath, H } = research(seed);
+      const flights = kit.filter((f) => f.defId === 'stairFlight');
+      const pts = stairPath[0].points;
+      let crag = 0;
+      for (let k = 0; k + 1 < pts.length; k++) {
+        const [a, b] = [pts[k], pts[k + 1]];
+        const g = Math.abs(H(b) - H(a)) / dist(a, b);
+        if (g <= min) continue;
+        crag++;
+        const lo = H(a) <= H(b) ? a : b;
+        const f = flights.find((q) => dist(q, lo) < 1e-6);
+        expect(f, `seed ${seed} flight at piece ${k}`).toBeDefined();
+        expect(Math.floor((f!.variant ?? 0) / STAIR_FLIGHT.rises.length), 'stone look').toBe(look);
+      }
+      expect(crag, `seed ${seed} flights up the crag`).toBeGreaterThanOrEqual(5);
+    }
+  });
+
+  it('6–8 teal lanterns stand beside the flights on the lamp stations (one variant: one group)', () => {
+    for (const seed of KIT_SEEDS) {
+      const { isl, kit, stairPath, H } = research(seed);
+      const ctx = `seed ${seed}`;
+      const st = stairOf(isl);
+      const lamps = kit.filter((f) => f.defId === 'lanternPost');
+      expect(lamps.length, `${ctx} lamps`).toBeGreaterThanOrEqual(6);
+      expect(lamps.length, `${ctx} lamps`).toBeLessThanOrEqual(8);
+      expect(lamps.length, `${ctx} one per station`).toBe(anchorPoints(isl, 'starLamp').length);
+      const half = STAIR_FLIGHT.looks[STAIR_FLIGHT.byTheme.research].width / 2;
+      for (const l of lamps) {
+        expect(l.variant, `${ctx} teal stair lantern`).toBe(KS.stair.lamp.variant);
+        // on the flight's tread edge (inside the 1.5 u flight), never on another leg
+        expect(polyDist(l, st), `${ctx} on the stair's edge`).toBeCloseTo(KS.stair.lamp.side, 3);
+        expect(KS.stair.lamp.side, 'inside the flight').toBeLessThan(half);
+        // level with the treads: each flight runs straight between its path points (the crag
+        // face's ground beside the carved line falls away or rises)
+        const pts = stairPath[0].points;
+        const level = pts.slice(1).some((b, k) => {
+          const a = pts[k];
+          if (segDist(l, a, b) > KS.stair.lamp.side + 0.05) return false;
+          const t = Math.max(
+            0,
+            Math.min(1, ((l.x - a.x) * (b.x - a.x) + (l.z - a.z) * (b.z - a.z)) / dist(a, b) ** 2),
+          );
+          return Math.abs(l.y! - (H(a) + (H(b) - H(a)) * t)) < 1e-3;
+        });
+        expect(l.y, `${ctx} lamp pivot planned`).toBeDefined();
+        expect(level, `${ctx} lamp level with the steps beside it`).toBe(true);
+      }
+    }
+  });
+
+  it('the sundial gnomon casts its real 12:00 shadow onto the brass noon line (±3°)', () => {
+    const sun = sampleEnv(12, createEnvState()).sunDir;
+    const D = RESEARCH_M28.sundial;
+    // the content heading is the sim's own (re-derived)
+    const shadowDeg = (Math.atan2(-sun.z, -sun.x) * 180) / Math.PI;
+    expect(Math.abs(shadowDeg - KS.sundial.noonShadowDeg)).toBeLessThan(0.5);
+    for (const seed of KIT_SEEDS) {
+      const { isl, kit } = research(seed);
+      const ctx = `seed ${seed}`;
+      const dials = kit.filter((f) => f.defId === 'sundial');
+      expect(dials.length, `${ctx} one dial`).toBe(1);
+      const f = dials[0];
+      const m = isl.anchors.meridian;
+      expect(dist(f, m), `${ctx} on the meridian`).toBeLessThan(1e-6);
+      // local +z (blade, XII, noon line) in world: (cos rotY, sin rotY); local +x: (sin, −cos)
+      const z = { x: Math.cos(f.rotY), z: Math.sin(f.rotY) };
+      const xAxis = { x: Math.sin(f.rotY), z: -Math.cos(f.rotY) };
+      const sh = { x: -sun.x, z: -sun.z };
+      const off = Math.atan2(sh.x * z.z - sh.z * z.x, sh.x * z.x + sh.z * z.z);
+      expect(
+        Math.abs((off * 180) / Math.PI),
+        `${ctx} shadow along the noon line`,
+      ).toBeLessThanOrEqual(3);
+      // the gnomon tip's shadow on the line's top lands on the brass strip
+      const tipY = D.fieldTop + D.gnomon.height;
+      const t = (tipY - D.noon.top) / sun.y;
+      const tip = { x: f.x + z.x * D.gnomon.northZ, z: f.z + z.z * D.gnomon.northZ };
+      const hit = { x: tip.x - sun.x * t, z: tip.z - sun.z * t };
+      const lx = (hit.x - f.x) * xAxis.x + (hit.z - f.z) * xAxis.z;
+      const lz = (hit.x - f.x) * z.x + (hit.z - f.z) * z.z;
+      expect(Math.abs(lx), `${ctx} shadow on the strip`).toBeLessThanOrEqual(D.noon.width / 2);
+      expect(lz, `${ctx} shadow past the blade`).toBeGreaterThanOrEqual(D.gnomon.northZ);
+      expect(lz, `${ctx} shadow before XII`).toBeLessThanOrEqual(D.noon.inner);
+    }
+  });
+
+  it('a rim telescope deck on every deck site, its sea side out', () => {
+    for (const seed of KIT_SEEDS) {
+      const { isl, kit } = research(seed);
+      const ctx = `seed ${seed}`;
+      const sites = anchorPoints(isl, 'rimDeck');
+      const decks = kit.filter((f) => f.defId === 'tripodTelescope');
+      expect(decks.length, `${ctx} decks`).toBe(sites.length);
+      for (const d of sites) {
+        const f = decks.find((q) => dist(q, d) < 1e-6);
+        expect(f, `${ctx} deck on the site`).toBeDefined();
+        expect(f!.variant, `${ctx} deck variant`).toBe(KS.deck.variant);
+        // local −z (the railed sea side) = the anchor's outward heading
+        expect(Math.cos(f!.rotY + Math.PI - d.rotY), `${ctx} faces the sea`).toBeCloseTo(1, 6);
+      }
+    }
+  });
+
+  it('the carved groove up the crag reads as rock / path, not lawn', () => {
+    for (const seed of KIT_SEEDS) {
+      const { w, isl, H } = research(seed);
+      const st = stairOf(isl);
+      const h = w.height;
+      const lawn = new Set<number>();
+      const all = new Set<number>();
+      // the crag legs (1, 2): cells within 1.5 u of their centre line, above the foot
+      for (const [a, b] of [
+        [st[1], st[2]],
+        [st[2], st[3]],
+      ])
+        for (let iz = 0; iz < h.n; iz++) {
+          const z = h.originZ + iz * h.cellSize;
+          if (Math.abs(z - (a.z + b.z) / 2) > dist(a, b) / 2 + 2) continue;
+          for (let ix = 0; ix < h.n; ix++) {
+            const x = h.originX + ix * h.cellSize;
+            const p = { x, z };
+            if (segDist(p, a, b) > 1.5 || H(p) < st[0].y + 1) continue;
+            all.add(iz * h.n + ix);
+            const zn = w.zone[iz * h.n + ix];
+            if (zn === Zone.grass || zn === Zone.meadow) lawn.add(iz * h.n + ix);
+          }
+        }
+      expect(
+        lawn.size / Math.max(1, all.size),
+        `seed ${seed} lawn in the groove`,
+      ).toBeLessThanOrEqual(0.15);
+    }
   });
 });

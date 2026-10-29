@@ -47,6 +47,7 @@ import {
   addEdge,
   addNode,
   addVirtual,
+  appendPaths,
   buildPathGraph,
   createNetwork,
   forSamplesNearSegment,
@@ -1123,7 +1124,13 @@ export function buildSettlements(input: SettlementInput, rng: Rng): SettlementRe
   writePaths(ctx.h, ctx.zone, ctx.sdf, built.paths, protect);
   for (const [i, z] of spared) ctx.zone[i] = z;
   // late plan passes that need the final footpaths (TASK-480 rim walkway)
-  for (const plan of plans) plan.finish?.(built.paths);
+  const late: Polyline[] = [];
+  for (const plan of plans) late.push(...(plan.finish?.(built.paths) ?? []));
+  // their own paths (TASK-526: the Star Stair): painted on the final ground, joined to the graph
+  if (late.length > 0) {
+    writePaths(ctx.h, ctx.zone, ctx.sdf, late, new Uint8Array(ctx.zone.length).fill(1));
+    appendPaths(built, late);
+  }
   // story stages stay clear of avenue / kit fixtures that are not the spot's own (TASK-485)
   const staged = clearStoryStages(
     ctx.fixtures,

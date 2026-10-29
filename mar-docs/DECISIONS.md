@@ -2,6 +2,61 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-107: Research M28 kit placed and moving on the TASK-524 anchors: Star Stair as a stair path joined to the graph, lanterns on the tread edge, the sundial aimed by the sim's 12:00 sun, rim deck gazers, the big dish back on every seed (TASK-526; builds D-104 / D-105 / D-106) — 2026-10-29
+
+**Decision**: (1) **Star Stair = a 'stair' path returned by a plan `finish`.** `SitePlan.finish` may now return
+paths; the settlement pass paints them (`writePaths` with a full protect mask: zone only, no extra carve, the
+anchors' heights stay true) and `appendPaths` (world/gen/paths.ts) joins them to the walk graph (an end point on
+an existing node shares it). `placeSummitKit` (world/gen/plans/research-m28.ts, after `reserveResearchAnchors`)
+resamples the anchor polyline every ≈ 2 u (one `stairFlight` per piece, scale ≈ 1) and links the foot to the
+network: the nearest footpath point with a clear straight line within 24 u, else a Dijkstra route over the
+path-blocking grid (grade ≤ 0.9) to the nearest footpath cell, string-pulled; a cell blocked only by small
+`link.yieldTo` pieces (quad-rim lantern, bench, tea trolley, book cart, pennant line) may be crossed at 6× cost and
+those pieces leave (seed 1001: the stair foot was walled in by the library and the quad rim kit; one rim lantern
+gives way and the link crosses the quad to the hub). The top joins a footpath point within 7 u when one exists
+(the observatory door walk: 22 / 30 seeds; on the rest, 1001 among them, the stair is the only way up). (2) **Flights**: STAIR_FLIGHT
+gets a Research look (campus stone treads, stucco risers, dark stone stringers, gold rail, 1.5 u wide) with its own
+`minGrade` 0.2 (looks may override the shared 0.5): every carved piece reads as steps. (3) **Groove paint**: lawn /
+meadow cells within 2 u of the stair line that the carve moved > 0.15 u, or steeper than 0.6, become `Zone.cliff`;
+and round the summit (16 u) a lawn cell at the foot of a riser (a 4-neighbour ≥ 3 u higher) becomes cliff too
+(its colour was blended up the whole steep face: the green streak above the meridian pad and the quad).
+`stairCarve(isl)` exposes the carve's per-cell change. (4) **Lanterns** (`lanternPost` v3, one per `starLamp`
+station, 6–7 per seed: one def / variant = one instanced group): on the flight's tread edge 0.62 u off the centre
+line, pivot `y` = the flight's tread line (the crag beside the carved line falls away or rises up to 3 u, so the
+ground beside the steps is not theirs: posts 0.8–1.25 u out stood in the air or in the wall), the side farther
+from the other legs (≥ 0.95 u off them, ≥ 0.6 u off the links), sliding along their own leg (≤ 2.4 u) near a
+switchback, off the story stages. (5) **Sundial**: on `meridian`, local +z (blade high end, XII, noon line) along
+the gnomon shadow at 12:00 = −xz of `sampleEnv(12).sunDir` = heading −50.16° (`noonShadowDeg`; a test re-derives
+it, ±0.5°, and checks the tip's shadow lands on the brass strip: offset 0.0°, it falls 0.16 u past the blade since
+the noon sun stands 86.4° high). Not the anchor's `rotY` + 180° (130° is the rounded sun side). (6) **Rim decks**:
+`tripodTelescope` v2 on every `rimDeck`, rotY = anchor + π (sea side −z out). Life: `FIXTURE_VARIANT_RADIUS`
+(deck 1.8) feeds life's solids, `sundial` 3.0 joins FIXTURE_RADIUS; `NO_WORK_SPOT_VARIANTS` keeps walkers off the
+tripod's def-keyed ground spot for v2. One **deck gazer** per deck (render/culture-movers.ts, closed form): a
+keeper-body bot on the variant's `bot` hook (0.2, 0.42, 0.5, facing −z), scale 1.25 (eye at the eyepiece), leaning
+0.22 rad into the scope with its hands at the tube; every 8 s (± 12 %, hashed phase per deck) it straightens and
+looks up 0.38 rad back for 2.6 s with a slow head sweep. Day and night (stargazers). (7) **Big dish**: the
+headland fallback is now tiers (`base.dish`): summit-off 18 / 14 u at scale 1, then 14 u at 0.8 (reach 44), then
+12 u at 0.7 (reach 48). (8) Shots: `W-star-stair-night` (seed 1001, `113,30,61 → 117,12,98`, 22:05, 6 stair
+lamps + dome + dial) and `W-meridian-noon` (`139,51,40.5 → 124,7,96`, 12:00), dev `D-m28-stair` / `-stair-night`
+/ `-sundial` / `-deck`. W9 / W14 / the ladder shift were not re-pinned: the crag does not block their subject.
+**Rationale**: the stair is the signature walk, so it must be a real graph edge chain and read as steps from T1;
+everything is decided from the anchors (no search but the foot link). The meridian dial sits on the crag's
+anti-sun side (TASK-524 put it farthest from the quad and headland), so the noon wow shot looks from its open side,
+not from the south.
+**Numbers (30 test seeds + 1001)**: stair path 31 / 31, foot linked 31 / 31, hub → top landing on the graph
+31 / 31, ≥ 5 flights up the crag on every seed (6–12), lanterns 6–7 = one per station on every seed, sundial
+31 / 31, decks 2–3 = one per site, big dish 31 / 31 (scale 0.8 on 1001 and 4945; 1263 at tier 2), ≥ 3 halls
+22 / 30 (unchanged; the 0.7 bound stays). Budgets (wow, medium, SwiftShader, `--assert` green): W11 170 calls,
+W16 783 k tris (was 781 k), W-marina-dusk 293 calls, medium memory peak W27 170 MB (≤ 172), W9 181 calls / 628 k,
+W14 185 / 660 k, W-star-stair-night 194 / 650 k, W-meridian-noon 183 / 605 k; no budget raised.
+Generation time (31 seeds, A/B alternating at equal load): main 10.1 / 10.4 s, this branch 10.4 / 10.0 s (no
+measurable change). World hashes re-pinned in a separate commit (archipelago 1 `6f05a456e8be563c`, 42
+`ce27ac62f0b5406f`, 1001 `046400750f88133d`; bluffs-off 1001 `a7ceffb873e5d900`, 1 `73dc4725146a93db`).
+**Alternatives not taken**: lanterns beside the flight on the ground (0.8–1.25 u out: the carved line is only
+2 u wide on a 2 u grid, the ground there was up to 3 u off the treads; with a ground-gap filter only 13 / 30 seeds
+kept 6 lamps); `minGrade` 0.5 for Research (the foot and the gentler pieces stayed bare paving between flights);
+a new path kind for the stair (the flights, the minimap and the stair-flight test already key on 'stair');
+removing the gazer from the night (the comet-night rhythm wants stargazers).
 ## D-106: Research M28 signature props — the sundial is the one new def, the rim telescope deck is `tripodTelescope` v2, the teal stair lantern is `lanternPost` v3, Research cap 10 -> 11 (TASK-525; builds D-104 on D-059 A / D-062 R3-16) — 2026-10-29
 
 **Decision** (no placement, TASK-526 places and aims them): (1) **`sundial`** = the only new def: tier 2 `grounded`,
