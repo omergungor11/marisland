@@ -42,7 +42,9 @@ meridian disc spread ≤ 0.04 u; decks relief ≤ 1 u. Dish 28 / 30 (none on 100
 summit). Campus rates (baseline in brackets): library 30 (30), ≥ 3 halls 22 (24), glasshouse row 26 (27), base 30
 (30), comet watch 30 (29). Generation time: 30 test seeds 8.1–8.5 s vs 7.8–8.0 s on main back to back (+4 %;
 the stair search tests shore / obstacles on a 0.25 u raster round the dome, the lattice's only hot spot). W9 / W14 (seed 1001): the dome stands on a tall strata-walled butte, the one vertical;
-the carved stair shows as a green groove up the quad-side face. World hashes re-pinned in a separate commit.
+the carved stair shows as a green groove up the quad-side face. World hashes re-pinned in a separate commit
+(stage snapshot 1 `50e16bf75531caa2`, 42 `1520e253becc66af`, 1001 `afdb2edf1fee4170`; bluffs-off 1001
+`358de453533442a3`, 1 `0545eada9fdf05b9`).
 **Alternatives not taken**: a flank ramp sector of the crag (every direction cost a campus district, see above); the
 study's raw `h` 4.5 (shrinks the campus); a ridge with the meridian on the crest (the ridge took the hall / base slots);
 blocking stair legs (walled the hub in); summit `padBreak` / a falloff-only break (holes in pad cores on the riser /
