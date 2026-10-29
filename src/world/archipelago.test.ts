@@ -286,9 +286,11 @@ describe('archipelago — 30-seed full generation', () => {
           case 'lonelypalm': {
             // TASK-402b terraced campus hill: the summit on the bluff peak range, one body, the
             // campus anchors (summit, quad, garden, glasshouse, spur, headland, harbour)
+            // (M28 TASK-524: the summit crag's lift stands on top of the peak range)
             const b = ARCHETYPES.lonelypalm.bluff;
+            const lift = ARCHETYPES.lonelypalm.campusHill?.crag?.lift ?? 0;
             expect(isl.peakY, ctx).toBeGreaterThanOrEqual((b?.peak[0] ?? 0) - 0.8);
-            expect(isl.peakY, ctx).toBeLessThanOrEqual((b?.peak[1] ?? 0) + 0.5);
+            expect(isl.peakY, ctx).toBeLessThanOrEqual((b?.peak[1] ?? 0) + lift + 0.5);
             expect(components(w, isl), ctx).toBe(1);
             for (const k of [
               'summit',

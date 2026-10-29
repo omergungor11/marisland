@@ -109,6 +109,11 @@ export const RESEARCH_CULTURE_SITES = {
     count: 7,
     half: 3,
     poleR: 0.2,
+    /**
+     * M28 (TASK-524): a cord whose strip comes within this (u) of the summit pad core keeps a
+     * sample cell inside its district core (the ground past the core edge climbs the crag).
+     */
+    cragNear: 8,
     libraryGap: 1.4,
     start: 0.2,
     spacing: 3,
@@ -155,10 +160,14 @@ export const RESEARCH_CULTURE_SITES = {
     doorKeepDeg: 50,
     /** Piece centres within this of the dome's rim (the ring that ends up flat on the cone). */
     flat: 0.9,
-    /** …where the ground before the pads is within this of the observatory pad's level. */
-    drop: 0.8,
+    /**
+     * …where the ground before the pads is within this of the observatory pad's level. M28
+     * (TASK-524): on the steep crag the ring lies up to ≈ 2 u under the level before the summit
+     * pad (its core grown to cover the ring and its sample cells) levels it (0.8 / 0.5 before).
+     */
+    drop: 2.4,
     /** The owl box pole and the board stand on thin legs: their ground nearer the level still. */
-    slimDrop: 0.5,
+    slimDrop: 2.2,
     gap: 0.25,
     tripodVariant: 0,
     /** The book-pile stool (bookCart v2): beside the eyepiece, `side` across, `back` behind. */
@@ -174,10 +183,10 @@ export const RESEARCH_CULTURE_SITES = {
       w: 1.6,
       d: 1.0,
       passes: [
-        { angles: 28, doorKeepDeg: 50, drop: 0.5, cell: 0.5 },
-        { angles: 56, doorKeepDeg: 50, drop: 0.5, cell: 0.5 },
-        { angles: 56, doorKeepDeg: 25, drop: 0.5, cell: 0.5 },
-        { angles: 56, doorKeepDeg: 12, drop: 0.65, cell: 0.5 },
+        { angles: 28, doorKeepDeg: 50, drop: 2.2, cell: 0.5 },
+        { angles: 56, doorKeepDeg: 50, drop: 2.2, cell: 0.5 },
+        { angles: 56, doorKeepDeg: 25, drop: 2.2, cell: 0.5 },
+        { angles: 56, doorKeepDeg: 12, drop: 2.4, cell: 0.5 },
       ],
     },
     owlVariant: 1,

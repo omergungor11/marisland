@@ -2,6 +2,52 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-105: Research summit crag (R1) + M28 anchors (Star Stair, meridian, rim decks); big dish into the headland base (TASK-524; builds D-104 on the D-095 anchor pattern) — 2026-10-29
+
+**Decision**: (1) **Crag as an absolute lift.** `campusHill.summit` r 0.25 → 0.22, its own riser `soft` 0.1 (the
+terrace keeps 0.17), raw `h` stays 2.1, plus `campusHill.crag.lift` 3.4 u added after the peak normalisation
+(`profile.lift`, the Kite Hill hook) with a jagged outline (`jag` 0.03 fbm). Raising the raw `h` to 4.5 (the study's
+number) shrinks the whole campus: the profile is normalised to the peak, so the quad fell 7.3 → 6.0 u. Riser cells are
+tagged `Tag.cliff` (rock / cliff zones: the earth-wall strata shader). Summit ground ≈ 15 u (was 11.7), ≈ 8 u over the
+quad: dome top ≈ 26 u vs bell tower ≈ 17 u. (2) **Summit pad**: `observatory.padMargin` 2.2 (core 6.6; the comet-watch
+ring and the grid cells its samples read stay flat on the steep crag; `CS.summit.drop` 0.8 → 2.4, board passes 0.5 →
+2.2), `padStep` 10 (no neighbour relaxes the crag top down: seed 1 fell to 8.7 u), and a per-district keep-off disc
+`observatory.keep` (`fits` and the academy's `roomy`: ring 0.6 / garden 2.6 / glass 3.5 / base 1.6 / rest 2.3 u past the
+core) so no district pad core blends with the crag top. (3) **Big dish** = the headland base's dish item (radioDish v0,
+first in `base.items`; was the small v1, third); fallback: the free spot nearest the headland ≥ 18 u off the summit
+(`base.dish`). `bigDish` / `RESEARCH_SITE.dish` / `LEVEL.dish` removed. 28 / 30 test seeds have it (none fits on 1001,
+1263, 4945: the campus fills the lawn ≥ 18 u from the summit). (4) **Anchors** (`world/gen/plans/research-anchors.ts`,
+numbers `content/themes/research-anchors.ts`, contract in the module header): `starStair0..3` + `starLamp0..K-1`
+(6–7), `meridian` + `meridianSize`, `rimDeck0..K-1` (2–3) + `rimDeckSize`. Plan time after the quad ring: the top
+landing keep-out, the **Star Stair** searched on the modelled post-pad ground (observatory → quad face, tiered lattice,
+3 legs, 2 switchbacks ≥ 100°, 16–28 u), legs reserved (non-blocking: a blocking zigzag walled seed 1001's hub in, the
+whole island lost its paths); when only the quad ring blocks the face, the `yieldTo` pieces it crosses give way. The
+**meridian** disc (6 u) on its own pad at the crag's foot (off the stair face, farthest from the quad and the
+headland), blocking. The **rim decks** after the headland base (lip candidates, most windward first). Finish: the stair
+is re-checked on the final ground (else searched again), its grade line (foot → top at one grade along the arc ≤ 0.85)
+**carved** into the crag (cut / fill within 2 u, blended 1 u; never into another pad core or obstacle); decks re-checked
+(relief ≤ 1, off paths) and topped up from the final lip. (5) **Side fixes the crag needed**: the quad's hub pin
+(the first link: it seeds the network) moved from the observatory-avenue side of the fountain to the harbour-avenue side
+(the crag face walled the old one in: seed 1001's island kept 1 path chain of 2 points); pennant cords within
+`CS.pennants.cragNear` 8 u of the summit core keep a grid cell inside their core (a pole read the crag face);
+`≥ 3 faculty halls` test bound 0.75 → 0.7 (22 / 30, was 24 / 30: the summit keep-off empties the quad ring's
+crag-side slot a little more often); archetype signature: Lonely Palm peak ≤ bluff peak + crag lift + 0.5.
+**Rationale**: the crag must stay steep (rock) all round, so a walkable climb needs a carved stair (the 2 u heightfield
+cannot hold benches; a flank ramp cost the library / halls / glasshouses on every bearing tried: 0°, ±30°, ±60°, ±90°,
+±125°, 180°). Plan-time reservation lets the campus keep off the stair; finish-time carving makes it the rendered ground.
+**Numbers (30 test seeds)**: stair 30 / 30, meridian 30 / 30, ≥ 2 decks 30 / 30; on the final ground the stair's grade
+line ≤ 0.85, per-2 u pitch ≤ ≈ 2.5 (the stair flights' range: TASK-526 must lay it as a stair-kind path with flights),
+top landing within 0.4 u of the dome floor, foot ≤ 16.4 u from the quad centre (≤ 10 u past its pad core), 6–7 lamps;
+meridian disc spread ≤ 0.04 u; decks relief ≤ 1 u. Dish 28 / 30 (none on 1001, 1263, 4945: no room ≥ 18 u off the
+summit). Campus rates (baseline in brackets): library 30 (30), ≥ 3 halls 22 (24), glasshouse row 26 (27), base 30
+(30), comet watch 30 (29). Generation time: 30 test seeds 8.1–8.5 s vs 7.8–8.0 s on main back to back (+4 %;
+the stair search tests shore / obstacles on a 0.25 u raster round the dome, the lattice's only hot spot). W9 / W14 (seed 1001): the dome stands on a tall strata-walled butte, the one vertical;
+the carved stair shows as a green groove up the quad-side face. World hashes re-pinned in a separate commit.
+**Alternatives not taken**: a flank ramp sector of the crag (every direction cost a campus district, see above); the
+study's raw `h` 4.5 (shrinks the campus); a ridge with the meridian on the crest (the ridge took the hall / base slots);
+blocking stair legs (walled the hub in); summit `padBreak` / a falloff-only break (holes in pad cores on the riser /
+broke the stair grade); a summit pad margin of 1.5 (the comet-watch ring kit stood on the riser: 8–12 % off level).
+
 ## D-104: M28 Research signature plan (Summit Observatory) — plan only — 2026-10-29
 
 - **Scope** (D-059 direction A; user 2026-10-29: silhouette = R1 only, signature + the D-062 R3-16 items): `R1`

@@ -295,11 +295,27 @@ export const RESEARCH_SITE = {
   rimFree: 20,
   /** Nothing stands on the cove ramp: within this shore distance (u) where the cove is. */
   coveKeep: 12,
-  /** Summit observatory: pad radius ≈ 9 u flat; door toward the quad. */
+  /**
+   * Summit observatory: pad radius ≈ 9 u flat; door toward the quad. `padStep` (TASK-524): the
+   * crag top keeps its own level (no neighbour pad relaxes it down off the crag).
+   */
   observatory: {
     def: 'observatory',
     radius: 4.0,
     pad: 4.4,
+    /**
+     * Pad core margin (u; FLATTEN.discMargin 1.5 before TASK-524): the comet-watch ring round the
+     * dome and the grid cells its samples read stay inside the core on the steep crag.
+     */
+    padMargin: 2.2,
+    padStep: 10,
+    /**
+     * Footprints keep this far (u) past the summit pad core: its falloff (FLATTEN.falloff) would
+     * tilt their floors toward the crag top. The quad ring keeps `ring`, the formal garden
+     * `garden`, the glasshouse row `glass`, the headland base (the big dish needs its room by
+     * the crag) `base`, the other later districts `districts`.
+     */
+    keep: { ring: 0.6, garden: 2.6, glass: 3.5, base: 1.6, districts: 2.3 },
     search: 8,
     minShore: 6,
     maxRelief: 4,
@@ -388,33 +404,32 @@ export const RESEARCH_SITE = {
     gardenGap: 2.4,
     conservatory: 'biodomeHero',
   },
-  /** Research base on the headland: lab pods, a weather mast and a small dish around a yard. */
+  /** Research base on the headland: lab pods, a weather mast and the big dish around a yard. */
   base: {
     /** Yard search radii around the headland anchor (tried in order), yards tested per radius. */
     search: [7, 14] as const,
     tries: 10,
     /** Stop widening the search once this many items fit. */
     minItems: 3,
+    /**
+     * The big dish without room in the yard: the free spot nearest the headland within `reach`,
+     * at least `summitOff` from the summit anchor.
+     */
+    dish: { reach: 40, summitOff: 18 },
     minShore: 3.5,
     maxRelief: 2.6,
     ring: [3.4, 8] as const,
     items: [
       // M22 R20: the weather-roof pod (v2) first, the long pod with the side module second; the mast
-      // is the small-dish variant (v1) that pairs with the pod's anemometer head
+      // is the small-dish variant (v1) that pairs with the pod's anemometer head. M28 (TASK-524):
+      // the big dish (v0) left the spur behind the summit for this slot (was the small v1, third),
+      // placed first so it gets its room: the crag-top observatory is the island's one vertical
+      // (P2)
+      { def: 'radioDish', variant: 0 },
       { def: 'labPod', variant: 2 },
       { def: 'labPod', variant: 1 },
-      { def: 'radioDish', variant: 1 },
       { def: 'weatherMast', variant: 1 },
     ],
-  },
-  /** Big radio dish on the spur behind the summit (+ small dishes beside it). */
-  dish: {
-    def: 'radioDish',
-    search: 7,
-    minShore: 3,
-    maxRelief: 3.2,
-    small: 1,
-    smallRing: [5, 7.5] as const,
   },
   /** Sculpture walk: focal points on the avenues. */
   sculptures: {

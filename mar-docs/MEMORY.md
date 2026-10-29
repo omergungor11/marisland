@@ -10,6 +10,16 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-29 (TASK-524 done, D-105) — for TASK-526**: anchors on the Research island (`world/gen/plans/research-anchors.ts`
+  header = contract; numbers `content/themes/research-anchors.ts`): `starStair0..3` (foot on the quad terrace → 2
+  switchbacks → top landing before the observatory door; `stairOf(isl)`), `starLamp0..K-1` (6–7 stations ON the centre
+  line, rotY = uphill; you pick the side offset), `meridian` (+ `meridianSize`, rotY = noon side 130°, the dial disc is
+  blocking-reserved and padded flat), `rimDeck0..K-1` (2–3, + `rimDeckSize` 3 × 2, rotY = out to sea). Gotchas: the
+  stair is a polyline, not a path yet: add it as a stair-kind path (+ STAIR_FLIGHT flights; carved pitches reach ≈ 2.5
+  per 2 u) and link the foot (it may sit up to 10 u past the quad pad core, no footpath guaranteed within reach); the
+  old observatory door pin still exists (its walk is exempt from the stair's path gap). The hub pin moved to the
+  harbour-avenue side of the fountain (the crag face walled the old one in on 1001). Seeds 1001 / 1263 / 4945 have no
+  big dish (no room on the headland). Do not re-pin W9 / W14 / ladder cams in 524's branch: 526 does.
 - **2026-10-29 (M28 planned, D-104)**: Research signature = R1 summit crag + R2 Star Stair + R3 sundial + R4 rim decks,
   TASK-524 ∥ 525 → 526 → 527. R12 maze / R18 seal / whale / comet were already shipped (M22–M23), don't redo them.
   All 25 merged agent worktrees + branches removed. Next free D-number in parallel briefs: 524 → D-105, 525 → D-106.

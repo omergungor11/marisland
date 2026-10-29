@@ -110,8 +110,18 @@ export interface CampusHillParams {
   lawnNoise: number;
   /** Campus terrace: centre (local x, z), radius, raw height above the lawn. */
   terrace: { x: number; z: number; r: number; h: number };
-  /** Summit plateau (observatory): centre, radius, raw height above the lawn. */
-  summit: { x: number; z: number; r: number; h: number };
+  /**
+   * Summit (observatory): centre, radius, raw height above the lawn; `soft` = its own riser
+   * half-width (radius units, default `soft`): a narrow one makes the steep crag (TASK-524).
+   */
+  summit: { x: number; z: number; r: number; h: number; soft?: number };
+  /**
+   * Summit crag (TASK-524, R1): `lift` u added on the summit plateau after the peak normalisation
+   * (the raw `summit.h` sets the campus scale; raising it would shrink every lawn level), its
+   * outline jagged by `jag` (radius units of fbm at `jagFreq`). Riser cells with plateau weight in
+   * `rock` are tagged cliff (rock / cliff zones: the strata walls).
+   */
+  crag?: { lift: number; jag: number; jagFreq: number; rock: readonly [number, number] };
   /** Riser half-width (radius units). */
   soft: number;
   /** Terrace lifts fade out between these distances inside the coast (radius units). */
@@ -544,7 +554,8 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
       lawn: 1,
       lawnNoise: 0.08,
       terrace: { x: 0.14, z: 0.3, r: 0.36, h: 0.8 },
-      summit: { x: -0.34, z: 0.1, r: 0.25, h: 2.1 },
+      summit: { x: -0.34, z: 0.1, r: 0.22, h: 2.1, soft: 0.1 },
+      crag: { lift: 3.4, jag: 0.03, jagFreq: 5, rock: [0.04, 0.97] },
       soft: 0.17,
       rimFade: [0.06, 0.3],
       jitter: 0.04,

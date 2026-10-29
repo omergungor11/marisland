@@ -805,30 +805,59 @@ const lonelypalm: ProfileFactory = ({ island, rng, noise, windDir }) => {
     Math.atan2(Math.sin(C.headland.angleDeg * DEG) * m, Math.cos(C.headland.angleDeg * DEG)) + rot;
   const plateau = (dx: number, dz: number, r: number): number =>
     smoothstep(r + C.soft, r - C.soft, Math.hypot(dx, dz));
+  // the summit crag (TASK-524): a narrow riser with a jagged outline
+  const K = C.crag;
+  const soft = C.summit.soft ?? C.soft;
+  const crag = (lx: number, lz: number): number => {
+    const d = Math.hypot(lx - S.x, lz - S.z);
+    const dj = K ? d + K.jag * noise.fbm(lx * K.jagFreq + 2.7, lz * K.jagFreq - 5.3, 2) : d;
+    return smoothstep(S.r + soft, S.r - soft, dj);
+  };
   const q: [number, number] = [0, 0];
-  const sample = (x: number, z: number): number => {
-    fr.toLocal(x, z, q);
-    const lx = q[0];
-    const lz = q[1];
+  // land body and the rim fade (the terraces fade out before the rim, so the bluff lip stays a
+  // level lawn edge) at a local point
+  const shore = { body: 0, rim: 0 };
+  const shoreAt = (lx: number, lz: number): typeof shore => {
     const a = angleOf(lx, lz);
     const ds = angDiff(a, spurA) / (C.spur.widthDeg * DEG);
     const dh = angDiff(a, headA) / (C.headland.widthDeg * DEG);
     const reach = C.coast + C.spur.len * Math.exp(-ds * ds) + C.headland.len * Math.exp(-dh * dh);
     const d = Math.hypot(lx, lz) + C.warp * noise.fbm(lx * 2.1 + 4.3, lz * 2.1 - 7.9, 2);
-    const body = smoothstep(reach + C.coastSoft, reach - C.coastSoft, d);
-    // the terraces fade out before the rim, so the bluff lip stays a level lawn edge
-    const rim = smoothstep(reach - C.rimFade[0], reach - C.rimFade[1], d);
-    const lift =
-      rim *
-      Math.max(T.h * plateau(lx - T.x, lz - T.z, T.r), S.h * plateau(lx - S.x, lz - S.z, S.r));
+    shore.body = smoothstep(reach + C.coastSoft, reach - C.coastSoft, d);
+    shore.rim = smoothstep(reach - C.rimFade[0], reach - C.rimFade[1], d);
+    return shore;
+  };
+  const sample = (x: number, z: number): number => {
+    fr.toLocal(x, z, q);
+    const lx = q[0];
+    const lz = q[1];
+    const { body, rim } = shoreAt(lx, lz);
+    const lift = rim * Math.max(T.h * plateau(lx - T.x, lz - T.z, T.r), S.h * crag(lx, lz));
     const lawn = C.lawn * (1 + C.lawnNoise * noise.fbm(lx * 2.6 - 1.7, lz * 2.6 + 6.1, 3));
     return Math.max(RAW_FLOOR, body * (lawn + lift) - 0.5 * C.lawn);
   };
+  // the crag's absolute lift (u) and its rock riser tag
+  const cragLift = K
+    ? (x: number, z: number): number => {
+        fr.toLocal(x, z, q);
+        const { body, rim } = shoreAt(q[0], q[1]);
+        return K.lift * body * rim * crag(q[0], q[1]);
+      }
+    : undefined;
+  const cragTag = K
+    ? (x: number, z: number): number => {
+        fr.toLocal(x, z, q);
+        const c = crag(q[0], q[1]);
+        return c > K.rock[0] && c < K.rock[1] ? Tag.cliff : 0;
+      }
+    : undefined;
   const w = (p: { x: number; z: number }) => fr.toWorld(p.x, p.z);
   const at = (p: { x: number; z: number }, rotY = windDir) => ({ ...w(p), rotY });
   const tip = (a: number, r: number) => w({ x: Math.cos(a) * r, z: Math.sin(a) * r });
   return {
     sample,
+    lift: cragLift,
+    tag: cragTag,
     anchors: {
       summit: at(S),
       quad: at(T),
