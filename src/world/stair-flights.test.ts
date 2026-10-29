@@ -3,10 +3,13 @@
  * (seed 2024): not a walk-graph leak off the paths, but a Beacon Rock 'stair' leg climbing an earth
  * wall. Marketing spares its steep faces from the path paint (TASK-453c) and the shader dresses
  * every steep face as a wall, so the stair was invisible. Invariant: on a STAIR_FLIGHT theme no
- * walk-graph edge climbs steeper than `minGrade` without a flight standing on it.
+ * walk-graph edge climbs steeper than `minGrade` without a flight standing on it (on a theme that
+ * keeps its slopes painted, e.g. Research since TASK-526, only the edges of its 'stair' paths, at
+ * its look's own `minGrade`).
  */
 import { describe, expect, it } from 'vitest';
 import { STAIR_FLIGHT } from '../content/stairs.ts';
+import { THEMES } from '../content/themes.ts';
 import { generateWorld, heightAt, type WorldData } from './index.ts';
 
 const SEEDS = [2024, 1001, 1, 4004, 7, 42];
@@ -25,18 +28,31 @@ describe('stair flights (TASK-485)', { timeout: 120_000 }, () => {
       const w = generateWorld(seed);
       const flights = w.fixtures.filter((f) => f.defId === 'stairFlight');
       const g = w.pathGraph;
+      // the legs of every 'stair' path (lo / hi either way round)
+      const key = (a: { x: number; z: number }): string => `${a.x.toFixed(2)},${a.z.toFixed(2)}`;
+      const stairLegs = new Set<string>();
+      for (const p of w.paths)
+        if (p.kind === 'stair')
+          for (let k = 0; k + 1 < p.points.length; k++) {
+            stairLegs.add(`${key(p.points[k])}|${key(p.points[k + 1])}`);
+            stairLegs.add(`${key(p.points[k + 1])}|${key(p.points[k])}`);
+          }
       let steep = 0;
       for (let e = 0; e < g.edges.length; e += 2) {
         const [a, b] = [g.edges[e], g.edges[e + 1]];
         const A = { x: g.nodes[a * 2], z: g.nodes[a * 2 + 1] };
         const B = { x: g.nodes[b * 2], z: g.nodes[b * 2 + 1] };
         const id = islandOf(w, A.x, A.z);
-        if (id < 0 || STAIR_FLIGHT.byTheme[w.islands[id].theme] === undefined) continue;
+        const look = id < 0 ? undefined : STAIR_FLIGHT.byTheme[w.islands[id].theme];
+        if (look === undefined) continue;
+        if (!THEMES[w.islands[id].theme].pathSparesSlopes && !stairLegs.has(`${key(A)}|${key(B)}`))
+          continue;
         const len = Math.hypot(B.x - A.x, B.z - A.z);
         const ya = heightAt(w.height, A.x, A.z);
         const yb = heightAt(w.height, B.x, B.z);
         const rise = Math.abs(yb - ya);
-        if (len < 1e-3 || rise / len <= STAIR_FLIGHT.minGrade) continue;
+        const minGrade = STAIR_FLIGHT.looks[look].minGrade ?? STAIR_FLIGHT.minGrade;
+        if (len < 1e-3 || rise / len <= minGrade) continue;
         steep++;
         const [lo, hi] = ya <= yb ? [A, B] : [B, A];
         const tag = `seed ${seed} edge (${lo.x.toFixed(1)}, ${lo.z.toFixed(1)})`;

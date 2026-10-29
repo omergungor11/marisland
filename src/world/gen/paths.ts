@@ -369,6 +369,38 @@ export function buildPathGraph(
   };
 }
 
+/**
+ * Append late paths (a plan `finish`'s, TASK-526) to built paths: every point becomes a graph
+ * node chained by edges, except an end point lying on an existing node (within 1e-3 u), which
+ * shares that node (so the path joins the network there).
+ */
+export function appendPaths(built: BuiltPaths, extra: readonly Polyline[]): void {
+  const nodes = Array.from(built.graph.nodes);
+  const edges = Array.from(built.graph.edges);
+  const n0 = nodes.length / 2;
+  const existing = (p: XZ): number => {
+    for (let i = 0; i < n0; i++)
+      if (Math.abs(nodes[i * 2] - p.x) < 1e-3 && Math.abs(nodes[i * 2 + 1] - p.z) < 1e-3) return i;
+    return -1;
+  };
+  for (const pl of extra) {
+    let prev = -1;
+    pl.points.forEach((p, k) => {
+      const end = k === 0 || k === pl.points.length - 1;
+      let id = end ? existing(p) : -1;
+      if (id < 0) {
+        id = nodes.length / 2;
+        nodes.push(p.x, p.z);
+      }
+      if (prev >= 0) edges.push(prev, id);
+      prev = id;
+    });
+    built.paths.push(pl);
+  }
+  if (nodes.length / 2 > 65535) throw new Error('path graph too large for Uint16 edges');
+  built.graph = { nodes: Float32Array.from(nodes), edges: Uint16Array.from(edges) };
+}
+
 /** Resample a polyline at a fixed arc-length step (endpoints kept). */
 export function resample(pts: XZ[], step: number, closed: boolean): XZ[] {
   if (pts.length < 2) return pts.slice();

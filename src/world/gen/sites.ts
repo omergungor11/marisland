@@ -193,9 +193,11 @@ export interface SitePlan {
   /**
    * Late pass (TASK-480): runs once the footpaths are built and written to the zones (before the
    * fences are collected), for features that must gap at paths or paint around them (the rim
-   * walkway). May push fixtures / shapes / lines; no pads (they are already applied).
+   * walkway). May push fixtures / shapes / lines; no pads (they are already applied). May return
+   * paths of its own (TASK-526: the Star Stair): the settlement pass paints them (no carve) and
+   * joins them to the path graph (end points on an existing node share it).
    */
-  finish?: (paths: readonly Polyline[]) => void;
+  finish?: (paths: readonly Polyline[]) => Polyline[] | void;
 }
 
 /** Shared planner state across all islands (one per `buildSettlements` call). */

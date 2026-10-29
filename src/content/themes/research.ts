@@ -413,9 +413,16 @@ export const RESEARCH_SITE = {
     minItems: 3,
     /**
      * The big dish without room in the yard: the free spot nearest the headland within `reach`,
-     * at least `summitOff` from the summit anchor.
+     * at least `summitOff` from the summit anchor, the dish at `scale` (its footprint with it);
+     * tiers tried in order (TASK-526, D-107: the first alone left seeds 1001 / 1263 / 4945
+     * without the dish).
      */
-    dish: { reach: 40, summitOff: 18 },
+    dish: [
+      { reach: 40, summitOff: 18, scale: 1 },
+      { reach: 40, summitOff: 14, scale: 1 },
+      { reach: 44, summitOff: 14, scale: 0.8 },
+      { reach: 48, summitOff: 12, scale: 0.7 },
+    ] as const,
     minShore: 3.5,
     maxRelief: 2.6,
     ring: [3.4, 8] as const,

@@ -69,6 +69,11 @@ const STAIR = 'starStair';
 const yielded = new WeakMap<IslandData, Shape[]>();
 /** Shape tag of a rim deck reservation. */
 const DECK = 'rimDeck';
+/** Grid cells the stair carve moved, with the height change (TASK-526 paints the groove). */
+const carved = new WeakMap<IslandData, Map<number, number>>();
+/** Cells the Star Stair carve moved (cell index → height change, u); empty without a stair. */
+export const stairCarve = (isl: IslandData): ReadonlyMap<number, number> =>
+  carved.get(isl) ?? new Map();
 
 /** Smallest absolute difference of two angles (rad). */
 const angGap = (a: number, b: number): number => Math.abs(((a - b + 3 * Math.PI) % TAU) - Math.PI);
@@ -420,6 +425,8 @@ function carveStair(ctx: SiteCtx, isl: IslandData, pts: readonly XZ[], joins: re
   );
   const C = ST.carve;
   const R = C.core + C.fall;
+  const moved = new Map<number, number>();
+  carved.set(isl, moved);
   // per cell: the nearest leg's grade line (legs meet at the switchbacks)
   const best = new Map<number, { d: number; y: number }>();
   for (let k = 0; k + 1 < pts.length; k++) {
@@ -449,7 +456,9 @@ function carveStair(ctx: SiteCtx, isl: IslandData, pts: readonly XZ[], joins: re
       continue;
     if (keep.some((o) => shapeDist(o, x, z) <= C.keepOff)) continue;
     const w = d <= C.core ? 1 : 1 - smoothstep(0, C.fall, d - C.core);
-    h.data[i] += (y - h.data[i]) * w;
+    const dy = (y - h.data[i]) * w;
+    h.data[i] += dy;
+    moved.set(i, dy);
   }
 }
 
