@@ -76,6 +76,7 @@ import {
   withGlassPavilion,
 } from './themes/culture-design.ts';
 import { bulbString, pontoon } from './themes/marketing-quick.ts';
+import { M28_HEIGHTS, withStairLantern } from './themes/research-m28.ts';
 import { marinaBoat } from './themes/hq-marina.ts';
 import { tugBoat } from './themes/devops-m26.ts';
 import type { Lod, PropGeoDef } from './types.ts';
@@ -191,7 +192,13 @@ defs.push(
   D('messageBottle', 1, messageBottle, 0.2, 0.12),
   // decor
   D('fence', 2, fence, 0.9, 0.8),
-  D('lanternPost', 3, lanternPost, 0.5, 2.3),
+  // variant 3 = the Research teal stair lantern (M28 TASK-525), pinned by the Research plan only
+  D('lanternPost', 4, withStairLantern(lanternPost), 0.5, 2.3, false, [
+    2.3,
+    2.3,
+    2.3,
+    M28_HEIGHTS.lantern,
+  ]),
   D('laundryLine', 3, laundryLine, 2.1, 2.0, true),
   // variant 3 = glass chime line (M19 TASK-415), pinned across the Design lanes (TASK-425)
   // variant 4 = the Marketing marquee bulb string (TASK-481); LOD1 = a thin string of its own

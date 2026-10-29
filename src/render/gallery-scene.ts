@@ -10,6 +10,7 @@ import { HQ_MARINA_PROP_IDS } from '../content/props-themes/hq-marina.ts';
 import { DEVOPS_M25_PROP_IDS } from '../content/props-themes/devops-m25.ts';
 import { DEVOPS_M26_PROP_IDS } from '../content/props-themes/devops-m26.ts';
 import { MARKETING_M27_PROP_IDS } from '../content/props-themes/marketing-m27.ts';
+import { RESEARCH_M28_PROP_IDS } from '../content/props-themes/research-m28.ts';
 import { M20_PROP_IDS } from '../content/props-themes/m20.ts';
 import { M22_MARKETING_PROP_IDS } from '../content/themes/marketing.ts';
 import type { CameraWorld } from '../camera/controls.ts';
@@ -31,6 +32,7 @@ function showcaseIds(): readonly string[] | undefined {
   if (raw === 'devops25') return DEVOPS_M25_PROP_IDS;
   if (raw === 'devops26') return DEVOPS_M26_PROP_IDS;
   if (raw === 'marketing27') return MARKETING_M27_PROP_IDS;
+  if (raw === 'research28') return RESEARCH_M28_PROP_IDS;
   return raw === 'm20' ? M20_PROP_IDS : raw.split(',');
 }
 

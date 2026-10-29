@@ -27,6 +27,7 @@ import { QA_CUSTOMS_GEO } from './qa-customs.ts';
 import { CODING_TUNNEL_GEO } from './coding-tunnel.ts';
 import { HQ_MARINA_GEO } from './hq-marina.ts';
 import { DEVOPS_M26_GEO } from './devops-m26.ts';
+import { RESEARCH_M28_GEO, withRimDeck } from './research-m28.ts';
 import { MARKETING_M27_GEO, withCableCar, withGuyedMast, withSeaSigns } from './marketing-m27.ts';
 import { DEVOPS_M25_GEO, withOnsenStilts, withOrePylons, withSmithStall } from './devops-m25.ts';
 import { THEME_IDS } from '../../world/types.ts';
@@ -59,7 +60,7 @@ const BASE_THEME_GEO: readonly PropGeoDef[] = [
   ...MARKETING_CULTURE_GEO,
   ...CULTURE_QA_GEO,
   ...CULTURE_DESIGN_GEO,
-  ...RESEARCH_CULTURE_GEO,
+  ...RESEARCH_CULTURE_GEO.map((d) => (d.id === 'tripodTelescope' ? withRimDeck(d) : d)),
   // M20 (D-057) HQ and Design kits
   ...M20_HQ_GEO,
   ...M20_DESIGN_GEO,
@@ -89,4 +90,6 @@ export const THEME_GEO: readonly PropGeoDef[] = [
   ...DEVOPS_M26_GEO,
   // M27 TASK-517 Marketing dive tower
   ...MARKETING_M27_GEO,
+  // M28 TASK-525 Research sundial
+  ...RESEARCH_M28_GEO,
 ];
