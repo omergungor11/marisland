@@ -10,6 +10,14 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-29 session close (orchestrator)**: M26 follow-ups (513 / 514 / 515), M27 (516–518), QA 519 and its
+  follow-ups 520–523 are all merged and pushed (main `b3ef5d3`). **Next:** M28 Research signature, needs a plan from
+  `mar-plans/study/marketing-research.md` §2 (write the D-entry + TASK rows first). Open nits: funicular cone dark in
+  W-funicular-dawn, star fort keep still pale in shade, Kite Hill solar rows (not confirmed). Budget headroom is thin:
+  medium memory peak 171 / 172 (D-100), W-marina-dusk 294 / 300 calls, W16 781k / 800k tris. Settlements /
+  archipelago generation-time tests fail whenever load > ~15 (A/B at equal load showed no regression twice);
+  judge them only on a quiet machine. Hand out D-numbers in the brief when agents run in parallel (two agents both
+  wrote D-101 this session). 25 merged agent worktrees await the user's cleanup command.
 - **2026-10-29 (TASK-523, ON AIR out of the cable corridor; D-102)**: `corridorMargin` in
   `world/gen/plans/marketing-anchors.ts` (numbers `MARKETING_ANCHORS.neon.corridor`), checked in `neonFace`; test
   `beacon-kit.test.ts` "ON AIR keeps out of the cable corridor". Seed 2024's sign moved 3.1 u (z -111.5 → -114.6), the
