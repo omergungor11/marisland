@@ -377,6 +377,16 @@ Details in `phases/phase-3.md`.
 | TASK-522 | QA follow-up: sea billboard base on the stack face reads as a ledge bracket; bury the foot in the rock or give it a post | props | S | COMPLETED | TASK-519 |
 | TASK-523 | QA follow-up: keep the first cable span from crossing in front of the ON AIR letters (shift the sign along the cliff face or the line's summit seat); hash re-pin | worldgen | S | COMPLETED | TASK-519 |
 
+### M28 — Research signature (Summit Observatory)
+*D-104: D-059 direction A, silhouette R1 only (no R21), R3-16 items already shipped in M22. Study `mar-plans/study/marketing-research.md` §2 (R1–R4, wow §2.4). Wave 1: 524 ∥ 525; then 526; then 527.*
+
+| ID | Task | Agent | Complexity | Status | Dependencies |
+|----|------|-------|-----------|--------|-------------|
+| TASK-524 | Summit crag (`R1`): `campusHill.summit` h 2.1 → 4.5, r 0.25 → 0.22, soft 0.17 → 0.1, rock rim + strata paint; observatory pad on the ridge (~15 u top); big dish off the summit spur onto the lab headland; anchors (pure data): Star Stair polyline quad → summit (2 switchbacks, lantern stations every ~3 u), meridian terrace (6 u disc beside the summit, open to the south), 2–3 rim deck sites on the wall edge; 30-seed anchor tests | worldgen | M | PENDING | — |
+| TASK-525 | M28 props: new def `sundial` (tier 2: 6 u disc, 2.5 u gnomon, I–XII glyph plates, brass noon line; Research cap 10 → 11), rim telescope deck (railed 3 × 2 u platform, `selfieSpot` variant + `tripodTelescope`), teal stair lantern variant; gallery shots | props | M | PENDING | — |
+| TASK-526 | M28 placement + motion on the anchors: Star Stair path (stair kind) + 6–8 lanterns lit with the Research lamp set, sundial gnomon aimed so the real sun shadow meets the noon line at 12:00 (±3°), deck bots in `gaze` pose (look up every 8 s); wow W-star-stair-night (W9 cam, 22:05) + W-meridian-noon (12:00); re-pin W9 / W14 cams, `FRAMING.ladder.shift.research`, world hashes | worldgen + life | L | PENDING | TASK-524, TASK-525 |
+| TASK-527 | M28 shots + QA: wow + ladder L-research low / medium `--assert`, W11 ≤ 300 calls, medium memory ≤ 172 MB, W16 ≤ 800k tris; QA report | qa | S | PENDING | TASK-526 |
+
 ### M17 — Graphics II: decor & nature
 *Flower fields, fences, lanterns, benches, signs, rocks*
 

@@ -2,6 +2,24 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-104: M28 Research signature plan (Summit Observatory) — plan only — 2026-10-29
+
+- **Scope** (D-059 direction A; user 2026-10-29: silhouette = R1 only, signature + the D-062 R3-16 items): `R1`
+  summit crag, `R2` Star Stair, `R3` meridian sundial, `R4` rim telescope decks, wow Star Stair Night + Meridian Noon
+  (study `mar-plans/study/marketing-research.md` §2.2 A, §2.3, §2.4). **No R21 coast break**: the round outline stays,
+  the one dominant vertical (P2) comes from the raised ridge alone.
+- **Already shipped, not redone:** R12 maze tiles, R18 pier seal, R13 / R16 / R17 / R20 / R9 (TASK-483, M22), whale
+  (TASK-489), comet streak R15 (TASK-472 Comet Night). R3-16's items are therefore already done.
+- **Ledger:** one new tier-2 def `sundial` → `cultureCapOverride.research = { defs: 11, tier1: 1 }` (R3-1 allowed 11).
+  The empty tier-1 slot stays unused (R3-16 keeps it for a later stilt lab). Rim decks and the stair lanterns are
+  variants (no ledger entry).
+- **P2:** today the dome (~11 u), bell tower (~10 u) and big dish (~9 u) read the same height at T0. The ridge lifts
+  the observatory to ~15 u; the big dish leaves the summit spur for the lab headland, so the spur no longer competes.
+- **Order** (the M27 pattern): TASK-524 summit ridge + anchors (worldgen) ∥ TASK-525 props → TASK-526 placement +
+  motion + wow presets (the only branch that re-pins world hashes and W9 / W14 / ladder cams) → TASK-527 QA.
+- **Budget guard** (headroom is thin, D-100): W11 ≤ 300 calls, medium memory ≤ 172 MB, W16 ≤ 800k tris must hold
+  without another budget raise; the stair lanterns are one instanced group, 6–8 instances.
+
 ## D-103: Diver splash ring life 1.6 → 2.2 s so the dive-splash shot catches it (TASK-520) — 2026-10-29
 
 **Decision.** `MARKETING_M27_MOTION.diver.splash.life` 1.6 → 2.2 s (`src/content/themes/marketing-m27-site.ts`); the 40 s

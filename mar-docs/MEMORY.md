@@ -10,6 +10,9 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-10-29 (M28 planned, D-104)**: Research signature = R1 summit crag + R2 Star Stair + R3 sundial + R4 rim decks,
+  TASK-524 ∥ 525 → 526 → 527. R12 maze / R18 seal / whale / comet were already shipped (M22–M23), don't redo them.
+  All 25 merged agent worktrees + branches removed. Next free D-number in parallel briefs: 524 → D-105, 525 → D-106.
 - **2026-10-29 session close (orchestrator)**: M26 follow-ups (513 / 514 / 515), M27 (516–518), QA 519 and its
   follow-ups 520–523 are all merged and pushed (main `b3ef5d3`). **Next:** M28 Research signature, needs a plan from
   `mar-plans/study/marketing-research.md` §2 (write the D-entry + TASK rows first). Open nits: funicular cone dark in
