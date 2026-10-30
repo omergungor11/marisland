@@ -52,6 +52,17 @@
   old observatory door pin still exists (its walk is exempt from the stair's path gap). The hub pin moved to the
   harbour-avenue side of the fountain (the crag face walled the old one in on 1001). Seeds 1001 / 1263 / 4945 have no
   big dish (no room on the headland). Do not re-pin W9 / W14 / ladder cams in 524's branch: 526 does.
+- **2026-10-30 session handoff (orchestrator)** — main `a053ce9`. Planned this session: M31 harbours (D-112), M32 QA
+  Thrill Test Park (D-115), M33 Coding Bot Foundry + Drone Port + Data Lake (D-116); studies in `mar-plans/study/`
+  (harbours / lunapark / coding-ideas .html). **Three agent worktrees were running at handoff** (commits only on their
+  branches, nothing merged): TASK-532 harbour skeleton + Research anchors → `worktree-agent-a0133b6b2e77ff349` (D-113);
+  TASK-533 harbour + Research kit props → `worktree-agent-affae5b890f2f907e` (D-114); TASK-543 Coding foundry / lake
+  props → `worktree-agent-a9555a1f315b0672f` (D-117). They were told NOT to edit DECISIONS / MEMORY / task-index: the
+  orchestrator writes their D-entries at merge. If an agent died mid-task, check its branch (`git log main..<branch>`,
+  `git -C <worktree> status`) and re-brief or finish it. **Merge order** (one world-hash re-pin at a time): 533 and 543
+  (props, no hash change) any time; 532 → 534 placement → 535 QA; then M32 (539…542), M33 (544 / 547 → 545 → 546),
+  M31 Marketing 536 / Design 537 → 538. Budget is the wall: medium memory 170 / 172 MB, W16 783k / 800k tris — expect a
+  budget decision (ask the user with numbers). Next free D-number: D-118.
 - **2026-10-30 M28 closed (orchestrator)**: TASK-524…531 all merged (main after D-111). Follow-ups 528–531 done. Open
   nits: quad `lanternPost` v0–2 pools paint the crag face orange (see TASK-531 note); `whale-route` "stays in open sea"
   times out at 20 s (~21 s) even on a quiet machine (pre-existing). **Next:** user picks the next milestone.
