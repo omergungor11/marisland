@@ -17,6 +17,26 @@ riser is tagged cliff, so the riser's soft edge and the faces the summit / merid
 unchanged; zone and props (scatter re-filtered on the new cliff cells: a crystal cluster now stands at the crag foot
 by the dial) re-pinned.
 
+## D-114: M31 harbour kit and Research Tide-Lab props — shared harbour pieces as paired variants of old defs, three new Research defs (stilt lab at the tier-1 slot, tide gauge, sunken city kit), submersible as a geo-only mover, Research cap 11 -> 14 (TASK-533; builds D-112) — 2026-10-30
+
+**Decision** (no placement; TASK-534 places and moves them): (1) **Shared harbour kit = ledger-free variants** of five
+old defs, a neutral livery (cream + harbour red) then a Research one (white + teal): harbour light = `lighthouse` v3 /
+v4 (6.1 u banded tower, glowing lens, `beam` hook, T0), waiting shelter = `marketStall` v3 / v4, ticket booth = `dock`
+v2 / v3, timetable board = `pierSignpost` v3 / v4, bollard = `barrel` v2 / v3. Every old def got `rollVariants` = its
+old variant count, so random rolls and world hashes are unchanged; Marketing / Design (TASK-536 / 537) append their
+liveries after these. The `lighthouse` / `marketStall` night pools get small per-variant overrides (D-108).
+(2) **New defs** (end of PROP_DEFS, Research cap override 11/1 -> 14/1): `tideLab` (tier 1, the slot D-062 R3-16
+kept; stilt lab, pivot = waterline, louvred glass tide tank), `tideGauge` (tier 2; pole + float vertex range; v1 pole,
+v2 float), `sunkenCity` (tier 2, `underwater | noShadow`; 8 variants: column, broken column, arch, broken arch, paving,
+stairs, tower top, fallen statue; algae gradient around a per-variant waterline, `ruin { sit: sea | floor, waterline }`).
+(3) **Yellow submersible = `tideSub`, geo-only mover** (no PropDef: no ledger entry, no tier flip):
+`buildProp('tideSub', seed, 0, lod)`.
+**Numbers** (tris LOD0 / LOD1): harbour light 596 / 164, shelter 466 / 84, booth 284 / 76, board 416 / 108, bollard
+128 / 30, tideLab 2234 / 608, tideSub 1080 / 165, tideGauge 598 / 124, sunkenCity 84–320 / 24–72.
+**Open**: ruins not yet judged under the lagoon water (knob: `weathering()` algae 0.55 in `geo/themes/research-m31.ts`);
+tank glass reads a little like a fence; fallen statue the weakest piece; the lighthouse `beam` hook is not wired to
+`render/night/beacons` yet (TASK-534).
+
 ## D-116: Coding Bot Foundry + Drone Port + Data Lake on the empty west / south-west lawns and east shore — plan only — 2026-10-30
 
 - **Decision** (user 2026-10-30, direction B of three; study `mar-plans/study/coding-ideas.html`): Coding builds the
