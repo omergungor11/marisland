@@ -17,6 +17,31 @@ riser is tagged cliff, so the riser's soft edge and the faces the summit / merid
 unchanged; zone and props (scatter re-filtered on the new cliff cells: a crystal cluster now stands at the crag foot
 by the dial) re-pinned.
 
+## D-112: M31 ferry harbours — one shared harbour skeleton, Research pilot (Tide-Lab + half-sunken city), then Marketing and Design — plan only — 2026-10-30
+
+- **Why** (user 2026-10-30): islands are reached by sea (no airports), but Research, Marketing and Design only have a
+  small cove pier. HQ ferries already run `ferry` routes and dwell at pier-end berths. Islands may grow where a harbour
+  needs it (user: "gerekirse adaları büyütebiliriz").
+- **Shared skeleton** (every harbour, themed by variants): a breakwater arm growing out of the cove (heightfield +
+  coast in that sector only; silhouettes and campuses untouched), a sheltered basin, a T-head ferry pier (the ferry
+  berth), waiting shelter + ticket booth + timetable board at the pier root, a harbour light on the breakwater tip, an
+  arrival ritual when the ferry docks. HQ ferry routes retarget to the new T-head berths.
+- **Research (pilot)**: Tide-Lab harbour (study `mar-plans/study/harbours.html`): stilt marine lab with a glass tide
+  tank (uses Research's free tier-1 slot, kept for it by D-062 R3-16), yellow submersible (dives 09:00, surfaces
+  16:00, bubbles), tide gauge, plus the user's **half-sunken ancient city in the lagoon**: columns, arches, paving
+  under the turquoise water with a few tower tops / broken arches above it, fish schools round the ruins. It must sit
+  in the lagoon band: water alpha is 0.55 there, 0.8 shallow, 0.97 deep, so a deep city would not read from above
+  (a deep city + underwater view is a separate, later milestone if ever).
+- **Then** (user: Marketing and Design plans approved) Marketing "Carnival Pier" (lit boardwalk on piles, small
+  Ferris wheel, WELCOME big screen, confetti cannon on ferry arrival) and Design "Colour Wharf" (pastel boathouse row
+  at the stream mouth, glass waiting pavilion, paint-pot buoys, the lantern boat moors here), on the same skeleton
+  once the pilot passes QA.
+- **Budget**: medium memory 170 / 172 MB, W16 783k / 800k tris, Marketing night calls near the cap: new props tier
+  2–3, one instanced group per kit; Research ledger 11 → ~14 (cap override), tier-1 1 / 1. Any budget raise is a
+  separate decision with numbers.
+- **Order**: TASK-532 skeleton + Research harbour / city anchors (worldgen) ∥ TASK-533 props → TASK-534 placement +
+  motion + wow (Sunken Noon, Tide-Lab Dusk) → TASK-535 QA → TASK-536 Marketing ∥ TASK-537 Design → TASK-538 QA.
+
 ## D-111: W-star-stair-night frames Comet Night; the comet moves from bearing 160 to 120 (TASK-531) — 2026-10-30
 
 **Decision**: W-star-stair-night is now cam `120.3,25,54,111.8,22.6,87.9`, time 22.08, simt 12: the lit dome and the

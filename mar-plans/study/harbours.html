@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ada Limanları</title>
+    <style>
+      :root {
+        --bg: #f6f1e7;
+        --card: #fffdf8;
+        --ink: #2b2a33;
+        --mute: #6b6875;
+        --line: #e3dccd;
+        --teal: #2a9d8f;
+        --gold: #e9b949;
+        --red: #d9534f;
+        --cream: #fbf3df;
+        --rec: #2a9d8f;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1d1c22;
+          --card: #26252c;
+          --ink: #ecebf0;
+          --mute: #a5a2ae;
+          --line: #3a3842;
+          --cream: #35322b;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          16px/1.55 system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+      }
+      main {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 32px 16px 64px;
+      }
+      h1 {
+        font-size: 28px;
+        margin: 0 0 6px;
+      }
+      .lead {
+        color: var(--mute);
+        margin: 0 0 18px;
+        max-width: 800px;
+      }
+      .box {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 14px 18px;
+        margin: 0 0 24px;
+      }
+      .box h2 {
+        font-size: 18px;
+        margin: 0 0 6px;
+      }
+      .box ul {
+        margin: 4px 0 0;
+        padding-left: 18px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 18px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+      }
+      .tag {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        color: var(--mute);
+        text-transform: uppercase;
+      }
+      h3 {
+        font-size: 21px;
+        margin: 0;
+      }
+      .pitch {
+        margin: 0;
+        color: var(--mute);
+      }
+      svg {
+        width: 100%;
+        height: auto;
+        border-radius: 10px;
+        background: #3d8fb0;
+      }
+      ul {
+        margin: 0;
+        padding-left: 18px;
+      }
+      li {
+        margin: 2px 0;
+      }
+      h4 {
+        font-size: 12.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--mute);
+        margin: 6px 0 0;
+      }
+      .wow {
+        background: var(--cream);
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 15px;
+      }
+      .alt {
+        border-top: 1px dashed var(--line);
+        padding-top: 8px;
+        font-size: 14.5px;
+        color: var(--mute);
+      }
+      .alt b {
+        color: var(--ink);
+      }
+      .cost {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .pill {
+        font-size: 12.5px;
+        border: 1px solid var(--line);
+        border-radius: 99px;
+        padding: 2px 9px;
+      }
+      .pill.lo {
+        border-color: #7fbf7f;
+      }
+      .pill.mid {
+        border-color: var(--gold);
+      }
+      .pill.hi {
+        border-color: var(--red);
+      }
+      .foot {
+        margin-top: 26px;
+        font-size: 15px;
+      }
+      .foot li {
+        margin: 4px 0;
+      }
+      code {
+        font-size: 13.5px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Research, Marketing, Design: gerçek feribot limanları</h1>
+      <p class="lead">
+        Adalara ulaşım denizden. Feribot sistemi zaten var (HQ feribotları
+        <code>ferry</code> rotalarında iskele ucunda bekliyor), ama üç adada da sadece küçük bir koy
+        iskelesi var. Öneri: her adaya aynı <b>ortak liman iskeleti</b> + adanın kültürüne göre bir
+        <b>tema</b>. Gerekirse ada, liman kolu kadar büyür.
+      </p>
+
+      <div class="box">
+        <h2>Ortak liman iskeleti (üç adada aynı, varyantla temalanır)</h2>
+        <ul>
+          <li>
+            <b>Mendirek kolu:</b> koydan denize uzanan taş/kaya kol, içinde sakin bir liman havzası.
+            Ada burada büyür (heightfield + kıyı, sadece bu bölge).
+          </li>
+          <li>
+            <b>T-başlı feribot iskelesi:</b> feribotun gerçekten yanaştığı uzun iskele, babalar,
+            halat.
+          </li>
+          <li><b>Bekleme köşkü + bilet kulübesi + tarife panosu</b>, iskele dibinde.</li>
+          <li>
+            <b>Liman feneri</b> mendirek ucunda (gece döner ışık, kanal şamandıralarıyla aynı dil).
+          </li>
+          <li>
+            <b>Varış ritüeli:</b> feribot yanaşınca adanın kendi küçük karşılama anı (aşağıda).
+          </li>
+        </ul>
+      </div>
+
+      <div class="grid">
+        <!-- Research -->
+        <section class="card">
+          <div class="tag">Research · Lonely Palm</div>
+          <h3>Gelgit Laboratuvarı Limanı</h3>
+          <p class="pitch">Liman bir deniz araştırma istasyonu: bilim kıyıya iner.</p>
+          <svg viewBox="0 0 320 180" role="img" aria-label="Research limanı taslağı">
+            <path d="M0 0 H320 V62 Q240 84 180 70 Q120 56 80 80 Q40 100 0 84 Z" fill="#7cc6d6" />
+            <path d="M0 0 H320 V42 Q240 62 180 52 Q120 40 80 60 Q40 78 0 64 Z" fill="#ecd9a8" />
+            <path d="M0 0 H320 V30 Q240 50 180 40 Q120 30 80 48 Q40 64 0 52 Z" fill="#9fcf7a" />
+            <path
+              d="M250 46 Q262 100 236 140"
+              fill="none"
+              stroke="#b9a98a"
+              stroke-width="12"
+              stroke-linecap="round"
+            />
+            <circle cx="236" cy="142" r="5" fill="#fff" />
+            <circle cx="236" cy="142" r="10" fill="none" stroke="#ffd166" stroke-width="1.5" />
+            <path d="M160 52 V118 M146 118 H174" stroke="#a0784f" stroke-width="7" fill="none" />
+            <rect x="176" y="96" width="34" height="13" rx="4" fill="#f4f1ea" stroke="#2b2a33" />
+            <rect x="96" y="56" width="7" height="50" fill="#a0784f" />
+            <rect
+              x="84"
+              y="104"
+              width="32"
+              height="24"
+              rx="3"
+              fill="#2a9d8f"
+              stroke="#fff"
+              stroke-width="2"
+            />
+            <ellipse cx="128" cy="140" rx="10" ry="5" fill="#e9b949" stroke="#2b2a33" />
+            <circle
+              cx="40"
+              cy="130"
+              r="17"
+              fill="none"
+              stroke="#fff"
+              stroke-width="2"
+              stroke-dasharray="3 4"
+            />
+            <text x="176" y="124" font-size="9" fill="#fff">feribot</text>
+            <text x="80" y="142" font-size="9" fill="#fff">stilt lab</text>
+            <text x="20" y="162" font-size="9" fill="#fff">kafes</text>
+            <text x="244" y="168" font-size="9" fill="#fff">mendirek</text>
+          </svg>
+          <h4>Tema</h4>
+          <ul>
+            <li>
+              <b>Stilt deniz lab'ı</b>, cam döşemeli gelgit tankı (boş tier-1 hakkı bunun için
+              ayrılmıştı)
+            </li>
+            <li><b>Sarı denizaltı</b> araştırma gemisinin yanında</li>
+            <li>Lagünde <b>akvaryum kafesi</b> halkası, kumsalda <b>gelgit ölçer</b></li>
+          </ul>
+          <h4>+ Batık şehir (senin fikrin)</h4>
+          <ul>
+            <li>
+              Lagünde <b>yarı batık antik şehir</b>: turkuaz suyun altında sütunlar, kemerler, sokak
+              taşları; birkaç kule tepesi ve kırık kemer sudan dışarı çıkar
+            </li>
+            <li>
+              Lab bu harabeyi araştıran istasyon olur, kafes halkası yerine
+              <b>harabe çevresinde balık sürüleri</b> ve şamandıralı kazı alanı
+            </li>
+            <li>
+              <b>Neden lagün:</b> su sadece lagünde yarı şeffaf (alpha 0.55); derinde neredeyse opak
+              (0.97), orada şehir yukarıdan görünmez
+            </li>
+          </ul>
+          <h4>Varış ritüeli</h4>
+          <ul>
+            <li>
+              Feribot yanaşınca lab'da ışık yanar; denizaltı 09:00'da harabeye dalar, kabarcıklar
+              kule tepelerinin arasından yükselir, 16:00'da çıkar
+            </li>
+          </ul>
+          <div class="wow">
+            <b>Wow:</b> öğlen yukarıdan turkuaz suyun altında beliren batık sokaklar; akşam suda
+            yanan lab, arkada kayadaki gözlemevi.
+          </div>
+          <div class="cost">
+            <span class="pill mid">Ledger 11 → 13–14</span><span class="pill lo">Tier-1 burada</span
+            ><span class="pill mid">Mendirek: arazi + hash</span>
+          </div>
+          <p class="alt">
+            <b>Alternatif:</b> Keşif Limanı: büyük kırmızı sefer gemisi, vinç, sandık yükleme, 08:00
+            siren. Ama QA gümrük limanına çok benziyor.
+          </p>
+        </section>
+
+        <!-- Marketing -->
+        <section class="card">
+          <div class="tag">Marketing · Beacon Rock</div>
+          <h3>Karnaval İskelesi</h3>
+          <p class="pitch">
+            Eğlence iskelesi: adaya feribotla gelen herkes bir gösteriyle karşılanır.
+          </p>
+          <svg viewBox="0 0 320 180" role="img" aria-label="Marketing limanı taslağı">
+            <path d="M0 0 H320 V62 Q240 84 180 70 Q120 56 80 80 Q40 100 0 84 Z" fill="#7cc6d6" />
+            <path d="M0 0 H320 V42 Q240 62 180 52 Q120 40 80 60 Q40 78 0 64 Z" fill="#ecd9a8" />
+            <path d="M0 0 H320 V30 Q240 50 180 40 Q120 30 80 48 Q40 64 0 52 Z" fill="#c98b5a" />
+            <rect x="130" y="50" width="22" height="104" fill="#a0784f" />
+            <rect x="112" y="150" width="58" height="10" fill="#a0784f" />
+            <circle cx="141" cy="100" r="17" fill="none" stroke="#d9534f" stroke-width="3" />
+            <g stroke="#d9534f" stroke-width="1.5">
+              <line x1="141" y1="83" x2="141" y2="117" />
+              <line x1="124" y1="100" x2="158" y2="100" />
+            </g>
+            <path d="M128 58 Q141 44 154 58" fill="none" stroke="#ffd166" stroke-width="4" />
+            <g fill="#ffd166">
+              <circle cx="128" cy="70" r="2" />
+              <circle cx="154" cy="70" r="2" />
+              <circle cx="128" cy="82" r="2" />
+              <circle cx="154" cy="82" r="2" />
+              <circle cx="128" cy="124" r="2" />
+              <circle cx="154" cy="124" r="2" />
+              <circle cx="128" cy="138" r="2" />
+              <circle cx="154" cy="138" r="2" />
+            </g>
+            <rect x="176" y="140" width="34" height="13" rx="4" fill="#f4f1ea" stroke="#2b2a33" />
+            <rect x="40" y="70" width="40" height="18" fill="#2b2a33" />
+            <rect x="43" y="73" width="34" height="12" fill="#7ad3ff" />
+            <g fill="#ff6fa8">
+              <rect x="186" y="122" width="3" height="3" />
+              <rect x="196" y="116" width="3" height="3" />
+              <rect x="204" y="126" width="3" height="3" />
+              <rect x="178" y="128" width="3" height="3" />
+            </g>
+            <text x="160" y="104" font-size="9" fill="#fff">dönme dolap</text>
+            <text x="176" y="170" font-size="9" fill="#fff">feribot</text>
+            <text x="36" y="102" font-size="9" fill="#fff">dev ekran</text>
+            <text x="180" y="112" font-size="9" fill="#fff">konfeti</text>
+          </svg>
+          <h4>Tema</h4>
+          <ul>
+            <li>
+              Kazıklar üstünde uzun <b>boardwalk iskele</b>, ampullü kemer (mevcut karnaval kapısı
+              devam eder)
+            </li>
+            <li>İskele başında küçük <b>dönme dolap</b>, iskele ucunda feribot yanaşma yeri</li>
+            <li>
+              Rıhtımda <b>"HOŞ GELDİNİZ" dev ekranı</b> (billboard varyantı), megafon kioskusu bilet
+              gişesi olur
+            </li>
+          </ul>
+          <h4>Varış ritüeli</h4>
+          <ul>
+            <li>
+              Feribot yanaşınca <b>konfeti topu</b> patlar, ekran yanıp söner, dönme dolap hızlanır
+            </li>
+          </ul>
+          <div class="wow">
+            <b>Wow:</b> gece ampullü iskele ve dönen dolap suya yansır, arkada ON AIR ve teleferik.
+          </div>
+          <div class="cost">
+            <span class="pill mid">Ledger 11 → 13</span
+            ><span class="pill hi">Draw call: Marketing gecesi zaten dolu</span
+            ><span class="pill mid">Kıyı kolu</span>
+          </div>
+          <p class="alt">
+            <b>Alternatif:</b> Deniz Kayası Limanı: sea stack'ler doğal mendirek olur, feribot
+            kayaların arasından girer, kayalara reklam panoları. Ucuz ama teleferik ve ON AIR
+            koridoruyla çakışma riski var.
+          </p>
+        </section>
+
+        <!-- Design -->
+        <section class="card">
+          <div class="tag">Design · Moss Grove</div>
+          <h3>Renk Rıhtımı</h3>
+          <p class="pitch">
+            Sanatçı limanı: rengârenk kayıkhaneler, cam iskele köşkü, boya şamandıraları.
+          </p>
+          <svg viewBox="0 0 320 180" role="img" aria-label="Design limanı taslağı">
+            <path d="M0 0 H320 V62 Q240 84 180 70 Q120 56 80 80 Q40 100 0 84 Z" fill="#7cc6d6" />
+            <path d="M0 0 H320 V42 Q240 62 180 52 Q120 40 80 60 Q40 78 0 64 Z" fill="#ecd9a8" />
+            <path d="M0 0 H320 V30 Q240 50 180 40 Q120 30 80 48 Q40 64 0 52 Z" fill="#8fc96e" />
+            <path d="M150 0 Q160 30 152 64" stroke="#5fb7d6" stroke-width="7" fill="none" />
+            <g stroke="#fff" stroke-width="1">
+              <rect x="40" y="52" width="16" height="14" fill="#ff6fa8" />
+              <rect x="58" y="50" width="16" height="14" fill="#ffd166" />
+              <rect x="76" y="54" width="16" height="14" fill="#7ad3ff" />
+              <rect x="94" y="56" width="16" height="14" fill="#9b7bd8" />
+            </g>
+            <path d="M190 54 V120 M176 120 H204" stroke="#a0784f" stroke-width="7" fill="none" />
+            <polygon
+              points="182,74 198,74 204,90 176,90"
+              fill="#cfeff5"
+              stroke="#9b7bd8"
+              stroke-width="2"
+            />
+            <rect x="206" y="104" width="34" height="13" rx="4" fill="#f4f1ea" stroke="#2b2a33" />
+            <g>
+              <circle cx="110" cy="120" r="5" fill="#ff6fa8" />
+              <circle cx="130" cy="132" r="5" fill="#ffd166" />
+              <circle cx="150" cy="120" r="5" fill="#7ad3ff" />
+              <circle cx="90" cy="134" r="5" fill="#9b7bd8" />
+            </g>
+            <path
+              d="M256 40 Q270 90 252 130"
+              fill="none"
+              stroke="#b9a98a"
+              stroke-width="11"
+              stroke-linecap="round"
+            />
+            <text x="36" y="84" font-size="9" fill="#2b2a33">renkli kayıkhaneler</text>
+            <text x="160" y="104" font-size="9" fill="#fff">cam köşk</text>
+            <text x="206" y="132" font-size="9" fill="#fff">feribot</text>
+            <text x="86" y="152" font-size="9" fill="#fff">boya şamandıraları</text>
+            <text x="138" y="20" font-size="9" fill="#2b2a33">dere</text>
+          </svg>
+          <h4>Tema</h4>
+          <ul>
+            <li>Dere ağzında sıra sıra <b>pastel kayıkhaneler</b> (her biri farklı renk)</li>
+            <li>
+              İskele üstünde <b>cam bekleme köşkü</b> (Conservatory'nin küçük varyantı, mor çerçeve)
+            </li>
+            <li>Lagünde <b>boya kovası şamandıraları</b>, fener teknesi burada demirler</li>
+          </ul>
+          <h4>Varış ritüeli</h4>
+          <ul>
+            <li>
+              Feribot yanaşınca köşkün camları renk değiştirir (prizma ışığı), şamandıralar sırayla
+              yanar
+            </li>
+          </ul>
+          <div class="wow">
+            <b>Wow:</b> gün batımında renkli kayıkhanelerin suya yansıması, fener teknesi koydan
+            çıkar.
+          </div>
+          <div class="cost">
+            <span class="pill lo">Ledger 15 → 16–17</span><span class="pill lo">Çoğu varyant</span
+            ><span class="pill mid">Dere ağzı carve</span>
+          </div>
+          <p class="alt">
+            <b>Alternatif:</b> Yüzen Galeri: iskele yerine pontonlarda yüzen sanat galerisi,
+            heykeller suda. Daha özgün ama feribot yanaşması zorlaşır.
+          </p>
+        </section>
+      </div>
+
+      <div class="box foot">
+        <h2>Önerim ve sıralama</h2>
+        <ul>
+          <li>
+            <b>Önce ortak iskelet</b> (mendirek kolu + T-iskele + köşk + fener): tek worldgen işi,
+            üç adaya aynı kod. Adaların büyümesi sadece liman kolu kadar olur, silüet ve kampüsler
+            korunur.
+          </li>
+          <li>
+            <b>Sonra üç tema paralel</b> (props), en son yerleştirme + varış ritüelleri (life) ve
+            QA. M27/M28 akışıyla aynı.
+          </li>
+          <li>
+            <b>Risk:</b> her ada hash, ladder ve wow kamerası re-pin ister. Marketing gecesi ve W16
+            (783k / 800k tris), medium bellek (170 / 172 MB) sınırda: yeni prop'lar tier 2–3'te
+            kalmalı, gerekirse bir bütçe kararı alınır.
+          </li>
+          <li>
+            <b>Feribot hattı:</b> HQ feribot rotaları yeni T-iskele uçlarına taşınır, böylece adalar
+            arası ulaşım gerçekten bu limanlardan akar.
+          </li>
+        </ul>
+      </div>
+    </main>
+  </body>
+</html>

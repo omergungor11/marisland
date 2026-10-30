@@ -391,6 +391,19 @@ Details in `phases/phase-3.md`.
 | TASK-530 | QA follow-up: sundial XII plate reads "IIX" from the usual views; numerals readable from the usual camera side, check all 12 (D-110) | props | XS | COMPLETED (D-110) | TASK-527 |
 | TASK-531 | QA follow-up: W-star-stair-night has no comet / stars in frame; camera or simt so the Comet Night streak is in frame (D-111) | engine | XS | COMPLETED (D-111) | TASK-527 |
 
+### M31 — Ferry harbours (Research pilot, then Marketing + Design)
+*D-112 (user 2026-10-30): one shared harbour skeleton, islands may grow at the harbour sector; Research = Tide-Lab + half-sunken lagoon city; Marketing = Carnival Pier; Design = Colour Wharf. Study `mar-plans/study/harbours.html`. Wave 1: 532 ∥ 533; then 534; 535; then 536 ∥ 537; 538.*
+
+| ID | Task | Agent | Complexity | Status | Dependencies |
+|----|------|-------|-----------|--------|-------------|
+| TASK-532 | Harbour skeleton (pure data, reusable for any island): breakwater arm grown from the cove (heightfield + coast in that sector only), basin, T-head ferry pier + berth, anchors for shelter / booth / timetable / harbour light; Research instance + Tide-Lab anchors (stilt lab second pier, sub mooring, tide gauge) + half-sunken city site in the lagoon band (ruin grid, tops-above-water cells); HQ ferry route retarget; 30-seed tests; hash re-pin | worldgen | L | PENDING | — |
+| TASK-533 | Harbour kit props: shared (harbour light, waiting shelter, ticket booth, timetable board, bollards; variants where possible) + Research theme: stilt marine lab (tier-1) with glass tide tank, yellow submersible, sunken city kit (columns, arches, paving slabs, broken tower tops: one def, variants), tide gauge; Research cap override; gallery | props | M | PENDING | — |
+| TASK-534 | Research harbour placement + motion: kit on the anchors, sunken city in the lagoon (tops above water), fish schools round the ruins, sub dives 09:00 / surfaces 16:00 with bubbles, lab + tank glow, ferry arrival ritual; wow Sunken Noon + Tide-Lab Dusk; hash re-pin | worldgen + life | L | PENDING | TASK-532, TASK-533 |
+| TASK-535 | M31 Research shots + QA: wow + ladder L-research low / medium `--assert`, budgets, QA report | qa | S | PENDING | TASK-534 |
+| TASK-536 | Marketing Carnival Pier on the skeleton: lit boardwalk on piles, small Ferris wheel, WELCOME big screen (billboard variant), megaphone kiosk = ticket booth, confetti cannon + screen flash on ferry arrival; keep clear of the cable car / ON AIR corridor; wow preset | worldgen + props + life | L | PENDING | TASK-535 |
+| TASK-537 | Design Colour Wharf on the skeleton: pastel boathouse row at the stream mouth, glass waiting pavilion (conservatory variant), paint-pot buoys, lantern boat moors here, pavilion prism colour shift + buoys light in turn on ferry arrival; wow preset | worldgen + props + life | L | PENDING | TASK-535 |
+| TASK-538 | M31 Marketing + Design shots + QA | qa | S | PENDING | TASK-536, TASK-537 |
+
 ### M17 — Graphics II: decor & nature
 *Flower fields, fences, lanterns, benches, signs, rocks*
 
