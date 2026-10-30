@@ -414,6 +414,16 @@ Details in `phases/phase-3.md`.
 | TASK-541 | Placement + motion: coaster cycle (dummy run → ✓ lamp → bot run), chain-lift click, closed-form speed along the spline, bumper cars, wow preset (noon siren, car on the loop) | worldgen + life | L | PENDING | TASK-539, TASK-540 |
 | TASK-542 | M32 shots + QA | qa | S | PENDING | TASK-541 |
 
+### M33 — Coding Bot Foundry + Drone Port
+*D-116 (user 2026-10-30): direction B. 543 now (props only); 544 ∥ after TASK-535; then 545; 546.*
+
+| ID | Task | Agent | Complexity | Status | Dependencies |
+|----|------|-------|-----------|--------|-------------|
+| TASK-543 | Foundry props: conveyor line segments, assembly arms / gantries, part crates, bot body / head / antenna stages, drone pad (H) + charging masts + drone hangar, test-track obstacles; Coding cap override; gallery | props | M | PENDING | — |
+| TASK-544 | Foundry site (pure data): line strip + pad + test track on the empty west / south-west lawns, paths to the Tech Park, anchors; drone routes re-hub to the Coding pad; 30-seed tests; hash re-pin | worldgen | M | PENDING | TASK-535 |
+| TASK-545 | Placement + motion: line cycle (parts move, arms swing, a bot hops off and walks into the agent pool, closed-form), drones lift off / land at the pad, first-step bots on the test track; wow preset (morning shift) | worldgen + life | L | PENDING | TASK-543, TASK-544 |
+| TASK-546 | M33 shots + QA | qa | S | PENDING | TASK-545 |
+
 ### M17 — Graphics II: decor & nature
 *Flower fields, fences, lanterns, benches, signs, rocks*
 

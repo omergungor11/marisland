@@ -17,6 +17,20 @@ riser is tagged cliff, so the riser's soft edge and the faces the summit / merid
 unchanged; zone and props (scatter re-filtered on the new cliff cells: a crystal cluster now stands at the crag foot
 by the dial) re-pinned.
 
+## D-116: Coding Bot Foundry + Drone Port on the empty west / south-west lawns — plan only — 2026-10-30
+
+- **Decision** (user 2026-10-30, direction B of three; study `mar-plans/study/coding-ideas.html`): Coding builds the
+  archipelago's bots. (1) **Open-air assembly line** on a conveyor: body → head → antenna; at the end the new bot hops
+  off and walks away (where the world's bots "are born"). (2) **Drone port**: H pad + charging masts; the M14c courier
+  drones (`render/drones.ts`, today HQ → island docks) get Coding as their hub: they lift off here and fly to the other
+  islands. (3) **Robot test track**: small obstacles where new bots take their first steps.
+- **Why Coding**: the west / south-west lawns and the east shore are empty (L-coding 170 u); the island is a flat
+  plateau, so a long line + a pad fit without re-shaping the profile.
+- **Ledger**: Coding is 12 defs / 2 tier-1 (D-088); new defs via cap override, prefer variants; bots born on the line
+  must stay inside the medium agent cap (60) — the line recycles a fixed pool, closed-form.
+- **When**: props (TASK-543) may start now (no world hash change); placement (TASK-545) waits for the M31 Research
+  pilot to merge so only one branch re-pins world hashes at a time.
+
 ## D-115: QA Thrill Test Park — a roller coaster on the QA island, after the M31 Research pilot — plan only — 2026-10-30
 
 - **Decision** (user 2026-10-30, direction A of three; study `mar-plans/study/lunapark.html`): a small luna park on
