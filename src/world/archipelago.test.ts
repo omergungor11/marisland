@@ -123,9 +123,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "dca9bdf05ea83621",
-          "1001": "92d39dddb746c18a",
-          "42": "f9052c2ac0e38c1b",
+          "1": "4f852405a306d68e",
+          "1001": "bccd84f7d7f42296",
+          "42": "82914847a91d8642",
         }
       `);
     },
@@ -624,8 +624,9 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // TASK-524 Research summit crag + Star Stair / meridian / rim deck anchors, dish to the headland, re-pinned
       // TASK-526 Research M28 kit on the anchors (stair path + flights, lanterns, dial, decks, dish tiers), re-pinned
       // TASK-529 Research crag face lawn → cliff on the final ground, re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('98200c7ff60e3aeb');
-      expect(generateWorld(1).hashes.world).toBe('401747efc1257ed6');
+      // TASK-532 harbour skeleton + Research Tide-Lab / sunken-city anchors, re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('3fad45a16b2de857');
+      expect(generateWorld(1).hashes.world).toBe('1796dd7de254ec67');
     } finally {
       for (const b of saved) b.on = true;
     }
