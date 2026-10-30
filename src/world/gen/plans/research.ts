@@ -71,6 +71,8 @@ import {
   reserveStairLanding,
 } from './research-anchors.ts';
 import { placeSummitKit } from './research-m28.ts';
+import { finishHarbour, placeKiosks, planHarbour } from './harbour.ts';
+import { finishTideLab, planTideLab, vesselSlot, type TideLab } from './research-harbour.ts';
 import type { ThemePlanner } from './types.ts';
 
 const DEG = Math.PI / 180;
@@ -213,11 +215,14 @@ export const planResearch: ThemePlanner = ({ ctx, isl, rng }) => {
     carve: true,
     maxSegments: S.dock.maxSegments,
   });
-  const di = dockWithLink(ctx, isl, plan, site, rng.fork('moorings'), {
+  // M31 (TASK-532): the ferry harbour grows from the cove dock (T-head pier = the dock run out,
+  // breakwater arm, basin); its kiosks and the Tide-Lab sites come last (the campus keeps its room)
+  const hb = planHarbour(ctx, isl, site);
+  const di = dockWithLink(ctx, isl, plan, hb ? hb.site : site, rng.fork('moorings'), {
     rowboats: 0,
     sailboats: 0,
   });
-  if (di >= 0) moorVessel(ctx, isl, ctx.docks[di]);
+  if (di >= 0) moorVessel(ctx, isl, ctx.docks[di], hb ? vesselSlot(hb) : null);
   const harbourAt = site ? site.root : (A.harbour ?? prefer);
   const aH = ang(harbourAt.x - quad.x, harbourAt.z - quad.z);
   // the harbour avenue (pier root → quad rim) stays free: a lane nothing else may stand on
@@ -285,7 +290,12 @@ export const planResearch: ThemePlanner = ({ ctx, isl, rng }) => {
   const gate = g ? add(g.c, g.u, g.half + 1.2) : null;
   // M28 anchors on the final ground (TASK-524): the meridian, the Star Stair, the rim decks
   // and the M28 kit on them (TASK-526): the Star Stair path comes back to the settlement pass
+  let tide: TideLab | null = null;
   plan.finish = (paths) => {
+    if (tide) {
+      finishHarbour(ctx, tide.hb);
+      finishTideLab(ctx, tide);
+    }
     reserveResearchAnchors(
       ctx,
       isl,
@@ -306,6 +316,9 @@ export const planResearch: ThemePlanner = ({ ctx, isl, rng }) => {
     walks: [obsDoor, gate].filter((q): q is XZ => q !== null),
     pins: plan.links.map((l) => l.pin),
   });
+  // M31 (TASK-532): the harbour kiosks and the Tide-Lab sites round what the campus left
+  if (hb) placeKiosks(ctx, hb, quad);
+  tide = hb ? planTideLab(ctx, hb, rng) : null;
   return plan;
 };
 
@@ -807,13 +820,15 @@ function moorVessel(
   ctx: SiteCtx,
   isl: IslandData,
   dock: { x: number; z: number; rotY: number; segments: number },
+  first: { p: XZ; rot: number } | null = null,
 ): void {
   const V = S.vessel;
   const dir = dirOf(dock.rotY);
   const side = perp(dir);
   const L = dock.segments * DOCK.segment;
   const alongPier = Math.max(V.halfLength * 0.6, L - V.halfLength * 0.7);
-  const spots: { p: XZ; rot: number }[] = [];
+  // the harbour's basin slot first (TASK-532), then the old pier spots
+  const spots: { p: XZ; rot: number }[] = first ? [first] : [];
   for (const sgn of [1, -1])
     spots.push({ p: add(add(dock, dir, alongPier), side, sgn * V.side), rot: dock.rotY });
   spots.push({ p: add(dock, dir, L + V.halfBeam + 1.2), rot: ang(side.x, side.z) });

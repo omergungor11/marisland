@@ -26,6 +26,8 @@ import { buildRoutes } from './gen/routes.ts';
 import { portKeepOut } from './gen/customs-port.ts';
 import { breakwaterKeepOut } from './gen/plans/devops-m26.ts';
 import { beaconRouteKeepOut, beaconSeaKeepOut } from './gen/plans/marketing-anchors.ts';
+import { tideLabKeepOut } from './gen/plans/research-harbour.ts';
+import { harbourKeepOut } from './gen/plans/harbour.ts';
 import { carveReefGaps, planReefs, raiseReefs, reefWeights } from './gen/reefs.ts';
 import { placeSeamarks } from './gen/seamarks.ts';
 import { placeMarina } from './gen/marina.ts';
@@ -214,10 +216,13 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
       reefs: reefField,
       // TASK-509c: and no route through the DevOps breakwater
       // TASK-516: and none through the Beacon Rock dive pool
+      // TASK-532: and none over the sunken city, the tide lab or the sub's dive point
       keepOut: [
         ...portKeepOut(islands),
         ...breakwaterKeepOut(sites.fixtures),
         ...beaconRouteKeepOut(islands),
+        ...harbourKeepOut(islands),
+        ...tideLabKeepOut(islands),
       ],
     },
     root.fork('routes'),
@@ -241,7 +246,7 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
       routes: boatRoutes,
       windDir,
       // TASK-516: and off the Beacon Rock dive pool and cable spans
-      reserved: [...marina.reserved, ...beaconSeaKeepOut(islands)],
+      reserved: [...marina.reserved, ...beaconSeaKeepOut(islands), ...tideLabKeepOut(islands)],
     },
     root.fork('seamarks'),
   );

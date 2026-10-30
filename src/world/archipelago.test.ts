@@ -13,7 +13,28 @@ import {
   type WorldData,
 } from './index.ts';
 import { REEFS } from '../content/reefs.ts';
+import { HARBOURS } from '../content/harbours.ts';
+import { anchorPoints } from './gen/plans/research-anchors.ts';
 import { perfLimit } from '../test/perf.ts';
+
+/** True when (x, z) lies within `r` of the polyline. */
+function armNear(
+  line: readonly { x: number; z: number }[],
+  x: number,
+  z: number,
+  r: number,
+): boolean {
+  for (let k = 0; k + 1 < line.length; k++) {
+    const a = line[k];
+    const b = line[k + 1];
+    const vx = b.x - a.x;
+    const vz = b.z - a.z;
+    const l2 = vx * vx + vz * vz;
+    const t = l2 > 0 ? Math.max(0, Math.min(1, ((x - a.x) * vx + (z - a.z) * vz) / l2)) : 0;
+    if (Math.hypot(x - a.x - vx * t, z - a.z - vz * t) <= r) return true;
+  }
+  return false;
+}
 
 // Tests measure wall time; generation itself never reads a clock.
 // eslint-disable-next-line no-restricted-properties
@@ -135,11 +156,20 @@ describe('archipelago — 30-seed full generation', () => {
         expect(sum(zc, GREEN), ctx).toBeGreaterThan(0);
       }
       const reachFrac = w.islands.map(() => 0);
+      // (TASK-532: a harbour breakwater arm is grown after the layout; its land lies within
+      // `arm.offset` + its half width of the coast, outside the layout disc — checked by the arm)
+      const arms = w.islands.map((isl) => anchorPoints(isl, 'harbourArm'));
       for (let i = 0; i < w.islandMap.length; i++) {
         const id = w.islandMap[i];
         if (id === 0 || id > w.islands.length) continue;
         const isl = w.islands[id - 1];
         const [x, z] = coord(w, i);
+        const arm = arms[id - 1];
+        if (arm.length > 1 && armNear(arm, x, z, (isl.anchors.harbourArmSize?.x ?? 0) + 3.5)) {
+          const lim = isl.reach + (HARBOURS.research?.arm.offset ?? 0) + 4;
+          expect(Math.hypot(x - isl.cx, z - isl.cz), `seed ${seed} harbour arm`).toBeLessThan(lim);
+          continue;
+        }
         const f = Math.hypot(x - isl.cx, z - isl.cz) / isl.reach;
         if (f > reachFrac[id - 1]) reachFrac[id - 1] = f;
       }
@@ -366,8 +396,16 @@ describe('reef shoals + shared-shelf sills (TASK-488, W:D1 / W:K3), 30 seeds', (
       const w = world(seed);
       let wet = 0;
       let crest = -Infinity;
+      // (TASK-532: a harbour breakwater arm may be built over a shoal's edge: its land is the arm's)
+      const arms = w.islands.map((isl) => anchorPoints(isl, 'harbourArm'));
       for (let i = 0; i < w.reefWeight.length; i++) {
         if (w.reefWeight[i] === 0) continue;
+        const id = w.islandMap[i];
+        if (id > 0 && id <= w.islands.length && arms[id - 1].length > 1) {
+          const [x, z] = coord(w, i);
+          if (armNear(arms[id - 1], x, z, (w.islands[id - 1].anchors.harbourArmSize?.x ?? 0) + 3.5))
+            continue;
+        }
         expect(w.height.data[i], `seed ${seed} reef cell ${i} above water`).toBeLessThan(0);
         // off the islands' own shelf (natural −0.1…−1.5 u out to ≈ 24 u on leeward coasts)
         if (w.shoreSdf[i] < -30) crest = Math.max(crest, w.height.data[i]);
