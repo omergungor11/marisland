@@ -10,6 +10,7 @@ import { buildProp } from '../registry.ts';
 import { CODING_CULTURE_GEO } from './culture-coding.ts';
 import { CODING_M22_GEO } from './culture-coding-m22.ts';
 import { CODING_TUNNEL_GEO } from './coding-tunnel.ts';
+import { CODING_M33_GEO } from './coding-m33.ts';
 import { TURBINE_CHIME_VARIANT } from './coding.ts';
 
 const verts = (g: THREE.BufferGeometry): number => g.getAttribute('position').count;
@@ -32,14 +33,20 @@ describe('TASK-411 Wind Gardens kit', () => {
     expect(validateCultures([CODING_CULTURE])).toEqual([]);
     const ids = CODING_CULTURE.kit.map((k) => k.id);
     // M19 kit + the two M22 entries (TASK-479: windsock, fairyWreath), in that order
-    const geoIds = [...CODING_CULTURE_GEO, ...CODING_M22_GEO, ...CODING_TUNNEL_GEO].map(
-      (d) => d.id,
-    );
+    const geoIds = [
+      ...CODING_CULTURE_GEO,
+      ...CODING_M22_GEO,
+      ...CODING_TUNNEL_GEO,
+      ...CODING_M33_GEO,
+    ].map((d) => d.id);
     expect(ids).toEqual(expect.arrayContaining(geoIds));
     expect(ids).toHaveLength(geoIds.length);
     // + the two M24 entries (TASK-498: windTunnel, tunnelFan) at the very end
-    expect(ids.slice(-4, -2)).toEqual(CODING_M22_GEO.map((d) => d.id));
-    expect(ids.slice(-2)).toEqual(CODING_TUNNEL_GEO.map((d) => d.id));
+    // the M33 block (TASK-543) is the last 10
+    const m33 = CODING_M33_GEO.length;
+    expect(ids.slice(-m33)).toEqual(CODING_M33_GEO.map((d) => d.id));
+    expect(ids.slice(-m33 - 4, -m33 - 2)).toEqual(CODING_M22_GEO.map((d) => d.id));
+    expect(ids.slice(-m33 - 2, -m33)).toEqual(CODING_TUNNEL_GEO.map((d) => d.id));
     for (const k of CODING_CULTURE.kit) {
       const d = PROP_DEFS.find((p) => p.id === k.id);
       expect(d, k.id).toBeDefined();

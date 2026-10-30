@@ -39,6 +39,17 @@ export const CODING_CULTURE: CultureDef = {
     // M24 (TASK-498, C1): the wind tunnel (second tier-1 slot, planner-pinned) and its fan
     { id: 'windTunnel', tier: 1, flags: grounded },
     { id: 'tunnelFan', tier: 2, flags: grounded },
+    // M33 (TASK-543, D-117): Bot Foundry + Drone Port + test track + Data Lake kit, entries 13-22
+    { id: 'conveyorLine', tier: 2, flags: grounded },
+    { id: 'assemblyArm', tier: 2, flags: grounded },
+    { id: 'foundryPart', tier: 3, flags: grounded | noShadow },
+    { id: 'dronePad', tier: 2, flags: grounded | noShadow },
+    { id: 'chargeMast', tier: 2, flags: grounded },
+    { id: 'droneHangar', tier: 2, flags: grounded },
+    { id: 'botCourse', tier: 2, flags: grounded },
+    { id: 'serverPod', tier: 2, flags: grounded },
+    { id: 'cloudBalloon', tier: 2, flags: grounded },
+    { id: 'quantumPavilion', tier: 2, flags: grounded },
   ],
   // emitted by world/gen/plans/coding.ts (TASK-421); `defs` = the props the scene stands on
   storySpots: [

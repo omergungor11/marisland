@@ -28,6 +28,7 @@ import { CODING_TUNNEL_GEO } from './coding-tunnel.ts';
 import { HQ_MARINA_GEO } from './hq-marina.ts';
 import { DEVOPS_M26_GEO } from './devops-m26.ts';
 import { RESEARCH_M28_GEO, withRimDeck } from './research-m28.ts';
+import { CODING_M33_GEO } from './coding-m33.ts';
 import { MARKETING_M27_GEO, withCableCar, withGuyedMast, withSeaSigns } from './marketing-m27.ts';
 import { DEVOPS_M25_GEO, withOnsenStilts, withOrePylons, withSmithStall } from './devops-m25.ts';
 import { THEME_IDS } from '../../world/types.ts';
@@ -92,4 +93,6 @@ export const THEME_GEO: readonly PropGeoDef[] = [
   ...MARKETING_M27_GEO,
   // M28 TASK-525 Research sundial
   ...RESEARCH_M28_GEO,
+  // M33 TASK-543 Coding Bot Foundry / Drone Port / Data Lake kit
+  ...CODING_M33_GEO,
 ];
