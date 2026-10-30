@@ -16,7 +16,7 @@
  *    local +z points away from the noon sun (north on a northern-hemisphere island); then the real
  *    shadow of the blade falls on the noon line at 12:00. The numerals run clockwise seen from
  *    above (XII +z, III at -x, VI at -z, IX at +x), 30 deg apart: a stylised clock face, only the
- *    noon line is exact. Hooks: dial { center, radius, y }, gnomon { axis, base, tip, height,
+ *    noon line is exact. Glyphs read upright from the +z side (TASK-530), never mirrored. Hooks: dial { center, radius, y }, gnomon { axis, base, tip, height,
  *    thick }, noonLine { from, to, dir, y, width }, plates { list: [{ n, numeral, at, angleDeg }] }.
  *  - tripodTelescope v2: the deck's front (+z) is the step, its sea side is -z (rails on -z and
  *    both sides). Hooks: deck { center, size, y }, scope { at, dir, eyepiece }, bot { at, face,
@@ -150,10 +150,16 @@ function sundial({ rng, lod }: BuildOpts): THREE.BufferGeometry {
     if (hi) {
       const { strokes } = numeralStrokes(ROMAN[n]);
       const G = S.glyph;
-      // v runs radially outward (the numeral's top points out), centred on the plate
+      // Clock-face convention (TASK-530). Every numeral reads upright for a viewer on the +z side
+      // (the side the noon line points to): near half (z > 0) turns its top toward the centre, far
+      // half toward the rim, the side plates (III, IX) lie flat (u = +x, top = -z). Only rotations,
+      // never a mirror (u x v stays +y seen from above).
+      const side = Math.abs(dir.z) <= 0.1;
+      const sg = dir.z > 0.1 ? -1 : 1;
       const map = (u: number, v: number): [number, number] => {
-        const rr = PL.radius + (v - 0.5) * G.height;
-        return [dir.x * rr + tan.x * u, dir.z * rr + tan.z * u];
+        if (side) return [dir.x * PL.radius + u, -(v - 0.5) * G.height];
+        const rr = PL.radius + sg * (v - 0.5) * G.height;
+        return [dir.x * rr + tan.x * u * sg, dir.z * rr + tan.z * u * sg];
       };
       for (const [u0, v0, u1, v1] of strokes)
         flatStroke(acc, topY, map(u0, v0), map(u1, v1), G.stroke, G.thick, P.ink);
