@@ -2,6 +2,21 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-109: Research crag face lawn → cliff on the final ground; the dial and deck sites keep their lawn (TASK-529; builds D-105 / D-107) — 2026-10-30
+
+**Decision**: the M28 crag-foot pass in `placeSummitKit` (world/gen/plans/research-m28.ts, plan `finish`, final
+ground) also turns a lawn / meadow / field / forest cell within `cragFoot.reach` 16 u of the top landing into
+`Zone.cliff` when its final central-difference slope is > `cragFoot.steep` 0.55 (= Research `cliffSlope`). The
+meridian disc (r 3) and the rim deck sites (w / 2) keep their lawn. Pad cores are deliberately not exempt: their edge
+cells against the face are the halo cells.
+**Rationale**: zones are derived before the pads and the carve, and Research keeps steep inland ground lawn unless the
+riser is tagged cliff, so the riser's soft edge and the faces the summit / meridian / quad pads cut stayed lawn; the
+2 u albedo interpolation blended them up the face as a green / olive halo (QA M28 4a). D-107's foot rule (a neighbour
+≥ 3 u higher) missed cells with a smaller rise.
+**Numbers (31 seeds)**: steep lawn cells within 16 u of the top 208 → 0. Seed 1001: height / sites / routes hashes
+unchanged; zone and props (scatter re-filtered on the new cliff cells: a crystal cluster now stands at the crag foot
+by the dial) re-pinned.
+
 ## D-111: W-star-stair-night frames Comet Night; the comet moves from bearing 160 to 120 (TASK-531) — 2026-10-30
 
 **Decision**: W-star-stair-night is now cam `120.3,25,54,111.8,22.6,87.9`, time 22.08, simt 12: the lit dome and the

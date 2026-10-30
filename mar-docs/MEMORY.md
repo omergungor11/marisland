@@ -52,6 +52,13 @@
   old observatory door pin still exists (its walk is exempt from the stair's path gap). The hub pin moved to the
   harbour-avenue side of the fountain (the crag face walled the old one in on 1001). Seeds 1001 / 1263 / 4945 have no
   big dish (no room on the headland). Do not re-pin W9 / W14 / ladder cams in 524's branch: 526 does.
+- **2026-10-30 M28 closed (orchestrator)**: TASK-524…531 all merged (main after D-111). Follow-ups 528–531 done. Open
+  nits: quad `lanternPost` v0–2 pools paint the crag face orange (see TASK-531 note); `whale-route` "stays in open sea"
+  times out at 20 s (~21 s) even on a quiet machine (pre-existing). **Next:** user picks the next milestone.
+- **2026-10-30 (TASK-529, D-109)**: zones are stale after pads / carves / paths (`buildZones` runs before
+  `buildSettlements`); a pass that cuts terrain on a slope-sensitive theme must repaint zones on the final ground. A zone
+  change re-rolls scatter (`props` hash moves, sites stay). Use `debug=mask` to see zone leaks (green on a face) that the
+  blurred beauty frame hides.
 - **2026-10-30 (TASK-531, D-111)**: the comet hangs at bearing 120 now; at 160 it sat over Coding, so any frame with
   comet + Research dome blew the medium call / tri budget. Open nit: the quad's ordinary `lanternPost` (v0–2) pools
   still paint an orange patch on the crag face beside the stair (D-culture-research-comet, W-star-stair-night edge);
