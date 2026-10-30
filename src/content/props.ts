@@ -30,6 +30,7 @@ import { DEVOPS_M26_PROP_DEFS } from './props-themes/devops-m26.ts';
 import { MARKETING_M27_PROP_DEFS } from './props-themes/marketing-m27.ts';
 import { RESEARCH_M28_PROP_DEFS } from './props-themes/research-m28.ts';
 import { RESEARCH_M31_PROP_DEFS } from './props-themes/research-m31.ts';
+import { CODING_M33_PROP_DEFS } from './props-themes/coding-m33.ts';
 
 export interface PropDef {
   id: string;
@@ -178,6 +179,8 @@ const ALL_DEFS: readonly PropDef[] = [
   ...RESEARCH_M28_PROP_DEFS,
   // ---- TASK-533 (M31 Research Tide-Lab, D-114): stilt lab (tier 1), tide gauge, sunken city kit ----
   ...RESEARCH_M31_PROP_DEFS,
+  // ==== TASK-543 (M33 Coding, D-117): Bot Foundry, Drone Port, test track, Data Lake kit (self-contained block) ====
+  ...CODING_M33_PROP_DEFS,
 ];
 
 /**

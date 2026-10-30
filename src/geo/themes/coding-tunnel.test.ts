@@ -17,14 +17,15 @@ const size = (g: THREE.BufferGeometry): THREE.Vector3 =>
   (g.boundingBox as THREE.Box3).getSize(new THREE.Vector3());
 
 describe('TASK-498 wind tunnel defs', () => {
-  it('two defs at the very end of PROP_DEFS: tunnel tier 1, fan tier 2; Coding cap 12 / 2', () => {
+  it('two defs at the very end of PROP_DEFS: tunnel tier 1, fan tier 2; Coding cap 22 / 2 (M33 +10)', () => {
     expect(CODING_TUNNEL_PROP_DEFS.map((d) => d.id)).toEqual(['windTunnel', 'tunnelFan']);
     expect(PROP_DEF_INDEX.tunnelFan).toBe(PROP_DEF_INDEX.windTunnel + 1);
     expect(PROP_DEF_INDEX.windTunnel).toBeGreaterThan(PROP_DEF_INDEX.dropTower);
     expect(PROP_DEFS[PROP_DEF_INDEX.windTunnel].tier).toBe(1);
     expect(PROP_DEFS[PROP_DEF_INDEX.tunnelFan].tier).toBe(2);
-    expect(cultureCapOverride.coding).toEqual({ defs: 12, tier1: 2 });
-    expect(CODING_CULTURE.kit).toHaveLength(12);
+    expect(cultureCapOverride.coding).toEqual({ defs: 22, tier1: 2 }); // M33 TASK-543 (D-117): 12 + 10
+    expect(CODING_CULTURE.kit).toHaveLength(22);
+    expect(CODING_CULTURE.kit[11].id).toBe('tunnelFan');
     expect(validateCultures([CODING_CULTURE])).toEqual([]);
   });
 

@@ -37,11 +37,11 @@ const ROWS: [string, number, number, number, number][] = [
 ];
 
 describe('TASK-533 Research defs and ledger', () => {
-  it('three new defs at the end of PROP_DEFS: tideLab T1, tideGauge T2, sunkenCity T2', () => {
+  it('three new defs right after the M28 block: tideLab T1, tideGauge T2, sunkenCity T2', () => {
     expect(RESEARCH_M31_PROP_DEFS.map((d) => d.id)).toEqual(['tideLab', 'tideGauge', 'sunkenCity']);
-    const n = PROP_DEFS.length;
-    expect(PROP_DEF_INDEX.tideLab).toBe(n - 3);
-    expect(PROP_DEF_INDEX.sunkenCity).toBe(n - 1);
+    // M33 TASK-543 (Coding) appends its block after these
+    expect(PROP_DEF_INDEX.tideLab).toBe(PROP_DEF_INDEX.sundial + 1);
+    expect(PROP_DEF_INDEX.sunkenCity).toBe(PROP_DEF_INDEX.tideLab + 2);
     expect(PROP_DEFS[PROP_DEF_INDEX.tideLab].tier).toBe(1);
     expect(PROP_DEFS[PROP_DEF_INDEX.tideGauge].tier).toBe(2);
     expect(PROP_DEFS[PROP_DEF_INDEX.sunkenCity].tier).toBe(2);

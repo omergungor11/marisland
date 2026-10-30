@@ -31,8 +31,8 @@ const BUDGET: Record<string, number> = {
 describe('TASK-525 Research M28 defs', () => {
   it('sundial is the 4th from last def, geo and PropDef agree, tier 2 grounded', () => {
     expect(RESEARCH_M28_PROP_DEFS.map((d) => d.id)).toEqual(['sundial']);
-    // M31 TASK-533 appended three defs after it (tideLab, tideGauge, sunkenCity)
-    expect(PROP_DEF_INDEX.sundial).toBe(PROP_DEFS.length - 4);
+    // M31 TASK-533 appended tideLab, tideGauge, sunkenCity right after it; later blocks (M33 Coding) follow
+    expect(PROP_DEF_INDEX.sundial).toBe(PROP_DEF_INDEX.tideLab - 1);
     const d = PROP_DEFS[PROP_DEF_INDEX.sundial];
     expect(d.tier).toBe(2);
     expect(d.flags).toBe(PropFlag.grounded);
