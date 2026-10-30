@@ -102,9 +102,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "6f05a456e8be563c",
-          "1001": "046400750f88133d",
-          "42": "ce27ac62f0b5406f",
+          "1": "dca9bdf05ea83621",
+          "1001": "92d39dddb746c18a",
+          "42": "f9052c2ac0e38c1b",
         }
       `);
     },
@@ -585,8 +585,9 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // TASK-513 Emberpeak obsidian black-sand cove (notch carved + repainted, decor re-seated), re-pinned
       // TASK-524 Research summit crag + Star Stair / meridian / rim deck anchors, dish to the headland, re-pinned
       // TASK-526 Research M28 kit on the anchors (stair path + flights, lanterns, dial, decks, dish tiers), re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('a7ceffb873e5d900');
-      expect(generateWorld(1).hashes.world).toBe('73dc4725146a93db');
+      // TASK-529 Research crag face lawn → cliff on the final ground, re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('98200c7ff60e3aeb');
+      expect(generateWorld(1).hashes.world).toBe('401747efc1257ed6');
     } finally {
       for (const b of saved) b.on = true;
     }
