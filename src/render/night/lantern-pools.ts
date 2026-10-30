@@ -76,8 +76,9 @@ export function poolFalloff(t: number): number {
 export function poolSourceOf(props: PropStore, i: number): PoolSource | null {
   if (i < 0 || i >= props.count || props.flags[i] & PropFlag.removed) return null;
   const def = PROP_DEFS[props.defId[i]];
-  const src = def ? POOLS.sources[def.geo] : undefined;
-  if (!src) return null;
+  const base = def ? POOLS.sources[def.geo] : undefined;
+  if (!base) return null;
+  const src = { ...base, ...base.variants?.[props.variant[i]] };
   const rot = props.rotY[i];
   const sc = props.scale[i] || 1;
   // geometry doors face local +z → world (sin rotY, cos rotY)

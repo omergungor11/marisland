@@ -272,10 +272,19 @@ export const SEA_LAMP = {
   gain: 2.2,
 } as const;
 
+/** One pool source: radius (u), intensity, door-side offset (u), hue share toward `uvColor`. */
+export interface PoolSourceDef {
+  radius: number;
+  intensity: number;
+  offset: number;
+  hue?: number;
+}
+
 /**
  * Lantern pools (TASK-171): additive warm light baked into a small world-space texture
  * (soft falloff, wobbly rim so they never read as discs) and added by terrain, props and water
- * at night. `sources` maps prop geo → pool radius (u), intensity and a door-side offset (u).
+ * at night. `sources` maps prop geo → pool radius (u), intensity and a door-side offset (u);
+ * `variants` overrides those per prop variant (TASK-528).
  */
 export const POOLS = {
   color: '#FFB347',
@@ -300,7 +309,15 @@ export const POOLS = {
    * the pool's ground — the light sits on the faceted ground instead of a flat sticker. */
   facet: { base: 0.3, lampHeight: 2.2 },
   sources: {
-    lanternPost: { radius: 5.4, intensity: 1, offset: 0 },
+    lanternPost: {
+      radius: 5.4,
+      intensity: 1,
+      offset: 0,
+      // Research Star Stair lantern (v3, TASK-528): six-seven posts strung up a narrow stair on the
+      // crag; the full street pool washed the flight and the rock face orange (read as lava). A small
+      // dim pool, its hue a third of the way to uvColor (soft peach instead of saturated orange).
+      variants: { 3: { radius: 2.8, intensity: 0.6, hue: 0.35 } },
+    },
     marketStall: { radius: 4.2, intensity: 0.6, offset: 0.6 },
     cottage: { radius: 3.4, intensity: 0.45, offset: 1.9 },
     logCabin: { radius: 3.4, intensity: 0.45, offset: 1.9 },
@@ -320,7 +337,7 @@ export const POOLS = {
     lavaLantern: { radius: 5.5, intensity: 1.3, offset: 0 },
     // Coding fairy-light grove (TASK-479 C13): a soft warm pool under each wreathed quad-end tree
     fairyWreath: { radius: 4.2, intensity: 0.55, offset: 0 },
-  } as Record<string, { radius: number; intensity: number; offset: number; hue?: number }>,
+  } as Record<string, PoolSourceDef & { variants?: Record<number, Partial<PoolSourceDef>> }>,
   /**
    * Second pool colour (TASK-440): a source's `hue` share blends its pool from `color` toward this
    * (the pool texture's B channel = light-weighted hue share), e.g. the UV lamps' violet.
