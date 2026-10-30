@@ -388,7 +388,7 @@ Details in `phases/phase-3.md`.
 | TASK-527 | M28 shots + QA: wow + ladder L-research low / medium `--assert`, W11 ≤ 300 calls, medium memory ≤ 172 MB, W16 ≤ 800k tris; QA report | qa | S | COMPLETED (see mar-docs/qa/m28-research-2026-10-29.md) | TASK-526 |
 | TASK-528 | QA follow-up: Star Stair lantern night light pool too strong / orange (reads as lava on the crag face); tone radius, intensity, hue; re-shoot W-star-stair-night + D-m28-stair-night (D-108) | shader | S | COMPLETED (D-108) | TASK-527 |
 | TASK-529 | QA follow-up: lawn-colour halo bleeds up the steep crag round the rim deck, sundial and quad-side pads (W14, W-meridian-noon, D-m28-deck / sundial); hash re-pin (D-109) | worldgen | S | PENDING | TASK-527 |
-| TASK-530 | QA follow-up: sundial XII plate reads "IIX" from the usual views; numerals readable from the usual camera side, check all 12 (D-110) | props | XS | PENDING | TASK-527 |
+| TASK-530 | QA follow-up: sundial XII plate reads "IIX" from the usual views; numerals readable from the usual camera side, check all 12 (D-110) | props | XS | COMPLETED (D-110) | TASK-527 |
 | TASK-531 | QA follow-up: W-star-stair-night has no comet / stars in frame; camera or simt so the Comet Night streak is in frame (D-111) | engine | XS | PENDING | TASK-527 |
 
 ### M17 — Graphics II: decor & nature

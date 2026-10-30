@@ -2,6 +2,14 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-110: Sundial numerals read upright from the +z (noon-line) side (TASK-530) — 2026-10-30
+
+The old "top toward the rim on every plate" rule turned the near-half plates (XII, I, II, X, XI) upside down for the
+usual +z camera, so XII read "IIX" (QA M28 issue 3; nothing was mirrored). Now the near half (z > 0.1) turns its top
+toward the centre, the far half keeps its top toward the rim, and III / IX lie flat (u = +x): pure rotations, never a
+mirror. Hooks (`gnomon`, `noonLine`, `plates.list` positions and angles) and triangle counts are unchanged, no world
+hash changes.
+
 ## D-108: Per-variant lantern pools; the Star Stair lanterns get a small soft pool (TASK-528; follows D-107) — 2026-10-30
 
 **Decision**: `POOLS.sources` entries (content/lighting.ts) take an optional `variants` map that overrides
