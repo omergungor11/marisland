@@ -157,7 +157,12 @@ export const SKY = {
  */
 export const COMET = {
   color: '#CFF4F7',
-  azimuthDeg: 160,
+  /**
+   * TASK-531: 160 → 120. At 160 the comet hung over the Coding island as seen from the Star Stair
+   * (bearing 151–177 from the dome), so no frame held stair + comet without Coding's draws (> 300
+   * calls); 120 is open sea, beside the stair face's view (W-star-stair-night).
+   */
+  azimuthDeg: 120,
   elevation: [4, 38] as const,
   fadeIn: 0.08,
   fadeOut: 0.12,
