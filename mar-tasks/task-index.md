@@ -386,6 +386,10 @@ Details in `phases/phase-3.md`.
 | TASK-525 | M28 props: new def `sundial` (tier 2: 6 u disc, 2.5 u gnomon, I–XII glyph plates, brass noon line; Research cap 10 → 11), rim telescope deck (railed 3 × 2 u platform, `selfieSpot` variant + `tripodTelescope`), teal stair lantern variant; gallery shots | props | M | COMPLETED (D-106) | — |
 | TASK-526 | M28 placement + motion on the anchors: Star Stair path (stair kind) + 6–8 lanterns lit with the Research lamp set, sundial gnomon aimed so the real sun shadow meets the noon line at 12:00 (±3°), deck bots in `gaze` pose (look up every 8 s); wow W-star-stair-night (W9 cam, 22:05) + W-meridian-noon (12:00); re-pin W9 / W14 cams, `FRAMING.ladder.shift.research`, world hashes | worldgen + life | L | COMPLETED (D-107) | TASK-524, TASK-525 |
 | TASK-527 | M28 shots + QA: wow + ladder L-research low / medium `--assert`, W11 ≤ 300 calls, medium memory ≤ 172 MB, W16 ≤ 800k tris; QA report | qa | S | COMPLETED (see mar-docs/qa/m28-research-2026-10-29.md) | TASK-526 |
+| TASK-528 | QA follow-up: Star Stair lantern night light pool too strong / orange (reads as lava on the crag face); tone radius, intensity, hue; re-shoot W-star-stair-night + D-m28-stair-night (D-108) | shader | S | PENDING | TASK-527 |
+| TASK-529 | QA follow-up: lawn-colour halo bleeds up the steep crag round the rim deck, sundial and quad-side pads (W14, W-meridian-noon, D-m28-deck / sundial); hash re-pin (D-109) | worldgen | S | PENDING | TASK-527 |
+| TASK-530 | QA follow-up: sundial XII plate reads "IIX" from the usual views; numerals readable from the usual camera side, check all 12 (D-110) | props | XS | PENDING | TASK-527 |
+| TASK-531 | QA follow-up: W-star-stair-night has no comet / stars in frame; camera or simt so the Comet Night streak is in frame (D-111) | engine | XS | PENDING | TASK-527 |
 
 ### M17 — Graphics II: decor & nature
 *Flower fields, fences, lanterns, benches, signs, rocks*
