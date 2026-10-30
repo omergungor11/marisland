@@ -9,7 +9,15 @@ import { RESEARCH_M28_SITE } from '../content/themes/research-m28-site.ts';
 import { anchorPoints, stairOf } from './gen/plans/research-anchors.ts';
 import { isSummitKit } from './gen/plans/research-m28.ts';
 import { discShape, rectShape, shapesOverlap } from './gen/sites.ts';
-import { generateWorld, heightAt, sampleGrid, Zone, type WorldData, type XZ } from './index.ts';
+import {
+  generateWorld,
+  heightAt,
+  sampleGrid,
+  slopeAtCell,
+  Zone,
+  type WorldData,
+  type XZ,
+} from './index.ts';
 
 /** Research M28 anchors (TASK-524, D-105): Star Stair, meridian terrace, rim decks — 30 seeds. */
 const SEEDS = Array.from({ length: 30 }, (_, k) => 1000 + k * 263);
@@ -475,5 +483,47 @@ describe('Research M28 kit on the anchors (TASK-526)', { timeout: 120_000 }, () 
         `seed ${seed} lawn in the groove`,
       ).toBeLessThanOrEqual(0.15);
     }
+  });
+
+  it('no lawn on the steep crag round the summit; the dial and deck sites keep theirs (TASK-529)', () => {
+    const F = KS.stair.cragFoot;
+    const soft: number[] = [Zone.grass, Zone.meadow, Zone.field, Zone.forest];
+    let dialLawn = 0;
+    let dialCells = 0;
+    for (const seed of KIT_SEEDS) {
+      const { w, isl } = research(seed);
+      const st = stairOf(isl);
+      const top = st[st.length - 1];
+      const h = w.height;
+      const n = h.n;
+      const steep: string[] = [];
+      for (let iz = 1; iz < n - 1; iz++) {
+        const z = h.originZ + iz * h.cellSize;
+        if (Math.abs(z - top.z) > F.reach) continue;
+        for (let ix = 1; ix < n - 1; ix++) {
+          const x = h.originX + ix * h.cellSize;
+          const i = iz * n + ix;
+          if (w.islandMap[i] !== isl.id + 1 || !soft.includes(w.zone[i])) continue;
+          if (dist({ x, z }, top) > F.reach) continue;
+          // (the dial disc and the decks stand on their own lawn)
+          const m = isl.anchors.meridian;
+          if (m && dist({ x, z }, m) <= R.meridian.r) continue;
+          if (anchorPoints(isl, 'rimDeck').some((d) => dist({ x, z }, d) <= R.deck.w / 2)) continue;
+          if (slopeAtCell(h, ix, iz) > F.steep) steep.push(`${x},${z}`);
+        }
+      }
+      expect(steep, `seed ${seed} lawn on the steep crag`).toEqual([]);
+      // the dial's own disc keeps its lawn (the pad core is flat: nothing there is steep)
+      const m = isl.anchors.meridian;
+      if (!m) continue;
+      for (let iz = 0; iz < n; iz++)
+        for (let ix = 0; ix < n; ix++) {
+          const p = { x: h.originX + ix * h.cellSize, z: h.originZ + iz * h.cellSize };
+          if (dist(p, m) > R.meridian.r) continue;
+          dialCells++;
+          if (soft.includes(w.zone[iz * n + ix])) dialLawn++;
+        }
+    }
+    expect(dialLawn / dialCells, 'lawn under the dial discs').toBeGreaterThanOrEqual(0.5);
   });
 });

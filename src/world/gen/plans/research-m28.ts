@@ -15,6 +15,7 @@
  * Numbers: content/themes/research-m28-site.ts. Fixtures carry explicit variants; no rng.
  */
 import { RESEARCH_M28_SITE as S } from '../../../content/themes/research-m28-site.ts';
+import { RESEARCH_ANCHORS as RA } from '../../../content/themes/research-anchors.ts';
 import { STORY_KEEP_OUT } from '../../../content/placement.ts';
 import {
   heightAt,
@@ -30,7 +31,7 @@ import { cellX, cellZ, gridRange } from '../grid.ts';
 import { gridAStar } from '../paths.ts';
 import { cellOf, dist, onIsland, sdfAt, segDist, shapeDist, type SiteCtx } from '../sites.ts';
 import { storyKeepOuts } from '../story-keepout.ts';
-import { stairCarve, stairOf } from './research-anchors.ts';
+import { anchorPoints, stairCarve, stairOf } from './research-anchors.ts';
 
 const DEG = Math.PI / 180;
 /** Zones the groove paint turns to rock (the lawn and meadow the carve cut through). */
@@ -254,9 +255,18 @@ export function placeSummitKit(
         if (Math.abs(cut.get(i) ?? 0) > G.depth || slope > G.steep) ctx.zone[i] = Zone.cliff;
       }
     // ---- the crag's foot: a lawn cell at the bottom of the riser (a neighbour ≥ `drop` u
-    // higher) tinted the steep face green up to the summit lip; it takes the crag's rock too
+    // higher) tinted the steep face green up to the summit lip; it takes the crag's rock too.
+    // So does a lawn cell on the face itself (steeper than `steep` on the final ground; the dial
+    // disc and the deck sites keep their lawn): the zones were derived before the pads and the
+    // carve, and Research keeps steep inland ground lawn unless the riser tag says cliff, so the
+    // riser's soft edge and the faces the summit / meridian / quad pads cut into the crag stayed
+    // lawn, their colour blended up the face as a green halo (TASK-529)
     const obs = stair[stair.length - 1];
     const F = S.stair.cragFoot;
+    const keep = [
+      ...(A.meridian ? [{ ...A.meridian, r: RA.meridian.r }] : []),
+      ...anchorPoints(isl, 'rimDeck').map((q) => ({ ...q, r: RA.deck.w / 2 })),
+    ];
     const [fx0, fx1] = gridRange(obs.x - F.reach, obs.x + F.reach);
     const [fz0, fz1] = gridRange(obs.z - F.reach, obs.z + F.reach);
     const foot: number[] = [];
@@ -264,8 +274,14 @@ export function placeSummitKit(
       for (let ix = fx0; ix <= fx1; ix++) {
         const i = iz * n + ix;
         if (ctx.islandMap[i] !== id + 1 || !SOFT.includes(ctx.zone[i])) continue;
-        if (dist({ x: cellX(ix), z: cellZ(iz) }, obs) > F.reach) continue;
+        const p = { x: cellX(ix), z: cellZ(iz) };
+        if (dist(p, obs) > F.reach) continue;
         if ([1, -1, n, -n].some((o) => d[i + o] - d[i] >= F.drop)) foot.push(i);
+        else if (
+          Math.hypot(d[i + 1] - d[i - 1], d[i + n] - d[i - n]) / (2 * ctx.h.cellSize) > F.steep &&
+          !keep.some((k) => dist(p, k) <= k.r)
+        )
+          foot.push(i);
       }
     for (const i of foot) ctx.zone[i] = Zone.cliff;
     // ---- the stair path: foot link + the legs every ≈ 2 u + top link

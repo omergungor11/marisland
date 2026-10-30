@@ -51,9 +51,11 @@ export const RESEARCH_M28_SITE = {
     /**
      * The crag's foot round the top landing (within `reach` u): a lawn cell with a 4-neighbour
      * ≥ `drop` u higher becomes rock (its colour blended up the whole riser face as a green
-     * streak above the meridian pad and the quad).
+     * streak above the meridian pad and the quad). TASK-529: so does a lawn cell on the face,
+     * steeper than `steep` on the final ground (the meridian disc and the rim deck sites keep
+     * their lawn; `steep` = Research's slope-cliff `cliffSlope`).
      */
-    cragFoot: { reach: 16, drop: 3 },
+    cragFoot: { reach: 16, drop: 3, steep: 0.55 },
   },
   sundial: {
     /**
