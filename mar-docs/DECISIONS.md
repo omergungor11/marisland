@@ -17,7 +17,7 @@ riser is tagged cliff, so the riser's soft edge and the faces the summit / merid
 unchanged; zone and props (scatter re-filtered on the new cliff cells: a crystal cluster now stands at the crag foot
 by the dial) re-pinned.
 
-## D-116: Coding Bot Foundry + Drone Port on the empty west / south-west lawns — plan only — 2026-10-30
+## D-116: Coding Bot Foundry + Drone Port + Data Lake on the empty west / south-west lawns and east shore — plan only — 2026-10-30
 
 - **Decision** (user 2026-10-30, direction B of three; study `mar-plans/study/coding-ideas.html`): Coding builds the
   archipelago's bots. (1) **Open-air assembly line** on a conveyor: body → head → antenna; at the end the new bot hops
@@ -28,8 +28,13 @@ by the dial) re-pinned.
   plateau, so a long line + a pad fit without re-shaping the profile.
 - **Ledger**: Coding is 12 defs / 2 tier-1 (D-088); new defs via cap override, prefer variants; bots born on the line
   must stay inside the medium agent cap (60) — the line recycles a fixed pool, closed-form.
-- **When**: props (TASK-543) may start now (no world hash change); placement (TASK-545) waits for the M31 Research
-  pilot to merge so only one branch re-pins world hashes at a time.
+- **+ Data Lake** (user, same day: direction C too): a navy lake with fibre light lines flowing under the surface
+  (packets cross it as light dots at night), steam-cooled server pods on its shore with blue LED nights, a tethered
+  "cloud" balloon swaying above, a glass quantum pavilion with a gold "chandelier" computer. The lake is a terrain
+  carve (hash re-pin, done by TASK-544) and a water-surface shader branch (TASK-547, no new program if it fits the
+  existing water / pool path).
+- **When**: props (TASK-543) may start now (no world hash change); site (TASK-544) and placement (TASK-545) wait for
+  the M31 Research pilot to merge so only one branch re-pins world hashes at a time.
 
 ## D-115: QA Thrill Test Park — a roller coaster on the QA island, after the M31 Research pilot — plan only — 2026-10-30
 
