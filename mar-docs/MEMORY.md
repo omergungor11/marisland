@@ -52,6 +52,17 @@
   old observatory door pin still exists (its walk is exempt from the stair's path gap). The hub pin moved to the
   harbour-avenue side of the fountain (the crag face walled the old one in on 1001). Seeds 1001 / 1263 / 4945 have no
   big dish (no room on the headland). Do not re-pin W9 / W14 / ladder cams in 524's branch: 526 does.
+- **2026-10-30 handoff, final (orchestrator)**: TASK-532 (D-113), 533 (D-114), 543 (D-117) all merged + pushed; no agent
+  in flight. **Next: TASK-534** Research harbour placement + motion. Handoff for it (from the 532 / 533 reports, full
+  contracts in D-113 / D-114 and the module headers of `plans/harbour.ts`, `plans/research-harbour.ts`,
+  `geo/themes/harbours.ts`, `geo/themes/research-m31.ts`): kiosks are reserved but have **no pads** (pad them);
+  the T-head is still plain dock segments — add the 8 × 2.4 crossbar at `harbourPier1`; the R3-16 `sealPier` spot now
+  sits inside the T crossbar (move it / lift it onto the head); ruin slots carry y = seabed, `sunkenCity` sit:'sea'
+  pieces go at seaY − waterline, `ruinTop` must rise above 0; bubbles can't rise between the tops at 1.25 u depth —
+  emit at `subDive` (+ optionally the tops while the sub is down); the sub must leave the basin round the arm tip (no
+  path published); `tideSub` is a geo-only mover; the lighthouse `beam` hook isn't wired to `render/night/beacons`;
+  check the ruins under the 0.55 lagoon water (algae knob `weathering()` 0.55). Open shader nit: foam rings inside
+  the lagoon. Next free D-number: D-118.
 - **2026-10-30 session handoff (orchestrator)** — main `a053ce9`. Planned this session: M31 harbours (D-112), M32 QA
   Thrill Test Park (D-115), M33 Coding Bot Foundry + Drone Port + Data Lake (D-116); studies in `mar-plans/study/`
   (harbours / lunapark / coding-ideas .html). **Three agent worktrees were running at handoff** (commits only on their

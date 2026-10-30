@@ -17,6 +17,31 @@ riser is tagged cliff, so the riser's soft edge and the faces the summit / merid
 unchanged; zone and props (scatter re-filtered on the new cliff cells: a crystal cluster now stands at the crag foot
 by the dial) re-pinned.
 
+## D-113: Harbour skeleton grown from the cove dock (plan-time breakwater + exact coast refresh); Research Tide-Lab sites and a sunken-city plan in the lagoon the arm encloses (TASK-532; builds D-112 on the D-095 / D-105 anchor pattern) — 2026-10-30
+
+**Decision**: (1) **Skeleton** `world/gen/plans/harbour.ts`, numbers `content/harbours.ts` (`HARBOURS[theme]`, Research
+only for now), island-agnostic, runs on the island's cove `DockSite`: the dock is run out to 6 segments (12 u) and its
+stop is the HQ ferry berth (`ferryBerth` = end + 3 u), so **the ferry retarget needs no route code**. The arm walks the
+pre-arm shore-SDF contour 10 u out from the pier axis (tip arc 13, length 26, then straight back to the coast), on the
+side whose seabed is nearest `idealDepth`, ≥ 18 u off other land, tip ≥ 5 u off the T-head. Crest water samples are
+raised into island land and the **shore SDF is recomputed with the generation EDT** (exact, ~6 ms); moved water
+samples re-take their band (`waterBandZone`, extracted from `zones.ts`). Zones on the final ground (D-109): rock
+armour on the seaward crest + mole head, dry sand on the sheltered side, wet sand on the flanks. Basin dredged to
+1.8 u. Kiosks placed after the districts. (2) **Lagoon**: the arm makes it (water ≤ ~3.5 u from land = Zone.lagoon /
+alpha 0.55); no shelf change. (3) **Research instance** `plans/research-harbour.ts` (`content/themes/research-harbour.ts`):
+stilt-lab site on the side away from the arm (seabed 1.1–1.8 u) + lab pier, research vessel moved alongside the pier,
+sub mooring beside it, dive point ≥ 3.2 u deep seaward of the arm, tide gauge on the beach; **sunken city** = a
+curvilinear lattice along the arm (paving streets, arches at crossings, columns, 2–4 tops), seabed 1.25 / 0.85 u.
+(4) **Routes**: keep-out discs may carry `hard` (0.6) so the smoothed samples keep off the T-head too.
+(5) The arm lies outside the layout `reach` disc by up to offset + 4 u; layout unchanged, reach tests exempt + bound it.
+**Numbers (31 seeds)**: everything on 31 / 31; ruin slots 19–30 (paving 9–14, arch 0–2, column 6–11, top 2–4), all in
+Zone.lagoon; ferry ≤ 4 u from the berth; generation +9 ms per world quiet (+3.5 %); W9 181 calls / 627k, W14 186 /
+658k, W-meridian-noon 186 / 606k. Hashes re-pinned (separate commit).
+**Not taken**: arm in the raw-land profile (cove dock would move), bigger `reachScale` (breaks W9 / W14 cams), a
+detached breakwater, widening the shelf (colour follows shore distance, not depth).
+**Open**: shore-lap foam draws closed rings inside the narrow lagoon (shader call); the ferry sometimes approaches
+along the open lab side; `reach`-framed cameras may crop the arm tip.
+
 ## D-114: M31 harbour kit and Research Tide-Lab props — shared harbour pieces as paired variants of old defs, three new Research defs (stilt lab at the tier-1 slot, tide gauge, sunken city kit), submersible as a geo-only mover, Research cap 11 -> 14 (TASK-533; builds D-112) — 2026-10-30
 
 **Decision** (no placement; TASK-534 places and moves them): (1) **Shared harbour kit = ledger-free variants** of five
