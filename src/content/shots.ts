@@ -2152,12 +2152,13 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   {
     id: 'W-star-stair-night',
     title: 'Star Stair Night',
-    // near the W9 camera, 22:05 (Comet Night): the crag and the lit dome, the lantern chain up
-    // the stair's switchbacks
+    // 22:05 +12 s (Comet Night, phase 0.23): from the sea north of the crag, the lit dome and the
+    // lantern chain up the stair's switchbacks, the comet and its tail upper right over open sea
+    // (TASK-531: yaw ≈ 104°, pitch −4°; more yaw brings the Coding island in, > 300 calls)
     seed: 1001,
-    cam: '113,30,61,117,12,98',
+    cam: '120.3,25,54,111.8,22.6,87.9',
     time: 22.08,
-    simt: 6,
+    simt: 12,
     quality: 'medium',
     width: 1920,
     height: 1080,
