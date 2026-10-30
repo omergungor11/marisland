@@ -14,6 +14,7 @@ import * as THREE from 'three';
 import { BEAM, NIGHT, POOLS, POST } from '../../content/lighting.ts';
 import { makeLitMaterial } from '../materials/factory.ts';
 import { POOL_HEIGHT_RANGE } from '../shaders/chunks/night.glsl.ts';
+import { RESEARCH_M28 } from '../../content/themes/research-m28.ts';
 
 describe('lantern pools (TASK-171)', () => {
   it('returns null without sources', () => {
@@ -135,6 +136,23 @@ describe('lantern pools follow edits (TASK-213)', () => {
     expect(t.outside).toBe(true);
     const grown = poolLayout(book.list())!;
     expect(grown.originX + grown.extent).toBeGreaterThan(400);
+  });
+});
+
+describe('per-variant pool override (TASK-528)', () => {
+  it('the Star Stair lantern (lanternPost v3) gets a small soft pool, other variants keep the street pool', () => {
+    const s = createPropStore(8);
+    const L = PROP_DEF_INDEX.lanternPost;
+    const v = RESEARCH_M28.lantern.variant;
+    s.push(L, 0, 0, 1, 0, 0, 1, 0, 0, 0);
+    s.push(L, v, 20, 1, 0, 0, 1, 0, 0, 0);
+    const [street, stair] = collectPoolSources(s);
+    const base = POOLS.sources.lanternPost;
+    expect(POOLS.sources.lanternPost.variants?.[v]).toBeDefined();
+    expect(street).toMatchObject({ r: base.radius, k: base.intensity, u: 0 });
+    expect(stair.r).toBeLessThan(base.radius * 0.6);
+    expect(stair.k).toBeLessThan(base.intensity * 0.7);
+    expect(stair.u).toBeGreaterThan(0);
   });
 });
 
