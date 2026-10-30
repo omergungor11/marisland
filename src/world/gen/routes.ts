@@ -25,8 +25,12 @@ export interface RouteInput {
   docks: DockData[];
   /** Reef field (TASK-488): raised nodes cost REEFS.routePenalty more per step. */
   reefs?: ReefField;
-  /** Discs boats keep out of (M30 TASK-508: the customs port's ship lane, spin spot and pontoons). */
-  keepOut?: readonly { x: number; z: number; r: number }[];
+  /**
+   * Discs boats keep out of (M30 TASK-508: the customs port's ship lane, spin spot and pontoons).
+   * The coarse nodes keep `r` off; a disc with `hard` (TASK-532: the harbour pier, T-head, basin
+   * mouth and Tide-Lab sites) also keeps the smoothed route `hard` × r off.
+   */
+  keepOut?: readonly { x: number; z: number; r: number; hard?: number }[];
 }
 
 interface Coarse {
@@ -65,13 +69,22 @@ function buildCoarse(
       depth[c] = -h.data[iz * h.n + ix];
     }
   // the customs port's water is the cargo ship's: no boat route node inside it
-  if (keepOut?.length)
-    for (let c = 0; c < n * n; c++) {
-      if (!pass[c]) continue;
-      const x = h.originX + (c % n) * k * h.cellSize;
-      const z = h.originZ + Math.floor(c / n) * k * h.cellSize;
-      if (keepOut.some((q) => Math.hypot(q.x - x, q.z - z) < q.r)) pass[c] = 0;
+  // (each disc over the nodes of its own box: the same test, without every node × every disc)
+  if (keepOut?.length) {
+    const step = k * h.cellSize;
+    for (const q of keepOut) {
+      const cx0 = Math.max(0, Math.floor((q.x - q.r - h.originX) / step));
+      const cx1 = Math.min(n - 1, Math.ceil((q.x + q.r - h.originX) / step));
+      const cz0 = Math.max(0, Math.floor((q.z - q.r - h.originZ) / step));
+      const cz1 = Math.min(n - 1, Math.ceil((q.z + q.r - h.originZ) / step));
+      for (let cz = cz0; cz <= cz1; cz++)
+        for (let cx = cx0; cx <= cx1; cx++) {
+          const x = h.originX + cx * step;
+          const z = h.originZ + cz * step;
+          if (Math.hypot(q.x - x, q.z - z) < q.r) pass[cz * n + cx] = 0;
+        }
     }
+  }
   // connected components of passable nodes (8-neighbour); boats only use the largest (open sea)
   const comp = new Int32Array(n * n).fill(-1);
   let bestComp = -1;
@@ -221,7 +234,31 @@ export function routeSampleOk(h: Heightfield, sdf: Float32Array, p: XZ, margin =
  * (waypoints always kept), resample at ROUTES.resample; fall back to smaller
  * strides and finally the raw polyline (valid by construction).
  */
-function smoothLoop(h: Heightfield, sdf: Float32Array, pts: XZ[], keep: Set<number>): XZ[] {
+function smoothLoop(
+  h: Heightfield,
+  sdf: Float32Array,
+  pts: XZ[],
+  keep: Set<number>,
+  hard: readonly { x: number; z: number; r: number; hard?: number }[],
+): XZ[] {
+  // (a bounding box first: the hard discs sit round one harbour, most samples are far off)
+  let x0 = Infinity;
+  let x1 = -Infinity;
+  let z0 = Infinity;
+  let z1 = -Infinity;
+  for (const q of hard) {
+    x0 = Math.min(x0, q.x - q.r);
+    x1 = Math.max(x1, q.x + q.r);
+    z0 = Math.min(z0, q.z - q.r);
+    z1 = Math.max(z1, q.z + q.r);
+  }
+  const ok = (p: XZ): boolean =>
+    routeSampleOk(h, sdf, p, 0.05) &&
+    (p.x < x0 ||
+      p.x > x1 ||
+      p.z < z0 ||
+      p.z > z1 ||
+      hard.every((q) => Math.hypot(p.x - q.x, p.z - q.z) >= q.r * (q.hard ?? 0)));
   for (const stride of [4, 3, 2, 1]) {
     const ctrl: XZ[] = [];
     for (let i = 0; i < pts.length; i++) if (i % stride === 0 || keep.has(i)) ctrl.push(pts[i]);
@@ -231,9 +268,9 @@ function smoothLoop(h: Heightfield, sdf: Float32Array, pts: XZ[], keep: Set<numb
       6,
       true,
     ).map((p) => ({ x: p.x, z: p.y }));
-    if (!sm.every((p) => routeSampleOk(h, sdf, p, 0.05))) continue;
+    if (!sm.every(ok)) continue;
     const out = resample(sm, ROUTES.resample, true);
-    if (out.every((p) => routeSampleOk(h, sdf, p, 0.05))) return out;
+    if (out.every(ok)) return out;
   }
   return resample(pts, ROUTES.resample, true);
 }
@@ -241,6 +278,7 @@ function smoothLoop(h: Heightfield, sdf: Float32Array, pts: XZ[], keep: Set<numb
 export function buildRoutes(input: RouteInput, rng: Rng): Polyline[] {
   const { h, sdf, islands, docks } = input;
   const c = buildCoarse(h, sdf, input.reefs, input.keepOut);
+  const hard = (input.keepOut ?? []).filter((q) => (q.hard ?? 0) > 0);
   // docks a boat can reach: a passable node within dockReach of the dock end
   const stops: { dock: number; node: number; p: XZ; islandId: number }[] = [];
   docks.forEach((d, i) => {
@@ -277,7 +315,7 @@ export function buildRoutes(input: RouteInput, rng: Rng): Polyline[] {
       islandId: -1,
       kind,
       closed: true,
-      points: smoothLoop(h, sdf, pts, keep),
+      points: smoothLoop(h, sdf, pts, keep, hard),
       stops: stopDocks,
       ...(dwell !== undefined ? { dwell } : {}),
     });

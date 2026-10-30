@@ -132,6 +132,38 @@ function zoneRulesOf(isl: IslandData): ZoneRuleParams {
 const FOREST_FREQ = 1 / ZONE_RULES.forestScale;
 const MOIST_FREQ = 1 / ZONE_RULES.moistureScale;
 
+/**
+ * Water zone at (x, z), `dist` u from the nearest coast whose body is `owner` (island id + 1):
+ * the shore-distance bands (wider leeward, narrower on Beacon Rock's windward face). Shared by
+ * the generation rules and late coast changes (TASK-532: the harbour breakwater re-derives the
+ * water it moved the coast for).
+ */
+export function waterBandZone(
+  islands: readonly IslandData[],
+  islets: readonly IsletData[],
+  windDir: number,
+  x: number,
+  z: number,
+  dist: number,
+  owner: number,
+): number {
+  const body = owner > 0 ? coastBody(islands, islets, owner) : null;
+  let k = body ? lerp(1, WATER_BANDS.leewardRingScale, leewardness(body, windDir, x, z)) : 1;
+  let midMax: number = WATER_BANDS.midMax;
+  const cliff = body?.island ? windwardCliffness(body.island, windDir, x, z) : 0;
+  if (cliff > 0) {
+    k = lerp(k, WINDWARD_CLIFF.bandScale, cliff);
+    midMax = lerp(midMax, midMax * WINDWARD_CLIFF.midScale, cliff);
+  }
+  return dist <= WATER_BANDS.lagoonMax * k
+    ? Zone.lagoon
+    : dist <= WATER_BANDS.shallowMax * k
+      ? Zone.shallow
+      : dist <= midMax
+        ? Zone.mid
+        : Zone.deep;
+}
+
 /** `deriveZoneCell` past the cheap open-water exits (kept apart so the hot path stays small). */
 function deriveNear(
   ctx: ZoneCellContext,
@@ -145,24 +177,7 @@ function deriveNear(
   const { h, islandMap, islands, islets, windDir, noise } = ctx;
   const x = cellX(ix);
   const z = cellZ(iz);
-  if (s <= 0) {
-    const dist = -s;
-    const body = owner > 0 ? coastBody(islands, islets, owner) : null;
-    let k = body ? lerp(1, WATER_BANDS.leewardRingScale, leewardness(body, windDir, x, z)) : 1;
-    let midMax: number = WATER_BANDS.midMax;
-    const cliff = body?.island ? windwardCliffness(body.island, windDir, x, z) : 0;
-    if (cliff > 0) {
-      k = lerp(k, WINDWARD_CLIFF.bandScale, cliff);
-      midMax = lerp(midMax, midMax * WINDWARD_CLIFF.midScale, cliff);
-    }
-    return dist <= WATER_BANDS.lagoonMax * k
-      ? Zone.lagoon
-      : dist <= WATER_BANDS.shallowMax * k
-        ? Zone.shallow
-        : dist <= midMax
-          ? Zone.mid
-          : Zone.deep;
-  }
+  if (s <= 0) return waterBandZone(islands, islets, windDir, x, z, -s, owner);
   const k = islandMap[i] - 1;
   const isl = k < islands.length ? islands[k] : null;
   const rules = isl ? zoneRulesOf(isl) : ISLETS[islets[k - islands.length].kind].zones;
