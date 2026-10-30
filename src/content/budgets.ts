@@ -112,7 +112,8 @@ export const cultureCapOverride: Readonly<Record<string, { defs: number; tier1: 
   // M27 TASK-517 (D-096): the Beacon Rock ledger 10 -> 11 (diveTower; the cable car, sea signs and guyed mast are variants)
   marketing: { defs: 11, tier1: 1 },
   // M28 TASK-525 (D-106): the Star Academy ledger 10 -> 11 (sundial; the rim telescope deck and the stair lantern are variants)
-  research: { defs: 11, tier1: 1 },
+  // M31 TASK-533 (D-114): the Star Academy ledger 11 -> 14 (tideLab = the tier-1 slot, tideGauge, sunkenCity; the harbour light / shelter / booth / board / bollard are variants, the submersible a geo-only mover)
+  research: { defs: 14, tier1: 1 },
 };
 
 /** SwiftShader is ~20–50× slower; time budgets are scaled by this when headless. */

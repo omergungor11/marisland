@@ -35,8 +35,9 @@ describe('TASK-416 Star Academy kit', () => {
     expect(validateCultures([RESEARCH_CULTURE])).toEqual([]);
     const ids = RESEARCH_CULTURE.kit.map((k) => k.id);
     expect(ids).toEqual(expect.arrayContaining(RESEARCH_CULTURE_GEO.map((d) => d.id)));
-    // + the M28 sundial (TASK-525, D-106; its geo is research-m28.ts)
-    expect(ids).toHaveLength(RESEARCH_CULTURE_GEO.length + 1);
+    // + the M28 sundial (TASK-525, D-106; geo research-m28.ts) and the M31 tideLab / tideGauge /
+    // sunkenCity (TASK-533, D-114; geo research-m31.ts)
+    expect(ids).toHaveLength(RESEARCH_CULTURE_GEO.length + 4);
     expect(ids.slice(0, 6)).toEqual([
       'tripodTelescope',
       'chalkboard',

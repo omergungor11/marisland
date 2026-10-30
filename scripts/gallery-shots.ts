@@ -3,7 +3,7 @@
  * a prop can be judged on its own (no world needed). One image per def (a row of every variant at
  * LOD0 + LOD1) and one close 3/4 view of variant 0 LOD0.
  *
- *   pnpm exec tsx scripts/gallery-shots.ts [m20|coding22|research|qa24|marina|devops25|devops26|marketing27|research28|id,id,...] [--port=5199] [--out=shots/gallery-m20]
+ *   pnpm exec tsx scripts/gallery-shots.ts [m20|coding22|research|qa24|marina|devops25|devops26|marketing27|research28|harbours|research31|id,id,...] [--port=5199] [--out=shots/gallery-m20]
  *
  * Starts its own `vite` dev server on `--port` (killed at the end; a server already on the port is
  * reused and left alone). Software GL (swiftshader), so no GPU is needed.
@@ -21,6 +21,11 @@ import { DEVOPS_M25_PROP_IDS } from '../src/content/props-themes/devops-m25.ts';
 import { DEVOPS_M26_PROP_IDS } from '../src/content/props-themes/devops-m26.ts';
 import { MARKETING_M27_PROP_IDS } from '../src/content/props-themes/marketing-m27.ts';
 import { RESEARCH_M28_PROP_IDS } from '../src/content/props-themes/research-m28.ts';
+import {
+  HARBOURS_PROP_IDS,
+  RESEARCH_M31_PROP_IDS,
+} from '../src/content/props-themes/research-m31.ts';
+import { HARBOUR_VARIANTS } from '../src/content/themes/harbours.ts';
 import { RESEARCH_M22_PROP_IDS } from '../src/content/props-themes/research.ts';
 import { buildGalleryScene } from '../src/geo/gallery.ts';
 import { PROP_GEO } from '../src/geo/registry.ts';
@@ -50,13 +55,17 @@ const ids =
                     ? MARKETING_M27_PROP_IDS
                     : which === 'research28'
                       ? RESEARCH_M28_PROP_IDS
-                      : which.split(',');
+                      : which === 'harbours'
+                        ? HARBOURS_PROP_IDS
+                        : which === 'research31'
+                          ? RESEARCH_M31_PROP_IDS
+                          : which.split(',');
 const PORT = Number(opt('port') ?? 5199);
 const ROOT = resolve(import.meta.dirname, '..');
 const OUT = resolve(
   ROOT,
   opt('out') ??
-    `shots/gallery-${['m20', 'coding22', 'research', 'qa24', 'qa30', 'marina', 'devops25', 'devops26', 'marketing27', 'research28'].includes(which) ? which : 'custom'}`,
+    `shots/gallery-${['m20', 'coding22', 'research', 'qa24', 'qa30', 'marina', 'devops25', 'devops26', 'marketing27', 'research28', 'harbours', 'research31'].includes(which) ? which : 'custom'}`,
 );
 const BASE = `http://localhost:${PORT}/`;
 
@@ -132,6 +141,33 @@ async function main(): Promise<void> {
       const row = buildGalleryScene([id]).items;
       if (!row.length) continue;
       const def = PROP_GEO[id];
+      if (which === 'harbours') {
+        // the harbour kit: only the added neutral + Research variants, side by side then each close
+        const first = HARBOUR_VARIANTS[id as keyof typeof HARBOUR_VARIANTS];
+        const a = row.find((r) => r.variant === first && r.lod === 0);
+        const b = row.find((r) => r.variant === first + 1 && r.lod === 0);
+        if (!a || !b) continue;
+        const hv = def.heights?.[first] ?? def.height;
+        const dv = Math.max(def.footprint * 3, hv * 1.7, 5);
+        const mx = (a.x + b.x) / 2;
+        await shoot(id, `${id}-pair`, [
+          mx + dv * 0.3,
+          hv * 0.55 + dv * 0.2,
+          a.z + dv * 1.5,
+          mx,
+          hv * 0.45,
+          a.z,
+        ]);
+        for (const [k, it] of [a, b].entries())
+          await shoot(
+            id,
+            `${id}-v${first + k}-close`,
+            [it.x + dv * 0.5, hv * 0.55 + dv * 0.2, it.z + dv * 0.85, it.x, hv * 0.45, it.z],
+            960,
+            720,
+          );
+        continue;
+      }
       const x0 = row[0].x;
       const x1 = row[row.length - 1].x;
       const z = row[0].z;
@@ -157,7 +193,12 @@ async function main(): Promise<void> {
       );
       // a close 3/4 view of every other variant (`--variants`, default for marketing27: the cable car,
       // the sea signs and the guyed mast are variants of old defs)
-      if (args.includes('--variants') || which === 'marketing27' || which === 'research28')
+      if (
+        args.includes('--variants') ||
+        which === 'marketing27' ||
+        which === 'research28' ||
+        which === 'research31'
+      )
         for (let v = 1; v < def.variants; v++) {
           const it = row.find((r) => r.variant === v && r.lod === 0);
           if (!it) continue;

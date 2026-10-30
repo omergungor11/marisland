@@ -29,9 +29,10 @@ const BUDGET: Record<string, number> = {
 };
 
 describe('TASK-525 Research M28 defs', () => {
-  it('sundial is the last def, geo and PropDef agree, tier 2 grounded', () => {
+  it('sundial is the 4th from last def, geo and PropDef agree, tier 2 grounded', () => {
     expect(RESEARCH_M28_PROP_DEFS.map((d) => d.id)).toEqual(['sundial']);
-    expect(PROP_DEF_INDEX.sundial).toBe(PROP_DEFS.length - 1);
+    // M31 TASK-533 appended three defs after it (tideLab, tideGauge, sunkenCity)
+    expect(PROP_DEF_INDEX.sundial).toBe(PROP_DEFS.length - 4);
     const d = PROP_DEFS[PROP_DEF_INDEX.sundial];
     expect(d.tier).toBe(2);
     expect(d.flags).toBe(PropFlag.grounded);
@@ -52,12 +53,12 @@ describe('TASK-525 Research M28 defs', () => {
     }
   });
 
-  it('ledger: 11 defs = the Research cap override, valid; only the sundial is new', () => {
-    expect(cultureCapOverride.research).toEqual({ defs: 11, tier1: 1 });
-    expect(RESEARCH_CULTURE.kit).toHaveLength(11);
-    expect(RESEARCH_CULTURE.kit.at(-1)?.id).toBe('sundial');
+  it('ledger: the sundial is the 11th entry (M31 TASK-533 grew the cap to 14, see research-m31.test.ts)', () => {
+    expect(cultureCapOverride.research).toEqual({ defs: 14, tier1: 1 });
+    expect(RESEARCH_CULTURE.kit).toHaveLength(14);
+    expect(RESEARCH_CULTURE.kit[10]?.id).toBe('sundial');
     expect(validateCultures([RESEARCH_CULTURE])).toEqual([]);
-    const k = RESEARCH_CULTURE.kit.at(-1);
+    const k = RESEARCH_CULTURE.kit[10];
     const d = PROP_DEFS[PROP_DEF_INDEX.sundial];
     expect(k?.tier).toBe(d.tier);
     expect(k?.flags).toBe(d.flags);

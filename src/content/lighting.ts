@@ -323,12 +323,27 @@ export const POOLS = {
       // dim pool, its hue a third of the way to uvColor (soft peach instead of saturated orange).
       variants: { 3: { radius: 2.8, intensity: 0.6, hue: 0.35 } },
     },
-    marketStall: { radius: 4.2, intensity: 0.6, offset: 0.6 },
+    marketStall: {
+      radius: 4.2,
+      intensity: 0.6,
+      offset: 0.6,
+      // M31 TASK-533: the harbour waiting shelter (v3 neutral / v4 Research): a small lamp under the roof
+      variants: {
+        3: { radius: 2.8, intensity: 0.45, offset: 0 },
+        4: { radius: 2.8, intensity: 0.45, offset: 0 },
+      },
+    },
     cottage: { radius: 3.4, intensity: 0.45, offset: 1.9 },
     logCabin: { radius: 3.4, intensity: 0.45, offset: 1.9 },
     towerHouse: { radius: 3.6, intensity: 0.45, offset: 2.1 },
     stiltHut: { radius: 3.2, intensity: 0.4, offset: 1.5 },
-    lighthouse: { radius: 5.4, intensity: 0.5, offset: 0 },
+    lighthouse: {
+      radius: 5.4,
+      intensity: 0.5,
+      offset: 0,
+      // M31 TASK-533: the 6 u harbour light on a breakwater tip (v3 neutral / v4 Research): a small pool
+      variants: { 3: { radius: 3, intensity: 0.4 }, 4: { radius: 3, intensity: 0.4 } },
+    },
     clocktower: { radius: 4.2, intensity: 0.45, offset: 0 },
     // Phase 3 lamps (TASK-305; geos land in TASK-303 / TASK-341 — unknown geos never match)
     stoneLantern: { radius: 4.2, intensity: 0.7, offset: 0 },
