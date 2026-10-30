@@ -2,6 +2,16 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-108: Per-variant lantern pools; the Star Stair lanterns get a small soft pool (TASK-528; follows D-107) — 2026-10-30
+
+**Decision**: `POOLS.sources` entries (content/lighting.ts) take an optional `variants` map that overrides
+radius / intensity / offset / hue per prop variant (`poolSourceOf` merges it by `props.variant[i]`).
+`lanternPost` v3 (Research Star Stair) = radius 2.8, intensity 0.6, hue 0.35 (a third toward uvColor = soft
+peach) instead of the street pool 5.4 / 1.0 / orange. **Why**: 6–7 full pools strung up a narrow stair summed
+into an orange wash, and a 5.4 u xz disc projected onto a steep crag face lit a tall strip of rock (the terrain
+height fade only starts at 1.2 u), so it read as lava (QA M28 4b). Other lanternPost variants / islands unchanged
+(byte-identical shots); no shader, pass or tier cost change.
+
 ## D-107: Research M28 kit placed and moving on the TASK-524 anchors: Star Stair as a stair path joined to the graph, lanterns on the tread edge, the sundial aimed by the sim's 12:00 sun, rim deck gazers, the big dish back on every seed (TASK-526; builds D-104 / D-105 / D-106) — 2026-10-29
 
 **Decision**: (1) **Star Stair = a 'stair' path returned by a plan `finish`.** `SitePlan.finish` may now return

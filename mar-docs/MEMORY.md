@@ -52,6 +52,11 @@
   old observatory door pin still exists (its walk is exempt from the stair's path gap). The hub pin moved to the
   harbour-avenue side of the fountain (the crag face walled the old one in on 1001). Seeds 1001 / 1263 / 4945 have no
   big dish (no room on the headland). Do not re-pin W9 / W14 / ladder cams in 524's branch: 526 does.
+- **2026-10-30 (TASK-528, D-108)**: night light pools are keyed by GEO, not def / variant: a themed variant of a
+  shared geo inherits the street pool unless `POOLS.sources[geo].variants[v]` overrides it. Pools are 2D xz decals, so
+  on steep ground they light vertical faces up to ~4.5 u above / below the lamp: keep the radius small for lamps on
+  cliffs / stairs. Fireflies still read the base `lanternPost` radius. Worktree agents can't run `for f in ...; do pnpm
+  ...` loops (blocked as unverifiable); brief them to write each command out.
 - **2026-10-29 (M28 planned, D-104)**: Research signature = R1 summit crag + R2 Star Stair + R3 sundial + R4 rim decks,
   TASK-524 ∥ 525 → 526 → 527. R12 maze / R18 seal / whale / comet were already shipped (M22–M23), don't redo them.
   All 25 merged agent worktrees + branches removed. Next free D-number in parallel briefs: 524 → D-105, 525 → D-106.
