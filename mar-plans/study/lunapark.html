@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lunapark Yönleri</title>
+    <style>
+      :root {
+        --bg: #f6f1e7;
+        --card: #fffdf8;
+        --ink: #2b2a33;
+        --mute: #6b6875;
+        --line: #e3dccd;
+        --rec: #2a9d8f;
+        --gold: #e9b949;
+        --red: #d9534f;
+        --cream: #fbf3df;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1d1c22;
+          --card: #26252c;
+          --ink: #ecebf0;
+          --mute: #a5a2ae;
+          --line: #3a3842;
+          --cream: #35322b;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          16px/1.55 system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+      }
+      main {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 32px 16px 64px;
+      }
+      h1 {
+        font-size: 28px;
+        margin: 0 0 6px;
+      }
+      .lead {
+        color: var(--mute);
+        margin: 0 0 22px;
+        max-width: 800px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 18px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+        position: relative;
+      }
+      .card.rec {
+        border: 2px solid var(--rec);
+      }
+      .badge {
+        position: absolute;
+        top: -11px;
+        right: 14px;
+        background: var(--rec);
+        color: #fff;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 2px 10px;
+        border-radius: 99px;
+      }
+      .tag {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        color: var(--mute);
+        text-transform: uppercase;
+      }
+      h2 {
+        font-size: 21px;
+        margin: 0;
+      }
+      .pitch {
+        margin: 0;
+        color: var(--mute);
+      }
+      svg {
+        width: 100%;
+        height: auto;
+        border-radius: 10px;
+        background: #3d8fb0;
+      }
+      h3 {
+        font-size: 12.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--mute);
+        margin: 6px 0 0;
+      }
+      ul {
+        margin: 0;
+        padding-left: 18px;
+      }
+      li {
+        margin: 2px 0;
+      }
+      .wow {
+        background: var(--cream);
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 15px;
+      }
+      .cost {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .pill {
+        font-size: 12.5px;
+        border: 1px solid var(--line);
+        border-radius: 99px;
+        padding: 2px 9px;
+      }
+      .pill.lo {
+        border-color: #7fbf7f;
+      }
+      .pill.mid {
+        border-color: var(--gold);
+      }
+      .pill.hi {
+        border-color: var(--red);
+      }
+      .foot {
+        margin-top: 24px;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 14px 18px;
+        font-size: 15px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Lunapark + roller coaster: hangi ada?</h1>
+      <p class="lead">
+        Üç yön, üçünde de gerçek bir roller coaster var: kapalı-form ray eğrisi (spline), vagonlar
+        zincirle tırmanır, yerçekimiyle iner. Deterministik, capture'da aynı kare. Fark, nerede
+        durduğu ve hangi hikâyeyi anlattığı.
+      </p>
+
+      <div class="grid">
+        <section class="card rec">
+          <span class="badge">Önerim</span>
+          <div class="tag">Yön A · QA adası</div>
+          <h2>Thrill Test Park</h2>
+          <p class="pitch">
+            QA her şeyi test eder, lunaparkı da: önce kukla (dummy) biner, ✓ yanınca botlar biner.
+          </p>
+          <svg viewBox="0 0 320 180" role="img" aria-label="QA lunapark taslağı">
+            <ellipse cx="160" cy="100" rx="150" ry="74" fill="#9fcf7a" />
+            <path
+              d="M40 120 C60 30, 110 30, 130 100 S 190 160, 220 70 S 290 60, 280 120 S 200 150, 150 140 S 60 160, 40 120 Z"
+              fill="none"
+              stroke="#f4f1ea"
+              stroke-width="6"
+            />
+            <path
+              d="M40 120 C60 30, 110 30, 130 100 S 190 160, 220 70 S 290 60, 280 120 S 200 150, 150 140 S 60 160, 40 120 Z"
+              fill="none"
+              stroke="#e9b949"
+              stroke-width="2"
+              stroke-dasharray="6 4"
+            />
+            <circle cx="220" cy="70" r="16" fill="none" stroke="#2a9d8f" stroke-width="5" />
+            <rect x="90" y="40" width="10" height="34" fill="#d9534f" />
+            <text x="72" y="36" font-size="9" fill="#2b2a33">drop tower</text>
+            <g fill="#2a9d8f">
+              <rect x="60" y="64" width="12" height="7" rx="2" />
+              <rect x="74" y="58" width="12" height="7" rx="2" />
+            </g>
+            <circle cx="170" cy="112" r="6" fill="#7fbf7f" />
+            <text x="180" y="116" font-size="9" fill="#2b2a33">✓ lamba</text>
+            <text x="200" y="48" font-size="9" fill="#2b2a33">loop</text>
+            <text x="20" y="170" font-size="9" fill="#fff">
+              beyaz-nane-sarı oyuncak fabrikası tonu
+            </text>
+          </svg>
+          <h3>Ne var</h3>
+          <ul>
+            <li>
+              Beyaz ray, nane-sarı vagonlar, bir <b>loop</b> ve bir kamel tepesi; mevcut drop tower
+              ve crash track'in yanında
+            </li>
+            <li>
+              Küçük çarpışan arabalar pisti (mevcut test cart'ı kullanır), pamuk şeker arabası
+            </li>
+            <li>İstasyonda "TEST EDİLDİ ✓" panosu</li>
+          </ul>
+          <h3>Hareket</h3>
+          <ul>
+            <li>
+              Her tur önce dummy'li vagon, ✓ yanar, sonra kepli botlar biner; vagon zincirde tık-tık
+              tırmanır, loop'ta hızlanır
+            </li>
+          </ul>
+          <div class="wow">
+            <b>Wow:</b> öğlen sireninde vagon loop'un tepesinde, aşağıda crash track ve drop tower
+            aynı karede.
+          </div>
+          <div class="cost">
+            <span class="pill mid">Tier-1 override (QA 1 → 2)</span
+            ><span class="pill mid">Ledger 15 → 17</span><span class="pill lo">Hikâye tutarlı</span
+            ><span class="pill mid">Yer: proving grounds yanı</span>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="tag">Yön B · Marketing adası</div>
+          <h2>Karnaval Lunaparkı</h2>
+          <p class="pitch">
+            Mevcut fuar büyür; coaster sea stack'lerin ve uçurumun etrafında kıvrılır.
+          </p>
+          <svg viewBox="0 0 320 180" role="img" aria-label="Marketing lunapark taslağı">
+            <ellipse cx="140" cy="95" rx="120" ry="70" fill="#c98b5a" />
+            <circle cx="270" cy="70" r="14" fill="#8a6a50" />
+            <circle cx="290" cy="120" r="11" fill="#8a6a50" />
+            <path
+              d="M80 120 C100 40, 180 30, 230 70 S 300 140, 250 150 S 120 160, 80 120 Z"
+              fill="none"
+              stroke="#d9534f"
+              stroke-width="6"
+            />
+            <circle cx="120" cy="90" r="18" fill="none" stroke="#e9b949" stroke-width="3" />
+            <g fill="#ff6fa8">
+              <polygon points="150,110 160,96 170,110" />
+              <polygon points="170,118 180,104 190,118" />
+            </g>
+            <line x1="250" y1="20" x2="290" y2="60" stroke="#fff" stroke-dasharray="3 3" />
+            <text x="100" y="124" font-size="9" fill="#fff">fuar + dönme dolap</text>
+            <text x="236" y="170" font-size="9" fill="#fff">coaster stack'lerin yanında</text>
+            <text x="250" y="16" font-size="9" fill="#fff">teleferik</text>
+          </svg>
+          <h3>Ne var</h3>
+          <ul>
+            <li>Kırmızı ahşap-görünümlü coaster, ampullü ray, fuarın çevresinde</li>
+            <li>Atlıkarınca, mevcut çadırlar ve dönme dolapla tam bir lunapark</li>
+          </ul>
+          <h3>Hareket</h3>
+          <ul>
+            <li>Gece ampuller rayı çizer, vagon uçurum kenarından denize doğru dalar</li>
+          </ul>
+          <div class="wow">
+            <b>Wow:</b> gece ON AIR, teleferik, dönme dolap ve ışıklı coaster aynı karede.
+          </div>
+          <div class="cost">
+            <span class="pill hi">Ada kalabalık (teleferik, ON AIR, liman)</span
+            ><span class="pill hi">Gece draw call sınırda</span
+            ><span class="pill mid">Liman planıyla dönme dolap tekrarı</span>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="tag">Yön C · Yeni adacık</div>
+          <h2>Lunapark Adası</h2>
+          <p class="pitch">
+            Kanaldaki bir sandbar büyür, sadece lunapark olan küçük bir ada olur; feribotla gidilir.
+          </p>
+          <svg viewBox="0 0 320 180" role="img" aria-label="Yeni lunapark adası taslağı">
+            <ellipse cx="160" cy="95" rx="100" ry="56" fill="#ecd9a8" />
+            <ellipse cx="160" cy="95" rx="86" ry="46" fill="#9fcf7a" />
+            <path
+              d="M70 100 C80 30, 170 20, 200 70 S 300 60, 280 130 S 160 175, 110 140 S 50 150, 70 100 Z"
+              fill="none"
+              stroke="#9b7bd8"
+              stroke-width="6"
+            />
+            <circle cx="150" cy="90" r="16" fill="none" stroke="#e9b949" stroke-width="3" />
+            <rect x="240" y="120" width="8" height="40" fill="#a0784f" />
+            <rect x="232" y="158" width="24" height="7" fill="#a0784f" />
+            <text x="236" y="176" font-size="9" fill="#fff">feribot iskelesi</text>
+            <text x="270" y="110" font-size="9" fill="#fff">ray suyun üstünden</text>
+          </svg>
+          <h3>Ne var</h3>
+          <ul>
+            <li>
+              Rayın bir kısmı suyun üstünden geçen coaster, dönme dolap, atlıkarınca, çarpışan
+              arabalar
+            </li>
+            <li>Kendi feribot iskelesi: M31 liman iskeletinin dördüncü kullanımı</li>
+          </ul>
+          <h3>Hareket</h3>
+          <ul>
+            <li>
+              Vagon denizin üstünden geçerken sıçrama/köpük; feribotlar lunapark saatlerinde
+              sıklaşır
+            </li>
+          </ul>
+          <div class="wow">
+            <b>Wow:</b> W1 overview'da adalar arasında ışıl ışıl küçük bir lunapark adası.
+          </div>
+          <div class="cost">
+            <span class="pill hi">Yeni ada: layout, overview, tüm hash'ler</span
+            ><span class="pill hi">En büyük iş</span><span class="pill lo">Kimse ile çakışmaz</span>
+          </div>
+        </section>
+      </div>
+
+      <div class="foot">
+        <b>Neden A:</b> QA'nın "her şeyi test et" kimliği coaster'a bir hikâye veriyor (önce dummy,
+        sonra ✓, sonra botlar). Proving Grounds'taki drop tower, crash track ve test cart'ı yeniden
+        kullanılıyor. Marketing'in zaten kalabalık olan gecesine yük binmiyor. Yeni ada açmanın
+        riskine de girilmiyor. <b>C</b> en cesuru: istersen ileride ayrı bir milestone olur.
+      </div>
+    </main>
+  </body>
+</html>

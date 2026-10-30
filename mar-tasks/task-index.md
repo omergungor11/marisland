@@ -404,6 +404,16 @@ Details in `phases/phase-3.md`.
 | TASK-537 | Design Colour Wharf on the skeleton: pastel boathouse row at the stream mouth, glass waiting pavilion (conservatory variant), paint-pot buoys, lantern boat moors here, pavilion prism colour shift + buoys light in turn on ferry arrival; wow preset | worldgen + props + life | L | PENDING | TASK-535 |
 | TASK-538 | M31 Marketing + Design shots + QA | qa | S | PENDING | TASK-536, TASK-537 |
 
+### M32 — QA Thrill Test Park (roller coaster)
+*D-115 (user 2026-10-30): direction A, starts after TASK-535. 539 ∥ 540 → 541 → 542.*
+
+| ID | Task | Agent | Complexity | Status | Dependencies |
+|----|------|-------|-----------|--------|-------------|
+| TASK-539 | QA park site (pure data): coaster footprint beside the Proving Grounds, closed spline (station, chain lift, camelback, loop) fitted to the terrain with clearances, bumper-car rink, station / board anchors; terrain pads; 30-seed tests; hash re-pin | worldgen | L | PENDING | TASK-535 |
+| TASK-540 | Coaster props: track builder from a spline (rails, ties, supports to the ground, loop), station, cars (mover meshes, mint / yellow), dummy + capped riders, bumper cars, cotton-candy cart, TESTED ✓ board; QA tier-1 override; gallery | props | L | PENDING | TASK-535 |
+| TASK-541 | Placement + motion: coaster cycle (dummy run → ✓ lamp → bot run), chain-lift click, closed-form speed along the spline, bumper cars, wow preset (noon siren, car on the loop) | worldgen + life | L | PENDING | TASK-539, TASK-540 |
+| TASK-542 | M32 shots + QA | qa | S | PENDING | TASK-541 |
+
 ### M17 — Graphics II: decor & nature
 *Flower fields, fences, lanterns, benches, signs, rocks*
 

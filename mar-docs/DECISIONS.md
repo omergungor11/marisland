@@ -17,6 +17,18 @@ riser is tagged cliff, so the riser's soft edge and the faces the summit / merid
 unchanged; zone and props (scatter re-filtered on the new cliff cells: a crystal cluster now stands at the crag foot
 by the dial) re-pinned.
 
+## D-115: QA Thrill Test Park — a roller coaster on the QA island, after the M31 Research pilot — plan only — 2026-10-30
+
+- **Decision** (user 2026-10-30, direction A of three; study `mar-plans/study/lunapark.html`): a small luna park on
+  QA beside the Proving Grounds: white track, mint-yellow cars, one loop + one camelback, bumper cars (reusing the test
+  cart), a cotton-candy cart, a "TESTED ✓" board at the station. Story: every run a dummy rides first, the ✓ lamp lights,
+  then capped bots ride; chain-lift click-clack up, gravity down (closed-form along a spline, deterministic).
+- **Not** Marketing (already crowded: fair, cable car, ON AIR, M31 Carnival Pier; night calls near the cap) and **not**
+  a new islet (layout / overview / every hash; may come later as its own milestone).
+- **Ledger**: the coaster is QA's second tier-1 (override tier1 1 → 2), defs ~15 → 17.
+- **When**: after TASK-535 (M31 Research QA), so only one branch re-pins world hashes at a time and the memory / tri
+  budget is measured first. Tasks TASK-539…542.
+
 ## D-112: M31 ferry harbours — one shared harbour skeleton, Research pilot (Tide-Lab + half-sunken city), then Marketing and Design — plan only — 2026-10-30
 
 - **Why** (user 2026-10-30): islands are reached by sea (no airports), but Research, Marketing and Design only have a
