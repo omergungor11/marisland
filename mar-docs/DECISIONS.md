@@ -2,6 +2,16 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-111: W-star-stair-night frames Comet Night; the comet moves from bearing 160 to 120 (TASK-531) — 2026-10-30
+
+**Decision**: W-star-stair-night is now cam `120.3,25,54,111.8,22.6,87.9`, time 22.08, simt 12: the lit dome and the
+Star Stair lantern chain with the comet and its tail upper right (223 calls / 751k tris). `COMET.azimuthDeg` 160 → 120.
+**Why**: seen from the Star Stair, the comet at 160 sat right above the Coding island (bearings 151–177 from the dome);
+every frame holding both the comet and the dome cost 288–460 calls / 818k–1.06M tris, over the 300 / 800k medium
+budget, and the stair faces away from that bearing. At 120 the comet hangs over open sea next to the stair view.
+W-fairy-night and W27 are pixel-identical at both values; D-culture-research-comet (a close stair shot, no sky) is
+unaffected (checked on main after the merge).
+
 ## D-110: Sundial numerals read upright from the +z (noon-line) side (TASK-530) — 2026-10-30
 
 The old "top toward the rim on every plate" rule turned the near-half plates (XII, I, II, X, XI) upside down for the

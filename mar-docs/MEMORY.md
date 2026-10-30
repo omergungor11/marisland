@@ -52,6 +52,10 @@
   old observatory door pin still exists (its walk is exempt from the stair's path gap). The hub pin moved to the
   harbour-avenue side of the fountain (the crag face walled the old one in on 1001). Seeds 1001 / 1263 / 4945 have no
   big dish (no room on the headland). Do not re-pin W9 / W14 / ladder cams in 524's branch: 526 does.
+- **2026-10-30 (TASK-531, D-111)**: the comet hangs at bearing 120 now; at 160 it sat over Coding, so any frame with
+  comet + Research dome blew the medium call / tri budget. Open nit: the quad's ordinary `lanternPost` (v0–2) pools
+  still paint an orange patch on the crag face beside the stair (D-culture-research-comet, W-star-stair-night edge);
+  same xz-decal-on-steep-face cause as D-108.
 - **2026-10-30 (TASK-528, D-108)**: night light pools are keyed by GEO, not def / variant: a themed variant of a
   shared geo inherits the street pool unless `POOLS.sources[geo].variants[v]` overrides it. Pools are 2D xz decals, so
   on steep ground they light vertical faces up to ~4.5 u above / below the lamp: keep the radius small for lamps on
