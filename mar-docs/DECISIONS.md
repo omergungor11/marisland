@@ -37,6 +37,22 @@ stairs, tower top, fallen statue; algae gradient around a per-variant waterline,
 tank glass reads a little like a fence; fallen statue the weakest piece; the lighthouse `beam` hook is not wired to
 `render/night/beacons` yet (TASK-534).
 
+## D-117: Coding Bot Foundry, Drone Port and Data Lake kit props, ten new defs, cap 12 -> 22 (TASK-543; builds D-116) — 2026-10-30
+
+**Decision** (no placement; TASK-544 places, TASK-545 moves): ten new defs in a self-contained block at the end of
+`PROP_DEFS` (after the M31 Research block), `cultureCapOverride.coding` = { 22, tier-1 2 }, no new tier-1 slot.
+Foundry: `conveyorLine` (v0 4 u segment, v1 with chute), `assemblyArm` (v0 arm, v1 gantry, split v2 base / v3 swing
+group / v4 gantry frame / v5 pendulum for motion, pivots on a `joint` hook), `foundryPart` (tier 3: three part crates +
+three bot stages at the world bot's drawn size 1.7, forward +x). Drone Port: `dronePad` (3.8 u H pad, 12 rim lamps),
+`chargeMast` (v0 mast with cradle + beacon, v1 low post), `droneHangar`. `botCourse` (not `testTrack`, which is QA's):
+steps, ramp, cone slalom, tiny bridge. Data Lake: `serverPod` (LED strip, `steam` + `intake` hooks), `cloudBalloon`
+(v0 anchor + tether + cloud, v1 without anchor; sways by tilting the instance), `quantumPavilion` (glass gazebo, gold
+chandelier computer, `glow`). All tier 2 except `foundryPart` (3); `dronePad`, `cloudBalloon`, `quantumPavilion` are
+large (T0 by size), every other variant < 3 u so no def can flip tier (test pinned). LOD1 ≤ 30 % of LOD0.
+**Why ten defs, not variants**: no existing def's look fitted, and reusing one meant a tier hazard on an old def.
+**Numbers**: `content/themes/coding-m33.ts`; LOD0 max 1588 tris (pavilion). **Open**: server pod reads like a plain
+box by day; night glows checked by tests only; no night pools yet (D-108: keyed by geo, add in TASK-545 if wanted).
+
 ## D-116: Coding Bot Foundry + Drone Port + Data Lake on the empty west / south-west lawns and east shore — plan only — 2026-10-30
 
 - **Decision** (user 2026-10-30, direction B of three; study `mar-plans/study/coding-ideas.html`): Coding builds the

@@ -58,7 +58,7 @@
   branches, nothing merged): TASK-532 harbour skeleton + Research anchors → `worktree-agent-a0133b6b2e77ff349` (D-113);
   TASK-533 harbour + Research kit props → `worktree-agent-affae5b890f2f907e` (D-114); TASK-543 Coding foundry / lake
   props → `worktree-agent-a9555a1f315b0672f` (D-117). They were told NOT to edit DECISIONS / MEMORY / task-index: the
-  orchestrator writes their D-entries at merge. If an agent died mid-task, check its branch (`git log main..<branch>`,
+  orchestrator writes their D-entries at merge. **Update:** 533 (D-114) and 543 (D-117) merged + pushed before the clear; only 532 may still be open. If an agent died mid-task, check its branch (`git log main..<branch>`,
   `git -C <worktree> status`) and re-brief or finish it. **Merge order** (one world-hash re-pin at a time): 533 and 543
   (props, no hash change) any time; 532 → 534 placement → 535 QA; then M32 (539…542), M33 (544 / 547 → 545 → 546),
   M31 Marketing 536 / Design 537 → 538. Budget is the wall: medium memory 170 / 172 MB, W16 783k / 800k tris — expect a
