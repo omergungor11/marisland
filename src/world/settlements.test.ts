@@ -319,8 +319,14 @@ describe('settlements — 20-seed sweep', () => {
     // themed defs: OFFICE_DEFS until their geometry lands (TASK-303), then both must agree
     const variantsOf = (def: string): number =>
       def in PROP_DEF_INDEX ? PROP_DEFS[PROP_DEF_INDEX[def]].variants : OFFICE_DEFS[def].variants;
+    // a roof table covers the variants, or only the first `rollVariants` when later ones are pinned
+    // culture pieces (the M31 harbour shelter on marketStall v3 / v4, TASK-533)
+    const rollsOf = (def: string): number =>
+      def in PROP_DEF_INDEX
+        ? (PROP_DEFS[PROP_DEF_INDEX[def]].rollVariants ?? PROP_DEFS[PROP_DEF_INDEX[def]].variants)
+        : OFFICE_DEFS[def].variants;
     for (const [def, roofs] of Object.entries(LOT_ROOFS)) {
-      expect(roofs.length, def).toBe(variantsOf(def));
+      expect([variantsOf(def), rollsOf(def)], def).toContain(roofs.length);
       if (def in OFFICE_DEFS) expect(OFFICE_DEFS[def].variants, def).toBe(variantsOf(def));
     }
     let pairs = 0;

@@ -1,6 +1,7 @@
 /**
  * Yıldız Akademisi (Star Academy). Kit ledger (TASK-416): 10 new defs (M28 TASK-525, D-106: +1 `sundial`
- * = 11, cap override), 11/11 tier >= 2, no tier-1,
+ * = 11; M31 TASK-533, D-114: +3 = 14, cap override; 13/14 tier >= 2, the one tier-1 is `tideLab`),
+ * originally no tier-1,
  * no tier-0, ORDERED BY PRIORITY (most identity-defining first; if the budget gate drops the
  * per-island cap to 6, cut from the end: the first six are tripodTelescope, chalkboard, orrery,
  * lectureSteps, teaTrolley, weatherBalloonCart). Geometry: geo/themes/culture-research.ts. The
@@ -13,7 +14,7 @@
 import { PropFlag } from '../../world/prop-store.ts';
 import type { CultureDef } from './types.ts';
 
-const { grounded, noShadow } = PropFlag;
+const { grounded, noShadow, underwater } = PropFlag;
 
 export const RESEARCH_CULTURE: CultureDef = {
   theme: 'research',
@@ -40,6 +41,11 @@ export const RESEARCH_CULTURE: CultureDef = {
     { id: 'miniVolcanoTerrarium', tier: 3, flags: grounded | noShadow },
     // M28 TASK-525 (D-106): the 11th entry, the meridian sundial (cap override 11 / 1 in budgets.ts)
     { id: 'sundial', tier: 2, flags: grounded },
+    // M31 TASK-533 (D-114): the Tide-Lab harbour. tideLab = Research's one tier-1 def (R3-16's slot);
+    // the submersible is a geo-only mover, the harbour light / shelter / booth / board are variants
+    { id: 'tideLab', tier: 1, flags: 0 },
+    { id: 'tideGauge', tier: 2, flags: grounded },
+    { id: 'sunkenCity', tier: 2, flags: underwater | noShadow },
   ],
   // emitted by world/gen/plans/research.ts (TASK-426); `defs` = the props the scene stands on
   storySpots: [

@@ -28,6 +28,7 @@ import { CODING_TUNNEL_GEO } from './coding-tunnel.ts';
 import { HQ_MARINA_GEO } from './hq-marina.ts';
 import { DEVOPS_M26_GEO } from './devops-m26.ts';
 import { RESEARCH_M28_GEO, withRimDeck } from './research-m28.ts';
+import { RESEARCH_M31_GEO } from './research-m31.ts';
 import { MARKETING_M27_GEO, withCableCar, withGuyedMast, withSeaSigns } from './marketing-m27.ts';
 import { DEVOPS_M25_GEO, withOnsenStilts, withOrePylons, withSmithStall } from './devops-m25.ts';
 import { THEME_IDS } from '../../world/types.ts';
@@ -92,4 +93,6 @@ export const THEME_GEO: readonly PropGeoDef[] = [
   ...MARKETING_M27_GEO,
   // M28 TASK-525 Research sundial
   ...RESEARCH_M28_GEO,
+  // M31 TASK-533 Research Tide-Lab (stilt lab, submersible, tide gauge, sunken city)
+  ...RESEARCH_M31_GEO,
 ];
