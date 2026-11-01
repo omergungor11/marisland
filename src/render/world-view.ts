@@ -42,6 +42,7 @@ import { createMovers } from './movers.ts';
 import { createCultureMovers } from './culture-movers.ts';
 import { createTideSub } from './tide-sub.ts';
 import { createCoasterMovers } from './coaster-movers.ts';
+import { createFoundryMovers, foundryKitGeometry } from './foundry-movers.ts';
 import { coasterTrackGeometry } from './coaster-track.ts';
 import { LIFE_PLAN } from '../content/life.ts';
 import { createWhale, type WhaleView } from './whale.ts';
@@ -227,6 +228,10 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   if (tideSub) group.add(tideSub.mesh);
   const coaster = createCoasterMovers(world, d.quality, d.scope);
   if (coaster) group.add(coaster.group);
+  const foundry = createFoundryMovers(world, d.quality, d.scope);
+  if (foundry) group.add(foundry.group);
+  const coasterGeometry = coasterTrackGeometry(world, d.quality);
+  const foundryGeometry = foundryKitGeometry(world, d.quality);
   const whale = createWhale(world, seed, d.scope);
   if (whale) group.add(whale.mesh);
   // hot-air balloons + airship over the archipelago (TASK-335)
@@ -307,7 +312,8 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     interiorShadows: d.quality === 'high',
     instantEdits: d.instantEdits ?? false,
     world: { height: world.height, islands: world.islands },
-    geometryOverride: coasterTrackGeometry(world, d.quality),
+    geometryOverride: (id, lod, variant) =>
+      coasterGeometry(id, lod) ?? foundryGeometry(id, lod, variant),
   });
   group.add(props.group);
   const rebuild = createRebuilder({
@@ -432,6 +438,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     whale?.update(culture.state.day, time, _camPos);
     tideSub?.update(culture.state.day, time, _camPos);
     coaster?.update(culture.state.day, time, _camPos);
+    foundry?.update(time, _camPos);
     skyCraft.update(time, culture.state, _camPos);
     water.update(_camPos, d.getTime());
     terrain.update(d.getTime());

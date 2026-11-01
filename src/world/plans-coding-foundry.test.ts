@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { CODING_FOUNDRY as S } from '../content/themes/coding-foundry.ts';
 import { droneRoutes } from '../render/drones.ts';
+import { CODING_M33_PROP_IDS } from '../content/props-themes/coding-m33.ts';
 import {
   dataLakeOf,
   generateWorld,
@@ -133,7 +134,10 @@ describe('Coding M33 sites (TASK-544), 30 seeds', { timeout: 180_000 }, () => {
         for (const pl of w.paths.filter((q) => q.islandId === isl.id))
           for (const p of pl.points)
             expect(shapeDist(sh, p.x, p.z), `${at} path`).toBeGreaterThan(-0.3);
-        for (const f of w.fixtures.filter((q) => q.islandId === isl.id))
+        // (not the site's own kit, TASK-545)
+        for (const f of w.fixtures.filter(
+          (q) => q.islandId === isl.id && !CODING_M33_PROP_IDS.includes(q.defId),
+        ))
           expect(shapeDist(sh, f.x, f.z), `${at} fixture ${f.defId}`).toBeGreaterThan(0);
       }
     }
@@ -323,9 +327,12 @@ describe('Coding M33 sites (TASK-544), 30 seeds', { timeout: 180_000 }, () => {
       const hq = w.settlements.find((s) => s.theme === 'hq');
       const home = pad ?? hq?.hub;
       const hub = routes.filter((_, k) => k % 2 === 0);
+      // the first on the pad itself, the others on the mast cradles round it (TASK-545)
+      expect(hub[0].ax, `seed ${seed}`).toBeCloseTo(home?.x ?? NaN, 5);
+      expect(hub[0].az, `seed ${seed}`).toBeCloseTo(home?.z ?? NaN, 5);
       for (const r of hub) {
-        expect(r.ax, `seed ${seed}`).toBeCloseTo(home?.x ?? NaN, 5);
-        expect(r.az, `seed ${seed}`).toBeCloseTo(home?.z ?? NaN, 5);
+        const d = Math.hypot(r.ax - (home?.x ?? NaN), r.az - (home?.z ?? NaN));
+        expect(d, `seed ${seed}`).toBeLessThan(pad ? 4.5 : 1e-5);
       }
       for (const r of routes) {
         expect(r.dist, `seed ${seed}`).toBeGreaterThan(1);

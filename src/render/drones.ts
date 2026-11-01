@@ -3,6 +3,7 @@ import type { Scope } from '../core/scope.ts';
 import type { Quality } from '../core/params.ts';
 import { createRng } from '../core/rng.ts';
 import { DRONES } from '../content/activity.ts';
+import { CODING_M33 } from '../content/themes/coding-m33.ts';
 import { heightAt, type WorldData } from '../world/index.ts';
 import { Acc } from '../geo/kit.ts';
 import { baseBox, cylB, put } from '../geo/parts.ts';
@@ -33,6 +34,13 @@ interface Route {
   fly: number;
   cycle: number;
   phase: number;
+  /**
+   * Port slot (TASK-545): parked at y `rest` for `park` s at A, `rise` s straight up to `ay`, and back
+   * down the same way at the end of the return leg. `rise` 0 = no slot (dwell at the hover height).
+   */
+  rest: number;
+  park: number;
+  rise: number;
 }
 
 /** Quadcopter ≈ 1 u across, pivot at the body centre: body, 4 arms + rotor discs, packet below. */
@@ -82,14 +90,34 @@ export function buildDroneGeometry(): THREE.BufferGeometry {
   return acc.finish(createRng(1).fork('drone-faces'), false, true);
 }
 
+interface Hub {
+  x: number;
+  z: number;
+  island: number;
+  /** Where the hub's drones park (TASK-545): the pad, then the mast cradles; empty on the HQ fallback. */
+  slots: Array<{ x: number; z: number; y: number }>;
+}
+
 /** The courier hub: the Coding Drone Port's H pad, else the HQ plaza as before TASK-544. */
-function droneHub(world: WorldData): { x: number; z: number; island: number } | null {
+function droneHub(world: WorldData): Hub | null {
   for (const isl of world.islands) {
     const pad = isl.anchors.dronePort;
-    if (pad) return { x: pad.x, z: pad.z, island: isl.id };
+    if (!pad) continue;
+    const slots = [{ x: pad.x, z: pad.z, y: (pad.y ?? 0) + CODING_M33.pad.restY }];
+    for (let k = 0; isl.anchors[`droneMast${k}`]; k++) {
+      const m = isl.anchors[`droneMast${k}`];
+      const c = CODING_M33.mast.cradles[k % 2];
+      const d = Math.hypot(pad.x - m.x, pad.z - m.z) || 1;
+      slots.push({
+        x: m.x + ((pad.x - m.x) / d) * c.out,
+        z: m.z + ((pad.z - m.z) / d) * c.out,
+        y: (m.y ?? 0) + c.y + DRONES.hub.cradleClear,
+      });
+    }
+    return { x: pad.x, z: pad.z, island: isl.id, slots };
   }
   const hq = world.settlements.find((s) => s.theme === 'hq');
-  return hq ? { x: hq.hub.x, z: hq.hub.z, island: hq.islandId } : null;
+  return hq ? { x: hq.hub.x, z: hq.hub.z, island: hq.islandId, slots: [] } : null;
 }
 
 /** Pads: the hub plus every dock's outer end (world u, ground y). */
@@ -109,16 +137,20 @@ function routesOf(world: WorldData, n: number, seed: number): Route[] {
   for (let i = 0; i < n; i++) {
     // even drones: hub ↔ a department dock; odd: dock ↔ dock (inter-department deliveries)
     const b = away[i % away.length];
-    const a =
-      i % 2 === 0 || away.length < 2
-        ? home
-        : away[(i + 1 + rng.int(0, away.length - 2)) % away.length];
+    const fromHub = i % 2 === 0 || away.length < 2;
+    const slot = fromHub ? home.slots[(i >> 1) % Math.max(1, home.slots.length)] : undefined;
+    const a = fromHub ? (slot ?? home) : away[(i + 1 + rng.int(0, away.length - 2)) % away.length];
     const dist = Math.hypot(b.x - a.x, b.z - a.z);
     const fly = dist / DRONES.speed;
-    const cycle = 2 * (fly + DRONES.dwell);
+    const park = slot ? DRONES.hub.dwell : DRONES.dwell;
+    const rise = slot ? DRONES.hub.rise : 0;
+    const cycle = 2 * fly + DRONES.dwell + park + 2 * rise;
     out.push({
+      rest: slot ? slot.y : 0,
+      park,
+      rise,
       ax: a.x,
-      ay: ground(a.x, a.z) + DRONES.padY,
+      ay: slot ? slot.y + DRONES.hub.riseH : ground(a.x, a.z) + DRONES.padY,
       az: a.z,
       bx: b.x,
       by: ground(b.x, b.z) + DRONES.padY,
@@ -142,19 +174,27 @@ const _s = new THREE.Vector3();
 function pose(r: Route, t: number, k: number): void {
   let u = (t + r.phase) % r.cycle;
   if (u < 0) u += r.cycle;
-  // [dwell at A][fly A→B][dwell at B][fly B→A]
+  // [park at A][rise][fly A→B][dwell at B][fly B→A][descend] (park = dwell, rise 0 without a slot)
   let from = 0;
   let s: number;
   let flying = false;
-  if (u < DRONES.dwell) s = 0;
-  else if (u < DRONES.dwell + r.fly) {
+  // 1 at the hover height, 0 parked on the slot
+  let up = 1;
+  const t0 = r.park + r.rise;
+  if (u < t0) {
+    s = 0;
+    if (r.rise > 0) up = smooth(r.park, t0, u);
+  } else if (u < t0 + r.fly) {
     flying = true;
-    s = (u - DRONES.dwell) / r.fly;
-  } else if (u < 2 * DRONES.dwell + r.fly) s = 1;
-  else {
+    s = (u - t0) / r.fly;
+  } else if (u < t0 + r.fly + DRONES.dwell) s = 1;
+  else if (u < t0 + 2 * r.fly + DRONES.dwell) {
     flying = true;
     from = 1;
-    s = (u - 2 * DRONES.dwell - r.fly) / r.fly;
+    s = (u - t0 - r.fly - DRONES.dwell) / r.fly;
+  } else {
+    s = 0;
+    up = 1 - smooth(t0 + 2 * r.fly + DRONES.dwell, r.cycle, u);
   }
   // eased progress along the leg (still at both ends) and its speed
   const e = 0.5 - 0.5 * Math.cos(Math.PI * s);
@@ -167,10 +207,10 @@ function pose(r: Route, t: number, k: number): void {
   const c = Math.min(0.45, (DRONES.climb * DRONES.speed) / Math.max(r.dist, 1));
   const lift = flying ? smooth(0, c, pr) * smooth(0, c, 1 - pr) : 0;
   const base = r.ay + (r.by - r.ay) * w;
+  const hover = r.rise > 0 ? r.rest + (r.ay - r.rest) * up : r.ay;
   const y =
-    base +
-    (DRONES.cruiseY - base) * lift +
-    DRONES.bob * Math.sin((t * 2 * Math.PI) / DRONES.bobPeriod + k * 1.7);
+    (s === 0 && !flying ? hover : base + (DRONES.cruiseY - base) * lift) +
+    DRONES.bob * up * Math.sin((t * 2 * Math.PI) / DRONES.bobPeriod + k * 1.7);
   _p.set(x, y, z);
   const dx = (r.bx - r.ax) * (from === 0 ? 1 : -1);
   const dz = (r.bz - r.az) * (from === 0 ? 1 : -1);
