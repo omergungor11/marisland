@@ -10,6 +10,12 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-11-01 (TASK-545 merged, D-124), for TASK-546**: seed 1001 line cycle is 5 s: `simt` phase 2.4 = arms release, 1.9-2.5 = the hop. Courier 2 rises off its cradle at `simt` 50-52.6
+  (W-morning-shift is at 52), courier 0 lands on the pad at about 69.4-72. Shots: wow `W-morning-shift`, `W-data-lake-night`; dev `D-foundry-{line,arm,hop}`, `D-port-park`, `D-track`, `D-lake-day`,
+  `D-lake-pavilion`; add them to ART_BIBLE §11. WATCH the motion: nobody has seen it move. Never viewed: a walker's shrink at its route end, the track's return lane, cheer hop, hop over the ramp block,
+  anything on low. Check `D-foundry-arm` 371 and `D-lake-pavilion` 375 calls against 300: dev set, not asserted, no baseline.
+  Low has almost no room: rungs 170 and 240 (T1) are the peak, not the near ones. Gotchas: every def placed as a fixture needs a `FIXTURE_RADIUS` entry (`settlements.test.ts` fails otherwise);
+  `world.paths` are split at graph junctions, so a route has to chain them; `culture-movers.test.ts` counts every reserved puff, so a new steam scene changes its total.
 - **2026-11-01 (TASK-547 merged, D-125)**: Data Lake surface lives in the terrain program (`render/lake.ts`, `content/data-lake.ts`), masked by `lakeEdge`, not
   `Zone.crater` (that also marks the Tech Park pools). No new program, texture or target. `D-lake-pools*` and `D-lake-none` (seed 186) must stay pixel-identical.
   Open: W7 crops the lake, recompose after TASK-545; low lines kink slightly; bloom unverified on a real GPU. High tier is at 24 / 24 programs. Next: 545, 536, 537, then 546 QA.
