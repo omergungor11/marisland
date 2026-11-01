@@ -231,7 +231,10 @@ describe('QA Thrill Test Park site (TASK-539), 30 seeds', { timeout: 300_000 }, 
   it('no collision: nothing else inside the stadium, paths and lanes keep off', () => {
     for (const s of sites()) {
       const id = s.isl.id;
-      for (const f of s.w.fixtures.filter((x) => x.islandId === id))
+      // (the kit's own track prop and station stand in it, TASK-541)
+      for (const f of s.w.fixtures.filter(
+        (x) => x.islandId === id && x.defId !== 'coasterTrack' && x.defId !== 'coasterStation',
+      ))
         expect(inStadium(s, f.x, f.z), `${s.ctx} ${f.defId}`).toBe(false);
       for (const l of s.w.lots.filter((x) => x.islandId === id)) {
         const sh = rectShape(l.x, l.z, l.rotY, l.w, l.d);

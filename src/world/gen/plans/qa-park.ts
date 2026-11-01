@@ -31,6 +31,8 @@ import {
   type CoasterPart,
   type CoasterTemplatePoint,
 } from '../../../content/themes/qa-park.ts';
+import { coasterSegmentAt } from '../../coaster-spline.ts';
+import { FIXTURE_RADIUS } from '../../../content/settlements.ts';
 import { heightAt, Zone, type IslandData, type XZ } from '../../types.ts';
 import { cellX, cellZ, gridRange } from '../grid.ts';
 import { slopeAtCell } from '../zones.ts';
@@ -105,36 +107,14 @@ const worldToCoaster = (o: XZ, rotY: number, p: XZ): XZ => {
   };
 };
 
-/**
- * Point `t` ∈ [0, 1] along segment points[i] → points[i + 1] of a closed centripetal Catmull-Rom
- * spline (Barry-Goldman). The site's own evaluator (fit + tests); TASK-540 owns the render one.
- */
+/** Point `t` ∈ [0, 1] along segment points[i] → points[i + 1] of the closed spline. */
 export function coasterSplineAt(
   pts: ReadonlyArray<CoasterPoint>,
   i: number,
   t: number,
 ): [number, number, number] {
   const n = pts.length;
-  const p0 = pts[(i + n - 1) % n];
-  const p1 = pts[i % n];
-  const p2 = pts[(i + 1) % n];
-  const p3 = pts[(i + 2) % n];
-  const step = (a: CoasterPoint, b: CoasterPoint): number =>
-    Math.sqrt(Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2])) || 1e-6;
-  const t1 = step(p0, p1);
-  const t2 = t1 + step(p1, p2);
-  const t3 = t2 + step(p2, p3);
-  const u = t1 + (t2 - t1) * t;
-  const out: [number, number, number] = [0, 0, 0];
-  for (let c = 0; c < 3; c++) {
-    const a1 = ((t1 - u) * p0[c] + u * p1[c]) / t1;
-    const a2 = ((t2 - u) * p1[c] + (u - t1) * p2[c]) / (t2 - t1);
-    const a3 = ((t3 - u) * p2[c] + (u - t2) * p3[c]) / (t3 - t2);
-    const b1 = ((t2 - u) * a1 + u * a2) / t2;
-    const b2 = ((t3 - u) * a2 + (u - t1) * a3) / (t3 - t1);
-    out[c] = ((t2 - u) * b1 + (u - t1) * b2) / (t2 - t1);
-  }
-  return out;
+  return coasterSegmentAt(pts[(i + n - 1) % n], pts[i % n], pts[(i + 1) % n], pts[(i + 2) % n], t);
 }
 
 /** The spline sampled every ≈ `step` u: local point, with the segment index it lies on. */
@@ -457,6 +437,48 @@ function repaintZones(ctx: SiteCtx, isl: IslandData, s: ParkSite): void {
       else if ((zn === Zone.grass || zn === Zone.meadow || zn === Zone.forest) && slope > Z.steep)
         ctx.zone[i] = Zone.cliff;
     }
+}
+
+/**
+ * The kit on the published site (TASK-541, D-122), after the rim walk and the hammocks so their decor
+ * rolls keep their place: the track prop at the site origin (its geometry is the kit frame, D-122),
+ * the station on the lane over the platform's middle, the board and the candy cart on the apron. All
+ * at the site's scale; pivots on the deck pad / the apron's ground.
+ */
+export function placeQaParkKit(ctx: SiteCtx, isl: IslandData, s: ParkSite): void {
+  const A = isl.anchors;
+  const o = A.coaster;
+  if (!o) return;
+  const scale = s.scale;
+  const fx = (defId: string, p: XZ, rotY: number, variant?: number, y?: number): void => {
+    ctx.fixtures.push({
+      defId,
+      x: p.x,
+      z: p.z,
+      rotY,
+      islandId: isl.id,
+      scale,
+      ...(variant !== undefined ? { variant } : {}),
+      ...(y !== undefined ? { y } : {}),
+    });
+  };
+  fx('coasterTrack', s.p, s.rot, 0, o.y);
+  // station local +x along the travel, its deck (+z) on the lane's outer side (the template's −x)
+  const lane = atLocal(s, mx(s, TPL.station[0][0]), K.station.z * s.scale);
+  fx('coasterStation', lane, s.rot + (s.mirror ? -Math.PI / 2 : Math.PI / 2), 0, o.y);
+  // (the apron may be a slope: a small prop that would hang off it stays away)
+  const level = (id: string, p: XZ): boolean => {
+    const r = FIXTURE_RADIUS[id] ?? 1;
+    const ys = [0, 1, 2, 3, 4, 5, 6, 7].map((k) =>
+      heightAt(ctx.h, p.x + Math.cos(k * 0.785) * r, p.z + Math.sin(k * 0.785) * r),
+    );
+    const y0 = heightAt(ctx.h, p.x, p.z);
+    return Math.max(y0, ...ys) - Math.min(y0, ...ys) <= K.kit.maxRelief;
+  };
+  if (level('checklistBoard', A.coasterBoard))
+    fx('checklistBoard', A.coasterBoard, A.coasterBoard.rotY, K.kit.board);
+  if (level('inspectionBooth', A.coasterCandy))
+    fx('inspectionBooth', A.coasterCandy, A.coasterCandy.rotY, K.kit.candy);
 }
 
 /**

@@ -41,6 +41,8 @@ import { createDrones } from './drones.ts';
 import { createMovers } from './movers.ts';
 import { createCultureMovers } from './culture-movers.ts';
 import { createTideSub } from './tide-sub.ts';
+import { createCoasterMovers } from './coaster-movers.ts';
+import { coasterTrackGeometry } from './coaster-track.ts';
 import { LIFE_PLAN } from '../content/life.ts';
 import { createWhale, type WhaleView } from './whale.ts';
 import { createSkyCraft } from './sky-craft.ts';
@@ -218,10 +220,13 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     world,
     d.scope,
     LIFE_PLAN[d.quality].ferries,
+    d.quality,
   );
   group.add(cultureMovers.group);
   const tideSub = createTideSub(world, d.scope);
   if (tideSub) group.add(tideSub.mesh);
+  const coaster = createCoasterMovers(world, d.quality, d.scope);
+  if (coaster) group.add(coaster.group);
   const whale = createWhale(world, seed, d.scope);
   if (whale) group.add(whale.mesh);
   // hot-air balloons + airship over the archipelago (TASK-335)
@@ -302,6 +307,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     interiorShadows: d.quality === 'high',
     instantEdits: d.instantEdits ?? false,
     world: { height: world.height, islands: world.islands },
+    geometryOverride: coasterTrackGeometry(world, d.quality),
   });
   group.add(props.group);
   const rebuild = createRebuilder({
@@ -425,6 +431,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     cultureMovers.update(time, env.hour, env, _camPos, culture.state);
     whale?.update(culture.state.day, time, _camPos);
     tideSub?.update(culture.state.day, time, _camPos);
+    coaster?.update(culture.state.day, time, _camPos);
     skyCraft.update(time, culture.state, _camPos);
     water.update(_camPos, d.getTime());
     terrain.update(d.getTime());

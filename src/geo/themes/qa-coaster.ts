@@ -44,6 +44,7 @@ import {
   type CoasterSample,
   type CoasterSpline,
 } from '../../world/coaster-spline.ts';
+import type { CoasterKit } from '../../world/coaster-kit.ts';
 import { Acc, createNoise, blob, frustum, qEuler } from '../kit.ts';
 import { TAU, V, baseBox, bevBox, cylB, put } from '../parts.ts';
 import type { BuildOpts, Lod, PropBuilder, PropGeoDef } from '../types.ts';
@@ -71,6 +72,8 @@ export interface CoasterTrackOpts {
   chain?: ReadonlyArray<readonly [s0: number, s1: number]>;
   /** A prebuilt spline for `points` (saves a second table). */
   spline?: CoasterSpline;
+  /** Bumper rink in the same frame, built into the same geometry (no def, no draw call of its own). */
+  rink?: { x: number; z: number; w: number; d: number; y: number };
 }
 
 /** Stations along the spline: advance until the tangent turned `maxTurn` rad or `maxStep` u. */
@@ -182,11 +185,12 @@ export function buildCoasterTrack(o: CoasterTrackOpts): THREE.BufferGeometry {
   );
   const frames = st.map((s) => sampleCoaster(sp, s, newCoasterSample()));
   // rails (3-sided tubes, tops at the spline) and the spine in colour runs
+  const railR = hi ? K.railR : L.railR;
   for (const sx of [-1, 1])
-    sweep(acc, frames, ring(sx * K.gauge * 0.5, -K.railR, K.railR, hi ? 3 : 3), K.rail, {
+    sweep(acc, frames, ring(sx * K.gauge * 0.5, -railR, railR, 3), K.rail, {
       aoAmt: 0,
     });
-  const spineRing = ring(0, -K.spineDrop, K.spineR, hi ? 4 : 3);
+  const spineRing = ring(0, -K.spineDrop, hi ? K.spineR : L.spineR, hi ? 4 : 3);
   let run: CoasterSample[] = [];
   let runInv = frames[0].up[1] < K.invertedUp;
   for (const f of frames) {
@@ -308,6 +312,7 @@ export function buildCoasterTrack(o: CoasterTrackOpts): THREE.BufferGeometry {
       });
     } else column(cx, cz, top, rBase, rBase * 0.75);
   }
+  if (o.rink) addRink(acc, o.rink, hi);
   const g = acc.finish(o.rng ?? createRng(540).fork('track', lod), false, true);
   return addHook(g, 'track', {
     length: sp.length,
@@ -316,6 +321,99 @@ export function buildCoasterTrack(o: CoasterTrackOpts): THREE.BufferGeometry {
     tieEvery: K.tieEvery,
     chain: (o.chain ?? []).map(([a, b]) => [a, b]),
     tris: g.userData.tris,
+  });
+}
+
+/** Rink floor (checker), rubber curb, four posts and a light frame (bulbs glow at dusk). */
+function addRink(acc: Acc, r: NonNullable<CoasterTrackOpts['rink']>, hi: boolean): void {
+  const Q = F.rink;
+  const white = (a: THREE.BufferGeometry, m: THREE.Matrix4, c: string, ao = 0.08): void =>
+    acc.add(a, { m, color: new THREE.Color(c), aoAmt: ao, windMul: 0 });
+  const at = (x: number, y: number, z: number): THREE.Matrix4 =>
+    new THREE.Matrix4().makeTranslation(r.x + x, r.y + y, r.z + z);
+  const hw = r.w / 2;
+  const hd = r.d / 2;
+  // floor: skirt sunk into the pad, the checker on top (one slab at LOD1)
+  white(boxNoBottom(r.w, Q.floorH + 0.3, r.d), at(0, Q.floorH / 2 - 0.15 - 0.005, 0), Q.tileA, 0.2);
+  if (hi) {
+    const [nx, nz] = Q.tiles;
+    const tw = r.w / nx;
+    const td = r.d / nz;
+    for (let ix = 0; ix < nx; ix++)
+      for (let iz = 0; iz < nz; iz++) {
+        if ((ix + iz) % 2 === 0) continue;
+        const pg = new THREE.PlaneGeometry(tw, td);
+        pg.rotateX(-Math.PI / 2);
+        white(pg, at(-hw + (ix + 0.5) * tw, Q.floorH, -hd + (iz + 0.5) * td), Q.tileB, 0);
+      }
+  }
+  // curb: four rubber bars with a yellow cap
+  const C = Q.curb;
+  for (const [cx, cz, w, d] of [
+    [0, -hd, r.w + C.w, C.w],
+    [0, hd, r.w + C.w, C.w],
+    [-hw, 0, C.w, r.d],
+    [hw, 0, C.w, r.d],
+  ] as const) {
+    white(boxNoBottom(w, C.h, d), at(cx, C.h / 2, cz), C.color, 0.15);
+    if (hi) white(boxNoBottom(w, 0.03, d), at(cx, C.h + 0.015, cz), C.top, 0);
+  }
+  // posts + frame
+  const Po = Q.post;
+  for (const sx of [-1, 1])
+    for (const sz of [-1, 1]) {
+      const f = frustum(
+        V(r.x + sx * hw, r.y, r.z + sz * hd),
+        V(r.x + sx * hw, r.y + Po.h, r.z + sz * hd),
+        Po.r,
+        Po.r,
+        hi ? 6 : 4,
+        true,
+      );
+      acc.add(f.geo, { m: f.m, color: new THREE.Color(Po.color), aoAmt: 0.15, windMul: 0 });
+    }
+  const By = Po.h + Q.beam.h / 2;
+  for (const [cx, cz, w, d] of [
+    [0, -hd, r.w, Q.beam.h],
+    [0, hd, r.w, Q.beam.h],
+    [-hw, 0, Q.beam.h, r.d],
+    [hw, 0, Q.beam.h, r.d],
+  ] as const)
+    white(boxNoBottom(w, Q.beam.h, d), at(cx, By, cz), Q.beam.color, 0);
+  if (!hi) return;
+  // bulbs along the long beams: baked emissive, the shader lights them at dusk only
+  const n = Q.bulbs.perSide;
+  for (const sx of [-1, 1])
+    for (let k = 0; k < n; k++) {
+      const z = -hd + ((k + 0.5) * r.d) / n;
+      acc.add(new THREE.IcosahedronGeometry(Q.bulbs.r, 0), {
+        m: at(sx * hw, By - 0.1, z),
+        color: new THREE.Color(Q.bulbs.color),
+        ...lit,
+        windMul: 0,
+      });
+    }
+}
+
+/**
+ * The real track + rink of a site, in the kit frame (world/coaster-kit.ts): the prop stands at the site
+ * origin at the site's scale. render/coaster-track.ts hands this to the batcher for the `coasterTrack` def.
+ */
+export function buildCoasterSiteTrack(o: {
+  kit: CoasterKit;
+  lod: Lod;
+  rng: Rng;
+  groundY: (x: number, z: number) => number;
+}): THREE.BufferGeometry {
+  return buildCoasterTrack({
+    points: o.kit.points,
+    closed: true,
+    groundY: o.groundY,
+    lod: o.lod,
+    rng: o.rng,
+    chain: o.kit.chain,
+    spline: o.kit.spline,
+    rink: o.kit.rink,
   });
 }
 
@@ -394,6 +492,17 @@ const done = (acc: Acc, rng: BuildOpts['rng']): THREE.BufferGeometry =>
   acc.finish(rng, false, true);
 
 /* ================================== station ================================== */
+
+/** The ✓ lamps' lens while dark: the same colour family, no emissive. */
+const LENS_OFF = '#5C8A78';
+/** Station ✓ lamp (station-local), shared with the glow scene. */
+export const stationLampAt = (): Pt => [
+  -F.station.length / 2 + F.station.lamp.x,
+  F.station.deckY + F.station.lamp.mast,
+  F.station.deckZ0 + F.station.depth - F.station.lamp.z,
+];
+/** TESTED board ✓ lamp (board-local), shared with the glow scene. */
+export const boardLampAt = (): Pt => [0, F.board.lamp.y, F.board.lamp.z];
 
 function station({ rng, lod }: BuildOpts): THREE.BufferGeometry {
   const S = F.station;
@@ -498,10 +607,12 @@ function station({ rng, lod }: BuildOpts): THREE.BufferGeometry {
       k % 2 ? P.white : P.mint,
       0.15,
     );
-  // the check lamp on a short mast at the track end of the platform (lights after the dummy run)
-  const lampAt: Pt = [-hl + 0.55, S.deckY + 2.2, z1 - 0.5];
-  bx(acc, [0.1, 2.2 - 0.2, 0.1], [lampAt[0], S.deckY, lampAt[2]], P.steelDark, 0.1);
-  put(acc, ball(0.2, hi), lampAt, P.mintMid, { ...lit });
+  // the check lamp on a short mast at the track end of the platform: a dark lens here, the lit glow is a
+  // culture mover at the `lamp` hook (coasterLampScene) from the dummy's return until the bots are off
+  const LA = S.lamp;
+  const lampAt: Pt = stationLampAt();
+  bx(acc, [0.1, LA.mast - LA.r, 0.1], [lampAt[0], S.deckY, lampAt[2]], P.steelDark, 0.1);
+  put(acc, ball(LA.r, hi), lampAt, LENS_OFF, { aoAmt: 0 });
   if (hi)
     put(
       acc,
@@ -513,7 +624,7 @@ function station({ rng, lod }: BuildOpts): THREE.BufferGeometry {
   const g = done(acc, rng);
   addHook(g, 'track', { x0: -hl, x1: hl, z: S.trackZ, y: S.railY });
   addHook(g, 'platform', { y: S.deckY, z0, z1, x0: -hl, x1: hl });
-  addHook(g, 'lamp', { at: lampAt, r: 0.2 });
+  addHook(g, 'lamp', { at: lampAt, r: LA.r });
   return addHook(g, 'board', { at: [hl - 1.2, S.deckY, z1 + 0.9] });
 }
 
@@ -784,13 +895,14 @@ function testedBoard({ rng, lod }: BuildOpts): THREE.BufferGeometry {
     addGlyph(acc, 'check', V(0, y0 + 0.55, 0.09), { size: 0.8, color: P.mintMid, depth: 0.05 });
   }
   // the lamp: a drum lens on top of the board between the posts
-  const lampAt: Pt = [0, y0 + H + 0.42, 0.02];
+  const lampAt: Pt = boardLampAt();
+  const LR = F.board.lamp.r;
   bx(acc, [0.34, 0.1, 0.3], [0, y0 + H, 0.02], P.steelDark, 0.1);
-  put(acc, hi ? new THREE.SphereGeometry(0.24, 10, 6) : ball(0.24, false), lampAt, P.mintMid, {
-    ...lit,
+  put(acc, hi ? new THREE.SphereGeometry(LR, 10, 6) : ball(LR, false), lampAt, LENS_OFF, {
+    aoAmt: 0,
   });
   const g = done(acc, rng);
-  addHook(g, 'lamp', { at: lampAt, r: 0.24 });
+  addHook(g, 'lamp', { at: lampAt, r: LR });
   return addHook(g, 'board', { center: [0, y0 + H / 2, 0.08], size: [W, H] });
 }
 

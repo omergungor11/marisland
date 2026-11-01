@@ -167,6 +167,8 @@ export const QA_PARK = {
   fit: { passes: 6, spread: 0.5, reach: 2, sample: 0.5 },
   /** The lift's crest stays this far (× scale) over the loop's crown (gravity carries the train). */
   head: 0.5,
+  /** The kit's variants of old defs (TASK-541; geo/themes/qa-coaster.ts COASTER_VARIANTS): TESTED board, candy cart. */
+  kit: { board: 2, candy: 1, maxRelief: 0.8 },
   /** Zones on the final ground (D-109): within the rect + `reach`, soft cells above `steep` → cliff. */
   zones: { reach: 5, steep: 0.9, flat: 0.45 },
 } as const;

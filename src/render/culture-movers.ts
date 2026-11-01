@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { Quality } from '../core/params.ts';
 import type { Scope } from '../core/scope.ts';
 import { hashInts } from '../core/hash.ts';
 import { BEAM } from '../content/lighting.ts';
@@ -52,6 +53,20 @@ import { ferryCallAt } from '../life/boats.ts';
 import { arrivalEnvelope, sinceFerryArrival, type FerryCall } from '../life/ferry.ts';
 import { anchorPoints } from '../world/gen/plans/research-anchors.ts';
 import { subBelow, subPathOf, diveAt, surfaceAt } from './tide-lab-motion.ts';
+import { QA_COASTER, QA_COASTER_MOTION as QCM } from '../content/themes/qa-coaster.ts';
+import { COASTER_VARIANTS, boardLampAt, stationLampAt } from '../geo/themes/qa-coaster.ts';
+import { coasterKitOf, type CoasterKit } from '../world/coaster-kit.ts';
+import { newCoasterSample } from '../world/coaster-spline.ts';
+import {
+  bumperFrame,
+  carSample,
+  coasterStateAt,
+  createCoasterShow,
+  newBumperFrame,
+  newCoasterState,
+  type CoasterShow,
+} from './coaster-motion.ts';
+import { coasterPivot } from './coaster-movers.ts';
 
 /**
  * Culture movers (M19 TASK-431): closed-form scenes that make each island culture visibly alive.
@@ -329,6 +344,74 @@ function dropTowerScene(): Scene['run'] {
       const k = DR.lampScale[0] + (DR.lampScale[1] - DR.lampScale[0]) * st.lamp;
       w.put(PART.glow, lens, [0, 0, 0], T.footLamp.r * k, DR.lampColor);
     }
+  };
+}
+
+/**
+ * Thrill Test Park ✓ lamp (TASK-541, D-122; station `lamp` hook, TESTED board `lamp` hook): dark until
+ * the dummy's lap is over, then a flash + a ring, a steady glow until the bots are off. At the noon
+ * siren test it blinks and rings out. Prop-local frame; closed form in the culture-clock day seconds.
+ */
+function coasterLampScene(show: CoasterShow, at: V3, r: number, ringOut: boolean): Scene['run'] {
+  const L = QCM.lamp;
+  const st = newCoasterState();
+  return (w, c) => {
+    coasterStateAt(show, c.day, st);
+    const siren = c.fest?.id === 'sirenTest';
+    if (siren && ringOut) rings(w, at, [0, 0, 1], L.sirenRing, L.sirenRing.travel, c.time);
+    if (!st.lamp) return;
+    const blink = siren ? 0.5 + 0.5 * Math.sin(c.day * L.sirenHz * Math.PI * 2) : 1;
+    const flash = Math.exp(-Math.max(0, st.sinceLamp) / L.tau);
+    const k = (L.r0 + (L.r1 - L.r0) * flash) * (0.82 + 0.18 * blink);
+    w.put(PART.glow, at, [0, 0, 0], r * k, L.color);
+    const F = L.flash;
+    if (st.sinceLamp < F.life) {
+      const ph = st.sinceLamp / F.life;
+      const rr = F.r0 + (F.r1 - F.r0) * ph;
+      w.put(PART.ring, at, [0, 0, 0], [rr, rr * Math.max(0.15, 1 - ph), rr], L.color);
+    }
+  };
+}
+
+/**
+ * The chain's click (TASK-541): no audio in the project, so each click of the ratchet shows as a small
+ * steel ring at the rearmost car's dog. Kit frame (the site's pivot).
+ */
+function coasterClickScene(kit: CoasterKit, show: CoasterShow, cars: number): Scene['run'] {
+  const C = QCM.click.ring;
+  const st = newCoasterState();
+  const smp = newCoasterSample();
+  return (w, c) => {
+    coasterStateAt(show, c.day, st);
+    if (st.sinceClick < 0 || st.sinceClick > C.life) return;
+    carSample(kit, st.u, cars - 1, smp);
+    const ph = st.sinceClick / C.life;
+    const r = C.r0 + (C.r1 - C.r0) * ph;
+    const f = QA_COASTER.track.spineDrop * 0.5;
+    w.put(
+      PART.ring,
+      [smp.pos[0] - smp.up[0] * f, smp.pos[1] - smp.up[1] * f, smp.pos[2] - smp.up[2] * f],
+      [0, 0, 0],
+      [r, r * Math.max(0.15, 1 - ph), r],
+      C.color,
+    );
+  };
+}
+
+/** Sparks where two bumper cars met (TASK-541): a yellow ball and a ring at the contact. Kit frame. */
+function bumperSparkScene(kit: CoasterKit, seed: number, n: number): Scene['run'] {
+  const S = QCM.bumpers.spark;
+  const fr = newBumperFrame(n);
+  const R = kit.rink;
+  return (w, c) => {
+    bumperFrame(c.time, n, R.w, R.d, seed, fr);
+    const u = fr.hit.since;
+    if (u < 0 || u > S.life) return;
+    const ph = u / S.life;
+    const at: V3 = [R.x + fr.hit.x, R.y + QA_COASTER.rink.floorH + S.y, R.z + fr.hit.z];
+    const r = S.r0 + (S.r1 - S.r0) * ph;
+    w.put(PART.ring, at, [0, 0, 0], [r, r * Math.max(0.15, 1 - ph), r], S.color);
+    w.put(PART.glow, at, [0, 0, 0], S.ball * (1 - ph), S.color);
   };
 }
 
@@ -1721,6 +1804,7 @@ export function createCultureMovers(
   scope: Scope,
   /** HQ ferries running (LIFE_PLAN[quality].ferries): the harbour rituals follow those boats. */
   ferries = LIFE_PLAN.medium.ferries,
+  quality: Quality = 'medium',
 ): CultureMoversView {
   const group = new THREE.Group();
   group.name = 'culture-movers';
@@ -2161,6 +2245,40 @@ export function createCultureMovers(
       sc.range2 = RH.arrival.range * RH.arrival.range;
       scenes.push(sc);
     }
+  }
+  // M32 TASK-541: the Thrill Test Park's ✓ lamps, chain click and bumper sparks
+  const qaIsl = world.islands.find((i) => i.theme === 'qa');
+  const kit = qaIsl ? coasterKitOf(qaIsl) : null;
+  if (kit) {
+    const plan = QCM.plan[quality];
+    const show = createCoasterShow(kit, plan.cars);
+    const station = defOf('coasterStation');
+    const board = defOf('checklistBoard');
+    for (let i = 0; i < store.count; i++) {
+      const d = store.defId[i];
+      if (store.islandId[i] !== qaIsl!.id) continue;
+      if (d !== station && !(d === board && store.variant[i] === COASTER_VARIANTS.checklistBoard))
+        continue;
+      const at = d === station ? stationLampAt() : boardLampAt();
+      const r = d === station ? QA_COASTER.station.lamp.r : QA_COASTER.board.lamp.r;
+      const sc = sceneAt(
+        'qa',
+        pivotOf(store, i),
+        store.rotY[i],
+        at,
+        2 + QCM.lamp.sirenRing.rings,
+        coasterLampScene(show, at, r, d === station),
+      );
+      sc.range2 = (QCM.sceneRange * kit.scale) ** 2;
+      scenes.push(sc);
+    }
+    const siteScene = (run: Scene['run'], max: number): void => {
+      const sc = sceneAt('qa', coasterPivot(kit), 0, [0, 3, 0], max, run);
+      sc.range2 = (QCM.sceneRange * kit.scale) ** 2;
+      scenes.push(sc);
+    };
+    siteScene(coasterClickScene(kit, show, plan.cars), 1);
+    if (plan.bumpers > 0) siteScene(bumperSparkScene(kit, world.seed, plan.bumpers), 2);
   }
   // research balloon carts get the 06:00 launch only (their static balloon stays tethered)
   // HQ mail lines (TASK-466): the sacks on the cable between each pylon pair

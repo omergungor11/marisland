@@ -41,7 +41,7 @@ export interface CameraWorld {
     peakX?: number;
     peakY: number;
     peakZ?: number;
-    anchors: Record<string, { x: number; z: number; rotY: number }>;
+    anchors: Record<string, { x: number; z: number; rotY: number; y?: number }>;
     /** Settlement framing for `village` / `dock` (from the settlement pipeline). */
     frames?: { village?: CameraFrame; dock?: CameraFrame };
   }>;

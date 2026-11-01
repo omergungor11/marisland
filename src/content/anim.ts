@@ -131,6 +131,8 @@ export const PICK = {
     'flower',
     // tier-2 office furniture: a click on an office picks its shell
     'officeInterior',
+    // a thin 30 u sweep: its bounds proxy would swallow every click in the park (TASK-541)
+    'coasterTrack',
   ],
   /** Per-def override `[radius, height]` (u, before instance scale) where bounds mislead. */
   proxy: {} as Record<string, readonly [number, number]>,

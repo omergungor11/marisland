@@ -535,6 +535,7 @@ interface LadderFrame {
   tier?: number;
   calls?: number;
   triangles?: number;
+  mem?: number;
   /**
    * Island drift: ΔE2000 of the region's mean vs the drift reference frame (ladder presets only),
    * judged on the `fog=0` frames (TASK-487: fog depends on the camera distance, not the tier).
@@ -659,6 +660,7 @@ async function runLadder(
       tier: snap?.tier,
       calls: snap?.info.calls,
       triangles: snap?.info.triangles,
+      mem: snap?.counters.gpuMemoryMB,
     });
     imgs.push({ frame: await decode(png), mask: await decode(maskPng), clear, png, maskPng });
   }

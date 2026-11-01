@@ -16,14 +16,15 @@ import type { PropDef } from '../props.ts';
 const { grounded } = PropFlag;
 
 export const QA_COASTER_PROP_DEFS: readonly PropDef[] = [
-  // the fixture track (the real spline is built through buildCoasterTrack); pivot = site origin, not a fixture
-  { id: 'coasterTrack', geo: 'coasterTrack', tier: 1, variants: 1, footprint: 45, flags: 0 },
+  // the fixture track (the real spline is built through buildCoasterTrack, render/coaster-track.ts); pivot =
+  // site origin. Footprint 0.6, not its 45 u reach: life's solids and edit collisions read it as a disc round the pivot.
+  { id: 'coasterTrack', geo: 'coasterTrack', tier: 1, variants: 1, footprint: 0.6, flags: 0 },
   {
     id: 'coasterStation',
     geo: 'coasterStation',
     tier: 2,
     variants: 1,
-    footprint: 5.6,
+    footprint: 2.2,
     flags: grounded,
   },
 ];
