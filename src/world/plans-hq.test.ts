@@ -465,7 +465,7 @@ describe('HQ Seven Gates plan (TASK-466)', () => {
 
   it('per-theme snapshot: HQ settlement data is pinned and deterministic', () => {
     const got = [1, 42, 1001].map((seed) => hqHash(world(seed)));
-    expect(got).toEqual(['f414104dfa0229a1', '6ae507138afc746b', 'cd1fc87c0d3b7538']);
+    expect(got).toEqual(['f414104dfa0229a1', '6ae507138afc746b', '55537a84a1760e03']);
     expect(hqHash(generateWorld(1001))).toBe(got[2]);
   });
 });

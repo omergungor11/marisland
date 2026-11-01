@@ -72,8 +72,10 @@ describe('archipelago layout — 500-seed properties', () => {
         const [lo, hi] = ARCHETYPES[i.archetype].diameter;
         const lo2 = ARCHETYPES[i.archetype].demotedDiameter?.[0] ?? lo;
         // TASK-511: a grown archetype (HQ) is its rolled diameter × growth
+        // TASK-544: another one takes a share of it, as its layout allows
         const g = ARCHETYPES[i.archetype].growth ?? 1;
-        expect(i.radius * 2, ctx).toBeGreaterThanOrEqual(Math.min(lo, lo2) * g - 1e-9);
+        const least = i.archetype === 'hearthholm' ? g : 1;
+        expect(i.radius * 2, ctx).toBeGreaterThanOrEqual(Math.min(lo, lo2) * least - 1e-9);
         expect(i.radius * 2, ctx).toBeLessThanOrEqual(hi * g + 1e-9);
       }
       // spacing: bounding discs never overlap (gap ≥ 40 u), one connected cluster
@@ -180,7 +182,7 @@ describe('archipelago layout — 500-seed properties', () => {
         for (const isl of islands) {
           const gap = Math.hypot(isl.cx - it.cx, isl.cz - it.cz) - isl.reach - it.reach;
           expect(gap, `${ctx} islet ${k} vs ${isl.theme}`).toBeGreaterThanOrEqual(
-            ISLET_LAYOUT.gap[0] - 1e-6,
+            (isl.archetype === 'millbrook' ? ISLET_LAYOUT.grownGap : ISLET_LAYOUT.gap[0]) - 1e-6,
           );
         }
         for (const o of islets)
@@ -204,6 +206,77 @@ describe('archipelago layout — 500-seed properties', () => {
   });
 });
 
+/** Run with Millbrook at its rolled size: the older growths are measured on their own. */
+function withoutMillbrookGrowth<T>(fn: () => T): T {
+  const p = ARCHETYPES.millbrook as { growth?: number };
+  const grown = p.growth;
+  try {
+    p.growth = undefined;
+    return fn();
+  } finally {
+    p.growth = grown;
+  }
+}
+
+/** TASK-544 (D-121): Millbrook grows into the water it has; nobody else moves, on any seed. */
+describe('grown Coding island (TASK-544)', () => {
+  it('every other island stays where it was, HQ stays clearly largest, channels hold (500 seeds)', () => {
+    const p = ARCHETYPES.millbrook;
+    const full = p.growth ?? 1;
+    expect(full).toBeGreaterThan(1);
+    const before = withoutMillbrookGrowth(() =>
+      Array.from({ length: 500 }, (_, s) => layout(s).islands),
+    );
+    let atFull = 0;
+    for (let s = 0; s < 500; s++) {
+      const a = before[s];
+      const b = layout(s).islands;
+      const m = b.findIndex((x) => x.archetype === 'millbrook');
+      const hq = b.findIndex((x) => x.archetype === 'hearthholm');
+      a.forEach((x, k) => {
+        if (k === m) return;
+        expect([b[k].cx, b[k].cz, b[k].radius], `seed ${s} ${x.archetype}`).toEqual([
+          x.cx,
+          x.cz,
+          x.radius,
+        ]);
+      });
+      const ratio = b[m].radius / a[m].radius;
+      expect(ratio, `seed ${s}`).toBeGreaterThanOrEqual(1 - 1e-9);
+      expect(ratio, `seed ${s}`).toBeLessThanOrEqual(full + 1e-9);
+      const capped = b[hq].radius * LAYOUT.grownDominance;
+      if (ratio > full - 1e-9 || b[m].radius > capped - 1e-9) atFull++;
+      expect(b[m].radius, `seed ${s} hub dominance`).toBeLessThanOrEqual(capped + 1e-9);
+      for (let k = 0; k < b.length; k++) {
+        if (k === m) continue;
+        const gap = Math.hypot(b[k].cx - b[m].cx, b[k].cz - b[m].cz) - b[k].reach - b[m].reach;
+        expect(gap, `seed ${s} channel to ${b[k].archetype}`).toBeGreaterThanOrEqual(LAYOUT.minGap);
+      }
+    }
+    // 500 seeds, measured 2026-11-01: see D-121
+    expect(atFull / 500).toBeGreaterThanOrEqual(0.8);
+  });
+
+  it('the islets keep off the grown disc, and mostly stay where they were', () => {
+    const before = withoutMillbrookGrowth(() => Array.from({ length: 200 }, (_, s) => layout(s)));
+    let kept = 0;
+    let total = 0;
+    for (let s = 0; s < 200; s++) {
+      const b = layout(s);
+      const m = b.islands.find((x) => x.archetype === 'millbrook') as IslandData;
+      for (const it of b.islets) {
+        const gap = Math.hypot(it.cx - m.cx, it.cz - m.cz) - it.reach - m.reach;
+        expect(gap, `seed ${s}`).toBeGreaterThanOrEqual(ISLET_LAYOUT.grownGap - 1e-9);
+      }
+      for (const it of before[s].islets) {
+        total++;
+        if (b.islets.some((q) => q.cx === it.cx && q.cz === it.cz)) kept++;
+      }
+    }
+    expect(kept / total).toBeGreaterThanOrEqual(0.75);
+  });
+});
+
 /** TASK-503 (D-083): Emberpeak's apron growth leaves the rest of the archipelago in place. */
 describe('grown island push (TASK-503)', () => {
   it('every other island keeps its pre-growth centre on ≥ 95 % of 500 seeds; Emberpeak moves out', () => {
@@ -212,14 +285,16 @@ describe('grown island push (TASK-503)', () => {
     const before: ReturnType<typeof layout>[] = [];
     try {
       p.reachScale = p.layoutReachScale ?? grown;
-      for (let s = 0; s < 500; s++) before.push(layout(s));
+      withoutMillbrookGrowth(() => {
+        for (let s = 0; s < 500; s++) before.push(layout(s));
+      });
     } finally {
       p.reachScale = grown;
     }
     let kept = 0;
     for (let s = 0; s < 500; s++) {
       const a = before[s].islands;
-      const b = layout(s).islands;
+      const b = withoutMillbrookGrowth(() => layout(s).islands);
       const same = a.every(
         (x, k) => x.archetype === 'emberpeak' || (x.cx === b[k].cx && x.cz === b[k].cz),
       );
@@ -247,7 +322,9 @@ describe('grown hub (TASK-511)', () => {
     const before: ReturnType<typeof layout>[] = [];
     try {
       p.growth = 1;
-      for (let s = 0; s < 500; s++) before.push(layout(s));
+      withoutMillbrookGrowth(() => {
+        for (let s = 0; s < 500; s++) before.push(layout(s));
+      });
     } finally {
       p.growth = grown;
     }
@@ -255,7 +332,7 @@ describe('grown hub (TASK-511)', () => {
     let moved = 0;
     for (let s = 0; s < 500; s++) {
       const a = before[s].islands;
-      const b = layout(s).islands;
+      const b = withoutMillbrookGrowth(() => layout(s).islands);
       const hq = b.findIndex((x) => x.archetype === 'hearthholm');
       expect(b[hq].radius / a[hq].radius, `seed ${s}`).toBeCloseTo(grown, 9);
       // the same placement attempt: every island within a growth step of where it was

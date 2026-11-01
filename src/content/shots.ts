@@ -87,7 +87,7 @@ const LIVE_CAMS: Record<(typeof CAMPUS_THEMES)[number][0], string> = {
   hq: '-76.26,14,-11.72,-56.26,1.4,-14.72',
   qa: '89.4,23,-169.44,101.1,9,-157.14',
   design: '-93.87,30,-177.26,-100.87,17,-159.26',
-  coding: '-105.43,17,138.51,-116.43,11,148.51',
+  coding: '-111.13,17,145.82,-122.13,11,155.82',
   // TASK-402b: over the glasshouse row and the base pods (bots at the terrariums, mast and pods)
   research: '141.71,15,122.1,127.71,8,112.1',
   devops: '174.38,7.5,22.53,184.38,2.6,10.53',
@@ -107,7 +107,7 @@ const LIVE_CROP: [number, number, number, number] = [0.15, 0.1, 0.85, 0.9];
 const STORY_SHOTS: readonly (readonly [string, string, string, number, number])[] = [
   ['signpostDebate', 'Signpost debate · HQ', '-59.72,8.5,-1.11,-56.92,2,-6.91', 14, 6],
   // TASK-497: re-aimed at the turbine-foot nap hammock (the chime turbine moved onto the Kite Hill)
-  ['hammockNap', 'Hammock nap · Coding', '-130.97,12.41,160.88,-124.74,9.41,155.96', 14, 6],
+  ['hammockNap', 'Hammock nap · Coding', '-137.59,12.41,169.36,-131.36,9.41,164.44', 14, 6],
   // TASK-507: re-aimed at the spot after the TASK-503 Emberpeak push
   ['containerNap', 'Container nap · DevOps', '173,10,3.3,178,7.3,2', 14, 6],
   ['lighthouseSelfie', 'Selfie · Marketing', '-189.14,28.37,-21.87,-184.03,25.67,-22.88', 14, 6],
@@ -140,7 +140,13 @@ const CRITTER_SHOTS: readonly (readonly [string, string, string, number, number]
     14,
     6,
   ],
-  ['duck-crossing', 'Duck family crossing · Coding', '-113.9,13.9,145.3,-107.9,9.5,151', 14, 10],
+  [
+    'duck-crossing',
+    'Duck family crossing · Coding',
+    '-119.6,13.9,152.61,-113.6,9.5,158.31',
+    14,
+    10,
+  ],
 ] as const;
 
 /** W7 camera (raw, seed 1001 Coding; TASK-380), re-pin when that layout changes. */
@@ -175,7 +181,7 @@ const W14_CAM = '63,46,74,116,5,112';
  * devPod and desks) — the old look had the Media Rock's fair and trees at the frame's edge, and
  * every per-island LOD0 group whose bounds touch the frustum costs a call (202 > the low 170).
  */
-const DESK_CAM = '-116.33,13,142.55,-118.93,10.2,145.51';
+const DESK_CAM = '-110.21,13,137.98,-107.61,10.2,135.02';
 
 /**
  * Hearthholm beach macro (raw, seed 1001; D-macro and W8, TASK-396): the `macro-beach` orbit now
@@ -211,33 +217,45 @@ const MOVE_SIMT: Record<string, number> = {
  */
 const TUNNEL_SHOTS: readonly ShotPreset[] = (
   [
-    ['hill', 'Wind Gardens · 14:00 +20 s Kite Day over the hill', '-80,26,150,-106,13,183', 14, 20],
     [
-      'tunnel',
-      'Wind Gardens · wind tunnel, fan + windsocks (14:00)',
-      '-112,9,166,-123.5,10.5,184.7',
+      'hill',
+      'Wind Gardens · 14:00 +20 s Kite Day over the hill',
+      '-86.46,26,162.74,-112.46,13,195.74',
       14,
       20,
     ],
-    ['socks-a', 'Wind Gardens · tunnel windsocks, sim 4 s', '-122,15,176.5,-123.5,10.2,185', 14, 4],
+    [
+      'tunnel',
+      'Wind Gardens · wind tunnel, fan + windsocks (14:00)',
+      '-143.75,12,164.41,-138.08,10.5,185.58',
+      14,
+      20,
+    ],
+    [
+      'socks-a',
+      'Wind Gardens · tunnel windsocks, sim 4 s',
+      '-143,15,178.88,-138.08,10.2,185.88',
+      14,
+      4,
+    ],
     [
       'socks-b',
       'Wind Gardens · tunnel windsocks, sim 11 s',
-      '-122,15,176.5,-123.5,10.2,185',
+      '-143,15,178.88,-138.08,10.2,185.88',
       14,
       11,
     ],
     [
       'socks-c',
       'Wind Gardens · tunnel windsocks, sim 19 s',
-      '-122,15,176.5,-123.5,10.2,185',
+      '-143,15,178.88,-138.08,10.2,185.88',
       14,
       19,
     ],
     [
       'tunnel-night',
       'Wind Gardens · tunnel night: blue server light + warm park',
-      '-112,9,166,-123.5,10.5,184.7',
+      '-143.75,12,164.41,-138.08,10.5,185.58',
       21,
       6,
     ],
@@ -259,7 +277,7 @@ const MOVE_SHOTS: readonly ShotPreset[] = (
     ['hq', 'Harbour Guild · 06:00 bell fanfare', 1001, '-67.83,4.5,-18.18,-61.23,2.8,-14.78', 6],
     ['hq-crane', 'Harbour Guild · crane sack', 1001, '-65.62,5.5,-1.41,-58.62,2,-1.41', 9],
     // TASK-497: the Kite Day rack at the Kite Hill foot, up the hill to the chime turbine and its kites
-    ['coding', 'Wind Gardens · 14:00 Kite Day', 1001, '-92,15,147,-97.5,11.5,172', 14],
+    ['coding', 'Wind Gardens · 14:00 Kite Day', 1001, '-98.46,15,159.74,-103.96,11.5,184.74', 14],
     [
       'devops',
       'Ember Works · 21:00 Release Night lift + horn',
@@ -363,7 +381,7 @@ const LAVA_RIVER_DUSK_CAM = '238,38,-114,225,5,-79';
  */
 const KITE_HILL_CAM = '-62,20,152,-100,17,177';
 const PROVING_NOON_CAM = '124,16,-112,100,9.5,-137';
-const FAIRY_NIGHT_CAM = '-140,4.5,144,-152,5,154';
+const FAIRY_NIGHT_CAM = '-120,10.5,194,-132,9.6,202';
 
 /**
  * TASK-507 (D-089) DevOps M25 cams: [id, title, cam, game hour, warm-up s]; raw `eye → target`,
@@ -1291,7 +1309,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     seed: 1001,
     // seed 1001: the family paddles on the pool centred (110.4, 4.6), not its twin at (101.5, -4); steep T3 look down
     // (TASK-402b: the seed 1001 layout moved 16.54 u in −z)
-    cam: '-100.03,15,151.01,-100.03,5.4,146.61',
+    cam: '-105.73,15,158.32,-105.73,5.4,153.92',
     time: 11,
     simt: 3,
     // low has no ducks (LIFE_PLAN.low.ducks = 0), the dev set defaults to low
@@ -1579,7 +1597,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // seed 1001 Millbrook (TASK-421): the Tech Park lawn (pergola desks, giant duck) and, since
     // TASK-497, the Kite Hill in front: the chime pagoda turbine on top, kites round its foot
     seed: 1001,
-    cam: '-60.43,46,172.05,-106.43,9.5,162.05',
+    cam: '-66.13,46,179.36,-112.13,9.5,169.36',
     time: 14,
     simt: 3,
     quality: 'medium',
@@ -1591,7 +1609,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // seed 1001: a lawn strip's pergola desks, mug crate and the bug whiteboard with its rubber
     // duck (story `bugDoodle`), seen from the paved spine over the pool with the rubber ducks
     seed: 1001,
-    cam: '-97.43,20,136.05,-104.43,9.8,147.05',
+    cam: '-103.13,20,143.36,-110.13,9.8,154.36',
     time: 15,
     simt: 3,
     quality: 'medium',

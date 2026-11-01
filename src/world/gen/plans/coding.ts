@@ -47,6 +47,7 @@ import { heightAt, Zone } from '../../types.ts';
 import { cellX, cellZ, gridRange } from '../grid.ts';
 import { rimSamples, rimWalkway, slopeAtXZ, type RimWalkway } from '../rim-walkway.ts';
 import { clearStoryStages } from '../story-keepout.ts';
+import { finishFoundry, foundryLinks, planFoundry } from './coding-foundry.ts';
 import { addCellPath, gridAStar, pathStep, resample } from '../paths.ts';
 import { slopeAtCell } from '../zones.ts';
 import {
@@ -811,6 +812,23 @@ export const planCoding: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   // no groves on the Kite Hill: a lawn knoll
   if (hill) paintHill(ctx, isl, hill.p);
 
+  // the later links run hub → lot doors / turbines / the dock: the big sites keep off those strips
+  const targets: XZ[] = [
+    ...lots.map((li) => ctx.lots[li] as XZ),
+    ...turbines.map((li) => ctx.landmarks[li] as XZ),
+    ...(site ? [site.root] : []),
+  ];
+  // ---- M33 Foundry + Data Lake + Drone Port + test track (TASK-544, D-121): before the culture kit and
+  // the M22 beds, which fit round them (the plateau has no room left after them). The solar farm, the
+  // yard and the garden keep their ground: a site that finds none publishes nothing
+  const foundry = planFoundry(ctx, isl, rng.fork('foundry'), {
+    park: f.o,
+    hub,
+    campus: a,
+    targets,
+    hill: hill?.p ?? null,
+  });
+
   // ---- Wind Gardens culture (M19 TASK-421): before the links, so the paths route round it
   plan.stories = windGardens(ctx, isl, rng.fork('culture'), {
     f,
@@ -824,12 +842,6 @@ export const planCoding: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   // ---- M22 quick wins (TASK-479): pinwheel meadow, hedge glyphs, windsock avenue, nap grove; the
   // pods get weather vanes. After the Wind Gardens kit, so none of it moves; before the links, so
   // the paths route round it
-  // the later links run hub → lot doors / turbines / the dock: the big sites keep off those strips
-  const targets: XZ[] = [
-    ...lots.map((li) => ctx.lots[li] as XZ),
-    ...turbines.map((li) => ctx.landmarks[li] as XZ),
-    ...(site ? [site.root] : []),
-  ];
   plan.stories.push(
     ...m22Quick(ctx, isl, rng.fork('m22'), { f, targets, hillReserve: hill?.reserve }),
   );
@@ -845,10 +857,12 @@ export const planCoding: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   for (const li of turbines) linkLandmark(ctx, plan, li, f.o);
   lots.sort((x, y) => dist(ctx.lots[x], f.o) - dist(ctx.lots[y], f.o) || x - y);
   for (const li of lots) linkLot(ctx, plan, li);
+  foundryLinks(plan, foundry);
   // C18 rim boardwalk + benches (TASK-484): once the footpaths exist (gaps at them)
   plan.finish = (paths) => {
     rimBenches(ctx, isl, rimWalkway(ctx, isl, CODING_RIM_WALK, paths), paths);
     if (hill) hillBench(ctx, isl, hill.p, paths);
+    finishFoundry(ctx, isl, foundry);
   };
   return plan;
 };
@@ -1069,6 +1083,13 @@ function rimBenches(
   }
 }
 
+/** Straight strip park → `t`, `width` u wide (kept clear while the big sites are searched). */
+function hubStrip(park: XZ, t: XZ, width: number): Shape {
+  const len = dist(park, t);
+  const g = frameAt(park, Math.atan2(t.z - park.z, t.x - park.x));
+  return frameRect(g, len / 2, 0, len / 2, width / 2);
+}
+
 /** Grid step (samples) of the quick-win site search. */
 const SITE_STEP = 2;
 /** Clear gap (u) kept round a quick-win site. */
@@ -1250,11 +1271,7 @@ function m22Quick(
   const centre = { x: isl.cx, z: isl.cz };
   // straight strips hub → every lot / turbine / the dock, kept clear while the sites are searched
   // (the links route later; a bed across a neck of the plateau would cut the dock off)
-  const strips = s.targets.map((t) => {
-    const len = dist(park, t);
-    const g = frameAt(park, Math.atan2(t.z - park.z, t.x - park.x));
-    return frameRect(g, len / 2, 0, len / 2, M.corridor / 2);
-  });
+  const strips = s.targets.map((t) => hubStrip(park, t, M.corridor));
   ctx.shapes[isl.id].push(...strips);
 
   // ---- C15 nap grove: hammocks strung between wreathed round trees, west lobe (the layouts are
@@ -1372,7 +1389,11 @@ function m22Quick(
   // cross the hub strips, then stand on the Kite Hill foot (unlevelled there, see `bed`)
   const relax: (() => void)[] = [
     () => undefined,
-    () => (ctx.shapes[isl.id] = ctx.shapes[isl.id].filter((o) => !strips.includes(o))),
+    // (the last strip stays: the dock's, a bed across its neck cuts the pier off, seed 223)
+    () =>
+      (ctx.shapes[isl.id] = ctx.shapes[isl.id].filter(
+        (o) => !strips.includes(o) || o === strips[strips.length - 1],
+      )),
     () => (ctx.shapes[isl.id] = ctx.shapes[isl.id].filter((o) => o !== R)),
   ];
   let meadow: { mg: Frame; cols: number; rows: number; size: [number, number] } | null = null;

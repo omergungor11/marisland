@@ -41,6 +41,7 @@ import { THEMES } from '../content/themes/index.ts';
 export * from './types.ts';
 export * from './edit-types.ts';
 export { CHUNK_HAS_LAND, CHUNK_HAS_SHALLOW } from './gen/chunks.ts';
+export { dataLakeOf, lakeEdge, lakePoint, type DataLake, type LakeOutline } from './data-lake.ts';
 export { slopeAtCell } from './gen/zones.ts';
 export { openSeaAt, reefClearance, routeClearance } from './gen/reefs.ts';
 export {

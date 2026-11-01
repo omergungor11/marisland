@@ -123,9 +123,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "91c9cb74674db079",
-          "1001": "8fe4857b49fe2095",
-          "42": "1b3f2206f75866bb",
+          "1": "5d9e5ea2ffd47d08",
+          "1001": "8a8cbcf52584d8fb",
+          "42": "7ed17c29222a96eb",
         }
       `);
     },
@@ -218,7 +218,11 @@ describe('archipelago — 30-seed full generation', () => {
         const len = Math.sqrt(best);
         let deepest = Infinity;
         for (let t = 4; t <= len - 4; t += 1) {
-          const y = heightAt(w.height, xa + ((xb - xa) * t) / len, za + ((zb - za) * t) / len);
+          const x = xa + ((xb - xa) * t) / len;
+          const z = za + ((zb - za) * t) / len;
+          // (an islet stands in the channel by design, ISLET_LAYOUT: it is no bridge)
+          if (w.islets.some((it) => Math.hypot(it.cx - x, it.cz - z) < it.reach + 4)) continue;
+          const y = heightAt(w.height, x, z);
           expect(y, `seed ${seed} channel ${a}-${b} dry at ${t}`).toBeLessThan(0);
           deepest = Math.min(deepest, y);
         }
@@ -626,8 +630,8 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // TASK-529 Research crag face lawn → cliff on the final ground, re-pinned
       // TASK-532 harbour skeleton + Research Tide-Lab / sunken-city anchors, re-pinned
       // TASK-534 Research harbour kit + sunken city placed, kiosk pads, sub path, re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('ddc81ad0985ce428');
-      expect(generateWorld(1).hashes.world).toBe('0279bc23bc5dca6f');
+      expect(generateWorld(1001).hashes.world).toBe('0cfa398ec2d8a4d4');
+      expect(generateWorld(1).hashes.world).toBe('9f8174d47876c90a');
     } finally {
       for (const b of saved) b.on = true;
     }
