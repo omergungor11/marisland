@@ -364,6 +364,12 @@ describe('QA Thrill Test Park site (TASK-539), 30 seeds', { timeout: 300_000 }, 
       expect(hash(seed), `seed ${seed}`).toBe(v);
       return v;
     });
-    expect(got).toMatchInlineSnapshot();
+    expect(got).toMatchInlineSnapshot(`
+      [
+        "054040aeb0943e64",
+        "100b39f413a922fa",
+        "4feca7ce67dd39c7",
+      ]
+    `);
   });
 });
