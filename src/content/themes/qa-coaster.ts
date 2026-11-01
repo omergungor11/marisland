@@ -43,7 +43,7 @@ export const QA_COASTER = {
     /** Adaptive rail / spine stations: advance until the tangent has turned `maxTurn` rad or `maxStep` u. */
     maxStep: 2.0,
     minStep: 0.35,
-    maxTurn: 0.2,
+    maxTurn: 0.15,
     /** Chain lift: a dark chain between the rails, links of `link` u alternating two greys. */
     chain: { link: 0.4, r: 0.05, drop: 0.07 },
     /** Columns: a bent every `supportEvery` u of arc, none where the rail is closer than `minClear` to the ground. */
@@ -60,8 +60,8 @@ export const QA_COASTER = {
     /** Where the rail is steeper than this (|tangent.y|) and not inverted the column stands outside it. */
     steepY: 0.75,
     invertedUp: 0.3,
-    /** LOD1: rails + spine only, coarse. */
-    lod1: { maxStep: 4, maxTurn: 0.4, supportEvery: 11 },
+    /** LOD1: rails + spine only, coarse, fatter so the white line holds at island distance. */
+    lod1: { maxStep: 4, maxTurn: 0.4, supportEvery: 11, railR: 0.1, spineR: 0.2 },
     rail: P.white,
     spine: P.white,
     spineLoop: P.yellow,
@@ -82,9 +82,13 @@ export const QA_COASTER = {
     seatX: 0.27,
     seatY: 0.96,
     seatZ: -0.12,
-    /** A train is `cars` cars `pitch` apart (centre to centre). */
+    /**
+     * A train is `cars` cars `pitch` apart (centre to centre). 3.2, not the fixture's 2.9: on the real
+     * loop (kit-frame radius 2.75, the fixture's was 3.6) cars at 2.9 touch at the top, 3.2 clears them
+     * by 0.18 u (world/coaster-kit.test.ts, D-122).
+     */
     cars: 3,
-    pitch: 2.9,
+    pitch: 3.2,
     mint: P.mint,
     yellow: P.yellow,
     trim: P.white,
@@ -99,17 +103,107 @@ export const QA_COASTER = {
   station: {
     length: 11,
     depth: 3.4,
-    /** Local z of the track centreline, rail-top height above the pivot. */
+    /** Local z of the track centreline; rail-top height above the pivot (the site's DECK: pivot on the pad). */
     trackZ: 0,
-    railY: 1.1,
-    deckY: 0.78,
+    railY: 0.9,
+    deckY: 0.58,
     deckZ0: 0.7,
     postH: 3.1,
     roofRise: 0.7,
-    footprint: 5.6,
+    /** Solid / blob radius: small, the deck is a long thin rect and the footpath ends behind it. */
+    footprint: 2.2,
+    /** The ✓ lamp's mast height over the deck (clear of the roof) and its inset from the -x end / the deck's back. */
+    lamp: { mast: 3.7, x: 0.55, z: 0.5, r: 0.2 },
   },
-  board: { w: 2.6, h: 2.5 },
+  board: { w: 2.6, h: 2.5, lamp: { y: 2.42, z: 0.02, r: 0.24 } },
   cart: { footprint: 1.0 },
+  /** Bumper rink, part of the built site track (kit frame). Floor checker + a rubber curb + a light frame. */
+  rink: {
+    floorH: 0.12,
+    tiles: [6, 8] as const,
+    tileA: P.cream,
+    tileB: '#CFEFE0',
+    curb: { h: 0.3, w: 0.22, color: P.rubber, top: P.yellow },
+    post: { h: 2.5, r: 0.07, color: P.white },
+    beam: { h: 0.09, color: P.mint },
+    bulbs: { perSide: 4, r: 0.075, color: P.yellow },
+  },
+} as const;
+
+/**
+ * The coaster's motion (TASK-541, D-122; render/coaster-motion.ts). Lengths in kit u (the kit is scaled
+ * as a whole by the site's scale), seconds, on the culture clock's day seconds so a frozen capture lands
+ * on the exact pose and the noon siren always finds the bots on the loop.
+ */
+export const QA_COASTER_MOTION = {
+  speed: {
+    /** Station roll-out: from `startV`, accelerating at `rollA`, up to the chain's speed. */
+    startV: 0.5,
+    rollA: 1.1,
+    chainV: 1.7,
+    /** Gravity run: v² = chainV² + 2 g (crest − y) − 2 friction × arc, on the middle car. */
+    g: 7,
+    friction: 0.1,
+    /** Never slower than this past the crest (the loop's crown). */
+    minV: 2.2,
+    /** The brake run into the station: v² ≤ stopV² + 2 brakeA × (arc left). */
+    brakeA: 5.5,
+    stopV: 0.6,
+  },
+  /** Chain-lift ratchet: the train advances `link` u in `move` of the click, then holds (no audio: the eye hears it). */
+  click: { link: 0.85, move: 0.55, ring: { life: 0.32, r0: 0.08, r1: 0.5, color: P.steel } },
+  /** Arrival nod (spring on the cars' pitch, rad). */
+  nod: { amp: 0.05, omega: 10, zeta: 0.3 },
+  /** Seconds between runs: the dummy waits, then lamp on + bots board, then the bots get off. Longest first. */
+  dwell: { dummy: 6, swap: 7, off: 4 },
+  /** Boarding pop (s), stagger per seat (s). */
+  pop: { out: 0.25, in: 0.4, stagger: 0.09 },
+  /** The ✓ lamp: delay after the dummy's return, glow scale over the lens at rest / peak, flash decay, ring. */
+  lamp: {
+    delay: 0.7,
+    r0: 1.1,
+    r1: 2.2,
+    tau: 0.7,
+    color: '#7BF2BC',
+    flash: { life: 0.9, r0: 0.3, r1: 2.2 },
+    /** During the noon siren the lamp blinks at this rate (Hz) and sends sound rings out of the station's +z. */
+    sirenHz: 2.2,
+    sirenRing: { rings: 3, period: 1.2, r0: 0.2, r1: 1.1, travel: 1.9, color: P.cream },
+  },
+  /** At 12:00 + `noonLead` s the bot train's lead car enters the loop. */
+  noonLead: 4,
+  /** Bumper cars: kit frame; a stream round an ellipse in the rink, one car rams the next per `period`. */
+  bumpers: {
+    margin: 0.82,
+    lapS: 19,
+    period: 3.1,
+    rush: 0.55,
+    contact: 1.42,
+    /** Struck car's jolt forward (fraction of the free gap), recoil spring, spin kick (rad). */
+    jolt: 0.45,
+    omega: 6,
+    zeta: 0.42,
+    spin: 0.55,
+    /** Slow heading wander (rad, s) and squash on contact. */
+    wander: 0.22,
+    wanderS: 3.7,
+    squash: 0.12,
+    /** Driver: a capped bot, hips over the floor; scale. */
+    rider: { y: 0.42, z: -0.06, scale: 0.8 },
+    spark: { life: 0.45, r0: 0.1, r1: 0.9, ball: 0.22, color: '#FFE28A', y: 0.5 },
+  },
+  /** Draw limits by quality: bumper cars; LOD0 movers within `lod0` u (0 = never). */
+  plan: {
+    low: { bumpers: 3, lod0: 0, cars: 2 },
+    medium: { bumpers: 5, lod0: 62, cars: 3 },
+    high: { bumpers: 6, lod0: 90, cars: 3 },
+  },
+  /** Dither fade and the mover range (u from the site origin). */
+  fadeNear: 170,
+  fadeFar: 215,
+  range: 225,
+  /** The culture scene's range (lamp glow, click ring, sparks). */
+  sceneRange: 170,
 } as const;
 
 /** Control-point format TASK-539 publishes: site-local `[x, y, z]`, y absolute. */

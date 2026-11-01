@@ -1,3 +1,4 @@
+import { QA_PARK as PARK } from '../content/themes/qa-park.ts';
 import { describe, expect, it } from 'vitest';
 import { QA_CULTURE, QA_CULTURE_SITES } from '../content/cultures/qa.ts';
 import { PROP_DEFS, PROP_DEF_INDEX } from '../content/props.ts';
@@ -262,8 +263,13 @@ describe("QA Inspectors' Island culture (TASK-424), 30 seeds", () => {
       const fx = w.fixtures.filter((f) => f.islandId === isl.id);
       for (const [id, R] of Object.entries(RANGES)) {
         // the Q15 grandstand is dummyBench v1 (TASK-480, own test)
+        // (TASK-541: the park's TESTED board and candy cart are variants of two kit defs, own test)
         const k = fx.filter(
-          (f) => f.defId === id && !(id === 'dummyBench' && f.variant === C.grandstand.variant),
+          (f) =>
+            f.defId === id &&
+            !(id === 'dummyBench' && f.variant === C.grandstand.variant) &&
+            !(id === 'checklistBoard' && f.variant === PARK.kit.board) &&
+            !(id === 'inspectionBooth' && f.variant === PARK.kit.candy),
         ).length;
         expect(k, `${ctx} ${id}`).toBeGreaterThanOrEqual(R.n[0]);
         expect(k, `${ctx} ${id}`).toBeLessThanOrEqual(R.n[1]);
@@ -289,7 +295,9 @@ describe("QA Inspectors' Island culture (TASK-424), 30 seeds", () => {
         expect(dist(m, tower as XZ), ctx).toBeLessThan(5);
       // booths beside a barrier gate
       const gates = fx.filter((f) => f.defId === 'barrierGate');
-      for (const b of fx.filter((f) => f.defId === 'inspectionBooth'))
+      for (const b of fx.filter(
+        (f) => f.defId === 'inspectionBooth' && f.variant !== PARK.kit.candy,
+      ))
         expect(Math.min(...gates.map((g) => dist(g, b))), ctx).toBeLessThan(6);
     }
     for (const [id, R] of Object.entries(RANGES))

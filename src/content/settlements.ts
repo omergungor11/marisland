@@ -147,6 +147,9 @@ export const LANDMARKS: Readonly<Record<string, LandmarkSpec>> = {
  * structures use their PropDef footprint.
  */
 export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
+  // TASK-541: the pivot is the rink's side, walkers stay on paths; the station's long thin deck
+  coasterTrack: 0.6,
+  coasterStation: 2.2,
   well: 1,
   buoy: 0.5,
   tidePool: 1,

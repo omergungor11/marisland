@@ -32,6 +32,7 @@ import {
   type CoasterTemplatePoint,
 } from '../../../content/themes/qa-park.ts';
 import { coasterSegmentAt } from '../../coaster-spline.ts';
+import { FIXTURE_RADIUS } from '../../../content/settlements.ts';
 import { heightAt, Zone, type IslandData, type XZ } from '../../types.ts';
 import { cellX, cellZ, gridRange } from '../grid.ts';
 import { slopeAtCell } from '../zones.ts';
@@ -436,6 +437,48 @@ function repaintZones(ctx: SiteCtx, isl: IslandData, s: ParkSite): void {
       else if ((zn === Zone.grass || zn === Zone.meadow || zn === Zone.forest) && slope > Z.steep)
         ctx.zone[i] = Zone.cliff;
     }
+}
+
+/**
+ * The kit on the published site (TASK-541, D-122), after the rim walk and the hammocks so their decor
+ * rolls keep their place: the track prop at the site origin (its geometry is the kit frame, D-122),
+ * the station on the lane over the platform's middle, the board and the candy cart on the apron. All
+ * at the site's scale; pivots on the deck pad / the apron's ground.
+ */
+export function placeQaParkKit(ctx: SiteCtx, isl: IslandData, s: ParkSite): void {
+  const A = isl.anchors;
+  const o = A.coaster;
+  if (!o) return;
+  const scale = s.scale;
+  const fx = (defId: string, p: XZ, rotY: number, variant?: number, y?: number): void => {
+    ctx.fixtures.push({
+      defId,
+      x: p.x,
+      z: p.z,
+      rotY,
+      islandId: isl.id,
+      scale,
+      ...(variant !== undefined ? { variant } : {}),
+      ...(y !== undefined ? { y } : {}),
+    });
+  };
+  fx('coasterTrack', s.p, s.rot, 0, o.y);
+  // station local +x along the travel, its deck (+z) on the lane's outer side (the template's −x)
+  const lane = atLocal(s, mx(s, TPL.station[0][0]), K.station.z * s.scale);
+  fx('coasterStation', lane, s.rot + (s.mirror ? -Math.PI / 2 : Math.PI / 2), 0, o.y);
+  // (the apron may be a slope: a small prop that would hang off it stays away)
+  const level = (id: string, p: XZ): boolean => {
+    const r = FIXTURE_RADIUS[id] ?? 1;
+    const ys = [0, 1, 2, 3, 4, 5, 6, 7].map((k) =>
+      heightAt(ctx.h, p.x + Math.cos(k * 0.785) * r, p.z + Math.sin(k * 0.785) * r),
+    );
+    const y0 = heightAt(ctx.h, p.x, p.z);
+    return Math.max(y0, ...ys) - Math.min(y0, ...ys) <= K.kit.maxRelief;
+  };
+  if (level('checklistBoard', A.coasterBoard))
+    fx('checklistBoard', A.coasterBoard, A.coasterBoard.rotY, K.kit.board);
+  if (level('inspectionBooth', A.coasterCandy))
+    fx('inspectionBooth', A.coasterCandy, A.coasterCandy.rotY, K.kit.candy);
 }
 
 /**

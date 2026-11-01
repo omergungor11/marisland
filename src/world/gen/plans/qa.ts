@@ -75,6 +75,7 @@ import {
   commitQaPark,
   finishQaPark,
   linkQaPark,
+  placeQaParkKit,
   qaParkCandidates,
   type ParkSite,
 } from './qa-park.ts';
@@ -585,6 +586,7 @@ export const planQa: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
     if (park) finishQaPark(ctx, isl, park);
     const walk = rimWalkway(ctx, isl, QA_RIM_WALK, paths);
     placeHammocks(ctx, isl, walk, paths);
+    if (park) placeQaParkKit(ctx, isl, park);
   };
   return plan;
 };
