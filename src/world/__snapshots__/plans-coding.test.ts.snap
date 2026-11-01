@@ -10,7 +10,7 @@ exports[`Coding island plan (TASK-363) > per-theme snapshot: Coding site data fo
       "solar@94.88,-199.48 10.5x18",
       "garden@47.87,-186.29 7x10",
     ],
-    "fixtures": 181,
+    "fixtures": 205,
     "lots": [
       "devPod@54.71,-180.29",
       "devOffice@48.71,-174.69",
@@ -36,7 +36,7 @@ exports[`Coding island plan (TASK-363) > per-theme snapshot: Coding site data fo
       "solar@-146.83,-119.55 13.5x18",
       "garden@-178.38,-163.71 7x10",
     ],
-    "fixtures": 200,
+    "fixtures": 226,
     "lots": [
       "devPod@-160.17,-166.69",
       "devOffice@-152.97,-162.72",
@@ -61,7 +61,7 @@ exports[`Coding island plan (TASK-363) > per-theme snapshot: Coding site data fo
       "solar@-127.85,178.84 13.5x18",
       "garden@-128.29,137.06 7x10",
     ],
-    "fixtures": 208,
+    "fixtures": 234,
     "lots": [
       "devOffice@-125.41,153.57",
       "devOffice@-113.6,164.95",
