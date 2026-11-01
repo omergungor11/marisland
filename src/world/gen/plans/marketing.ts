@@ -44,6 +44,7 @@ import {
   addShape,
   ang,
   bestSample,
+  carveWater,
   clear,
   dirOf,
   discShape,
@@ -581,8 +582,10 @@ export const planMarketing: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   });
   // M31 (TASK-536): the ferry harbour grows from the cove dock; no harbour = the old cove pier
   const hb = planHarbour(ctx, isl, site);
-  // (the run-out segments may leave the depth the dock site found: the head's berth is dredged)
-  const pierSite = hb ? { ...hb.site, carve: true } : site;
+  const pierSite = hb ? hb.site : site;
+  // (the run-out segments may leave the depth the dock site found: the head is dredged; only the
+  // head, a channel from the root would drown the way onto the pier)
+  if (hb) carveWater(ctx, hb.end, hb.end, DOCK.headCarve, DOCK.headCarveFall, DOCK.channelDepth);
   const pier = hb ? planCarnivalPier(ctx, hb) : null;
   dockWithLink(
     ctx,

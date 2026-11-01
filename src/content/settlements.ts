@@ -663,6 +663,9 @@ export const DOCK = {
   /** Channel carve along a fallback pier and the turning basin depth (u, ≥ endDepth). */
   channelWidth: 3,
   channelDepth: 3.8,
+  /** A run-out harbour pier's head (TASK-536): dredged to `channelDepth` within this radius + fall. */
+  headCarve: 2.5,
+  headCarveFall: 2,
   /** Moorings: rowboats need this depth, spaced along the dock sides. */
   rowboatDepth: 0.8,
   mooringSide: 1.8,

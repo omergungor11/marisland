@@ -171,8 +171,16 @@ export const CARNIVAL_PIER = {
     deckScale: 1.6,
     deckAt: [0.15, 6.05] as const,
   },
-  /** Lantern posts on the deck's sea edge (their street pools light the water): `at` u from its far end. */
-  lantern: { variant: 0, at: [0.3, 6.05, 11.7] as const, inset: 0.3 },
+  /**
+   * Lantern posts (their street pools light the water): on the deck's sea edge `at` u from its far end
+   * (clear of the screen's letters from the sea), and on the T crossbar's back corners `head` [u, v].
+   */
+  lantern: {
+    variant: 0,
+    at: [0.3, 4.6, 11.7] as const,
+    inset: 0.3,
+    head: [-0.9, 3.7] as const,
+  },
   /** Confetti cannons on the T crossbar: `v` u either side of the pier axis, splayed `splay` rad out. */
   cannon: { variant: 0, v: 2.6, u: 0.1, splay: 0.4 },
 } as const;

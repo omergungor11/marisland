@@ -94,6 +94,9 @@ export function placeCarnivalKit(ctx: SiteCtx, pier: CarnivalPier): void {
     publish(isl, `carnivalCannon${k}`, p, rot, y + P.kit.head.lift);
     fix('confettiCannon', p, C.variant, y + P.kit.head.lift, rot);
   });
+  const [hu, hv] = K.lantern.head;
+  for (const s of [-1, 1])
+    fix('lanternPost', framePoint(hb, L + hu, s * hv), K.lantern.variant, y + P.kit.head.lift);
   if (!deck) return;
   const D = K.deck;
   const w = D.w;
