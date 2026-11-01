@@ -174,7 +174,8 @@ describe('Marketing Media Rock plan (TASK-403), 30 seeds', () => {
       const { levels, of } = mktOf(w);
       const low = (f: { x: number; z: number }): boolean =>
         Math.abs(heightAt(w.height, f.x, f.z) - levels[2]) < 1.6;
-      const wheel = of('ferrisWheel');
+      // (TASK-536: the Carnival Pier's small wheel stands on the boardwalk)
+      const wheel = of('ferrisWheel').filter((f) => f.scale === undefined);
       const stage = of('stage');
       const games = of('fairBooth').filter((f) => f.variant === 0);
       return (
@@ -257,6 +258,9 @@ const KIT_COUNTS: Record<string, readonly [number, number]> = {
   megaphoneStand: [0, 2],
 };
 const CULTURE_DEFS = new Set(MARKETING_CULTURE_PROP_DEFS.map((d) => d.id));
+/** The Carnival Pier's cannons on the T crossbar (TASK-536): pinned heights, not the fair's kit. */
+const onPier = (f: { defId: string; y?: number }): boolean =>
+  f.defId === 'confettiCannon' && f.y !== undefined;
 
 describe(
   'Marketing Carnival Broadcasters culture (TASK-423), 30 seeds',
@@ -268,7 +272,7 @@ describe(
         const { isl, of } = mktOf(w);
         const ctx = `seed ${seed}`;
         for (const [def, [lo, hi]] of Object.entries(KIT_COUNTS)) {
-          const n = of(def).length;
+          const n = of(def).filter((f) => !onPier(f)).length;
           expect(n, `${ctx} ${def}`).toBeGreaterThanOrEqual(lo);
           expect(n, `${ctx} ${def}`).toBeLessThanOrEqual(hi);
         }
@@ -282,7 +286,7 @@ describe(
           .map((l) => rectShape(l.x, l.z, l.rotY, l.w, l.d));
         const rects = CS.rect as Record<string, readonly [number, number]>;
         for (const f of w.fixtures.filter(
-          (x) => x.islandId === isl.id && CULTURE_DEFS.has(x.defId),
+          (x) => x.islandId === isl.id && CULTURE_DEFS.has(x.defId) && !onPier(x),
         )) {
           const r = rects[f.defId];
           const sh: Shape = r
@@ -311,7 +315,7 @@ describe(
         const { isl, of } = mktOf(w);
         const st = new Set(w.storySpots.filter((s) => s.islandId === isl.id).map((s) => s.kind));
         return (
-          of('confettiCannon').length >= 1 &&
+          of('confettiCannon').filter((f) => !onPier(f)).length >= 1 &&
           of('balloonMast').length >= 2 &&
           of('selfieSpot').length === 1 &&
           st.has('balloonLaunch') &&

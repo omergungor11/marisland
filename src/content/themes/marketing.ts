@@ -251,6 +251,8 @@ export const MARKETING_QUICK = {
     minDepth: 1.4,
     minShore: 3.5,
     rope: { y: 0.6, sag: 0.18, r: 0.02 },
+    /** With a harbour (TASK-536): buoys keep this far off the ferry's approach corridor. */
+    approach: 1.5,
   },
   /**
    * M8 party pontoon (`sailboat` variant 5, a floating fixture): a `w` × `l` raft in the bay,
@@ -263,6 +265,8 @@ export const MARKETING_QUICK = {
     l: 6.2,
     off: [5, 12] as const,
     along: [8, 20] as const,
+    /** With a Carnival Pier (TASK-536): past the boardwalk's far end, clear of the sea view of it. */
+    harbour: { off: [16, 26] as const, along: [2, 8] as const },
     minDepth: 1.2,
     minShore: 4,
   },

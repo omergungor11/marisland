@@ -112,7 +112,8 @@ export interface HarbourParams {
     deckY: number;
     light: number;
     shelter: number;
-    booth: number;
+    /** null: the island has its own booth (Marketing: the megaphone kiosk), no `dock` booth site. */
+    booth: number | null;
     board: number;
     bollard: { variant: number; at: readonly (readonly [number, number])[] };
   };
@@ -167,6 +168,64 @@ export const HARBOURS: Partial<Record<'research' | 'marketing' | 'design', Harbo
       board: 4,
       bollard: {
         variant: 3,
+        at: [
+          [-3.65, 0.9],
+          [-1.4, 0.9],
+          [1.4, 0.9],
+          [3.65, 0.9],
+        ],
+      },
+    },
+  },
+  // M31 TASK-536 (D-126): the Carnival Pier; same skeleton, the Rock's steep shelf gets a nearer arm
+  marketing: {
+    pier: { segments: 7, minSegments: 4, sideClear: 1.6, head: { w: 8, d: 2.4 } },
+    berth: { out: 3, approach: { len: 18, half: 5 } },
+    arm: {
+      offset: 10,
+      step: 1,
+      tipArc: 13,
+      length: 26,
+      minLength: 16,
+      maxTurnDeg: 110,
+      depth: [0.4, 3.2],
+      idealDepth: 1.3,
+      crestY: 1.35,
+      crestDome: 0.3,
+      half: [1.2, 1.5],
+      flank: 2,
+      clearOther: 18,
+      mouth: 5,
+      rockY: 0.7,
+      armour: 0.2,
+      armourY: 0.15,
+      rockTip: 6,
+    },
+    basin: { from: 1.5, pierGap: 1.2, armGap: 1.4, depth: 1.8, fall: 1.5 },
+    kiosks: {
+      search: 9,
+      step: 0.5,
+      minShore: 0.8,
+      maxRelief: [0.8, 1.6] as const,
+      laneGap: 1.6,
+      gap: 0.6,
+      padMargin: 1.2,
+      shelter: { at: [-3.2, -4], size: [3.2, 2.2] },
+      booth: { at: [-2.6, 3.4], size: [1.6, 1.6] },
+      board: { at: [-1.6, -1.9], size: [1.2, 0.5] },
+    },
+    light: { inset: 0.6 },
+    keepOut: { pier: 2.5, head: 3, hard: 0.65 },
+    kit: {
+      head: { variant: 0, plank: 1.2, lift: 0.02 },
+      deckY: 0.7,
+      light: 3,
+      shelter: 3,
+      // (the island's own megaphone kiosk sells the tickets: marketing.ts `placeKiosk`)
+      booth: null,
+      board: 3,
+      bollard: {
+        variant: 2,
         at: [
           [-3.65, 0.9],
           [-1.4, 0.9],
