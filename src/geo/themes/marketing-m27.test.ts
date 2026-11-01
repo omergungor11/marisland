@@ -47,7 +47,8 @@ describe('TASK-517 Marketing M27 defs', () => {
   it('variants of old defs: geo and PropDef agree, random rolls keep the old variants', () => {
     for (const [id, variants, roll] of [
       ['mailLine', 8, 2],
-      ['billboardV2', 4, 2],
+      // (v4 = the WELCOME screen, TASK-536)
+      ['billboardV2', 5, 2],
       ['antennaTower', 3, 1],
     ] as const) {
       const d = PROP_DEFS[PROP_DEF_INDEX[id]];

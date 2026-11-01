@@ -48,7 +48,8 @@ export const PROP_DEFS_BUILDINGS: PropDef[] = [
   // v4 = Design lantern boat, v5 = Marketing party pontoon (TASK-481): pinned, never rolled
   // v6 / v7 = the HQ marina sloops, v8 = the tender (TASK-505): pinned by the marina stage, never rolled
   // v9 = the DevOps breakwater tug (TASK-509b): pinned, never rolled
-  d('sailboat', 0, 10, 2.6, windy | noShadow, undefined, { rollVariants: 2 }),
+  // v10 = the Carnival Pier boardwalk (TASK-536, D-126): pinned, never rolled
+  d('sailboat', 0, 11, 2.6, windy | noShadow, undefined, { rollVariants: 2 }),
   // variant 3 = the arch (TASK-474 seamarks)
   d('seaStack', 0, 4, 2.6, 0, undefined, { rollVariants: 3 }),
   // T0: the channel buoys (variants 1 red / 2 green, TASK-474) read as night light lines from the
@@ -66,7 +67,8 @@ export const PROP_DEFS_BUILDINGS: PropDef[] = [
   d('laundryLine', 2, 3, 2.0, grounded | windy),
   // v3 = Design glass chime line (TASK-425), v4 = Marketing marquee bulb string (TASK-481): only
   // where the plans pin them
-  d('bunting', 2, 5, 3.0, grounded | windy, undefined, { rollVariants: 3 }),
+  // v5 = the Carnival Pier bulb arch (TASK-536, D-126): pinned, never rolled
+  d('bunting', 2, 6, 3.0, grounded | windy, undefined, { rollVariants: 3 }),
   d('bench', 2, 2, 0.7, grounded),
   // v2 / v3 = harbour bollard (neutral / Research, M31 TASK-533): pinned, never rolled
   d('barrel', 2, 4, 0.3, grounded, undefined, { rollVariants: 2 }),
