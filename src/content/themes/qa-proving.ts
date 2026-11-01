@@ -118,8 +118,8 @@ export const QA_PROVING_PLAN = {
    * Test fan beside a long side: gaps past the side to the fan base, along-lane offsets (fraction of
    * d / 2), obstacle discs of the fan and of its dummy pole (3 u in front, toward the yard).
    */
-  fanGaps: [4.2, 5.2, 6.4] as const,
-  fanAlong: [0, 0.3, -0.3, 0.55, -0.55] as const,
+  fanGaps: [4.2, 5.2, 6.4, 7.8] as const,
+  fanAlong: [0, 0.3, -0.3, 0.55, -0.55, 0.85, -0.85] as const,
   fanR: 1.7,
   poleR: 0.5,
   /**

@@ -123,9 +123,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "614a79bab16cbf5e",
-          "1001": "3d041f0cacbfad65",
-          "42": "0c6ef5d8790d81b0",
+          "1": "f5d57ea4d37e8ba8",
+          "1001": "589b5de0f839d3da",
+          "42": "76eefae94996ac9b",
         }
       `);
     },
@@ -626,8 +626,8 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // TASK-529 Research crag face lawn → cliff on the final ground, re-pinned
       // TASK-532 harbour skeleton + Research Tide-Lab / sunken-city anchors, re-pinned
       // TASK-534 Research harbour kit + sunken city placed, kiosk pads, sub path, re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('21497943e0981320');
-      expect(generateWorld(1).hashes.world).toBe('1e4fd749f7c5f1cb');
+      expect(generateWorld(1001).hashes.world).toBe('4c071140974dd195');
+      expect(generateWorld(1).hashes.world).toBe('0debce3e19c3101d');
     } finally {
       for (const b of saved) b.on = true;
     }
