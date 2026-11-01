@@ -46,6 +46,7 @@ import { MARKETING_M27_MOTION } from '../content/themes/marketing-m27-site.ts';
 import { RESEARCH_M28 } from '../content/themes/research-m28.ts';
 import { RESEARCH_M28_MOTION } from '../content/themes/research-m28-site.ts';
 import { RESEARCH_HARBOUR_MOTION as RH } from '../content/themes/research-harbour-site.ts';
+import { CARNIVAL_MOTION, CARNIVAL_PIER } from '../content/themes/marketing-harbour.ts';
 import { RESEARCH_M31 } from '../content/themes/research-m31.ts';
 import { HARBOUR } from '../content/themes/harbours.ts';
 import { LIFE_PLAN } from '../content/life.ts';
@@ -826,37 +827,81 @@ function capTossScene(): Scene['run'] {
   };
 }
 
+/** One confetti burst `age` s old from the `confettiCannon`'s muzzle. */
+function confettiBurst(
+  w: Writer,
+  c: CultureCtx,
+  idx: number,
+  age: number,
+  C: {
+    pieces: number;
+    life: number;
+    speed: readonly [number, number];
+    spread: number;
+    tau: number;
+    fall: number;
+    size: number;
+    floor: number;
+  },
+): void {
+  const { dir, muzzle, colors } = M.confetti;
+  const e = 1 - Math.exp(-age / C.tau);
+  for (let i = 0; i < C.pieces; i++) {
+    const u1 = rnd(i, idx, 11);
+    const u2 = rnd(i, idx, 12);
+    const u3 = rnd(i, idx, 13);
+    const sp = C.speed[0] + (C.speed[1] - C.speed[0]) * u1;
+    const vx = dir[0] * sp + (u2 - 0.5) * 2 * C.spread * sp;
+    const vy = dir[1] * sp;
+    const vz = dir[2] * sp + (u3 - 0.5) * 2 * C.spread * sp;
+    const fall = C.fall * (0.7 + 0.6 * u2);
+    const flutter = 0.16 * c.motion * Math.sin(c.time * 4 + i * 1.7);
+    const x = muzzle[0] + vx * C.tau * e + flutter;
+    const z = muzzle[2] + vz * C.tau * e - flutter;
+    const y = Math.max(C.floor, muzzle[1] + (vy + fall) * C.tau * e - fall * age);
+    const settle = y <= C.floor + 0.001 ? 0.6 : 1;
+    const fade = Math.min(1, (C.life - age) / 0.8);
+    if (fade <= 0) continue;
+    w.put(
+      PART.quad,
+      [x, y, z],
+      settle < 1 ? [-Math.PI / 2, u1 * 6, 0] : [c.time * 4.3 + u2 * 6, c.time * 3 + u1 * 6, 0],
+      C.size * fade,
+      colors[i % colors.length],
+    );
+  }
+}
+
 function confettiScene(idx: number): Scene['run'] {
   const C = M.confetti;
   return (w, c) => {
     if (c.fest?.id !== C.ritual) return;
     const age = c.fest.phase * C.showSeconds;
-    if (age >= C.life) return;
-    const e = 1 - Math.exp(-age / C.tau);
-    for (let i = 0; i < C.pieces; i++) {
-      const u1 = rnd(i, idx, 11);
-      const u2 = rnd(i, idx, 12);
-      const u3 = rnd(i, idx, 13);
-      const sp = C.speed[0] + (C.speed[1] - C.speed[0]) * u1;
-      const vx = C.dir[0] * sp + (u2 - 0.5) * 2 * C.spread * sp;
-      const vy = C.dir[1] * sp;
-      const vz = C.dir[2] * sp + (u3 - 0.5) * 2 * C.spread * sp;
-      const fall = C.fall * (0.7 + 0.6 * u2);
-      const flutter = 0.16 * c.motion * Math.sin(c.time * 4 + i * 1.7);
-      const x = C.muzzle[0] + vx * C.tau * e + flutter;
-      const z = C.muzzle[2] + vz * C.tau * e - flutter;
-      const y = Math.max(0.03, C.muzzle[1] + (vy + fall) * C.tau * e - fall * age);
-      const settle = y <= 0.031 ? 0.6 : 1;
-      const fade = Math.min(1, (C.life - age) / 0.8);
-      if (fade <= 0) continue;
-      w.put(
-        PART.quad,
-        [x, y, z],
-        settle < 1 ? [-Math.PI / 2, u1 * 6, 0] : [c.time * 4.3 + u2 * 6, c.time * 3 + u1 * 6, 0],
-        C.size * fade,
-        C.colors[i % C.colors.length],
-      );
-    }
+    if (age < C.life) confettiBurst(w, c, idx, age, { ...C, floor: 0.03 });
+  };
+}
+
+/** Carnival Pier (M31 TASK-536): the T-head cannon fires on the ferry's arrival, not at the fair's show. */
+function pierConfettiScene(idx: number, call: FerryCall, delay: number): Scene['run'] {
+  const C = CARNIVAL_MOTION.confetti;
+  return (w, c) => {
+    const age = sinceFerryArrival(call, c.time) - delay;
+    if (age >= 0 && age < C.life) confettiBurst(w, c, idx, age, C);
+  };
+}
+
+/** The WELCOME screen flashes as the ferry stops (screen frame: a lit panel over the board). */
+function welcomeFlashScene(call: FerryCall): Scene['run'] {
+  const F = CARNIVAL_MOTION.flash;
+  const S = CARNIVAL_PIER.screen;
+  const at: V3 = [0, S.y + S.h / 2, -0.1 + S.depth / 2 + 0.03];
+  return (w, c) => {
+    const u = sinceFerryArrival(call, c.time) - F.delay;
+    if (u < 0 || u >= F.pulses * F.period) return;
+    const k = Math.sin(((u % F.period) / F.period) * Math.PI);
+    if (k < 0.25) return;
+    const s = F.from + (1 - F.from) * k;
+    w.put(PART.panel, at, [0, 0, 0], [S.w * s, S.h * s, 1], F.color);
   };
 }
 
@@ -1317,8 +1362,12 @@ function labArrivalScene(call: FerryCall): Scene['run'] {
  * Research's ferry arrival ritual, harbour half (M31 TASK-534; world frame): the harbour light
  * double-flashes and a ripple runs off the berth as the boat stops.
  */
-function harbourArrivalScene(call: FerryCall, lamp: V3, berth: V3): Scene['run'] {
-  const R = RH.arrival;
+function harbourArrivalScene(
+  call: FerryCall,
+  lamp: V3,
+  berth: V3,
+  R: Pick<typeof RH.arrival, 'flash' | 'ripple'> = RH.arrival,
+): Scene['run'] {
   const Rp = R.ripple;
   const Fl = R.flash;
   return (w, c) => {
@@ -1837,6 +1886,23 @@ export function createCultureMovers(
     scope: defOf('tripodTelescope'),
     tideLab: defOf('tideLab'),
   };
+  // M31 TASK-536: the Carnival Pier's ferry call and its two cannons (store index → burst delay)
+  const callOfPier = (isl: WorldData['islands'][number]): FerryCall | null => {
+    if (!isl.anchors.carnivalCannon0) return null;
+    const di = world.docks.findIndex((k) => k.islandId === isl.id);
+    return di >= 0 ? ferryCallAt(world, di, ferries) : null;
+  };
+  const carnivalCannons = new Map<number, { call: FerryCall; delay: number }>();
+  for (const isl of world.islands) {
+    const call = callOfPier(isl);
+    if (!call) continue;
+    CARNIVAL_MOTION.confetti.delay.forEach((delay, k) => {
+      const a = isl.anchors[`carnivalCannon${k}`];
+      for (let i = 0; a && i < store.count; i++)
+        if (store.defId[i] === D.cannon && Math.hypot(store.x[i] - a.x, store.z[i] - a.z) < 0.01)
+          carnivalCannons.set(i, { call, delay });
+    });
+  }
   const beams: Beam[] = [];
   const beamAnchors: { x: number; y: number; z: number }[] = [];
   let beamMat: THREE.ShaderMaterial | null = null;
@@ -1896,11 +1962,21 @@ export function createCultureMovers(
           hornScene(),
         ),
       );
-    else if (d === D.cannon)
+    else if (d === D.cannon) {
+      const pier = carnivalCannons.get(i);
       scenes.push(
-        sceneAt(th, pv(), store.rotY[i], [0, 2, 1], M.confetti.pieces, confettiScene(idx)),
+        pier
+          ? sceneAt(
+              th,
+              pv(),
+              store.rotY[i],
+              [0, 2, 1],
+              CARNIVAL_MOTION.confetti.pieces,
+              pierConfettiScene(idx, pier.call, pier.delay),
+            )
+          : sceneAt(th, pv(), store.rotY[i], [0, 2, 1], M.confetti.pieces, confettiScene(idx)),
       );
-    else if (d === D.flag)
+    } else if (d === D.flag)
       scenes.push(sceneAt(th, pv(), store.rotY[i], [0, 1.2, 0], 1, flagScene()));
     else if (d === D.drop && v === 1)
       scenes.push(
@@ -2243,6 +2319,49 @@ export function createCultureMovers(
       );
       sc.pivot = null;
       sc.range2 = RH.arrival.range * RH.arrival.range;
+      scenes.push(sc);
+    }
+  }
+  // M31 TASK-536: the Carnival Pier's WELCOME flash, harbour light and berth ripple on the ferry's arrival
+  for (const isl of world.islands) {
+    const pierCall = callOfPier(isl);
+    const berth = isl.anchors.ferryBerth;
+    const light = isl.anchors.harbourLight;
+    if (!pierCall || !berth) continue;
+    const A = CARNIVAL_MOTION.arrival;
+    const near = (a: { x: number; z: number }, i: number): boolean =>
+      Math.hypot(store.x[i] - a.x, store.z[i] - a.z) < 0.01;
+    const sa = isl.anchors.carnivalScreen;
+    if (sa)
+      for (let i = 0; i < store.count; i++)
+        if (store.defId[i] === defOf('billboardV2') && near(sa, i)) {
+          const sc = sceneAt(
+            'marketing',
+            pivotOf(store, i),
+            store.rotY[i],
+            [0, 2, 0],
+            1,
+            welcomeFlashScene(pierCall),
+          );
+          sc.range2 = A.range * A.range;
+          scenes.push(sc);
+        }
+    if (light) {
+      const sc = sceneAt(
+        'marketing',
+        new THREE.Matrix4(),
+        0,
+        [berth.x, 0, berth.z],
+        1 + A.ripple.rings,
+        harbourArrivalScene(
+          pierCall,
+          [light.x, (light.y ?? 0) + HARBOUR.light.lamp.y, light.z],
+          [berth.x, A.ripple.y, berth.z],
+          A,
+        ),
+      );
+      sc.pivot = null;
+      sc.range2 = A.range * A.range;
       scenes.push(sc);
     }
   }

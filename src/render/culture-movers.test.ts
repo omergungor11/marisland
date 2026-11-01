@@ -20,6 +20,9 @@ import { DEVOPS_M26_MOTION } from '../content/themes/devops-m26-site.ts';
 import { DOCK } from '../content/settlements.ts';
 import { pierLoop } from './harbour-routes.ts';
 import { MARKETING_M27_MOTION } from '../content/themes/marketing-m27-site.ts';
+import { CARNIVAL_MOTION } from '../content/themes/marketing-harbour.ts';
+import { LIFE_PLAN } from '../content/life.ts';
+import { ferryCallAt } from '../life/boats.ts';
 import { RESEARCH_M28 } from '../content/themes/research-m28.ts';
 import { RESEARCH_M28_MOTION } from '../content/themes/research-m28-site.ts';
 
@@ -464,6 +467,47 @@ describe('culture movers', () => {
     // deterministic in the clock
     expect(glows(23.15)).toBe(glows(23.15));
     SHARED.uLamps.value.z = lamps;
+  });
+
+  it('Carnival Pier (TASK-536): the ferry arrival fires the cannons and flashes the screen, closed form', () => {
+    const isl = world.islands.find((i) => i.theme === 'marketing');
+    const A = isl?.anchors;
+    expect(A?.carnivalScreen && A?.carnivalCannon0).toBeDefined();
+    if (!isl || !A) return;
+    const di = world.docks.findIndex((d) => d.islandId === isl.id);
+    const call = ferryCallAt(world, di, LIFE_PLAN.medium.ferries);
+    expect(call).not.toBeNull();
+    if (!call) return;
+    const at = call.cycle - call.offs[0] + call.at;
+    const cam = new THREE.Vector3(A.carnivalDeck.x, 8, A.carnivalDeck.z);
+    const near = (m: THREE.Matrix4, p: { x: number; z: number }, r: number): boolean => {
+      const q = new THREE.Vector3().setFromMatrixPosition(m);
+      return Math.hypot(q.x - p.x, q.z - p.z) < r;
+    };
+    const flying = (): number =>
+      ofKind(view, PART.quad).filter((m) => near(m, A.carnivalCannon0, 16)).length;
+    const F = CARNIVAL_MOTION.flash;
+    // just before the boat stops: nothing
+    view.update(at - 2, 12, env(12), cam, fest());
+    expect(ofKind(view, PART.panel).length).toBe(0);
+    expect(flying()).toBe(0);
+    // a flash's peak and the burst
+    view.update(at + F.delay + F.period * 1.5, 12, env(12), cam, fest());
+    expect(ofKind(view, PART.panel).length).toBe(1);
+    expect(near(ofKind(view, PART.panel)[0], A.carnivalScreen, 1)).toBe(true);
+    expect(flying()).toBeGreaterThanOrEqual(CARNIVAL_MOTION.confetti.pieces * 2);
+    // a seek agrees with itself
+    const a = snapshot(view);
+    view.update(at + 30, 12, env(12), cam, fest());
+    view.update(at + F.delay + F.period * 1.5, 12, env(12), cam, fest());
+    expect(snapshot(view)).toEqual(a);
+    // over when the burst is
+    view.update(at + CARNIVAL_MOTION.confetti.life + 1, 12, env(12), cam, fest());
+    expect(ofKind(view, PART.panel).length).toBe(0);
+    expect(flying()).toBe(0);
+    // the fair's show does not fire the pier's cannons
+    view.update(at - 2, 12, env(12), cam, fest('marketing', M.confetti.ritual, 0.01));
+    expect(flying()).toBe(0);
   });
 
   it('M27 diver (TASK-518): climbs, leaps into the pool, splashes; by day only, closed form', () => {

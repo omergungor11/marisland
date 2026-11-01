@@ -333,6 +333,13 @@ export const POOLS = {
         4: { radius: 2.8, intensity: 0.45, offset: 0 },
       },
     },
+    // M31 TASK-536: the Carnival Pier bulb arches (bunting v5) on the dusk water; no other bunting has a pool
+    bunting: {
+      radius: 0,
+      intensity: 0,
+      offset: 0,
+      variants: { 5: { radius: 5, intensity: 0.75 } },
+    },
     // M31 TASK-534: the stilt lab's windows and tide tank on the dusk water
     tideLab: { radius: 7.5, intensity: 0.85, offset: 0 },
     cottage: { radius: 3.4, intensity: 0.45, offset: 1.9 },
