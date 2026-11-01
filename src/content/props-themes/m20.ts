@@ -52,14 +52,25 @@ export const HQ_M20_PROP_DEFS: readonly PropDef[] = [
 
 export const DESIGN_M20_PROP_DEFS: readonly PropDef[] = [
   // the island's second tier-1 def (cultureCapOverride.design.tier1 = 2); effective tier 0 by size
-  { id: 'conservatory', geo: 'conservatory', tier: 1, variants: 1, footprint: 8, flags: grounded },
+  // v1 = the Colour Wharf's glass waiting pavilion (M31 TASK-537): pinned, never rolled
+  {
+    id: 'conservatory',
+    geo: 'conservatory',
+    tier: 1,
+    variants: 2,
+    rollVariants: 1,
+    footprint: 8,
+    flags: grounded,
+  },
   // variant = pane tint (CONSERVATORY_HUES order below). Each house is < 3 u, but the six stand
   // as one colourful row: drawn from T0 (TASK-493, D-031) so the row does not pop in at 140 u.
   {
     id: 'glasshouse',
     geo: 'glasshouse',
     tier: 2,
-    variants: 5,
+    // v5..v9 = the Colour Wharf's pastel boathouses (M31 TASK-537): pinned, never rolled
+    variants: 10,
+    rollVariants: 5,
     footprint: 2.4,
     flags: grounded,
     fromT0: true,

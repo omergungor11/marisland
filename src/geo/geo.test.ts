@@ -1,3 +1,4 @@
+import { WHARF_GEO as F, WHARF_VARIANTS as WV } from '../content/themes/design-harbour.ts';
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { BLINK } from '../content/activity.ts';
@@ -102,6 +103,13 @@ const VARIANT_TARGET: Record<string, number> = {
   'marketStall:4': 560,
   'dock:2': 320,
   'dock:3': 320,
+  // TASK-537 (D-127): the Design livery of the same two, and the Colour Wharf's paint pots
+  'marketStall:5': 560,
+  'dock:4': 320,
+  'buoy:3': 340,
+  'buoy:4': 340,
+  'buoy:5': 340,
+  'buoy:6': 340,
   // TASK-540: the 227 u fixture coaster track (rails, ties, spine, columns), 29 tris per metre
   'coasterTrack:0': 7500,
 };
@@ -244,25 +252,29 @@ describe('prop geometry', () => {
           // wall's riser, TASK-461), buried on flat ground; stair treads carry a skirt that hides
           // the wall under the flight (TASK-485)
           const below =
-            def.id === 'pipe'
-              ? -4.3
-              : // the marina's pile feet and the fort's plinth reach down past the waterline pivot (TASK-505)
-                def.id === 'marinaPier' || def.id === 'starFort'
-                ? -5
-                : // TASK-533: the Tide-Lab piles reach the seabed under the waterline pivot
-                  def.id === 'tideLab'
-                  ? -1.1
-                  : // TASK-540: the coaster's columns are sunk 0.25 below groundY, the seated rider's boots hang under its hip pivot
-                    def.id === 'coasterTrack' || def.id === 'coasterRider'
-                    ? -0.3
-                    : // TASK-509b: the breakwater foot reaches the seabed, the bridge / deck skirts hide the bank
-                      def.id === 'devopsBreakwater'
-                      ? -2.7
-                      : def.id === 'emberBridge' || def.id === 'craterDeck'
-                        ? -0.65
-                        : def.id === 'stairFlight'
-                          ? -Math.max(...STAIR_FLIGHT.looks.map((L) => L.skirt)) - 0.05
-                          : -0.05;
+            // TASK-537: the Colour Wharf's boathouses and pavilion stand on piles from the waterline
+            (def.id === 'glasshouse' && v >= WV.boathouse) ||
+            (def.id === 'conservatory' && v === WV.pavilion)
+              ? -F.pavilion.pileDown - 0.1
+              : def.id === 'pipe'
+                ? -4.3
+                : // the marina's pile feet and the fort's plinth reach down past the waterline pivot (TASK-505)
+                  def.id === 'marinaPier' || def.id === 'starFort'
+                  ? -5
+                  : // TASK-533: the Tide-Lab piles reach the seabed under the waterline pivot
+                    def.id === 'tideLab'
+                    ? -1.1
+                    : // TASK-540: the coaster's columns are sunk 0.25 below groundY, the seated rider's boots hang under its hip pivot
+                      def.id === 'coasterTrack' || def.id === 'coasterRider'
+                      ? -0.3
+                      : // TASK-509b: the breakwater foot reaches the seabed, the bridge / deck skirts hide the bank
+                        def.id === 'devopsBreakwater'
+                        ? -2.7
+                        : def.id === 'emberBridge' || def.id === 'craterDeck'
+                          ? -0.65
+                          : def.id === 'stairFlight'
+                            ? -Math.max(...STAIR_FLIGHT.looks.map((L) => L.skirt)) - 0.05
+                            : -0.05;
           expect(bb.min.y).toBeGreaterThanOrEqual(below);
           const h = def.heights?.[v] ?? def.height;
           expect(bb.max.y).toBeGreaterThanOrEqual(h * 0.65);

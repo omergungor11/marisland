@@ -79,6 +79,7 @@ import { bulbString, pontoon } from './themes/marketing-quick.ts';
 import { M28_HEIGHTS, withStairLantern } from './themes/research-m28.ts';
 import { marinaBoat } from './themes/hq-marina.ts';
 import { withHarbourKit } from './themes/harbours.ts';
+import { withWharfKit } from './themes/design-harbour.ts';
 import { tugBoat } from './themes/devops-m26.ts';
 import type { Lod, PropGeoDef } from './types.ts';
 import type * as THREE from 'three';
@@ -271,7 +272,7 @@ defs.push(...THEME_GEO);
 
 // M31 (TASK-533): the shared harbour kit adds variants to five old defs
 export const PROP_GEO: Record<string, PropGeoDef> = Object.fromEntries(
-  defs.map((d) => [d.id, withHarbourKit(d)]),
+  defs.map((d) => [d.id, withWharfKit(withHarbourKit(d))]),
 );
 
 export function buildProp(

@@ -502,8 +502,14 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
     const n = w.height.n;
     let coast = 0;
     let bluff = 0;
+    // (a harbour's breakwater arm is new low coast, not the plateau's: TASK-537)
+    const arm: { x: number; z: number }[] = [];
+    for (let k = 0; isl.anchors[`harbourArm${k}`]; k++) arm.push(isl.anchors[`harbourArm${k}`]);
     for (let i = 2 * n; i < n * n - 2 * n; i++) {
       if (w.islandMap[i] !== isl.id + 1 || w.shoreSdf[i] > 1.01) continue;
+      const x = w.height.originX + (i % n) * w.height.cellSize;
+      const z = w.height.originZ + Math.floor(i / n) * w.height.cellSize;
+      if (arm.some((p) => Math.hypot(p.x - x, p.z - z) < 5)) continue;
       coast++;
       let top = 0;
       for (let dz = -2; dz <= 2; dz++)

@@ -1,8 +1,8 @@
 /**
  * Shared ferry-harbour kit geometry (M31 TASK-533, D-112 / D-114). Numbers / palettes:
- * content/themes/harbours.ts. Five pieces, each a PAIR of variants of an existing def (neutral warm
- * cream + harbour red, then the Research white + teal livery), appended after the old variants so
- * every older variant keeps its builder and its seeded bytes:
+ * content/themes/harbours.ts. Five pieces, each a set of variants of an existing def (`HARBOUR_LIVERIES`:
+ * neutral warm cream + harbour red, the Research white + teal, the Design cream + violet), appended
+ * after the old variants so every older variant keeps its builder and its seeded bytes:
  *
  *   lighthouse   3 / 4   harbour light, 6.2 u banded tower for a breakwater tip
  *   marketStall  3 / 4   waiting shelter (bench + gable roof, open to +z)
@@ -26,6 +26,7 @@
 import * as THREE from 'three';
 import {
   HARBOUR as F,
+  HARBOUR_LIVERIES,
   HARBOUR_PAL,
   HARBOUR_VARIANTS as HV,
   type HarbourLivery,
@@ -518,7 +519,7 @@ export const HARBOUR_HEIGHTS: Record<keyof typeof HV, number> = Object.fromEntri
 ) as Record<keyof typeof HV, number>;
 
 /**
- * Append the neutral + Research harbour variants to the five old defs (variants +2). Anything else
+ * Append the `HARBOUR_LIVERIES` variants to the five old defs. Anything else
  * passes through untouched. LOD1 of an added variant is its own (flat) low-poly build.
  */
 export function withHarbourKit(def: PropGeoDef): PropGeoDef {
@@ -529,15 +530,11 @@ export function withHarbourKit(def: PropGeoDef): PropGeoDef {
     throw new Error(`harbour kit: ${def.id} has ${def.variants} variants, want ${first}`);
   const own = def.heights ?? Array.from({ length: def.variants }, () => def.height);
   const build: PropBuilder = (o) =>
-    o.variant === first
-      ? add[0].build(o, 'neutral')
-      : o.variant === first + 1
-        ? add[0].build(o, 'research')
-        : def.build(o);
+    o.variant >= first ? add[0].build(o, HARBOUR_LIVERIES[o.variant - first]) : def.build(o);
   return {
     ...def,
-    variants: def.variants + 2,
-    heights: [...own, add[0].height, add[0].height],
+    variants: def.variants + HARBOUR_LIVERIES.length,
+    heights: [...own, ...HARBOUR_LIVERIES.map(() => add[0].height)],
     build,
   };
 }

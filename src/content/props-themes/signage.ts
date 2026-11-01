@@ -17,7 +17,7 @@ export const SIGNAGE_PROP_DEFS: readonly PropDef[] = [
     geo: 'pierSignpost',
     tier: 2,
     // v3 / v4 = harbour timetable board (neutral / Research, M31 TASK-533): pinned, never rolled
-    variants: 5,
+    variants: 6,
     rollVariants: 3,
     footprint: 1.0,
     flags: grounded,

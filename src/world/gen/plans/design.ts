@@ -11,6 +11,7 @@
  * - Glasshouse rows (2 × 3, rainbow order) beside the square; the stained windmill on a meadow
  *   on the shoulder opposite the tree (Z6). Pine filler is cleared round the new districts.
  * - Sculpture Garden, Easel Walk, Mushroom Grove as before; two spray rainbows off the bluff.
+ * - Colour Wharf (M31 TASK-537): the cove pier grows into the ferry harbour, design-harbour.ts.
  * Every decision draws from forks of `rng`; numbers live in content/themes/design.ts and
  * content/cultures/design.ts.
  */
@@ -18,7 +19,13 @@ import type { Rng } from '../../../core/rng.ts';
 import { DESIGN_SITES } from '../../../content/themes/design.ts';
 import { THEMES } from '../../../content/themes/index.ts';
 import { DESIGN_CULTURE_SITE as C } from '../../../content/cultures/design.ts';
-import { FIXTURE_RADIUS, FLATTEN, LOT_FOOTPRINT, PATHS } from '../../../content/settlements.ts';
+import {
+  DOCK,
+  FIXTURE_RADIUS,
+  FLATTEN,
+  LOT_FOOTPRINT,
+  PATHS,
+} from '../../../content/settlements.ts';
 import type { IslandData, StorySpot, XZ } from '../../types.ts';
 import { heightAt, Zone } from '../../types.ts';
 import { shoreSdf } from '../coast.ts';
@@ -31,6 +38,7 @@ import {
   ang,
   bestSample,
   cellOf,
+  carveWater,
   cellPos,
   clear,
   dirOf,
@@ -68,6 +76,8 @@ import {
   type SiteCtx,
   type SitePlan,
 } from '../sites.ts';
+import { finishHarbour, placeKiosks, planHarbour, type Harbour } from './harbour.ts';
+import { placeColourWharfKit, planColourWharf } from './design-harbour.ts';
 import type { ThemePlanner } from './types.ts';
 
 const S = DESIGN_SITES;
@@ -292,7 +302,7 @@ function placePier(
   plan: SitePlan,
   stream: readonly XZ[],
   rng: Rng,
-): XZ | null {
+): { root: XZ | null; hb: Harbour | null } {
   const D = S.dock;
   const near = isl.anchors.streamMouth ?? isl.anchors.giantTree ?? { x: isl.cx, z: isl.cz };
   const n = stream.length;
@@ -311,11 +321,15 @@ function placePier(
     if (!site || lineDist(stream, s.root) >= D.streamClear) site = s;
     if (lineDist(stream, site.root) >= D.streamClear) break;
   }
-  dockWithLink(ctx, isl, plan, site, rng.fork('moorings'), {
-    rowboats: D.rowboats,
+  // M31 (TASK-537): the ferry harbour grows from the cove dock; the lantern boat takes the rowboat's water
+  const hb = planHarbour(ctx, isl, site);
+  // (the lengthened pier's end keeps DOCK.endDepth: the first dredge stopped at the shorter pier)
+  if (hb) carveWater(ctx, hb.end, hb.end, 1, 2, DOCK.endDepth);
+  dockWithLink(ctx, isl, plan, hb ? hb.site : site, rng.fork('moorings'), {
+    rowboats: hb ? 0 : D.rowboats,
     sailboats: 0,
   });
-  return site ? site.root : null;
+  return { root: site ? site.root : null, hb };
 }
 
 interface Square {
@@ -883,13 +897,21 @@ export const planDesign: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   // the band), the prism walk on the pier lane, the lot ring round the square (before the other
   // sites: on a small dome they would take the flank), the glasshouses, the garden, the windmill
   // (its fallback passes move it in), the easels, the grove, the culture kit
-  const pier = placePier(ctx, isl, plan, stream, rng.fork('pier'));
+  const { root: pier, hb } = placePier(ctx, isl, plan, stream, rng.fork('pier'));
   const sq = conservatorySquare(ctx, isl, plan, treeAnchor, stream, pier);
   const centre = sq ? sq.c : plan.hub;
   if (sq) {
     glassBridge(ctx, isl, plan, stream, sq, pier);
     const lanes = bayLanes(ctx, isl, plan, sq, treeAnchor, pier);
     if (lanes[0]) prismWalk(ctx, isl, lanes[0], sq, rng.fork('prisms'));
+  }
+  // M31 (TASK-537): the pier-root kiosks before the lot ring: the cove's level ground is small here
+  // (they keep off the pins already linked: the glass bridge's ends; the reservation ends here)
+  if (hb) {
+    const pins = plan.links.map((l) => discShape(l.pin.x, l.pin.z, S.harbourPinKeep));
+    for (const p of pins) addShape(ctx, isl, p, false);
+    placeKiosks(ctx, hb, centre);
+    ctx.shapes[isl.id] = ctx.shapes[isl.id].filter((o) => !pins.includes(o));
   }
   squareLots(ctx, isl, plan, centre, sq ? sq.pins[0] : centre, rng.fork('glade'), sIdx);
   if (sq) glasshouseRows(ctx, isl, plan, sq, rng.fork('glasshouses'));
@@ -921,6 +943,19 @@ export const planDesign: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   if (garden) pathLink(plan, garden);
   for (const p of easelPins) pathLink(plan, p);
   if (grove) pathLink(plan, grove);
+  // M31 (TASK-537): Colour Wharf round what the campus left, its kit on the final ground
+  if (hb) {
+    planColourWharf(
+      ctx,
+      hb,
+      stream,
+      plan.links.map((l) => l.pin),
+    );
+    plan.finish = () => {
+      finishHarbour(ctx, hb);
+      placeColourWharfKit(ctx, hb);
+    };
+  }
   return plan;
 };
 

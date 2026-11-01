@@ -35,12 +35,12 @@ const FAR_RATIO: Record<string, number> = { lighthouse: 0.36, dock: 0.36 };
 
 describe('TASK-533 harbour kit defs', () => {
   for (const [id, first] of Object.entries(HV)) {
-    it(`${id}: +2 variants, geo and PropDef agree, random rolls keep the old variants`, () => {
+    it(`${id}: +3 liveries, geo and PropDef agree, random rolls keep the old variants`, () => {
       const d = PROP_DEFS[PROP_DEF_INDEX[id]];
       expect(first).toBe(OLD[id]);
-      expect(PROP_GEO[id].variants).toBe(first + 2);
-      expect(PROP_GEO[id].heights).toHaveLength(first + 2);
-      expect(d.variants).toBe(first + 2);
+      expect(PROP_GEO[id].variants).toBe(first + 3);
+      expect(PROP_GEO[id].heights).toHaveLength(first + 3);
+      expect(d.variants).toBe(first + 3);
       expect(d.rollVariants).toBe(
         id === 'lighthouse' || id === 'marketStall' || id === 'pierSignpost' ? 3 : 2,
       );
@@ -71,7 +71,7 @@ describe('TASK-533 harbour kit defs', () => {
 
 describe('TASK-533 harbour kit: budgets, bounds, determinism', () => {
   for (const [id, first] of Object.entries(HV))
-    for (const v of [first, first + 1]) {
+    for (const v of [first, first + 1, first + 2]) {
       it(`${id} v${v}: triangles, ground pivot, nominal height, finite, non-degenerate, deterministic`, () => {
         const g0 = buildProp(id, 7, v, 0);
         const g1 = buildProp(id, 7, v, 1);

@@ -201,7 +201,11 @@ describe('harbour calm mask (TASK-534)', () => {
         expect(w.zone[i]).toBe(Zone.lagoon);
         const x = h.originX + (i % h.n) * h.cellSize;
         const z = h.originZ + Math.floor(i / h.n) * h.cellSize;
-        expect(Math.hypot(x - isl.cx, z - isl.cz)).toBeLessThan(isl.reach + 30);
+        // (every harbour island's lagoon: Research's and Colour Wharf's, TASK-537)
+        const near = w.islands.some(
+          (o) => o.anchors.harbourArm0 && Math.hypot(x - o.cx, z - o.cz) < o.reach + 30,
+        );
+        expect(near).toBe(true);
       }
       expect(n, `seed ${w.seed}`).toBeGreaterThan(8);
       // the city's slots are all sheltered
@@ -284,9 +288,12 @@ describe('Tide-Lab scenes (TASK-534)', () => {
   it('the harbour light turns with the beacon net, a beam at its lamp, near only', () => {
     const scope = new Scope('tide-beam');
     const net = createBeaconNet(props, world, createBeam(props, scope), scope);
-    const beam = net.group.children.find((m) => m.name === 'harbour-beam') as THREE.Mesh;
-    expect(beam).toBeDefined();
     const L = isl.anchors.harbourLight;
+    // (Colour Wharf's light is on the same net, TASK-537: Research's is the one at its anchor)
+    const beam = net.group.children.find(
+      (m) => m.name === 'harbour-beam' && Math.abs(m.position.x - L.x) < 0.01,
+    ) as THREE.Mesh;
+    expect(beam).toBeDefined();
     expect(beam.position.x).toBeCloseTo(L.x, 3);
     expect(beam.position.z).toBeCloseTo(L.z, 3);
     expect(beam.position.y).toBeCloseTo((L.y ?? 0) + HARBOUR.light.lamp.y, 2);

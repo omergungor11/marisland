@@ -22,7 +22,14 @@ import {
   pickJumpSpot,
 } from './arcs.ts';
 import type { AgentKind } from './agents.ts';
-import { islandRing, mooringsOf, resolveRoutes, Rowboats, Sailboats } from './boats.ts';
+import {
+  islandRing,
+  lanternWharfRoute,
+  mooringsOf,
+  resolveRoutes,
+  Rowboats,
+  Sailboats,
+} from './boats.ts';
 import { WakeFoam } from './wake.ts';
 import { makeCtx, setMotion, type LifeDeps } from './ctx.ts';
 import { FishSchools } from './fish.ts';
@@ -105,7 +112,9 @@ export function createLife(deps: LifeDeps): LifeSystem {
   const P = CULTURE_BOATS.patrol;
   const patrolRing = plan.patrolBoats > 0 ? islandRing(ctx, P.theme, P.margin, P.slalom) : null;
   const LB = CULTURE_BOATS.lantern;
-  const lanternRing = plan.lanternBoats > 0 ? islandRing(ctx, LB.theme, LB.margin) : null;
+  const lanternWharf = plan.lanternBoats > 0 ? lanternWharfRoute(ctx) : null;
+  const lanternRing =
+    lanternWharf ?? (plan.lanternBoats > 0 ? islandRing(ctx, LB.theme, LB.margin) : null);
   const sailing = routes.length > 0 && plan.sailboats > 0 ? plan.sailboats : 0;
   const ferrying = ferryRoutes.length > 0 && plan.ferries > 0 ? plan.ferries : 0;
   const patrolling = patrolRing ? plan.patrolBoats : 0;
@@ -160,7 +169,16 @@ export function createLife(deps: LifeDeps): LifeSystem {
       ctx,
       [lanternRing],
       lanterns,
-      { name: 'lanternBoat', variant: LB.variant, speed: LB.speed },
+      lanternWharf
+        ? {
+            name: 'lanternBoat',
+            variant: LB.variant,
+            speed: LB.speed,
+            ferry: true,
+            decel: LB.decel,
+            startFrac: 0,
+          }
+        : { name: 'lanternBoat', variant: LB.variant, speed: LB.speed },
       wakeSlot(lanterns),
     );
     all.push(kinds.lanternBoat);

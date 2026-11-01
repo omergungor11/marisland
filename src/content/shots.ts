@@ -569,6 +569,45 @@ const COASTER_SHOTS: readonly ShotPreset[] = (
   sets: ['dev'] as ShotSet[],
 }));
 /** TASK-534 (D-118): seed 1001 cams round the Research Tide-Lab harbour. */
+/** Colour Wharf (TASK-537): `site:` cams in the pier's frame (+z out to sea), seed 1001 mirrored by the arm. */
+const WHARF_CAM = (v: string): string => `site:harbourPier1:${v}`;
+const WHARF_CAMS = {
+  day: WHARF_CAM('38,19,12,13,0.5,-13'),
+  dusk: WHARF_CAM('38,17,17,11,0.5,-12'),
+  arrival: WHARF_CAM('9,15,21,10,0.5,-9'),
+} as const;
+const WHARF_SHOTS: readonly ShotPreset[] = (
+  [
+    // the whole harbour from above (any seed: the cam does not depend on the arm's side)
+    ['D-wharf-harbour', WHARF_CAM('6,46,6,6,0,-8'), 11, 6],
+    // the row's doors from the lagoon
+    ['D-wharf-row', WHARF_CAM('20,5,-3,22,1.5,-19'), 11, 6],
+    ['D-wharf-row-dusk', WHARF_CAM('20,5,-3,22,1,-19'), 19, 6],
+    // the pavilion astride the pier, a pot close up
+    ['D-wharf-pavilion', WHARF_CAM('-8,5,5,0,2,-5'), 11, 6],
+    ['D-wharf-pot', WHARF_CAM('15,2.6,-8,14,0.6,-12'), 11, 6],
+    // the ritual in steps: the call at sim 124.6 (dwell 8 s): before, first lights, all lit, fading
+    ['D-wharf-call-0', WHARF_CAMS.arrival, 18.5, 122],
+    ['D-wharf-call-1', WHARF_CAMS.arrival, 18.5, 126],
+    ['D-wharf-call-2', WHARF_CAMS.arrival, 18.5, 131],
+    ['D-wharf-call-3', WHARF_CAMS.arrival, 18.5, 137.5],
+    ['D-wharf-call-4', WHARF_CAMS.arrival, 18.5, 141],
+    // the lantern boat: moored, leaving, past the tip, on the ring
+    ['D-wharf-boat-0', WHARF_CAMS.dusk, 19, 148],
+    ['D-wharf-boat-1', WHARF_CAMS.dusk, 19, 156],
+    ['D-wharf-boat-2', WHARF_CAMS.dusk, 19, 164],
+    ['D-wharf-boat-3', WHARF_CAM('10,40,50,10,0,12'), 21, 180],
+  ] as const
+).map(([id, cam, time, simt]): ShotPreset => ({
+  id,
+  title: `Colour Wharf · ${id.slice(8)}`,
+  seed: 1001,
+  cam,
+  time,
+  simt,
+  quality: 'medium',
+  sets: ['dev'],
+}));
 const TIDE_LAB_CAMS = {
   noon: '74,30,82,88,0,99',
   dusk: '56,18,140,82,2.5,118',
@@ -1868,7 +1907,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   },
   // ---- culture boats (M19 wave 3, TASK-434), seed 1001 raw cams (re-pin when routes / layout change):
   // the HQ ferry dwells ~8 s at the Marketing pier (sim 28–36 s) then pulls away (deltaT pair);
-  // the Design lantern boat drifts off Mossgrove, its glass lanterns lit at night.
+  // the Design lantern boat at its mooring (TASK-537), its glass lanterns lit at night.
   {
     id: 'D-ferry-dock',
     title: 'Ferry at the pier (dwell, then departure)',
@@ -1884,7 +1923,8 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'D-lantern-boat-night',
     title: 'Lantern boat · night',
     seed: 1001,
-    cam: '-161.87,5.5,-103.72,-149.87,3,-106.22',
+    // TASK-537: it stands at the Colour Wharf mooring until sim 150
+    cam: 'site:lanternMoor:9,5,4,0,1.5,-1',
     time: 21,
     simt: 20,
     quality: 'medium',
@@ -2295,6 +2335,47 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     sets: ['wow'],
   },
   ...TIDE_LAB_SHOTS,
+  // ---- TASK-537 (D-127): Colour Wharf, seed 1001 (frame the harbour, the campus cut: D-118)
+  {
+    id: 'W-colour-wharf-day',
+    title: 'Colour Wharf · day',
+    // the pastel row across the lagoon, paint pots down the breakwater, the lantern boat moored
+    seed: 1001,
+    cam: WHARF_CAMS.day,
+    time: 11,
+    simt: 6,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  {
+    id: 'W-colour-wharf-dusk',
+    title: 'Colour Wharf · dusk',
+    // the houses' colour on the water, the lamps coming on, the lantern boat leaving the bay
+    seed: 1001,
+    cam: WHARF_CAMS.dusk,
+    time: 19,
+    simt: 159,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  {
+    id: 'W-colour-wharf-arrival',
+    title: 'Colour Wharf · ferry arrival',
+    // the ferry just in: prism colours on the pavilion, the paint pots lit in turn
+    seed: 1001,
+    cam: WHARF_CAMS.arrival,
+    time: 18.5,
+    simt: 128,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  ...WHARF_SHOTS,
   // ---- TASK-541 (D-122): the Thrill Test Park at noon: the siren test, the bots on the loop
   {
     id: 'W-thrill-noon',

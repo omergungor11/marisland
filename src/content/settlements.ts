@@ -391,7 +391,10 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
 export const FIXTURE_VARIANT_RADIUS: Readonly<Record<string, Readonly<Record<number, number>>>> = {
   tripodTelescope: { [RESEARCH_M28_SITE.deck.variant]: RESEARCH_M28_SITE.deck.footprint },
   // the waiting shelter (M31 TASK-534)
-  marketStall: { 3: 1.7, 4: 1.7 },
+  marketStall: { 3: 1.7, 4: 1.7, 5: 1.7 },
+  // the Colour Wharf's glass pavilion (M31 TASK-537): the pier walkers pass through its open bays,
+  // and the big octagon's 7.6 u would wall off the cove
+  conservatory: { 1: 0.05 },
 };
 
 /** Fixtures that float at the waterline (render pivot y = 0, not the seabed). */

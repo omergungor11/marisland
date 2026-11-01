@@ -56,7 +56,7 @@ const CONS_GLASS = [
 const JEWELS = [G.ruby, G.amber, G.sun, G.orange] as const;
 
 /** Flat glass pane through `pts` (a quad or triangle, fan wound), shrunk a little so the frame shows. */
-function pane(
+export function pane(
   acc: Acc,
   pts: THREE.Vector3[],
   color: string,

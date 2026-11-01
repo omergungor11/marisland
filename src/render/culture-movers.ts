@@ -47,6 +47,12 @@ import { RESEARCH_M28 } from '../content/themes/research-m28.ts';
 import { RESEARCH_M28_MOTION } from '../content/themes/research-m28-site.ts';
 import { RESEARCH_HARBOUR_MOTION as RH } from '../content/themes/research-harbour-site.ts';
 import { RESEARCH_M31 } from '../content/themes/research-m31.ts';
+import {
+  WHARF_GEO,
+  WHARF_MOTION as WM,
+  WHARF_PASTELS,
+  WHARF_VARIANTS,
+} from '../content/themes/design-harbour.ts';
 import { HARBOUR } from '../content/themes/harbours.ts';
 import { LIFE_PLAN } from '../content/life.ts';
 import { ferryCallAt } from '../life/boats.ts';
@@ -1339,6 +1345,145 @@ function harbourArrivalScene(call: FerryCall, lamp: V3, berth: V3): Scene['run']
   };
 }
 
+const _eulerYX = new THREE.Euler();
+
+/** `steps` hex colours walking round the wharf's pastels (Writer caches colours by string). */
+function pastelRamp(steps: number): string[] {
+  const out: string[] = [];
+  const a = new THREE.Color();
+  const b = new THREE.Color();
+  const n = WHARF_PASTELS.length;
+  for (let k = 0; k < steps; k++) {
+    const t = (k / steps) * n;
+    const i = Math.floor(t);
+    a.set(WHARF_PASTELS[i % n]);
+    b.set(WHARF_PASTELS[(i + 1) % n]);
+    out.push(`#${a.lerp(b, t - i).getHexString()}`);
+  }
+  return out;
+}
+
+/**
+ * Colour Wharf's ferry arrival, pavilion half (M31 TASK-537; pavilion frame): every glazed face takes
+ * a sheet of light whose colour walks round the pastels, patches of the same colours drift out
+ * over the water; closed form on the shared `arrivalEnvelope`.
+ */
+function pavilionPrismScene(call: FerryCall): Scene['run'] {
+  const R = WM.arrival;
+  const P = R.prism;
+  const G = WHARF_GEO.pavilion;
+  const ramp = pastelRamp(30);
+  const cos = Math.cos(Math.PI / 8);
+  const sin = Math.sin(Math.PI / 8);
+  const ap = G.r * cos * P.apothemK;
+  const y0 = G.deckY + G.wallH / 2 + 0.05;
+  const wallW = 2 * G.r * sin * P.fill;
+  const wallH = (G.wallH - 0.1) * P.fill;
+  // the mansard pane: mid radius, mid height, its slope
+  const roofY = G.deckY + G.wallH + G.ringH / 2;
+  const roofA = ((G.r + G.ringR) / 2) * cos;
+  const run = (G.r - G.ringR) * cos;
+  const tilt = Math.atan2(run, G.ringH);
+  const roofH = Math.hypot(run, G.ringH) * P.fill;
+  const roofW = 2 * G.ringR * sin * P.fill;
+  const lift = 0.05;
+  return (w, c) => {
+    const u = sinceFerryArrival(call, c.time);
+    const e = arrivalEnvelope(u, call.dwell, R.rise, R.fall, R.linger);
+    if (e <= 0.001) return;
+    const walk = u * P.rate * ramp.length;
+    P.faces.forEach((deg, k) => {
+      const a = (deg * Math.PI) / 180;
+      const hex = ramp[Math.floor(walk + (k * ramp.length) / P.faces.length) % ramp.length];
+      const s = e * smooth((u - k * P.stagger) / R.rise);
+      if (s <= 0.01) return;
+      const sa = Math.sin(a);
+      const ca = Math.cos(a);
+      w.put(PART.pane, [sa * ap, y0, ca * ap], [0, a, 0], [wallW * s, wallH * s, 1], hex);
+      // the mansard pane over it, in the next colour (a = yaw, then the pane leans in by `tilt`)
+      const hex2 = ramp[Math.floor(walk + ((k + 2) * ramp.length) / P.faces.length) % ramp.length];
+      _qa.setFromEuler(_eulerYX.set(-tilt, a, 0, 'YXZ'));
+      w.putQ(
+        PART.pane,
+        [sa * (roofA + lift), roofY + lift, ca * (roofA + lift)],
+        _qa,
+        [roofW * s, roofH * s, 1],
+        hex2,
+      );
+      // its colour thrown on the water
+      const Th = P.patch;
+      const d = Th.from + (Th.to - Th.from) * (0.5 + 0.5 * Math.sin(u * 0.5 + k));
+      const sway = Th.sway * Math.sin(u * 0.7 + k * 1.7) * c.motion;
+      const b = a + sway / d;
+      w.put(
+        PART.patch,
+        [Math.sin(b) * d, Th.y, Math.cos(b) * d],
+        [0, b, 0],
+        [Th.size[0] * s, Th.size[1], Th.size[2] * s],
+        hex,
+      );
+    });
+    w.put(
+      PART.glow,
+      [0, P.ring.y, 0],
+      [0, 0, 0],
+      [P.ring.r * e, 0.09, P.ring.r * e],
+      ramp[Math.floor(walk) % ramp.length],
+    );
+  };
+}
+
+/**
+ * Colour Wharf's ferry arrival, buoy half (world frame): the paint pots light in turn from the mouth
+ * end down the lagoon, a ring opening on the water under each.
+ */
+function buoyTurnScene(call: FerryCall, pots: readonly (XZ & { rotY: number })[]): Scene['run'] {
+  const R = WM.arrival;
+  const B = R.buoys;
+  return (w, c) => {
+    const u = sinceFerryArrival(call, c.time);
+    const e = arrivalEnvelope(u, call.dwell, R.rise, R.fall, R.linger);
+    if (e <= 0.001) return;
+    pots.forEach((p, k) => {
+      const since = u - k * B.step;
+      const on = e * smooth(since / R.rise);
+      if (on <= 0.01) return;
+      const hex = WHARF_PASTELS[k % 4];
+      w.put(PART.glow, [p.x, B.y, p.z], [0, 0, 0], B.r * on, hex);
+      const ph = frac(since / B.ring.period);
+      const r = B.ring.r * ph * on;
+      if (since < B.ring.period * 2)
+        w.put(PART.ring, [p.x, B.ring.y, p.z], [0, 0, 0], [r, r * (1 - ph) * B.ring.tube, r], hex);
+    });
+  };
+}
+
+/**
+ * Boathouse colour on the evening water (M31 TASK-537; world frame): the water shader has no real
+ * reflections, so each house lays a soft patch of its paint off its door.
+ */
+function boathouseStreakScene(houses: readonly (XZ & { rotY: number })[]): Scene['run'] {
+  const S = WM.streak;
+  return (w, c) => {
+    const k = smooth((c.hour - S.hours[0]) / S.fade) * smooth((S.hours[1] - c.hour) / S.fade);
+    if (k <= 0.01) return;
+    houses.forEach((h, i) => {
+      const hex = WHARF_PASTELS[i % WHARF_PASTELS.length];
+      const b = 1 + S.shimmer * Math.sin((c.time / S.period + i * 0.37) * Math.PI * 2) * c.motion;
+      const x = h.x + Math.cos(h.rotY) * S.out;
+      const z = h.z + Math.sin(h.rotY) * S.out;
+      // (the patch's local +z along the door heading: yaw from (cos, sin) to (sin, cos))
+      w.put(
+        PART.patch,
+        [x, S.y, z],
+        [0, Math.PI / 2 - h.rotY, 0],
+        [S.size[0] * k * b, S.size[1], S.size[2] * k],
+        hex,
+      );
+    });
+  };
+}
+
 /**
  * HQ stall keeper (TASK-469): a worker-bot figure behind the counter. Awake from `open` to
  * midnight (springs in, shrinks out), idles with a bob and nod, fiddles with the goods, beckons now
@@ -2243,6 +2388,40 @@ export function createCultureMovers(
       );
       sc.pivot = null;
       sc.range2 = RH.arrival.range * RH.arrival.range;
+      scenes.push(sc);
+    }
+  }
+  // M31 TASK-537: Colour Wharf (the pavilion's prism and the buoys on the ferry's call, evening colour)
+  for (const isl of world.islands) {
+    if (isl.theme !== 'design' || !isl.anchors.harbourPier1) continue;
+    const world0 = (at: XZ, max: number, range: number, run: Scene['run']): void => {
+      const sc = sceneAt('design', new THREE.Matrix4(), 0, [at.x, 0, at.z], max, run);
+      sc.pivot = null;
+      sc.range2 = range * range;
+      scenes.push(sc);
+    };
+    const houses = anchorPoints(isl, 'boathouse');
+    if (houses.length > 0)
+      world0(houses[0], houses.length, WM.streak.range, boathouseStreakScene(houses));
+    const di = world.docks.findIndex((k) => k.islandId === isl.id);
+    const call = di >= 0 ? ferryCallAt(world, di, ferries) : null;
+    if (!call) continue;
+    const pots = anchorPoints(isl, 'paintBuoy');
+    if (pots.length > 0)
+      world0(pots[0], pots.length * 2, WM.arrival.range, buoyTurnScene(call, pots));
+    const conservatory = defOf('conservatory');
+    for (let i = 0; i < store.count; i++) {
+      if (store.defId[i] !== conservatory || store.islandId[i] !== isl.id) continue;
+      if (store.variant[i] !== WHARF_VARIANTS.pavilion) continue;
+      const sc = sceneAt(
+        'design',
+        pivotOf(store, i),
+        store.rotY[i],
+        [0, 2, 0],
+        3 * WM.arrival.prism.faces.length + 1,
+        pavilionPrismScene(call),
+      );
+      sc.range2 = WM.arrival.range * WM.arrival.range;
       scenes.push(sc);
     }
   }
