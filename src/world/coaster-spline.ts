@@ -85,28 +85,27 @@ function rot(v: V, k: V, a: number): V {
   ];
 }
 
-/** One centripetal Catmull-Rom segment P1 -> P2 as cubic coefficients (Barry-Goldman form, alpha 0.5). */
-function segment(p0: V, p1: V, p2: V, p3: V): (u: number) => V {
-  const d0 = Math.max(1e-4, len(sub(p1, p0)) ** 0.5);
-  const d1 = Math.max(1e-4, len(sub(p2, p1)) ** 0.5);
-  const d2 = Math.max(1e-4, len(sub(p3, p2)) ** 0.5);
-  const c = [0, 1, 2].map((k) => {
-    let t1 = (p1[k] - p0[k]) / d0 - (p2[k] - p0[k]) / (d0 + d1) + (p2[k] - p1[k]) / d1;
-    let t2 = (p2[k] - p1[k]) / d1 - (p3[k] - p1[k]) / (d1 + d2) + (p3[k] - p2[k]) / d2;
-    t1 *= d1;
-    t2 *= d1;
-    return [
-      p1[k],
-      t1,
-      -3 * p1[k] + 3 * p2[k] - 2 * t1 - t2,
-      2 * p1[k] - 2 * p2[k] + t1 + t2,
-    ] as const;
-  });
-  return (u) => [
-    c[0][0] + c[0][1] * u + c[0][2] * u * u + c[0][3] * u * u * u,
-    c[1][0] + c[1][1] * u + c[1][2] * u * u + c[1][3] * u * u * u,
-    c[2][0] + c[2][1] * u + c[2][2] * u * u + c[2][3] * u * u * u,
-  ];
+/**
+ * Point `t` in [0, 1] of the centripetal Catmull-Rom segment p1 -> p2 (Barry-Goldman, alpha 0.5). The
+ * one evaluator of the project: the site's fit (world/gen/plans/qa-park.ts) and this table share it.
+ */
+export function coasterSegmentAt(p0: Vec3, p1: Vec3, p2: Vec3, p3: Vec3, t: number): V {
+  const step = (a: Vec3, b: Vec3): number =>
+    Math.sqrt(Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2])) || 1e-6;
+  const t1 = step(p0, p1);
+  const t2 = t1 + step(p1, p2);
+  const t3 = t2 + step(p2, p3);
+  const u = t1 + (t2 - t1) * t;
+  const out: V = [0, 0, 0];
+  for (let c = 0; c < 3; c++) {
+    const a1 = ((t1 - u) * p0[c] + u * p1[c]) / t1;
+    const a2 = ((t2 - u) * p1[c] + (u - t1) * p2[c]) / (t2 - t1);
+    const a3 = ((t3 - u) * p2[c] + (u - t2) * p3[c]) / (t3 - t2);
+    const b1 = ((t2 - u) * a1 + u * a2) / t2;
+    const b2 = ((t3 - u) * a2 + (u - t1) * a3) / (t3 - t1);
+    out[c] = ((t2 - u) * b1 + (u - t1) * b2) / (t2 - t1);
+  }
+  return out;
 }
 
 /** Build the arc-length table, tangents and the parallel-transported frame. */
@@ -139,11 +138,11 @@ export function createCoasterSpline(
   const ctrlDense: number[] = [];
   let total = 0;
   for (let i = 0; i < segs; i++) {
-    const f = segment(at(i - 1), at(i), at(i + 1), at(i + 2));
+    const [p0, p1, p2, p3] = [at(i - 1), at(i), at(i + 1), at(i + 2)];
     const k = Math.max(8, Math.ceil(len(sub(at(i + 1), at(i))) / 0.05));
     ctrlDense.push(dx.length);
     for (let j = 0; j < k; j++) {
-      const p = f(j / k);
+      const p = coasterSegmentAt(p0, p1, p2, p3, j / k);
       if (dx.length > 0)
         total += Math.hypot(
           p[0] - dx[dx.length - 1],
