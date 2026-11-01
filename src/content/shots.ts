@@ -2356,7 +2356,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     title: 'Data Lake Night',
     seed: 1001,
     // from across the water: the pods' LEDs face it, pavilion on the left, the cloud over the far tip
-    cam: 'site:dataLake:22,12,-8,-1,3,1.5',
+    cam: 'site:dataLake:22,13,-11,-1,3,-2.5',
     time: 21.5,
     simt: 8,
     quality: 'medium',

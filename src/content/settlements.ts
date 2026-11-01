@@ -175,6 +175,16 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   giantDuck: 1.6,
   whiteboardA: 0.8,
   mugStack: 0.5,
+  // Coding M33 kit (TASK-545): their yards block already; the pieces' own solids
+  conveyorLine: 0.8,
+  assemblyArm: 0.7,
+  foundryPart: 0.75,
+  dronePad: 1.9,
+  chargeMast: 0.3,
+  droneHangar: 2,
+  botCourse: 1.3,
+  serverPod: 1.4,
+  quantumPavilion: 2.4,
   // Coding M22 (TASK-479): windsock avenue pole; fairy wreaths ride their tree (no obstacle of their own)
   windsock: 0.4,
   fairyWreath: 0.1,
