@@ -9,8 +9,8 @@ import { baseBox, cylB, put } from '../geo/parts.ts';
 import { makeDepthMaterial, makeLitMaterial } from './materials/factory.ts';
 
 /**
- * Drone couriers (M14c TASK-384): small quadcopters ferrying a glowing packet between the HQ
- * and the other islands' docks. One InstancedMesh on the shared lit program (props' key, no new
+ * Drone couriers (M14c TASK-384): small quadcopters ferrying a glowing packet between the hub (the
+ * Coding Drone Port, TASK-544 / D-121; the HQ on a seed without one) and the other islands' docks. One InstancedMesh on the shared lit program (props' key, no new
  * program); every pose is a closed-form function of the sim time → deterministic frames.
  * Tier-gated twice: count per quality (none on low) and a dither fade by camera distance so
  * they only show at T2 / T3.
@@ -82,23 +82,32 @@ export function buildDroneGeometry(): THREE.BufferGeometry {
   return acc.finish(createRng(1).fork('drone-faces'), false, true);
 }
 
-/** Pads: the HQ hub plus every dock's outer end (world u, ground y). */
+/** The courier hub: the Coding Drone Port's H pad, else the HQ plaza as before TASK-544. */
+function droneHub(world: WorldData): { x: number; z: number; island: number } | null {
+  for (const isl of world.islands) {
+    const pad = isl.anchors.dronePort;
+    if (pad) return { x: pad.x, z: pad.z, island: isl.id };
+  }
+  const hq = world.settlements.find((s) => s.theme === 'hq');
+  return hq ? { x: hq.hub.x, z: hq.hub.z, island: hq.islandId } : null;
+}
+
+/** Pads: the hub plus every dock's outer end (world u, ground y). */
 function routesOf(world: WorldData, n: number, seed: number): Route[] {
   const rng = createRng(seed).fork('drones');
-  const hq = world.settlements.find((s) => s.theme === 'hq');
+  const home = droneHub(world);
   const pads: Array<{ x: number; z: number; island: number }> = [];
   for (const d of world.docks) {
     const L = d.segments * 2 * 0.8;
     pads.push({ x: d.x + Math.cos(d.rotY) * L, z: d.z + Math.sin(d.rotY) * L, island: d.islandId });
   }
-  if (!hq || !pads.length) return [];
-  const home = { x: hq.hub.x, z: hq.hub.z, island: hq.islandId };
+  if (!home || !pads.length) return [];
   const away = pads.filter((p) => p.island !== home.island);
   if (!away.length) return [];
   const ground = (x: number, z: number): number => Math.max(0, heightAt(world.height, x, z));
   const out: Route[] = [];
   for (let i = 0; i < n; i++) {
-    // even drones: HQ ↔ a department dock; odd: dock ↔ dock (inter-department deliveries)
+    // even drones: hub ↔ a department dock; odd: dock ↔ dock (inter-department deliveries)
     const b = away[i % away.length];
     const a =
       i % 2 === 0 || away.length < 2
