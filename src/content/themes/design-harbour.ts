@@ -6,6 +6,7 @@
  *   boathouse  glasshouse v5..v8 (the row-reads-from-T0 def, 4 pastels; low has no room for a fifth)
  *   pavilion   conservatory v1 (the small octagon the pier runs through)
  *   paint pot  buoy v3.. (4 paint colours, one shared LOD1)
+ * The pavilion is the waiting room: no shelter kiosk (marketStall v5 exists but is not placed).
  */
 
 /** Paint colours in hue order: boathouse walls, paint pots, the ritual's lights and streaks. */

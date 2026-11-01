@@ -331,7 +331,6 @@ export const POOLS = {
       variants: {
         3: { radius: 2.8, intensity: 0.45, offset: 0 },
         4: { radius: 2.8, intensity: 0.45, offset: 0 },
-        5: { radius: 2.8, intensity: 0.45, offset: 0 },
       },
     },
     // M31 TASK-534: the stilt lab's windows and tide tank on the dusk water
