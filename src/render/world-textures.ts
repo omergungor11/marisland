@@ -45,6 +45,55 @@ export function ringScaleField(world: WorldData): Float32Array {
   return blurRing(ringScaleRaw(world, landMask(world)), n, n, world.height.cellSize);
 }
 
+/**
+ * Harbour calm mask (M31 TASK-534): the lagoon water on the coast side of a breakwater arm, written
+ * into the SDF texture's ring channel as 0 (the ring scale is ≥ 1 and the shader clamps it, so the
+ * bands don't change). The water shader quiets its shore foam there: the lap lines and bands of
+ * both shores of a 6 u lagoon crossed the sunken city as white rings.
+ */
+export function harbourCalmMask(world: WorldData): Uint8Array {
+  const h = world.height;
+  const n = h.n;
+  const out = new Uint8Array(n * n);
+  for (const isl of world.islands) {
+    const arm: { x: number; z: number }[] = [];
+    for (let k = 0; isl.anchors[`harbourArm${k}`]; k++) arm.push(isl.anchors[`harbourArm${k}`]);
+    if (arm.length < 3) continue;
+    const R = WATER_SHADER.harbourCalm.reach;
+    const xs = arm.map((p) => p.x);
+    const zs = arm.map((p) => p.z);
+    const i0 = Math.max(0, Math.floor((Math.min(...xs) - R - h.originX) / h.cellSize));
+    const i1 = Math.min(n - 1, Math.ceil((Math.max(...xs) + R - h.originX) / h.cellSize));
+    const j0 = Math.max(0, Math.floor((Math.min(...zs) - R - h.originZ) / h.cellSize));
+    const j1 = Math.min(n - 1, Math.ceil((Math.max(...zs) + R - h.originZ) / h.cellSize));
+    for (let j = j0; j <= j1; j++)
+      for (let i = i0; i <= i1; i++) {
+        const c = j * n + i;
+        if (world.zone[c] !== Zone.lagoon) continue;
+        const x = h.originX + i * h.cellSize;
+        const z = h.originZ + j * h.cellSize;
+        let best = 0;
+        let bd = Infinity;
+        for (let k = 0; k < arm.length; k++) {
+          const d = (arm[k].x - x) ** 2 + (arm[k].z - z) ** 2;
+          if (d < bd) {
+            bd = d;
+            best = k;
+          }
+        }
+        // past the tip, or on the seaward side (the crest's island side = toward the island centre)
+        if (best === 0 || bd > R * R) continue;
+        const a = arm[best];
+        const q = arm[best - 1];
+        const nx = -(a.z - q.z);
+        const nz = a.x - q.x;
+        const side = (isl.cx - a.x) * nx + (isl.cz - a.z) * nz;
+        if (((x - a.x) * nx + (z - a.z) * nz) * side > 0) out[c] = 1;
+      }
+  }
+  return out;
+}
+
 /** 1 where `shoreSdf > 0` (the coast mask the ring field's nearest-coast search uses). */
 export function landMask(world: WorldData): Uint8Array {
   const n = world.height.n;
@@ -291,6 +340,7 @@ export function createWorldTextures(
   const heightF = world.height.data.slice();
   const sdfF = world.shoreSdf.slice();
   let ring = createRingCache(world);
+  const calm = harbourCalmMask(world);
   const fill = (): void => {
     ring = createRingCache(world);
     heightF.set(world.height.data);
@@ -298,7 +348,7 @@ export function createWorldTextures(
     for (let i = 0; i < n * n; i++) {
       heightHalf[i] = THREE.DataUtils.toHalfFloat(world.height.data[i]);
       sdfHalf[i * 2] = THREE.DataUtils.toHalfFloat(clampSdf(world.shoreSdf[i]));
-      sdfHalf[i * 2 + 1] = THREE.DataUtils.toHalfFloat(ring.ring[i]);
+      sdfHalf[i * 2 + 1] = THREE.DataUtils.toHalfFloat(calm[i] ? 0 : ring.ring[i]);
     }
     zoneCopy.set(world.zone);
   };
@@ -431,7 +481,8 @@ export function createWorldTextures(
             for (let j = rr.y; j < rr.y + rr.h; j++)
               for (let i = rr.x; i < rr.x + rr.w; i++) {
                 const k = j * n + i;
-                sRect.set(sdfHalf, k * 2 + 1, THREE.DataUtils.toHalfFloat(rc.ring[k]), i, j);
+                const v = calm[k] ? 0 : rc.ring[k];
+                sRect.set(sdfHalf, k * 2 + 1, THREE.DataUtils.toHalfFloat(v), i, j);
               }
           }
         }

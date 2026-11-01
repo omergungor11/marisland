@@ -369,6 +369,15 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   customsYard: 6.2,
   scannerArch: 0.05,
   quarantinePontoon: 0.05,
+  // M31 TASK-534 (the shared harbour kit + Tide-Lab): T crossbar / lab pier pieces stand in the
+  // water, no walker reaches them; the booth and the shelter have their footprints below
+  dock: 0.9,
+  barrel: 0.3,
+  lighthouse: 1.3,
+  marketStall: 1.2,
+  tideLab: 3.9,
+  tideGauge: 0.7,
+  sunkenCity: 0.05,
 };
 
 /**
@@ -378,6 +387,8 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
  */
 export const FIXTURE_VARIANT_RADIUS: Readonly<Record<string, Readonly<Record<number, number>>>> = {
   tripodTelescope: { [RESEARCH_M28_SITE.deck.variant]: RESEARCH_M28_SITE.deck.footprint },
+  // the waiting shelter (M31 TASK-534)
+  marketStall: { 3: 1.7, 4: 1.7 },
 };
 
 /** Fixtures that float at the waterline (render pivot y = 0, not the seabed). */

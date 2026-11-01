@@ -40,6 +40,8 @@ import { createFireworks } from './particles/fireworks.ts';
 import { createDrones } from './drones.ts';
 import { createMovers } from './movers.ts';
 import { createCultureMovers } from './culture-movers.ts';
+import { createTideSub } from './tide-sub.ts';
+import { LIFE_PLAN } from '../content/life.ts';
 import { createWhale, type WhaleView } from './whale.ts';
 import { createSkyCraft } from './sky-craft.ts';
 import { createWaterfalls } from './waterfalls.ts';
@@ -211,8 +213,15 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   if (movers.tugs) group.add(movers.tugs);
   if (movers.lines) group.add(movers.lines.group);
   if (movers.beacon) group.add(movers.beacon.group);
-  const cultureMovers = createCultureMovers(settlement.props, world, d.scope);
+  const cultureMovers = createCultureMovers(
+    settlement.props,
+    world,
+    d.scope,
+    LIFE_PLAN[d.quality].ferries,
+  );
   group.add(cultureMovers.group);
+  const tideSub = createTideSub(world, d.scope);
+  if (tideSub) group.add(tideSub.mesh);
   const whale = createWhale(world, seed, d.scope);
   if (whale) group.add(whale.mesh);
   // hot-air balloons + airship over the archipelago (TASK-335)
@@ -415,6 +424,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     movers.update(time, _camPos);
     cultureMovers.update(time, env.hour, env, _camPos, culture.state);
     whale?.update(culture.state.day, time, _camPos);
+    tideSub?.update(culture.state.day, time, _camPos);
     skyCraft.update(time, culture.state, _camPos);
     water.update(_camPos, d.getTime());
     terrain.update(d.getTime());

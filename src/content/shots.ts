@@ -514,6 +514,37 @@ const RESEARCH_M28_CAMS: readonly (readonly [string, string, string, number, num
   ['D-m28-sundial', 'Meridian dial at 12:00 (T2)', '127.5,13,83.5,125.2,6,92.2', 12, 6],
   ['D-m28-deck', 'Rim deck gazer (T3)', '137,9.5,93.5,130.3,6.8,96.5', 15, 6],
 ];
+/** TASK-534 (D-118): seed 1001 cams round the Research Tide-Lab harbour. */
+const TIDE_LAB_CAMS = {
+  noon: '74,30,82,88,0,99',
+  dusk: '56,18,140,82,2.5,118',
+} as const;
+const TIDE_LAB_SHOTS: readonly ShotPreset[] = (
+  [
+    // the whole harbour from the ferry's side
+    ['D-tide-harbour', '52,26,128,88,1,112', 11, 6],
+    // T-head, seal, vessel + moored sub, kiosks on the pier root
+    ['D-tide-head', '66,10,116,84,1,116', 7, 4],
+    ['D-tide-kiosks', '84,7,124,93,1.5,116', 10, 4],
+    // the lab + its pier, the ferry just in: lights, keeper, flash
+    ['D-tide-lab', '74,6,138,86,2,128', 10, 229],
+    // the ruins close, the sub on its way out and at the dive
+    ['D-tide-ruins', '80,12,92,88,-0.5,97', 12, 6],
+    ['D-tide-sub-out', '56,20,116,80,0,100', 8.4, 8],
+    ['D-tide-sub-dive', '64,10,84,78,0,88', 9, 3],
+    ['D-tide-night', '60,16,140,84,3,116', 22, 6],
+  ] as const
+).map(([id, cam, time, simt]) => ({
+  id,
+  title: `Tide-Lab ${id.slice(7)}`,
+  seed: 1001,
+  cam,
+  time,
+  simt,
+  quality: 'medium',
+  sets: ['dev'],
+}));
+
 const RESEARCH_M28_SHOTS: readonly ShotPreset[] = RESEARCH_M28_CAMS.map(
   ([id, title, cam, time, simt]) => ({
     id,
@@ -2178,6 +2209,38 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     height: 1080,
     sets: ['wow'],
   },
+  // ---- TASK-534 (D-118): the Research Tide-Lab wow presets and its dev close-ups (seed 1001 cams:
+  // re-pin when the harbour moves). The HQ ferry calls here at sim 226 s (cycle 340 s).
+  {
+    id: 'W-sunken-noon',
+    title: 'Sunken Noon',
+    // 12:00 from above the breakwater: the streets under the turquoise lagoon, the tops above it,
+    // fish round them, the sub down (bubbles at the dive point and between the tops)
+    seed: 1001,
+    cam: TIDE_LAB_CAMS.noon,
+    time: 12,
+    simt: 6,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  {
+    id: 'W-tide-lab-dusk',
+    title: 'Tide-Lab Dusk',
+    // 19:15, the ferry just in (sim 229): the lit lab and its pool on the water, the harbour light's
+    // beam, the ruins' tops, the campus windows (the study's observatory on the crag behind costs
+    // 340+ calls / 860k+ tris: every frame holding it pulled the whole campus to LOD0)
+    seed: 1001,
+    cam: TIDE_LAB_CAMS.dusk,
+    time: 19.25,
+    simt: 229,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  ...TIDE_LAB_SHOTS,
   // ---- TASK-512: the three wow presets TASK-502 specified (D-090)
   {
     id: 'W-kite-hill-afternoon',

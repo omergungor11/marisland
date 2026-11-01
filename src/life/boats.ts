@@ -9,7 +9,15 @@ import { makeLitMaterial } from '../render/materials/factory.ts';
 import { AgentKind, rotYFor, type AgentKindOpts } from './agents.ts';
 import type { LifeCtx } from './ctx.ts';
 import { buildBoatPlaceholder } from './geo/creatures.ts';
-import { buildFerrySchedule, ferryDist, type FerrySchedule } from './ferry.ts';
+import {
+  buildFerrySchedule,
+  ferryCall,
+  ferryDist,
+  ferryOffset,
+  type FerryCall,
+  type FerrySchedule,
+} from './ferry.ts';
+import type { WorldData } from '../world/types.ts';
 import { WakeFoam } from './wake.ts';
 
 const DEG = Math.PI / 180;
@@ -92,6 +100,53 @@ export function resolveRoutes(ctx: LifeCtx): Route[] {
       stopArcs: stopArcsOf(pts, lens, stopsOf[li]),
     };
   });
+}
+
+/** Pier-end stop point of a dock (the arc the boats slow for). */
+const dockStop = (d: { x: number; z: number; rotY: number; segments: number }): Vec2 => {
+  const reach = d.segments * 2;
+  return { x: d.x + Math.cos(d.rotY) * reach, y: d.z + Math.sin(d.rotY) * reach };
+};
+
+/**
+ * When the HQ ferries call at dock `dockIndex` (TASK-534): the same routes, schedules and offsets
+ * as `Sailboats` with `count` boats (`LIFE_PLAN[quality].ferries`), so a harbour's arrival ritual
+ * runs in closed form with the boat itself. Null when no running boat serves that dock.
+ */
+export function ferryCallAt(
+  world: Pick<WorldData, 'boatRoutes' | 'docks'>,
+  dockIndex: number,
+  count: number,
+): FerryCall | null {
+  const F = CULTURE_BOATS.ferry;
+  const lines = world.boatRoutes.filter((r) => r.kind === 'ferry' && r.points.length >= 4);
+  const line = lines.findIndex((r) => r.stops?.includes(dockIndex));
+  if (line < 0) return null;
+  // (boats go round the lines in turn: `i % lines`, as in the Sailboats constructor)
+  const boats = Math.floor(count / lines.length) + (line < count % lines.length ? 1 : 0);
+  if (boats === 0) return null;
+  const R = lines[line];
+  const pts = smoothPolyline(
+    R.points.map((p) => ({ x: p.x, y: p.z })),
+    4,
+    true,
+  );
+  const lens = arcLengths(pts, true);
+  const stops = (R.stops ?? []).flatMap((di) =>
+    world.docks[di] ? [dockStop(world.docks[di])] : [],
+  );
+  const sch = buildFerrySchedule(
+    lens[lens.length - 1],
+    stopArcsOf(pts, lens, stops),
+    R.dwell ?? 0,
+    F.speed,
+    F.decel,
+  );
+  const arc = stopArcsOf(pts, lens, [dockStop(world.docks[dockIndex])])[0];
+  const offs = Array.from({ length: boats }, (_, k) =>
+    ferryOffset(k, boats, F.startFrac, sch.cycle),
+  );
+  return ferryCall(sch, arc, offs);
 }
 
 /**
@@ -320,7 +375,7 @@ export class Sailboats extends AgentKind {
       this.dir[i] = spec.ferry || k % 2 === 0 ? 1 : -1;
       if (spec.ferry) {
         const cycle = this.schedules[r].cycle;
-        this.tOff[i] = (CULTURE_BOATS.ferry.startFrac + k / per[r]) * cycle;
+        this.tOff[i] = ferryOffset(k, per[r], CULTURE_BOATS.ferry.startFrac, cycle);
         this.d0[i] = 0;
       }
       this.active[i] = 1;

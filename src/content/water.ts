@@ -13,6 +13,11 @@ export const WATER_SHADER = {
   /** Box-blur radius (u, 3 passes) of the leeward ring-scale field (D3: seams between islands'
    *  shelves and across bays blend over ≈ 2× this instead of cutting). */
   ringScaleBlur: 10,
+  /**
+   * Sheltered harbour water (M31 TASK-534, `harbourCalmMask`): lagoon cells on the coast side of a
+   * breakwater arm within `reach` u of it; `foam` = the share taken off the lap and contact line.
+   */
+  harbourCalm: { reach: 14, foam: 0.65 },
   /** Alpha per band: sand shows through near the beach. */
   alpha: { lagoon: 0.55, shallow: 0.8, deep: 0.97 },
   /** Seabed depth (u) range over which a steep drop forces deep alpha. */

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Scope } from '../../core/scope.ts';
 import { BEAM } from '../../content/lighting.ts';
 import { PROP_DEFS } from '../../content/props.ts';
+import { HARBOUR_VARIANTS } from '../../content/themes/harbours.ts';
 import type { PropStore } from '../../world/prop-store.ts';
 import { SHARED } from '../uniforms.ts';
 import { createSkyProgramMaterial } from '../sky/sky.ts';
@@ -88,7 +89,11 @@ export function buildBeamGeometry(): THREE.BufferGeometry {
 /** Find the lighthouse instance in the prop store (first one). */
 function findLighthouse(props: PropStore): { x: number; y: number; z: number; s: number } | null {
   for (let i = 0; i < props.count; i++) {
-    if (PROP_DEFS[props.defId[i]]?.geo === 'lighthouse')
+    // (the 6 u harbour lights, TASK-534, are beacons.ts's)
+    if (
+      PROP_DEFS[props.defId[i]]?.geo === 'lighthouse' &&
+      props.variant[i] < HARBOUR_VARIANTS.lighthouse
+    )
       return { x: props.x[i], y: props.y[i], z: props.z[i], s: props.scale[i] || 1 };
   }
   return null;

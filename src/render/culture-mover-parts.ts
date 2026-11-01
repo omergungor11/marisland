@@ -13,6 +13,7 @@ import {
   buildQuayTrolley,
 } from '../geo/themes/qa-customs.ts';
 import { QA_CUSTOMS } from '../content/themes/qa-customs.ts';
+import { buildFish } from '../life/geo/creatures.ts';
 
 /**
  * Part shapes of the culture movers (TASK-431): ONE merged geometry, drawn with the shared creature
@@ -56,6 +57,8 @@ export const PART = {
   /** Quay crane trolley (origin = base) and spreader (origin = frame top centre) of the customs port. */
   trolley: 20,
   spreader: 21,
+  /** Fish (M31 TASK-534): nose +x, unit length, takes the instance tint. */
+  fish: 22,
 } as const;
 export type PartKind = (typeof PART)[keyof typeof PART];
 
@@ -150,6 +153,13 @@ function doubleSided(
 
 export function buildPartsGeometry(): THREE.BufferGeometry {
   const pieces: Piece[] = [];
+  // 22 fish: white so the instance tint colours it
+  pieces.push({
+    geo: buildFish('#FFFFFF', '#FFFFFF', 1),
+    kind: PART.fish,
+    color: null,
+    emissive: 0,
+  });
   // 0 ring: a unit horizontal torus (scaled to the ripple radius), pale and a little emissive
   pieces.push({
     geo: new THREE.TorusGeometry(1, 0.07, 4, 18).rotateX(Math.PI / 2),

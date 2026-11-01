@@ -639,7 +639,7 @@ function weathering(wl: number, base: THREE.Color): ColorFn {
   return (p) => {
     const c = base.clone();
     // algae strongest at the foot, gone a little above the waterline
-    const a = clamp01((wl + 0.25 - p.y) / (wl + 0.25 + 0.001)) ** 1.3 * 0.55;
+    const a = clamp01((wl + 0.25 - p.y) / (wl + 0.25 + 0.001)) ** 1.3 * 0.3;
     const alg = algae[Math.abs(Math.round(p.x * 7 + p.z * 5)) % 3];
     c.lerp(alg, a);
     // sun-bleached stone high above the water

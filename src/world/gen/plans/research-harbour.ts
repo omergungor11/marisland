@@ -2,8 +2,8 @@
  * Research "Tide-Lab" harbour (M31 TASK-532, D-113): the Research instance on the harbour skeleton
  * (harbour.ts). Plan time, right after the skeleton (the campus districts placed after keep off
  * every reserved site); pure data, numbers in content/themes/research-harbour.ts. The only rng is
- * `rng.fork('harbour:city')` (which lattice columns carry the tower tops); nothing is placed: TASK-534
- * puts the TASK-533 kit on the anchors.
+ * `rng.fork('harbour:city')` (which lattice columns carry the tower tops); nothing is placed here:
+ * research-harbour-kit.ts (TASK-534) puts the TASK-533 kit on the anchors.
  *
  * Anchor contract (world u; rotY = xz heading (cos, sin); `y` = world height; `…Size` = two
  * numbers, not a position):
@@ -28,6 +28,8 @@
  *   rotY). 2–4 `ruinTop`s: a broken tower / arch top rising above the water there. Every slot
  *   lies in Zone.lagoon water (alpha 0.55), off the boat routes, the ferry approach, the pier and
  *   the basin.
+ * - `subPath0..K` (research-harbour-kit.ts): the sub's way, `subMooring` → round the arm tip →
+ *   `subDive`, every ≈ 2 u; rotY = heading along it.
  */
 import { RESEARCH_HARBOUR as R } from '../../../content/themes/research-harbour.ts';
 import { RESEARCH_SITE as S } from '../../../content/themes/research.ts';

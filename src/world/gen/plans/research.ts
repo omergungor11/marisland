@@ -73,6 +73,7 @@ import {
 import { placeSummitKit } from './research-m28.ts';
 import { finishHarbour, placeKiosks, planHarbour } from './harbour.ts';
 import { finishTideLab, planTideLab, vesselSlot, type TideLab } from './research-harbour.ts';
+import { placeTideLabKit } from './research-harbour-kit.ts';
 import type { ThemePlanner } from './types.ts';
 
 const DEG = Math.PI / 180;
@@ -295,6 +296,10 @@ export const planResearch: ThemePlanner = ({ ctx, isl, rng }) => {
     if (tide) {
       finishHarbour(ctx, tide.hb);
       finishTideLab(ctx, tide);
+      placeTideLabKit(ctx, tide, rng.fork('harbour'));
+      // the seal's deck height over the final ground (the Tide-Lab sites levelled seabed after it)
+      for (const sp of plan.stories ?? [])
+        if (sp.kind === 'sealPier') sp.pos.y = CS.seal.deckY - heightAt(ctx.h, sp.pos.x, sp.pos.z);
     }
     reserveResearchAnchors(
       ctx,
@@ -1554,7 +1559,14 @@ function academy(ctx: SiteCtx, isl: IslandData, rng: Rng, s: AcademySite): Story
     if (dk) {
       const dir = dirOf(dk.rotY);
       const L = dk.segments * DOCK.segment;
-      const p = add(add(dk, dir, L - SE.back), perp(dir), SE.side);
+      const end = add(dk, dir, L);
+      const basin = isl.anchors.harbourBasin;
+      // TASK-534: on the T-head's open wing (the pier end sits inside the crossbar), away from
+      // the basin and the moored boats
+      const open = basin && (basin.x - end.x) * -dir.z + (basin.z - end.z) * dir.x > 0 ? -1 : 1;
+      const p = isl.anchors.harbourPier1
+        ? add(end, perp(dir), open * SE.wing)
+        : add(add(dk, dir, L - SE.back), perp(dir), SE.side);
       stories.push({
         kind: 'sealPier',
         islandId: isl.id,
