@@ -115,7 +115,8 @@ export interface HarbourParams {
     head: { variant: number; plank: number; lift: number };
     deckY: number;
     light: number;
-    shelter: number;
+    /** Null: no waiting shelter kiosk (Colour Wharf's waiting room is its glass pavilion). */
+    shelter: number | null;
     booth: number;
     board: number;
     bollard: { variant: number; at: readonly (readonly [number, number])[] };
@@ -223,7 +224,7 @@ export const HARBOURS: Partial<Record<'research' | 'marketing' | 'design', Harbo
       head: { variant: 0, plank: 1.2, lift: 0.02 },
       deckY: 0.7,
       light: HV.lighthouse + DESIGN_LIVERY,
-      shelter: HV.marketStall + DESIGN_LIVERY,
+      shelter: null,
       booth: HV.dock + DESIGN_LIVERY,
       board: HV.pierSignpost + DESIGN_LIVERY,
       bollard: {

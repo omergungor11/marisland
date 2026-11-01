@@ -51,15 +51,14 @@ describe('Colour Wharf (TASK-537)', { timeout: 120_000 }, () => {
     }
   });
 
-  it('pier-root kiosks: at least two of three on every seed, all three on most', () => {
-    let full = 0;
+  it('pier-root kiosks: the booth and the board on most seeds, no shelter (the pavilion is the waiting room)', () => {
+    let both = 0;
     for (const seed of SEEDS) {
       const { A } = site(seed);
-      const n = [A.harbourShelter, A.harbourBooth, A.harbourBoard].filter(Boolean).length;
-      expect(n, `seed ${seed}`).toBeGreaterThanOrEqual(2);
-      if (n === 3) full++;
+      expect(A.harbourShelter, `seed ${seed}`).toBeUndefined();
+      if (A.harbourBooth && A.harbourBoard) both++;
     }
-    expect(full).toBeGreaterThanOrEqual(27);
+    expect(both).toBeGreaterThanOrEqual(27);
   });
 
   it('boathouse row: 3-5 houses on every seed, doors over water, backs on land, at the mouth on most', () => {

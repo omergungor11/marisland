@@ -160,7 +160,7 @@ export const WHARF_MOTION = {
     buoys: { step: 0.7, r: 0.3, y: 0.98, ring: { r: 1.5, y: 0.05, tube: 0.1, period: 2.4 } },
     /**
      * Prism: one sheet of colour per glazed face (`faces`, local angle from +z), hues walking round
-     * the pastels `rate` per second; `throw` light patches fall on the water round the deck.
+     * the pastels `rate` per second.
      */
     prism: {
       faces: [45, 90, 135, 225, 270, 315] as const,
@@ -168,9 +168,10 @@ export const WHARF_MOTION = {
       apothemK: 1.015,
       fill: 0.92,
       stagger: 0.12,
+      /** Slots of the pane part's own buffer (one pavilion: faces × 2). */
+      paneSlots: 12,
       rate: 0.35,
       ring: { y: 4.86, r: 0.42 },
-      patch: { from: 3.8, to: 5.4, size: [0.6, 1, 1.5] as const, y: 0.06, sway: 0.6 },
     },
   },
   /**

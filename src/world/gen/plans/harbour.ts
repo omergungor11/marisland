@@ -534,6 +534,7 @@ export function placeKiosks(ctx: SiteCtx, hb: Harbour, toward: XZ): void {
     ['harbourBoard', K.board],
   ] as const;
   for (const [key, k] of keys) {
+    if (key === 'harbourShelter' && hb.P.kit.shelter === null) continue;
     let p: XZ | null = null;
     for (const r of K.maxRelief) {
       p ??=
@@ -649,7 +650,7 @@ function placeHarbourKit(ctx: SiteCtx, hb: Harbour): void {
   for (const [v, u] of K.bollard.at)
     fix('barrel', framePoint(hb, L + u, v), K.bollard.variant, K.deckY + K.head.lift);
   if (A.harbourLight) fix('lighthouse', A.harbourLight, K.light);
-  if (A.harbourShelter) fix('marketStall', A.harbourShelter, K.shelter);
+  if (A.harbourShelter && K.shelter !== null) fix('marketStall', A.harbourShelter, K.shelter);
   if (A.harbourBooth) fix('dock', A.harbourBooth, K.booth);
   if (A.harbourBoard) fix('pierSignpost', A.harbourBoard, K.board);
 }

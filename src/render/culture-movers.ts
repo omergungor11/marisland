@@ -151,6 +151,8 @@ class Writer {
     if (this.n >= this.capacity) return;
     const m = this.pivot ? this._m.multiplyMatrices(this.pivot, this._l) : this._l;
     const mesh = this.meshes[kind];
+    // (a kind with its own smaller buffer: PART.pane)
+    if (this.counts[kind] >= mesh.instanceMatrix.count) return;
     const i = this.counts[kind]++;
     mesh.setMatrixAt(i, m);
     mesh.setColorAt(i, this.colour(hex));
@@ -1365,8 +1367,7 @@ function pastelRamp(steps: number): string[] {
 
 /**
  * Colour Wharf's ferry arrival, pavilion half (M31 TASK-537; pavilion frame): every glazed face takes
- * a sheet of light whose colour walks round the pastels, patches of the same colours drift out
- * over the water; closed form on the shared `arrivalEnvelope`.
+ * a sheet of light whose colour walks round the pastels; closed form on the shared `arrivalEnvelope`.
  */
 function pavilionPrismScene(call: FerryCall): Scene['run'] {
   const R = WM.arrival;
@@ -1409,18 +1410,6 @@ function pavilionPrismScene(call: FerryCall): Scene['run'] {
         _qa,
         [roofW * s, roofH * s, 1],
         hex2,
-      );
-      // its colour thrown on the water
-      const Th = P.patch;
-      const d = Th.from + (Th.to - Th.from) * (0.5 + 0.5 * Math.sin(u * 0.5 + k));
-      const sway = Th.sway * Math.sin(u * 0.7 + k * 1.7) * c.motion;
-      const b = a + sway / d;
-      w.put(
-        PART.patch,
-        [Math.sin(b) * d, Th.y, Math.cos(b) * d],
-        [0, b, 0],
-        [Th.size[0] * s, Th.size[1], Th.size[2] * s],
-        hex,
       );
     });
     w.put(
@@ -2418,7 +2407,7 @@ export function createCultureMovers(
         pivotOf(store, i),
         store.rotY[i],
         [0, 2, 0],
-        3 * WM.arrival.prism.faces.length + 1,
+        2 * WM.arrival.prism.faces.length + 1,
         pavilionPrismScene(call),
       );
       sc.range2 = WM.arrival.range * WM.arrival.range;
@@ -2567,10 +2556,12 @@ export function createCultureMovers(
     const mat = scope.add(makeLifeMaterial('culture-movers', false));
     for (const geo of buildPartGeometries()) {
       scope.add(geo);
-      const gait = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3);
+      // (every kind pays for the whole capacity in memory: the wharf's panes have their own bound)
+      const slots = meshes.length === PART.pane ? WM.arrival.prism.paneSlots : capacity;
+      const gait = new THREE.InstancedBufferAttribute(new Float32Array(slots * 3), 3);
       gait.setUsage(THREE.DynamicDrawUsage);
       geo.setAttribute('aGait', gait);
-      const mesh = new THREE.InstancedMesh(geo, mat, capacity);
+      const mesh = new THREE.InstancedMesh(geo, mat, slots);
       mesh.name = `culture-movers:${meshes.length}`;
       mesh.count = 0;
       mesh.frustumCulled = true;
@@ -2578,7 +2569,7 @@ export function createCultureMovers(
       mesh.receiveShadow = false;
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       // allocate instanceColor up front: a later allocation would change the program parameters
-      for (let i = 0; i < capacity; i++) mesh.setColorAt(i, new THREE.Color(1, 1, 1));
+      for (let i = 0; i < slots; i++) mesh.setColorAt(i, new THREE.Color(1, 1, 1));
       mesh.instanceColor!.setUsage(THREE.DynamicDrawUsage);
       mesh.visible = false;
       scope.add(mesh);
