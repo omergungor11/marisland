@@ -35,7 +35,7 @@ export const QA_RIM_WALK: RimWalkwaySpec = {
  * Palm rim (Q18, TASK-480): the archetype's palm rule turned into a row along the inland side of
  * the rim walk (`near` its zone), at this density / cap; the plateau edge reads as a green fringe.
  */
-const PALM_RIM = { density: 0.9, minDist: 3.4, near: 5, maxPerIsland: 34 } as const;
+const PALM_RIM = { density: 0.9, minDist: 3.4, near: 7, maxPerIsland: 34 } as const;
 
 export const QA_THEME: ThemeDef = {
   id: 'qa',
@@ -157,7 +157,7 @@ export const QA_PLAN = {
   cone: [1.4, 1.5] as const,
   /** Campus lots (test labs) around the yard: CampusSpec fields (sites.ts campusLots). */
   campus: {
-    lots: [4, 5] as const,
+    lots: [3, 4] as const,
     quadSearch: 0,
     quadMinShore: 0,
     quadMaxRelief: 0,

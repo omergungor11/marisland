@@ -24,6 +24,7 @@ import {
 } from '../../../content/settlements.ts';
 import { CULTURE_BOATS } from '../../../content/life.ts';
 import { QA_PLAN as P, QA_RIM_WALK } from '../../../content/themes/qa.ts';
+import { QA_PARK as PARK } from '../../../content/themes/qa-park.ts';
 import { QA_PROVING, QA_PROVING_PLAN as PV } from '../../../content/themes/qa-proving.ts';
 import { THEMES } from '../../../content/themes/index.ts';
 import type { Rng } from '../../../core/rng.ts';
@@ -70,6 +71,13 @@ import {
   customsCandidates,
   type PortCandidate,
 } from './qa-customs.ts';
+import {
+  commitQaPark,
+  finishQaPark,
+  linkQaPark,
+  qaParkCandidates,
+  type ParkSite,
+} from './qa-park.ts';
 import type { ThemePlanner } from './types.ts';
 
 const TAU = Math.PI * 2;
@@ -224,7 +232,7 @@ interface Track {
 }
 
 /** Loop track beside the yard: flattest fitting spot, long axis radial or tangential. */
-function placeTrack(ctx: SiteCtx, isl: IslandData, yard: XZ): Track | null {
+function placeTrack(ctx: SiteCtx, isl: IslandData, yard: XZ, toward: XZ | null): Track | null {
   const [w, d] = P.track;
   const r0 = P.yardR + P.trackYardGap + w / 2;
   let best: Track | null = null;
@@ -238,7 +246,7 @@ function placeTrack(ctx: SiteCtx, isl: IslandData, yard: XZ): Track | null {
       if (!onLand(ctx, isl, sh, P.trackMinShore)) continue;
       const r = relief(ctx, sh);
       if (r > P.trackRelief || !clear(ctx, isl, sh, 1.5) || !siteFree(ctx, isl, sh)) continue;
-      const s = r + 0.06 * dist(p, yard);
+      const s = r + 0.06 * dist(p, yard) + (toward ? PARK.provingNear * dist(p, toward) : 0);
       if (s < bs) {
         bs = s;
         best = { p, rot, sh };
@@ -265,22 +273,19 @@ interface Stunt extends Track {
   d: number;
 }
 
-function placeStuntYard(ctx: SiteCtx, isl: IslandData, track: Track, yard: XZ): Stunt | null {
+function placeStuntYard(
+  ctx: SiteCtx,
+  isl: IslandData,
+  track: Track,
+  yard: XZ,
+  toward: XZ | null,
+  minPad = 0,
+): Stunt | null {
   // pass 0 also wants room for the Proving Grounds kit round the rect (`stuntKitPads`, each side)
   for (const rim of PV.stuntRimClear)
-    for (const pad of PV.stuntKitPads)
+    for (const pad of PV.stuntKitPads.filter((q) => q >= minPad))
       for (const [w, d] of PV.stunt) {
-        const test = (p: XZ, rot: number): number => {
-          const sh = rectShape(p.x, p.z, rot, w + 2 * pad, d + 2 * pad);
-          if (!onLand(ctx, isl, sh, PV.stuntMinShore)) return Infinity;
-          // inland of the rim walkway and the palm row (their bands start ≈ 8–10 u in from the shore)
-          for (const c of shapeCorners(sh)) if (sdfAt(ctx, c.x, c.z) < rim) return Infinity;
-          // the loop track's own kit (UV lamps, scoreboard, cone pyramid, grandstand) needs its side room
-          if (shapesOverlap(track.sh, sh, PV.stuntTrackGap)) return Infinity;
-          const rl = relief(ctx, sh);
-          if (rl > PV.stuntRelief + pad * 0.1 || !clear(ctx, isl, sh, PV.stuntGap)) return Infinity;
-          return siteFree(ctx, isl, sh) ? rl : Infinity;
-        };
+        const test = stuntTest(ctx, isl, track, rim, pad, w, d);
         const rots = [track.rot, track.rot + Math.PI / 2];
         const p = bestSample(ctx, isl, track.p, PV.stuntSearch, (q, i) => {
           if (ctx.sdf[i] < PV.stuntMinShore) return Infinity;
@@ -288,7 +293,8 @@ function placeStuntYard(ctx: SiteCtx, isl: IslandData, track: Track, yard: XZ): 
           return (
             rl +
             PV.stuntNear * dist(q, track.p) -
-            PV.stuntFar * Math.min(dist(q, yard), PV.stuntFarCap)
+            PV.stuntFar * Math.min(dist(q, yard), PV.stuntFarCap) +
+            (toward ? PARK.stuntNear * dist(q, toward) : 0)
           );
         });
         if (!p) continue;
@@ -302,6 +308,42 @@ function placeStuntYard(ctx: SiteCtx, isl: IslandData, track: Track, yard: XZ): 
         return { p, rot, sh, w, d };
       }
   return null;
+}
+
+/** The stunt rect test at (p, rot): its relief when it fits with this `rim` and kit `pad`, else Infinity. */
+function stuntTest(
+  ctx: SiteCtx,
+  isl: IslandData,
+  track: Track,
+  rim: number,
+  pad: number,
+  w: number,
+  d: number,
+): (p: XZ, rot: number) => number {
+  return (p, rot) => {
+    const sh = rectShape(p.x, p.z, rot, w + 2 * pad, d + 2 * pad);
+    if (!onLand(ctx, isl, sh, PV.stuntMinShore)) return Infinity;
+    // inland of the rim walkway and the palm row (their bands start ≈ 8–10 u in from the shore)
+    for (const c of shapeCorners(sh)) if (sdfAt(ctx, c.x, c.z) < rim) return Infinity;
+    // the loop track's own kit (UV lamps, scoreboard, cone pyramid, grandstand) needs its side room
+    if (shapesOverlap(track.sh, sh, PV.stuntTrackGap)) return Infinity;
+    const rl = relief(ctx, sh);
+    if (rl > PV.stuntRelief + pad * 0.1 || !clear(ctx, isl, sh, PV.stuntGap)) return Infinity;
+    return siteFree(ctx, isl, sh) ? rl : Infinity;
+  };
+}
+
+/** Does the smallest stunt rect fit at all? (Cheap: lets a park trial fail without the 24-pass search.) */
+function stuntPossible(ctx: SiteCtx, isl: IslandData, track: Track): boolean {
+  const [w, d] = PV.stunt[PV.stunt.length - 1];
+  const rim = PV.stuntRimClear[PV.stuntRimClear.length - 1];
+  const test = stuntTest(ctx, isl, track, rim, PV.stuntKitPads[PV.stuntKitPads.length - 1], w, d);
+  const rots = [track.rot, track.rot + Math.PI / 2];
+  return !!bestSample(ctx, isl, track.p, PV.stuntSearch, (q, i) =>
+    ctx.sdf[i] >= PV.stuntMinShore && Math.min(test(q, rots[0]), test(q, rots[1])) < Infinity
+      ? 0
+      : Infinity,
+  );
 }
 
 /**
@@ -378,6 +420,62 @@ function placeGates(ctx: SiteCtx, isl: IslandData, yard: XZ): void {
       }
     }
   }
+}
+
+/**
+ * The test tracks and the park compete for the same free ground (island ≈ 55 u across, the factory in
+ * the middle), so they are tried together: the first park candidate (qa-park.ts) that still leaves the
+ * loop track and the stunt yard (its kit's room first) wins. None does: the Proving Grounds stay and
+ * the park is dropped, unless the seed has no stunt yard even without a park (D-119).
+ * Trial = commit + place; a failed trial is rolled back in full.
+ */
+function placeProvingAndPark(
+  ctx: SiteCtx,
+  isl: IslandData,
+  yard: XZ,
+): { track: Track | null; stunt: Stunt | null; park: ParkSite | null } {
+  const shapes = ctx.shapes[isl.id];
+  const mark = {
+    shapes: shapes.length,
+    pads: ctx.pads.length,
+    fixtures: ctx.fixtures.length,
+    blocked: ctx.blocked.slice(),
+  };
+  const rollback = (): void => {
+    shapes.length = mark.shapes;
+    ctx.pads.length = mark.pads;
+    ctx.fixtures.length = mark.fixtures;
+    ctx.blocked.set(mark.blocked);
+    delete isl.anchors.stunt;
+    delete isl.anchors.stuntSize;
+  };
+  // the first site leaving the stunt yard its kit's room wins; else the first leaving it at all
+  let spare: ParkSite | null = null;
+  let any: ParkSite | null = null;
+  let trials = 0;
+  for (const park of qaParkCandidates(ctx, isl, yard)) {
+    if (++trials > PARK.trials || (spare && trials > PARK.kitTrials)) break;
+    commitQaPark(ctx, isl, park);
+    const track = placeTrack(ctx, isl, yard, park.p);
+    if (track) any ??= park;
+    if (track && stuntPossible(ctx, isl, track)) {
+      spare ??= park;
+      const stunt = placeStuntYard(ctx, isl, track, yard, park.p, PARK.kitPad);
+      if (stunt) return { track, stunt, park };
+    }
+    rollback();
+  }
+  if (spare) commitQaPark(ctx, isl, spare);
+  let track = placeTrack(ctx, isl, yard, spare?.p ?? null);
+  const stunt = track ? placeStuntYard(ctx, isl, track, yard, spare?.p ?? null) : null;
+  // no stunt yard on this seed with or without a park: the park costs it nothing
+  if (!spare && !stunt && any) {
+    rollback();
+    commitQaPark(ctx, isl, any);
+    track = placeTrack(ctx, isl, yard, any.p);
+    return { track, stunt: null, park: any };
+  }
+  return { track, stunt, park: spare };
 }
 
 export const planQa: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
@@ -458,12 +556,11 @@ export const planQa: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   );
   for (let k = 0; k + 1 < hangars.length; k++) bridge(ctx, isl, hangars[k], hangars[k + 1]);
 
-  // crash-test loop track beside the yard
-  const track = placeTrack(ctx, isl, yard);
-  // M24 TASK-499: the flat ground reserved beside the loop track for the figure-8 crash track
-  // (TASK-501). Reserved before the campus so the lots and lanes keep off it; scored toward the far
-  // side of the yard so the factory core keeps its ground (28 of 30 test seeds get one)
-  const stunt = track ? placeStuntYard(ctx, isl, track, yard) : null;
+  // crash-test loop track beside the yard, the flat ground beside it for the figure-8 crash track
+  // (M24 TASK-499, TASK-501: before the campus so the lots and lanes keep off it, scored toward the far
+  // side of the yard so the factory core keeps its ground), M32 TASK-539: the Thrill Test Park's long
+  // stadium first, on the first site that leaves the Proving Grounds both
+  const { track, stunt, park } = placeProvingAndPark(ctx, isl, yard);
 
   // test labs on lanes from the yard (lane 0 runs down to the pier), then the checkpoints
   campusLots(ctx, isl, plan, { ...P.campus, quadR: R }, rng.fork('campus'), sIdx, yard);
@@ -480,10 +577,12 @@ export const planQa: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
     root: site ? site.root : null,
   });
 
+  if (park) linkQaPark(plan, park);
   // Q10 buoy slalom on the inspection boat's ring, away from the pier (TASK-480)
   placeSlalom(ctx, isl, dockA);
   // Q6 rim walkway + hazard posts, Q18 hammocks: once the footpaths exist (gaps at them)
   plan.finish = (paths) => {
+    if (park) finishQaPark(ctx, isl, park);
     const walk = rimWalkway(ctx, isl, QA_RIM_WALK, paths);
     placeHammocks(ctx, isl, walk, paths);
   };
