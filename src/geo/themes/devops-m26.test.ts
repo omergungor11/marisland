@@ -54,11 +54,12 @@ describe('TASK-509b DevOps M26 defs', () => {
 
   it('tug = sailboat variant 9: geo and PropDef agree, random rolls stay on 0-1', () => {
     expect(F.tug.variant).toBe(9);
-    expect(PROP_GEO.sailboat.variants).toBe(10);
+    // (v10 = the Carnival Pier boardwalk, TASK-536)
+    expect(PROP_GEO.sailboat.variants).toBe(11);
     const d = PROP_DEFS[PROP_DEF_INDEX.sailboat];
-    expect(d.variants).toBe(10);
+    expect(d.variants).toBe(11);
     expect(d.rollVariants).toBe(2);
-    expect(PROP_GEO.sailboat.heights).toHaveLength(10);
+    expect(PROP_GEO.sailboat.heights).toHaveLength(11);
     expect(FLOATING_FIXTURES).toContain('sailboat');
     expect(FLOATING_FIXTURES).toContain('devopsBreakwater');
   });

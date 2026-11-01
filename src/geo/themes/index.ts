@@ -32,6 +32,7 @@ import { RESEARCH_M31_GEO } from './research-m31.ts';
 import { CODING_M33_GEO } from './coding-m33.ts';
 import { QA_COASTER_GEO, withCoasterKit } from './qa-coaster.ts';
 import { MARKETING_M27_GEO, withCableCar, withGuyedMast, withSeaSigns } from './marketing-m27.ts';
+import { withWelcomeScreen } from './marketing-harbour.ts';
 import { DEVOPS_M25_GEO, withOnsenStilts, withOrePylons, withSmithStall } from './devops-m25.ts';
 import { THEME_IDS } from '../../world/types.ts';
 
@@ -44,7 +45,7 @@ const m25Variants = (d: PropGeoDef): PropGeoDef =>
       : d.id === 'mailLine'
         ? withCableCar(withOrePylons(d))
         : d.id === 'billboardV2'
-          ? withSeaSigns(d)
+          ? withWelcomeScreen(withSeaSigns(d))
           : d.id === 'antennaTower'
             ? withGuyedMast(d)
             : d;

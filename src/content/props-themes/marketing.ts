@@ -9,12 +9,12 @@ const { grounded, windy, noShadow } = PropFlag;
 
 export const MARKETING_PROP_DEFS: readonly PropDef[] = [
   // T0: must read from the far tier (billboard face = emissive-2 screen class; M14c slideshow)
-  // v2 sea billboard, v3 ON AIR neon (TASK-517, D-096): pinned by the plan, never rolled
+  // v2 sea billboard, v3 ON AIR neon (TASK-517, D-096), v4 WELCOME screen (TASK-536, D-126): pinned by the plan, never rolled
   {
     id: 'billboardV2',
     geo: 'billboardV2',
     tier: 0,
-    variants: 4,
+    variants: 5,
     rollVariants: 2,
     footprint: 2.6,
     flags: grounded,

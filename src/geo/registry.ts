@@ -76,6 +76,8 @@ import {
   withGlassPavilion,
 } from './themes/culture-design.ts';
 import { bulbString, pontoon } from './themes/marketing-quick.ts';
+import { carnivalArch, carnivalDeck } from './themes/marketing-harbour.ts';
+import { CARNIVAL_PIER } from '../content/themes/marketing-harbour.ts';
 import { M28_HEIGHTS, withStairLantern } from './themes/research-m28.ts';
 import { marinaBoat } from './themes/hq-marina.ts';
 import { withHarbourKit } from './themes/harbours.ts';
@@ -167,22 +169,25 @@ defs.push(
   // v5 = the Marketing party pontoon (TASK-481, a floating fixture)
   D(
     'sailboat',
-    10,
+    11,
     (o) =>
-      o.variant >= 9
-        ? tugBoat(o)
-        : o.variant >= 6
-          ? marinaBoat(o)
-          : o.variant === 5
-            ? pontoon(o)
-            : o.variant === 4
-              ? lanternBoat(o)
-              : sailboat(o),
+      o.variant === CARNIVAL_PIER.deck.variant
+        ? carnivalDeck(o)
+        : o.variant >= 9
+          ? tugBoat(o)
+          : o.variant >= 6
+            ? marinaBoat(o)
+            : o.variant === 5
+              ? pontoon(o)
+              : o.variant === 4
+                ? lanternBoat(o)
+                : sailboat(o),
     2.8,
     5.2,
     true,
     // v6 / v7 sloops with a 5.4 u mast, v8 the 3 u tender (TASK-505), v9 the DevOps tug (TASK-509b)
-    [5.2, 5.2, 5.2, 5.2, 5.2, 5.2, 6.2, 6.2, 1.8, 2.8],
+    // v10 the Carnival Pier boardwalk (TASK-536)
+    [5.2, 5.2, 5.2, 5.2, 5.2, 5.2, 6.2, 6.2, 1.8, 2.8, CARNIVAL_PIER.deck.height],
   ),
   D('seaStack', 4, seaStack, 3, 10, false, [6, 10, 15, 9]),
   D('buoy', 3, buoy, 0.4, 0.85, true, [1.1, 1.3, 1.3]),
@@ -203,15 +208,17 @@ defs.push(
   D('laundryLine', 3, laundryLine, 2.1, 2.0, true),
   // variant 3 = glass chime line (M19 TASK-415), pinned across the Design lanes (TASK-425)
   // variant 4 = the Marketing marquee bulb string (TASK-481); LOD1 = a thin string of its own
+  // variant 5 = the Carnival Pier bulb arch (TASK-536)
   {
     ...D(
       'bunting',
-      5,
-      (o) => (o.variant === 4 ? bulbString(o) : chimeBunting(o)),
+      6,
+      (o) =>
+        o.variant === 5 ? carnivalArch(o) : o.variant === 4 ? bulbString(o) : chimeBunting(o),
       3.1,
       2.6,
       true,
-      [2.6, 2.6, 2.6, 2.6, 3.4],
+      [2.6, 2.6, 2.6, 2.6, 3.4, CARNIVAL_PIER.arch.height],
     ),
     lod1Of: { 3: 2 },
   },

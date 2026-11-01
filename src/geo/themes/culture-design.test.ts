@@ -184,8 +184,9 @@ describe('TASK-415 variants of existing defs', () => {
   const cases = [
     { id: 'giantTree', variant: 3, lod1: 2, count: 4, rolls: 3 },
     { id: 'galleryPavilion', variant: 2, lod1: null, count: 3, rolls: 2 },
-    // TASK-481 appended v4 (the Marketing marquee bulb string): rolls still stop at v2
-    { id: 'bunting', variant: 3, lod1: 2, count: 5, rolls: 3 },
+    // TASK-481 appended v4 (the Marketing marquee bulb string), TASK-536 v5 (the Carnival Pier arch):
+    // rolls still stop at v2
+    { id: 'bunting', variant: 3, lod1: 2, count: 6, rolls: 3 },
   ];
   for (const c of cases) {
     it(`${c.id} v${c.variant}: LOD1 == v${c.lod1 ?? 'own'}, rolls keep the old range, LOD0 adds glass`, () => {

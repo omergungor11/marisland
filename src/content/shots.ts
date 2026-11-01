@@ -632,6 +632,46 @@ const FOUNDRY_SHOTS: readonly ShotPreset[] = (
   height: 720,
   sets: ['dev'] as ShotSet[],
 }));
+/**
+ * TASK-536 (D-126): the Carnival Pier from the sea, in the boardwalk's frame (`site:carnivalDeck:`, z =
+ * the pier heading, x across it), so it survives a layout change. The Rock's campus is cut (a frame
+ * holding it costs 340+ calls), the T-head and the ferry in front, the wheel and the screen behind.
+ */
+const CARNIVAL_CAM = (v: string): string => `site:carnivalDeck:${v}`;
+const CARNIVAL_CAMS = {
+  front: CARNIVAL_CAM('-15,3.5,20,13,3.5,0'),
+  arrival: CARNIVAL_CAM('-20,3,14,10,3.5,0'),
+};
+/**
+ * Dev frames: the arrival as a strip of stills (seed 1001: the ferry stops at sim ≈ 40 s, dwells 8 s), the
+ * wheel at two times a second apart in and out of its boost, the deck close and at night.
+ */
+const CARNIVAL_SHOTS: readonly ShotPreset[] = (
+  [
+    ['D-carnival-in', CARNIVAL_CAMS.arrival, 13, 36],
+    ['D-carnival-0', CARNIVAL_CAMS.arrival, 13, 40.2],
+    ['D-carnival-1', CARNIVAL_CAMS.arrival, 13, 40.85],
+    ['D-carnival-2', CARNIVAL_CAMS.arrival, 13, 43],
+    ['D-carnival-3', CARNIVAL_CAMS.arrival, 13, 46.5],
+    ['D-carnival-4', CARNIVAL_CAMS.arrival, 13, 52],
+    ['D-carnival-5', CARNIVAL_CAMS.arrival, 13, 60],
+    ['D-carnival-dusk', CARNIVAL_CAMS.arrival, 19.5, 41.35],
+    ['D-carnival-deck', CARNIVAL_CAM('-7,3.5,9,2,2.5,0'), 12, 8],
+    ['D-carnival-night', CARNIVAL_CAMS.front, 22, 8],
+    ['D-carnival-arm', CARNIVAL_CAM('20,10,32,18,0,4'), 11, 8],
+  ] as const
+).map(([id, cam, time, simt]) => ({
+  id,
+  title: `Carnival ${id.slice(11)}`,
+  seed: 1001,
+  cam,
+  time,
+  simt,
+  quality: 'medium' as const,
+  width: 1280,
+  height: 720,
+  sets: ['dev'] as ShotSet[],
+}));
 /** TASK-534 (D-118): seed 1001 cams round the Research Tide-Lab harbour. */
 const TIDE_LAB_CAMS = {
   noon: '74,30,82,88,0,99',
@@ -751,7 +791,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     // shore) measured 281–373 calls on medium (other islands at T2 + shadows) > D-028 255.
     seed: 1001,
     cam: 'village:devops',
-    time: 16.5,
+    time: 13,
     simt: 5,
     quality: 'medium',
     width: 1920,
@@ -2359,6 +2399,44 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     sets: ['wow'],
   },
   ...TIDE_LAB_SHOTS,
+  // ---- TASK-536 (D-126): the Carnival Pier by day, lit at dusk, and the moment the ferry arrives
+  {
+    id: 'W-carnival-noon',
+    title: 'Carnival Pier Noon',
+    seed: 1001,
+    cam: CARNIVAL_CAMS.front,
+    time: 12,
+    simt: 8,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  {
+    id: 'W-carnival-dusk',
+    title: 'Carnival Pier Dusk',
+    seed: 1001,
+    cam: CARNIVAL_CAMS.front,
+    time: 19.75,
+    simt: 8,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  {
+    id: 'W-carnival-arrival',
+    title: 'Carnival Pier Arrival',
+    seed: 1001,
+    cam: CARNIVAL_CAMS.arrival,
+    time: 13,
+    simt: 41.35,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  ...CARNIVAL_SHOTS,
   // ---- TASK-541 (D-122): the Thrill Test Park at noon: the siren test, the bots on the loop
   {
     id: 'W-thrill-noon',

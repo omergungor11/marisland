@@ -44,6 +44,7 @@ import {
   addShape,
   ang,
   bestSample,
+  carveWater,
   clear,
   dirOf,
   discShape,
@@ -72,7 +73,9 @@ import {
   type Shape,
   type SiteCtx,
 } from '../sites.ts';
+import { finishHarbour, inApproach, placeKiosks, planHarbour, type Harbour } from './harbour.ts';
 import { reserveBeaconAnchors } from './marketing-anchors.ts';
+import { placeCarnivalKit, planCarnivalPier } from './marketing-harbour.ts';
 import { placeBeaconKit } from './marketing-m27.ts';
 import type { ThemePlanner } from './types.ts';
 
@@ -577,9 +580,33 @@ export const planMarketing: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
     prefer: landing,
     carve: true,
   });
-  dockWithLink(ctx, isl, plan, site, rng.fork('moorings'), { rowboats: 1, sailboats: 0 }, 'stair');
+  // M31 (TASK-536): the ferry harbour grows from the cove dock; no harbour = the old cove pier
+  const hb = planHarbour(ctx, isl, site);
+  const pierSite = hb ? hb.site : site;
+  // (the run-out segments may leave the depth the dock site found: the head is dredged; only the
+  // head, a channel from the root would drown the way onto the pier)
+  if (hb) carveWater(ctx, hb.end, hb.end, DOCK.headCarve, DOCK.headCarveFall, DOCK.channelDepth);
+  const pier = hb ? planCarnivalPier(ctx, hb) : null;
+  dockWithLink(
+    ctx,
+    isl,
+    plan,
+    pierSite,
+    rng.fork('moorings'),
+    { rowboats: hb ? 0 : 1, sailboats: 0 },
+    'stair',
+  );
   const dockLink = site ? (plan.links.pop() as LinkReq) : null;
   if (site) placeKiosk(ctx, isl, site.root);
+  // the kiosk is the harbour's ticket booth; the gate, the shelter and the timetable before the fair's
+  // culture and the links take the Rock's narrow cove (the way up keeps its lane: `laneGap`)
+  if (hb) {
+    const booth = ctx.fixtures[ctx.fixtures.length - 1];
+    if (booth?.defId === 'megaphoneKiosk')
+      isl.anchors.harbourBooth = { x: booth.x, z: booth.z, rotY: booth.rotY };
+    pierGate(ctx, isl, hb.site);
+    placeKiosks(ctx, hb, hubs.filter((h): h is XZ => h !== null).at(-1) ?? mid);
+  }
   // ---- Carnival Broadcasters culture (M19 TASK-423): before the links, so the paths route round it
   plan.stories = carnival(ctx, isl, rng.fork('culture'), {
     fair: fair ? { c: fair.p, r: FR, level: heightAt(ctx.h, fair.p.x, fair.p.z) } : null,
@@ -613,12 +640,23 @@ export const planMarketing: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   const f0 = ctx.fixtures.length;
   placeBuoys(ctx, isl, rng.fork('buoys'));
   for (let k = f0; k < ctx.fixtures.length; k++) ctx.fixtures[k].defId = 'adBuoy';
+  // (the ferry's approach stays open)
+  if (hb) {
+    for (let k = ctx.fixtures.length - 1; k >= f0; k--)
+      if (inApproach(hb, ctx.fixtures[k], Q.buoyChain.approach)) ctx.fixtures.splice(k, 1);
+  }
   // ---- M22 quick wins (TASK-481): after everything else, from their own forks, so the rest of
   // the plan keeps its layout
-  quickWins(ctx, isl, rng.fork('quick'), { site, street: { a: access, u, len: L } });
+  quickWins(ctx, isl, rng.fork('quick'), {
+    site: pierSite,
+    hb,
+    street: { a: access, u, len: L },
+  });
   // ---- M27 anchors (TASK-516): late, on the final ground (pads levelled, paths carved), so every
   // piece above keeps its place and the cliff / stack faces are the ones rendered
   plan.finish = (paths) => {
+    if (hb) finishHarbour(ctx, hb);
+    if (pier) placeCarnivalKit(ctx, pier);
     reserveBeaconAnchors(ctx, isl, lh, heightAt(ctx.h, lh.x, lh.z), paths);
     // M27 kit on the anchors (TASK-518)
     placeBeaconKit(ctx, isl);
@@ -629,8 +667,38 @@ export const planMarketing: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
 interface QuickSite {
   /** The landing pier (null: no dock found). */
   site: DockSite | null;
+  /** The pier grew into a Carnival Pier harbour: pontoon and buoy chain keep off its front. */
+  hb: Harbour | null;
   /** The Ad Boulevard: from `a` along `u` for `len` u. */
   street: { a: XZ; u: XZ; len: number };
+}
+
+/** M11 carnival gate: the HQ `cultureGate` (Marketing variant) over the way in from the pier. */
+function pierGate(ctx: SiteCtx, isl: IslandData, site: DockSite): void {
+  const G = Q.gate;
+  const { root, dir } = site;
+  const perp = { x: -dir.z, z: dir.x };
+  const rot = ang(dir.x, dir.z);
+  const variant = THEME_IDS.indexOf('marketing');
+  for (let t = G.inland[0]; t <= G.inland[1] + 1e-6; t += G.step)
+    for (const off of G.lateral) {
+      const p = add(add(root, dir, -t), perp, off);
+      const sh = rectShape(p.x, p.z, rot, G.w, G.d);
+      if (!onLand(ctx, isl, sh, P.shelfMinShore) || relief(ctx, sh) > G.relief) continue;
+      // planned lanes and the fair paving may run through it, only obstacles keep it out
+      if (
+        ctx.shapes[isl.id].some((o) => o.tag !== 'plaza' && shapesOverlap(o, sh, 0.3)) ||
+        !siteFree(ctx, isl, sh)
+      )
+        continue;
+      // walkable (block: false: the way runs through it); the pad levels the foot of both posts
+      fixture(ctx, isl, 'cultureGate', p, rot, sh, {
+        block: false,
+        pad: FLATTEN.discMargin,
+        variant,
+      });
+      return;
+    }
 }
 
 /**
@@ -645,33 +713,8 @@ function quickWins(ctx: SiteCtx, isl: IslandData, rng: Rng, s: QuickSite): void 
   const waterOk = (p: XZ, depth: number, shore: number): boolean =>
     heightAt(ctx.h, p.x, p.z) <= -depth && sdfAt(ctx, p.x, p.z) <= -shore;
 
-  // ---- M11 carnival gate: the HQ `cultureGate` (Marketing variant) over the way in from the pier
-  const G = Q.gate;
-  if (s.site) {
-    const { root, dir } = s.site;
-    const perp = { x: -dir.z, z: dir.x };
-    const rot = ang(dir.x, dir.z);
-    const variant = THEME_IDS.indexOf('marketing');
-    gate: for (let t = G.inland[0]; t <= G.inland[1] + 1e-6; t += G.step)
-      for (const off of G.lateral) {
-        const p = add(add(root, dir, -t), perp, off);
-        const sh = rectShape(p.x, p.z, rot, G.w, G.d);
-        if (!onLand(ctx, isl, sh, P.shelfMinShore) || relief(ctx, sh) > G.relief) continue;
-        // planned lanes and the fair paving may run through it, only obstacles keep it out
-        if (
-          ctx.shapes[isl.id].some((o) => o.tag !== 'plaza' && shapesOverlap(o, sh, 0.3)) ||
-          !siteFree(ctx, isl, sh)
-        )
-          continue;
-        // walkable (block: false: the way runs through it); the pad levels the foot of both posts
-        fixture(ctx, isl, 'cultureGate', p, rot, sh, {
-          block: false,
-          pad: FLATTEN.discMargin,
-          variant,
-        });
-        break gate;
-      }
-  }
+  // ---- M11 carnival gate (with a harbour: `pierGate` ran before the kiosks)
+  if (!s.hb && s.site) pierGate(ctx, isl, s.site);
 
   // ---- M5 marquee bulb strings across the boulevard (bunting v4)
   const B = Q.bulbString;
@@ -743,7 +786,11 @@ function quickWins(ctx: SiteCtx, isl: IslandData, rng: Rng, s: QuickSite): void 
         let run: XZ[] = [];
         let longest: XZ[] = [];
         for (const p of pts) {
-          if (waterOk(p, C.minDepth, C.minShore) && clear(ctx, isl, discShape(p.x, p.z, 0.6), 0.8))
+          if (
+            waterOk(p, C.minDepth, C.minShore) &&
+            clear(ctx, isl, discShape(p.x, p.z, 0.6), 0.8) &&
+            !(s.hb && inApproach(s.hb, p, C.approach))
+          )
             run = [...run, p];
           else run = [];
           if (run.length > longest.length) longest = run;
@@ -764,9 +811,10 @@ function quickWins(ctx: SiteCtx, isl: IslandData, rng: Rng, s: QuickSite): void 
   {
     const rot = ang(dir.x, dir.z);
     let best: { p: XZ; score: number } | null = null;
+    const R = s.hb ? O.harbour : O;
     for (const side of [1, -1])
-      for (let along = O.along[0]; along <= O.along[1] + 1e-6; along += 1.5)
-        for (let off = O.off[0]; off <= O.off[1] + 1e-6; off += 1) {
+      for (let along = R.along[0]; along <= R.along[1] + 1e-6; along += 1.5)
+        for (let off = R.off[0]; off <= R.off[1] + 1e-6; off += 1) {
           const p = add(add(root, dir, along), perp, side * off);
           const sh = rectShape(p.x, p.z, rot, O.w, O.l);
           if (!waterOk(p, O.minDepth, O.minShore)) continue;

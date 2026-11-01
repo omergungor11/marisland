@@ -6,7 +6,11 @@ import { QA_FACTORY, QA_MOVERS } from '../content/themes/qa.ts';
 import { DEVOPS_MOVERS } from '../content/themes/devops.ts';
 import { DEVOPS_WORKS } from '../content/props-themes/devops.ts';
 import { DOCK } from '../content/settlements.ts';
+import { LIFE_PLAN } from '../content/life.ts';
 import { MEDIA_MOVERS, MEDIA_ROCK } from '../content/themes/marketing.ts';
+import { CARNIVAL_MOTION } from '../content/themes/marketing-harbour.ts';
+import { ferryCallAt } from '../life/boats.ts';
+import { sinceFerryArrival, type FerryCall } from '../life/ferry.ts';
 import type { PropStore } from '../world/prop-store.ts';
 import type { WorldData, XZ } from '../world/types.ts';
 import { buildCrateCart } from '../geo/themes/qa-factory.ts';
@@ -136,20 +140,36 @@ export function beltOffset(time: number): number {
   return (f - 0.5) * L;
 }
 
+/**
+ * Turns of a wheel at `time`, closed form: the steady turn, and on the Carnival Pier the ferry's
+ * arrival adds whole turns over `seconds` s (eased both ends, so it is continuous and any seek agrees).
+ */
+export function wheelTurns(time: number, call?: FerryCall): number {
+  const base = time / MEDIA_MOVERS.wheelPeriod;
+  if (!call) return base;
+  const W = CARNIVAL_MOTION.wheel;
+  const k = Math.min(1, sinceFerryArrival(call, time) / W.seconds);
+  return base + W.turns * k * k * k * (k * (k * 6 - 15) + 10);
+}
+
 /** Ferris wheel rotors: one instance per wheel, hub at (0, hubY, 0) of the frame, turning about local z. */
 function createWheels(
   store: PropStore,
   scope: Scope,
+  calls: ReadonlyMap<number, FerryCall> = new Map(),
 ): { mesh: THREE.InstancedMesh | null; update(time: number): void } {
   const def = PROP_DEF_INDEX.ferrisWheel;
   const hubs: THREE.Matrix4[] = [];
+  const wheelCalls: (FerryCall | undefined)[] = [];
   for (let i = 0; i < store.count; i++)
-    if (store.defId[i] === def)
+    if (store.defId[i] === def) {
       hubs.push(
         pivotOf(store, i).multiply(
           new THREE.Matrix4().makeTranslation(0, MEDIA_ROCK.wheel.hubY, 0),
         ),
       );
+      wheelCalls.push(calls.get(i));
+    }
   if (hubs.length === 0) return { mesh: null, update: () => undefined };
   const features = { instanced: true, dither: true, emissive: true, rim: true };
   const mat = scope.add(
@@ -166,13 +186,36 @@ function createWheels(
   scope.add(mesh);
   const rot = new THREE.Matrix4();
   const update = (time: number): void => {
-    rot.makeRotationZ((time / MEDIA_MOVERS.wheelPeriod) * Math.PI * 2);
-    hubs.forEach((h, k) => mesh.setMatrixAt(k, _m.multiplyMatrices(h, rot)));
+    hubs.forEach((h, k) => {
+      rot.makeRotationZ(wheelTurns(time, wheelCalls[k]) * Math.PI * 2);
+      mesh.setMatrixAt(k, _m.multiplyMatrices(h, rot));
+    });
     mesh.instanceMatrix.needsUpdate = true;
   };
   update(0);
   mesh.computeBoundingSphere();
   return { mesh, update };
+}
+
+/** Store index of each Carnival Pier wheel → its ferry call (none: a steady wheel). */
+function carnivalWheelCalls(
+  world: WorldData,
+  store: PropStore,
+  quality: Quality,
+): Map<number, FerryCall> {
+  const out = new Map<number, FerryCall>();
+  const def = PROP_DEF_INDEX.ferrisWheel;
+  for (const isl of world.islands) {
+    const a = isl.anchors.carnivalWheel;
+    if (!a) continue;
+    const di = world.docks.findIndex((k) => k.islandId === isl.id);
+    const call = di >= 0 ? ferryCallAt(world, di, LIFE_PLAN[quality].ferries) : null;
+    if (!call) continue;
+    for (let i = 0; i < store.count; i++)
+      if (store.defId[i] === def && Math.hypot(store.x[i] - a.x, store.z[i] - a.z) < 0.01)
+        out.set(i, call);
+  }
+  return out;
 }
 
 export function createMovers(
@@ -181,7 +224,11 @@ export function createMovers(
   scope: Scope,
   world?: WorldData,
 ): MoversView {
-  const wheels = createWheels(store, scope);
+  const wheels = createWheels(
+    store,
+    scope,
+    world ? carnivalWheelCalls(world, store, quality) : undefined,
+  );
   const beltDef = PROP_DEF_INDEX.conveyor;
   const trackDef = PROP_DEF_INDEX.testTrack;
   const belts: Belt[] = [];

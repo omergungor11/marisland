@@ -12,6 +12,15 @@ exports[`Beacon Rock M27 kit, seed 2024 (W20 / W21) > placement snapshot 1`] = `
     1,
   ],
   [
+    "billboardV2",
+    4,
+    224.045,
+    0.7,
+    -84.984,
+    0.924,
+    1,
+  ],
+  [
     "mailLine",
     7,
     164,

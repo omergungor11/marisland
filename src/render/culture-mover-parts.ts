@@ -59,6 +59,8 @@ export const PART = {
   spreader: 21,
   /** Fish (M31 TASK-534): nose +x, unit length, takes the instance tint. */
   fish: 22,
+  /** Lit unit panel in the xy plane, centred, tinted, fully emissive (M31 TASK-536: the screen flash). */
+  panel: 23,
 } as const;
 export type PartKind = (typeof PART)[keyof typeof PART];
 
@@ -153,6 +155,8 @@ function doubleSided(
 
 export function buildPartsGeometry(): THREE.BufferGeometry {
   const pieces: Piece[] = [];
+  // 23 panel: a lit unit card facing +z (screen class: it glows by day too), for a screen's flash
+  pieces.push({ geo: new THREE.PlaneGeometry(1, 1), kind: PART.panel, color: null, emissive: 2 });
   // 22 fish: white so the instance tint colours it
   pieces.push({
     geo: buildFish('#FFFFFF', '#FFFFFF', 1),

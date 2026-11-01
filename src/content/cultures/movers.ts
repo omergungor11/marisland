@@ -7,6 +7,27 @@
  */
 import { FLOWERS, ROOFS, WALLS } from '../palette.ts';
 
+/**
+ * Instance slots of the part kinds few scenes write (M31 TASK-536, D-126): every other kind keeps the
+ * shared capacity (the sum of all scenes' `max`, ≈ 570 slots, 88 B each, for every kind). Each cap sits
+ * over what its scenes can write at once; a test sweeps them. Saves ≈ 0.5 MB at every quality.
+ * ship / trolley / spreader / cargo: the customs port (MAX_ITEMS 48); fish: 3 × 12 + the tank's 4;
+ * dummy, crate: one per coaster / drop tower; bell, arm, cap: belfry, semaphores, lecture steps.
+ */
+export const PART_SLOTS: Readonly<Record<string, number>> = {
+  ship: 8,
+  cargo: 48,
+  trolley: 8,
+  spreader: 8,
+  dummy: 8,
+  crate: 4,
+  bell: 12,
+  arm: 16,
+  cap: 16,
+  fish: 48,
+  panel: 2,
+};
+
 export const CULTURE_MOVERS = {
   /** Everything is hidden (no instance written, no draw) past this camera distance, u. */
   range: 260,

@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { Scope } from '../core/scope.ts';
 import { PROP_DEFS } from '../content/props.ts';
 import { CULTURES } from '../content/cultures/index.ts';
-import { CULTURE_MOVERS as M } from '../content/cultures/movers.ts';
+import { CULTURE_MOVERS as M, PART_SLOTS } from '../content/cultures/movers.ts';
 import { RELAY } from '../content/cultures/rhythm.ts';
 import { SEMAPHORE } from '../content/props-themes/m20.ts';
 import { SIGNAL_CHAIN } from '../content/signature.ts';
@@ -21,6 +21,9 @@ import { CODING_FOUNDRY_MOTION } from '../content/themes/coding-foundry-motion.t
 import { DOCK } from '../content/settlements.ts';
 import { pierLoop } from './harbour-routes.ts';
 import { MARKETING_M27_MOTION } from '../content/themes/marketing-m27-site.ts';
+import { CARNIVAL_MOTION } from '../content/themes/marketing-harbour.ts';
+import { LIFE_PLAN } from '../content/life.ts';
+import { ferryCallAt } from '../life/boats.ts';
 import { RESEARCH_M28 } from '../content/themes/research-m28.ts';
 import { RESEARCH_M28_MOTION } from '../content/themes/research-m28-site.ts';
 
@@ -470,6 +473,75 @@ describe('culture movers', () => {
     // deterministic in the clock
     expect(glows(23.15)).toBe(glows(23.15));
     SHARED.uLamps.value.z = lamps;
+  });
+
+  it('the part kinds with few slots (D-126) never fill up, over a day and every ritual', () => {
+    const rare = Object.keys(PART_SLOTS);
+    const most = new Map<string, number>(rare.map((k) => [k, 0]));
+    const rituals = [
+      ...new Set(
+        Object.values(M).flatMap((v) =>
+          typeof v === 'object' && 'ritual' in v ? [(v as { ritual: string }).ritual] : [],
+        ),
+      ),
+    ];
+    const spots = world.islands.map((i) => new THREE.Vector3(i.cx, 12, i.cz));
+    for (const cam of spots)
+      for (const th of THEME_IDS)
+        for (const id of ['', ...rituals])
+          for (const t of [3, 9, 12.25, 17.75, 21]) {
+            view.update(t * 40, t, env(t), cam, fest(th, id));
+            for (const k of rare) {
+              const n = view.meshes[PART[k as keyof typeof PART]].count;
+              most.set(k, Math.max(most.get(k) ?? 0, n));
+            }
+          }
+    for (const k of rare) {
+      const m = view.meshes[PART[k as keyof typeof PART]];
+      expect(m.instanceMatrix.count, k).toBe(PART_SLOTS[k]);
+      expect(most.get(k), k).toBeLessThan(PART_SLOTS[k]);
+    }
+  });
+
+  it('Carnival Pier (TASK-536): the ferry arrival fires the cannons and flashes the screen, closed form', () => {
+    const isl = world.islands.find((i) => i.theme === 'marketing');
+    const A = isl?.anchors;
+    expect(A?.carnivalScreen && A?.carnivalCannon0).toBeDefined();
+    if (!isl || !A) return;
+    const di = world.docks.findIndex((d) => d.islandId === isl.id);
+    const call = ferryCallAt(world, di, LIFE_PLAN.medium.ferries);
+    expect(call).not.toBeNull();
+    if (!call) return;
+    const at = call.cycle - call.offs[0] + call.at;
+    const cam = new THREE.Vector3(A.carnivalDeck.x, 8, A.carnivalDeck.z);
+    const near = (m: THREE.Matrix4, p: { x: number; z: number }, r: number): boolean => {
+      const q = new THREE.Vector3().setFromMatrixPosition(m);
+      return Math.hypot(q.x - p.x, q.z - p.z) < r;
+    };
+    const flying = (): number =>
+      ofKind(view, PART.quad).filter((m) => near(m, A.carnivalCannon0, 16)).length;
+    const F = CARNIVAL_MOTION.flash;
+    // just before the boat stops: nothing
+    view.update(at - 2, 12, env(12), cam, fest());
+    expect(ofKind(view, PART.panel).length).toBe(0);
+    expect(flying()).toBe(0);
+    // a flash's peak and the burst
+    view.update(at + F.delay + F.period * 1.5, 12, env(12), cam, fest());
+    expect(ofKind(view, PART.panel).length).toBe(1);
+    expect(near(ofKind(view, PART.panel)[0], A.carnivalScreen, 1)).toBe(true);
+    expect(flying()).toBeGreaterThanOrEqual(CARNIVAL_MOTION.confetti.pieces * 2);
+    // a seek agrees with itself
+    const a = snapshot(view);
+    view.update(at + 30, 12, env(12), cam, fest());
+    view.update(at + F.delay + F.period * 1.5, 12, env(12), cam, fest());
+    expect(snapshot(view)).toEqual(a);
+    // over when the burst is
+    view.update(at + CARNIVAL_MOTION.confetti.life + 1, 12, env(12), cam, fest());
+    expect(ofKind(view, PART.panel).length).toBe(0);
+    expect(flying()).toBe(0);
+    // the fair's show does not fire the pier's cannons
+    view.update(at - 2, 12, env(12), cam, fest('marketing', M.confetti.ritual, 0.01));
+    expect(flying()).toBe(0);
   });
 
   it('M27 diver (TASK-518): climbs, leaps into the pool, splashes; by day only, closed form', () => {
