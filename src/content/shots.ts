@@ -13,7 +13,7 @@ export interface ShotPreset {
   id: string;
   title: string;
   seed: number;
-  /** overview | island:<name> | village | dock | macro-beach | raw x,y,z,tx,ty,tz */
+  /** overview | island:<name> | village | dock | macro-beach | site:<anchor>:x,y,z,tx,ty,tz (anchor frame) | raw x,y,z,tx,ty,tz */
   cam: string;
   /** Game hour. */
   time: number;
@@ -514,6 +514,42 @@ const RESEARCH_M28_CAMS: readonly (readonly [string, string, string, number, num
   ['D-m28-sundial', 'Meridian dial at 12:00 (T2)', '127.5,13,83.5,125.2,6,92.2', 12, 6],
   ['D-m28-deck', 'Rim deck gazer (T3)', '137,9.5,93.5,130.3,6.8,96.5', 15, 6],
 ];
+/**
+ * TASK-541 (D-122): the Thrill Test Park, cams in the site's kit frame (`site:coaster:`, x across, z along
+ * the rect, y up, scaled with the site), so they hold when the layout moves. Noon: `time=12&simt=4` = the
+ * bot train entering the loop under the siren (the show is anchored there, render/coaster-motion.ts).
+ */
+const COASTER_CAM = (v: string): string => `site:coaster:${v}`;
+const COASTER_SHOTS: readonly ShotPreset[] = (
+  [
+    // the train on the loop, close: from outside it and from the infield (seed 1001 = the 0.8 site)
+    ['D-coaster-loop', '9.5,3.8,-4.5,4.8,4.2,1.2', 12, 5],
+    ['D-coaster-loop-in', '-3,4.2,1.2,4.6,4.4,1.2', 12, 5],
+    // the track from T2 and from island distance (LOD1)
+    ['D-coaster-far', '-60,38,-60,0,3,0', 15, 10],
+    ['D-coaster-far1', '-130,90,-130,0,3,0', 15, 10],
+    // bumper cars
+    ['D-coaster-bumpers', '2,4.5,-13,0,0.6,-5', 14, 8],
+    // ✓ lamps at night: dark while the dummy waits (+20 s), lit with the bots aboard (+60 s)
+    ['D-coaster-lamp-off', '-16,5,-16,-7,2,-9', 21, 20],
+    ['D-coaster-lamp-on', '-16,5,-16,-7,2,-9', 21, 60],
+    // chain lift, the click ring at the last car
+    ['D-coaster-lift', '-11,5,6,-4.5,4,7', 10, 15],
+    // the whole site, the loop face on (from the station side)
+    ['D-coaster-site', '-30,18,18,0,3,0', 12, 5],
+  ] as const
+).map(([id, cam, time, simt]) => ({
+  id,
+  title: `Coaster ${id.slice(10)}`,
+  seed: 1001,
+  cam: COASTER_CAM(cam),
+  time,
+  simt,
+  quality: 'medium' as const,
+  width: 1280,
+  height: 720,
+  sets: ['dev'] as ShotSet[],
+}));
 /** TASK-534 (D-118): seed 1001 cams round the Research Tide-Lab harbour. */
 const TIDE_LAB_CAMS = {
   noon: '74,30,82,88,0,99',
@@ -2241,6 +2277,21 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     sets: ['wow'],
   },
   ...TIDE_LAB_SHOTS,
+  // ---- TASK-541 (D-122): the Thrill Test Park at noon: the siren test, the bots on the loop
+  {
+    id: 'W-thrill-noon',
+    title: 'Thrill Noon',
+    seed: 1001,
+    // from behind the station: the loop with the bots at its crown, drop tower, hangars and fan behind
+    cam: COASTER_CAM('-21,15,-21,2,3.5,0'),
+    time: 12,
+    simt: 5,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  ...COASTER_SHOTS,
   // ---- TASK-512: the three wow presets TASK-502 specified (D-090)
   {
     id: 'W-kite-hill-afternoon',

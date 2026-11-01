@@ -275,6 +275,30 @@ export function createCameraSystem(
           lookFromOrbit(controls, a.x, y, a.z, dist, pitch, az, t);
           break;
         }
+        case 'site': {
+          // `site:<anchor>:x,y,z,tx,ty,tz` (TASK-541): a raw look-at in an anchor's prop frame, scaled by
+          // `<anchor>Size.y`, so a shot framed on a site survives a layout change; no such anchor = overview
+          const cut = arg.indexOf(':');
+          const key = arg.slice(0, cut);
+          const v = arg
+            .slice(cut + 1)
+            .split(',')
+            .map(Number);
+          const isl = world.islands.find((i) => i.anchors[key]);
+          const a = isl?.anchors[key];
+          if (!isl || !a || v.length !== 6 || !v.every((n) => Number.isFinite(n))) {
+            sys.applyPreset('overview', transition);
+            return;
+          }
+          const s = isl.anchors[`${key}Size`]?.y ?? 1;
+          const at = (x: number, y: number, z: number): [number, number, number] => [
+            a.x + s * (Math.sin(a.rotY) * x + Math.cos(a.rotY) * z),
+            (a.y ?? 0) + s * y,
+            a.z + s * (-Math.cos(a.rotY) * x + Math.sin(a.rotY) * z),
+          ];
+          void controls.setLookAt(...at(v[0], v[1], v[2]), ...at(v[3], v[4], v[5]), t);
+          break;
+        }
         default: {
           const parts = preset.split(',').map(Number);
           if (parts.length === 6 && parts.every((n) => Number.isFinite(n))) {

@@ -122,6 +122,8 @@ export interface BatcherDeps {
   };
   /** TASK-476 near merge: max pre-transformed vertices of a LOD0 group (default NEAR_MERGE). */
   nearMergeMaxVerts?: number;
+  /** A def whose geometry comes from the world (TASK-541, the coaster's real track); null = the registry's. */
+  geometryOverride?: (id: string, lod: Lod) => THREE.BufferGeometry | null;
 }
 
 export interface BatcherWorld {
@@ -244,7 +246,9 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
     const key = `${def.geo}:${variant}:${lod}`;
     let g = geoCache.get(key);
     if (!g) {
-      g = compactAttributes(buildProp(def.geo, d.seed, variant, lod));
+      g = compactAttributes(
+        d.geometryOverride?.(def.id, lod) ?? buildProp(def.geo, d.seed, variant, lod),
+      );
       d.scope.add(g);
       geoCache.set(key, g);
     }
