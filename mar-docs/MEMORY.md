@@ -10,6 +10,11 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-11-01 (TASK-544 merged, D-121; budgets D-123)**: For TASK-545: anchors in the header of `plans/coding-foundry.ts`; each group is absent when its site has
+  no room; yards are `Zone.field`, blocking, scatter-free. Seed 1001: lake (-144, 154), foundry (-168, 174), port (-153, 193), track (-160, 162). For TASK-547:
+  `dataLakeOf`, `lakeEdge` (GLSL form in its doc), `lakePoint`, anchors `dataLake`, `dataLakeSize`, `dataLakeWobble`, `dataLakeRim0..K`; mask by outline. W7 needs
+  recomposing once the lake has its kit. Budgets now medium 180, low 78. **CI has been red since 2026-10-12** (TASK-552), deploy doesn't depend on it, so CI's
+  `shots --assert` never ran: local `pnpm shots --assert` is the only budget check.
 - **2026-11-01 (TASK-541 merged, D-122) - For TASK-542**: everything lives in the KIT frame (`world/coaster-kit.ts`), prop scale = site scale. Real
   track = `geometryOverride` (`render/coaster-track.ts`); the `coasterTrack` def is still the fixture. Motion `render/coaster-motion.ts` (day seconds),
   meshes `render/coaster-movers.ts`, lamp / click / sparks in culture-movers. Seed 1001: cycle 75 s, `time=12&simt=4` bots enter the loop, `simt=5`
