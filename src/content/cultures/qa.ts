@@ -41,6 +41,9 @@ export const QA_CULTURE: CultureDef = {
     { id: 'scannerArch', tier: 2, flags: grounded },
     { id: 'customsYard', tier: 2, flags: grounded },
     { id: 'quarantinePontoon', tier: 2, flags: 0 },
+    // M34 TASK-540 Thrill Test Park (D-115/D-120: cap 17, tier-1 2 = the coaster track)
+    { id: 'coasterTrack', tier: 1, flags: 0 },
+    { id: 'coasterStation', tier: 2, flags: grounded },
   ],
   // emitted by world/gen/plans/qa.ts (TASK-424); `defs` = the props the scene stands on
   storySpots: [

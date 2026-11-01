@@ -59,11 +59,11 @@ describe('TASK-506 defs', () => {
     expect(PROP_DEFS.length).toBeGreaterThanOrEqual(last + 4);
   });
 
-  it('QA ledger: cap override covers the kit, tier-1 still the drop tower only', () => {
-    expect(cultureCapOverride.qa).toEqual({ defs: 15, tier1: 1 });
+  it('QA ledger: cap override covers the kit, tier-1 = the drop tower + the coaster (M34 TASK-540)', () => {
+    expect(cultureCapOverride.qa).toEqual({ defs: 17, tier1: 2 });
     expect(QA_CULTURE.kit.length).toBeLessThanOrEqual(cultureCapOverride.qa.defs);
     for (const id of IDS) expect(QA_CULTURE.kit.map((k) => k.id)).toContain(id);
-    expect(QA_CULTURE.kit.filter((k) => k.tier === 1)).toHaveLength(1);
+    expect(QA_CULTURE.kit.filter((k) => k.tier === 1)).toHaveLength(2);
   });
 
   it('the pontoon is a floating fixture without a contact blob; the rest is grounded', () => {

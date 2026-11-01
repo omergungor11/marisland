@@ -31,6 +31,7 @@ import { MARKETING_M27_PROP_DEFS } from './props-themes/marketing-m27.ts';
 import { RESEARCH_M28_PROP_DEFS } from './props-themes/research-m28.ts';
 import { RESEARCH_M31_PROP_DEFS } from './props-themes/research-m31.ts';
 import { CODING_M33_PROP_DEFS } from './props-themes/coding-m33.ts';
+import { QA_COASTER_PROP_DEFS } from './props-themes/qa-coaster.ts';
 
 export interface PropDef {
   id: string;
@@ -181,6 +182,8 @@ const ALL_DEFS: readonly PropDef[] = [
   ...RESEARCH_M31_PROP_DEFS,
   // ==== TASK-543 (M33 Coding, D-117): Bot Foundry, Drone Port, test track, Data Lake kit (self-contained block) ====
   ...CODING_M33_PROP_DEFS,
+  // ==== TASK-540 (M34 QA Thrill Test Park, D-120): coaster track (tier 1) + station; the TESTED board and the cotton-candy cart are variants ====
+  ...QA_COASTER_PROP_DEFS,
 ];
 
 /**

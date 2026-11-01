@@ -106,7 +106,8 @@ export const cultureCapOverride: Readonly<Record<string, { defs: number; tier1: 
   hq: { defs: 14, tier1: 1 },
   design: { defs: 15, tier1: 2 },
   // TASK-506 (D-086): +3 for the Customs Port (scannerArch, customsYard, quarantinePontoon), all tier 2
-  qa: { defs: 15, tier1: 1 },
+  // TASK-540 (D-120): +2 for the Thrill Test Park (coasterTrack = the second tier-1 slot, coasterStation); the cars, riders and bumper cars are geo-only movers, the TESTED board and the cotton-candy cart variants
+  qa: { defs: 17, tier1: 2 },
   // M25 TASK-504 (D-084): the Ember Smiths ledger 10 -> 14 (funicularRail / Car, geyserCone, oreBucket)
   // TASK-509b (D-092): +5 for the lava pack (emberBridge, craterDeck, glassKiln, obsidianShard, devopsBreakwater)
   devops: { defs: 19, tier1: 1 },

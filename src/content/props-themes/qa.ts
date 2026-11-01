@@ -11,11 +11,13 @@ export const QA_PROP_DEFS: readonly PropDef[] = [
   // checkpoint every ~25 u on the ring path: spans ~3 u, so T0 (reads as a red/white tick mark)
   { id: 'barrierGate', geo: 'barrierGate', tier: 0, variants: 2, footprint: 2.0, flags: grounded },
   { id: 'trafficCone', geo: 'trafficCone', tier: 3, variants: 2, footprint: 0.3, flags: grounded },
+  // v2 = the TESTED board at the coaster station (M34 TASK-540): pinned by the plan, rolls keep v0 / v1
   {
     id: 'checklistBoard',
     geo: 'checklistBoard',
     tier: 1,
-    variants: 2,
+    variants: 3,
+    rollVariants: 2,
     footprint: 1.0,
     flags: grounded,
   },
@@ -67,11 +69,13 @@ export const QA_CULTURE_PROP_DEFS: readonly PropDef[] = [
     footprint: 1.0,
     flags: grounded,
   },
+  // v1 = the cotton-candy cart (M34 TASK-540): pinned by the plan, rolls keep v0
   {
     id: 'inspectionBooth',
     geo: 'inspectionBooth',
     tier: 2,
-    variants: 1,
+    variants: 2,
+    rollVariants: 1,
     footprint: 1.8,
     flags: grounded,
   },

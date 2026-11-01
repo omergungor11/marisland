@@ -54,7 +54,9 @@ const GLOWS = new Set([
 describe('TASK-543 defs and ledger', () => {
   it('ten new defs at the very end of PROP_DEFS, geo and PropDef agree', () => {
     expect(CODING_M33_PROP_DEFS).toHaveLength(10);
-    const tail = PROP_DEFS.slice(-10).map((d) => d.id);
+    // the M33 block is 10 contiguous defs; later blocks (M34 QA coaster) append after it
+    const at = PROP_DEF_INDEX.conveyorLine;
+    const tail = PROP_DEFS.slice(at, at + 10).map((d) => d.id);
     expect(tail).toEqual(CODING_M33_PROP_DEFS.map((d) => d.id));
     for (const d of CODING_M33_PROP_DEFS) {
       const pd = PROP_DEFS[PROP_DEF_INDEX[d.id]];

@@ -27,6 +27,7 @@ import {
 } from '../src/content/props-themes/research-m31.ts';
 import { HARBOUR_VARIANTS } from '../src/content/themes/harbours.ts';
 import { CODING_M33_PROP_IDS } from '../src/content/props-themes/coding-m33.ts';
+import { QA_COASTER_PROP_IDS } from '../src/content/props-themes/qa-coaster.ts';
 import { RESEARCH_M22_PROP_IDS } from '../src/content/props-themes/research.ts';
 import { buildGalleryScene } from '../src/geo/gallery.ts';
 import { PROP_GEO } from '../src/geo/registry.ts';
@@ -62,13 +63,15 @@ const ids =
                           ? RESEARCH_M31_PROP_IDS
                           : which === 'coding33'
                             ? CODING_M33_PROP_IDS
-                            : which.split(',');
+                            : which === 'coaster'
+                              ? QA_COASTER_PROP_IDS
+                              : which.split(',');
 const PORT = Number(opt('port') ?? 5199);
 const ROOT = resolve(import.meta.dirname, '..');
 const OUT = resolve(
   ROOT,
   opt('out') ??
-    `shots/gallery-${['m20', 'coding22', 'research', 'qa24', 'qa30', 'marina', 'devops25', 'devops26', 'marketing27', 'research28', 'harbours', 'research31', 'coding33'].includes(which) ? which : 'custom'}`,
+    `shots/gallery-${['m20', 'coding22', 'research', 'qa24', 'qa30', 'marina', 'devops25', 'devops26', 'marketing27', 'research28', 'harbours', 'research31', 'coding33', 'coaster'].includes(which) ? which : 'custom'}`,
 );
 const BASE = `http://localhost:${PORT}/`;
 
