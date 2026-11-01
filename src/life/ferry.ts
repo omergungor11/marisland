@@ -79,3 +79,65 @@ export function ferryDwelling(sch: FerrySchedule, tau: number): boolean {
   while (k > 0 && sch.legs[k].t0 > c) k--;
   return c - sch.legs[k].t0 <= sch.dwell || c - sch.legs[k].t0 >= sch.dwell + sch.legs[k].dur;
 }
+
+/**
+ * A ferry line's calls at one stop (TASK-534): when its boats arrive there. `offs` = their schedule
+ * offsets (`Sailboats.tOff`), `at` = the cycle time the dwell at this stop starts.
+ */
+export interface FerryCall {
+  cycle: number;
+  at: number;
+  dwell: number;
+  offs: readonly number[];
+}
+
+/** Schedule offset of boat `k` of `per` on a line (`startFrac`: where boat 0 starts its cycle). */
+export const ferryOffset = (k: number, per: number, startFrac: number, cycle: number): number =>
+  (startFrac + k / per) * cycle;
+
+/** The calls of schedule `sch` at the stop nearest arc length `arc`; null for a plain loop. */
+export function ferryCall(
+  sch: FerrySchedule,
+  arc: number,
+  offs: readonly number[],
+): FerryCall | null {
+  if (sch.legs.length === 0 || offs.length === 0) return null;
+  let best = sch.legs[0];
+  let bd = Infinity;
+  for (const L of sch.legs) {
+    const d = Math.abs(L.s0 - arc);
+    const wrapped = Math.min(d, sch.total - d);
+    if (wrapped < bd) {
+      bd = wrapped;
+      best = L;
+    }
+  }
+  return { cycle: sch.cycle, at: best.t0, dwell: sch.dwell, offs };
+}
+
+/** Seconds since a boat last arrived at the stop (0 = just stopped, ≤ `dwell`: it stands there). */
+export function sinceFerryArrival(call: FerryCall, time: number): number {
+  let out = Infinity;
+  for (const off of call.offs) {
+    const u = time + off - call.at;
+    out = Math.min(out, u - Math.floor(u / call.cycle) * call.cycle);
+  }
+  return out;
+}
+
+/**
+ * Ritual envelope 0..1 of a ferry call, `u` s after the arrival: up over `rise` s, held while the
+ * boat stands (`dwell`) and `linger` s more, down over `fall` s. The harbours' arrival rituals
+ * (Research lights, Marketing confetti, Design buoys) all key off it.
+ */
+export function arrivalEnvelope(
+  u: number,
+  dwell: number,
+  rise: number,
+  fall: number,
+  linger: number,
+): number {
+  const end = dwell + linger;
+  const k = u < end ? Math.min(1, u / rise) : 1 - Math.min(1, (u - end) / fall);
+  return k * k * (3 - 2 * k);
+}

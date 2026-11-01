@@ -228,7 +228,12 @@ describe('culture movers', () => {
     view.update(3, 12, env(12), tower!, fest());
     const rest = ofKind(view, PART.bell);
     expect(rest.length).toBe(2); // the bells hang there all day
-    expect(ofKind(view, PART.ring).length).toBe(0);
+    // (the sub's bubbles ring on the lagoon all day, TASK-534: count the ones at the belfry)
+    const towerRings = (): number =>
+      ofKind(view, PART.ring).filter(
+        (m) => new THREE.Vector3().setFromMatrixPosition(m).distanceTo(tower!) < 12,
+      ).length;
+    expect(towerRings()).toBe(0);
     const at = (t: number) => {
       view.update(3, 9, env(9), tower!, fest('research', B.ritual, t / B.seconds));
       return snapshot(view);
@@ -236,12 +241,12 @@ describe('culture movers', () => {
     const a = at(0.2 * B.swing);
     const b = at(0.45 * B.swing);
     expect(ofKind(view, PART.bell).length).toBe(2);
-    expect(ofKind(view, PART.ring).length).toBeGreaterThanOrEqual(B.rings);
+    expect(towerRings()).toBeGreaterThanOrEqual(B.rings);
     expect(b).not.toEqual(a); // the bells are swinging
     expect(a.every(Number.isFinite)).toBe(true);
     // the swing is over before the ritual ends: the bells hang again (and the rings are gone)
     at(B.seconds - 0.1);
-    expect(ofKind(view, PART.ring).length).toBe(0);
+    expect(towerRings()).toBe(0);
 
     // the gantry rocket (rocketMonument v1): steam only while testFiring runs
     const pad = world.fixtures.find((f) => f.defId === 'rocketMonument' && f.variant === 1);

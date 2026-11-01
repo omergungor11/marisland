@@ -22,6 +22,11 @@ export const BEACON_NET = {
   /** Mini beam: scale of the lighthouse beam (length 40 u → ×), opacity ×, flare ×. */
   beam: { scale: 1, opacity: 1, flare: 0.8 },
   /**
+   * The M31 harbour lights (TASK-534): the length is the kit's (HARBOUR.light.beam.length, the
+   * turn the net's), opacity ×, flare ×, their own camera fade band (u).
+   */
+  harbour: { opacity: 0.9, flare: 0.7, fade: [170, 260] as const },
+  /**
    * Camera distance band (u) over which each beam fades out: gone past the second value (TASK-496:
    * was 380–500, which hid every beam from the postcard).
    */

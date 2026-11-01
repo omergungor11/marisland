@@ -21,7 +21,13 @@ export interface LifePlan {
   rowboats: number;
   /** Parked (non-sailing) sailboats at moorings. */
   parked: number;
-  /** Culture boats (TASK-434): HQ ferries on 'ferry' routes, QA inspection boat, Design lantern boat. */
+  /**
+   * Culture boats (TASK-434): HQ ferries on 'ferry' routes, QA inspection boat, Design lantern boat.
+   * `ferries` ≥ HQ_FERRY.lines so every line runs (TASK-534, D-118): one boat serves only line 0, and
+   * half the seeds' harbours would never see a ferry. Low stays at 1: its agent cap is full, so a
+   * harbour on line 1 has no boat and no arrival ritual there. Medium's cap is full too: the second
+   * ferry took a rowboat's slot.
+   */
   ferries: number;
   patrolBoats: number;
   lanternBoats: number;
@@ -73,9 +79,9 @@ export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
   },
   medium: {
     sailboats: 2,
-    rowboats: 3,
+    rowboats: 2,
     parked: 0,
-    ferries: 1,
+    ferries: 2,
     patrolBoats: 1,
     lanternBoats: 1,
     flocks: 3,

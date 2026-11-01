@@ -28,6 +28,7 @@ export function waterDefines(): string {
   return [
     bandDefines(),
     `#define MAR_BAND_SOFT ${f(W.bandSoft)}`,
+    `#define MAR_CALM_FOAM ${f(W.harbourCalm.foam)}`,
     `#define MAR_A_LAGOON ${f(W.alpha.lagoon)}`,
     `#define MAR_A_SHALLOW ${f(W.alpha.shallow)}`,
     `#define MAR_A_DEEP ${f(W.alpha.deep)}`,
@@ -423,11 +424,13 @@ void main() {
 
   // --- foam
   float px = max(fwidth(d), 1e-3);          // u per pixel across the shore
+  // sheltered harbour water (ring channel 0, harbourCalmMask): a thin still line, no bands
+  float calm = 1.0 - smoothstep(0.1, 0.9, sdfRing.y);
   float farFoam = smoothstep(0.3, 1.0, px);  // 0 near, 1 at map scale
   float lap = marLap(t) * uMotionScale + (1.0 - uMotionScale) * 0.5;
-  float lo = MAR_LAP_ADVANCE * (1.0 - lap) * (1.0 - farFoam);
+  float lo = MAR_LAP_ADVANCE * (1.0 - lap) * (1.0 - farFoam) * (1.0 - calm * MAR_CALM_FOAM);
   float brk = marNoise(xz * 0.9 + vec2(t * 0.11, -t * 0.07));
-  float w = mix(MAR_FOAM_MIN, MAR_FOAM_MAX, brk);
+  float w = mix(MAR_FOAM_MIN, MAR_FOAM_MAX, brk) * (1.0 - calm * MAR_CALM_FOAM);
   float hi = max(lo + w, MAR_LINE_PX * px);
   float lower = lo < px ? 1.0 : smoothstep(lo - px, lo + 0.5 * px, d);
   float foam = lower * (1.0 - smoothstep(hi - 0.5 * px, hi + px, d));
@@ -439,6 +442,7 @@ void main() {
   bands *= smoothstep(hi, hi + 1.0, d) * (1.0 - smoothstep(MAR_FBAND_FADE0, MAR_FBAND_FADE1, d));
   bands *= smoothstep(0.35, 0.6, marNoise(xz * 0.45 + vec2(-t * 0.05, t * 0.08)));
   bands *= 1.0 - smoothstep(0.25, 0.7, px);
+  bands *= 1.0 - calm;
   foam = max(foam, bands);
 
   // crest dots riding the primary swell in the shallow band

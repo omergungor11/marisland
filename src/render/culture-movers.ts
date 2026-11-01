@@ -16,7 +16,7 @@ import { relayBoost, type CultureFestival, type CultureState } from './culture-c
 import type { EnvState } from '../env/env-state.ts';
 import { makeLifeMaterial } from '../life/life-material.ts';
 import { PropFlag, type PropStore } from '../world/prop-store.ts';
-import { THEME_IDS, heightAt, type ThemeId, type WorldData } from '../world/types.ts';
+import { THEME_IDS, heightAt, type ThemeId, type WorldData, type XZ } from '../world/types.ts';
 import { buildBeamGeometry } from './night/beam.ts';
 import { createSkyProgramMaterial } from './sky/sky.ts';
 import { SHARED } from './uniforms.ts';
@@ -44,6 +44,14 @@ import { MARKETING_M27 } from '../content/themes/marketing-m27.ts';
 import { MARKETING_M27_MOTION } from '../content/themes/marketing-m27-site.ts';
 import { RESEARCH_M28 } from '../content/themes/research-m28.ts';
 import { RESEARCH_M28_MOTION } from '../content/themes/research-m28-site.ts';
+import { RESEARCH_HARBOUR_MOTION as RH } from '../content/themes/research-harbour-site.ts';
+import { RESEARCH_M31 } from '../content/themes/research-m31.ts';
+import { HARBOUR } from '../content/themes/harbours.ts';
+import { LIFE_PLAN } from '../content/life.ts';
+import { ferryCallAt } from '../life/boats.ts';
+import { arrivalEnvelope, sinceFerryArrival, type FerryCall } from '../life/ferry.ts';
+import { anchorPoints } from '../world/gen/plans/research-anchors.ts';
+import { subBelow, subPathOf, diveAt, surfaceAt } from './tide-lab-motion.ts';
 
 /**
  * Culture movers (M19 TASK-431): closed-form scenes that make each island culture visibly alive.
@@ -1073,6 +1081,182 @@ function deckGazerScene(phase: number): Scene['run'] {
 }
 
 /**
+ * Fish schools round the sunken city's tops (M31 TASK-534): a ring per centre, each fish a phase
+ * behind the one ahead, the school wandering in and out. World frame, closed form in the sim time.
+ */
+function ruinFishScene(centres: readonly XZ[]): Scene['run'] {
+  const F = RH.fish;
+  const fish = centres.flatMap((c, s) =>
+    Array.from({ length: F.n }, (_, m) => {
+      const a = rnd(s, m, 0x51);
+      const b = rnd(s, m, 0x52);
+      return {
+        c,
+        ph: rnd(s, 0, 0x53) * Math.PI * 2 - (F.spreadRad * m) / F.n,
+        // alternate schools swim the other way round
+        dir: s % 2 === 0 ? 1 : -1,
+        lap: F.lapS * (1 + F.jitter * (2 * rnd(s, 0, 0x54) - 1)),
+        off: F.across * (2 * a - 1),
+        tail: b * Math.PI * 2,
+        color: F.colors[s % F.colors.length],
+        size: F.size * (0.85 + 0.3 * b),
+      };
+    }),
+  );
+  return (w, c) => {
+    for (const f of fish) {
+      const th = f.ph + (f.dir * c.time * Math.PI * 2) / f.lap;
+      const r =
+        F.r + f.off + F.wander * Math.sin((c.time / F.wanderPeriod) * Math.PI * 2 + f.c.x * 0.7);
+      const y = F.y + F.sway * Math.sin(c.time * 0.8 + f.tail);
+      // tangent (−sin, cos) × dir; a fish's nose is +x: yaw = atan2(−z, x), plus a tail wiggle
+      const yaw =
+        Math.atan2(-Math.cos(th) * f.dir, -Math.sin(th) * f.dir) +
+        0.28 * Math.sin(c.time * 7 + f.tail) * c.motion;
+      w.put(
+        PART.fish,
+        [f.c.x + Math.cos(th) * r, y, f.c.z + Math.sin(th) * r],
+        [0, yaw, 0],
+        f.size,
+        f.color,
+      );
+    }
+  };
+}
+
+/** The tide tank's fish (lab frame, hook `tank`): small ones circling inside the glass. */
+function tankFishScene(): Scene['run'] {
+  const F = RH.tankFish;
+  const T = RESEARCH_M31.lab.tank;
+  const y0 = RESEARCH_M31.lab.deck.y + 0.15 + 0.42;
+  const h = T.h - 0.3 - 0.42;
+  return (w, c) => {
+    for (let k = 0; k < F.n; k++) {
+      const th = (k / F.n) * Math.PI * 2 + (c.time * Math.PI * 2) / (F.lapS * (1 + 0.2 * (k % 2)));
+      const x = T.x + Math.cos(th) * (T.w / 2 - 0.35);
+      const z = T.z + Math.sin(th) * (T.d / 2 - 0.3);
+      w.put(
+        PART.fish,
+        [x, y0 + h * (0.3 + 0.2 * k), z],
+        [0, Math.atan2(-Math.cos(th), -Math.sin(th)), 0],
+        F.size,
+        F.colors[k % F.colors.length],
+      );
+    }
+  };
+}
+
+/**
+ * Bubbles while the sub is down (M31 TASK-534): balls rising to the surface and a ring where each
+ * breaks it, at the dive point (`dive` plume) and thinly between the ruin tops. World frame.
+ */
+function subBubblesScene(emitters: readonly { p: XZ; n: number }[]): Scene['run'] {
+  const B = RH.bubbles;
+  const balls = emitters.flatMap((e, s) =>
+    Array.from({ length: e.n }, (_, k) => ({
+      x: e.p.x + B.spread * (2 * rnd(s, k, 0x61) - 1),
+      z: e.p.z + B.spread * (2 * rnd(s, k, 0x62) - 1),
+      ph: rnd(s, k, 0x63),
+      size: B.size[0] + (B.size[1] - B.size[0]) * rnd(s, k, 0x64),
+      burst: s === 0,
+    })),
+  );
+  return (w, c) => {
+    if (!subBelow(c.day)) return;
+    const since = c.day - diveAt();
+    const boil = since < B.burstS ? 1 + (B.burstScale - 1) * (1 - since / B.burstS) : 1;
+    // the plume dies as it comes back up
+    const fade = 1 - smooth((c.day - surfaceAt()) / RH.sub.sink);
+    for (const b of balls) {
+      const u = frac(c.time / B.lifeS + b.ph);
+      const wob = B.wobble * Math.sin(c.time * 3 + b.ph * 20);
+      const s = b.size * (0.6 + 0.7 * u) * (b.burst ? boil : 1) * fade;
+      w.put(
+        PART.blob,
+        [b.x + wob, -B.depth + (B.depth + 0.06) * u, b.z - wob],
+        [0, 0, 0],
+        s,
+        B.color,
+      );
+      const pop = frac(c.time / B.ring.life + b.ph * 3);
+      const r = B.ring.r * (0.25 + 0.75 * pop) * fade;
+      w.put(
+        PART.ring,
+        [b.x, 0.05, b.z],
+        [0, 0, 0],
+        [r, r * Math.max(0.15, 1 - pop) * B.ring.tube, r],
+        B.ring.color,
+      );
+    }
+  };
+}
+
+/**
+ * Research's ferry arrival ritual, lab half (M31 TASK-534; lab frame): the lab's lights come on in
+ * turn, a keeper pops out on the deck and waves until the boat leaves. The envelope is the shared
+ * `arrivalEnvelope` of the `FerryCall` (life/ferry.ts).
+ */
+function labArrivalScene(call: FerryCall): Scene['run'] {
+  const R = RH.arrival;
+  const K = R.keeper;
+  const sh = M.keeper.shoulder;
+  return (w, c) => {
+    const u = sinceFerryArrival(call, c.time);
+    const e = arrivalEnvelope(u, call.dwell, R.rise, R.fall, R.linger);
+    if (e <= 0.001) return;
+    for (const L of R.lamps) {
+      const k = e * smooth((u - L.delay) / R.rise);
+      if (k > 0.01) w.put(PART.glow, L.at, [0, 0, 0], L.r * k, L.color);
+    }
+    const G = R.tankGlow;
+    const tk = e * smooth((u - G.delay) / R.rise);
+    if (tk > 0.01)
+      w.put(PART.glow, G.at, [0, 0, 0], [G.size[0] * tk, G.size[1], G.size[2] * tk], G.color);
+    const pop = easeOutBack(Math.min(1, u / 0.5)) * e;
+    if (pop <= 0.02) return;
+    const sc = K.scale * pop;
+    const wave = Math.sin(c.time * K.waveHz * Math.PI * 2) * c.motion;
+    // facing −z, toward the sea and the boat
+    w.put(PART.keeper, K.at, [0, Math.PI, 0], sc, K.tint);
+    const y = K.at[1] + sh[1] * sc;
+    w.put(
+      PART.limb,
+      [K.at[0] - sh[0] * sc, y, K.at[2]],
+      [Math.PI * 0.9, Math.PI, 0.3 * wave],
+      sc,
+      K.tint,
+    );
+    w.put(PART.limb, [K.at[0] + sh[0] * sc, y, K.at[2]], [0, Math.PI, 0.08], sc, K.tint);
+  };
+}
+
+/**
+ * Research's ferry arrival ritual, harbour half (M31 TASK-534; world frame): the harbour light
+ * double-flashes and a ripple runs off the berth as the boat stops.
+ */
+function harbourArrivalScene(call: FerryCall, lamp: V3, berth: V3): Scene['run'] {
+  const R = RH.arrival;
+  const Rp = R.ripple;
+  const Fl = R.flash;
+  return (w, c) => {
+    const u = sinceFerryArrival(call, c.time);
+    const flashes = Fl.period * Fl.pulses;
+    if (u < flashes) {
+      const k = Math.sin(((u % Fl.period) / Fl.period) * Math.PI);
+      w.put(PART.glow, lamp, [0, 0, 0], Fl.r * k, Fl.color);
+    }
+    if (u < Rp.lastS) {
+      const k = 1 - smooth((u - Rp.lastS + 1) / 1);
+      for (let n = 0; n < Rp.rings; n++) {
+        const ph = frac(u / Rp.period + n / Rp.rings);
+        const r = (Rp.r0 + (Rp.r1 - Rp.r0) * ph) * k;
+        w.put(PART.ring, berth, [0, 0, 0], [r, r * (1 - ph) * Rp.tube, r], Rp.color);
+      }
+    }
+  };
+}
+
+/**
  * HQ stall keeper (TASK-469): a worker-bot figure behind the counter. Awake from `open` to
  * midnight (springs in, shrinks out), idles with a bob and nod, fiddles with the goods, beckons now
  * and then, turns to and waves at a close camera and cheers at its culture's relay step.
@@ -1535,6 +1719,8 @@ export function createCultureMovers(
   store: PropStore,
   world: WorldData,
   scope: Scope,
+  /** HQ ferries running (LIFE_PLAN[quality].ferries): the harbour rituals follow those boats. */
+  ferries = LIFE_PLAN.medium.ferries,
 ): CultureMoversView {
   const group = new THREE.Group();
   group.name = 'culture-movers';
@@ -1565,6 +1751,7 @@ export function createCultureMovers(
     kiln: defOf('glassKiln'),
     dive: defOf('diveTower'),
     scope: defOf('tripodTelescope'),
+    tideLab: defOf('tideLab'),
   };
   const beams: Beam[] = [];
   const beamAnchors: { x: number; y: number; z: number }[] = [];
@@ -1912,6 +2099,68 @@ export function createCultureMovers(
       new THREE.Vector3(1, 1, 1),
     );
     scenes.push(sceneAt('research', m, yaw, [0, 1.5, 0], M.capToss.spots.length, capTossScene()));
+  }
+  // M31 TASK-534: the Tide-Lab harbour (fish, bubbles, tank fish, ferry arrival)
+  for (const isl of world.islands) {
+    const city = isl.anchors.sunkenCity;
+    if (isl.theme !== 'research' || !city) continue;
+    const tops = anchorPoints(isl, 'ruinTop');
+    const world0: V3 = [city.x, 0, city.z];
+    const inWorld = (run: Scene['run'], max: number, range: number): void => {
+      const sc = sceneAt('research', new THREE.Matrix4(), 0, world0, max, run);
+      sc.pivot = null;
+      sc.range2 = range * range;
+      scenes.push(sc);
+    };
+    const schools = tops.slice(0, RH.fish.schools);
+    if (schools.length > 0)
+      inWorld(ruinFishScene(schools), schools.length * RH.fish.n, RH.fish.range);
+    const dive = isl.anchors.subDive;
+    if (dive && subPathOf(isl)) {
+      const emitters = [
+        { p: dive as XZ, n: RH.bubbles.n },
+        ...tops.map((p) => ({ p: p as XZ, n: RH.bubbles.topN })),
+      ];
+      const n = emitters.reduce((a, e) => a + e.n, 0) * 2;
+      inWorld(subBubblesScene(emitters), n, RH.bubbles.range);
+    }
+    const di = world.docks.findIndex((k) => k.islandId === isl.id);
+    const call = di >= 0 ? ferryCallAt(world, di, ferries) : null;
+    for (let i = 0; i < store.count; i++) {
+      if (store.defId[i] !== D.tideLab || store.islandId[i] !== isl.id) continue;
+      const m = pivotOf(store, i);
+      scenes.push(sceneAt('research', m, store.rotY[i], [0, 2, 0], RH.tankFish.n, tankFishScene()));
+      if (call)
+        scenes.push(
+          sceneAt(
+            'research',
+            m,
+            store.rotY[i],
+            [0, 2, 0],
+            RH.arrival.lamps.length + 3,
+            labArrivalScene(call),
+          ),
+        );
+    }
+    const light = isl.anchors.harbourLight;
+    const berth = isl.anchors.ferryBerth;
+    if (call && light && berth) {
+      const sc = sceneAt(
+        'research',
+        new THREE.Matrix4(),
+        0,
+        [berth.x, 0, berth.z],
+        1 + RH.arrival.ripple.rings,
+        harbourArrivalScene(
+          call,
+          [light.x, (light.y ?? 0) + HARBOUR.light.lamp.y, light.z],
+          [berth.x, RH.arrival.ripple.y, berth.z],
+        ),
+      );
+      sc.pivot = null;
+      sc.range2 = RH.arrival.range * RH.arrival.range;
+      scenes.push(sc);
+    }
   }
   // research balloon carts get the 06:00 launch only (their static balloon stays tethered)
   // HQ mail lines (TASK-466): the sacks on the cable between each pylon pair

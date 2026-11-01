@@ -68,7 +68,18 @@ function research(seed: number) {
 }
 
 /** The defs the planner may place (+ the vessel). */
+/** The harbour's kit that stands in the water (TASK-534). */
+const WATER_KIT = ['dock', 'barrel', 'tideLab', 'sunkenCity'];
 const PLAN_DEFS = [
+  // the shared harbour kit + the Tide-Lab (TASK-534)
+  'dock',
+  'barrel',
+  'lighthouse',
+  'marketStall',
+  'pierSignpost',
+  'tideLab',
+  'tideGauge',
+  'sunkenCity',
   'observatory',
   'fountain',
   'libraryRotunda',
@@ -196,7 +207,7 @@ describe('Research Observatory University plan (TASK-402b) — 30 seeds', () => 
         expect(spread(w, f.x, f.z, r), `${ctx} ${f.defId} level`).toBeLessThan(0.45);
       }
       for (const f of d.fixtures)
-        if (f.defId !== 'researchVessel')
+        if (f.defId !== 'researchVessel' && !WATER_KIT.includes(f.defId))
           expect(heightAt(w.height, f.x, f.z), `${ctx} ${f.defId} on land`).toBeGreaterThan(0.3);
     }
   });
@@ -526,7 +537,10 @@ describe('Research M22 quick wins (TASK-483) — 30 seeds', { timeout: 120_000 }
       expect(plates.length, `seed ${d.w.seed} plates`).toBeLessThanOrEqual(CS.arbor.species.length);
       if (plates.length >= 3 && species.size >= 3) ok++;
       // (and the big dish, smaller on a tight headland: TASK-526)
-      for (const f of d.fixtures.filter((q) => q.scale !== undefined && q.defId !== 'radioDish'))
+      // (the Tide-Lab pier's dock pieces, TASK-534: scaled to its deck)
+      for (const f of d.fixtures.filter(
+        (q) => q.scale !== undefined && q.defId !== 'radioDish' && q.defId !== 'dock',
+      ))
         expect(f.defId, `seed ${d.w.seed}`).toBe('roundTree');
     }
     expect(ok / n, 'arboretum with ≥ 3 species').toBeGreaterThanOrEqual(0.85);

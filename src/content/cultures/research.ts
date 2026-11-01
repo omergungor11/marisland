@@ -293,6 +293,9 @@ export const RESEARCH_CULTURE_SITES = {
   },
   /** Owl box when the summit and the base had no room (M22): the nearest free lawn in this ring round the quad. */
   owlFallback: { ring: [6, 26] as const },
-  /** R18 seal on the pier end (R3-16: a spot critter, not an agent), `back` u in from the end, `side` off the axis. */
-  seal: { back: 0.9, side: 0.45, deckY: 0.7 },
+  /**
+   * R18 seal on the pier end (R3-16: a spot critter, not an agent), `back` u in from the end, `side`
+   * off the axis; with a harbour (TASK-534) `wing` u out on the T crossbar's open wing.
+   */
+  seal: { back: 0.9, side: 0.45, wing: 2.9, deckY: 0.7 },
 } as const;

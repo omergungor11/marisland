@@ -3,6 +3,7 @@ import type { Scope } from '../../core/scope.ts';
 import { BEAM } from '../../content/lighting.ts';
 import { PROP_DEF_INDEX } from '../../content/props.ts';
 import { BEACON_NET } from '../../content/signature.ts';
+import { HARBOUR, HARBOUR_VARIANTS } from '../../content/themes/harbours.ts';
 import type { PropStore } from '../../world/prop-store.ts';
 import type { WorldData } from '../../world/types.ts';
 import { SHARED } from '../uniforms.ts';
@@ -16,7 +17,9 @@ import { buildBeamGeometry, type BeamView } from './beam.ts';
  * beam program (sky.ts, one draw call each) turned by `uTime` alone — the lag is a yaw of the mesh —
  * so captures replay it. Each beam fades out with camera distance (`BEACON_NET.fade`) and is hidden
  * past it, which also keeps far beams from stacking additive light in the fog. Night visibility is the
- * existing `uLamps.z` ramp (18:30–06:30).
+ * existing `uLamps.z` ramp (18:30–06:30). The 6 u harbour lights (M31 TASK-534) join the same turn
+ * with a shorter beam and a near fade of their own: a harbour beam is a harbour-view read, and three
+ * of them must not cost three draw calls on every far dusk shot.
  */
 export interface BeaconNet {
   /** The mini lighthouse beam meshes (the Marketing lighthouse's stays in its own mesh). */
@@ -35,6 +38,8 @@ interface Node {
   base: number;
   /** Flare radius (u) at rest; grows to `BEACON_NET.flareMin` × distance far away. */
   flare: number;
+  /** Camera distance band of the fade (u). */
+  fade: readonly [number, number];
 }
 
 export function createBeaconNet(
@@ -75,6 +80,39 @@ export function createBeaconNet(
       mat,
       base: BEAM.opacity * B.opacity,
       flare: BEAM.flareRadius * B.scale * B.flare,
+      fade: BEACON_NET.fade,
+    };
+    nodes.push(node);
+    rank.push({ d: Math.hypot(props.x[i] - hx, props.z[i] - hz), node });
+  }
+  // the harbour lights (lighthouse v3+, geo/themes/harbours.ts): their lamp, on the same turn
+  const HB = BEACON_NET.harbour;
+  const lightDef = PROP_DEF_INDEX.lighthouse ?? -1;
+  for (let i = 0; i < props.count; i++) {
+    if (props.defId[i] !== lightDef || props.variant[i] < HARBOUR_VARIANTS.lighthouse) continue;
+    const s = props.scale[i] || 1;
+    const k = (HARBOUR.light.beam.length / BEAM.length) * s;
+    geo ??= scope.add(buildBeamGeometry());
+    const mat = scope.add(
+      createSkyProgramMaterial('beam', {
+        flareRadius: BEAM.flareRadius * k * HB.flare,
+        flarePull: BEAM.flarePull * k,
+      }),
+    );
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.name = 'harbour-beam';
+    mesh.position.set(props.x[i], props.y[i] + HARBOUR.light.lamp.y * s, props.z[i]);
+    mesh.scale.setScalar(k);
+    mesh.renderOrder = 20;
+    mesh.castShadow = false;
+    mesh.receiveShadow = false;
+    mesh.visible = false;
+    const node = {
+      mesh,
+      mat,
+      base: BEAM.opacity * HB.opacity,
+      flare: BEAM.flareRadius * k * HB.flare,
+      fade: HB.fade,
     };
     nodes.push(node);
     rank.push({ d: Math.hypot(props.x[i] - hx, props.z[i] - hz), node });
@@ -86,6 +124,7 @@ export function createBeaconNet(
       mat,
       base: BEAM.opacity,
       flare: (mat.uniforms.uBeamMotion.value as THREE.Vector4).z,
+      fade: BEACON_NET.fade,
     };
     nodes.push(node);
     rank.push({
@@ -102,7 +141,6 @@ export function createBeaconNet(
   const group = new THREE.Group();
   group.name = 'beacon-beams';
   for (const n of nodes) if (n.mesh !== lighthouse.mesh) group.add(n.mesh);
-  const [f0, f1] = BEACON_NET.fade;
   return {
     group,
     count: nodes.length,
@@ -110,6 +148,7 @@ export function createBeaconNet(
     update(camPos) {
       const night = SHARED.uLamps.value.z > 0.001 && SHARED.uDebugMask.value < 0.5;
       for (const n of nodes) {
+        const [f0, f1] = n.fade;
         const d = n.mesh.position.distanceTo(camPos);
         const k = d <= f0 ? 1 : d >= f1 ? 0 : 1 - (d - f0) / (f1 - f0);
         const k2 = k * k * (3 - 2 * k);

@@ -333,6 +333,8 @@ export const POOLS = {
         4: { radius: 2.8, intensity: 0.45, offset: 0 },
       },
     },
+    // M31 TASK-534: the stilt lab's windows and tide tank on the dusk water
+    tideLab: { radius: 7.5, intensity: 0.85, offset: 0 },
     cottage: { radius: 3.4, intensity: 0.45, offset: 1.9 },
     logCabin: { radius: 3.4, intensity: 0.45, offset: 1.9 },
     towerHouse: { radius: 3.6, intensity: 0.45, offset: 2.1 },

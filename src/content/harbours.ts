@@ -40,10 +40,10 @@ export interface HarbourParams {
    * back to the seabed over `flank` u. Only water samples are raised. `clearOther` u off any other
    * land body (islands, islets); the tip keeps `mouth` u off the T-head's arm-side end (the basin
    * mouth). Side pick: the feasible side whose arm seabed is nearest `idealDepth`.
-   * Zones of the new land (painted on the final ground): below `rockY` wet sand (the flanks); above
-   * it rock armour on the seaward side of the crest line (≥ `armour` u out) and over the first
-   * `rockTip` u from the tip (the mole head under the light), dry sand on the sheltered side, so
-   * from afar the arm reads as a sand spit of the island with a rock face to the sea.
+   * Zones of the new land (painted on the final ground): rock armour on the seaward side of the
+   * crest line (≥ `armour` u out, ≥ `armourY` high) and, above `rockY`, over the first `rockTip` u
+   * from the tip (the mole head under the light); else above `rockY` dry sand (the sheltered side),
+   * below it wet sand, so from afar the arm reads as a sand spit with a rock face to the sea.
    */
   arm: {
     offset: number;
@@ -62,6 +62,7 @@ export interface HarbourParams {
     mouth: number;
     rockY: number;
     armour: number;
+    armourY: number;
     rockTip: number;
   };
   /**
@@ -73,16 +74,19 @@ export interface HarbourParams {
   /**
    * Pier-root kiosk sites on the cove land: preferred [u, v] (v < 0 = away from the arm), rect
    * footprint `size` [w, d] facing the pier axis / the sea; searched `search` u round the
-   * preferred spot (step `stepU`), `minShore` u off the coast, relief ≤ `maxRelief`, `laneGap`
-   * u off the pier → campus avenue, `gap` u off every obstacle. Reserved blocking.
+   * preferred spot (step `stepU`), `minShore` u off the coast, relief ≤ `maxRelief[0]` where one
+   * fits, else ≤ `maxRelief[1]`, `laneGap`
+   * u off the pier → campus avenue, `gap` u off every obstacle. Reserved blocking, each on a pad
+   * (`padMargin` u blend) so its base stands level.
    */
   kiosks: {
     search: number;
     step: number;
     minShore: number;
-    maxRelief: number;
+    maxRelief: readonly [number, number];
     laneGap: number;
     gap: number;
+    padMargin: number;
     shelter: { at: readonly [number, number]; size: readonly [number, number] };
     booth: { at: readonly [number, number]; size: readonly [number, number] };
     board: { at: readonly [number, number]; size: readonly [number, number] };
@@ -96,6 +100,22 @@ export interface HarbourParams {
    * own sites: the Tide-Lab lab, city and dive point).
    */
   keepOut: { pier: number; head: number; hard: number };
+  /**
+   * The shared kit on the anchors (M31 TASK-534, D-118; plans/harbour.ts `placeHarbourKit`), the
+   * variant numbers are the island's livery (geo/themes/harbours.ts: 3 / 2 neutral, 4 / 3 Research;
+   * Marketing and Design append theirs). `head` = the T crossbar's 2 × 1.2 u dock pieces, laid
+   * `lift` u over the pier's own deck (their planks would z-fight the last pier segment);
+   * `bollards` = [across the pier, along it] on the crossbar's deck (`deckY`, DOCK planks' top).
+   */
+  kit: {
+    head: { variant: number; plank: number; lift: number };
+    deckY: number;
+    light: number;
+    shelter: number;
+    booth: number;
+    board: number;
+    bollard: { variant: number; at: readonly (readonly [number, number])[] };
+  };
 }
 
 /** Per-theme harbours (D-112: Research pilot; Marketing / Design reuse the skeleton later). */
@@ -120,6 +140,7 @@ export const HARBOURS: Partial<Record<'research' | 'marketing' | 'design', Harbo
       mouth: 5,
       rockY: 0.7,
       armour: 0.2,
+      armourY: 0.15,
       rockTip: 6,
     },
     basin: { from: 1.5, pierGap: 1.2, armGap: 1.4, depth: 1.8, fall: 1.5 },
@@ -127,14 +148,32 @@ export const HARBOURS: Partial<Record<'research' | 'marketing' | 'design', Harbo
       search: 6,
       step: 0.5,
       minShore: 0.8,
-      maxRelief: 1,
+      maxRelief: [0.6, 1] as const,
       laneGap: 1.6,
       gap: 0.6,
+      padMargin: 1.2,
       shelter: { at: [-3.2, -4], size: [3.2, 2.2] },
       booth: { at: [-2.6, 3.4], size: [1.6, 1.6] },
       board: { at: [-1.6, -1.9], size: [1.2, 0.5] },
     },
     light: { inset: 0.6 },
     keepOut: { pier: 2.5, head: 3, hard: 0.6 },
+    kit: {
+      head: { variant: 0, plank: 1.2, lift: 0.02 },
+      deckY: 0.7,
+      light: 4,
+      shelter: 4,
+      booth: 3,
+      board: 4,
+      bollard: {
+        variant: 3,
+        at: [
+          [-3.65, 0.9],
+          [-1.4, 0.9],
+          [1.4, 0.9],
+          [3.65, 0.9],
+        ],
+      },
+    },
   },
 };

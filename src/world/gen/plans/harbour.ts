@@ -13,7 +13,10 @@
  *    (`waterBandZone`): the water the arm encloses lies within ≈ 3.5 u of land, i.e. in the
  *    lagoon band. The new land's zones are painted in `finishHarbour` (final ground, D-109).
  * 3. **Basin** between the pier and the arm, dredged to `basin.depth` (cut only).
- * 4. Pier-root kiosk sites (shelter, booth, board) on the cove land, reserved blocking.
+ * 4. Pier-root kiosk sites (shelter, booth, board) on the cove land, reserved blocking, each on a
+ *    pad (`kiosks.padMargin`).
+ * 5. The shared kit (TASK-534, D-118): `finishHarbour` lays the T crossbar and stands the harbour
+ *    light, the kiosks and the head's bollards on these anchors (`kit` = the island's livery).
  *
  * Anchor contract (world u; rotY = xz heading (cos, sin); `y` = world height, set on the final
  * ground in `finishHarbour`; `…Size` = two numbers, not a position):
@@ -45,6 +48,7 @@ import { forSamplesNearSegment } from '../paths.ts';
 import { waterBandZone } from '../zones.ts';
 import {
   add,
+  addPad,
   addShape,
   ang,
   carveWater,
@@ -389,6 +393,7 @@ function kiosk(
   at: readonly [number, number],
   size: readonly [number, number],
   toward: XZ,
+  maxRelief: number,
 ): XZ | null {
   const K = hb.P.kiosks;
   const pref = framePoint(hb, at[0], at[1]);
@@ -408,7 +413,7 @@ function kiosk(
     const sh = rectShape(p.x, p.z, hb.rotY, size[0], size[1]);
     if (frameOf(hb, p).u > -size[1] / 2 - 0.5) continue;
     if (!onLand(ctx, hb.isl, sh, K.minShore)) continue;
-    if (relief(ctx, sh) > K.maxRelief) continue;
+    if (relief(ctx, sh) > maxRelief) continue;
     const lane = [{ x: p.x, z: p.z }, ...shapeCorners(sh)].map((q) => segDist(q, hb.root, toward));
     if (Math.min(...lane) < K.laneGap) continue;
     if (!clear(ctx, hb.isl, sh, K.gap)) continue;
@@ -416,7 +421,9 @@ function kiosk(
     break;
   }
   if (!best) return null;
-  addShape(ctx, hb.isl, rectShape(best.p.x, best.p.z, hb.rotY, size[0], size[1]), true);
+  const sh = rectShape(best.p.x, best.p.z, hb.rotY, size[0], size[1]);
+  addShape(ctx, hb.isl, sh, true);
+  addPad(ctx, hb.isl, sh, K.padMargin);
   return best.p;
 }
 
@@ -527,8 +534,12 @@ export function placeKiosks(ctx: SiteCtx, hb: Harbour, toward: XZ): void {
     ['harbourBoard', K.board],
   ] as const;
   for (const [key, k] of keys) {
-    const p =
-      kiosk(ctx, hb, k.at, k.size, toward) ?? kiosk(ctx, hb, [k.at[0], -k.at[1]], k.size, toward);
+    let p: XZ | null = null;
+    for (const r of K.maxRelief) {
+      p ??=
+        kiosk(ctx, hb, k.at, k.size, toward, r) ??
+        kiosk(ctx, hb, [k.at[0], -k.at[1]], k.size, toward, r);
+    }
     if (p) publish(hb.isl, key, p, hb.rotY);
   }
 }
@@ -556,11 +567,8 @@ export function finishHarbour(ctx: SiteCtx, hb: Harbour): void {
   for (const i of hb.land) {
     const y = ctx.h.data[i];
     if (y <= 0) continue;
-    if (y < P.arm.rockY) {
-      ctx.zone[i] = Zone.sandWet;
-      continue;
-    }
-    // the nearest crest-line point: seaward side → rock armour, sheltered side → dry sand
+    // the nearest crest-line point: seaward side → rock armour (down to `armourY`: one unbroken
+    // face, the 2 u grid made cow spots of it at `rockY`), sheltered side → dry sand
     const p = { x: cellX(i % ctx.n), z: cellZ(Math.floor(i / ctx.n)) };
     let best = 0;
     let bd = Infinity;
@@ -573,7 +581,10 @@ export function finishHarbour(ctx: SiteCtx, hb: Harbour): void {
     }
     const a = hb.arm[best];
     const out = (p.x - a.x) * a.nx + (p.z - a.z) * a.nz;
-    ctx.zone[i] = a.s <= P.arm.rockTip || out >= P.arm.armour ? Zone.rock : Zone.sandDry;
+    // (the root spur back to the coast stays sand: it faces nothing)
+    const face = best <= hb.bend && out >= P.arm.armour && y >= P.arm.armourY;
+    if (y < P.arm.rockY && !face) ctx.zone[i] = Zone.sandWet;
+    else ctx.zone[i] = a.s <= P.arm.rockTip || face ? Zone.rock : Zone.sandDry;
   }
   const H = (p: XZ): number => heightAt(ctx.h, p.x, p.z);
   const line = resampleArm(hb.arm, 2);
@@ -596,6 +607,51 @@ export function finishHarbour(ctx: SiteCtx, hb: Harbour): void {
     const a = isl.anchors[key];
     if (a) publish(isl, key, a, a.rotY, 0);
   }
+  placeHarbourKit(ctx, hb);
+}
+
+/**
+ * The shared kit on the final anchors, numbers in `kit`: the T crossbar (rows of dock pieces across
+ * the pier, centred on `harbourPier1`), its bollards, the harbour light and the pier-root kiosks.
+ * Fixtures carry explicit variants; no rng.
+ */
+function placeHarbourKit(ctx: SiteCtx, hb: Harbour): void {
+  const { isl, P } = hb;
+  const K = P.kit;
+  const A = isl.anchors;
+  const fix = (defId: string, p: XZ, variant: number, y?: number): void => {
+    ctx.fixtures.push({
+      defId,
+      x: p.x,
+      z: p.z,
+      rotY: hb.rotY,
+      islandId: isl.id,
+      variant,
+      ...(y === undefined ? {} : { y }),
+    });
+  };
+  const L = hb.site.segments * DOCK.segment;
+  const { w, d } = P.pier.head;
+  const cols = Math.round(w / DOCK.segment);
+  const rows = Math.round(d / K.head.plank);
+  for (let i = 0; i < cols; i++)
+    for (let j = 0; j < rows; j++)
+      fix(
+        'dock',
+        framePoint(
+          hb,
+          L + (j - (rows - 1) / 2) * K.head.plank,
+          (i - (cols - 1) / 2) * DOCK.segment,
+        ),
+        K.head.variant,
+        K.head.lift,
+      );
+  for (const [v, u] of K.bollard.at)
+    fix('barrel', framePoint(hb, L + u, v), K.bollard.variant, K.deckY + K.head.lift);
+  if (A.harbourLight) fix('lighthouse', A.harbourLight, K.light);
+  if (A.harbourShelter) fix('marketStall', A.harbourShelter, K.shelter);
+  if (A.harbourBooth) fix('dock', A.harbourBooth, K.booth);
+  if (A.harbourBoard) fix('pierSignpost', A.harbourBoard, K.board);
 }
 
 /**
