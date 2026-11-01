@@ -25,6 +25,7 @@ import {
   groundArtUniforms,
 } from './ground-art.ts';
 import { LAVA_COLOR_GLSL, LAVA_EMISSIVE_GLSL, LAVA_PARS_GLSL, lavaUniforms } from '../lava.ts';
+import { LAKE_COLOR_GLSL, LAKE_EMISSIVE_GLSL, LAKE_PARS_GLSL, lakeUniforms } from '../lake.ts';
 
 /**
  * Editor brush ring (TASK-212), shared by every terrain material like `HOVER_UNIFORMS`:
@@ -52,6 +53,8 @@ export const BRUSH_UNIFORMS = {
  *      prism-arch light pools (MAR_PRISM, not on low).
  *  (k) the Emberpeak lava river (TASK-509a, render/lava.ts): crust plates over glowing cracks along
  *      the channel polyline (every quality), the warm night spill beside it (MAR_DETAIL).
+ *  (l) the Data Lake (TASK-547, render/lake.ts): navy water and static fibre lines by outline (every
+ *      quality); flowing lines, packets and the night spill on the quay (MAR_DETAIL).
  * One program per quality level; all chunks share one material instance.
  */
 export interface TerrainMaterial {
@@ -114,6 +117,7 @@ export function createTerrainMaterial(
     uBrushBad: BRUSH_UNIFORMS.uBrushBad,
     ...groundArtUniforms(world),
     ...lavaUniforms(world),
+    ...lakeUniforms(world),
   };
   const caustics = quality !== 'low';
   const prism = quality !== 'low';
@@ -178,6 +182,7 @@ ${NIGHT_GLSL}
 ${MIST_GLSL}
 ${GROUND_ART_PARS_GLSL}
 ${LAVA_PARS_GLSL}
+${LAKE_PARS_GLSL}
 vec2 marTerrainUv(vec2 xz) {
   return ((xz - uTerrainGrid.xy) * uTerrainGrid.z + 0.5) / uTerrainGrid.w;
 }
@@ -198,6 +203,7 @@ float marCaustic(vec2 p, float t) {
 ${GROUND_COLOR_GLSL}
 ${GROUND_ART_COLOR_GLSL}
 ${LAVA_COLOR_GLSL}
+${LAKE_COLOR_GLSL}
   {
     // (d) wet-sand lap: the wet edge advances ${f(F.lapAdvance)} u with the 4.5 s lap
     float sdf = texture2D(uTerrainSdf, marUv).r;
@@ -248,7 +254,8 @@ ${LAVA_COLOR_GLSL}
       totalEmissiveRadiance += uCraterColor * (cm * cm * pulse * (${f(CRATER_GLOW.day)} + ${f(CRATER_GLOW.night)} * uNight) * (1.0 - uDebugMask));
     }
   }
-${LAVA_EMISSIVE_GLSL}`,
+${LAVA_EMISSIVE_GLSL}
+${LAKE_EMISSIVE_GLSL}`,
       )
       .replace(
         '#include <opaque_fragment>',

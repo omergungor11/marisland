@@ -568,6 +568,43 @@ const COASTER_SHOTS: readonly ShotPreset[] = (
   height: 720,
   sets: ['dev'] as ShotSet[],
 }));
+/**
+ * TASK-547 (D-125): the Data Lake surface, cams in the lake's frame (`site:dataLake:`, x across, z along
+ * the long axis, y over the water), so they hold when the layout moves. `near` = close up, `far` = about
+ * the W7 distance and further; `pools` (Tech Park, raw) and `none` (seed 186 has no lake) stay unchanged.
+ */
+const LAKE_CAM = (v: string): string => `site:dataLake:${v}`;
+const LAKE_NEAR = LAKE_CAM('15,9,-9,0,0,0');
+const LAKE_FAR = LAKE_CAM('42,24,-30,0,0,0');
+const POOLS_CAM = '-105.73,24,172,-105.73,5,150';
+const LAKE_SHOTS: readonly ShotPreset[] = (
+  [
+    ['D-lake-noon', 'Data Lake noon', 1001, LAKE_NEAR, 12, 'medium'],
+    ['D-lake-dusk', 'Data Lake dusk', 1001, LAKE_NEAR, 19.4, 'medium'],
+    ['D-lake-night', 'Data Lake night', 1001, LAKE_NEAR, 21, 'medium'],
+    ['D-lake-far-noon', 'Data Lake far noon', 1001, LAKE_FAR, 12, 'medium'],
+    ['D-lake-far-dusk', 'Data Lake far dusk', 1001, LAKE_FAR, 19.4, 'medium'],
+    ['D-lake-far-night', 'Data Lake far night', 1001, LAKE_FAR, 21, 'medium'],
+    ['D-lake-low-noon', 'Data Lake low noon', 1001, LAKE_NEAR, 12, 'low'],
+    ['D-lake-low-night', 'Data Lake low night', 1001, LAKE_NEAR, 21, 'low'],
+    ['D-lake-high-night', 'Data Lake high night', 1001, LAKE_NEAR, 21, 'high'],
+    ['D-lake-pools', 'Tech Park pools', 1001, POOLS_CAM, 12, 'medium'],
+    ['D-lake-pools-night', 'Tech Park pools night', 1001, POOLS_CAM, 21, 'medium'],
+    ['D-lake-none', 'Coding, a seed with no lake', 186, 'island:Millbrook', 21, 'medium'],
+  ] as const
+).map(([id, title, seed, cam, time, quality]) => ({
+  id,
+  title,
+  seed,
+  cam,
+  time,
+  simt: 8,
+  quality,
+  width: 1280,
+  height: 720,
+  deltaT: 2,
+  sets: ['dev'] as ShotSet[],
+}));
 /** TASK-534 (D-118): seed 1001 cams round the Research Tide-Lab harbour. */
 const TIDE_LAB_CAMS = {
   noon: '74,30,82,88,0,99',
@@ -2310,6 +2347,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     sets: ['wow'],
   },
   ...COASTER_SHOTS,
+  ...LAKE_SHOTS,
   // ---- TASK-512: the three wow presets TASK-502 specified (D-090)
   {
     id: 'W-kite-hill-afternoon',
