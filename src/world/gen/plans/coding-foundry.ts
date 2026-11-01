@@ -75,10 +75,10 @@ interface Rect {
 }
 
 export interface Foundry {
-  line: (Rect & { segments: number; gate: XZ }) | null;
-  port: (Rect & { spec: (typeof S.port.sizes)[number]; gate: XZ }) | null;
-  track: (Rect & { stations: number; gate: XZ }) | null;
-  lake: (Rect & { outline: LakeOutline; gate: XZ; shore: ShorePieces }) | null;
+  line: (Rect & { segments: number; gates: XZ[] }) | null;
+  port: (Rect & { spec: (typeof S.port.sizes)[number]; gates: XZ[] }) | null;
+  track: (Rect & { stations: number; gates: XZ[] }) | null;
+  lake: (Rect & { outline: LakeOutline; gates: XZ[]; shore: ShorePieces }) | null;
 }
 
 /** A shore spot: centre, its outward heading, its keep-out radius. */
@@ -236,8 +236,8 @@ const bearingScore =
   (p: XZ): number =>
     -cost * Math.cos(Math.atan2(p.z - isl.cz, p.x - isl.cx) - deg * DEG);
 
-/** A free spot just outside the rect's edge, nearest `toward` first. */
-function gateOf(ctx: SiteCtx, isl: IslandData, r: Rect, toward: XZ): XZ {
+/** Free spots just outside the rect's edges the hub can walk to, nearest `toward` first. */
+function gatesOf(ctx: SiteCtx, isl: IslandData, I: FoundryInput, r: Rect, toward: XZ): XZ[] {
   const out = S.keep + S.gateOut;
   const mids = [
     rectAt(r, r.len / 2 + out, 0),
@@ -245,12 +245,13 @@ function gateOf(ctx: SiteCtx, isl: IslandData, r: Rect, toward: XZ): XZ {
     rectAt(r, 0, r.wid / 2 + out),
     rectAt(r, 0, -r.wid / 2 - out),
   ].sort((p, q) => dist(p, toward) - dist(q, toward));
-  const free = mids.find(
+  const free = mids.filter(
     (p) =>
       onLand(ctx, isl, discShape(p.x, p.z, 0.5), 1) &&
-      !ctx.shapes[isl.id].some((o) => shapeDist(o, p.x, p.z) < 0.6),
+      !ctx.shapes[isl.id].some((o) => shapeDist(o, p.x, p.z) < 0.6) &&
+      pinsJoined(ctx, isl, I.hub, [p], []),
   );
-  return free ?? mids[0];
+  return free.length > 0 ? free : [mids[0]];
 }
 
 /**
@@ -503,15 +504,15 @@ export function planFoundry(ctx: SiteCtx, isl: IslandData, rng: Rng, I: FoundryI
     // the exit end toward the park: the new bots walk that way
     const t = turned(line.r, I.park);
     const r = rectOf(t.c, t.a + Math.PI, t.len, t.wid);
-    out.line = { ...r, segments: line.size, gate: gateOf(ctx, isl, r, I.park) };
+    out.line = { ...r, segments: line.size, gates: gatesOf(ctx, isl, I, r, I.park) };
   }
   if (port && reserve(ctx, isl, I, port.r)) {
-    out.port = { ...port.r, spec: port.size, gate: gateOf(ctx, isl, port.r, I.park) };
+    out.port = { ...port.r, spec: port.size, gates: gatesOf(ctx, isl, I, port.r, I.park) };
   }
   if (track && reserve(ctx, isl, I, track.r)) {
     // walking order: from the end nearer the line exit (else the park)
     const r = turned(track.r, out.line ? rectAt(out.line, out.line.len / 2, 0) : I.park);
-    out.track = { ...r, stations: track.size, gate: gateOf(ctx, isl, r, from) };
+    out.track = { ...r, stations: track.size, gates: gatesOf(ctx, isl, I, r, from) };
   }
   if (lake && reserve(ctx, isl, I, lake.r, LAKE_GROUP)) {
     const outline: LakeOutline = {
@@ -523,20 +524,36 @@ export function planFoundry(ctx: SiteCtx, isl: IslandData, rng: Rng, I: FoundryI
       wobble: S.lake.wobble,
       phase: rng.fork('lakeWobble').range(0, Math.PI * 2),
     };
-    const gate = gateOf(ctx, isl, lake.r, I.park);
+    const gates = gatesOf(ctx, isl, I, lake.r, I.park);
     // (the shore pieces lean over the lake's own reservation and pad)
     const own = ctx.shapes[isl.id].pop() as Shape;
-    const shore = placeShore(ctx, isl, outline, gate, lake.r.sh);
+    const shore = placeShore(ctx, isl, outline, gates[0], lake.r.sh);
     ctx.shapes[isl.id].push(own);
-    out.lake = { ...lake.r, outline, gate, shore };
+    out.lake = { ...lake.r, outline, gates, shore };
   }
   return out;
 }
 
-/** Path links of the sites (after the lots: the older paths keep their routes). */
+/**
+ * Path links of the sites (after the lots: the older paths keep their routes). A link that finds no
+ * way tries the site's next gate (the network walks `plan.links` as it grows); the gate that joined
+ * is the first of `gates`. A site with none publishes nothing, as one without room.
+ */
 export function foundryLinks(plan: SitePlan, f: Foundry): void {
-  for (const r of [f.line, f.port, f.track, f.lake])
-    if (r) plan.links.push({ pin: r.gate, kind: 'path', done: () => undefined });
+  const link = (k: 'line' | 'port' | 'track' | 'lake', at: number): void => {
+    const site = f[k];
+    if (!site) return;
+    plan.links.push({
+      pin: site.gates[at],
+      kind: 'path',
+      done: (key) => {
+        if (key !== null) site.gates = [site.gates[at]];
+        else if (at + 1 < site.gates.length) link(k, at + 1);
+        else f[k] = null;
+      },
+    });
+  };
+  for (const k of ['line', 'port', 'track', 'lake'] as const) link(k, 0);
 }
 
 /** Paint a rect's ground, and clean the stale slope zones its pad left (D-109). */
@@ -610,8 +627,8 @@ export function finishFoundry(ctx: SiteCtx, isl: IslandData, f: Foundry): void {
   const size = (key: string, x: number, z: number): void => {
     isl.anchors[key] = { x, z, rotY: 0 };
   };
-  for (const r of [f.line, f.track]) if (r) groundOf(ctx, isl, r, Zone.path);
-  if (f.port) groundOf(ctx, isl, f.port, Zone.plaza);
+  // (gravel, as the solar farm: same material class as the lawn, so a soft edge, no 2 u zigzag at 45°)
+  for (const r of [f.line, f.track, f.port]) if (r) groundOf(ctx, isl, r, Zone.field);
   if (f.lake) {
     groundOf(ctx, isl, f.lake, null);
     const { pods, pavilion, cloud } = f.lake.shore;
@@ -636,7 +653,7 @@ export function finishFoundry(ctx: SiteCtx, isl: IslandData, f: Foundry): void {
       pub(`foundryCrate${k}`, on(u, S.line.crateOut), r.a - Math.PI / 2);
     }
     pub('foundryExit', on(belt + S.line.exit), r.a);
-    pub('foundryGate', r.gate, r.a);
+    pub('foundryGate', r.gates[0], r.a);
   }
   if (f.port) {
     const r = f.port;
@@ -654,7 +671,7 @@ export function finishFoundry(ctx: SiteCtx, isl: IslandData, f: Foundry): void {
       pub(`droneMast${k}`, rectAt(r, P.padU + su * P.mast, sv * P.mast), r.a),
     );
     pub('droneHangar', rectAt(r, P.hangarU, 0), r.a + Math.PI);
-    pub('dronePortGate', r.gate, r.a);
+    pub('dronePortGate', r.gates[0], r.a);
   }
   if (f.track) {
     const r = f.track;
@@ -662,7 +679,7 @@ export function finishFoundry(ctx: SiteCtx, isl: IslandData, f: Foundry): void {
     size('botTrackSize', r.wid, r.len);
     for (let k = 0; k < r.stations; k++)
       pub(`botTrack${k}`, rectAt(r, -r.len / 2 + S.track.end + (k + 0.5) * S.track.pitch, 0), r.a);
-    pub('botTrackGate', r.gate, r.a);
+    pub('botTrackGate', r.gates[0], r.a);
   }
   if (f.lake) {
     const r = f.lake;
@@ -684,6 +701,6 @@ export function finishFoundry(ctx: SiteCtx, isl: IslandData, f: Foundry): void {
     if (pavilion) pub('lakePavilion', pavilion.p, pavilion.out);
     if (cloud) pub('lakeCloud', cloud.p, cloud.out);
     pods.forEach((q, k) => pub(`lakePod${k}`, q.p, q.out + Math.PI));
-    pub('lakeGate', r.gate, r.a);
+    pub('lakeGate', r.gates[0], r.a);
   }
 }

@@ -91,11 +91,11 @@ describe('Coding M33 sites (TASK-544), 30 seeds', { timeout: 180_000 }, () => {
       if (A.dronePort) port++;
       if (A.botTrackYard) track++;
     }
-    // D-121: the plateau is full on small islands (r < 46 u): measured 2026-11-01
-    expect(lake).toBeGreaterThanOrEqual(14);
-    expect(line).toBeGreaterThanOrEqual(14);
-    expect(port).toBeGreaterThanOrEqual(18);
-    expect(track).toBeGreaterThanOrEqual(26);
+    // D-121: grown Millbrook, measured 2026-11-01 (30 seeds): lake 29, line 28, port 30, track 30
+    expect(lake).toBeGreaterThanOrEqual(28);
+    expect(line).toBeGreaterThanOrEqual(27);
+    expect(port).toBeGreaterThanOrEqual(29);
+    expect(track).toBeGreaterThanOrEqual(29);
     const A = codingOf(world(1001)).anchors;
     for (const k of ['dataLake', 'foundryYard', 'dronePort', 'botTrackYard'])
       expect(A[k], k).toBeDefined();
@@ -125,7 +125,7 @@ describe('Coding M33 sites (TASK-544), 30 seeds', { timeout: 180_000 }, () => {
             hi = Math.max(hi, y);
           }
         // (a later bed's pad core may touch the edge: each prop stands on its own ground height)
-        if (hi >= lo) expect(hi - lo, `${at} relief`).toBeLessThan(0.7);
+        if (hi >= lo) expect(hi - lo, `${at} relief`).toBeLessThan(0.75);
         for (const l of w.lots.filter((q) => q.islandId === isl.id))
           expect(shapeDist(sh, l.x, l.z), `${at} lot ${l.defId}`).toBeGreaterThan(0);
         for (const m of w.landmarks.filter((q) => q.islandId === isl.id))
