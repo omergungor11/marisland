@@ -10,6 +10,15 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-11-01 (TASK-541 merged, D-122) - For TASK-542**: everything lives in the KIT frame (`world/coaster-kit.ts`), prop scale = site scale. Real
+  track = `geometryOverride` (`render/coaster-track.ts`); the `coasterTrack` def is still the fixture. Motion `render/coaster-motion.ts` (day seconds),
+  meshes `render/coaster-movers.ts`, lamp / click / sparks in culture-movers. Seed 1001: cycle 75 s, `time=12&simt=4` bots enter the loop, `simt=5`
+  crown; `time=21&simt=20` lamp dark, `simt=60` lamp lit + bots aboard. Shots: wow `W-thrill-noon`; dev `D-coaster-{loop,loop-in,far,far1,bumpers,lamp-off,lamp-on,lift,site}`,
+  cams `site:coaster:` (survive layout changes). Add them to ART_BIBLE §11. WATCH the motion: nobody has seen ratchet, nod, bump, boarding pop move.
+  Look at: roof over the rink, weak siren ring, dark gravel patches by the rink, low 2-car train never viewed. Green diamonds at night = QA bug-hunt fireflies.
+- **Budget (541)**: low `L-qa` fails on 09506e2 too (T1 rungs 77 > 76); now 77 / 78. Hidden meshes count in gpuMemoryMB. Ladder JSON frames now carry `mem`.
+- **Gotchas (541)**: `vitest -u path` eats the path as a value: use `--update` after the path. A def's `footprint` is a solid disc in `buildSolids` and an
+  edit collision radius: never give a sweep its reach. Culture-mover `PART.ring` keeps its own cream colour, the tint does not take.
 - **2026-11-01 (TASK-535 done, M31 Research passes)**: report `mar-docs/qa/m31-research-2026-11-01.md`, follow-ups TASK-548…551. Medium memory peak
   171 / 172 at main `09506e2`. 536 / 537 wait for a user budget decision (options in the report; to be asked once 541 and the Millbrook growth
   report their numbers). Low memory is only enforced at 960x540; at the stated 1280x720 it reads 87–92 MB against 76.
