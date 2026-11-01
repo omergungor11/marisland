@@ -10,6 +10,23 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-11-01 (TASK-534 merged, D-118) - For TASK-535**: `pnpm test` with default workers drives load to 65 and fails 7 timing tests
+  by itself; the 8 slow world files pass with `--maxWorkers=2` on main (106 / 106), so judge them that way. Still to do: low ladder
+  L-research not run, W26 framing fails §11 (pre-existing), D-culture-research 915k has no baseline. New wow: W-sunken-noon,
+  W-tide-lab-dusk; dev: D-tide-*; add them to ART_BIBLE §11. Motion was only judged from stills: watch the sub rounding the tip and the
+  ritual. On seed 1001 the ferry calls at Research at sim 226 s, cycle 340 s (`time=19.25&simt=229`). Seen in the merged shots: three
+  bots crowd the pier neck against the moored vessel in W-tide-lab-dusk; the sand wedge on the arm's rock face; paving reads as loose
+  tiles in W-sunken-noon.
+- **For 536 / 537, reuse**: add `kit` to HARBOURS[theme] (livery variants after the Research ones) and `finishHarbour` places T-head,
+  light, kiosks, bollards. Ritual clock: `ferryCallAt(world, dockIndex, ferries)` + `sinceFerryArrival` + `arrivalEnvelope`, in a scene
+  like `labArrivalScene` / `harbourArrivalScene` (render/culture-movers.ts; their numbers are Research's `RH.arrival`). Beam and calm mask
+  work for any arm. A harbour on ferry line 1 has no ritual on low. `tideSub` / `subPath` / fish / bubbles are Research-only. Budget: W4 /
+  W27 memory 172 / 172, W-marina-dusk 298 / 300: a budget decision comes before Marketing lands. Frames holding a whole campus cost 340+
+  calls at T2-T3: frame harbours with the campus cut.
+- **Gotchas (534)**: GLSL lives in a template literal, so no backticks in shader comments. Agent cap is full on low AND medium: a new
+  agent must replace one. Kiosk padMargin 1.6 cost seed 2578 a park tree; 1.2 passes. A fixture def needs a FIXTURE_RADIUS (settlements
+  test), and `plans-research.test` PLAN_DEFS / WATER_KIT list the harbour defs. Parallel agents share the scratchpad: brief them to use
+  unique file names there (two agents overwrote or misread each other's files on 2026-11-01).
 - **2026-11-01 (TASK-540 merged, D-120) - For TASK-541 / 539**: sampler `world/coaster-spline.ts`, builder `geo/themes/qa-coaster.ts`
   (`buildCoasterTrack`: a registry def can't receive points, so the real track is built by calling it with 539's points + terrain
   `groundY`, instance at the site origin). Spline data type `CoasterSplineData` in `content/themes/qa-coaster.ts`: `{ points, closed,
