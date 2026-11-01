@@ -36,13 +36,20 @@ const BUDGET: Record<string, number> = {
   quantumPavilion: 1800,
 };
 /** Variants whose mesh floats above the ground pivot by design (the arm's swing group and the gantry pendulum). */
-const NOT_GROUND = new Set(['assemblyArm:3', 'assemblyArm:5']);
+const NOT_GROUND = new Set([
+  'assemblyArm:3',
+  'assemblyArm:5',
+  // what an arm carries, in the bot's frame (TASK-545)
+  'foundryPart:6',
+  'foundryPart:7',
+]);
 const GLOWS = new Set([
   'assemblyArm:0',
   'assemblyArm:1',
   'assemblyArm:3',
   'foundryPart:2',
   'foundryPart:5',
+  'foundryPart:7',
   'dronePad:0',
   'chargeMast:0',
   'chargeMast:1',

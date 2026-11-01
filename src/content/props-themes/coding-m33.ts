@@ -36,7 +36,7 @@ export const CODING_M33_PROP_DEFS: readonly PropDef[] = [
     id: 'foundryPart',
     geo: 'foundryPart',
     tier: 3,
-    variants: 6,
+    variants: 8,
     rollVariants: 1,
     footprint: 0.75,
     flags: grounded | noShadow,

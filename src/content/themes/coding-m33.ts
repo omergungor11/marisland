@@ -119,7 +119,14 @@ export const CODING_M33 = {
     restY: 0.62,
     footprint: 1.9,
   },
-  mast: { footprint: 0.5 },
+  /** Cradle per variant: `out` off the mast along +x, its top. Where a courier drone docks. */
+  mast: {
+    footprint: 0.5,
+    cradles: [
+      { out: 0.95, y: 1.5 },
+      { out: 0, y: 0.87 },
+    ],
+  },
   hangar: { w: 3.4, d: 2.5, wallH: 1.45, roofH: 1.05, footprint: 2.0 },
   track: { footprint: 1.3 },
   pod: { w: 2.0, d: 1.5, h: 1.9, footprint: 1.4 },

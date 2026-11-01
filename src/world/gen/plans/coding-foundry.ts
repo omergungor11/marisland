@@ -32,6 +32,7 @@
  */
 import { FLATTEN, PATHS } from '../../../content/settlements.ts';
 import { CODING_FOUNDRY as S } from '../../../content/themes/coding-foundry.ts';
+import { CODING_FOUNDRY_MOTION } from '../../../content/themes/coding-foundry-motion.ts';
 import { smoothstep } from '../../../core/math/index.ts';
 import type { Rng } from '../../../core/rng.ts';
 import { lakeEdge, lakePoint, type LakeOutline } from '../../data-lake.ts';
@@ -702,5 +703,50 @@ export function finishFoundry(ctx: SiteCtx, isl: IslandData, f: Foundry): void {
     if (cloud) pub('lakeCloud', cloud.p, cloud.out);
     pods.forEach((q, k) => pub(`lakePod${k}`, q.p, q.out + Math.PI));
     pub('lakeGate', r.gates[0], r.a);
+  }
+  placeFoundryKit(ctx, isl);
+}
+
+/**
+ * The kit on the published anchors (TASK-545, D-124), a group only where its site found room: no
+ * RNG, nothing here rolls. Arm swing groups, bots and the cloud are movers (render/foundry-movers.ts):
+ * the store holds the bases, crates and the rest that stands still.
+ */
+function placeFoundryKit(ctx: SiteCtx, isl: IslandData): void {
+  const A = isl.anchors;
+  const fx = (defId: string, key: string, rotY: number, variant = 0): void => {
+    const p = A[key];
+    if (p) ctx.fixtures.push({ defId, x: p.x, z: p.z, rotY, islandId: isl.id, variant });
+  };
+  // a prop with local +x along heading h takes rotY = h + π/2 (see the contract above)
+  const alongX = (h: number): number => h + Math.PI / 2;
+  if (A.foundryLine0) {
+    let n = 0;
+    while (A[`foundrySeg${n}`]) n++;
+    for (let k = 0; k < n; k++)
+      fx('conveyorLine', `foundrySeg${k}`, alongX(A[`foundrySeg${k}`].rotY), k === n - 1 ? 1 : 0);
+    for (let k = 0; k < 3; k++) {
+      fx('assemblyArm', `foundryArm${k}`, A[`foundryArm${k}`].rotY, 2);
+      fx('foundryPart', `foundryCrate${k}`, A[`foundryCrate${k}`].rotY, k);
+    }
+  }
+  if (A.dronePort) {
+    const pad = A.dronePort;
+    fx('dronePad', 'dronePort', pad.rotY);
+    fx('droneHangar', 'droneHangar', A.droneHangar.rotY);
+    for (let k = 0; A[`droneMast${k}`]; k++) {
+      const m = A[`droneMast${k}`];
+      // the cradle (+x) toward the pad; tall and low posts by turns
+      fx('chargeMast', `droneMast${k}`, alongX(ang(pad.x - m.x, pad.z - m.z)), k % 2);
+    }
+  }
+  if (A.botTrack0) {
+    const order = CODING_FOUNDRY_MOTION.track.order;
+    for (let k = 0; A[`botTrack${k}`]; k++)
+      fx('botCourse', `botTrack${k}`, alongX(A[`botTrack${k}`].rotY), order[k % order.length]);
+  }
+  if (A.dataLake) {
+    for (let k = 0; A[`lakePod${k}`]; k++) fx('serverPod', `lakePod${k}`, A[`lakePod${k}`].rotY);
+    if (A.lakePavilion) fx('quantumPavilion', 'lakePavilion', A.lakePavilion.rotY);
   }
 }
