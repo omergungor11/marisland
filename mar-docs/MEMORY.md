@@ -10,6 +10,9 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-11-01 (TASK-547 merged, D-125)**: Data Lake surface lives in the terrain program (`render/lake.ts`, `content/data-lake.ts`), masked by `lakeEdge`, not
+  `Zone.crater` (that also marks the Tech Park pools). No new program, texture or target. `D-lake-pools*` and `D-lake-none` (seed 186) must stay pixel-identical.
+  Open: W7 crops the lake, recompose after TASK-545; low lines kink slightly; bloom unverified on a real GPU. High tier is at 24 / 24 programs. Next: 545, 536, 537, then 546 QA.
 - **2026-11-01 (TASK-544 merged, D-121; budgets D-123)**: For TASK-545: anchors in the header of `plans/coding-foundry.ts`; each group is absent when its site has
   no room; yards are `Zone.field`, blocking, scatter-free. Seed 1001: lake (-144, 154), foundry (-168, 174), port (-153, 193), track (-160, 162). For TASK-547:
   `dataLakeOf`, `lakeEdge` (GLSL form in its doc), `lakePoint`, anchors `dataLake`, `dataLakeSize`, `dataLakeWobble`, `dataLakeRim0..K`; mask by outline. W7 needs
