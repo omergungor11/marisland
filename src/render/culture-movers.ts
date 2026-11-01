@@ -67,6 +67,7 @@ import {
   type CoasterShow,
 } from './coaster-motion.ts';
 import { coasterPivot } from './coaster-movers.ts';
+import { CODING_FOUNDRY_MOTION as CFM } from '../content/themes/coding-foundry-motion.ts';
 
 /**
  * Culture movers (M19 TASK-431): closed-form scenes that make each island culture visibly alive.
@@ -412,6 +413,56 @@ function bumperSparkScene(kit: CoasterKit, seed: number, n: number): Scene['run'
     const r = S.r0 + (S.r1 - S.r0) * ph;
     w.put(PART.ring, at, [0, 0, 0], [r, r * Math.max(0.15, 1 - ph), r], S.color);
     w.put(PART.glow, at, [0, 0, 0], S.ball * (1 - ph), S.color);
+  };
+}
+
+/**
+ * Server pod cooling steam (TASK-545, D-124; `steam` hook): soft puffs off its chimney, on the wind. Pod
+ * frame; never in sync (phase from the pod's place).
+ */
+function podSteamScene(at: V3, phase: number): Scene['run'] {
+  const S = CFM.steam;
+  const step = S.life / S.n;
+  return (w, c, sc) => {
+    const t = c.time + phase;
+    const k0 = Math.floor(t / step);
+    for (let j = 0; j < S.n; j++) {
+      const u = (t - (k0 - j) * step) / S.life;
+      if (u <= 0 || u >= 1) continue;
+      const r = rnd(k0 - j, 11, 545);
+      const drift = S.drift * u * (0.5 + 0.7 * c.wind.s);
+      w.puff(
+        [
+          at[0] + sc.wl.x * drift + (r - 0.5) * 0.2,
+          at[1] + S.rise * u * (0.8 + 0.4 * r),
+          at[2] + sc.wl.z * drift,
+        ],
+        S.size[0] + (S.size[1] - S.size[0]) * Math.sqrt(u),
+        (S.opacity + (S.opacityNight - S.opacity) * c.night) * smooth(u / 0.12) * (1 - u),
+        S.edge,
+      );
+    }
+  };
+}
+
+/**
+ * Quantum pavilion (TASK-545, `glow` hook): the core's slow pulse and gold sparks orbiting the
+ * chandelier, dim by day, full at night. Pavilion frame.
+ */
+function pavilionGlowScene(at: V3): Scene['run'] {
+  const G = CFM.glow;
+  return (w, c) => {
+    const n = c.night;
+    const pulse = 1 + G.core.pulse * Math.sin((c.time * Math.PI * 2) / G.core.period);
+    const r = (G.core.r + (G.core.night - G.core.r) * n) * pulse;
+    w.put(PART.glow, at, [0, 0, 0], G.core.base * r, G.color);
+    const P = G.sparks;
+    for (let k = 0; k < P.n; k++) {
+      const a = (c.time * Math.PI * 2) / P.period + (k * Math.PI * 2) / P.n;
+      const y = at[1] + P.y + P.bob * Math.sin(a * 2 + k);
+      const q: V3 = [at[0] + Math.cos(a) * P.r, y, at[2] + Math.sin(a) * P.r];
+      w.put(PART.glow, q, [0, 0, 0], P.size + (P.sizeNight - P.size) * n, G.gold);
+    }
   };
 }
 
@@ -2279,6 +2330,38 @@ export function createCultureMovers(
     };
     siteScene(coasterClickScene(kit, show, plan.cars), 1);
     if (plan.bumpers > 0) siteScene(bumperSparkScene(kit, world.seed, plan.bumpers), 2);
+  }
+  // M33 TASK-545: Data Lake pod steam and the quantum pavilion's glow
+  {
+    const pod = defOf('serverPod');
+    const pav = defOf('quantumPavilion');
+    for (let i = 0; i < store.count; i++) {
+      const d = store.defId[i];
+      if (d !== pod && d !== pav) continue;
+      const m = pivotOf(store, i);
+      const sc =
+        d === pod
+          ? sceneAt(
+              'coding',
+              m,
+              store.rotY[i],
+              [0, 2, 0],
+              0,
+              podSteamScene(CFM.steam.at, i * 1.37),
+              CFM.steam.n,
+            )
+          : sceneAt(
+              'coding',
+              m,
+              store.rotY[i],
+              [0, 2, 0],
+              1 + CFM.glow.sparks.n,
+              pavilionGlowScene(CFM.glow.at),
+            );
+      const r = d === pod ? CFM.steam.range : CFM.glow.range;
+      sc.range2 = r * r;
+      scenes.push(sc);
+    }
   }
   // research balloon carts get the 06:00 launch only (their static balloon stays tethered)
   // HQ mail lines (TASK-466): the sacks on the cable between each pylon pair

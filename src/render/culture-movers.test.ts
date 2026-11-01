@@ -17,6 +17,7 @@ import { SHARED } from './uniforms.ts';
 import { DEVOPS_M25 } from '../content/themes/devops-m25.ts';
 import { DEVOPS_M25_MOTION } from '../content/themes/devops-m25-site.ts';
 import { DEVOPS_M26_MOTION } from '../content/themes/devops-m26-site.ts';
+import { CODING_FOUNDRY_MOTION } from '../content/themes/coding-foundry-motion.ts';
 import { DOCK } from '../content/settlements.ts';
 import { pierLoop } from './harbour-routes.ts';
 import { MARKETING_M27_MOTION } from '../content/themes/marketing-m27-site.ts';
@@ -272,8 +273,13 @@ describe('culture movers', () => {
         ),
     ).length;
     expect(loops).toBeGreaterThan(0);
+    // + the Data Lake pods' cooling steam (TASK-545)
+    const pods = world.fixtures.filter((f) => f.defId === 'serverPod').length;
     expect(placed.length).toBe(
-      L.puffs * 2 + geysers * DEVOPS_M25_MOTION.geyser.puffs + loops * DEVOPS_M26_MOTION.tugSmoke.n,
+      L.puffs * 2 +
+        geysers * DEVOPS_M25_MOTION.geyser.puffs +
+        loops * DEVOPS_M26_MOTION.tugSmoke.n +
+        pods * CODING_FOUNDRY_MOTION.steam.n,
     );
     const steam = (): number[][] =>
       placed.filter((p) => p[3] > 0 && Math.hypot(p[0] - pad!.x, p[2] - pad!.z) < 6);

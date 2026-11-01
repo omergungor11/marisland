@@ -335,6 +335,10 @@ export const POOLS = {
     },
     // M31 TASK-534: the stilt lab's windows and tide tank on the dusk water
     tideLab: { radius: 7.5, intensity: 0.85, offset: 0 },
+    // M33 TASK-545: Data Lake blue LEDs and the pavilion on the shore, the Drone Port's rim lamps
+    serverPod: { radius: 4.2, intensity: 0.7, offset: 0.9, hue: 1 },
+    quantumPavilion: { radius: 6.5, intensity: 0.8, offset: 0, hue: 0.5 },
+    dronePad: { radius: 4.6, intensity: 0.6, offset: 0 },
     cottage: { radius: 3.4, intensity: 0.45, offset: 1.9 },
     logCabin: { radius: 3.4, intensity: 0.45, offset: 1.9 },
     towerHouse: { radius: 3.6, intensity: 0.45, offset: 2.1 },

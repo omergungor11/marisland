@@ -12,7 +12,8 @@
  *                  pendulum only (ORIGIN = THE PIVOT, hangs below it: the one non-ground pivot).
  *   foundryPart    tier 3. v0-v2 part crates (bodies / heads / antennas), v3-v5 the line's bot stages
  *                  (bare body / body + head / complete), built at the world bot's drawn size
- *                  (LAND.size.workers), forward = +x like life/geo/workers.ts, feet at y 0.
+ *                  (LAND.size.workers), forward = +x like life/geo/workers.ts, feet at y 0. v6 / v7 the
+ *                  head / antenna alone in that same frame (what the arms carry, TASK-545).
  *   dronePad       H landing pad, painted disc + ring + rim lights; flat, 3.4 u.
  *   chargeMast     v0 tall mast with a charging cradle arm + beacon lamp, v1 low landing post.
  *   droneHangar    small barrel-roof hangar, door on +z.
@@ -29,6 +30,7 @@
  * quantumPavilion and dronePad are large in every variant that matters (drawn from T0 by size).
  */
 import * as THREE from 'three';
+import { CODING_FOUNDRY_MOTION as M } from '../../content/themes/coding-foundry-motion.ts';
 import {
   BOT_SCALE,
   CODING_M33 as F,
@@ -190,6 +192,19 @@ function armBase(acc: Acc, hi: boolean): void {
         { aoAmt: 0 },
       );
 }
+/**
+ * v2 only (TASK-545): the line's arm stands on a plinth, and a steel riser runs up the axis, hidden in
+ * the swing group's post until the group lifts. The group (v3) is drawn `plinth` higher.
+ */
+function armPlinth(acc: Acc, hi: boolean): void {
+  const A = M.arm;
+  const xf = acc.xf;
+  bx(acc, [1.1, A.plinth, 1.1], [0, 0, 0], P.steelDark, 0.25);
+  acc.xf = (xf ?? new THREE.Matrix4()).clone().multiply(mat([0, A.plinth, 0], null, 1));
+  armBase(acc, hi);
+  put(acc, cylB(0.085, 0.085, 1.25, hi ? 8 : 4), [0, 0.7, 0], P.steel, { aoAmt: 0 });
+  acc.xf = xf;
+}
 function armSwing(acc: Acc, hi: boolean): void {
   const A = F.arm;
   if (!hi) {
@@ -278,7 +293,8 @@ function assemblyArm({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const G = F.gantry;
   const hi = lod === 0;
   const acc = cultureAcc(rng, lod);
-  if (variant === 0 || variant === 2) armBase(acc, hi);
+  if (variant === 0) armBase(acc, hi);
+  if (variant === 2) armPlinth(acc, hi);
   if (variant === 0 || variant === 3) armSwing(acc, hi);
   if (variant === 1 || variant === 4) gantryFrame(acc, hi);
   if (variant === 1) gantryPendulum(acc, G.pivotY - 0.1, hi);
@@ -380,6 +396,12 @@ function botHead(acc: Acc, hi: boolean, eyes: boolean): void {
   }
 }
 
+function botAntenna(acc: Acc, hi: boolean): void {
+  const B = P.bot;
+  cbx(acc, [0.028, 0.15, 0.028], [-0.03, 0.97 + 0.07, 0], B.metal);
+  if (hi) put(acc, ball(0.05, hi), [-0.03, 0.97 + 0.17, 0], B.antenna, lit);
+}
+
 function foundryPart({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const hi = lod === 0;
   const B = P.bot;
@@ -449,6 +471,15 @@ function foundryPart({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
     });
   }
   const acc = botAcc(rng, lod);
+  if (variant === 6) {
+    // in the arm's claw (TASK-545): the head alone, in the bot's frame (same place as on v4)
+    botHead(acc, hi, false);
+    return finish(acc, rng);
+  }
+  if (variant === 7) {
+    botAntenna(acc, hi);
+    return finish(acc, rng);
+  }
   botTorso(acc, hi);
   if (variant === 3) {
     // neck socket where the head goes
@@ -456,10 +487,7 @@ function foundryPart({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   } else {
     botHead(acc, hi, variant === 5);
   }
-  if (variant === 5) {
-    cbx(acc, [0.028, 0.15, 0.028], [-0.03, 0.97 + 0.07, 0], B.metal);
-    if (hi) put(acc, ball(0.05, hi), [-0.03, 0.97 + 0.17, 0], B.antenna, lit);
-  }
+  if (variant === 5) botAntenna(acc, hi);
   const g = finish(acc, rng);
   const topY = (variant === 3 ? 0.56 : variant === 4 ? 0.97 : 1.19) * S;
   addHook(g, 'bot', {
@@ -942,16 +970,16 @@ export const CODING_M33_GEO: readonly PropGeoDef[] = [
     build: assemblyArm,
     footprint: F.gantry.footprint,
     height: 2.1,
-    heights: hs(2.1, 2.76, 0.72, 2.1, 2.77, 2.38),
+    heights: hs(2.1, 2.76, 2.35, 2.1, 2.77, 2.38),
     windy: false,
   },
   {
     id: 'foundryPart',
-    variants: 6,
+    variants: 8,
     build: foundryPart,
     footprint: F.footprintPart,
     height: 0.72,
-    heights: hs(0.72, 0.78, 1.61, 0.99, 1.64, 2.04),
+    heights: hs(0.72, 0.78, 1.61, 0.99, 1.64, 2.04, 1.65, 2.04),
     windy: false,
   },
   {

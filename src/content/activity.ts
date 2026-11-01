@@ -278,4 +278,10 @@ export const DRONES = {
   bank: 0.03,
   /** Uniform scale of the drone model (model is ≈ 1 u wide). */
   scale: 0.9,
+  /**
+   * The Coding Drone Port hub (TASK-545, D-124): a drone parks on its slot (pad, then the mast cradles)
+   * for `dwell` s, rises straight up `riseH` u in `rise` s, and comes down the same way. Packet + belly
+   * clear a cradle by `cradleClear` (u, body centre over its top).
+   */
+  hub: { dwell: 9, rise: 2.6, riseH: 6, cradleClear: 0.56 },
 } as const;

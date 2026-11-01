@@ -150,7 +150,7 @@ const CRITTER_SHOTS: readonly (readonly [string, string, string, number, number]
 ] as const;
 
 /** W7 camera (raw, seed 1001 Coding; TASK-380), re-pin when that layout changes. */
-const W7_CAM = '-165.43,20,145.51,-115.43,13,165.51';
+const W7_CAM = '-157,19.5,149,-115.43,14,162.5';
 
 /** D-devops-* (raw, seed 1001 Ember Works; TASK-405), re-pin when that layout changes. */
 const DEVOPS_CAM = '126.38,92,67.99,198.38,2,-20.01';
@@ -603,6 +603,33 @@ const LAKE_SHOTS: readonly ShotPreset[] = (
   width: 1280,
   height: 720,
   deltaT: 2,
+  sets: ['dev'] as ShotSet[],
+}));
+/**
+ * TASK-545 (D-124): the Bot Foundry, Drone Port, test track and Data Lake, cams in each site's anchor frame
+ * (`site:`: x across, z along the site's heading, y up), so they hold when the layout moves. Foundry frame:
+ * +z = belt toward the exit end; the arms and crates at -x.
+ */
+const FOUNDRY_SHOTS: readonly ShotPreset[] = (
+  [
+    ['D-foundry-line', 'site:foundryYard:16,9,-2,0,1,1', 9, 2.4],
+    ['D-foundry-arm', 'site:foundryYard:5.5,3.2,-5,-0.5,1.6,-1.2', 10, 2.1],
+    ['D-foundry-hop', 'site:foundryYard:8,3.5,18,0.5,1,10.5', 10, 2.2],
+    ['D-port-park', 'site:dronePort:-11,6,-11,0,1.5,2', 10, 18],
+    ['D-track', 'site:botTrackYard:9,4.5,-9,0,0.6,1', 11, 25],
+    ['D-lake-day', 'site:dataLake:-14,9,-16,0,1,0', 14, 8],
+    ['D-lake-pavilion', 'site:lakePavilion:7,3.2,-6,0,1.5,0', 21, 8],
+  ] as const
+).map(([id, cam, time, simt]) => ({
+  id,
+  title: `Coding M33 ${id.slice(2)}`,
+  seed: 1001,
+  cam,
+  time,
+  simt,
+  quality: 'medium' as const,
+  width: 1280,
+  height: 720,
   sets: ['dev'] as ShotSet[],
 }));
 /** TASK-534 (D-118): seed 1001 cams round the Research Tide-Lab harbour. */
@@ -2348,6 +2375,34 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   },
   ...COASTER_SHOTS,
   ...LAKE_SHOTS,
+  // ---- TASK-545 (D-124): Morning shift and the Data Lake at night
+  {
+    id: 'W-morning-shift',
+    title: 'Morning Shift',
+    seed: 1001,
+    // the line in a queue, the port behind: `simt` 52 = a courier rising off its cradle, arms swinging
+    cam: 'site:foundryYard:23,13,17,-1.5,1,1',
+    time: 7,
+    simt: 52,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  {
+    id: 'W-data-lake-night',
+    title: 'Data Lake Night',
+    seed: 1001,
+    // from across the water: the pods' LEDs face it, pavilion on the left, the cloud over the far tip
+    cam: 'site:dataLake:22,13,-11,-1,3,-2.5',
+    time: 21.5,
+    simt: 8,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  ...FOUNDRY_SHOTS,
   // ---- TASK-512: the three wow presets TASK-502 specified (D-090)
   {
     id: 'W-kite-hill-afternoon',
