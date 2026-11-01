@@ -307,7 +307,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     interiorShadows: d.quality === 'high',
     instantEdits: d.instantEdits ?? false,
     world: { height: world.height, islands: world.islands },
-    geometryOverride: coasterTrackGeometry(world),
+    geometryOverride: coasterTrackGeometry(world, d.quality),
   });
   group.add(props.group);
   const rebuild = createRebuilder({

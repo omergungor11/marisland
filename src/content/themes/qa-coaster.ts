@@ -168,7 +168,7 @@ export const QA_COASTER_MOTION = {
     flash: { life: 0.9, r0: 0.3, r1: 2.2 },
     /** During the noon siren the lamp blinks at this rate (Hz) and sends sound rings out of the station's +z. */
     sirenHz: 2.2,
-    sirenRing: { rings: 3, period: 1.2, r0: 0.2, r1: 1.1, travel: 1.9, color: P.cream },
+    sirenRing: { rings: 2, period: 1.4, r0: 0.2, r1: 0.9, travel: 1.2, color: P.cream },
   },
   /** At 12:00 + `noonLead` s the bot train's lead car enters the loop. */
   noonLead: 4,
@@ -192,16 +192,15 @@ export const QA_COASTER_MOTION = {
     rider: { y: 0.42, z: -0.06, scale: 0.8 },
     spark: { life: 0.45, r0: 0.1, r1: 0.9, ball: 0.22, color: '#FFE28A', y: 0.5 },
   },
-  /** Draw limits by quality: bumper cars; LOD0 movers within `lod0` u (0 = never). */
+  /**
+   * By quality: bumper cars, cars, LOD0 movers within `lod0` u (0 = never), dither fade and range (u from
+   * the site origin). Low stops at T2: hidden meshes count in the memory budget, so T1 views must not build them.
+   */
   plan: {
-    low: { bumpers: 3, lod0: 0, cars: 2 },
-    medium: { bumpers: 5, lod0: 62, cars: 3 },
-    high: { bumpers: 6, lod0: 90, cars: 3 },
+    low: { bumpers: 3, lod0: 0, cars: 2, fadeNear: 90, fadeFar: 112, range: 118 },
+    medium: { bumpers: 5, lod0: 62, cars: 3, fadeNear: 140, fadeFar: 175, range: 180 },
+    high: { bumpers: 6, lod0: 90, cars: 3, fadeNear: 170, fadeFar: 215, range: 225 },
   },
-  /** Dither fade and the mover range (u from the site origin). */
-  fadeNear: 170,
-  fadeFar: 215,
-  range: 225,
   /** The culture scene's range (lamp glow, click ring, sparks). */
   sceneRange: 170,
 } as const;

@@ -80,7 +80,7 @@ export function createCoasterMovers(
   const mat = scope.add(
     makeLitMaterial(
       { instanced: true, dither: true, emissive: true, rim: true },
-      { fadeNear: M.fadeNear * kit.scale, fadeFar: M.fadeFar * kit.scale, name: 'coaster-movers' },
+      { fadeNear: plan.fadeNear, fadeFar: plan.fadeFar, name: 'coaster-movers' },
     ),
   );
   const pivot = coasterPivot(kit);
@@ -153,7 +153,7 @@ export function createCoasterMovers(
     group,
     update(day, time, camPos) {
       const dist = camPos.distanceTo(_p.set(kit.origin.x, kit.groundY, kit.origin.z));
-      if (dist > M.range * kit.scale) {
+      if (dist > plan.range) {
         flush();
         return;
       }
