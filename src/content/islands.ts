@@ -251,10 +251,14 @@ export interface ArchetypeParams {
    */
   layoutReachScale?: number;
   /**
-   * Radius multiplier applied after the roster roll (TASK-511, D-090; the hub only). The rolled
-   * diameter still caps the others (`heroDominance`) and places the layout; then every other
-   * island is pushed straight out from the hub by the reach growth (snapped to the height grid),
-   * so the channels to the hub and every other island's shape stay as they were.
+   * Radius multiplier applied after the roster roll (TASK-511, D-090). The rolled diameter still
+   * caps the others (`heroDominance`) and places the layout. On the hub every other island is then
+   * pushed straight out from it by the reach growth (snapped to the height grid), so the channels
+   * to the hub and every other island's shape stay as they were. On any other island (TASK-544,
+   * D-121) the island itself moves out from the hub by its growth (as `layoutReachScale`), at most
+   * to `LAYOUT.grownDominance` of the hub's radius. The layout is chosen as if it had not grown, and
+   * it takes the largest of `LAYOUT.growthShares` that moves nobody else, so the others keep their
+   * places on every seed.
    */
   growth?: number;
   /** Windward shelf width in u (leeward = × WATER_BANDS.leewardRingScale). */
@@ -362,6 +366,9 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
   millbrook: {
     displayName: 'Millbrook',
     diameter: [80, 110],
+    // TASK-544 (D-121): the Foundry, Drone Port, test track and Data Lake need the room; failures
+    // cluster below r 46 u, and a grown island leaves the others where they were
+    growth: 1.23,
     sizeClass: 'medium',
     peak: [6.5, 8],
     heightClass: 'flat',
@@ -594,6 +601,10 @@ export const LAYOUT = {
   medium: [2, 3] as const,
   /** Every non-hero diameter ≤ this × hero diameter (hero is the largest). */
   heroDominance: 0.86,
+  /** A grown non-hub island's radius ≤ this × the grown hub's: the hub stays clearly largest. */
+  grownDominance: 0.9,
+  /** Shares of its `growth` a non-hub island tries on its layout, the first that fits wins. */
+  growthShares: [1, 0.75, 0.5, 0.25] as const,
   /** Minimum coast-to-coast gap between bounding discs (bible: 40–90 u). */
   minGap: 40,
   /** Dart-throw gap to the island it is attached to. */
@@ -702,6 +713,11 @@ export const ISLET_LAYOUT = {
    * radius) and the ferry stops (≤ 60 u of a pier, over open water).
    */
   gap: [26, 44] as const,
+  /**
+   * The same off a `growth` island's grown disc (TASK-544, D-121), so an islet in the channel keeps
+   * its place: the disc is the land's bound, past the coast and the pier heads on most bearings.
+   */
+  grownGap: 22,
   /** Water between two islets' reach discs (u). */
   isletGap: 14,
   /** Darts per islet; the one with the least water to its two nearest islands wins (a channel). */

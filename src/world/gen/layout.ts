@@ -148,7 +148,10 @@ export function pickRoster(rng: Rng): RosterEntry[] {
         const hi = Math.min(range[1], heroD * LAYOUT.heroDominance);
         d = rng.fork('size', ARCHETYPE_ORDER.indexOf(a)).range(range[0], Math.max(range[0], hi));
       }
-      const radius = (d / 2) * (p.growth ?? 1);
+      const grown = (d / 2) * (p.growth ?? 1);
+      const hubRadius = (heroD / 2) * (heroP.growth ?? 1);
+      const radius =
+        a === 'hearthholm' ? grown : Math.min(grown, hubRadius * LAYOUT.grownDominance);
       return {
         archetype: a,
         radius,
@@ -166,7 +169,16 @@ interface Disc {
   x: number;
   z: number;
   r: number;
+  /** A grown non-hub island (`growth`): what the growth added; `baseOf` undoes it. */
+  grown?: Disc;
 }
+
+/**
+ * The disc as placed before its `growth` (TASK-544, D-121). Neighbour contrast and the islets read
+ * it, so a grown island keeps the layout and the islets it had; the islets also keep off `d` itself.
+ */
+const baseOf = (d: Disc): Disc =>
+  d.grown ? { x: d.x - d.grown.x, z: d.z - d.grown.z, r: d.r - d.grown.r } : d;
 
 const gapOf = (a: Disc, b: Disc): number => Math.hypot(a.x - b.x, a.z - b.z) - a.r - b.r;
 
@@ -229,10 +241,24 @@ export function layoutProblem(
       }
   }
   if (seen.some((v) => v === 0)) return 'disconnected';
-  for (const [i, j] of adjacentPairs(discs))
+  for (const [i, j] of adjacentPairs(discs.map(baseOf)))
     if (!contrasts(roster[i].archetype, roster[j].archetype)) return 'contrast';
   if (centralIndex(discs) !== hubIndex(roster)) return 'offcentre';
   return null;
+}
+
+const grows = (e: RosterEntry): number =>
+  e.archetype !== 'hearthholm' && ARCHETYPES[e.archetype].growth ? 1 : 0;
+
+/** The roster with its non-hub islands at this share of their `growth` (0: as rolled). */
+function withGrowth(roster: readonly RosterEntry[], share: number): RosterEntry[] {
+  return roster.map((e) => {
+    if (!grows(e)) return e;
+    const p = ARCHETYPES[e.archetype];
+    const rolled = e.placeReach / (p.layoutReachScale ?? p.reachScale);
+    const radius = rolled + (e.radius - rolled) * share;
+    return { ...e, radius, reach: radius * p.reachScale };
+  });
 }
 
 /** Index of the hub island (Hearthholm; the largest reach when it is absent). */
@@ -293,10 +319,14 @@ function place(roster: readonly RosterEntry[], rng: Rng): Disc[] | null {
   // keeps its place; `layoutProblem` checks the grown discs (a seed whose grown island still does
   // not fit takes the next attempt)
   const h = out[hub];
-  roster.forEach((e, i) => {
+  // (TASK-544: `growth` islands last, so the older growths step off where they always did)
+  const growing = roster.map((_, i) => i).sort((i, j) => grows(roster[i]) - grows(roster[j]));
+  growing.forEach((i) => {
+    const e = roster[i];
     const g = e.reach - e.placeReach;
     if (g <= 0 || i === hub) return;
     const d = out[i];
+    const placed = { x: d.x, z: d.z };
     d.r = e.reach;
     const len = Math.hypot(d.x - h.x, d.z - h.z);
     if (len === 0) return;
@@ -323,6 +353,7 @@ function place(roster: readonly RosterEntry[], rng: Rng): Disc[] | null {
         d.z -= ((d.z - h.z) / L) * over;
       }
     }
+    if (grows(e)) d.grown = { x: d.x - placed.x, z: d.z - placed.z, r: e.reach - e.placeReach };
   });
   // TASK-511 (D-090): then a grown hub (Hearthholm `growth`) takes its full reach, and only an
   // island whose channel to it fell below `minGap` steps straight out from it (to `minGap` + one
@@ -362,7 +393,8 @@ function isletDisc(kind: IsletKind, rng: Rng): { radius: number; reach: number }
  * the one with the least water to its two nearest islands wins (between islands, not out at
  * sea). An islet with no valid dart is skipped (never on a sane layout; the test counts them).
  */
-export function placeIslets(discs: readonly Disc[], rng: Rng): Omit<IsletData, 'id'>[] {
+export function placeIslets(grownDiscs: readonly Disc[], rng: Rng): Omit<IsletData, 'id'>[] {
+  const discs = grownDiscs.map(baseOf);
   const L = ISLET_LAYOUT;
   const kinds: IsletKind[] = ['sandbar'];
   const nSkerry = rng.fork('count').int(L.skerries[0], L.skerries[1]);
@@ -384,6 +416,7 @@ export function placeIslets(discs: readonly Disc[], rng: Rng): Omit<IsletData, '
         continue;
       const gaps = discs.map((d) => gapOf(d, cand)).sort((p, q) => p - q);
       if (gaps[0] < L.gap[0]) continue;
+      if (grownDiscs.some((d) => d.grown && gapOf(d, cand) < L.grownGap)) continue;
       if (placed.some((p) => gapOf(p, cand) < L.isletGap)) continue;
       const score = gaps[0] + gaps[1];
       if (score < bestScore) {
@@ -516,12 +549,26 @@ export function archipelago(rng: Rng): { roster: RosterEntry[]; discs: Disc[] } 
   let fallback: { roster: RosterEntry[]; discs: Disc[] } | null = null;
   for (let ra = 0; ra < 8; ra++) {
     const roster = pickRoster(rng.fork('roster', ra));
+    const ungrown = withGrowth(roster, 0);
     for (let pa = 0; pa < LAYOUT.attempts; pa++) {
-      const discs = place(roster, rng.fork('place', ra, pa));
+      const discs = place(ungrown, rng.fork('place', ra, pa));
       if (!discs) continue;
-      const problem = layoutProblem(roster, discs);
-      if (problem === null) return { roster, discs };
-      if (!fallback && problem === 'contrast') fallback = { roster, discs };
+      const problem = layoutProblem(ungrown, discs);
+      if (problem === null) {
+        // TASK-544 (D-121): the layout is chosen without the islands' `growth`, which then takes
+        // what it can get here without moving any other island
+        for (const share of LAYOUT.growthShares) {
+          const grown = withGrowth(roster, share);
+          const at = place(grown, rng.fork('place', ra, pa));
+          if (!at) continue;
+          const still = at.every(
+            (d, i) => grows(roster[i]) === 1 || (d.x === discs[i].x && d.z === discs[i].z),
+          );
+          if (still && layoutProblem(grown, at) === null) return { roster: grown, discs: at };
+        }
+        return { roster: ungrown, discs };
+      }
+      if (!fallback && problem === 'contrast') fallback = { roster: ungrown, discs };
     }
   }
   if (fallback) return fallback;
