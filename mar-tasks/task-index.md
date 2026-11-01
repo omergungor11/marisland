@@ -427,7 +427,7 @@ Details in `phases/phase-3.md`.
 | TASK-543 | Foundry props: conveyor line segments, assembly arms / gantries, part crates, bot body / head / antenna stages, drone pad (H) + charging masts + drone hangar, test-track obstacles; Data Lake kit: steam-cooled server pods, tethered cloud balloon, glass quantum pavilion with a gold chandelier computer; Coding cap override; gallery | props | M | COMPLETED (D-117) | — |
 | TASK-544 | Foundry + lake site (pure data): line strip + pad + test track on the empty west / south-west lawns, the Data Lake carve (east shore or a free lawn; shore anchors for pods, pavilion, cloud tether), paths to the Tech Park, anchors; drone routes re-hub to the Coding pad; 30-seed tests; hash re-pin | worldgen | M | COMPLETED (D-121) | — |
 | TASK-545 | Placement + motion: line cycle (parts move, arms swing, a bot hops off and walks into the agent pool, closed-form), drones lift off / land at the pad, first-step bots on the test track, cloud sway, pod steam, pavilion glow; wow presets (morning shift, Data Lake night) | worldgen + life | L | PENDING | TASK-543, TASK-544 |
-| TASK-547 | Data Lake surface: navy water with fibre light lines flowing under the surface and packet dots crossing at night, on the existing water / pool path (no new program), tier-gated | shader | M | PENDING | TASK-544 |
+| TASK-547 | Data Lake surface: navy water with fibre light lines flowing under the surface and packet dots crossing at night, on the existing water / pool path (no new program), tier-gated | shader | M | COMPLETED | TASK-544 |
 | TASK-546 | M33 shots + QA | qa | S | PENDING | TASK-545, TASK-547 |
 
 ### M17 — Graphics II: decor & nature
