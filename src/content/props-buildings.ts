@@ -39,11 +39,11 @@ export const PROP_DEFS_BUILDINGS: PropDef[] = [
   d('windmill', 0, 2, 2.3, grounded),
   d('barn', 1, 2, 3.4, grounded),
   d('logCabin', 1, 2, 2.5, grounded),
-  // v3 / v4 = harbour waiting shelter (neutral / Research, M31 TASK-533): pinned, never rolled
-  d('marketStall', 2, 5, 1.3, grounded, undefined, { rollVariants: 3 }),
+  // v3 / v4 / v5 = harbour waiting shelter (neutral / Research / Design, M31): pinned, never rolled
+  d('marketStall', 2, 6, 1.3, grounded, undefined, { rollVariants: 3 }),
   // coastal
-  // v2 / v3 = harbour ticket booth (neutral / Research, M31 TASK-533): pinned, never rolled
-  d('dock', 1, 4, 1.1, grounded, undefined, { rollVariants: 2 }),
+  // v2 / v3 / v4 = harbour ticket booth (neutral / Research / Design, M31): pinned, never rolled
+  d('dock', 1, 5, 1.1, grounded, undefined, { rollVariants: 2 }),
   d('rowboat', 1, 2, 1.2, grounded),
   // v4 = Design lantern boat, v5 = Marketing party pontoon (TASK-481): pinned, never rolled
   // v6 / v7 = the HQ marina sloops, v8 = the tender (TASK-505): pinned by the marina stage, never rolled
@@ -54,7 +54,8 @@ export const PROP_DEFS_BUILDINGS: PropDef[] = [
   d('seaStack', 0, 4, 2.6, 0, undefined, { rollVariants: 3 }),
   // T0: the channel buoys (variants 1 red / 2 green, TASK-474) read as night light lines from the
   // overview; `windy` = the gentle bob; rolls stay on the harbour buoy (variant 0)
-  d('buoy', 0, 3, 0.35, windy | noShadow, undefined, { rollVariants: 1 }),
+  // v3..v6 = the Colour Wharf's paint pots (M31 TASK-537): pinned, never rolled
+  d('buoy', 0, 7, 0.35, windy | noShadow, undefined, { rollVariants: 1 }),
   d('driftwood', 2, 2, 0.8, grounded),
   d('tidePool', 3, 2, 1.1, underwater),
   d('shell', 3, 3, 0.12, grounded),
@@ -71,14 +72,14 @@ export const PROP_DEFS_BUILDINGS: PropDef[] = [
   d('bunting', 2, 6, 3.0, grounded | windy, undefined, { rollVariants: 3 }),
   d('bench', 2, 2, 0.7, grounded),
   // v2 / v3 = harbour bollard (neutral / Research, M31 TASK-533): pinned, never rolled
-  d('barrel', 2, 4, 0.3, grounded, undefined, { rollVariants: 2 }),
+  d('barrel', 2, 5, 0.3, grounded, undefined, { rollVariants: 2 }),
   d('crate', 2, 2, 0.4, grounded),
   d('well', 2, 2, 1.0, grounded),
   d('steppingStone', 3, 3, 0.28, grounded),
   // landmarks (T0 read as black shapes; LOD1 keeps the silhouette)
   // variant 2 = broadcast tower / orchestrator tower (themes.landmarkVariant)
   // v3 / v4 = harbour light for a breakwater tip (neutral / Research, M31 TASK-533): pinned only
-  d('lighthouse', 0, 5, 2.4, grounded, undefined, { rollVariants: 3 }),
+  d('lighthouse', 0, 6, 2.4, grounded, undefined, { rollVariants: 3 }),
   d('clocktower', 0, 3, 1.9, grounded),
   // canopy carries wind weights (sway); trunk/house stay rigid
   // v3 = canopy vitray (TASK-425): the Atelier Tree (THEMES.design.landmarkVariant)

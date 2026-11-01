@@ -1,5 +1,6 @@
 /** TASK-465: M20 HQ seven-gates and Design conservatory kits (ledgers, defs, geometry, hooks, APIs). */
 import * as THREE from 'three';
+import { WHARF_PASTELS, WHARF_VARIANTS } from '../../content/themes/design-harbour.ts';
 import { describe, expect, it } from 'vitest';
 import { CULTURES } from '../../content/cultures/index.ts';
 import { validateCultures } from '../../content/cultures/validate.ts';
@@ -89,16 +90,23 @@ describe('TASK-465 ledgers and defs', () => {
     expect(PROP_GEO.cultureGate.variants).toBe(THEME_IDS.length);
     // + the DevOps smith's stall (variant 7, M25 TASK-504), plan-pinned
     expect(PROP_GEO.goodsStall.variants).toBe(THEME_IDS.length + 1);
-    expect(PROP_GEO.glasshouse.variants).toBe(GLASSHOUSE_HUES.length);
+    expect(PROP_GEO.glasshouse.variants).toBe(GLASSHOUSE_HUES.length + WHARF_PASTELS.length);
     expect(GLASSHOUSE_HUES.length).toBeGreaterThanOrEqual(4);
     expect(GLASSHOUSE_HUES.length).toBeLessThanOrEqual(6);
   });
 });
 
+const WHARF_FIRST: Record<string, number> = {
+  conservatory: WHARF_VARIANTS.pavilion,
+  glasshouse: WHARF_VARIANTS.boathouse,
+};
+
 describe('TASK-465 geometry', () => {
   for (const id of M20_PROP_IDS) {
     const geo = PROP_GEO[id];
-    for (let v = 0; v < geo.variants; v++) {
+    // (the Colour Wharf's variants stand on stilts in the water: geo/themes/design-harbour.test.ts)
+    const own = WHARF_FIRST[id] ?? geo.variants;
+    for (let v = 0; v < own; v++) {
       it(`${id} v${v}: tris, LOD1 <= 30 %, ground pivot, bounds, finite, emissive, deterministic`, () => {
         const g0 = buildProp(id, 3, v, 0);
         const g1 = buildProp(id, 3, v, 1);

@@ -278,7 +278,9 @@ export const CULTURE_BOATS = {
     margin: 22,
     slalom: { def: 'inspectionBuoy', weave: 2.6 },
   },
-  lantern: { variant: 4, theme: 'design', speed: 1.4, margin: 30 },
+  // M31 TASK-537 (D-127): it stands `dwell` s at the Colour Wharf mooring (from t = 0), then sails its
+  // ring and comes home, on the ferries' closed-form timetable; no wharf = the plain ring
+  lantern: { variant: 4, theme: 'design', speed: 1.4, margin: 30, dwell: 150, decel: 0.3 },
 } as const;
 
 export const ROWBOAT = {

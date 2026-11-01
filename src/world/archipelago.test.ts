@@ -123,9 +123,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "6ac4bccc2c8f6216",
-          "1001": "1435bf122cf33496",
-          "42": "6359863e0f3f3203",
+          "1": "6d01c4f91bab0f59",
+          "1001": "67091f90c7b6c709",
+          "42": "1a8ce94f36fc95e8",
         }
       `);
     },
@@ -502,8 +502,14 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
     const n = w.height.n;
     let coast = 0;
     let bluff = 0;
+    // (a harbour's breakwater arm is new low coast, not the plateau's: TASK-537)
+    const arm: { x: number; z: number }[] = [];
+    for (let k = 0; isl.anchors[`harbourArm${k}`]; k++) arm.push(isl.anchors[`harbourArm${k}`]);
     for (let i = 2 * n; i < n * n - 2 * n; i++) {
       if (w.islandMap[i] !== isl.id + 1 || w.shoreSdf[i] > 1.01) continue;
+      const x = w.height.originX + (i % n) * w.height.cellSize;
+      const z = w.height.originZ + Math.floor(i / n) * w.height.cellSize;
+      if (arm.some((p) => Math.hypot(p.x - x, p.z - z) < 5)) continue;
       coast++;
       let top = 0;
       for (let dz = -2; dz <= 2; dz++)
@@ -630,9 +636,9 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // TASK-529 Research crag face lawn → cliff on the final ground, re-pinned
       // TASK-532 harbour skeleton + Research Tide-Lab / sunken-city anchors, re-pinned
       // TASK-534 Research harbour kit + sunken city placed, kiosk pads, sub path, re-pinned
-      // TASK-544 Coding sites, TASK-545 the M33 kit on them, TASK-536 Marketing harbour + Carnival Pier, re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('41467d04343f17a4');
-      expect(generateWorld(1).hashes.world).toBe('5cd432fafb897d3b');
+      // TASK-544 Coding sites, TASK-545 the M33 kit on them, TASK-536 Marketing harbour + Carnival Pier, TASK-537 Colour Wharf, re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('aac9c25ff2f0505e');
+      expect(generateWorld(1).hashes.world).toBe('9fad2b9f5677eeca');
     } finally {
       for (const b of saved) b.on = true;
     }

@@ -12,6 +12,10 @@
  * planner picks per seed: `sigma`). Pier-root offsets below are [u, v] in that frame; a
  * negative v lies on the far side from the arm.
  */
+import { HARBOUR_LIVERIES, HARBOUR_VARIANTS as HV } from './themes/harbours.ts';
+
+const DESIGN_LIVERY = HARBOUR_LIVERIES.indexOf('design');
+
 export interface HarbourParams {
   /**
    * T-head ferry pier = the island's dock run out to `segments` (DOCK.segment u each; at least
@@ -111,7 +115,8 @@ export interface HarbourParams {
     head: { variant: number; plank: number; lift: number };
     deckY: number;
     light: number;
-    shelter: number;
+    /** Null: no waiting shelter kiosk (Colour Wharf's waiting room is its glass pavilion). */
+    shelter: number | null;
     /** null: the island has its own booth (Marketing: the megaphone kiosk), no `dock` booth site. */
     booth: number | null;
     board: number;
@@ -226,6 +231,63 @@ export const HARBOURS: Partial<Record<'research' | 'marketing' | 'design', Harbo
       board: 3,
       bollard: {
         variant: 2,
+        at: [
+          [-3.65, 0.9],
+          [-1.4, 0.9],
+          [1.4, 0.9],
+          [3.65, 0.9],
+        ],
+      },
+    },
+  },
+  // TASK-537 (D-127): Colour Wharf, the same skeleton; rowboats give way to the lantern boat
+  design: {
+    pier: { segments: 6, minSegments: 4, sideClear: 1.6, head: { w: 8, d: 2.4 } },
+    berth: { out: 3, approach: { len: 18, half: 5 } },
+    arm: {
+      offset: 10,
+      step: 1,
+      tipArc: 13,
+      length: 26,
+      minLength: 16,
+      maxTurnDeg: 110,
+      depth: [0.4, 3.2],
+      idealDepth: 1.3,
+      crestY: 1.35,
+      crestDome: 0.3,
+      half: [1.2, 1.5],
+      flank: 2,
+      clearOther: 18,
+      mouth: 5,
+      rockY: 0.7,
+      armour: 0.2,
+      armourY: 0.15,
+      rockTip: 6,
+    },
+    basin: { from: 2.6, pierGap: 1.2, armGap: 1.4, depth: 1.8, fall: 1.5 },
+    kiosks: {
+      search: 12,
+      step: 0.5,
+      minShore: 0.6,
+      maxRelief: [0.7, 1.8] as const,
+      laneGap: 1.6,
+      gap: 0.6,
+      padMargin: 1.2,
+      shelter: { at: [-3.2, -4], size: [3.2, 2.2] },
+      booth: { at: [-2.6, 3.4], size: [1.6, 1.6] },
+      board: { at: [-1.6, -1.9], size: [1.2, 0.5] },
+    },
+    light: { inset: 0.6 },
+    keepOut: { pier: 2.5, head: 3, hard: 0.65 },
+    kit: {
+      head: { variant: 0, plank: 1.2, lift: 0.02 },
+      deckY: 0.7,
+      light: HV.lighthouse + DESIGN_LIVERY,
+      shelter: null,
+      booth: HV.dock + DESIGN_LIVERY,
+      board: HV.pierSignpost + DESIGN_LIVERY,
+      bollard: {
+        variant: HV.barrel + DESIGN_LIVERY,
         at: [
           [-3.65, 0.9],
           [-1.4, 0.9],

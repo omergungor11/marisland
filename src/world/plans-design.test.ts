@@ -6,6 +6,7 @@ import { PROP_DEFS } from '../content/props.ts';
 import { BANK_FIXTURES, FIXTURE_RADIUS, FLOATING_FIXTURES } from '../content/settlements.ts';
 import { GLASSHOUSE_HUES } from '../content/props-themes/m20.ts';
 import { DESIGN_CULTURE, DESIGN_CULTURE_SITE } from '../content/cultures/design.ts';
+import { WHARF_VARIANTS as WV } from '../content/themes/design-harbour.ts';
 import { generateWorld, heightAt, zoneAt, Zone, type WorldData, type XZ } from './index.ts';
 import { discShape, rectShape, shapeCorners, shapesOverlap } from './gen/sites.ts';
 
@@ -69,7 +70,13 @@ const design = (seed: number) => {
   const isl = w.islands.find((i) => i.theme === 'design');
   if (!isl) throw new Error(`seed ${seed}: no Design island`);
   const s = w.settlements.find((x) => x.islandId === isl.id);
-  const fixtures = w.fixtures.filter((f) => f.islandId === isl.id);
+  // (the Colour Wharf's variants of these defs have their own test: plans-design-harbour.test.ts)
+  const fixtures = w.fixtures.filter(
+    (f) =>
+      f.islandId === isl.id &&
+      !(f.defId === 'conservatory' && f.variant === WV.pavilion) &&
+      !(f.defId === 'glasshouse' && (f.variant ?? 0) >= WV.boathouse),
+  );
   return { w, isl, s, fixtures };
 };
 

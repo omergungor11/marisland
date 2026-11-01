@@ -26,6 +26,7 @@ export const PART_SLOTS: Readonly<Record<string, number>> = {
   cap: 16,
   fish: 48,
   panel: 2,
+  pane: 12,
 };
 
 export const CULTURE_MOVERS = {

@@ -17,6 +17,7 @@ import {
   type FerryCall,
   type FerrySchedule,
 } from './ferry.ts';
+import { anchorPoints } from '../world/gen/plans/research-anchors.ts';
 import type { WorldData } from '../world/types.ts';
 import { WakeFoam } from './wake.ts';
 
@@ -181,6 +182,54 @@ export function islandRing(
 }
 
 /**
+ * The lantern boat's loop when its island has a Colour Wharf (M31 TASK-537): the plan's lanes
+ * (`lanternLane0..K`: sea → the turn → `lanternMoor` → sea) closed round the island ring, one stop at
+ * the mooring. Null when there is no wharf or no clear water between the lanes and the ring.
+ */
+export function lanternWharfRoute(ctx: LifeCtx): Route | null {
+  const LB = CULTURE_BOATS.lantern;
+  const R = SAILBOAT.route;
+  const isl = ctx.world.islands.find((i) => i.theme === LB.theme);
+  const moor = isl?.anchors.lanternMoor;
+  if (!isl || !moor) return null;
+  const lanes = anchorPoints(isl, 'lanternLane').map((p) => ({ x: p.x, y: p.z }));
+  const ring = ringAround(ctx, isl.cx, isl.cz, isl.radius + LB.margin);
+  if (!ring || lanes.length < 4) return null;
+  const nearest = (p: Vec2): number => {
+    let best = 0;
+    ring.forEach((q, k) => {
+      if (Math.hypot(q.x - p.x, q.y - p.y) < Math.hypot(ring[best].x - p.x, ring[best].y - p.y))
+        best = k;
+    });
+    return best;
+  };
+  // out of the last lane point, once round the ring (it runs on with growing angle), home by the first
+  const j = nearest(lanes[lanes.length - 1]);
+  const lap: Vec2[] = [];
+  for (let k = 2; k <= ring.length - 2; k++) lap.push(ring[(j + k) % ring.length]);
+  const wet = (a: Vec2, b: Vec2): boolean => {
+    const n = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y));
+    for (let k = 0; k <= n; k++)
+      if (ctx.h(a.x + ((b.x - a.x) * k) / n, a.y + ((b.y - a.y) * k) / n) > -R.minDepth)
+        return false;
+    return true;
+  };
+  if (!wet(lanes[lanes.length - 1], lap[0]) || !wet(lap[lap.length - 1], lanes[0])) return null;
+  const pts = smoothPolyline([...lanes, ...lap], 4, true);
+  const lens = arcLengths(pts, true);
+  const stops = [{ x: moor.x, y: moor.z }];
+  return {
+    pts,
+    lens,
+    total: lens[lens.length - 1],
+    stops,
+    kind: 'route',
+    dwell: LB.dwell,
+    stopArcs: stopArcsOf(pts, lens, stops),
+  };
+}
+
+/**
  * Replace the ring points (angle-ordered round (cx, cz), as `ringAround` makes them) between the
  * first and last buoy by a weave: one point per buoy, alternately `weave` u outside / inside it.
  * The buoys must be one run along the ring (the QA slalom line); fewer than 2 → unchanged.
@@ -297,6 +346,9 @@ export interface BoatSpec {
   speed: number;
   /** Ferries follow a closed-form timetable (`ferry.ts`) instead of the integrated loop. */
   ferry?: boolean;
+  /** A timetable boat's own braking and cycle start (default the HQ ferries'). */
+  decel?: number;
+  startFrac?: number;
   /**
    * Berths of the other boats (every route's dock-end stops): the hull is pushed out to
    * `SAILBOAT.berthClear` u from each, so a sailing boat slowing at a pier never sits in a docked ferry.
@@ -352,7 +404,9 @@ export class Sailboats extends AgentKind {
     if (spec.ferry) {
       const F = CULTURE_BOATS.ferry;
       for (const R of routes)
-        this.schedules.push(buildFerrySchedule(R.total, R.stopArcs, R.dwell, spec.speed, F.decel));
+        this.schedules.push(
+          buildFerrySchedule(R.total, R.stopArcs, R.dwell, spec.speed, spec.decel ?? F.decel),
+        );
     }
     this.route = new Int32Array(count);
     this.d0 = new Float32Array(count);
@@ -375,7 +429,12 @@ export class Sailboats extends AgentKind {
       this.dir[i] = spec.ferry || k % 2 === 0 ? 1 : -1;
       if (spec.ferry) {
         const cycle = this.schedules[r].cycle;
-        this.tOff[i] = ferryOffset(k, per[r], CULTURE_BOATS.ferry.startFrac, cycle);
+        this.tOff[i] = ferryOffset(
+          k,
+          per[r],
+          spec.startFrac ?? CULTURE_BOATS.ferry.startFrac,
+          cycle,
+        );
         this.d0[i] = 0;
       }
       this.active[i] = 1;

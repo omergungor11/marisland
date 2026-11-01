@@ -43,10 +43,26 @@ export const HARBOUR_PAL = {
     roof: K.roofTeal,
     band: '#FAFAF5',
   },
+  // TASK-537 (D-127): Colour Wharf, cream + the pavilion's violet
+  design: {
+    ...COMMON,
+    wall: '#FFF4E0',
+    accent: '#9B7BE0',
+    accentDeep: '#7458BE',
+    roof: '#B79BEA',
+    band: '#FFF4E0',
+  },
 } as const;
 export type HarbourLivery = keyof typeof HARBOUR_PAL;
 
-/** First added variant index of each old def (neutral); the Research livery is +1. */
+/** Liveries in variant order after each old def's first added variant (append only). */
+export const HARBOUR_LIVERIES = [
+  'neutral',
+  'research',
+  'design',
+] as const satisfies readonly HarbourLivery[];
+
+/** First added variant index of each old def (neutral); the other liveries follow `HARBOUR_LIVERIES`. */
 export const HARBOUR_VARIANTS = {
   lighthouse: 3,
   marketStall: 3,

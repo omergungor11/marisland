@@ -61,6 +61,8 @@ export const PART = {
   fish: 22,
   /** Lit unit panel in the xy plane, centred, tinted, fully emissive (M31 TASK-536: the screen flash). */
   panel: 23,
+  /** Pane of coloured light (M31 TASK-537): a unit card in local xy, screen class (glows by day too). */
+  pane: 24,
 } as const;
 export type PartKind = (typeof PART)[keyof typeof PART];
 
@@ -293,6 +295,19 @@ export function buildPartsGeometry(): THREE.BufferGeometry {
       null,
     ),
   );
+  // 24 pane: a unit two-sided card, tinted, emissive 1.55 = screen class (lit at any hour)
+  pieces.push({
+    geo: new THREE.PlaneGeometry(1, 1).toNonIndexed(),
+    kind: PART.pane,
+    color: null,
+    emissive: 1.55,
+  });
+  pieces.push({
+    geo: new THREE.PlaneGeometry(1, 1).rotateY(Math.PI).toNonIndexed(),
+    kind: PART.pane,
+    color: null,
+    emissive: 1.55,
+  });
   // 9 beacon: unit lamp ball, fully emissive
   pieces.push({
     geo: new THREE.IcosahedronGeometry(1, 0),

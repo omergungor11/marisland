@@ -50,7 +50,10 @@ describe('Research harbour kit (TASK-534)', () => {
       const { A, at } = site(seed);
       const m = `seed ${seed}`;
       expect(at(A.harbourLight, 'lighthouse', P.kit.light), `${m} light`).toBeDefined();
-      expect(at(A.harbourShelter, 'marketStall', P.kit.shelter), `${m} shelter`).toBeDefined();
+      expect(
+        at(A.harbourShelter, 'marketStall', P.kit.shelter ?? undefined),
+        `${m} shelter`,
+      ).toBeDefined();
       expect(at(A.harbourBooth, 'dock', P.kit.booth ?? undefined), `${m} booth`).toBeDefined();
       expect(at(A.harbourBoard, 'pierSignpost', P.kit.board), `${m} board`).toBeDefined();
     }

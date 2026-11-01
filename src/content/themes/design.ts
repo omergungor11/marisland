@@ -85,6 +85,8 @@ export const DESIGN_SITES = {
    * root `offset` u along the shore from the mouth (either side), at least `streamClear` from
    * the stream line (the creek under the glass bridge runs there).
    */
+  /** The pier-root kiosks keep this far off the bridge-end path pins (M31 TASK-537). */
+  harbourPinKeep: 4,
   dock: {
     maxDist: 26,
     offset: 10,
