@@ -102,6 +102,8 @@ const VARIANT_TARGET: Record<string, number> = {
   'marketStall:4': 560,
   'dock:2': 320,
   'dock:3': 320,
+  // TASK-540: the 227 u fixture coaster track (rails, ties, spine, columns), 29 tris per metre
+  'coasterTrack:0': 7500,
 };
 
 /** Props from the buildings/coastal/decor/landmarks families: carry an `emissive` attribute. */
@@ -250,14 +252,17 @@ describe('prop geometry', () => {
                 : // TASK-533: the Tide-Lab piles reach the seabed under the waterline pivot
                   def.id === 'tideLab'
                   ? -1.1
-                  : // TASK-509b: the breakwater foot reaches the seabed, the bridge / deck skirts hide the bank
-                    def.id === 'devopsBreakwater'
-                    ? -2.7
-                    : def.id === 'emberBridge' || def.id === 'craterDeck'
-                      ? -0.65
-                      : def.id === 'stairFlight'
-                        ? -Math.max(...STAIR_FLIGHT.looks.map((L) => L.skirt)) - 0.05
-                        : -0.05;
+                  : // TASK-540: the coaster's columns are sunk 0.25 below groundY, the seated rider's boots hang under its hip pivot
+                    def.id === 'coasterTrack' || def.id === 'coasterRider'
+                    ? -0.3
+                    : // TASK-509b: the breakwater foot reaches the seabed, the bridge / deck skirts hide the bank
+                      def.id === 'devopsBreakwater'
+                      ? -2.7
+                      : def.id === 'emberBridge' || def.id === 'craterDeck'
+                        ? -0.65
+                        : def.id === 'stairFlight'
+                          ? -Math.max(...STAIR_FLIGHT.looks.map((L) => L.skirt)) - 0.05
+                          : -0.05;
           expect(bb.min.y).toBeGreaterThanOrEqual(below);
           const h = def.heights?.[v] ?? def.height;
           expect(bb.max.y).toBeGreaterThanOrEqual(h * 0.65);

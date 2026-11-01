@@ -5,6 +5,7 @@ import { PROP_DEFS, PROP_DEF_INDEX } from '../../content/props.ts';
 import { QA_CULTURE_PROP_DEFS as QA_PROP_DEFS } from '../../content/props-themes/qa.ts';
 import { QA_M24_PROP_IDS, QA_PROVING_PROP_DEFS } from '../../content/props-themes/qa-proving.ts';
 import { QA_CUSTOMS_PROP_DEFS, QA_M30_PROP_IDS } from '../../content/props-themes/qa-customs.ts';
+import { QA_COASTER_PROP_DEFS } from '../../content/props-themes/qa-coaster.ts';
 import { CULTURES } from '../../content/cultures/index.ts';
 import { validateCultures } from '../../content/cultures/validate.ts';
 import { PropFlag } from '../../world/prop-store.ts';
@@ -52,14 +53,25 @@ describe('TASK-414 QA culture kit: defs and ledger', () => {
       'scannerArch',
       'customsYard',
       'quarantinePontoon',
+      // M34 TASK-540 Thrill Test Park (ledger 17 / 17, tier-1 = the drop tower + the coaster)
+      'coasterTrack',
+      'coasterStation',
     ]);
     expect([...kit.map((k) => k.id)].sort()).toEqual(
-      [...KIT_IDS, ...QA_M24_PROP_IDS, ...QA_M30_PROP_IDS].sort(),
+      [
+        ...KIT_IDS,
+        ...QA_M24_PROP_IDS,
+        ...QA_M30_PROP_IDS,
+        ...QA_COASTER_PROP_DEFS.map((d) => d.id),
+      ].sort(),
     );
     for (const k of kit) {
-      const def = [...QA_PROP_DEFS, ...QA_PROVING_PROP_DEFS, ...QA_CUSTOMS_PROP_DEFS].find(
-        (d) => d.id === k.id,
-      );
+      const def = [
+        ...QA_PROP_DEFS,
+        ...QA_PROVING_PROP_DEFS,
+        ...QA_CUSTOMS_PROP_DEFS,
+        ...QA_COASTER_PROP_DEFS,
+      ].find((d) => d.id === k.id);
       expect(def?.tier, k.id).toBe(k.tier);
       expect(def?.flags, k.id).toBe(k.flags);
       expect((k.flags & PropFlag.noShadow) !== 0, k.id).toBe(k.tier === 3);
