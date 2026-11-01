@@ -674,7 +674,7 @@ const CARNIVAL_SHOTS: readonly ShotPreset[] = (
 }));
 /** TASK-534 (D-118): seed 1001 cams round the Research Tide-Lab harbour. */
 /** Colour Wharf (TASK-537): `site:` cams in the pier's frame (+z out to sea), seed 1001 mirrored by the arm. */
-const WHARF_CAM = (v: string): string => `site:harbourPier1:${v}`;
+const WHARF_CAM = (v: string): string => `site:harbourPier1@design:${v}`;
 const WHARF_CAMS = {
   day: WHARF_CAM('38,19,12,13,0.5,-13'),
   dusk: WHARF_CAM('38,17,17,11,0.5,-12'),

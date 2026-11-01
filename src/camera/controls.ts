@@ -277,14 +277,15 @@ export function createCameraSystem(
         }
         case 'site': {
           // `site:<anchor>:x,y,z,tx,ty,tz` (TASK-541): a raw look-at in an anchor's prop frame, scaled by
-          // `<anchor>Size.y`, so a shot framed on a site survives a layout change; no such anchor = overview
+          // `<anchor>Size.y`, so a shot framed on a site survives a layout change; no such anchor = overview.
+          // `<anchor>@<theme>`: on that theme's island (D-127: every ferry island has the harbour anchors)
           const cut = arg.indexOf(':');
-          const key = arg.slice(0, cut);
+          const [key, theme] = arg.slice(0, cut).split('@');
           const v = arg
             .slice(cut + 1)
             .split(',')
             .map(Number);
-          const isl = world.islands.find((i) => i.anchors[key]);
+          const isl = world.islands.find((i) => i.anchors[key] && (!theme || i.theme === theme));
           const a = isl?.anchors[key];
           if (!isl || !a || v.length !== 6 || !v.every((n) => Number.isFinite(n))) {
             sys.applyPreset('overview', transition);
