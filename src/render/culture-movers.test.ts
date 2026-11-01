@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { Scope } from '../core/scope.ts';
 import { PROP_DEFS } from '../content/props.ts';
 import { CULTURES } from '../content/cultures/index.ts';
-import { CULTURE_MOVERS as M } from '../content/cultures/movers.ts';
+import { CULTURE_MOVERS as M, PART_SLOTS } from '../content/cultures/movers.ts';
 import { RELAY } from '../content/cultures/rhythm.ts';
 import { SEMAPHORE } from '../content/props-themes/m20.ts';
 import { SIGNAL_CHAIN } from '../content/signature.ts';
@@ -467,6 +467,34 @@ describe('culture movers', () => {
     // deterministic in the clock
     expect(glows(23.15)).toBe(glows(23.15));
     SHARED.uLamps.value.z = lamps;
+  });
+
+  it('the part kinds with few slots (D-126) never fill up, over a day and every ritual', () => {
+    const rare = Object.keys(PART_SLOTS);
+    const most = new Map<string, number>(rare.map((k) => [k, 0]));
+    const rituals = [
+      ...new Set(
+        Object.values(M).flatMap((v) =>
+          typeof v === 'object' && 'ritual' in v ? [(v as { ritual: string }).ritual] : [],
+        ),
+      ),
+    ];
+    const spots = world.islands.map((i) => new THREE.Vector3(i.cx, 12, i.cz));
+    for (const cam of spots)
+      for (const th of THEME_IDS)
+        for (const id of ['', ...rituals])
+          for (const t of [3, 9, 12.25, 17.75, 21]) {
+            view.update(t * 40, t, env(t), cam, fest(th, id));
+            for (const k of rare) {
+              const n = view.meshes[PART[k as keyof typeof PART]].count;
+              most.set(k, Math.max(most.get(k) ?? 0, n));
+            }
+          }
+    for (const k of rare) {
+      const m = view.meshes[PART[k as keyof typeof PART]];
+      expect(m.instanceMatrix.count, k).toBe(PART_SLOTS[k]);
+      expect(most.get(k), k).toBeLessThan(PART_SLOTS[k]);
+    }
   });
 
   it('Carnival Pier (TASK-536): the ferry arrival fires the cannons and flashes the screen, closed form', () => {

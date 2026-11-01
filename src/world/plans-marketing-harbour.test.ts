@@ -86,6 +86,7 @@ describe('TASK-536 Carnival Pier: placement', () => {
   }, 240_000);
 
   it('wheel, screen, cannons and arches stand at the deck height, the wheel small', () => {
+    expect(K.deck.top).toBe(P.kit.deckY);
     for (const seed of SEEDS) {
       const { A, of } = site(seed);
       const y = P.kit.deckY;

@@ -5,7 +5,7 @@ import { hashInts } from '../core/hash.ts';
 import { BEAM } from '../content/lighting.ts';
 import { PROP_DEF_INDEX } from '../content/props.ts';
 import { CULTURES } from '../content/cultures/index.ts';
-import { CULTURE_MOVERS as M } from '../content/cultures/movers.ts';
+import { CULTURE_MOVERS as M, PART_SLOTS } from '../content/cultures/movers.ts';
 import { RELAY } from '../content/cultures/rhythm.ts';
 import { HILL_KITES as HK } from '../content/themes/coding-tunnel.ts';
 import { KITE_HILL } from '../content/islands.ts';
@@ -122,7 +122,7 @@ class Writer {
   /** Instances written this frame per kind (index = `PartKind`). */
   readonly counts: Int32Array;
   constructor(
-    /** One instanced mesh per part kind (TASK-495), each `capacity` slots. */
+    /** One instanced mesh per part kind (TASK-495), `capacity` slots or its PART_SLOTS. */
     readonly meshes: readonly THREE.InstancedMesh[],
     private readonly capacity: number,
   ) {
@@ -143,9 +143,9 @@ class Writer {
   }
 
   private commit(kind: PartKind, hex: string | undefined): void {
-    if (this.n >= this.capacity) return;
-    const m = this.pivot ? this._m.multiplyMatrices(this.pivot, this._l) : this._l;
     const mesh = this.meshes[kind];
+    if (this.n >= this.capacity || this.counts[kind] >= mesh.instanceMatrix.count) return;
+    const m = this.pivot ? this._m.multiplyMatrices(this.pivot, this._l) : this._l;
     const i = this.counts[kind]++;
     mesh.setMatrixAt(i, m);
     mesh.setColorAt(i, this.colour(hex));
@@ -2505,12 +2505,16 @@ export function createCultureMovers(
   if (capacity > 0) {
     // one shared material (one program) and one instanced mesh per part kind (TASK-495)
     const mat = scope.add(makeLifeMaterial('culture-movers', false));
+    const kindName = Object.keys(PART);
     for (const geo of buildPartGeometries()) {
       scope.add(geo);
-      const gait = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3);
+      // (`meshes` follows the kind's value)
+      const name = kindName.find((k) => PART[k as keyof typeof PART] === meshes.length);
+      const slots = Math.min(capacity, (name && PART_SLOTS[name]) || capacity);
+      const gait = new THREE.InstancedBufferAttribute(new Float32Array(slots * 3), 3);
       gait.setUsage(THREE.DynamicDrawUsage);
       geo.setAttribute('aGait', gait);
-      const mesh = new THREE.InstancedMesh(geo, mat, capacity);
+      const mesh = new THREE.InstancedMesh(geo, mat, slots);
       mesh.name = `culture-movers:${meshes.length}`;
       mesh.count = 0;
       mesh.frustumCulled = true;
@@ -2518,7 +2522,7 @@ export function createCultureMovers(
       mesh.receiveShadow = false;
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       // allocate instanceColor up front: a later allocation would change the program parameters
-      for (let i = 0; i < capacity; i++) mesh.setColorAt(i, new THREE.Color(1, 1, 1));
+      for (let i = 0; i < slots; i++) mesh.setColorAt(i, new THREE.Color(1, 1, 1));
       mesh.instanceColor!.setUsage(THREE.DynamicDrawUsage);
       mesh.visible = false;
       scope.add(mesh);

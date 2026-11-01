@@ -8,7 +8,6 @@
  * says the word. Its flash on the ferry's arrival is a culture-mover scene over the board.
  */
 import * as THREE from 'three';
-import { HARBOURS } from '../../content/harbours.ts';
 import { CARNIVAL_PIER as K, WELCOME_FONT } from '../../content/themes/marketing-harbour.ts';
 import { Acc, qEuler } from '../kit.ts';
 import { V, V2, baseBox, cylB, put, tubeAlong } from '../parts.ts';
@@ -16,8 +15,6 @@ import type { BuildOpts, PropBuilder, PropGeoDef } from '../types.ts';
 import { addHook } from './hq.ts';
 import { tagMarquee } from './surface-tags.ts';
 
-/** The harbour skeleton's plank top (`kit.deckY`, content/harbours.ts; DOCK planks' top). */
-const HARBOUR_KIT_DECK_Y = (HARBOURS.marketing as NonNullable<typeof HARBOURS.marketing>).kit.deckY;
 const lit = { emissive: 1, aoAmt: 0, ao: () => 1 } as const;
 const screen = { emissive: 2, aoAmt: 0, ao: () => 1 } as const;
 
@@ -163,7 +160,7 @@ export function carnivalDeck({ rng, lod }: BuildOpts): THREE.BufferGeometry {
   const D = K.deck;
   const hi = lod === 0;
   const acc = new Acc();
-  const top = HARBOUR_KIT_DECK_Y;
+  const top = D.top;
   const hw = D.w / 2;
   const hd = D.d / 2;
   put(acc, new THREE.BoxGeometry(D.w, D.thick, D.d), [0, top - D.thick / 2 - 0.01, 0], D.gapTone, {

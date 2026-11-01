@@ -595,7 +595,6 @@ const CARNIVAL_SHOTS: readonly ShotPreset[] = (
     ['D-carnival-deck', CARNIVAL_CAM('-7,3.5,9,2,2.5,0'), 12, 8],
     ['D-carnival-night', CARNIVAL_CAMS.front, 22, 8],
     ['D-carnival-arm', CARNIVAL_CAM('20,10,32,18,0,4'), 11, 8],
-    ['D-carnival-root', CARNIVAL_CAM('9,5,-1,6,2.2,-12'), 11, 8],
   ] as const
 ).map(([id, cam, time, simt]) => ({
   id,

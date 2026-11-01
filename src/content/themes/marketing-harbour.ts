@@ -89,6 +89,8 @@ export const CARNIVAL_PIER = {
     variant: 10,
     w: 12,
     d: 4.8,
+    /** Plank top over the water (= the skeleton's `kit.deckY`, the test pins it). */
+    top: 0.7,
     /** Half width of the pier's own planks (the wing's inner edge touches them). */
     pierHalf: 0.6,
     headGap: 0.4,
