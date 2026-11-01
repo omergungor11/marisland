@@ -10,6 +10,12 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-11-01 (TASK-539 merged, D-119) - For TASK-541**: contract in `plans/qa-park.ts` (`coasterTrackOf`, anchors `coaster*`); it has its own
+  local sampler, `world/coaster-spline.ts` (540) is the one for motion: unify at 541. 539 publishes `parts` (`COASTER_PART_RANGE`), 540
+  expects `CoasterSplineData` stationPoints / chainPoints: map them. Cars are a fixed size while the template scales 0.8-1 and seed 1001
+  is at 0.8 (loop R 2.2 u, car 2.7 u long, pitch 2.9, fixture was R 3.6): check clipping on the loop, shorten the train if needed. Local
+  frame: world = origin + x (sin rotY, -cos rotY) + z (cos rotY, sin rotY). `whale-route` "stays in open sea" still times out at 20 s
+  with one worker at load ~12 (pre-existing); settlements warm passes solo.
 - **2026-11-01 (TASK-534 merged, D-118) - For TASK-535**: `pnpm test` with default workers drives load to 65 and fails 7 timing tests
   by itself; the 8 slow world files pass with `--maxWorkers=2` on main (106 / 106), so judge them that way. Still to do: low ladder
   L-research not run, W26 framing fails §11 (pre-existing), D-culture-research 915k has no baseline. New wow: W-sunken-noon,
