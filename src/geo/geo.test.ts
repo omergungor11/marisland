@@ -106,10 +106,10 @@ const VARIANT_TARGET: Record<string, number> = {
   // TASK-537 (D-127): the Design livery of the same two, and the Colour Wharf's paint pots
   'marketStall:5': 560,
   'dock:4': 320,
-  'buoy:3': 340,
-  'buoy:4': 340,
-  'buoy:5': 340,
-  'buoy:6': 340,
+  'buoy:3': 170,
+  'buoy:4': 170,
+  'buoy:5': 170,
+  'buoy:6': 170,
   // TASK-540: the 227 u fixture coaster track (rails, ties, spine, columns), 29 tris per metre
   'coasterTrack:0': 7500,
 };

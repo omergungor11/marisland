@@ -68,8 +68,8 @@ export const DESIGN_M20_PROP_DEFS: readonly PropDef[] = [
     id: 'glasshouse',
     geo: 'glasshouse',
     tier: 2,
-    // v5..v9 = the Colour Wharf's pastel boathouses (M31 TASK-537): pinned, never rolled
-    variants: 10,
+    // v5..v8 = the Colour Wharf's pastel boathouses (M31 TASK-537): pinned, never rolled
+    variants: 9,
     rollVariants: 5,
     footprint: 2.4,
     flags: grounded,

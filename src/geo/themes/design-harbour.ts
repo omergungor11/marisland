@@ -2,7 +2,7 @@
  * Design "Colour Wharf" kit geometry (M31 TASK-537, D-127). Numbers: content/themes/design-harbour.ts.
  * Variants appended to old defs, so every older variant keeps its builder and seeded bytes:
  *
- *   glasshouse   v5..v9  pastel boathouse: pivot on the waterline, stilts below it, door on +z
+ *   glasshouse   v5..v8  pastel boathouse: pivot on the waterline, stilts below it, door on +z
  *   conservatory v1      glass waiting pavilion: an octagon on a pile deck, the pier through its two
  *                        open bays (local ±z), violet frame; hooks prism { faces, apothem, y0, y1 }
  *   buoy         v3..v6  paint pot on a float, rim and drip in the paint colour; dark at night
@@ -39,22 +39,21 @@ function boathouse({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const hd = B.d / 2;
   const fy = B.floorY;
   const eave = fy + B.wallH;
-  // stilts + deck
-  const posts = hi ? [-1, 0, 1] : [1];
-  for (const sx of [-1, 1])
-    for (const z of posts)
-      put(
-        acc,
-        baseBox(0.17, B.stiltDown + fy, 0.17),
-        [sx * (hw - 0.12), -B.stiltDown, z * (hd - 0.1)],
-        B.pile,
-        {
-          aoAmt: 0.2,
-        },
-      );
-  put(acc, baseBox(B.w + 0.1, 0.1, B.d + (hi ? 0.5 : 0.1)), [0, fy - 0.1, hi ? 0.2 : 0], B.deck, {
-    aoAmt: 0.15,
-  });
+  // stilts + deck (LOD1: a solid skirt down to the water, the stilts are specks there)
+  if (hi) {
+    for (const sx of [-1, 1])
+      for (const z of [-1, 1])
+        put(
+          acc,
+          baseBox(0.17, B.stiltDown + fy, 0.17),
+          [sx * (hw - 0.12), -B.stiltDown, z * (hd - 0.1)],
+          B.pile,
+          { aoAmt: 0.2 },
+        );
+    put(acc, baseBox(B.w + 0.1, 0.1, B.d + 0.5), [0, fy - 0.1, 0.2], B.deck, { aoAmt: 0.15 });
+  } else {
+    put(acc, baseBox(B.w + 0.1, fy, B.d + 0.1), [0, 0, 0], B.deck, { aoAmt: 0.15 });
+  }
   // walls: painted; LOD0 the front is a frame round the door, LOD1 a box with a dark door
   if (hi) {
     put(acc, baseBox(0.12, B.wallH, B.d), [-hw + 0.06, fy, 0], wall, { aoAmt: 0.12 });
@@ -70,7 +69,7 @@ function boathouse({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
     });
     // plank seams on the side walls, door trim, dark inside, a hull in the slip
     for (const s of [-1, 1])
-      for (const y of [0.45, 0.95])
+      for (const y of [0.7])
         put(acc, baseBox(0.02, 0.05, B.d - 0.1), [s * (hw + 0.005), fy + y, 0], B.trim, {
           aoAmt: 0,
         });
@@ -131,7 +130,7 @@ function pavilionDeck(acc: Acc, hi: boolean): void {
     aoAmt: 0.2,
   });
   if (!hi) return;
-  for (let k = 0; k < 8; k++) {
+  for (let k = 0; k < 8; k += 2) {
     const p = vtx(k, P.deckR - 0.15, 0);
     put(
       acc,
@@ -253,17 +252,17 @@ function paintPot({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
     return acc.finish(rng, false, true);
   }
   const paint = WHARF_PASTELS[(variant - WV.paintPot) % 4];
-  put(acc, cylB(P.float.r, P.float.r * 0.8, P.float.h, 8), [0, 0, 0], P.can, {
+  put(acc, cylB(P.float.r, P.float.r * 0.8, P.float.h, 6), [0, 0, 0], P.can, {
     aoAmt: 0.1,
     ...bob,
   });
-  put(acc, cylB(P.r * 0.95, P.r * 1.05, P.h, 9), [0, P.y0, 0], P.can, { aoAmt: 0.18, ...bob });
+  put(acc, cylB(P.r * 0.95, P.r * 1.05, P.h, 7), [0, P.y0, 0], P.can, { aoAmt: 0.18, ...bob });
   // the rim's paint, its surface and a drip down the side
-  put(acc, cylB(P.r * 1.08, P.r * 1.08, 0.11, 9), [0, top - 0.11, 0], paint, { aoAmt: 0, ...bob });
-  put(acc, cylB(P.r * 0.92, P.r * 0.92, 0.02, 9), [0, top + 0.005, 0], paint, { aoAmt: 0, ...bob });
+  put(acc, cylB(P.r * 1.08, P.r * 1.08, 0.11, 7), [0, top - 0.11, 0], paint, { aoAmt: 0, ...bob });
+  put(acc, cylB(P.r * 0.92, P.r * 0.92, 0.02, 7), [0, top + 0.005, 0], paint, { aoAmt: 0, ...bob });
   put(acc, baseBox(0.09, 0.26, 0.05), [0.12, top - 0.34, P.r * 1.02], paint, { aoAmt: 0, ...bob });
   // wire handle
-  put(acc, new THREE.TorusGeometry(P.r * 0.95, 0.02, 3, 8, PI), [0, top, 0], P.handle, {
+  put(acc, new THREE.TorusGeometry(P.r * 0.95, 0.02, 3, 5, PI), [0, top, 0], P.handle, {
     aoAmt: 0,
     ...bob,
   });

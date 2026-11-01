@@ -291,18 +291,18 @@ export function buildPartsGeometry(): THREE.BufferGeometry {
       null,
     ),
   );
-  // 23 pane: a unit two-sided card, tinted, emissive 1.9 = screen class (lit at any hour)
+  // 23 pane: a unit two-sided card, tinted, emissive 1.55 = screen class (lit at any hour)
   pieces.push({
     geo: new THREE.PlaneGeometry(1, 1).toNonIndexed(),
     kind: PART.pane,
     color: null,
-    emissive: 1.9,
+    emissive: 1.55,
   });
   pieces.push({
     geo: new THREE.PlaneGeometry(1, 1).rotateY(Math.PI).toNonIndexed(),
     kind: PART.pane,
     color: null,
-    emissive: 1.9,
+    emissive: 1.55,
   });
   // 9 beacon: unit lamp ball, fully emissive
   pieces.push({

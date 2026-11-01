@@ -3,13 +3,13 @@
  * Design instance on the harbour skeleton. Plan: world/gen/plans/design-harbour.ts, geometry:
  * geo/themes/design-harbour.ts, ritual: render/culture-movers.ts. Lengths in u, hours in game hours,
  * times in sim seconds. All three kit pieces are VARIANTS of old defs, so the Design ledger stays 15:
- *   boathouse  glasshouse v5.. (the row-reads-from-T0 def, 5 pastels)
+ *   boathouse  glasshouse v5..v8 (the row-reads-from-T0 def, 4 pastels; low has no room for a fifth)
  *   pavilion   conservatory v1 (the small octagon the pier runs through)
  *   paint pot  buoy v3.. (4 paint colours, one shared LOD1)
  */
 
 /** Paint colours in hue order: boathouse walls, paint pots, the ritual's lights and streaks. */
-export const WHARF_PASTELS = ['#FF8FB8', '#FFD76E', '#86D6FF', '#B79BEA', '#8CE3BE'] as const;
+export const WHARF_PASTELS = ['#FF8FB8', '#FFD76E', '#86D6FF', '#B79BEA'] as const;
 
 /** First added variant of each old def (random rolls never reach them, `rollVariants`). */
 export const WHARF_VARIANTS = { boathouse: 5, pavilion: 1, paintPot: 3 } as const;

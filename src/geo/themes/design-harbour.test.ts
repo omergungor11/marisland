@@ -13,9 +13,9 @@ const tris = (g: THREE.BufferGeometry): number =>
 
 /** LOD0 / LOD1 triangle budgets (D-127: ~1 MB of Design buffers in all). */
 const KIT: readonly [string, number, number, number, number][] = [
-  ['glasshouse', WV.boathouse, 5, 330, 90],
-  ['conservatory', WV.pavilion, 1, 900, 260],
-  ['buoy', WV.paintPot, 4, 340, 40],
+  ['glasshouse', WV.boathouse, 4, 300, 77],
+  ['conservatory', WV.pavilion, 1, 600, 170],
+  ['buoy', WV.paintPot, 4, 170, 45],
 ];
 
 describe('Colour Wharf kit (TASK-537)', () => {
