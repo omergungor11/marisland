@@ -218,7 +218,11 @@ describe('archipelago — 30-seed full generation', () => {
         const len = Math.sqrt(best);
         let deepest = Infinity;
         for (let t = 4; t <= len - 4; t += 1) {
-          const y = heightAt(w.height, xa + ((xb - xa) * t) / len, za + ((zb - za) * t) / len);
+          const x = xa + ((xb - xa) * t) / len;
+          const z = za + ((zb - za) * t) / len;
+          // (an islet stands in the channel by design, ISLET_LAYOUT: it is no bridge)
+          if (w.islets.some((it) => Math.hypot(it.cx - x, it.cz - z) < it.reach + 4)) continue;
+          const y = heightAt(w.height, x, z);
           expect(y, `seed ${seed} channel ${a}-${b} dry at ${t}`).toBeLessThan(0);
           deepest = Math.min(deepest, y);
         }

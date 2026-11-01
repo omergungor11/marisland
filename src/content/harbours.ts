@@ -157,7 +157,7 @@ export const HARBOURS: Partial<Record<'research' | 'marketing' | 'design', Harbo
       board: { at: [-1.6, -1.9], size: [1.2, 0.5] },
     },
     light: { inset: 0.6 },
-    keepOut: { pier: 2.5, head: 3, hard: 0.6 },
+    keepOut: { pier: 2.5, head: 3, hard: 0.65 },
     kit: {
       head: { variant: 0, plank: 1.2, lift: 0.02 },
       deckY: 0.7,
