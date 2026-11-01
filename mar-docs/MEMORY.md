@@ -10,6 +10,13 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-11-01 (TASK-540 merged, D-120) - For TASK-541 / 539**: sampler `world/coaster-spline.ts`, builder `geo/themes/qa-coaster.ts`
+  (`buildCoasterTrack`: a registry def can't receive points, so the real track is built by calling it with 539's points + terrain
+  `groundY`, instance at the site origin). Spline data type `CoasterSplineData` in `content/themes/qa-coaster.ts`: `{ points, closed,
+  stationPoints: [i0, i1], chainPoints: [[i, j]] }`; chain ranges to arc length via `controlS`. Train = 3 cars, pitch 2.9, at
+  `s - k * pitch`, basis `makeBasis(side, up, tangent)`. Riders sit at the car's `seats.list`. Station local +x follows the tangent,
+  pivot `railY` 1.1 below the rail. **Trap for 541:** the ✓ lamps on station and board are baked emissive, always on: draw a separate
+  mesh at the `lamp` hook or get a lamp-less variant. Gallery: `pnpm exec tsx scripts/gallery-shots.ts coaster`.
 - **2026-10-29 (TASK-526 M28 kit placed + moving, D-107) - For TASK-527 (QA)**: placement `world/gen/plans/research-m28.ts`
   (`placeSummitKit`, Research `finish` after `reserveResearchAnchors`), numbers `content/themes/research-m28-site.ts`
   (`RESEARCH_M28_SITE` / `RESEARCH_M28_MOTION`), gazers `deckGazerScene` in `render/culture-movers.ts`, big dish tiers

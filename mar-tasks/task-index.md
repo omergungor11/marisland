@@ -410,7 +410,7 @@ Details in `phases/phase-3.md`.
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
 | TASK-539 | QA park site (pure data): coaster footprint beside the Proving Grounds, closed spline (station, chain lift, camelback, loop) fitted to the terrain with clearances, bumper-car rink, station / board anchors; terrain pads; 30-seed tests; hash re-pin | worldgen | L | PENDING | TASK-535 |
-| TASK-540 | Coaster props: track builder from a spline (rails, ties, supports to the ground, loop), station, cars (mover meshes, mint / yellow), dummy + capped riders, bumper cars, cotton-candy cart, TESTED ✓ board; QA tier-1 override; gallery | props | L | PENDING | TASK-535 |
+| TASK-540 | Coaster props: track builder from a spline (rails, ties, supports to the ground, loop), station, cars (mover meshes, mint / yellow), dummy + capped riders, bumper cars, cotton-candy cart, TESTED ✓ board; QA tier-1 override; gallery | props | L | COMPLETED (D-120) | — |
 | TASK-541 | Placement + motion: coaster cycle (dummy run → ✓ lamp → bot run), chain-lift click, closed-form speed along the spline, bumper cars, wow preset (noon siren, car on the loop) | worldgen + life | L | PENDING | TASK-539, TASK-540 |
 | TASK-542 | M32 shots + QA | qa | S | PENDING | TASK-541 |
 

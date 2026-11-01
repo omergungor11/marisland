@@ -2,6 +2,23 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-120: QA Thrill Test Park coaster props — a spline-driven track builder, three-free sampling module, station, cars, riders, bumper cars; QA cap 15 -> 17 / tier-1 1 -> 2 (TASK-540; builds D-115) — 2026-11-01
+
+**Decision** (no placement, no world hash change; TASK-539 owns the real spline, TASK-541 places and moves things): (1) **Sampling
+module** `src/world/coaster-spline.ts` (no three): `createCoasterSpline(points, { closed, step })` (centripetal Catmull-Rom, uniform
+arc-length table) and `sampleCoaster(spline, s, out)` -> pos, tangent, up, side. The frame is parallel-transported (no flip through a
+loop) and snapped back to world up wherever the car is upright, because a 3D circuit has holonomy (~53 deg over a lap on the fixture).
+Spline = rail-top centreline, site-local frame, y absolute. (2) **`buildCoasterTrack({ points, closed, groundY, lod, rng, chain, spline })`**
+(geo/themes/qa-coaster.ts): rails, ties, spine (yellow while inverted), chain lift on arc-length ranges, columns to groundY (A-frames when
+tall, outside columns on loop sides, none at the inverted top). The def `coasterTrack` builds the FIXTURE spline (content/themes/qa-coaster.ts)
+on flat ground; the real track is built by calling the builder with TASK-539's points. (3) **Defs**: `coasterTrack` (tier 1) and
+`coasterStation` (tier 2), both large (T0 by size), at the end of PROP_DEFS after M33; `cultureCapOverride.qa` = 17 / 2. **Variants of old
+defs** (rolls untouched): TESTED board = `checklistBoard` v2, cotton-candy cart = `inspectionBooth` v1. **Geo-only movers** (no PropDef, no
+ledger): `coasterCar` (mint / yellow), `coasterRider` (dummy, two capped bots), `bumperCar` (the test cart's gear, 3 colours).
+**Numbers** (tris LOD0 / LOD1): fixture track 227.4 u = 6660 / 1366 (29.3 / 6.0 per m), station 1156, car 524 / 100, rider 524 / 44,
+bumper 662 / 116, board 314 / 88, cart 1038 / 272. **Open**: the check lamps are baked emissive (always on at night), 541 needs a separate
+lamp mesh or a lamp-less variant; track thin / grey at distance; the loop is faceted; the station is plain; the fixture drop is steep.
+
 ## D-109: Research crag face lawn → cliff on the final ground; the dial and deck sites keep their lawn (TASK-529; builds D-105 / D-107) — 2026-10-30
 
 **Decision**: the M28 crag-foot pass in `placeSummitKit` (world/gen/plans/research-m28.ts, plan `finish`, final
