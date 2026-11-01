@@ -54,6 +54,8 @@ export interface Budget {
  * 351–355k tris: low triangles 350k → 366k.
  * D-100 (TASK-519 QA): W27 171 MB = W4's geometry + 0.1 MB texture rounding, W4 / W27 sit on the
  * line: medium gpuMemoryMB 170 → 172.
+ * D-123 (user 2026-11-01): W27 173 MB after M31 Research, M32 and the Millbrook growth, with the M31 harbours
+ * and M33 kit still to land (~176–177 MB, inferred): medium gpuMemoryMB 172 → 180. L-qa 78, L-coding 77: low 76 → 78.
  */
 export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
   low: {
@@ -64,7 +66,7 @@ export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
     agents: 25,
     particles: 2_000,
     programs: 12,
-    gpuMemoryMB: 76,
+    gpuMemoryMB: 78,
     jsHeapMB: 120,
     newSeedMs: 1500,
   },
@@ -76,7 +78,7 @@ export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
     agents: 60,
     particles: 6_000,
     programs: 20,
-    gpuMemoryMB: 172,
+    gpuMemoryMB: 180,
     jsHeapMB: 180,
     newSeedMs: 800,
   },
