@@ -10,6 +10,9 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-11-01 (TASK-535 done, M31 Research passes)**: report `mar-docs/qa/m31-research-2026-11-01.md`, follow-ups TASK-548…551. Medium memory peak
+  171 / 172 at main `09506e2`. 536 / 537 wait for a user budget decision (options in the report; to be asked once 541 and the Millbrook growth
+  report their numbers). Low memory is only enforced at 960x540; at the stated 1280x720 it reads 87–92 MB against 76.
 - **2026-11-01 (TASK-539 merged, D-119) - For TASK-541**: contract in `plans/qa-park.ts` (`coasterTrackOf`, anchors `coaster*`); it has its own
   local sampler, `world/coaster-spline.ts` (540) is the one for motion: unify at 541. 539 publishes `parts` (`COASTER_PART_RANGE`), 540
   expects `CoasterSplineData` stationPoints / chainPoints: map them. Cars are a fixed size while the template scales 0.8-1 and seed 1001
