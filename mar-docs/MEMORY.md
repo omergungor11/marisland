@@ -10,6 +10,14 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-11-02 (TASK-536 + 537 merged, D-126 / D-127; budgets D-128)**: all of wave 2 is in (545, 547, 536, 537). Low `gpuMemoryMB` now 80 (every culture's
+  170-240 u rung read 79), warm `settlements` generation bound 500 ms (TASK-553 profiles it). `site:<anchor>@<theme>:` picks the island when several share an
+  anchor (all ferry islands publish `harbourPier1` etc.). `PART.panel` 23 (Carnival flash), `PART.pane` 24 (Colour Wharf prism), both in `PART_SLOTS`.
+  For TASK-538: Marketing ferry stops at sim ~40 s on seed 1001 (dwell 8, cycle 313.4); Design calls at sim 124.55 (cycle 318). Wow `W-carnival-{noon,dusk,arrival}`,
+  `W-colour-wharf-{day,dusk,arrival}`; dev `D-carnival-*`, `D-wharf-*`; add them to ART_BIBLE §11. Nobody has watched the wheel boost, flash rhythm, confetti,
+  marquee chase, lantern boat's return / U-turn / brake. Fallback row seeds: 1526, 2841, 4156, 4682, 5208, 6260, 6523, 7312, 7838.
+  Gotchas: a new culture part kind pays slots × 88 B and each scene's `max` multiplies across kinds: give rare kinds a `PART_SLOTS` entry; `harbourCalmMask` and the
+  `harbour-beam` meshes include every harbour: find by position. Next: TASK-538, 542, 546 QA (can run in parallel), then 548-553.
 - **2026-11-01 (TASK-545 merged, D-124), for TASK-546**: seed 1001 line cycle is 5 s: `simt` phase 2.4 = arms release, 1.9-2.5 = the hop. Courier 2 rises off its cradle at `simt` 50-52.6
   (W-morning-shift is at 52), courier 0 lands on the pad at about 69.4-72. Shots: wow `W-morning-shift`, `W-data-lake-night`; dev `D-foundry-{line,arm,hop}`, `D-port-park`, `D-track`, `D-lake-day`,
   `D-lake-pavilion`; add them to ART_BIBLE §11. WATCH the motion: nobody has seen it move. Never viewed: a walker's shrink at its route end, the track's return lane, cheer hop, hop over the ramp block,
