@@ -56,6 +56,8 @@ export interface Budget {
  * line: medium gpuMemoryMB 170 → 172.
  * D-123 (user 2026-11-01): W27 173 MB after M31 Research, M32 and the Millbrook growth, with the M31 harbours
  * and M33 kit still to land (~176–177 MB, inferred): medium gpuMemoryMB 172 → 180. L-qa 78, L-coding 77: low 76 → 78.
+ * D-128 (user 2026-11-02): with the Carnival Pier, Colour Wharf and the placed M33 kit, L-coding / L-qa / L-marketing /
+ * L-design / L-pairs-design read 79 MB at the 170–240 u rungs: low gpuMemoryMB 78 → 80.
  */
 export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
   low: {
@@ -66,7 +68,7 @@ export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
     agents: 25,
     particles: 2_000,
     programs: 12,
-    gpuMemoryMB: 78,
+    gpuMemoryMB: 80,
     jsHeapMB: 120,
     newSeedMs: 1500,
   },
