@@ -8,6 +8,25 @@
 **Not changed**: D-track's "sand wedge" is not terrain. It is the cream cap of a Data Lake `serverPod` (top 10.7, the lens at 10.6, 1.5 u away): the `site:botTrackYard:9,4.5,-9` eye sits on the lake shore. With the pods removed in a scratch build, the quay paving shows under the lens instead. Cam fix: TASK-554 (engine).
 **Impact**: hashes re-pinned. Wow / dev cams untouched.
 
+## D-130: Glow and flash fixes from the 2026-11-06 QA with the parts we have, and a morning light key (TASK-555) — 2026-11-06
+
+**Decision**: (1) **Quantum pavilion core**: the opaque core ball gets a pale heart on its camera side and a stippled halo disc
+(`PART.patch`, its dither rim) behind it, both turned to the camera (`CultureCtx.cam` now carries y). The halo comes in with the night.
+The pavilion's lantern pool goes 6.5 u / 0.8 / hue 0.5 → 4.5 u / 0.5 / hue 0.15 and its glass / frame albedo `#D2F1FB` / `#E9F1F8` →
+`#B4DDEA` / `#CFDDE8`: the near-white glass under the half-violet pool and the night hemisphere was the lavender wash. (2) **WELCOME flash**:
+the frame flashes, not the face: four gold strips over the frame ring and 0.18 u past it, 5 blinks of 0.19 s every 0.42 s; nothing covers
+the word (`PART_SLOTS.panel` 2 → 8). The "WFLCOME" was the wheel's spokes and cabins in front of the board at the arrival cam, not the flash.
+(3) **Paint streaks**: three thin dashes per boathouse (0.5 → 0.32 u across, 1.05 u along, 1.35 u apart) that sway out of step instead of
+one 1.2 × 2 u blob. (4) **Siren rings**: three flat rings round the ✓ lamp's mast, r 0.4 → 3.1 (kit u) as they rise 1.1, instead of two
+r ≤ 0.9 rings out of the station's +z face. (5) **Morning key** at 07:00 (warm sun `#FFD498` / 2.8, warm horizon and haze, a little less sky
+fill); the plain day key starts at 08:30 instead of 07:00, so 06:00–08:30 now ramps dawn → morning → day.
+**Numbers**: programs 17 (no new program, texture or target). Instance slots +2 per pavilion, +3 per WELCOME board, +1 per coaster lamp,
++6 per Colour Wharf; at 88 B × the uncapped kinds that is a few kB. See the TASK-555 report for the shot numbers.
+**Not taken**: a transparent / additive halo material (a new program, limit 20, 17 used); flashing the face to a colour under the ink
+(5 mm z gaps, z-fighting risk); a lower 07:00 sun (the 24° elevation already gives 2 × shadows; see Open).
+**Open**: W-morning-shift's subjects (agents, foundry movers) are `castShadow = false`, so "long shadows" cannot read there whatever the
+sun does; the ladder of who casts belongs to engine / life. The halo stipple and the flash bloom are judged on SwiftShader only.
+
 ## D-129: TASK-554 re-frame — framing first, no LOD change; the dev set is asserted per culture with `--only`, not as a whole — 2026-11-06
 
 **Decision**: (1) Every 2026-11-06 QA framing defect and every dev shot over 300 calls was fixed by moving the camera only (`src/content/shots.ts`); no LOD, merge or budget changed. A frame over 300 calls was nearly always low and level, so it held two islands or the whole campus: raising the cam and pitching it down cuts those out. (2) **The dev set is not asserted as a whole** (216 presets, 173 of them medium; hours under SwiftShader). Instead a culture's QA task runs `pnpm shots dev --assert --no-selftest --only=<its D-* ids>` (~10 min for 23 shots), the same budget as wow; no harness change. (3) `W-carnival-noon` moves to `simt` 37 (the ferry coming in fills the empty right half), `W-morning-shift` to `simt` 51 (courier 2 half-way up in front of the cliff; at 52 it sits against the trees in the tilt-shift blur). (4) `D-carnival-dusk` keeps the old arrival cam: with the dusk ritual lit the new cam reads 309.

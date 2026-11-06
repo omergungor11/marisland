@@ -100,8 +100,22 @@ export const ENV_KEYS: readonly EnvKey[] = [
     shadowTint: '#6B5BA8',
     night: 0.15,
   },
+  // TASK-555 (D-130): a morning key, so 07:00 is a low warm sun with a warm haze, not noon; the
+  // plain day starts at 08:30 (it was 07:00: the morning read as noon)
   {
     hour: 7.0,
+    zenith: '#64B2EC',
+    horizon: '#F8E6D4',
+    sun: '#FFD498',
+    sunIntensity: 2.8,
+    hemiSky: '#C3D9F6',
+    hemiGround: '#C2BC88',
+    fog: '#E8E4DC',
+    shadowTint: '#5C64B0',
+    night: 0,
+  },
+  {
+    hour: 8.5,
     zenith: '#5CB8F2',
     horizon: '#CDEFFF',
     sun: '#FFF6E5',

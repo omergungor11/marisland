@@ -135,6 +135,14 @@ export const CODING_FOUNDRY_MOTION = {
     /** The pavilion's `glow` hook. */
     at: [0, 1.08, 0] as const,
     core: { base: 0.17, r: 1.05, night: 1.3, pulse: 0.1, period: 3.7 },
+    /**
+     * TASK-555: the core's hot heart, a ball `share` × the core's radius on its camera side, `proud` ×
+     * its radius standing out of the core; and the halo, a stippled disc of `r` u (solid inside 0.3
+     * of it) `back` × the core's radius behind the core, facing the camera, in from night `from`,
+     * breathing `pulse` × the core's pulse.
+     */
+    heart: { share: 0.5, proud: 0.35, color: '#E8FBFF' },
+    halo: { r: 0.62, back: 0.6, from: 0.3, pulse: 2 },
     sparks: { n: 3, r: 0.48, size: 0.055, sizeNight: 0.085, period: 5.3, y: 0.62, bob: 0.22 },
     range: 150,
   },

@@ -40,8 +40,8 @@ export const CODING_M33_PAL = {
   /** Data Lake: hull navy, pipe, gold, glass, cloud. */
   navy: '#2C3E72',
   navyDeep: '#22305A',
-  glass: '#D2F1FB',
-  glassFrame: '#E9F1F8',
+  glass: '#B4DDEA',
+  glassFrame: '#CFDDE8',
   gold: '#F5C84C',
   goldDeep: '#D9A93B',
   cloud: '#FFFFFF',

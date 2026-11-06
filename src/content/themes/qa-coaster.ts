@@ -166,9 +166,21 @@ export const QA_COASTER_MOTION = {
     tau: 0.7,
     color: '#7BF2BC',
     flash: { life: 0.9, r0: 0.3, r1: 2.2 },
-    /** During the noon siren the lamp blinks at this rate (Hz) and sends sound rings out of the station's +z. */
+    /**
+     * During the noon siren the lamp blinks at this rate (Hz) and sends sound rings out round its mast.
+     * TASK-555: flat rings along `dir` (up), widening past the roof (station depth 3.4) as they rise
+     * `travel` (a small ring out of the +z face read as a hoop on the roof).
+     */
     sirenHz: 2.2,
-    sirenRing: { rings: 2, period: 1.4, r0: 0.2, r1: 0.9, travel: 1.2, color: P.cream },
+    sirenRing: {
+      rings: 3,
+      period: 1.8,
+      r0: 0.4,
+      r1: 3.1,
+      travel: 1.1,
+      dir: [0, 1, 0] as const,
+      color: P.cream,
+    },
   },
   /** At 12:00 + `noonLead` s the bot train's lead car enters the loop. */
   noonLead: 4,

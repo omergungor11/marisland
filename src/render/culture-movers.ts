@@ -96,8 +96,8 @@ export interface CultureCtx {
   hour: number;
   /** Culture-clock day seconds (the relay clock; = hour x secondsPerHour when none is given). */
   day: number;
-  /** Camera position, world xz (stall keepers turn and wave toward it). */
-  cam: { x: number; z: number };
+  /** Camera position, world (stall keepers turn and wave toward it; glow halos face it). */
+  cam: { x: number; y: number; z: number };
   /** Direction to the sun (true, may point below the horizon) and 0 day .. 1 night. */
   sun: { x: number; y: number; z: number };
   night: number;
@@ -366,7 +366,10 @@ function coasterLampScene(show: CoasterShow, at: V3, r: number, ringOut: boolean
   return (w, c) => {
     coasterStateAt(show, c.day, st);
     const siren = c.fest?.id === 'sirenTest';
-    if (siren && ringOut) rings(w, at, [0, 0, 1], L.sirenRing, L.sirenRing.travel, c.time);
+    if (siren && ringOut) {
+      const R = L.sirenRing;
+      rings(w, at, [R.dir[0], R.dir[1], R.dir[2]], R, R.travel, c.time);
+    }
     if (!st.lamp) return;
     const blink = siren ? 0.5 + 0.5 * Math.sin(c.day * L.sirenHz * Math.PI * 2) : 1;
     const flash = Math.exp(-Math.max(0, st.sinceLamp) / L.tau);
@@ -454,15 +457,47 @@ function podSteamScene(at: V3, phase: number): Scene['run'] {
 
 /**
  * Quantum pavilion (TASK-545, `glow` hook): the core's slow pulse and gold sparks orbiting the
- * chandelier, dim by day, full at night. Pavilion frame.
+ * chandelier, dim by day, full at night. TASK-555: a pale heart on the camera side of the core and a
+ * stippled halo disc behind it, facing the camera, so the core reads as a light, not a flat disc
+ * (the parts have no alpha: the halo's soft edge is the patch's dither rim). Pavilion frame.
  */
+const _camL = new THREE.Vector3();
+const _invP = new THREE.Matrix4();
 function pavilionGlowScene(at: V3): Scene['run'] {
   const G = CFM.glow;
-  return (w, c) => {
+  return (w, c, s) => {
     const n = c.night;
     const pulse = 1 + G.core.pulse * Math.sin((c.time * Math.PI * 2) / G.core.period);
     const r = (G.core.r + (G.core.night - G.core.r) * n) * pulse;
-    w.put(PART.glow, at, [0, 0, 0], G.core.base * r, G.color);
+    const rc = G.core.base * r;
+    // the camera's direction in the pavilion frame
+    _camL.set(c.cam.x, c.cam.y, c.cam.z);
+    if (s.pivot) _camL.applyMatrix4(_invP.copy(s.pivot).invert());
+    _camL.set(_camL.x - at[0], _camL.y - at[1], _camL.z - at[2]).normalize();
+    w.put(PART.glow, at, [0, 0, 0], rc, G.color);
+    const H = G.heart;
+    const rh = rc * H.share;
+    const off = rc - rh * (1 - H.proud);
+    w.put(
+      PART.glow,
+      [at[0] + _camL.x * off, at[1] + _camL.y * off, at[2] + _camL.z * off],
+      [0, 0, 0],
+      rh,
+      H.color,
+    );
+    const A = G.halo;
+    const kh = smooth((n - A.from) / (1 - A.from));
+    if (kh > 0.01) {
+      _qb.setFromUnitVectors(_up, _camL);
+      const back = rc * A.back;
+      w.putQ(
+        PART.patch,
+        [at[0] - _camL.x * back, at[1] - _camL.y * back, at[2] - _camL.z * back],
+        _qb,
+        A.r * kh * (1 + (pulse - 1) * A.pulse),
+        G.color,
+      );
+    }
     const P = G.sparks;
     for (let k = 0; k < P.n; k++) {
       const a = (c.time * Math.PI * 2) / P.period + (k * Math.PI * 2) / P.n;
@@ -947,18 +982,34 @@ function pierConfettiScene(idx: number, call: FerryCall, delay: number): Scene['
   };
 }
 
-/** The WELCOME screen flashes as the ferry stops (screen frame: a lit panel over the board). */
+/**
+ * The WELCOME screen flashes as the ferry stops (screen frame). TASK-555: the frame flashes, not the
+ * face: four lit strips over the frame ring (`edge` past it), short blinks of `on` × the period, so
+ * the word is never covered (a panel over the whole board read as a blank white card for 2 s).
+ */
 function welcomeFlashScene(call: FerryCall): Scene['run'] {
   const F = CARNIVAL_MOTION.flash;
   const S = CARNIVAL_PIER.screen;
-  const at: V3 = [0, S.y + S.h / 2, -0.1 + S.depth / 2 + 0.03];
+  const z = -0.1 + S.depth / 2 + F.z;
+  const cy = S.y + S.h / 2;
+  const t = S.frame + F.edge;
+  // strips from the face's edge out past the frame, never over the face
+  const hw = S.w / 2 + t / 2;
+  const hh = S.h / 2 + t / 2;
   return (w, c) => {
     const u = sinceFerryArrival(call, c.time) - F.delay;
     if (u < 0 || u >= F.pulses * F.period) return;
-    const k = Math.sin(((u % F.period) / F.period) * Math.PI);
-    if (k < 0.25) return;
-    const s = F.from + (1 - F.from) * k;
-    w.put(PART.panel, at, [0, 0, 0], [S.w * s, S.h * s, 1], F.color);
+    // a blink centred in each period
+    if (Math.abs((u % F.period) / F.period - 0.5) > F.on / 2) return;
+    const s = 1 + F.pop * Math.sin((((u % F.period) / F.period - 0.5 + F.on / 2) / F.on) * Math.PI);
+    const ox = (S.w / 2 + S.frame) * (s - 1);
+    const oy = (S.h / 2 + S.frame) * (s - 1);
+    const W = 2 * (hw + t / 2) * s;
+    const H = 2 * (hh - t / 2) * s;
+    w.put(PART.panel, [0, cy + hh + oy, z], [0, 0, 0], [W, t, 1], F.color);
+    w.put(PART.panel, [0, cy - hh - oy, z], [0, 0, 0], [W, t, 1], F.color);
+    w.put(PART.panel, [-hw - ox, cy, z], [0, 0, 0], [t, H, 1], F.color);
+    w.put(PART.panel, [hw + ox, cy, z], [0, 0, 0], [t, H, 1], F.color);
   };
 }
 
@@ -1547,7 +1598,7 @@ function buoyTurnScene(call: FerryCall, pots: readonly (XZ & { rotY: number })[]
 
 /**
  * Boathouse colour on the evening water (M31 TASK-537; world frame): the water shader has no real
- * reflections, so each house lays a soft patch of its paint off its door.
+ * reflections, so each house lays a broken streak of its paint off its door (TASK-555: thin dashes).
  */
 function boathouseStreakScene(houses: readonly (XZ & { rotY: number })[]): Scene['run'] {
   const S = WM.streak;
@@ -1556,17 +1607,23 @@ function boathouseStreakScene(houses: readonly (XZ & { rotY: number })[]): Scene
     if (k <= 0.01) return;
     houses.forEach((h, i) => {
       const hex = WHARF_PASTELS[i % WHARF_PASTELS.length];
-      const b = 1 + S.shimmer * Math.sin((c.time / S.period + i * 0.37) * Math.PI * 2) * c.motion;
-      const x = h.x + Math.cos(h.rotY) * S.out;
-      const z = h.z + Math.sin(h.rotY) * S.out;
-      // (the patch's local +z along the door heading: yaw from (cos, sin) to (sin, cos))
-      w.put(
-        PART.patch,
-        [x, S.y, z],
-        [0, Math.PI / 2 - h.rotY, 0],
-        [S.size[0] * k * b, S.size[1], S.size[2] * k],
-        hex,
-      );
+      const fx = Math.cos(h.rotY);
+      const fz = Math.sin(h.rotY);
+      for (let j = 0; j < S.dashes; j++) {
+        const ph = (c.time / S.period + i * 0.37 + j * 0.29) * Math.PI * 2;
+        const b = 1 + S.shimmer * Math.sin(ph) * c.motion;
+        const sway = S.sway * Math.sin(ph * 0.7 + j) * c.motion;
+        const d = S.out + j * S.gap;
+        const across = S.size[0] * (1 - S.taper * j);
+        // (the patch's local +z along the door heading: yaw from (cos, sin) to (sin, cos))
+        w.put(
+          PART.patch,
+          [h.x + fx * d - fz * sway, S.y, h.z + fz * d + fx * sway],
+          [0, Math.PI / 2 - h.rotY, 0],
+          [across * k * b, S.size[1], S.size[2] * k],
+          hex,
+        );
+      }
     });
   };
 }
@@ -2523,7 +2580,7 @@ export function createCultureMovers(
             pivotOf(store, i),
             store.rotY[i],
             [0, 2, 0],
-            1,
+            4,
             welcomeFlashScene(pierCall),
           );
           sc.range2 = A.range * A.range;
@@ -2559,7 +2616,12 @@ export function createCultureMovers(
     };
     const houses = anchorPoints(isl, 'boathouse');
     if (houses.length > 0)
-      world0(houses[0], houses.length, WM.streak.range, boathouseStreakScene(houses));
+      world0(
+        houses[0],
+        houses.length * WM.streak.dashes,
+        WM.streak.range,
+        boathouseStreakScene(houses),
+      );
     const di = world.docks.findIndex((k) => k.islandId === isl.id);
     const call = di >= 0 ? ferryCallAt(world, di, ferries) : null;
     if (!call) continue;
@@ -2640,7 +2702,7 @@ export function createCultureMovers(
               m,
               store.rotY[i],
               [0, 2, 0],
-              1 + CFM.glow.sparks.n,
+              3 + CFM.glow.sparks.n,
               pavilionGlowScene(CFM.glow.at),
             );
       const r = d === pod ? CFM.steam.range : CFM.glow.range;
@@ -2790,7 +2852,7 @@ export function createCultureMovers(
     time: 0,
     hour: 0,
     day: 0,
-    cam: { x: 0, z: 0 },
+    cam: { x: 0, y: 0, z: 0 },
     sun: { x: 0, y: 1, z: 0 },
     night: 0,
     wind: { x: 1, z: 0, s: 1 },
@@ -2808,6 +2870,7 @@ export function createCultureMovers(
     ctx.hour = hour;
     ctx.day = culture?.day ?? hour * SPH;
     ctx.cam.x = camPos.x;
+    ctx.cam.y = camPos.y;
     ctx.cam.z = camPos.z;
     ctx.sun = env.sunSkyDir;
     ctx.night = env.night;

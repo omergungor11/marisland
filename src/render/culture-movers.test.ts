@@ -21,7 +21,7 @@ import { CODING_FOUNDRY_MOTION } from '../content/themes/coding-foundry-motion.t
 import { DOCK } from '../content/settlements.ts';
 import { pierLoop } from './harbour-routes.ts';
 import { MARKETING_M27_MOTION } from '../content/themes/marketing-m27-site.ts';
-import { CARNIVAL_MOTION } from '../content/themes/marketing-harbour.ts';
+import { CARNIVAL_MOTION, CARNIVAL_PIER } from '../content/themes/marketing-harbour.ts';
 import { LIFE_PLAN } from '../content/life.ts';
 import { ferryCallAt } from '../life/boats.ts';
 import { RESEARCH_M28 } from '../content/themes/research-m28.ts';
@@ -525,10 +525,15 @@ describe('culture movers', () => {
     view.update(at - 2, 12, env(12), cam, fest());
     expect(ofKind(view, PART.panel).length).toBe(0);
     expect(flying()).toBe(0);
-    // a flash's peak and the burst
+    // a flash's peak and the burst: the frame's four strips (TASK-555), all on the board
     view.update(at + F.delay + F.period * 1.5, 12, env(12), cam, fest());
-    expect(ofKind(view, PART.panel).length).toBe(1);
-    expect(near(ofKind(view, PART.panel)[0], A.carnivalScreen, 1)).toBe(true);
+    expect(ofKind(view, PART.panel).length).toBe(4);
+    for (const m of ofKind(view, PART.panel))
+      expect(near(m, A.carnivalScreen, CARNIVAL_PIER.screen.w)).toBe(true);
+    // between two blinks: dark, the word shows
+    view.update(at + F.delay + F.period * 2, 12, env(12), cam, fest());
+    expect(ofKind(view, PART.panel).length).toBe(0);
+    view.update(at + F.delay + F.period * 1.5, 12, env(12), cam, fest());
     expect(flying()).toBeGreaterThanOrEqual(CARNIVAL_MOTION.confetti.pieces * 2);
     // a seek agrees with itself
     const a = snapshot(view);
