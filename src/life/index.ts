@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { BUDGETS } from '../content/budgets.ts';
 import {
   ACTIVITY,
   CATS,
@@ -270,8 +271,15 @@ export function createLife(deps: LifeDeps): LifeSystem {
   const ambient = new AmbientScheduler(deps.seed);
   const spotRng = ctx.rngFor('spots');
   const counts = { coconutDrops: 0 };
+  // TASK-557 (D-133): ambient visitors (a fish jump, a dolphin pair) only come while the agent budget has room
+  // for them; the plan itself is trimmed so they do (a full pool made the dev set read 62 / 60).
+  const room = (n: number): boolean => {
+    let live = 0;
+    for (const k of all) live += k.liveCount;
+    return live + n <= BUDGETS[deps.quality].agents;
+  };
   ambient.on('fishJump', (e) => {
-    if (!kinds.jumpers || deps.getTier() < 2) return;
+    if (!kinds.jumpers || deps.getTier() < 2 || !room(1)) return;
     const s = pickJumpSpot(ctx, spotRng, e.r);
     if (s) kinds.jumpers.trigger(s.x, s.z, s.dx, s.dz);
   });
@@ -282,7 +290,7 @@ export function createLife(deps: LifeDeps): LifeSystem {
     counts.coconutDrops++; // placeholder: the prop layer subscribes to drive the real drop
   });
   ambient.on('dolphins', (e) => {
-    if (!kinds.dolphins || deps.getTier() < 1) return;
+    if (!kinds.dolphins || deps.getTier() < 1 || !room(2)) return;
     const s = pickDolphinSpot(ctx, spotRng, e.r);
     if (!s) return;
     kinds.dolphins.trigger(s.x, s.z, s.dx, s.dz, 0);
