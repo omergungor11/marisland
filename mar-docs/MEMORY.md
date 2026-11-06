@@ -10,6 +10,11 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-11-06 (TASK-538, 542, 546 QA done; reports in `mar-docs/qa/*-2026-11-06.md`)**: all three pass with follow-ups, wow medium 55 / 55,
+  low ladders 79 / 80 MB on every culture checked (Marketing, Design, QA, Coding), W27 175 / 180 MB, W-carnival-noon 298 / 300 calls: nothing has room.
+  Only fail: W-colour-wharf-arrival (ferry cropped). ✓ lamp trap from 540 is fixed (dark by day, mint at +60 s). New wow rows are in ART_BIBLE §11.
+  Follow-ups split by owner: TASK-554 cams + dev-set calls (engine), 555 glow / flash (shader), 556 placement (worldgen), 557 props / life, 558 fine-step motion QA.
+  QA agents run `pnpm shots` in worktrees via an untracked `node_modules` symlink: never commit it; they share the scratchpad `wow.log`, read each run's own manifest.
 - **2026-11-02 (TASK-536 + 537 merged, D-126 / D-127; budgets D-128)**: all of wave 2 is in (545, 547, 536, 537). Low `gpuMemoryMB` now 80 (every culture's
   170-240 u rung read 79), warm `settlements` generation bound 500 ms (TASK-553 profiles it). `site:<anchor>@<theme>:` picks the island when several share an
   anchor (all ferry islands publish `harbourPier1` etc.). `PART.panel` 23 (Carnival flash), `PART.pane` 24 (Colour Wharf prism), both in `PART_SLOTS`.

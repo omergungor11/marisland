@@ -406,9 +406,14 @@ Details in `phases/phase-3.md`.
 | TASK-551 | Re-frame W26 (gantry, steam, §11); wire `detail` into `measureGpuMemory` so memory splits are visible; D-culture-research 916k / 800k; low memory reference comment vs 960x540 | engine | S | PENDING | — |
 | TASK-552 | CI green again: red since 2026-10-12 (last green `c3b0561`). `pnpm test` fails on runner timeouts and generation-time limits, so `shots ci --assert` never runs. Seed 1 stage hash differs on Linux CI (`ce41…` vs local `f5d5…` at `d55b02b`, seeds 42 and 1001 match): find the determinism cause first | devops + worldgen | M | PENDING | — |
 | TASK-553 | Profile world generation: the warm `settlements` bound went 400 → 500 ms (D-128) after the M31 harbours and M33 kit (440–471 ms solo); find the stages that grew (sites / routes / props timings), win back what is cheap, then tighten the bound | worldgen | S | PENDING | — |
+| TASK-554 | Re-frame from the 2026-11-06 QA: W-colour-wharf-arrival FAIL (ferry cropped, `WHARF_CAMS.arrival`); W-carnival-arrival (wheel rim over WELCOME, pontoon corner); W-carnival-noon (empty right half); W-thrill-noon (station roof ~40 %, rink hidden); D-coaster-loop / -lift (cam inside the lattice); W-morning-shift (courier a speck, ≥ 12 px); D-track (walker 1 u from the lens); W-data-lake-night (empty top 40 %, cloud cut). Dev set over 300 calls: D-foundry-arm 372, D-lake-pavilion 373, D-wharf-row-dusk 402 / 993k, D-wharf-row 328, D-wharf-pavilion 311, D-coaster-loop-in 297 / 860k: fix and decide whether to assert the dev set | engine | M | PENDING | — |
+| TASK-555 | Light / glow from the 2026-11-06 QA: quantum pavilion core flat opaque disc, no halo, walls over-lavender (`pavilionGlowScene`); WELCOME flash blanks the board white ~2 s then a damaged "WFLCOME" (`welcomeFlashScene`, `PART.panel`); paint streaks read as blobs (`boathouseStreakScene`); coaster siren ring reads as a roof hoop (`coasterLampScene`, `QCM.lamp.sirenRing`); 07:00 W-morning-shift light flat noon-like. Within W27 175 / 180 MB | shader | M | PENDING | — |
+| TASK-556 | Placement from the 2026-11-06 QA: bunting arch pole in front of WELCOME (`plans/marketing-harbour.ts`); cream pontoon in every carnival cam (`carnivalKeepOut`); dark speckled gravel patches by the coaster station (`plans/qa-park.ts` apron / pad splat); bare sand wedge in D-track; hash re-pin | worldgen | S | PENDING | — |
+| TASK-557 | Props / life from the 2026-11-06 QA: low Coding steps station collapses into one slab and bots lose faces (LOD1, `geo/themes/coding-m33.ts`); far bots at night read as white boxes, the line runs at night (D-124); flat green firefly diamond beside the coaster track; lantern boat hull a plain box. Low memory stays ≤ 79 MB | props + life | S | PENDING | — |
+| TASK-558 | Fine-step motion QA (≤ 0.25 s stills or a real-GPU video) for what the 2026-11-06 QA could not judge: wheel boost, marquee chase, walker shrink at route end, courier 2 rise, track return lane, cheer hop, ratchet click, arrival nod, boarding pop, station brake, low 2-car train; plus a real-GPU bloom / MSAA look | qa | S | PENDING | TASK-554, TASK-555 |
 | TASK-536 | Marketing Carnival Pier on the skeleton: lit boardwalk on piles, small Ferris wheel, WELCOME big screen (billboard variant), megaphone kiosk = ticket booth, confetti cannon + screen flash on ferry arrival; keep clear of the cable car / ON AIR corridor; wow preset | worldgen + props + life | L | COMPLETED (D-126) | TASK-535 |
 | TASK-537 | Design Colour Wharf on the skeleton: pastel boathouse row at the stream mouth, glass waiting pavilion (conservatory variant), paint-pot buoys, lantern boat moors here, pavilion prism colour shift + buoys light in turn on ferry arrival; wow preset | worldgen + props + life | L | COMPLETED (D-127) | TASK-535 |
-| TASK-538 | M31 Marketing + Design shots + QA | qa | S | PENDING | TASK-536, TASK-537 |
+| TASK-538 | M31 Marketing + Design shots + QA | qa | S | COMPLETED (`mar-docs/qa/m31-marketing-design-2026-11-06.md`) | TASK-536, TASK-537 |
 
 ### M32 — QA Thrill Test Park (roller coaster)
 *D-115 (user 2026-10-30): direction A, starts after TASK-535. 539 ∥ 540 → 541 → 542.*
@@ -418,7 +423,7 @@ Details in `phases/phase-3.md`.
 | TASK-539 | QA park site (pure data): coaster footprint beside the Proving Grounds, closed spline (station, chain lift, camelback, loop) fitted to the terrain with clearances, bumper-car rink, station / board anchors; terrain pads; 30-seed tests; hash re-pin | worldgen | L | COMPLETED (D-119) | — |
 | TASK-540 | Coaster props: track builder from a spline (rails, ties, supports to the ground, loop), station, cars (mover meshes, mint / yellow), dummy + capped riders, bumper cars, cotton-candy cart, TESTED ✓ board; QA tier-1 override; gallery | props | L | COMPLETED (D-120) | — |
 | TASK-541 | Placement + motion: coaster cycle (dummy run → ✓ lamp → bot run), chain-lift click, closed-form speed along the spline, bumper cars, wow preset (noon siren, car on the loop) | worldgen + life | L | COMPLETED (D-122) | — |
-| TASK-542 | M32 shots + QA | qa | S | PENDING | TASK-541 |
+| TASK-542 | M32 shots + QA | qa | S | COMPLETED (`mar-docs/qa/m32-qa-park-2026-11-06.md`) | TASK-541 |
 
 ### M33 — Coding Bot Foundry + Drone Port + Data Lake
 *D-116 (user 2026-10-30): directions B + C. 543 now (props only); 544 ∥ 547 after TASK-535; then 545; 546.*
@@ -429,7 +434,7 @@ Details in `phases/phase-3.md`.
 | TASK-544 | Foundry + lake site (pure data): line strip + pad + test track on the empty west / south-west lawns, the Data Lake carve (east shore or a free lawn; shore anchors for pods, pavilion, cloud tether), paths to the Tech Park, anchors; drone routes re-hub to the Coding pad; 30-seed tests; hash re-pin | worldgen | M | COMPLETED (D-121) | — |
 | TASK-545 | Placement + motion: line cycle (parts move, arms swing, a bot hops off and walks into the agent pool, closed-form), drones lift off / land at the pad, first-step bots on the test track, cloud sway, pod steam, pavilion glow; wow presets (morning shift, Data Lake night) | worldgen + life | L | COMPLETED (D-124) | TASK-543, TASK-544 |
 | TASK-547 | Data Lake surface: navy water with fibre light lines flowing under the surface and packet dots crossing at night, on the existing water / pool path (no new program), tier-gated | shader | M | COMPLETED (D-125) | TASK-544 |
-| TASK-546 | M33 shots + QA | qa | S | PENDING | TASK-545, TASK-547 |
+| TASK-546 | M33 shots + QA | qa | S | COMPLETED (`mar-docs/qa/m33-foundry-lake-2026-11-06.md`) | TASK-545, TASK-547 |
 
 ### M17 — Graphics II: decor & nature
 *Flower fields, fences, lanterns, benches, signs, rocks*
