@@ -820,7 +820,7 @@ function quickWins(ctx: SiteCtx, isl: IslandData, rng: Rng, s: QuickSite): void 
           if (!waterOk(p, O.minDepth, O.minShore)) continue;
           if (shapeCorners(sh).some((q) => heightAt(ctx.h, q.x, q.z) > -O.minDepth)) continue;
           if (!clear(ctx, isl, sh, 1.2)) continue;
-          const score = off + 0.25 * Math.abs(along - 14);
+          const score = off + 0.25 * Math.abs(along - R.aim);
           if (!best || score < best.score) best = { p, score };
         }
     if (best)

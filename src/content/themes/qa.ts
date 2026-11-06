@@ -69,11 +69,12 @@ export const QA_THEME: ThemeDef = {
       base: '#E4EFEA',
       layer: { tile: { size: 2, grout: '#3FBF8F' } },
     },
-    // the rim walkway (QA_RIM_WALK): a dark safety-rubber floor flecked hazard yellow and white
+    // the rim walkway (QA_RIM_WALK): a dark safety-rubber floor with a faint hazard fleck (TASK-556:
+    // full yellow / white flecks at amplitude 1.3 read as texture noise in every wide park shot)
     [Zone.streetQa]: {
       material: 'gravel',
       base: '#5A5F6B',
-      layer: { speckle: ['#F5C84C', '#FAFAF5'], amplitude: 1.3 },
+      layer: { speckle: ['#A8955A', '#8E939C'], amplitude: 0.45 },
     },
   },
   patchwork: 'off',
