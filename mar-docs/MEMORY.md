@@ -10,6 +10,11 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-11-06 last (TASK-557 done, D-133)**: low steps = one 2-tread extrude (3 treads = 28 tris > the 30 % LOD1 cap), bot head keeps screen + eye bar; low 79 / 80 MB unchanged.
+  Foundry sleeps in the Coding lamp window (`awake` = 1 - `culture.state.lamps.coding`: arms park, bots shrink away, tint by `uNight`), phase stays on sim time, so no cam / capture moved.
+  Fireflies skip `FIREFLIES.trackClear` of the coaster rails (7 of 72 on 1001). Lantern boat hull is a loft (sheer, V, gunwale). Agents: medium plan was exactly 60 so dolphins / jumpers made 62-63:
+  plan -5 (gulls [3,4], fish [3,4]) + `room(n)` gate on the two ambient visitors. Shadows: only foundry bots cast (W-morning-shift +1 call); all agents casting = W-cable-dusk 302, programs 19.
+  Next: 559 motion polish, 548-551, 553.
 - **2026-11-06 gotcha (TASK-558)**: `__marisland.step(dt)` silently clamps each frame to `MAX_FRAME_DT` 0.1 s (`src/core/clock.ts`): `step(0.25)` advances 0.1 s. For stepped motion QA use `step(<=0.1, n)` or the `simt` URL param. Motion QA verdicts are in `mar-docs/qa/motion-2026-11-06.md`; follow-ups in TASK-559.
 - **2026-11-06 (TASK-552 in review, D-132)**: seed 1 CI / Mac split = 1-ulp `Math.sin` arm64 vs x64 flipping a sort
   tie in `devops-works crates()`; fixed with `core/math/dmath` everywhere in generation (hashes unchanged, amd64 now

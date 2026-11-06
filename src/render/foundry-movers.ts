@@ -17,7 +17,8 @@ import {
   type FoundryItem,
   type ItemKind,
 } from './foundry-motion.ts';
-import { makeLitMaterial } from './materials/factory.ts';
+import { makeDepthMaterial, makeLitMaterial } from './materials/factory.ts';
+import { SHARED } from './uniforms.ts';
 
 /**
  * The Coding M33 movers (TASK-545, D-124): the line's arms, parts and bots, the bots walking off it and
@@ -28,7 +29,8 @@ import { makeLitMaterial } from './materials/factory.ts';
  */
 export interface FoundryMoversView {
   group: THREE.Group;
-  update(time: number, camPos: THREE.Vector3): void;
+  /** `awake` 0..1: the shift (D-133), 1 - the Coding island's culture lamp level; default 1. */
+  update(time: number, camPos: THREE.Vector3, awake?: number): void;
   /** Instances drawn last frame (tests, debugging). */
   stats(): { instances: number };
 }
@@ -62,6 +64,8 @@ const _s = new THREE.Vector3();
 const _e = new THREE.Euler();
 const _axisY = new THREE.Vector3(0, 1, 0);
 const _axisX = new THREE.Vector3(1, 0, 0);
+const _white = new THREE.Color(1, 1, 1);
+const _night = new THREE.Color(M.night.tint);
 
 interface Pool {
   meshes: Partial<Record<Lod, THREE.InstancedMesh>>;
@@ -91,6 +95,8 @@ export function createFoundryMovers(
       name: 'foundry-movers',
     }),
   );
+  // D-133: the arms, parts and bots cast (medium / high); the same instanced depth program the other movers use
+  const depth = quality !== 'low' ? scope.add(makeDepthMaterial(features, mat.fade)) : null;
   const pools = new Map<string, Pool>();
   const frame = newFoundryFrame(
     (line ? 3 + 3 + 3 + walkerPeriods(line) + 1 : 0) + (track ? plan.trackBots : 0),
@@ -103,7 +109,9 @@ export function createFoundryMovers(
       const geo = scope.add(buildProp(id, world.seed, v, lod));
       mesh = new THREE.InstancedMesh(geo, m, cap);
       mesh.name = `foundry:${key}:L${lod}`;
-      mesh.castShadow = false;
+      // only the finished bots cast (the walkers, the long shadows of the morning); arms and the small parts in flight do not (a draw call each in the shadow pass)
+      mesh.castShadow = depth !== null && key === `part${ITEM.bot}`;
+      if (mesh.castShadow && depth) mesh.customDepthMaterial = depth;
       mesh.receiveShadow = true;
       mesh.count = 0;
       mesh.visible = false;
@@ -172,19 +180,27 @@ export function createFoundryMovers(
     a ? cam.distanceTo(_p.set(a.x, a.y ?? 0, a.z)) : Infinity;
   return {
     group,
-    update(time, cam) {
+    update(time, cam, awake = 1) {
+      mat.color.copy(_white).lerp(_night, SHARED.uNight.value as number);
       frame.n = 0;
       const dLine = line ? near(yard, cam) : Infinity;
       const dTrack = track ? near(trackYard, cam) : Infinity;
-      if (line && dLine <= plan.range) foundryFrame(line, time, frame);
+      if (line && dLine <= plan.range) foundryFrame(line, time, frame, awake);
       const nLine = frame.n;
       if (track && dTrack <= plan.range) {
         for (let k = 0; k < plan.trackBots; k++)
           trackBotFrame(track, k, plan.trackBots, time, frame);
       }
       for (let i = 0; i < frame.n; i++) {
+        const it = frame.items[i];
         const d = i < nLine ? dLine : dTrack;
-        put(frame.items[i], d < plan.lod0 ? 0 : 1);
+        if (it.kind !== ITEM.arm) {
+          // the shift's start / end: bots and parts grow in / shrink away; none stands about at night
+          it.sy *= awake;
+          it.sxz *= awake;
+          if (awake < 0.002) continue;
+        }
+        put(it, d < plan.lod0 ? 0 : 1);
       }
       if (cloud && cloudMat) {
         const dc = near(cloud, cam);

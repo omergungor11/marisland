@@ -23,6 +23,13 @@ export const CODING_FOUNDRY_MOTION = {
     medium: { range: 120, lod0: 42, fadeNear: 96, fadeFar: 120, walkLen: 34, trackBots: 3 },
     high: { range: 150, lod0: 60, fadeNear: 120, fadeFar: 150, walkLen: 34, trackBots: 4 },
   },
+  /**
+   * D-133: the foundry keeps the island's lamp window (`CULTURE_RHYTHM.coding.lamps`, 19.5-5.5 h): when
+   * the culture lamps are on the shift is over, the arms rest in their parked pose and every bot has
+   * clocked out (`awake` = 1 - lamp level, so the 10 s lamp ramp is the shift change). While the sun is
+   * going down the lit instances take `tint` by the night level: white shells read as boxes against it.
+   */
+  night: { tint: '#7E88AA' },
   line: {
     /** One index: the belt moves one station pitch, then stands while the arms work. */
     period: 5,

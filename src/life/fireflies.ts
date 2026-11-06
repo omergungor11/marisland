@@ -9,6 +9,7 @@ import { Zone } from '../world/types.ts';
 import { AgentKind, type AgentKindOpts } from './agents.ts';
 import type { LifeCtx } from './ctx.ts';
 import { islandCells } from './land-world.ts';
+import { coasterKitOf, coasterKitToWorld } from '../world/coaster-kit.ts';
 import { makeLifeMaterial } from './life-material.ts';
 
 const TAU = Math.PI * 2;
@@ -171,6 +172,43 @@ export function planSwarms(ctx: LifeCtx, count: number, rng: Rng): Swarm[] {
   return out;
 }
 
+/**
+ * The coaster's rails as a closed xz polyline in world space (empty without a site). The bug-hunt swarms
+ * sit by the track, and a firefly crossing the rails reads as a flat green diamond pasted on them
+ * (TASK-557, QA D-coaster-lamp-on): a firefly whose range touches `FIREFLIES.trackClear` of it stays dark.
+ */
+export function coasterRails(ctx: LifeCtx): { x: number; z: number }[] {
+  const out: { x: number; z: number }[] = [];
+  for (const isl of ctx.world.islands) {
+    const kit = isl.theme === FIREFLIES.bugHunt.theme ? coasterKitOf(isl) : null;
+    if (!kit) continue;
+    for (const p of kit.points) {
+      const [x, , z] = coasterKitToWorld(kit, p[0], p[1], p[2]);
+      out.push({ x, z });
+    }
+  }
+  return out;
+}
+
+/** Distance from (x, z) to the closed polyline `rails` (Infinity for none). */
+export function railDistance(
+  rails: readonly { x: number; z: number }[],
+  x: number,
+  z: number,
+): number {
+  let best = Infinity;
+  for (let i = 0; i < rails.length; i++) {
+    const a = rails[i];
+    const b = rails[(i + 1) % rails.length];
+    const dx = b.x - a.x;
+    const dz = b.z - a.z;
+    const l2 = dx * dx + dz * dz;
+    const t = l2 > 0 ? Math.min(1, Math.max(0, ((x - a.x) * dx + (z - a.z) * dz) / l2)) : 0;
+    best = Math.min(best, Math.hypot(x - (a.x + dx * t), z - (a.z + dz * t)));
+  }
+  return best;
+}
+
 function fireflyGeometry(): THREE.BufferGeometry {
   const g = new THREE.OctahedronGeometry(FIREFLIES.size, 0);
   const n = g.getAttribute('position').count;
@@ -212,6 +250,8 @@ export class Fireflies extends AgentKind {
   private readonly bph: Float32Array;
   /** Where in the dusk ramp (0..1) this one lights. */
   private readonly onAt: Float32Array;
+  /** 1 = this firefly's range touches the coaster's rails: it stays dark (TASK-557). */
+  private readonly off: Uint8Array;
   /** First D15 spark instance (the sparks run to the end); per spark: base y, forge flag. */
   readonly sparkFrom: number;
   private readonly ey: Float32Array;
@@ -260,6 +300,8 @@ export class Fireflies extends AgentKind {
     this.bp = f32();
     this.bph = f32();
     this.onAt = f32();
+    this.off = new Uint8Array(n);
+    const rails = coasterRails(ctx);
     const h = (i: number, k: number): number => unitHash(o.seed, i, 0xf1e5 + k);
     const lerp = (r: readonly [number, number], u: number): number => r[0] + (r[1] - r[0]) * u;
     const plain = swarms.length > 0 ? count : 0;
@@ -289,6 +331,10 @@ export class Fireflies extends AgentKind {
       this.bp[i] = lerp(F.blink, h(i, 11));
       this.bph[i] = h(i, 12);
       this.onAt[i] = h(i, 13) * F.stagger;
+      if (rails.length > 0) {
+        const reach = F.trackClear + Math.max(this.ex[i], this.ez[i]);
+        if (railDistance(rails, this.hx[i], this.hz[i]) < reach) this.off[i] = 1;
+      }
     }
     // D15 sparks: the source in hx/hz/ey, a direction (ex = cos, ez = sin), a period (bp) and a
     // phase (bph); the anvil's sparks share the stroke phase (one burst per stroke)
@@ -370,7 +416,7 @@ export class Fireflies extends AgentKind {
       const u = (t / this.bp[i] + this.bph[i]) % 1;
       const lit = u < F.duty ? Math.sin((Math.PI * u) / F.duty) : 0;
       const env = 1 - calm * (1 - lit);
-      const sc = Math.max(on * env, 0);
+      const sc = this.off[i] ? 0 : Math.max(on * env, 0);
       if (sc > 0.01) top = i + 1;
       this.p.set(x, y, z);
       this.s.setScalar(sc);

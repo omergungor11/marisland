@@ -85,9 +85,9 @@ export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
     patrolBoats: 1,
     lanternBoats: 1,
     flocks: 3,
-    gullsPerFlock: [3, 5],
+    gullsPerFlock: [3, 4],
     schools: 2,
-    fishPerSchool: [4, 6],
+    fishPerSchool: [3, 4],
     jumpers: 2,
     dolphins: 2,
     villagers: 0,
@@ -158,6 +158,8 @@ export const FIREFLIES = {
   shoreMin: 5,
   minHeight: 0.8,
   lampClear: 1.5,
+  /** Fireflies stay this far (u, plus their own wander) off the coaster's rails: a flat diamond on the track is a glitch. */
+  trackClear: 2.5,
   /** Swarm centres are ranked by distance to the settlement hub in bands of this width (u). */
   hubBand: 8,
   minSeparation: 8,

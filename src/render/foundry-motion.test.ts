@@ -36,6 +36,26 @@ const line = (seed: number): FoundryLine => {
 const frameCap = (l: FoundryLine): number => 9 + walkerPeriods(l) + 1;
 const P = M.line.period;
 
+describe('the shift (TASK-557, D-133)', () => {
+  it('an asleep line parks its arms (down, turned to the crate, empty) at every phase; awake is unchanged', () => {
+    const l = line(1001);
+    for (let t = 0; t < 2 * P; t += 0.13) {
+      for (let k = 0; k < l.arms.length; k++) {
+        const asleep = armAt(l, k, t, 0);
+        expect(asleep.lift, `t ${t} arm ${k}`).toBe(0);
+        const dir = k % 2 === 0 ? 1 : -1;
+        expect(asleep.heading).toBeCloseTo(l.arms[k].toBelt + dir * Math.PI, 9);
+        // the phase underneath keeps running: awake 1 is the old closed form
+        expect(armAt(l, k, t, 1)).toEqual(armAt(l, k, t));
+        // half awake sits between parked and working
+        const half = armAt(l, k, t, 0.5);
+        const work = armAt(l, k, t);
+        expect(Math.abs(half.lift)).toBeLessThanOrEqual(Math.abs(work.lift) + 1e-9);
+      }
+    }
+  });
+});
+
 describe('site groups skip per seed (TASK-545)', () => {
   it('seeds without a line have no line movers and no line kit', () => {
     for (const seed of [186, 1074]) {

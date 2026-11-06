@@ -104,6 +104,24 @@ describe('life: framework + determinism', () => {
     }
   });
 
+  it('ambient visitors (dolphin pairs, fish jumps) never push the count past the cap (TASK-557)', () => {
+    const r = rig(7, 'medium');
+    r.tier.v = 3;
+    r.life.onTier(3);
+    let peak = 0;
+    let visits = 0;
+    for (let i = 0; i < 130 * 30; i++) {
+      r.life.fixedUpdate(FIXED_STEP);
+      if (i % 15 === 0) {
+        r.life.update(FIXED_STEP, 0.5);
+        peak = Math.max(peak, r.counters.agents);
+        visits += (r.life.kinds.dolphins?.liveCount ?? 0) + (r.life.kinds.jumpers?.liveCount ?? 0);
+      }
+    }
+    expect(visits).toBeGreaterThan(0); // the plan leaves them room
+    expect(peak).toBeLessThanOrEqual(60);
+  });
+
   it('registers meshes in the scope and disposes cleanly', () => {
     const r = rig();
     expect(r.scope.size).toBeGreaterThan(5);

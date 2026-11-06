@@ -7,7 +7,7 @@ import { FIREFLIES, LIFE_PLAN } from '../content/life.ts';
 import { SHARED } from '../render/uniforms.ts';
 import { generateWorld, Zone, type WorldData } from '../world/index.ts';
 import { createLife, type LifeSystem } from './index.ts';
-import { Fireflies } from './fireflies.ts';
+import { Fireflies, coasterRails, railDistance } from './fireflies.ts';
 
 const worlds = new Map<number, WorldData>();
 const world = (seed: number): WorldData => {
@@ -87,6 +87,27 @@ describe('fireflies', () => {
     expect(c.getHexString()).toBe(new THREE.Color(FIREFLIES.color).getHexString());
     f.mesh.getColorAt(plain, c);
     expect(c.getHexString()).toBe(new THREE.Color(FIREFLIES.bugHunt.color).getHexString());
+  });
+
+  it('no firefly ranges over the coaster rails: those stay dark (TASK-557)', () => {
+    const w = world(1001);
+    const { life } = rig(1001);
+    const f = life.kinds.fireflies!;
+    const rails = coasterRails({ world: w } as never);
+    expect(rails.length).toBeGreaterThan(10);
+    at(1, 100);
+    f.render(100, 1);
+    const a = f.mesh.instanceMatrix.array as Float32Array;
+    let lit = 0;
+    for (let i = 0; i < f.sparkFrom; i++) {
+      const sc = a[i * 16];
+      if (sc <= 0.01) continue;
+      lit++;
+      // a drawn firefly is at least trackClear from the rails in xz (its position is the matrix translation)
+      const d = railDistance(rails, a[i * 16 + 12], a[i * 16 + 14]);
+      expect(d, `firefly ${i}`).toBeGreaterThan(FIREFLIES.trackClear - 1e-6);
+    }
+    expect(lit).toBeGreaterThan(0);
   });
 
   it('D15 ember sparks: anvil bursts + forge embers on the DevOps island, orange, after the bugs (TASK-482)', () => {
