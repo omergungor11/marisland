@@ -10,6 +10,9 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-11-06 (TASK-554 done, D-129)**: re-framed cams only (no LOD). wow 55 / 55, peak calls W-cable-dusk 294, W-carnival-noon 270 (simt 37 now), W-morning-shift simt 51.
+  Dev shots asserted per culture: `pnpm shots dev --assert --no-selftest --only=<D-* ids>`. Open: `agents 62 > 60` at D-carnival-5 / D-wharf-call-1 (sim peak, not cam).
+  Cam trick: a `site:` frame over 300 calls is low and level (two islands / a whole campus in it): raise y and pitch down before touching LOD.
 - **2026-11-06 (TASK-538, 542, 546 QA done; reports in `mar-docs/qa/*-2026-11-06.md`)**: all three pass with follow-ups, wow medium 55 / 55,
   low ladders 79 / 80 MB on every culture checked (Marketing, Design, QA, Coding), W27 175 / 180 MB, W-carnival-noon 298 / 300 calls: nothing has room.
   Only fail: W-colour-wharf-arrival (ferry cropped). ✓ lamp trap from 540 is fixed (dark by day, mint at +60 s). New wow rows are in ART_BIBLE §11.

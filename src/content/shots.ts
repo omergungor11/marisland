@@ -540,9 +540,10 @@ const RESEARCH_M28_CAMS: readonly (readonly [string, string, string, number, num
 const COASTER_CAM = (v: string): string => `site:coaster:${v}`;
 const COASTER_SHOTS: readonly ShotPreset[] = (
   [
-    // the train on the loop, close: from outside it and from the infield (seed 1001 = the 0.8 site)
-    ['D-coaster-loop', '9.5,3.8,-4.5,4.8,4.2,1.2', 12, 5],
-    ['D-coaster-loop-in', '-3,4.2,1.2,4.6,4.4,1.2', 12, 5],
+    // the train on the loop, close: from outside it and from the infield (seed 1001 = the 0.8 site); both
+    // cams clear of the support lattice, the infield one low under the hoop toward the hangars (TASK-554)
+    ['D-coaster-loop', '12,9,-10,4.8,4.2,1.2', 12, 5],
+    ['D-coaster-loop-in', '-5,1.5,-3,4.6,5.2,1.4', 12, 5],
     // the track from T2 and from island distance (LOD1)
     ['D-coaster-far', '-60,38,-60,0,3,0', 15, 10],
     ['D-coaster-far1', '-130,90,-130,0,3,0', 15, 10],
@@ -552,7 +553,7 @@ const COASTER_SHOTS: readonly ShotPreset[] = (
     ['D-coaster-lamp-off', '-16,5,-16,-7,2,-9', 21, 20],
     ['D-coaster-lamp-on', '-16,5,-16,-7,2,-9', 21, 60],
     // chain lift, the click ring at the last car
-    ['D-coaster-lift', '-11,5,6,-4.5,4,7', 10, 15],
+    ['D-coaster-lift', '-16,9,-4,-4,5,7', 10, 15],
     // the whole site, the loop face on (from the station side)
     ['D-coaster-site', '-30,18,18,0,3,0', 12, 5],
   ] as const
@@ -613,12 +614,12 @@ const LAKE_SHOTS: readonly ShotPreset[] = (
 const FOUNDRY_SHOTS: readonly ShotPreset[] = (
   [
     ['D-foundry-line', 'site:foundryYard:16,9,-2,0,1,1', 9, 2.4],
-    ['D-foundry-arm', 'site:foundryYard:5.5,3.2,-5,-0.5,1.6,-1.2', 10, 2.1],
+    ['D-foundry-arm', 'site:foundryYard:5,5.5,-4.5,-0.5,1,-1.2', 10, 2.1],
     ['D-foundry-hop', 'site:foundryYard:8,3.5,18,0.5,1,10.5', 10, 2.2],
     ['D-port-park', 'site:dronePort:-11,6,-11,0,1.5,2', 10, 18],
-    ['D-track', 'site:botTrackYard:9,4.5,-9,0,0.6,1', 11, 25],
+    ['D-track', 'site:botTrackYard:12,8.5,-4,0,0.6,1.5', 11, 25],
     ['D-lake-day', 'site:dataLake:-14,9,-16,0,1,0', 14, 8],
-    ['D-lake-pavilion', 'site:lakePavilion:7,3.2,-6,0,1.5,0', 21, 8],
+    ['D-lake-pavilion', 'site:lakePavilion:7,5.5,-6,0,1.2,0', 21, 8],
   ] as const
 ).map(([id, cam, time, simt]) => ({
   id,
@@ -639,8 +640,8 @@ const FOUNDRY_SHOTS: readonly ShotPreset[] = (
  */
 const CARNIVAL_CAM = (v: string): string => `site:carnivalDeck:${v}`;
 const CARNIVAL_CAMS = {
-  front: CARNIVAL_CAM('-15,3.5,20,13,3.5,0'),
-  arrival: CARNIVAL_CAM('-20,3,14,10,3.5,0'),
+  front: CARNIVAL_CAM('-11,3.3,16,13,2.8,0'),
+  arrival: CARNIVAL_CAM('-14,3.8,22,10,2.3,0'),
 };
 /**
  * Dev frames: the arrival as a strip of stills (seed 1001: the ferry stops at sim ≈ 40 s, dwells 8 s), the
@@ -655,7 +656,8 @@ const CARNIVAL_SHOTS: readonly ShotPreset[] = (
     ['D-carnival-3', CARNIVAL_CAMS.arrival, 13, 46.5],
     ['D-carnival-4', CARNIVAL_CAMS.arrival, 13, 52],
     ['D-carnival-5', CARNIVAL_CAMS.arrival, 13, 60],
-    ['D-carnival-dusk', CARNIVAL_CAMS.arrival, 19.5, 41.35],
+    // the pre-TASK-554 arrival cam: at dusk the lit ritual costs ~30 calls more, the new cam reads 309 here
+    ['D-carnival-dusk', CARNIVAL_CAM('-20,3,14,10,3.5,0'), 19.5, 41.35],
     ['D-carnival-deck', CARNIVAL_CAM('-7,3.5,9,2,2.5,0'), 12, 8],
     ['D-carnival-night', CARNIVAL_CAMS.front, 22, 8],
     ['D-carnival-arm', CARNIVAL_CAM('20,10,32,18,0,4'), 11, 8],
@@ -678,17 +680,17 @@ const WHARF_CAM = (v: string): string => `site:harbourPier1@design:${v}`;
 const WHARF_CAMS = {
   day: WHARF_CAM('38,19,12,13,0.5,-13'),
   dusk: WHARF_CAM('38,17,17,11,0.5,-12'),
-  arrival: WHARF_CAM('9,15,21,10,0.5,-9'),
+  arrival: WHARF_CAM('4,15.5,25,4.5,0.5,-3'),
 } as const;
 const WHARF_SHOTS: readonly ShotPreset[] = (
   [
     // the whole harbour from above (any seed: the cam does not depend on the arm's side)
     ['D-wharf-harbour', WHARF_CAM('6,46,6,6,0,-8'), 11, 6],
     // the row's doors from the lagoon
-    ['D-wharf-row', WHARF_CAM('20,5,-3,22,1.5,-19'), 11, 6],
-    ['D-wharf-row-dusk', WHARF_CAM('20,5,-3,22,1,-19'), 19, 6],
+    ['D-wharf-row', WHARF_CAM('19,9,-2,22,0.5,-16'), 11, 6],
+    ['D-wharf-row-dusk', WHARF_CAM('19,9,-2,22,0.5,-16'), 19, 6],
     // the pavilion astride the pier, a pot close up
-    ['D-wharf-pavilion', WHARF_CAM('-8,5,5,0,2,-5'), 11, 6],
+    ['D-wharf-pavilion', WHARF_CAM('-7,8.5,4,0,1,-5'), 11, 6],
     ['D-wharf-pot', WHARF_CAM('15,2.6,-8,14,0.6,-12'), 11, 6],
     // the ritual in steps: the call at sim 124.6 (dwell 8 s): before, first lights, all lit, fading
     ['D-wharf-call-0', WHARF_CAMS.arrival, 18.5, 122],
@@ -2446,7 +2448,8 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     seed: 1001,
     cam: CARNIVAL_CAMS.front,
     time: 12,
-    simt: 8,
+    // the ferry coming in (it stops at ≈ 40 s) fills the right half (TASK-554)
+    simt: 37,
     quality: 'medium',
     width: 1920,
     height: 1080,
@@ -2523,8 +2526,9 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'W-thrill-noon',
     title: 'Thrill Noon',
     seed: 1001,
-    // from behind the station: the loop with the bots at its crown, drop tower, hangars and fan behind
-    cam: COASTER_CAM('-21,15,-21,2,3.5,0'),
+    // from high over the station's side: the loop with the bots at its crown, the rink and its cars in
+    // front, drop tower and hangars behind; the roof stays a strip at the bottom (TASK-554)
+    cam: COASTER_CAM('-26,19,-8,3,3,1'),
     time: 12,
     simt: 5,
     quality: 'medium',
@@ -2539,10 +2543,11 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'W-morning-shift',
     title: 'Morning Shift',
     seed: 1001,
-    // the line in a queue, the port behind: `simt` 52 = a courier rising off its cradle, arms swinging
-    cam: 'site:foundryYard:23,13,17,-1.5,1,1',
+    // the line in a queue, the port behind: `simt` 51 = courier 2 half-way up off its cradle, in front of
+    // the cliff (at 52 it sits against the trees, out of the tilt-shift band), arms swinging (TASK-554)
+    cam: 'site:foundryYard:23,13,17,-3,2.5,-4',
     time: 7,
-    simt: 52,
+    simt: 51,
     quality: 'medium',
     width: 1920,
     height: 1080,
@@ -2552,8 +2557,9 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     id: 'W-data-lake-night',
     title: 'Data Lake Night',
     seed: 1001,
-    // from across the water: the pods' LEDs face it, pavilion on the left, the cloud over the far tip
-    cam: 'site:dataLake:22,13,-11,-1,3,-2.5',
+    // from across the water, higher: the pods' LEDs face it, the pavilion right, the cloud whole at the
+    // top left; the frame ends at the island's edge instead of empty sea (TASK-554)
+    cam: 'site:dataLake:22,16,-10,-2,2.5,-1.5',
     time: 21.5,
     simt: 8,
     quality: 'medium',
