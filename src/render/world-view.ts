@@ -438,7 +438,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     whale?.update(culture.state.day, time, _camPos);
     tideSub?.update(culture.state.day, time, _camPos);
     coaster?.update(culture.state.day, time, _camPos);
-    foundry?.update(time, _camPos);
+    foundry?.update(time, _camPos, 1 - culture.state.lamps.coding);
     skyCraft.update(time, culture.state, _camPos);
     water.update(_camPos, d.getTime());
     terrain.update(d.getTime());

@@ -255,11 +255,16 @@ const settle = (u: number): number => {
   return 1 - S.amt * Math.exp(-S.decay * u) * Math.cos(S.freq * u);
 };
 
-/** Arm `k`'s state at `t`: heading of the forearm, lift, held part scale (0 = empty). */
+/**
+ * Arm `k`'s state at `t`: heading of the forearm, lift, held part scale (0 = empty). `awake` 1 = the shift
+ * is on, 0 = the line is asleep (D-133): the arm settles to its parked pose (turned to its crate, down,
+ * empty) and the phase underneath keeps running, so the morning picks the same closed form up.
+ */
 export function armAt(
   line: FoundryLine,
   k: number,
   t: number,
+  awake = 1,
 ): { heading: number; lift: number; hold: number; released: boolean; ft: number } {
   const A = M.arm;
   const ft = mod(t - k * M.line.armLag, M.line.period);
@@ -268,7 +273,11 @@ export function armAt(
   // overshoot past each end of the swing, gone in 0.4 s
   const over = (u: number): number => (u > 0 && u < 0.4 ? Math.sin((u / 0.4) * Math.PI) : 0);
   const share =
-    out - back + A.overshoot * over(ft - A.swingOut[1]) - A.overshoot * over(ft - A.swingBack[1]);
+    (out -
+      back +
+      A.overshoot * over(ft - A.swingOut[1]) -
+      A.overshoot * over(ft - A.swingBack[1])) *
+    awake;
   // alternate turning sense station by station
   const dir = k % 2 === 0 ? 1 : -1;
   const heading = line.arms[k].toBelt + dir * Math.PI * (1 - share);
@@ -277,14 +286,18 @@ export function armAt(
   const up = smooth(span(ft, A.raise)) * (1 - smooth(span(ft, A.lower)));
   const dipIn = smooth((ft - (A.releaseAt - A.dipFor)) / A.dipFor);
   const dipOut = smooth((ft - A.releaseAt) / A.dipFor);
-  const lift = carried * up - A.dip * dipIn * (1 - dipOut);
+  const lift = (carried * up - A.dip * dipIn * (1 - dipOut)) * awake;
   const held = ft >= A.pickAt && ft < A.releaseAt;
   const hold = held ? smooth((ft - A.pickAt) / A.popFor) : 0;
   return { heading, lift, hold, released: ft >= A.releaseAt, ft };
 }
 
-/** Line, its bots and the walkers at sim time `t` (t >= 0 or negative alike). */
-export function foundryFrame(line: FoundryLine, t: number, f: FoundryFrame): void {
+/**
+ * Line, its bots and the walkers at sim time `t` (t >= 0 or negative alike). `awake` (0..1, default 1) is
+ * the shift: the arms follow it here; the caller scales every other item by it (they shrink away at the
+ * shift's end and grow back at its start, the phase keeps running).
+ */
+export function foundryFrame(line: FoundryLine, t: number, f: FoundryFrame, awake = 1): void {
   f.n = 0;
   const P = M.line.period;
   const n = Math.floor(t / P);
@@ -294,7 +307,7 @@ export function foundryFrame(line: FoundryLine, t: number, f: FoundryFrame): voi
   const at = (u: number): [number, number] => [line.x0 + line.hx * u, line.z0 + line.hz * u];
   const nArms = line.arms.length;
   for (let k = 0; k < nArms; k++) {
-    const a = armAt(line, k, t);
+    const a = armAt(line, k, t, awake);
     const b = line.arms[k];
     push(f, ITEM.arm, b.x, line.ground + M.arm.plinth + a.lift, b.z, a.heading);
     if (a.hold > 0) {
