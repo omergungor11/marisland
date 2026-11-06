@@ -10,6 +10,11 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-11-06 last (TASK-557 done, D-133)**: low steps = one 2-tread extrude (3 treads = 28 tris > the 30 % LOD1 cap), bot head keeps screen + eye bar; low 79 / 80 MB unchanged.
+  Foundry sleeps in the Coding lamp window (`awake` = 1 - `culture.state.lamps.coding`: arms park, bots shrink away, tint by `uNight`), phase stays on sim time, so no cam / capture moved.
+  Fireflies skip `FIREFLIES.trackClear` of the coaster rails (7 of 72 on 1001). Lantern boat hull is a loft (sheer, V, gunwale). Agents: medium plan was exactly 60 so dolphins / jumpers made 62-63:
+  plan -5 (gulls [3,4], fish [3,4]) + `room(n)` gate on the two ambient visitors. Shadows: only foundry bots cast (W-morning-shift +1 call); all agents casting = W-cable-dusk 302, programs 19.
+  Next: 558 fine-step motion QA, 548-553.
 - **2026-11-06 later (TASK-554 / 555 / 556 merged, D-129 / D-130 / D-131)**: merged main `wow --assert` 55 / 55, deterministic (W-carnival-noon 270, W-colour-wharf-arrival 219,
   W-morning-shift 228, W-data-lake-night 176). Full `pnpm test` 11 timing fails (timeouts + gen-time bounds) at load 25-49; base `3a28286` reads the same warm gen time
   (7.4-7.7 s vs main 7.8-9.1 s, single worker), so no regression: the bounds can't be judged on this box while Chrome / Codex / Epic run: TASK-552 / 553.
