@@ -19,6 +19,7 @@ import { DOCK } from '../../../content/settlements.ts';
 import { heightAt, type IslandData, type XZ } from '../../types.ts';
 import { addShape, clear, rectShape, shapeDist, type SiteCtx } from '../sites.ts';
 import { framePoint, harbourParams, type Harbour } from './harbour.ts';
+import * as dm from '../../../core/math/dmath.ts';
 
 /** The boardwalk a seed got: `sea` = its sea edge along the pier (u from the root). */
 export interface CarnivalPier {
@@ -140,7 +141,7 @@ export function carnivalKeepOut(
     const size = isl.anchors.carnivalDeckSize;
     const hard = harbourParams(isl.theme)?.keepOut.hard;
     if (!c || !size || hard === undefined) continue;
-    const side = { x: Math.sin(c.rotY), z: -Math.cos(c.rotY) };
+    const side = { x: dm.sin(c.rotY), z: -dm.cos(c.rotY) };
     const n = Math.ceil(size.x / size.z);
     for (let k = 0; k < n; k++) {
       const t = ((k + 0.5) / n - 0.5) * size.x;

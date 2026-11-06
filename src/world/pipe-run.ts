@@ -9,6 +9,7 @@
  * piece, a run left floating more than `float` drops by a riser (both whole `riserUnit`s).
  */
 import { heightAt, type Heightfield, type XZ } from './types.ts';
+import * as dm from '../core/math/dmath.ts';
 
 export interface PipeRunParams {
   clearance: number;
@@ -86,7 +87,7 @@ export function elbowTurn(prev: XZ, a: XZ, next: XZ, tol: number): number {
   if (li < 2 || lo < 2) return NaN;
   const [ux, uz] = [(a.x - prev.x) / li, (a.z - prev.z) / li];
   const [ox, oz] = [(next.x - a.x) / lo, (next.z - a.z) / lo];
-  const turn = Math.atan2(ux * oz - uz * ox, ux * ox + uz * oz);
+  const turn = dm.atan2(ux * oz - uz * ox, ux * ox + uz * oz);
   return Math.abs(Math.abs(turn) - Math.PI / 2) > tol ? NaN : turn;
 }
 
@@ -127,7 +128,7 @@ export function snapPipeLine(
         const [ox, oz] = [next.x - b.x, next.z - b.z];
         const ln = Math.hypot(nx, nz);
         const lo = Math.hypot(ox, oz);
-        if (ln < 1 || (nx * ox + nz * oz) / (ln * lo) < Math.cos((25 * Math.PI) / 180)) continue;
+        if (ln < 1 || (nx * ox + nz * oz) / (ln * lo) < dm.cos((25 * Math.PI) / 180)) continue;
       }
       const elbowOut = next && !Number.isNaN(elbowTurn(a, q, next, tol)) ? 1 : 0;
       const rest = l - elbowIn - elbowOut;

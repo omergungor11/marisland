@@ -140,25 +140,29 @@ describe('activity: near-focus ambient workers (TASK-383)', () => {
     }
   });
 
-  it('costs little with a whole campus awake (CPU ms per fixed step / update)', () => {
-    const r = rig(1001, 'high', 0, 3);
-    run(r, 120);
-    const ws = r.ws;
-    const n = 600;
-    // eslint-disable-next-line no-restricted-properties
-    const t0 = performance.now();
-    for (let i = 0; i < n; i++) (ws as unknown as { fixedUpdate(): void }).fixedUpdate();
-    // eslint-disable-next-line no-restricted-properties
-    const t1 = performance.now();
-    for (let i = 0; i < n; i++) ws.update((i % 10) / 10);
-    // eslint-disable-next-line no-restricted-properties
-    const t2 = performance.now();
-    const step = (t1 - t0) / n;
-    const upd = (t2 - t1) / n;
-    console.info(
-      `activity cost: ${ws.awake} awake, fixedUpdate ${(step * 1000).toFixed(1)} µs/step, update ${(upd * 1000).toFixed(1)} µs/frame`,
-    );
-    expect(step).toBeLessThan(perfLimit(0.5));
-    expect(upd).toBeLessThan(perfLimit(0.2));
-  });
+  it(
+    'costs little with a whole campus awake (CPU ms per fixed step / update)',
+    { tags: ['perf'] },
+    () => {
+      const r = rig(1001, 'high', 0, 3);
+      run(r, 120);
+      const ws = r.ws;
+      const n = 600;
+      // eslint-disable-next-line no-restricted-properties
+      const t0 = performance.now();
+      for (let i = 0; i < n; i++) (ws as unknown as { fixedUpdate(): void }).fixedUpdate();
+      // eslint-disable-next-line no-restricted-properties
+      const t1 = performance.now();
+      for (let i = 0; i < n; i++) ws.update((i % 10) / 10);
+      // eslint-disable-next-line no-restricted-properties
+      const t2 = performance.now();
+      const step = (t1 - t0) / n;
+      const upd = (t2 - t1) / n;
+      console.info(
+        `activity cost: ${ws.awake} awake, fixedUpdate ${(step * 1000).toFixed(1)} µs/step, update ${(upd * 1000).toFixed(1)} µs/frame`,
+      );
+      expect(step).toBeLessThan(perfLimit(0.5));
+      expect(upd).toBeLessThan(perfLimit(0.2));
+    },
+  );
 });

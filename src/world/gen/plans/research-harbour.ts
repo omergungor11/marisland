@@ -62,6 +62,7 @@ import {
   type Harbour,
 } from './harbour.ts';
 import { anchorPoints } from './research-anchors.ts';
+import * as dm from '../../../core/math/dmath.ts';
 
 /** Ruin slot kinds (anchor chain names). */
 export const RUIN_KINDS = ['ruinPaving', 'ruinArch', 'ruinColumn', 'ruinTop'] as const;
@@ -365,7 +366,7 @@ function placeDive(ctx: SiteCtx, hb: Harbour, city: readonly XZ[]): XZ | null {
       if (dist(p, hb.berth) < D.berthGap || inApproach(hb, p, D.ring + 2)) continue;
       let ok = H(ctx, p) <= -D.minDepth;
       for (let k = 0; k < 8 && ok; k++) {
-        const q = { x: p.x + Math.cos(k * 0.785) * D.ring, z: p.z + Math.sin(k * 0.785) * D.ring };
+        const q = { x: p.x + dm.cos(k * 0.785) * D.ring, z: p.z + dm.sin(k * 0.785) * D.ring };
         if (H(ctx, q) > -D.minDepth) ok = false;
       }
       if (!ok) continue;

@@ -20,6 +20,7 @@ import {
 import type { Polyline, WorldData, XZ } from '../types.ts';
 import { streetZone, THEME_IDS, Zone } from '../types.ts';
 import { THEMES } from '../../content/themes/index.ts';
+import * as dm from '../../core/math/dmath.ts';
 
 const hex = (h: string): [number, number, number] => [
   parseInt(h.slice(1, 3), 16),
@@ -161,7 +162,7 @@ export function renderMinimapPng(world: WorldData, opts: MinimapOptions = {}): B
   for (const r of world.boatRoutes ?? []) poly(r, [255, 255, 255], 0, 3);
   for (const d of world.docks ?? []) {
     const L = d.segments * 2;
-    const end = { x: d.x + Math.cos(d.rotY) * L, z: d.z + Math.sin(d.rotY) * L };
+    const end = { x: d.x + dm.cos(d.rotY) * L, z: d.z + dm.sin(d.rotY) * L };
     line(d, end, [150, 95, 50], 1);
   }
   const rect = (
@@ -172,8 +173,8 @@ export function renderMinimapPng(world: WorldData, opts: MinimapOptions = {}): B
     dd: number,
     c: [number, number, number],
   ): void => {
-    const cs = Math.cos(rotY);
-    const sn = Math.sin(rotY);
+    const cs = dm.cos(rotY);
+    const sn = dm.sin(rotY);
     const steps = Math.max(2, Math.ceil(Math.max(w, dd) * k * 2));
     for (let a = 0; a <= steps; a++)
       for (let b = 0; b <= steps; b++) {
@@ -208,7 +209,7 @@ export function renderMinimapPng(world: WorldData, opts: MinimapOptions = {}): B
   const star = (x: number, z: number, c: [number, number, number]): void => {
     for (let a = 0; a < 5; a++) {
       const t = (a / 5) * Math.PI * 2 - Math.PI / 2;
-      line({ x, z }, { x: x + Math.cos(t) * 4, z: z + Math.sin(t) * 4 }, c, 0);
+      line({ x, z }, { x: x + dm.cos(t) * 4, z: z + dm.sin(t) * 4 }, c, 0);
     }
     dot(x, z, c, 1);
   };
@@ -218,7 +219,7 @@ export function renderMinimapPng(world: WorldData, opts: MinimapOptions = {}): B
       const steps = Math.ceil(isl.reach * k * 6);
       for (let t = 0; t < steps; t++) {
         const a = (t / steps) * Math.PI * 2;
-        const [x, y] = toPx(isl.cx + Math.cos(a) * isl.reach, isl.cz + Math.sin(a) * isl.reach);
+        const [x, y] = toPx(isl.cx + dm.cos(a) * isl.reach, isl.cz + dm.sin(a) * isl.reach);
         put(x, y, [255, 255, 255]);
       }
     }

@@ -113,6 +113,7 @@ import {
   type SiteCtx,
   type SitePlan,
 } from './sites.ts';
+import * as dm from '../../core/math/dmath.ts';
 
 /**
  * Settlements (ARCHITECTURE §2 step 5, TASK-131): plaza, lots, landmarks,
@@ -517,8 +518,8 @@ function planLonelyPalm(ctx: SiteCtx, isl: IslandData, rng: Rng, sIdx: number): 
   const O = RESEARCH_OUTPOST;
   // camera-controls azimuth → view direction −(sin az, cos az)
   const az = (heroHeading(isl, ctx.islands) * Math.PI) / 180;
-  const view = { x: -Math.sin(az), z: -Math.cos(az) };
-  const lineCos = Math.cos((O.viewClearDeg * Math.PI) / 180);
+  const view = { x: -dm.sin(az), z: -dm.cos(az) };
+  const lineCos = dm.cos((O.viewClearDeg * Math.PI) / 180);
   const offLine = (p: XZ): boolean => {
     const u = unit(palm, p);
     return Math.abs(u.x * view.x + u.z * view.z) < lineCos;
@@ -733,8 +734,8 @@ function applyPads(ctx: SiteCtx): Uint8Array {
   const pier = new Uint8Array(N);
   for (const d of ctx.docks)
     for (let k = 1; k <= d.segments; k++) {
-      const fx = (d.x + Math.cos(d.rotY) * DOCK.segment * k - h.originX) / h.cellSize;
-      const fz = (d.z + Math.sin(d.rotY) * DOCK.segment * k - h.originZ) / h.cellSize;
+      const fx = (d.x + dm.cos(d.rotY) * DOCK.segment * k - h.originX) / h.cellSize;
+      const fz = (d.z + dm.sin(d.rotY) * DOCK.segment * k - h.originZ) / h.cellSize;
       for (const iz of [Math.floor(fz), Math.floor(fz) + 1])
         for (const ix of [Math.floor(fx), Math.floor(fx) + 1])
           if (ix >= 0 && iz >= 0 && ix < n && iz < n) pier[iz * n + ix] = 1;

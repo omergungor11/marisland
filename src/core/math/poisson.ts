@@ -1,4 +1,5 @@
 import type { Rng } from '../rng.ts';
+import * as dm from './dmath.ts';
 
 /**
  * Bridson Poisson-disc sampling in a rectangle. Returns [x0, y0, x1, y1, …].
@@ -75,8 +76,8 @@ export function poissonDisc(
     for (let n = 0; n < k; n++) {
       const a = rng.next() * Math.PI * 2;
       const d = radius * (1 + rng.next());
-      const x = px + Math.cos(a) * d;
-      const y = py + Math.sin(a) * d;
+      const x = px + dm.cos(a) * d;
+      const y = py + dm.sin(a) * d;
       if (x < minX || y < minY || x >= maxX || y >= maxY) continue;
       if (!fits(x, y) || !accept(x, y)) continue;
       add(x, y);

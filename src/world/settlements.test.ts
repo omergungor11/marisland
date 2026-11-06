@@ -81,34 +81,30 @@ const dockEnd = (d: { x: number; z: number; rotY: number; segments: number }): X
 });
 
 describe('settlements — 20-seed sweep', () => {
-  it(
-    'every lot sits on flattened ground: 4 corners within 0.25 u, ≥ 0.3 u above sea',
-    { timeout: 30_000 },
-    () => {
-      let lots = 0;
-      let worst = 0;
-      for (const seed of SEEDS) {
-        const w = world(seed);
-        for (const l of w.lots) {
-          const ctx = `seed ${seed} ${l.defId} @${l.x.toFixed(1)},${l.z.toFixed(1)}`;
-          if (l.kind === 'hut') {
-            expect(heightAt(w.height, l.x, l.z), ctx).toBeLessThan(-0.3);
-            continue;
-          }
-          lots++;
-          const yc = heightAt(w.height, l.x, l.z);
-          for (const c of shapeCorners(lotShape(l))) {
-            const y = heightAt(w.height, c.x, c.z);
-            worst = Math.max(worst, Math.abs(y - yc));
-            expect(Math.abs(y - yc), ctx).toBeLessThanOrEqual(0.25);
-            expect(y, ctx).toBeGreaterThanOrEqual(0.3);
-          }
+  it('every lot sits on flattened ground: 4 corners within 0.25 u, ≥ 0.3 u above sea', () => {
+    let lots = 0;
+    let worst = 0;
+    for (const seed of SEEDS) {
+      const w = world(seed);
+      for (const l of w.lots) {
+        const ctx = `seed ${seed} ${l.defId} @${l.x.toFixed(1)},${l.z.toFixed(1)}`;
+        if (l.kind === 'hut') {
+          expect(heightAt(w.height, l.x, l.z), ctx).toBeLessThan(-0.3);
+          continue;
+        }
+        lots++;
+        const yc = heightAt(w.height, l.x, l.z);
+        for (const c of shapeCorners(lotShape(l))) {
+          const y = heightAt(w.height, c.x, c.z);
+          worst = Math.max(worst, Math.abs(y - yc));
+          expect(Math.abs(y - yc), ctx).toBeLessThanOrEqual(0.25);
+          expect(y, ctx).toBeGreaterThanOrEqual(0.3);
         }
       }
-      console.info(`flattened lots: ${lots}, worst corner deviation ${worst.toFixed(3)} u`);
-      expect(lots).toBeGreaterThan(20 * 12);
-    },
-  );
+    }
+    console.info(`flattened lots: ${lots}, worst corner deviation ${worst.toFixed(3)} u`);
+    expect(lots).toBeGreaterThan(20 * 12);
+  });
 
   it('every lot is reachable from its settlement hub through the path graph', () => {
     for (const seed of SEEDS) {
@@ -493,25 +489,29 @@ describe('settlements — 20-seed sweep', () => {
     expect(a.boatRoutes).toEqual(b.boatRoutes);
   });
 
-  it('full world generation time (warm, incl. settlements, routes, scatter)', () => {
-    generateWorld(7, { now });
-    const seeds = [1001, 42, 1002, 2024, 3003];
-    // Best of 2 per seed: the limit is about the code, not about vitest's worker contention.
-    const runs = seeds.map((s) => {
-      const a = generateWorld(s, { now }).timings;
-      const b = generateWorld(s, { now }).timings;
-      return a.total <= b.total ? a : b;
-    });
-    console.info(
-      `full gen ms (warm) ${seeds.join('/')}: ${runs.map((t) => t.total.toFixed(0)).join(' / ')}`,
-    );
-    console.info(
-      `stage ms sites/routes/props: ${runs.map((t) => `${t.sites.toFixed(0)}/${t.routes.toFixed(0)}/${t.props.toFixed(0)}`).join('  ')}`,
-    );
-    const sorted = runs.map((t) => t.total).sort((x, y) => x - y);
-    // D-128 (user 2026-11-02): 400 → 500 after the M31 harbours and the M33 kit (440–471 ms solo, load 4.5–8); TASK-553 profiles it
-    expect(sorted[2]).toBeLessThan(perfLimit(500));
-  });
+  it(
+    'full world generation time (warm, incl. settlements, routes, scatter)',
+    { tags: ['perf'] },
+    () => {
+      generateWorld(7, { now });
+      const seeds = [1001, 42, 1002, 2024, 3003];
+      // Best of 2 per seed: the limit is about the code, not about vitest's worker contention.
+      const runs = seeds.map((s) => {
+        const a = generateWorld(s, { now }).timings;
+        const b = generateWorld(s, { now }).timings;
+        return a.total <= b.total ? a : b;
+      });
+      console.info(
+        `full gen ms (warm) ${seeds.join('/')}: ${runs.map((t) => t.total.toFixed(0)).join(' / ')}`,
+      );
+      console.info(
+        `stage ms sites/routes/props: ${runs.map((t) => `${t.sites.toFixed(0)}/${t.routes.toFixed(0)}/${t.props.toFixed(0)}`).join('  ')}`,
+      );
+      const sorted = runs.map((t) => t.total).sort((x, y) => x - y);
+      // D-128 (user 2026-11-02): 400 → 500 after the M31 harbours and the M33 kit (440–471 ms solo, load 4.5–8); TASK-553 profiles it
+      expect(sorted[2]).toBeLessThan(perfLimit(500));
+    },
+  );
 });
 
 describe('campuses — 50-seed acceptance (TASK-302)', () => {
@@ -531,104 +531,100 @@ describe('campuses — 50-seed acceptance (TASK-302)', () => {
   // streets trade lots for gates / stalls; a plaza on a narrow tip (1526) holds 6
   const SOFT: ThemeId[] = ['hq', 'coding', 'devops', 'qa', 'design', 'marketing', 'research'];
 
-  it(
-    'every island has its themed campus: quad, lot minimums, roles, research outpost',
-    { timeout: 60_000 },
-    () => {
-      const seeds = Array.from({ length: 50 }, (_, k) => 1000 + k * 263);
-      const ok: Record<string, number> = {};
-      const fails: string[] = [];
-      const counts: Record<string, number[]> = {};
-      let vessels = 0;
-      for (const seed of seeds) {
-        const w = cache.get(seed) ?? generateWorld(seed);
-        for (const isl of w.islands) {
-          const ctx = `seed ${seed} ${isl.theme}`;
-          const s = w.settlements.find((x) => x.islandId === isl.id);
-          const n = s?.lots.length ?? 0;
-          (counts[isl.theme] ??= []).push(n);
-          if (n >= MIN[isl.theme]) ok[isl.theme] = (ok[isl.theme] ?? 0) + 1;
-          else fails.push(`${ctx}: ${n} lots${s ? '' : ' (no settlement)'}`);
-          if (isl.theme === 'research') continue;
-          expect(s, ctx).toBeDefined();
-          if (!s) continue;
-          expect(s.theme, ctx).toBe(isl.theme);
-          expect(s.plaza, `${ctx} quad`).not.toBeNull();
-          if (s.plaza) expect(zoneAt(w.height, w.zone, s.plaza.x, s.plaza.z), ctx).toBe(Zone.plaza);
-          // roles: themed lots by kind, legacy defs 'legacy', one 'main' per settlement
-          const roles = s.lots.map((i) => w.lots[i].role);
-          expect(roles.filter((r) => r === 'main').length, ctx).toBe(1);
-          for (const i of s.lots) {
-            const l = w.lots[i];
-            if (!(l.defId in OFFICE_DEFS)) expect(l.role, `${ctx} ${l.defId}`).toBe('legacy');
-            else if (l.role !== 'main')
-              expect(l.role, `${ctx} ${l.defId}`).toBe(LOT_ROLE_BY_KIND[l.kind]);
-          }
+  it('every island has its themed campus: quad, lot minimums, roles, research outpost', () => {
+    const seeds = Array.from({ length: 50 }, (_, k) => 1000 + k * 263);
+    const ok: Record<string, number> = {};
+    const fails: string[] = [];
+    const counts: Record<string, number[]> = {};
+    let vessels = 0;
+    for (const seed of seeds) {
+      const w = cache.get(seed) ?? generateWorld(seed);
+      for (const isl of w.islands) {
+        const ctx = `seed ${seed} ${isl.theme}`;
+        const s = w.settlements.find((x) => x.islandId === isl.id);
+        const n = s?.lots.length ?? 0;
+        (counts[isl.theme] ??= []).push(n);
+        if (n >= MIN[isl.theme]) ok[isl.theme] = (ok[isl.theme] ?? 0) + 1;
+        else fails.push(`${ctx}: ${n} lots${s ? '' : ' (no settlement)'}`);
+        if (isl.theme === 'research') continue;
+        expect(s, ctx).toBeDefined();
+        if (!s) continue;
+        expect(s.theme, ctx).toBe(isl.theme);
+        expect(s.plaza, `${ctx} quad`).not.toBeNull();
+        if (s.plaza) expect(zoneAt(w.height, w.zone, s.plaza.x, s.plaza.z), ctx).toBe(Zone.plaza);
+        // roles: themed lots by kind, legacy defs 'legacy', one 'main' per settlement
+        const roles = s.lots.map((i) => w.lots[i].role);
+        expect(roles.filter((r) => r === 'main').length, ctx).toBe(1);
+        for (const i of s.lots) {
+          const l = w.lots[i];
+          if (!(l.defId in OFFICE_DEFS)) expect(l.role, `${ctx} ${l.defId}`).toBe('legacy');
+          else if (l.role !== 'main')
+            expect(l.role, `${ctx} ${l.defId}`).toBe(LOT_ROLE_BY_KIND[l.kind]);
         }
-        // lots: connected, off dock basins / streams / field-patch centres / landmarks
-        for (const l of w.lots) {
-          const ctx = `seed ${seed} ${l.defId} @${l.x.toFixed(1)},${l.z.toFixed(1)}`;
-          expect(l.node, ctx).toBeGreaterThanOrEqual(0);
-          const sh = lotShape(l);
-          for (const d of w.docks) {
-            if (d.islandId !== l.islandId) continue;
-            const L = d.segments * DOCK.segment + DOCK.basinOffset;
-            const basin = discShape(
-              d.x + Math.cos(d.rotY) * L,
-              d.z + Math.sin(d.rotY) * L,
-              DOCK.basinRadius,
+      }
+      // lots: connected, off dock basins / streams / field-patch centres / landmarks
+      for (const l of w.lots) {
+        const ctx = `seed ${seed} ${l.defId} @${l.x.toFixed(1)},${l.z.toFixed(1)}`;
+        expect(l.node, ctx).toBeGreaterThanOrEqual(0);
+        const sh = lotShape(l);
+        for (const d of w.docks) {
+          if (d.islandId !== l.islandId) continue;
+          const L = d.segments * DOCK.segment + DOCK.basinOffset;
+          const basin = discShape(
+            d.x + Math.cos(d.rotY) * L,
+            d.z + Math.sin(d.rotY) * L,
+            DOCK.basinRadius,
+          );
+          expect(shapesOverlap(sh, basin, 0), `${ctx} × basin`).toBe(false);
+        }
+        for (const st of w.streams ?? [])
+          if (st.islandId === l.islandId)
+            for (const q of st.points)
+              expect(shapeDist(sh, q.x, q.z), `${ctx} × stream`).toBeGreaterThan(0);
+        // field-patch centres only bind farm patchwork; 'districts' themes (Coding) build on
+        // the raw patches they leave and must keep off their solar districts instead
+        const theme = w.islands.find((i) => i.id === l.islandId)?.theme ?? 'hq';
+        if (THEMES[theme].patchwork === 'fields')
+          for (const f of w.fields)
+            if (f.islandId === l.islandId)
+              expect(shapeDist(sh, f.x, f.z), `${ctx} × field centre`).toBeGreaterThan(0);
+        for (const d of w.districts)
+          if (d.islandId === l.islandId && d.kind === 'solar')
+            expect(shapeDist(sh, d.x, d.z), `${ctx} × solar district`).toBeGreaterThan(0);
+        for (const lm of w.landmarks) {
+          const r = LANDMARKS[lm.kind]?.radius;
+          if (r && lm.islandId === l.islandId)
+            expect(shapesOverlap(sh, discShape(lm.x, lm.z, r), 0), `${ctx} × ${lm.kind}`).toBe(
+              false,
             );
-            expect(shapesOverlap(sh, basin, 0), `${ctx} × basin`).toBe(false);
-          }
-          for (const st of w.streams ?? [])
-            if (st.islandId === l.islandId)
-              for (const q of st.points)
-                expect(shapeDist(sh, q.x, q.z), `${ctx} × stream`).toBeGreaterThan(0);
-          // field-patch centres only bind farm patchwork; 'districts' themes (Coding) build on
-          // the raw patches they leave and must keep off their solar districts instead
-          const theme = w.islands.find((i) => i.id === l.islandId)?.theme ?? 'hq';
-          if (THEMES[theme].patchwork === 'fields')
-            for (const f of w.fields)
-              if (f.islandId === l.islandId)
-                expect(shapeDist(sh, f.x, f.z), `${ctx} × field centre`).toBeGreaterThan(0);
-          for (const d of w.districts)
-            if (d.islandId === l.islandId && d.kind === 'solar')
-              expect(shapeDist(sh, d.x, d.z), `${ctx} × solar district`).toBeGreaterThan(0);
-          for (const lm of w.landmarks) {
-            const r = LANDMARKS[lm.kind]?.radius;
-            if (r && lm.islandId === l.islandId)
-              expect(shapesOverlap(sh, discShape(lm.x, lm.z, r), 0), `${ctx} × ${lm.kind}`).toBe(
-                false,
-              );
-          }
-        }
-        // Research Observatory University (TASK-402b): the observatory on every campus, the vessel at its pier
-        const lp = w.islands.find((i) => i.theme === 'research');
-        if (lp) {
-          const ctx = `seed ${seed} research`;
-          expect(heroHeading(lp, w.islands), ctx).toBe(heroAzimuth(lp, w.islands));
-          const defs = w.fixtures.filter((f) => f.islandId === lp.id).map((f) => f.defId);
-          expect(defs, ctx).toContain('observatory');
-          if (defs.includes('researchVessel')) vessels++;
         }
       }
-      expect(vessels / seeds.length, 'research vessel moored').toBeGreaterThanOrEqual(0.9);
-      console.info(
-        `campus lots over 50 seeds (min/avg/max): ${Object.entries(counts)
-          .map(
-            ([t, c]) =>
-              `${t} ${Math.min(...c)}/${(c.reduce((a, b) => a + b, 0) / c.length).toFixed(1)}/${Math.max(...c)}`,
-          )
-          .join(', ')}`,
+      // Research Observatory University (TASK-402b): the observatory on every campus, the vessel at its pier
+      const lp = w.islands.find((i) => i.theme === 'research');
+      if (lp) {
+        const ctx = `seed ${seed} research`;
+        expect(heroHeading(lp, w.islands), ctx).toBe(heroAzimuth(lp, w.islands));
+        const defs = w.fixtures.filter((f) => f.islandId === lp.id).map((f) => f.defId);
+        expect(defs, ctx).toContain('observatory');
+        if (defs.includes('researchVessel')) vessels++;
+      }
+    }
+    expect(vessels / seeds.length, 'research vessel moored').toBeGreaterThanOrEqual(0.9);
+    console.info(
+      `campus lots over 50 seeds (min/avg/max): ${Object.entries(counts)
+        .map(
+          ([t, c]) =>
+            `${t} ${Math.min(...c)}/${(c.reduce((a, b) => a + b, 0) / c.length).toFixed(1)}/${Math.max(...c)}`,
+        )
+        .join(', ')}`,
+    );
+    if (fails.length > 0) console.info(`campus minimum misses: ${fails.join('; ')}`);
+    for (const t of THEME_IDS) {
+      const rate = (ok[t] ?? 0) / seeds.length;
+      // TASK-467: Design ≥ 3 lots on ≥ 80 % (the ring round the square is the dome flank)
+      expect(rate, `${t} minimum hit rate`).toBeGreaterThanOrEqual(
+        t === 'design' ? 0.8 : SOFT.includes(t) ? 0.9 : 1,
       );
-      if (fails.length > 0) console.info(`campus minimum misses: ${fails.join('; ')}`);
-      for (const t of THEME_IDS) {
-        const rate = (ok[t] ?? 0) / seeds.length;
-        // TASK-467: Design ≥ 3 lots on ≥ 80 % (the ring round the square is the dome flank)
-        expect(rate, `${t} minimum hit rate`).toBeGreaterThanOrEqual(
-          t === 'design' ? 0.8 : SOFT.includes(t) ? 0.9 : 1,
-        );
-      }
-    },
-  );
+    }
+  });
 });

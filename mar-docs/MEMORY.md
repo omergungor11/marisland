@@ -10,6 +10,10 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-11-06 (TASK-552 in review, D-132)**: seed 1 CI / Mac split = 1-ulp `Math.sin` arm64 vs x64 flipping a sort
+  tie in `devops-works crates()`; fixed with `core/math/dmath` everywhere in generation (hashes unchanged, amd64 now
+  equal). Timing: `pnpm test` 154 / 154 files at load 24-40; perf in `pnpm test:perf` + CI `perf` job. Not pushed:
+  confirm `check` (incl. `shots ci --assert`) and `perf` green on CI; warm settlements 500 ms is tight there (D-132).
 - **2026-11-06 later (TASK-554 / 555 / 556 merged, D-129 / D-130 / D-131)**: merged main `wow --assert` 55 / 55, deterministic (W-carnival-noon 270, W-colour-wharf-arrival 219,
   W-morning-shift 228, W-data-lake-night 176). Full `pnpm test` 11 timing fails (timeouts + gen-time bounds) at load 25-49; base `3a28286` reads the same warm gen time
   (7.4-7.7 s vs main 7.8-9.1 s, single worker), so no regression: the bounds can't be judged on this box while Chrome / Codex / Epic run: TASK-552 / 553.
@@ -803,6 +807,11 @@
 - Shot presets are data in `src/content/shots.ts`; both the harness (`scripts/shots.ts`) and the app read them — keep them in sync
 
 ## Known Issues / Gotchas
+- **Native transcendentals are not cross-platform** (TASK-552, D-132): in `src/world`, `src/content`, `src/shared`
+  use `dm.sin` / `dm.pow` ... from `core/math/dmath.ts` (ESLint enforces; `** 2`, `sqrt`, `hypot` are fine).
+  To see what CI (x64) generates on the Mac: bundle a script with esbuild and run it in
+  `docker run --platform linux/amd64 node:22` (bit-identical to the runner). Perf limits are asserted only by
+  `pnpm test:perf` (quiet box, one worker); `pnpm test` only prints them.
 - **Any coast zone / height edit on a bluff island reshuffles its water falls** (TASK-513): `placeWaterfalls`
   draws `r.next()` jitter per candidate lip cell (cells next to `Zone.cliff`) and the fall count after them, so new
   cliff cells (the obsidian cove walls) shift every pick and the count: seed 1001 Emberpeak went 1 → 3 water falls

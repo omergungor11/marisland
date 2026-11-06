@@ -34,7 +34,7 @@ const coord = (w: WorldData, i: number): [number, number] => {
 };
 
 describe('generateWorld — determinism', () => {
-  it('stage hashes are locked for seeds 1, 42, 1001', { timeout: 30_000 }, () => {
+  it('stage hashes are locked for seeds 1, 42, 1001', () => {
     const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes]));
     expect(snap).toMatchInlineSnapshot(`
       {
@@ -248,37 +248,33 @@ describe('islands and zones', () => {
     expect(heightAt(h, 10_000, 0)).toBe(SEABED_Y);
   });
 
-  it(
-    'property: 50 seeds — no NaN, hearthholm peak 8–22 u, land area ±30 % of πr²',
-    { timeout: 30_000 },
-    () => {
-      const ratios: number[] = [];
-      for (let s = 0; s < 50; s++) {
-        const w = generateWorld(s * 7919 + 13, { islands: 1 });
-        let land = 0;
-        let nonFinite = 0;
-        for (let i = 0; i < w.height.data.length; i++) {
-          if (!Number.isFinite(w.height.data[i]) || !Number.isFinite(w.shoreSdf[i])) nonFinite++;
-          if (w.height.data[i] > 0) land++;
-        }
-        expect(nonFinite).toBe(0);
-        const isl = w.islands[0];
-        expect(isl.archetype).toBe('hearthholm');
-        expect(isl.peakY).toBeGreaterThanOrEqual(8);
-        // the bluff plateau (TASK-390) lifts the hero to 18–20 u; 11–13 u without it
-        expect(isl.peakY).toBeLessThanOrEqual(22);
-        const ratio = (land * w.height.cellSize ** 2) / (Math.PI * isl.radius ** 2);
-        ratios.push(ratio);
-        expect(ratio).toBeGreaterThan(0.7);
-        expect(ratio).toBeLessThan(1.3);
+  it('property: 50 seeds — no NaN, hearthholm peak 8–22 u, land area ±30 % of πr²', () => {
+    const ratios: number[] = [];
+    for (let s = 0; s < 50; s++) {
+      const w = generateWorld(s * 7919 + 13, { islands: 1 });
+      let land = 0;
+      let nonFinite = 0;
+      for (let i = 0; i < w.height.data.length; i++) {
+        if (!Number.isFinite(w.height.data[i]) || !Number.isFinite(w.shoreSdf[i])) nonFinite++;
+        if (w.height.data[i] > 0) land++;
       }
-      console.info(
-        `land/πr² over 50 seeds: min ${Math.min(...ratios).toFixed(2)} max ${Math.max(...ratios).toFixed(2)}`,
-      );
-    },
-  );
+      expect(nonFinite).toBe(0);
+      const isl = w.islands[0];
+      expect(isl.archetype).toBe('hearthholm');
+      expect(isl.peakY).toBeGreaterThanOrEqual(8);
+      // the bluff plateau (TASK-390) lifts the hero to 18–20 u; 11–13 u without it
+      expect(isl.peakY).toBeLessThanOrEqual(22);
+      const ratio = (land * w.height.cellSize ** 2) / (Math.PI * isl.radius ** 2);
+      ratios.push(ratio);
+      expect(ratio).toBeGreaterThan(0.7);
+      expect(ratio).toBeLessThan(1.3);
+    }
+    console.info(
+      `land/πr² over 50 seeds: min ${Math.min(...ratios).toFixed(2)} max ${Math.max(...ratios).toFixed(2)}`,
+    );
+  });
 
-  it('one-island generation < 150 ms in Node', () => {
+  it('one-island generation < 150 ms in Node', { tags: ['perf'] }, () => {
     generateWorld(77, { islands: 1, now }); // warm-up (JIT)
     const ms: number[] = [];
     // Best of 3 per seed: the limit is about the code, not about vitest's worker contention.

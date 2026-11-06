@@ -12,6 +12,7 @@ import type { LotKind, ThemeId } from '../world/types.ts';
 import { COOLING_TOWER_HEIGHTS, DEVOPS_WORKS } from './props-themes/devops.ts';
 import { QA_FACTORY } from './themes/qa.ts';
 import { KILN_CHIMNEY } from './themes/devops-m26-site.ts';
+import * as dm from '../core/math/dmath.ts';
 
 export interface OfficeDef {
   theme: ThemeId;
@@ -231,15 +232,15 @@ export const WORK_SPOTS: Readonly<Record<string, readonly WorkSpot[]>> = {
   mediaShop: [{ x: -0.9, z: 2.6, face: PI, pose: 'look', sit: 0 }],
   // Research Biodome Lab (TASK-400): tend the glass beside the door porch (domes ≈ 3.2 / 1.8 u)
   biodomeHero: [
-    { x: 2.2, z: 3.4, face: Math.atan2(-2.2, -3.4), pose: 'inspect', sit: 0 },
-    { x: -2.2, z: 3.4, face: Math.atan2(2.2, -3.4), pose: 'look', sit: 0 },
+    { x: 2.2, z: 3.4, face: dm.atan2(-2.2, -3.4), pose: 'inspect', sit: 0 },
+    { x: -2.2, z: 3.4, face: dm.atan2(2.2, -3.4), pose: 'look', sit: 0 },
   ],
-  biodome: [{ x: 1.4, z: 2.2, face: Math.atan2(-1.4, -2.2), pose: 'inspect', sit: 0 }],
+  biodome: [{ x: 1.4, z: 2.2, face: dm.atan2(-1.4, -2.2), pose: 'inspect', sit: 0 }],
   // Observatory University (TASK-402b): tend the glasshouses at the door, check the lab pods at the
   // hatch, inspect the small dishes, clip the parterres, gaze at the sculptures
-  terrarium: [{ x: 1.0, z: 3.2, face: Math.atan2(-1.0, -3.2), pose: 'inspect', sit: 0 }],
-  labPod: [{ x: 0.9, z: 2.6, face: Math.atan2(-0.9, -2.6), pose: 'inspect', sit: 0 }],
-  radioDish: [{ x: 1.6, z: -2.0, face: Math.atan2(-1.6, 2.0), pose: 'inspect', sit: 0 }],
+  terrarium: [{ x: 1.0, z: 3.2, face: dm.atan2(-1.0, -3.2), pose: 'inspect', sit: 0 }],
+  labPod: [{ x: 0.9, z: 2.6, face: dm.atan2(-0.9, -2.6), pose: 'inspect', sit: 0 }],
+  radioDish: [{ x: 1.6, z: -2.0, face: dm.atan2(-1.6, 2.0), pose: 'inspect', sit: 0 }],
   hedgeParterre: [{ x: 0, z: 2.5, face: PI, pose: 'inspect', sit: 0 }],
   atomSculpture: [{ x: 0, z: 2.0, face: PI, pose: 'look', sit: 0 }],
   armillarySphere: [{ x: 0, z: 2.2, face: PI, pose: 'look', sit: 0 }],

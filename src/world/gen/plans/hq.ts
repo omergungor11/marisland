@@ -85,6 +85,7 @@ import {
   type SitePlan,
 } from '../sites.ts';
 import type { ThemePlanner } from './types.ts';
+import * as dm from '../../../core/math/dmath.ts';
 
 const DEG = Math.PI / 180;
 const GREEN: readonly number[] = [Zone.grass, Zone.meadow, Zone.forest, Zone.field];
@@ -135,7 +136,7 @@ interface Frame {
 }
 const at = (f: Frame, along: number, side: number): XZ => add(add(f.o, f.d, along), f.n, side);
 /** Fixture local +x (the yaw convention of settlement-props): side axis of a prop facing `rotY`. */
-const sideAxis = (rotY: number): XZ => ({ x: Math.sin(rotY), z: -Math.cos(rotY) });
+const sideAxis = (rotY: number): XZ => ({ x: dm.sin(rotY), z: -dm.cos(rotY) });
 
 /** One of the seven streets. */
 interface Street {
@@ -367,11 +368,7 @@ export const planHq: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   for (const d of P.kiosks.angles) {
     if (kiosks.length >= P.kiosks.count) break;
     const a = a0 + d * DEG;
-    if (
-      rays.some(
-        (r) => Math.abs(Math.atan2(Math.sin(a - r), Math.cos(a - r))) < P.kiosks.rayGap * DEG,
-      )
-    )
+    if (rays.some((r) => Math.abs(dm.atan2(dm.sin(a - r), dm.cos(a - r))) < P.kiosks.rayGap * DEG))
       continue;
     const li = tryLot(
       ctx,
@@ -518,7 +515,7 @@ function layStreets(
     const o = ctx.islands.find((i) => i.theme === THEME_IDS[k]);
     if (!o) continue;
     const d = unit(plaza, { x: o.cx, z: o.cz });
-    if (harbour && pierDir && d.x * pierDir.x + d.z * pierDir.z >= Math.cos(S.shareDeg * DEG)) {
+    if (harbour && pierDir && d.x * pierDir.x + d.z * pierDir.z >= dm.cos(S.shareDeg * DEG)) {
       // on its ray only (the lane may bend off it): else the culture gets a street of its own
       const gate = placeGate(ctx, isl, plaza, harbour, R + S.sharedGateOut, k, false, d);
       if (gate) {
@@ -603,7 +600,7 @@ function placeGate(
     if (dp < R + S.minRun) break;
     // a gate that the lane carried off its ray (round the tower) is no compass ray: skip it
     if (ray) {
-      const off = Math.acos(
+      const off = dm.acos(
         Math.max(-1, Math.min(1, ((p.x - plaza.x) * ray.x + (p.z - plaza.z) * ray.z) / dp)),
       );
       if (off > S.rayDeg * DEG) continue;

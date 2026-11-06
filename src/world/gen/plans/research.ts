@@ -75,6 +75,7 @@ import { finishHarbour, placeKiosks, planHarbour } from './harbour.ts';
 import { finishTideLab, planTideLab, vesselSlot, type TideLab } from './research-harbour.ts';
 import { placeTideLabKit } from './research-harbour-kit.ts';
 import type { ThemePlanner } from './types.ts';
+import * as dm from '../../../core/math/dmath.ts';
 
 const DEG = Math.PI / 180;
 const TAU = Math.PI * 2;
@@ -347,7 +348,7 @@ function quadRing(
           const back = S.quad.radius + R.back + extra + d / 2;
           const a = pref + sgn * k * R.stepDeg * DEG;
           // the avenue sectors stay open (their half-width grows with the building's)
-          const half = keep + Math.atan2(w / 2, back);
+          const half = keep + dm.atan2(w / 2, back);
           if (avenues.some((v) => angGap(a, v) < half)) continue;
           const p = add(quad, dirOf(a), back);
           const rot = a + Math.PI;
@@ -1181,7 +1182,7 @@ function academy(ctx: SiteCtx, isl: IslandData, rng: Rng, s: AcademySite): Story
   // ---- the quad: the orrery on the paving, between the avenue mouths
   {
     const O = CS.orrery;
-    const bearing = (p: XZ): number => Math.atan2(p.z - quad.z, p.x - quad.x);
+    const bearing = (p: XZ): number => dm.atan2(p.z - quad.z, p.x - quad.x);
     const gapOf = (p: XZ): number => Math.min(...s.avenues.map((v) => angGap(bearing(p), v)));
     const cands: Cand[] = [];
     for (const r of O.at)
@@ -1674,7 +1675,7 @@ function pennants(
   for (const d of C.d)
     for (let k = 0; k < C.angles; k++) {
       const b = (k / C.angles) * TAU;
-      const pb = Math.atan2(P.half, d);
+      const pb = dm.atan2(P.half, d);
       const gap = Math.min(avGap(b + pb), avGap(b - pb));
       if (gap < C.avenueKeepDeg * DEG) continue;
       chords.push({ p: add(quad, dirOf(b), d), rot: b, gap: avGap(b) });

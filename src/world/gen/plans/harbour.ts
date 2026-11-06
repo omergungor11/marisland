@@ -64,6 +64,7 @@ import {
   type Shape,
   type SiteCtx,
 } from '../sites.ts';
+import * as dm from '../../../core/math/dmath.ts';
 
 const DEG = Math.PI / 180;
 
@@ -217,7 +218,7 @@ function walkArm(
     let t = { x: -g.z, z: g.x };
     if (t.x * vSide.x + t.z * vSide.z < 0 && !prev) t = { x: g.z, z: -g.x };
     else if (prev && t.x * prev.x + t.z * prev.z < 0) t = { x: g.z, z: -g.x };
-    if (prev) turn += Math.atan2(prev.x * t.z - prev.z * t.x, prev.x * t.x + prev.z * t.z);
+    if (prev) turn += dm.atan2(prev.x * t.z - prev.z * t.x, prev.x * t.x + prev.z * t.z);
     if (Math.abs(turn) > A.maxTurnDeg * DEG) break;
     prev = t;
     const q = project(add(p, t, A.step));

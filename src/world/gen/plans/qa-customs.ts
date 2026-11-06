@@ -38,6 +38,7 @@ import {
   type Shape,
   type SiteCtx,
 } from '../sites.ts';
+import * as dm from '../../../core/math/dmath.ts';
 
 export interface PortCandidate {
   /** Crane origin (world) and fixture turn. */
@@ -145,7 +146,7 @@ export function customsCandidates(
         const d = { x: -gx / gl, z: -gz / gl };
         // the crane stands `shoreZ` back from the waterline
         const o = { x: p.x + d.x * (sd - C.shoreZ), z: p.z + d.z * (sd - C.shoreZ) };
-        const rotY = Math.atan2(d.z, d.x);
+        const rotY = dm.atan2(d.z, d.x);
         for (const sl of [1, -1] as const)
           for (let lane = 0; lane < C.lanes.length; lane++) {
             const spec: PortSpec = { sl, lane };

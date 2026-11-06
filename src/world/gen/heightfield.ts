@@ -17,6 +17,7 @@ import {
   type BluffParams,
 } from '../../content/islands.ts';
 import { ISLET_PROFILES, PROFILES, Tag } from './profiles.ts';
+import * as dm from '../../core/math/dmath.ts';
 
 /** Smooth-max width where two islands' land overlaps. */
 const ISLAND_BLEND = 3;
@@ -95,7 +96,7 @@ export function bluffOf(isl: IslandData): BluffParams | null {
 
 /** Horizontal run (u) of a bluff wall of height `wall`: `wallShape` max slope = wall/(run·(1 − knee)). */
 export function bluffRun(wall: number): number {
-  return wall / ((1 - BLUFF.knee) * Math.tan((BLUFF.maxSlopeDeg * Math.PI) / 180));
+  return wall / ((1 - BLUFF.knee) * dm.tan((BLUFF.maxSlopeDeg * Math.PI) / 180));
 }
 
 /**
@@ -127,8 +128,8 @@ export function coveness(isl: IslandData, windDir: number, x: number, z: number)
   const dx = x - isl.cx;
   const dz = z - isl.cz;
   const len = Math.hypot(dx, dz) || 1;
-  const dot = (dx * Math.cos(windDir) + dz * Math.sin(windDir)) / len;
-  const ch = Math.cos((b.coveHalfDeg * Math.PI) / 180);
+  const dot = (dx * dm.cos(windDir) + dz * dm.sin(windDir)) / len;
+  const ch = dm.cos((b.coveHalfDeg * Math.PI) / 180);
   return smoothstep(ch - BLUFF.coveSoft, ch + BLUFF.coveSoft, dot);
 }
 
@@ -276,7 +277,7 @@ export function leewardness(
   const dx = x - isl.cx;
   const dz = z - isl.cz;
   const len = Math.hypot(dx, dz) || 1;
-  const dot = (dx * Math.cos(windDir) + dz * Math.sin(windDir)) / len;
+  const dot = (dx * dm.cos(windDir) + dz * dm.sin(windDir)) / len;
   return smoothstep(-0.2, 0.7, dot);
 }
 
@@ -289,8 +290,8 @@ export function windwardCliffness(isl: IslandData, windDir: number, x: number, z
   const dx = x - isl.cx;
   const dz = z - isl.cz;
   const len = Math.hypot(dx, dz) || 1;
-  const up = -(dx * Math.cos(windDir) + dz * Math.sin(windDir)) / len;
-  const ch = Math.cos((WINDWARD_CLIFF.halfAngleDeg * Math.PI) / 180);
+  const up = -(dx * dm.cos(windDir) + dz * dm.sin(windDir)) / len;
+  const ch = dm.cos((WINDWARD_CLIFF.halfAngleDeg * Math.PI) / 180);
   return smoothstep(ch - WINDWARD_CLIFF.soft, ch + WINDWARD_CLIFF.soft, up);
 }
 
@@ -476,8 +477,8 @@ function flattestDisc(
     let lo = heightAt(h, x, z);
     let hi = lo;
     for (let k = 0; k < 8; k++) {
-      const ax = Math.cos((k / 8) * Math.PI * 2);
-      const az = Math.sin((k / 8) * Math.PI * 2);
+      const ax = dm.cos((k / 8) * Math.PI * 2);
+      const az = dm.sin((k / 8) * Math.PI * 2);
       for (const rr of [f.r, f.r / 2]) {
         const y = heightAt(h, x + ax * rr, z + az * rr);
         lo = Math.min(lo, y);

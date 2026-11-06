@@ -4,6 +4,7 @@ import type { ArchetypeId, IslandData, IsletData, IsletKind } from '../types.ts'
 import { CELL_SIZE, WORLD_SIZE } from '../types.ts';
 import { ARCHETYPES, ISLET_LAYOUT, ISLETS, LAYOUT, NAME_SYLLABLES } from '../../content/islands.ts';
 import { THEME_BY_ARCHETYPE } from '../../content/themes.ts';
+import * as dm from '../../core/math/dmath.ts';
 
 export interface LayoutOptions {
   /** 1 = M1 single Hearthholm; 'auto' = archipelago (TASK-111). */
@@ -308,7 +309,7 @@ function place(roster: readonly RosterEntry[], rng: Rng): Disc[] | null {
     const dr = rng.fork('slot', i);
     const a = base + k * slot + dr.range(-H.jitterDeg, H.jitterDeg) * (Math.PI / 180);
     const dist = roster[hub].placeReach + r + dr.range(H.gap[0], H.gap[1]);
-    discs[i] = { x: Math.cos(a) * dist, z: Math.sin(a) * dist, r };
+    discs[i] = { x: dm.cos(a) * dist, z: dm.sin(a) * dist, r };
   }
   const out = discs as Disc[];
   relax(out);
@@ -411,7 +412,7 @@ export function placeIslets(grownDiscs: readonly Disc[], rng: Rng): Omit<IsletDa
       const anchor = dr.pick(discs);
       const a = dr.range(0, TAU);
       const dist = anchor.r + reach + dr.range(L.gap[0], L.gap[1]);
-      const cand = { x: anchor.x + Math.cos(a) * dist, z: anchor.z + Math.sin(a) * dist, r: reach };
+      const cand = { x: anchor.x + dm.cos(a) * dist, z: anchor.z + dm.sin(a) * dist, r: reach };
       if (Math.abs(cand.x) + reach > LAYOUT.extent || Math.abs(cand.z) + reach > LAYOUT.extent)
         continue;
       const gaps = discs.map((d) => gapOf(d, cand)).sort((p, q) => p - q);

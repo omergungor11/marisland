@@ -8,6 +8,7 @@ import {
   openSeaAt,
   reefClearance,
   routeClearance,
+  STAGE_HASH_KEYS,
   Zone,
   type IslandData,
   type WorldData,
@@ -16,6 +17,7 @@ import { REEFS } from '../content/reefs.ts';
 import { HARBOURS } from '../content/harbours.ts';
 import { anchorPoints } from './gen/plans/research-anchors.ts';
 import { perfLimit } from '../test/perf.ts';
+import { bitDigest } from '../test/bits.ts';
 
 /** True when (x, z) lies within `r` of the polyline. */
 function armNear(
@@ -116,20 +118,37 @@ function components(w: WorldData, isl: IslandData): number {
 }
 
 describe('archipelago — 30-seed full generation', () => {
-  it(
-    'stage hashes are locked for seeds 1, 42, 1001 (archipelago mode)',
-    { timeout: 30_000 },
-    () => {
-      const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
-      expect(snap).toMatchInlineSnapshot(`
+  it('stage hashes are locked for seeds 1, 42, 1001 (archipelago mode)', () => {
+    const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
+    expect(snap).toMatchInlineSnapshot(`
         {
           "1": "f57e3755d7c66dcc",
           "1001": "6aa5136fe0f1782c",
           "42": "b866901bf8a48d79",
         }
       `);
-    },
-  );
+  });
+
+  // TASK-552 (D-132): stage hashes quantise floats, so a 1-ulp arm64 / x64 difference only showed
+  // when it flipped a decision (seed 1, 2 crates). The raw bits catch every such drift, and the
+  // per-stage table says where it starts when CI disagrees with a Mac.
+  it('raw bits and every stage hash are locked for seeds 1, 42, 1001 (any platform)', () => {
+    const snap = Object.fromEntries(
+      [1, 42, 1001].map((s) => {
+        const { hashes, timings, ...data } = world(s);
+        void timings;
+        const stages = STAGE_HASH_KEYS.map((k) => `${k}:${hashes[k]}`).join(' ');
+        return [s, `bits:${bitDigest(data)} ${stages}`];
+      }),
+    );
+    expect(snap).toMatchInlineSnapshot(`
+      {
+        "1": "bits:9b6a01f0bc8c579a layout:358ca2668fc3f1cc height:64a4ccc8a825e565 sdf:6d9067df21bb1f7f islandMap:1b3b96d52be1f341 zone:21c41dab96e52d7b fields:fde62d37a0223454 chunks:dc7faad7717da3b9 sites:6e9db14fecc52833 routes:ba351f92a49adcbe seamarks:4748e8cedf7f5cce marina:55c9f6bd1dec64f8 props:ab131c8f42a166b2",
+        "1001": "bits:b35f2470b61a441a layout:2747e57b5392567c height:bb15ef3a83efacdf sdf:1f288e031c5a88b9 islandMap:82cfda5cfa742363 zone:6d9fe90994bf4c94 fields:fde62d37a0223454 chunks:1854ff6405fc1fbe sites:00eaa7995a108f45 routes:40cfc256d21e90c8 seamarks:4dcea19104575f6d marina:c87503ceb82482e3 props:dc6c85aa4a4a9b6e",
+        "42": "bits:b4c3913be78dff89 layout:7d862a142513cf36 height:10393bc7f20637cb sdf:c78607977e7d130e islandMap:f912f4e15661f0c1 zone:1d5ed83dba884758 fields:fde62d37a0223454 chunks:a7e456a628d4b886 sites:f133ffe9e41b4970 routes:beacdf5184662811 seamarks:11f15c66622ea092 marina:77cb754f77e64ed7 props:028d18b9dcc0db49",
+      }
+    `);
+  });
 
   it('same seed twice → identical bytes', () => {
     const a = generateWorld(2024);
@@ -139,7 +158,7 @@ describe('archipelago — 30-seed full generation', () => {
     expect(a.streams).toEqual(b.streams);
   });
 
-  it('every island: beach + green, land inside its disc, no NaN', { timeout: 30_000 }, () => {
+  it('every island: beach + green, land inside its disc, no NaN', () => {
     for (const seed of SEEDS) {
       const w = world(seed);
       let nonFinite = 0;
@@ -352,7 +371,7 @@ describe('archipelago — 30-seed full generation', () => {
     );
   });
 
-  it('full world generation time (warm)', () => {
+  it('full world generation time (warm)', { tags: ['perf'] }, () => {
     generateWorld(7, { now });
     // Best of 2 per seed: the limit is about the code, not about vitest's worker contention.
     const ms = [1001, 2024, 3003, 4004, 5005].map((s) =>
@@ -373,27 +392,23 @@ describe('reef shoals + shared-shelf sills (TASK-488, W:D1 / W:K3), 30 seeds', (
   const axisLen = (r: { x0: number; z0: number; x1: number; z1: number }): number =>
     Math.hypot(r.x1 - r.x0, r.z1 - r.z0);
 
-  it(
-    '3–6 shoals and ≤ 3 sills per seed; sills join neighbouring islands',
-    { timeout: 60_000 },
-    () => {
-      let withSill = 0;
-      for (const seed of SEEDS) {
-        const w = world(seed);
-        const shoals = w.reefs.filter((r) => r.kind === 'shoal');
-        const sills = w.reefs.filter((r) => r.kind === 'sill');
-        expect(shoals.length, `seed ${seed} shoals`).toBeGreaterThanOrEqual(REEFS.shoal.count[0]);
-        expect(shoals.length, `seed ${seed} shoals`).toBeLessThanOrEqual(REEFS.shoal.count[1]);
-        expect(sills.length, `seed ${seed} sills`).toBeLessThanOrEqual(REEFS.sill.maxCount);
-        if (sills.length > 0) withSill++;
-        for (const s of sills) {
-          expect(s.islands).toHaveLength(2);
-          expect(axisLen(s)).toBeLessThanOrEqual(REEFS.sill.maxLength);
-        }
+  it('3–6 shoals and ≤ 3 sills per seed; sills join neighbouring islands', () => {
+    let withSill = 0;
+    for (const seed of SEEDS) {
+      const w = world(seed);
+      const shoals = w.reefs.filter((r) => r.kind === 'shoal');
+      const sills = w.reefs.filter((r) => r.kind === 'sill');
+      expect(shoals.length, `seed ${seed} shoals`).toBeGreaterThanOrEqual(REEFS.shoal.count[0]);
+      expect(shoals.length, `seed ${seed} shoals`).toBeLessThanOrEqual(REEFS.shoal.count[1]);
+      expect(sills.length, `seed ${seed} sills`).toBeLessThanOrEqual(REEFS.sill.maxCount);
+      if (sills.length > 0) withSill++;
+      for (const s of sills) {
+        expect(s.islands).toHaveLength(2);
+        expect(axisLen(s)).toBeLessThanOrEqual(REEFS.sill.maxLength);
       }
-      expect(withSill, 'seeds with at least one sill').toBeGreaterThanOrEqual(25);
-    },
-  );
+    }
+    expect(withSill, 'seeds with at least one sill').toBeGreaterThanOrEqual(25);
+  });
 
   it('reefs stay under water: no reef cell dries, sill + shoal crests ≤ −2 u off the shelf', () => {
     for (const seed of SEEDS) {
@@ -431,7 +446,7 @@ describe('reef shoals + shared-shelf sills (TASK-488, W:D1 / W:K3), 30 seeds', (
     }
   });
 
-  it('boat and ferry routes cross a reef only through a deep gap', { timeout: 60_000 }, () => {
+  it('boat and ferry routes cross a reef only through a deep gap', () => {
     // the same seeds without reefs: the natural seabed (reefs run after the shelf pass and
     // fork their own rng, so nothing before them changes)
     const sh = REEFS.shoal as { count: readonly [number, number] };

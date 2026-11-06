@@ -190,7 +190,7 @@ describe('TASK-536 determinism', () => {
     const pick = (w: WorldData) =>
       JSON.stringify(w.fixtures.filter((f) => f.defId === 'bunting' || f.defId === 'ferrisWheel'));
     expect(pick(a)).toBe(pick(b));
-  }, 60_000);
+  });
 });
 
 const SHELTER_MIN = 28;

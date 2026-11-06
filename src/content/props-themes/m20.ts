@@ -10,6 +10,7 @@
 import { PropFlag } from '../../world/prop-store.ts';
 import type { PropDef } from '../props.ts';
 import { WOOD } from '../palette.ts';
+import * as dm from '../../core/math/dmath.ts';
 
 const { grounded, windy } = PropFlag;
 
@@ -174,8 +175,8 @@ export interface Vec3Like {
  */
 export function mailAnchorWorld(variant: number, p: Vec3Like, rotY: number): Vec3Like {
   const [ax, ay, az] = MAIL_LINE.anchor[variant % 2];
-  const c = Math.cos(rotY);
-  const s = Math.sin(rotY);
+  const c = dm.cos(rotY);
+  const s = dm.sin(rotY);
   return { x: p.x + ax * s + az * c, y: p.y + ay, z: p.z - ax * c + az * s };
 }
 

@@ -79,6 +79,7 @@ import {
 import { finishHarbour, placeKiosks, planHarbour, type Harbour } from './harbour.ts';
 import { placeColourWharfKit, planColourWharf } from './design-harbour.ts';
 import type { ThemePlanner } from './types.ts';
+import * as dm from '../../../core/math/dmath.ts';
 
 const S = DESIGN_SITES;
 
@@ -119,8 +120,8 @@ const lineDist = (pts: readonly XZ[], p: XZ): number => {
 
 /** Point at (x, z) in the frame of a prop at `p` with yaw `rotY` (local +z = dirOf(rotY)). */
 const local = (p: XZ, rotY: number, x: number, z: number): XZ => ({
-  x: p.x + Math.sin(rotY) * x + Math.cos(rotY) * z,
-  z: p.z - Math.cos(rotY) * x + Math.sin(rotY) * z,
+  x: p.x + dm.sin(rotY) * x + dm.cos(rotY) * z,
+  z: p.z - dm.cos(rotY) * x + dm.sin(rotY) * z,
 });
 
 /** Open ground: forest / lawn / rock cells of the island within `r` of segment a→b become meadow. */
@@ -176,7 +177,7 @@ function sculptureGarden(
   const a0 = ang(toQuad.x, toQuad.z) + gap / 2 + rng.range(-0.1, 0.1);
   for (let k = 0; k < n; k++) {
     const a = a0 + ((k + 0.5) / n) * (Math.PI * 2 - gap);
-    const p = add(c, { x: Math.cos(a), z: Math.sin(a) }, R * C.ringFrac);
+    const p = add(c, { x: dm.cos(a), z: dm.sin(a) }, R * C.ringFrac);
     const face = unit(p, c);
     fixture(ctx, isl, kinds[k % kinds.length], p, ang(face.x, face.z), 1.6);
   }
@@ -418,7 +419,7 @@ function bayLanes(
   const base = pathStep({ ...stepCtx(ctx, isl), stair: false });
   const win = islandWindow(ctx, isl);
   const treeDir = unit(sq.c, tree);
-  const treeCos = Math.cos((Q.treeBayDeg * Math.PI) / 180);
+  const treeCos = dm.cos((Q.treeBayDeg * Math.PI) / 180);
   for (let k = 0; k < 4; k++) {
     const d = dirOf(sq.rotY + (k * Math.PI) / 2);
     let goal: XZ | null = null;
@@ -606,7 +607,7 @@ function glassBridge(
       // the creek meanders: both pads clear of its whole cut reach, not just this segment
       const reach = stream.slice(Math.max(1, k - Math.round(B.creekPast)));
       if (lineDist(reach, a) < B.padX - 0.4 || lineDist(reach, b) < B.padX - 0.4) continue;
-      const rotY = Math.atan2(n.x, -n.z);
+      const rotY = dm.atan2(n.x, -n.z);
       const deck = rectShape(p.x, p.z, rotY, 2 * B.padX + 2 * B.padR + 0.4, 2.6);
       if (!clear(ctx, isl, deck, 0.5)) continue;
       // the level tier first, then farthest inland (the longest creek), then the least turn
@@ -616,7 +617,7 @@ function glassBridge(
   }
   if (!best) return null;
   const { k: kb, p, n } = best;
-  const rotY = Math.atan2(n.x, -n.z);
+  const rotY = dm.atan2(n.x, -n.z);
   ctx.fixtures.push({ defId: 'glassBridge', x: p.x, z: p.z, rotY, islandId: isl.id, variant: 0 });
   const deck = rectShape(p.x, p.z, rotY, 2 * B.padX + 2 * B.padR + 0.4, 2.6);
   addShape(ctx, isl, deck, false);
@@ -1202,7 +1203,7 @@ function glassAndLight(
     const kinds: readonly string[] = S.clearing.kinds;
     const sculpt = ctx.fixtures
       .filter((f) => f.islandId === isl.id && kinds.includes(f.defId) && dist(f, g) <= R)
-      .map((f) => Math.atan2(f.z - g.z, f.x - g.x))
+      .map((f) => dm.atan2(f.z - g.z, f.x - g.x))
       .sort((a, b) => a - b);
     // internal gaps: every gap between neighbours but the widest (the entrance toward the quad)
     const gaps = sculpt.map((a, k) => {

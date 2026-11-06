@@ -12,6 +12,7 @@
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "test": "vitest run",
+    "test:perf": "PERF_STRICT=1 vitest run --tagsFilter perf --maxWorkers=1 --no-file-parallelism src/world src/life",
     "shots": "tsx scripts/shots.ts"
   },
   "engines": {

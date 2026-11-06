@@ -4,6 +4,7 @@ import { CULTURE_CLOCK } from '../../content/cultures/rhythm.ts';
 import type { Heightfield, Polyline } from '../types.ts';
 import type { ReefData } from '../types.ts';
 import { openSeaAt } from './reefs.ts';
+import * as dm from '../../core/math/dmath.ts';
 
 /**
  * The whale's loop and schedule (M23 TASK-489, `W:D6`): pure data, no three.js. The route is a
@@ -64,8 +65,8 @@ export function planWhaleRoute(world: WhaleWorld, seed: number): WhaleRoute | nu
   const r = new Float64Array(R.angles);
   for (let i = 0; i < R.angles; i++) {
     const th = a0 + (i / R.angles) * TAU;
-    const dx = Math.cos(th);
-    const dz = Math.sin(th);
+    const dx = dm.cos(th);
+    const dz = dm.sin(th);
     let rr = R.maxR;
     while (rr > 0 && open(cx + dx * rr, cz + dz * rr)) rr -= R.scan;
     r[i] = Math.min(R.maxR, Math.max(0, rr) + R.pad);
@@ -101,7 +102,7 @@ export function planWhaleRoute(world: WhaleWorld, seed: number): WhaleRoute | nu
   const point = (f: number): [number, number] => {
     const th = a0 + (f / R.angles) * TAU;
     const rr = radiusAt(f);
-    return [cx + Math.cos(th) * rr, cz + Math.sin(th) * rr];
+    return [cx + dm.cos(th) * rr, cz + dm.sin(th) * rr];
   };
   // validate every `step` u along the polyline; push the angle samples around a failure outward
   const sub = 8;

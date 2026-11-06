@@ -62,6 +62,7 @@ import {
   type SitePlan,
   type SiteCtx,
 } from '../sites.ts';
+import * as dm from '../../../core/math/dmath.ts';
 
 const DEG = Math.PI / 180;
 const SR = S.search;
@@ -235,7 +236,7 @@ function blockField(ctx: SiteCtx, isl: IslandData, free: Float32Array, sh: Shape
 const bearingScore =
   (isl: IslandData, deg: number, cost: number) =>
   (p: XZ): number =>
-    -cost * Math.cos(Math.atan2(p.z - isl.cz, p.x - isl.cx) - deg * DEG);
+    -cost * dm.cos(dm.atan2(p.z - isl.cz, p.x - isl.cx) - deg * DEG);
 
 /** Free spots just outside the rect's edges the hub can walk to, nearest `toward` first. */
 function gatesOf(ctx: SiteCtx, isl: IslandData, I: FoundryInput, r: Rect, toward: XZ): XZ[] {
@@ -319,8 +320,8 @@ function placeShore(
   lakeShape: Shape,
 ): ShorePieces {
   const L = S.lake;
-  const c = Math.cos(o.rotY);
-  const s = Math.sin(o.rotY);
+  const c = dm.cos(o.rotY);
+  const s = dm.sin(o.rotY);
   const gx = gate.x - o.x;
   const gz = gate.z - o.z;
   const gu = (gx * c + gz * s) / o.a;

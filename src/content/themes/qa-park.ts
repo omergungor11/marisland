@@ -8,6 +8,7 @@
  * rect's depth (world `dirOf(rotY)`), local +x its width (world (sin rotY, −cos rotY)). The track
  * runs +z along the station lane (−x side) and comes back −z along the far lane (+x side).
  */
+import * as dm from '../../core/math/dmath.ts';
 
 const DEG = Math.PI / 180;
 
@@ -29,11 +30,11 @@ function loopPoints(): CoasterTemplatePoint[] {
   const out: CoasterTemplatePoint[] = [];
   for (let k = 0; k <= L.n; k++) {
     const a = (k / L.n) * 360 * DEG;
-    const up = (1 - Math.cos(a)) / 2;
+    const up = (1 - dm.cos(a)) / 2;
     out.push([
       L.x + (L.shift * k) / L.n,
       L.foot + (2 * L.r + 2 * L.tear) * up,
-      L.z - L.r * Math.sin(a),
+      L.z - L.r * dm.sin(a),
     ]);
   }
   return out;

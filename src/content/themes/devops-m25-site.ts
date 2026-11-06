@@ -4,6 +4,7 @@
  * render/culture-movers.ts, world/funicular.ts). Distances in u, times in s, angles in degrees.
  */
 import { DEVOPS_M25 } from './devops-m25.ts';
+import * as dm from '../../core/math/dmath.ts';
 
 export const DEVOPS_M25_SITE = {
   /**
@@ -165,5 +166,5 @@ export function oreAnchorWorld(
   const O = DEVOPS_M25.ore;
   const vi = variant - O.pylonVariants[0];
   const [, ay, az] = back && vi === 0 ? O.back : O.anchor[vi];
-  return { x: p.x + az * Math.cos(rotY), y: p.y + ay, z: p.z + az * Math.sin(rotY) };
+  return { x: p.x + az * dm.cos(rotY), y: p.y + ay, z: p.z + az * dm.sin(rotY) };
 }

@@ -53,6 +53,7 @@ import {
   zeroSlot,
   type PropSlots,
 } from './edit-derive.ts';
+import * as dm from '../core/math/dmath.ts';
 
 // ---------------------------------------------------------------- types
 
@@ -405,7 +406,7 @@ function applyBrush(world: WorldData, c: BrushCmd): EditResult {
         t2 *= k * k;
         if (t2 >= 1) continue;
       }
-      const w = Math.pow(1 - t2, EDIT_BRUSH.falloffPower);
+      const w = dm.pow(1 - t2, EDIT_BRUSH.falloffPower);
       const i = iz * n + ix;
       const old = hd[i];
       let v: number;

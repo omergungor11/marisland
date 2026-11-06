@@ -303,7 +303,7 @@ describe('edit performance', () => {
     return best;
   };
 
-  it('a 30 u brush edit incl. derived data ≤ 4 ms warm (best of 3)', () => {
+  it('a 30 u brush edit incl. derived data ≤ 4 ms warm (best of 3)', { tags: ['perf'] }, () => {
     const w = clone();
     const inl = cellWhere(
       w,

@@ -18,6 +18,7 @@ import { MARKETING_M27_SITE as S } from '../../../content/themes/marketing-m27-s
 import { MARKETING_QUICK as Q } from '../../../content/themes/marketing.ts';
 import type { FixtureData, IslandData, XZ } from '../../types.ts';
 import type { SiteCtx } from '../sites.ts';
+import * as dm from '../../../core/math/dmath.ts';
 
 const clamp = (x: number, [lo, hi]: readonly [number, number]): number =>
   Math.min(hi, Math.max(lo, x));
@@ -88,8 +89,8 @@ export function placeBeaconKit(ctx: SiteCtx, isl: IslandData): void {
   // ---- face signs: the prop's rock plane (z = −reach × s) on the anchor plane
   const face = (key: string, variant: number, s: number, reach: number, centreY: number): void => {
     const a = A[key];
-    const nx = Math.cos(a.rotY);
-    const nz = Math.sin(a.rotY);
+    const nx = dm.cos(a.rotY);
+    const nz = dm.sin(a.rotY);
     push({
       defId: 'billboardV2',
       x: a.x + nx * reach * s,
