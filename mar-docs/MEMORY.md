@@ -10,6 +10,10 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-11-06 later (TASK-554 / 555 / 556 merged, D-129 / D-130 / D-131)**: merged main `wow --assert` 55 / 55, deterministic (W-carnival-noon 270, W-colour-wharf-arrival 219,
+  W-morning-shift 228, W-data-lake-night 176). Full `pnpm test` 11 timing fails (timeouts + gen-time bounds) at load 25-49; base `3a28286` reads the same warm gen time
+  (7.4-7.7 s vs main 7.8-9.1 s, single worker), so no regression: the bounds can't be judged on this box while Chrome / Codex / Epic run: TASK-552 / 553.
+  Next: TASK-557 (props / life + agent peak 62 > 60 + who casts shadows), 558 fine-step motion QA, 548-553.
 - **2026-11-06 (TASK-554 done, D-129)**: re-framed cams only (no LOD). wow 55 / 55, peak calls W-cable-dusk 294, W-carnival-noon 270 (simt 37 now), W-morning-shift simt 51.
   Dev shots asserted per culture: `pnpm shots dev --assert --no-selftest --only=<D-* ids>`. Open: `agents 62 > 60` at D-carnival-5 / D-wharf-call-1 (sim peak, not cam).
   Cam trick: a `site:` frame over 300 calls is low and level (two islands / a whole campus in it): raise y and pitch down before touching LOD.
