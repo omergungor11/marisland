@@ -32,6 +32,7 @@ import { gridAStar } from '../paths.ts';
 import { cellOf, dist, onIsland, sdfAt, segDist, shapeDist, type SiteCtx } from '../sites.ts';
 import { storyKeepOuts } from '../story-keepout.ts';
 import { anchorPoints, stairCarve, stairOf } from './research-anchors.ts';
+import * as dm from '../../../core/math/dmath.ts';
 
 const DEG = Math.PI / 180;
 /** Zones the groove paint turns to rock (the lawn and meadow the carve cut through). */
@@ -334,8 +335,7 @@ export function placeSummitKit(
       // its own leg: the nearest one running along the station's heading (at a switchback
       // both legs touch it)
       const runs = (j: number): boolean =>
-        Math.cos(Math.atan2(stair[j + 1].z - stair[j].z, stair[j + 1].x - stair[j].x) - a.rotY) >
-        0.999;
+        dm.cos(dm.atan2(stair[j + 1].z - stair[j].z, stair[j + 1].x - stair[j].x) - a.rotY) > 0.999;
       let own = -1;
       for (let j = 0; j + 1 < stair.length; j++)
         if (
@@ -353,8 +353,8 @@ export function placeSummitKit(
       };
       const offLinks = (q: XZ): boolean =>
         Math.min(polyDist(q, footLink), polyDist(q, topLink)) >= Lp.linkGap;
-      const ux = Math.cos(a.rotY);
-      const uz = Math.sin(a.rotY);
+      const ux = dm.cos(a.rotY);
+      const uz = dm.sin(a.rotY);
       const nx = -uz;
       const nz = ux;
       // near a switchback the station slides along its leg (`slide` u steps) until a side is free
@@ -396,7 +396,7 @@ export function placeSummitKit(
         x: q.x,
         z: q.z,
         // facing the steps
-        rotY: Math.atan2(-nz * s, -nx * s),
+        rotY: dm.atan2(-nz * s, -nx * s),
         islandId: id,
         variant: Lp.variant,
         // on the flight's tread edge, level with its treads (the crag face beside the carved

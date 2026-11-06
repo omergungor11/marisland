@@ -54,6 +54,7 @@ import {
   type Shape,
   type SiteCtx,
 } from '../sites.ts';
+import * as dm from '../../../core/math/dmath.ts';
 
 const DEG = Math.PI / 180;
 const TAU = Math.PI * 2;
@@ -112,7 +113,7 @@ export function lineRots(pts: readonly XZ[]): number[] {
 }
 
 /** Local +x of a fixture heading `rot` in world xz (local +z = (cos rot, sin rot)). */
-export const sideOf = (rot: number): XZ => ({ x: Math.sin(rot), z: -Math.cos(rot) });
+export const sideOf = (rot: number): XZ => ({ x: dm.sin(rot), z: -dm.cos(rot) });
 
 /**
  * The loop's two tracks (TASK-518) over the pivots `pts` (ground `ys`, headings `rots`): cable
@@ -394,8 +395,8 @@ export function guyEyes(q: XZ, rot: number, scale = 1): XZ[] {
   const sz = dirOf(rot);
   return [0, 1, 2].map((k) => {
     const a = (k / 3) * TAU + G.phase;
-    const lx = Math.sin(a) * G.radius * scale;
-    const lz = Math.cos(a) * G.radius * scale;
+    const lx = dm.sin(a) * G.radius * scale;
+    const lz = dm.cos(a) * G.radius * scale;
     return { x: q.x + sx.x * lx + sz.x * lz, z: q.z + sx.z * lx + sz.z * lz };
   });
 }
@@ -903,7 +904,7 @@ export function corridorMargin(
 ): number {
   const K2 = A.neon.corridor;
   const n = dirOf(rot);
-  const tv = Math.tan(K2.view * DEG);
+  const tv = dm.tan(K2.view * DEG);
   const frame = (q: XZ): [number, number] => {
     const dx = q.x - p.x;
     const dz = q.z - p.z;

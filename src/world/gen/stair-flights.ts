@@ -8,6 +8,7 @@
  */
 import { STAIR_FLIGHT as S } from '../../content/stairs.ts';
 import { heightAt, type FixtureData, type Heightfield, type Polyline } from '../types.ts';
+import * as dm from '../../core/math/dmath.ts';
 
 export function stairFlights(
   h: Heightfield,
@@ -48,7 +49,7 @@ export function stairFlights(
         x: lo.x,
         z: lo.z,
         // local +z = (cos rotY, sin rotY) climbs to the upper point
-        rotY: Math.atan2(hi.z - lo.z, hi.x - lo.x),
+        rotY: dm.atan2(hi.z - lo.z, hi.x - lo.x),
         islandId: p.islandId,
         variant: look * nr + ri,
         scale,

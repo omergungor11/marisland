@@ -45,6 +45,7 @@ import {
   type SiteCtx,
   type SitePlan,
 } from '../sites.ts';
+import * as dm from '../../../core/math/dmath.ts';
 
 const S = DEVOPS_SITE;
 const C = DEVOPS_CULTURE_SITE;
@@ -639,8 +640,8 @@ function railLine(ctx: SiteCtx, isl: IslandData, F: Frame): [XZ, XZ] | null {
 
 /** Local (x, z) of a fixture facing `rotY` → world (local +z = dirOf(rotY), +x = (sin, −cos)). */
 const local = (p: XZ, rotY: number, x: number, z: number): XZ => ({
-  x: p.x + Math.sin(rotY) * x + Math.cos(rotY) * z,
-  z: p.z - Math.cos(rotY) * x + Math.sin(rotY) * z,
+  x: p.x + dm.sin(rotY) * x + dm.cos(rotY) * z,
+  z: p.z - dm.cos(rotY) * x + dm.sin(rotY) * z,
 });
 
 interface SpotOpts {

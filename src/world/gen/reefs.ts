@@ -20,6 +20,7 @@ import { REEFS } from '../../content/reefs.ts';
 import type { Heightfield, IslandData, Polyline, ReefData, XZ } from '../types.ts';
 import { heightAt } from '../types.ts';
 import { cellX, cellZ, GRID_ORIGIN } from './grid.ts';
+import * as dm from '../../core/math/dmath.ts';
 
 export interface ReefInput {
   h: Heightfield;
@@ -225,7 +226,7 @@ function reefY(r: ReefData, noise: Noise, x: number, z: number): number {
     const t = along / len;
     if (t < -0.15 || t > 1.15) return -Infinity;
     const f = 1 / S.noiseScale;
-    const env = Math.sin(Math.PI * clamp01(t));
+    const env = dm.sin(Math.PI * clamp01(t));
     const off = S.wobble * env * noise.n2(along * f + r.salt, r.salt * 0.37);
     const across = Math.abs(-(x - r.x0) * uz + (z - r.z0) * ux - off);
     const w = r.halfWidth * (1 + S.widthJitter * noise.n2(along * f + r.salt + 17.3, 4.1));
@@ -241,8 +242,8 @@ function reefY(r: ReefData, noise: Noise, x: number, z: number): number {
   const S = REEFS.shoal;
   const cx = x - r.x0;
   const cz = z - r.z0;
-  const ca = Math.cos(r.angle);
-  const sa = Math.sin(r.angle);
+  const ca = dm.cos(r.angle);
+  const sa = dm.sin(r.angle);
   const lx = (cx * ca + cz * sa) / r.halfWidth;
   const lz = (-cx * sa + cz * ca) / (r.halfWidth * r.aspect);
   const dw = Math.hypot(lx, lz) + S.warp * noise.fbm(x / S.warpScale + r.salt, z / S.warpScale, 2);

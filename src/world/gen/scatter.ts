@@ -27,6 +27,7 @@ import {
 import { slopeAtCell } from './zones.ts';
 import { OCC_STRUCTURE } from './settlements.ts';
 import { pickBeaconSkerries } from './beacons.ts';
+import * as dm from '../../core/math/dmath.ts';
 
 /**
  * Prop scatter (ARCHITECTURE §2 step 7): Bridson Poisson per island per rule in
@@ -209,9 +210,7 @@ export function scatterProps(
           for (let k = 0; k < 16 && !hit; k++) {
             const a = ((k & 7) / 8) * Math.PI * 2;
             const d = k < 8 ? rule.nearDist : rule.nearDist / 2;
-            hit = rule.near.includes(
-              zoneAt(h, world.zone, x + Math.cos(a) * d, z + Math.sin(a) * d),
-            );
+            hit = rule.near.includes(zoneAt(h, world.zone, x + dm.cos(a) * d, z + dm.sin(a) * d));
           }
           if (!hit) return false;
         }
@@ -240,8 +239,8 @@ export function scatterProps(
         const scale = rng.range(rule.scale[0], rule.scale[1]);
         if (rule.fieldRows && fieldAngle !== undefined) {
           // snap onto the field-aligned lattice (u along the patch axis, v across it)
-          const c = Math.cos(fieldAngle);
-          const sn = Math.sin(fieldAngle);
+          const c = dm.cos(fieldAngle);
+          const sn = dm.sin(fieldAngle);
           const g = rule.fieldRows;
           const u = Math.round((x * c + z * sn) / g) * g;
           const v = Math.round((-x * sn + z * c) / g) * g;

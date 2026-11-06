@@ -8,6 +8,7 @@ import {
   openSeaAt,
   reefClearance,
   routeClearance,
+  STAGE_HASH_KEYS,
   Zone,
   type IslandData,
   type WorldData,
@@ -16,6 +17,7 @@ import { REEFS } from '../content/reefs.ts';
 import { HARBOURS } from '../content/harbours.ts';
 import { anchorPoints } from './gen/plans/research-anchors.ts';
 import { perfLimit } from '../test/perf.ts';
+import { bitDigest } from '../test/bits.ts';
 
 /** True when (x, z) lies within `r` of the polyline. */
 function armNear(
@@ -130,6 +132,27 @@ describe('archipelago — 30-seed full generation', () => {
       `);
     },
   );
+
+  // TASK-552 (D-132): stage hashes quantise floats, so a 1-ulp arm64 / x64 difference only showed
+  // when it flipped a decision (seed 1, 2 crates). The raw bits catch every such drift, and the
+  // per-stage table says where it starts when CI disagrees with a Mac.
+  it('raw bits and every stage hash are locked for seeds 1, 42, 1001 (any platform)', () => {
+    const snap = Object.fromEntries(
+      [1, 42, 1001].map((s) => {
+        const { hashes, timings, ...data } = world(s);
+        void timings;
+        const stages = STAGE_HASH_KEYS.map((k) => `${k}:${hashes[k]}`).join(' ');
+        return [s, `bits:${bitDigest(data)} ${stages}`];
+      }),
+    );
+    expect(snap).toMatchInlineSnapshot(`
+      {
+        "1": "bits:9b6a01f0bc8c579a layout:358ca2668fc3f1cc height:64a4ccc8a825e565 sdf:6d9067df21bb1f7f islandMap:1b3b96d52be1f341 zone:21c41dab96e52d7b fields:fde62d37a0223454 chunks:dc7faad7717da3b9 sites:6e9db14fecc52833 routes:ba351f92a49adcbe seamarks:4748e8cedf7f5cce marina:55c9f6bd1dec64f8 props:ab131c8f42a166b2",
+        "1001": "bits:b35f2470b61a441a layout:2747e57b5392567c height:bb15ef3a83efacdf sdf:1f288e031c5a88b9 islandMap:82cfda5cfa742363 zone:6d9fe90994bf4c94 fields:fde62d37a0223454 chunks:1854ff6405fc1fbe sites:00eaa7995a108f45 routes:40cfc256d21e90c8 seamarks:4dcea19104575f6d marina:c87503ceb82482e3 props:dc6c85aa4a4a9b6e",
+        "42": "bits:b4c3913be78dff89 layout:7d862a142513cf36 height:10393bc7f20637cb sdf:c78607977e7d130e islandMap:f912f4e15661f0c1 zone:1d5ed83dba884758 fields:fde62d37a0223454 chunks:a7e456a628d4b886 sites:f133ffe9e41b4970 routes:beacdf5184662811 seamarks:11f15c66622ea092 marina:77cb754f77e64ed7 props:028d18b9dcc0db49",
+      }
+    `);
+  });
 
   it('same seed twice → identical bytes', () => {
     const a = generateWorld(2024);

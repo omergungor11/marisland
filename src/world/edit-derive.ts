@@ -47,6 +47,7 @@ import { cellX, cellZ } from './gen/grid.ts';
 import { nearestIsland } from './gen/heightfield.ts';
 import { deriveZoneCell, zoneNoise, type ZoneCellContext } from './gen/zones.ts';
 import type { PropStore } from './prop-store.ts';
+import * as dm from '../core/math/dmath.ts';
 
 const INF = 0x7fffffff;
 /** Same cap as generation (`coast.ts` SDF_CAP). */
@@ -221,8 +222,8 @@ function buildProtectMask(world: WorldData): Uint8Array {
   if (P.list.includes('dock'))
     for (const d of world.docks) {
       const L = d.segments * DOCK.segment;
-      const ex = d.x + Math.cos(d.rotY) * L;
-      const ez = d.z + Math.sin(d.rotY) * L;
+      const ex = d.x + dm.cos(d.rotY) * L;
+      const ez = d.z + dm.sin(d.rotY) * L;
       capsule(d.x, d.z, ex, ez, P.dockHalfWidth + pad, PROTECT_DOCK);
     }
   if (P.list.includes('mooring'))

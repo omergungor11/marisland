@@ -5,6 +5,7 @@
  * render layer needs on top of them.
  */
 import { FLOWERS, LIGHTING } from './palette.ts';
+import * as dm from '../core/math/dmath.ts';
 
 /**
  * Fit a FogExp2 density (f = 1 − exp(−(d·x)²)) to the bible's fog curve,
@@ -18,7 +19,7 @@ export function fitFogExp2(points: readonly (readonly [number, number])[]): numb
   let num = 0;
   let den = 0;
   for (const [x, f] of points) {
-    const y = Math.sqrt(-Math.log(1 - f));
+    const y = Math.sqrt(-dm.log(1 - f));
     num += x * y;
     den += x * x;
   }

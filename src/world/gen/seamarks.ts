@@ -24,6 +24,7 @@ import type {
 } from '../types.ts';
 import { heightAt, sampleGrid } from '../types.ts';
 import { leewardness } from './heightfield.ts';
+import * as dm from '../../core/math/dmath.ts';
 
 export interface SeamarkInput {
   h: Heightfield;
@@ -67,7 +68,7 @@ export function placeSeamarks(input: SeamarkInput, rng: Rng): FixtureData[] {
   const out: FixtureData[] = [];
   const pierEnds: XZ[] = docks.map((d) => {
     const L = d.segments * DOCK.segment;
-    return { x: d.x + Math.cos(d.rotY) * L, z: d.z + Math.sin(d.rotY) * L };
+    return { x: d.x + dm.cos(d.rotY) * L, z: d.z + dm.sin(d.rotY) * L };
   });
   const nearestIsland = (p: XZ): IslandData =>
     islands.reduce((best, isl) => (distC(p, isl) < distC(p, best) ? isl : best), islands[0]);
@@ -217,7 +218,7 @@ export function placeSeamarks(input: SeamarkInput, rng: Rng): FixtureData[] {
     // π/2 − rotY), so local +z = the radial and local x = the shore tangent
     const dx = c.x - isl.cx;
     const dz = c.z - isl.cz;
-    const rot0 = useArch ? Math.atan2(dz, dx) : ir.range(0, Math.PI * 2);
+    const rot0 = useArch ? dm.atan2(dz, dx) : ir.range(0, Math.PI * 2);
     const v0 = useArch ? S.arch : classFor(water(h, sdf, c).depth, ir);
     if (v0 < 0) continue;
     out.push({ defId: 'seaStack', x: c.x, z: c.z, rotY: rot0, islandId: isl.id, variant: v0 });
@@ -226,7 +227,7 @@ export function placeSeamarks(input: SeamarkInput, rng: Rng): FixtureData[] {
       const a = ir.range(0, Math.PI * 2);
       const sp = useArch ? S.archSpread : S.spread;
       const d = ir.range(sp[0], sp[1]);
-      const p = { x: c.x + Math.cos(a) * d, z: c.z + Math.sin(a) * d };
+      const p = { x: c.x + dm.cos(a) * d, z: c.z + dm.sin(a) * d };
       if (!stackOk(p, [...stacks, ...placed])) continue;
       const v = classFor(water(h, sdf, p).depth, ir);
       if (v < 0) continue;

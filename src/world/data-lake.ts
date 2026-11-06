@@ -6,6 +6,7 @@
  * - `dataLakeWobble` x = amplitude (share of the ellipse), z = phase (rad).
  */
 import type { IslandData, XZ } from './types.ts';
+import * as dm from '../core/math/dmath.ts';
 
 export interface LakeOutline {
   x: number;
@@ -24,7 +25,7 @@ export interface DataLake extends LakeOutline {
 }
 
 /** Outline radius factor at ellipse angle `t`. */
-const radiusAt = (l: LakeOutline, t: number): number => 1 + l.wobble * Math.cos(3 * t + l.phase);
+const radiusAt = (l: LakeOutline, t: number): number => 1 + l.wobble * dm.cos(3 * t + l.phase);
 
 /**
  * Signed distance estimate to the outline (u; < 0 inside): exact in sign, first order in size (good
@@ -35,12 +36,12 @@ const radiusAt = (l: LakeOutline, t: number): number => 1 + l.wobble * Math.cos(
 export function lakeEdge(l: LakeOutline, x: number, z: number): number {
   const dx = x - l.x;
   const dz = z - l.z;
-  const c = Math.cos(l.rotY);
-  const s = Math.sin(l.rotY);
+  const c = dm.cos(l.rotY);
+  const s = dm.sin(l.rotY);
   const u = (dx * c + dz * s) / l.a;
   const v = (-dx * s + dz * c) / l.b;
   const r = Math.hypot(u, v);
-  const e = r - radiusAt(l, Math.atan2(v, u));
+  const e = r - radiusAt(l, dm.atan2(v, u));
   return (e * r) / Math.max(Math.hypot(u / l.a, v / l.b), 1e-4);
 }
 
@@ -48,10 +49,10 @@ export function lakeEdge(l: LakeOutline, x: number, z: number): number {
 export function lakePoint(l: LakeOutline, t: number, out = 0): XZ {
   const at = (q: number): XZ => {
     const r = radiusAt(l, q);
-    const u = l.a * r * Math.cos(q);
-    const v = l.b * r * Math.sin(q);
-    const c = Math.cos(l.rotY);
-    const s = Math.sin(l.rotY);
+    const u = l.a * r * dm.cos(q);
+    const v = l.b * r * dm.sin(q);
+    const c = dm.cos(l.rotY);
+    const s = dm.sin(l.rotY);
     return { x: l.x + u * c - v * s, z: l.z + u * s + v * c };
   };
   const p = at(t);

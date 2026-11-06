@@ -9,6 +9,7 @@ import { WATERFALLS as W } from '../../content/waterfalls.ts';
 import { heightAt, Zone, type WaterfallData, type WorldData } from '../types.ts';
 import { bluffOf, coveness } from './heightfield.ts';
 import { cellX, cellZ } from './grid.ts';
+import * as dm from '../../core/math/dmath.ts';
 
 type PlaceInput = Pick<
   WorldData,
@@ -67,8 +68,8 @@ export function placeWaterfalls(world: PlaceInput, rng: Rng): WaterfallData[] {
   const dockPts = world.docks.flatMap((d) => [
     { x: d.x, z: d.z },
     {
-      x: d.x + Math.cos(d.rotY) * d.segments * 2,
-      z: d.z + Math.sin(d.rotY) * d.segments * 2,
+      x: d.x + dm.cos(d.rotY) * d.segments * 2,
+      z: d.z + dm.sin(d.rotY) * d.segments * 2,
     },
   ]);
   const at = (x: number, z: number): number => heightAt(h, x, z);
@@ -139,7 +140,7 @@ export function placeWaterfalls(world: PlaceInput, rng: Rng): WaterfallData[] {
           x,
           z,
           y: lipH,
-          rotY: Math.atan2(dz, dx),
+          rotY: dm.atan2(dz, dx),
           baseX: base.x,
           baseZ: base.z,
           width: 0,

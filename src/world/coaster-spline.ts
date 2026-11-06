@@ -13,6 +13,7 @@
  *
  * Sampling is O(1): `sampleCoaster(spline, s)` indexes a uniform-arc table (`ds` apart) and lerps.
  */
+import * as dm from '../core/math/dmath.ts';
 
 export type Vec3 = readonly [x: number, y: number, z: number];
 
@@ -74,8 +75,8 @@ const norm = (a: V): V => {
 const sub = (a: V, b: V): V => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 /** Rotate `v` about unit `k` by `a`. */
 function rot(v: V, k: V, a: number): V {
-  const c = Math.cos(a);
-  const s = Math.sin(a);
+  const c = dm.cos(a);
+  const s = dm.sin(a);
   const kv = cross(k, v);
   const kd = dot(k, v) * (1 - c);
   return [
@@ -210,8 +211,7 @@ export function createCoasterSpline(
     const b = T(i);
     const axis = cross(a, b);
     const al = len(axis);
-    if (al > 1e-9)
-      u = rot(u, [axis[0] / al, axis[1] / al, axis[2] / al], Math.atan2(al, dot(a, b)));
+    if (al > 1e-9) u = rot(u, [axis[0] / al, axis[1] / al, axis[2] / al], dm.atan2(al, dot(a, b)));
     // re-orthogonalise against the new tangent
     const d = dot(u, b);
     u = norm([u[0] - b[0] * d, u[1] - b[1] * d, u[2] - b[2] * d]);
@@ -235,7 +235,7 @@ export function createCoasterSpline(
     const c = dot(ui, r);
     const w = sm(-0.2, 0.3, c) * (1 - sm(0.8, 0.95, Math.abs(ti[1])));
     if (w <= 0) continue;
-    const beta = Math.atan2(dot(cross(ui, r), ti), c) * w;
+    const beta = dm.atan2(dot(cross(ui, r), ti), c) * w;
     twist = Math.max(twist, Math.abs(beta));
     upT.set(rot(ui, ti, beta), i * 3);
   }

@@ -12,6 +12,7 @@ import { COASTER_TEMPLATE, QA_PARK } from '../content/themes/qa-park.ts';
 import { QA_COASTER } from '../content/themes/qa-coaster.ts';
 import { createCoasterSpline, type CoasterSpline } from './coaster-spline.ts';
 import type { IslandData, XZ } from './types.ts';
+import * as dm from '../core/math/dmath.ts';
 
 export interface CoasterKit {
   /** Control points, kit frame. */
@@ -42,8 +43,8 @@ export function coasterKitToWorld(
   z: number,
 ): [number, number, number] {
   const s = kit.scale;
-  const c = Math.cos(kit.rotY);
-  const n = Math.sin(kit.rotY);
+  const c = dm.cos(kit.rotY);
+  const n = dm.sin(kit.rotY);
   return [
     kit.origin.x + s * (n * x + c * z),
     kit.groundY + s * y,
@@ -74,8 +75,8 @@ export function coasterKitOf(isl: IslandData): CoasterKit | null {
   const rs = A.coasterRinkSize;
   const dx = rc.x - tr.origin.x;
   const dz = rc.z - tr.origin.z;
-  const n = Math.sin(tr.rotY);
-  const c = Math.cos(tr.rotY);
+  const n = dm.sin(tr.rotY);
+  const c = dm.cos(tr.rotY);
   return {
     points,
     spline,

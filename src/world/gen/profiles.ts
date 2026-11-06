@@ -11,6 +11,7 @@ import {
   WINDWARD_CLIFF,
   type CampusHillParams,
 } from '../../content/islands.ts';
+import * as dm from '../../core/math/dmath.ts';
 
 /**
  * Per-cell profile tags (bit flags, OR-combined into a Uint8 grid inside the
@@ -82,8 +83,8 @@ interface Frame {
 }
 
 function frame(island: IslandData, windDir: number): Frame {
-  const c = Math.cos(windDir);
-  const s = Math.sin(windDir);
+  const c = dm.cos(windDir);
+  const s = dm.sin(windDir);
   const inv = 1 / island.radius;
   return {
     toLocal(x, z, out) {
@@ -111,7 +112,7 @@ function warpAt(noise: Noise, lx: number, lz: number, out: [number, number]): vo
 /** Elevation noise term in [0, 1]: pow(fbm·0.5+0.5, 1.3), low base frequency. */
 function elevation(noise: Noise, lx: number, lz: number): number {
   const f = noise.fbm(lx * 0.9 + 10.3, lz * 0.9 - 4.1, 4);
-  return Math.pow(clamp01(f * 0.5 + 0.5), 1.3);
+  return dm.pow(clamp01(f * 0.5 + 0.5), 1.3);
 }
 
 interface Lobe {
@@ -133,7 +134,7 @@ const hearthholm: ProfileFactory = ({ island, rng, noise, windDir }) => {
   for (let i = 0; i < nLobes; i++) {
     const a = Math.PI + rng.range(-1.7, 1.7);
     const dist = rng.range(0.72, 0.9);
-    lobes.push({ x: Math.cos(a) * dist, z: Math.sin(a) * dist, r: rng.range(0.22, 0.32) });
+    lobes.push({ x: dm.cos(a) * dist, z: dm.sin(a) * dist, r: rng.range(0.22, 0.32) });
   }
   const q: [number, number] = [0, 0];
   const w: [number, number] = [0, 0];
@@ -154,7 +155,7 @@ const hearthholm: ProfileFactory = ({ island, rng, noise, windDir }) => {
     mask *= smoothstep(0.8, 1.1, bd);
     const hx = lx - hill.x;
     const hz = lz - hill.z;
-    const hillTerm = Math.exp(-(hx * hx + hz * hz) / (hill.s * hill.s));
+    const hillTerm = dm.exp(-(hx * hx + hz * hz) / (hill.s * hill.s));
     const e = 3.5 * (0.3 + 0.7 * elevation(noise, lx, lz)) + 9 * hillTerm;
     return Math.max(RAW_FLOOR, mask * e - COAST_LEVEL);
   };
@@ -170,7 +171,7 @@ const hearthholm: ProfileFactory = ({ island, rng, noise, windDir }) => {
 };
 
 /** Angle of a local point; 0 = leeward (+x), π = windward. */
-const angleOf = (lx: number, lz: number): number => Math.atan2(lz, lx);
+const angleOf = (lx: number, lz: number): number => dm.atan2(lz, lx);
 /** Smallest absolute difference of two angles. */
 const angDiff = (a: number, b: number): number => {
   let d = Math.abs(a - b) % (2 * Math.PI);
@@ -178,13 +179,13 @@ const angDiff = (a: number, b: number): number => {
   return d;
 };
 const gauss2 = (dx: number, dz: number, s: number): number =>
-  Math.exp(-(dx * dx + dz * dz) / (s * s));
+  dm.exp(-(dx * dx + dz * dz) / (s * s));
 
 /** Windward sector factor (0 outside, 1 inside ±halfAngle around upwind = −x). */
 export function windwardSector(lx: number, lz: number, halfAngle: number, soft: number): number {
   const len = Math.hypot(lx, lz) || 1;
   const c = -lx / len; // cos of angle to upwind
-  const ch = Math.cos(halfAngle);
+  const ch = dm.cos(halfAngle);
   return smoothstep(ch - soft, ch + soft, c);
 }
 
@@ -205,7 +206,7 @@ const beaconrock: ProfileFactory = ({ island, rng, noise, windDir }) => {
   for (let tries = 0; stacks.length < nStacks && tries < 60; tries++) {
     const a = Math.PI + rng.range(-0.75, 0.75);
     const dist = rng.range(1.55, 2.05);
-    const st = { x: Math.cos(a) * dist, z: Math.sin(a) * dist, s: rng.range(5, 8) / r, h: 0 };
+    const st = { x: dm.cos(a) * dist, z: dm.sin(a) * dist, s: rng.range(5, 8) / r, h: 0 };
     st.h = rng.range(6, 14);
     if (stacks.some((o) => Math.hypot(o.x - st.x, o.z - st.z) * r < (o.s + st.s) * r + 7)) continue;
     stacks.push(st);
@@ -217,8 +218,8 @@ const beaconrock: ProfileFactory = ({ island, rng, noise, windDir }) => {
   const lean = T ? rng.range(-T.lean, T.lean) : 0;
   const side = T && rng.next() < 0.5 ? -1 : 1;
   const coveA = T ? (side * rng.range(T.cove.angleDeg[0], T.cove.angleDeg[1]) * Math.PI) / 180 : 0;
-  const cl = Math.cos(lean);
-  const sl = Math.sin(lean);
+  const cl = dm.cos(lean);
+  const sl = dm.sin(lean);
   const sx = T?.stack.shift ?? 0;
   const ss = T?.stack.scale ?? 1;
   // shelf ellipses (axis centre c, half-length r0, half-width r1, radius units) from the u bands
@@ -232,7 +233,7 @@ const beaconrock: ProfileFactory = ({ island, rng, noise, windDir }) => {
     return { ...S, c: rim - r0, r: [r0, r0 * S.across] as const, mid: (inner + rim) / 2 };
   });
   const last = shelves.length - 1;
-  const coveCos = T ? Math.cos((T.cove.halfDeg * Math.PI) / 180) : 1;
+  const coveCos = T ? dm.cos((T.cove.halfDeg * Math.PI) / 180) : 1;
   const q: [number, number] = [0, 0];
   const w: [number, number] = [0, 0];
   const half = (WINDWARD_CLIFF.halfAngleDeg * Math.PI) / 180;
@@ -249,8 +250,8 @@ const beaconrock: ProfileFactory = ({ island, rng, noise, windDir }) => {
     const unitU = r * Math.min(S.r[0], S.r[1]);
     let run = S.wall / unitU;
     if (k === last && T) {
-      const th = Math.atan2(ev, eu);
-      const cov = smoothstep(coveCos - T.cove.soft, coveCos + T.cove.soft, Math.cos(th - coveA));
+      const th = dm.atan2(ev, eu);
+      const cov = smoothstep(coveCos - T.cove.soft, coveCos + T.cove.soft, dm.cos(th - coveA));
       run = lerp(run, T.cove.ramp / unitU, cov);
     }
     const step = 1 - smoothstep(1 - run, 1, d);
@@ -320,8 +321,8 @@ const beaconrock: ProfileFactory = ({ island, rng, noise, windDir }) => {
   const inCove = (u: number, v: number): boolean => {
     if (!T) return false;
     const S = shelves[last];
-    const th = Math.atan2(v / S.r[1], (u - S.c) / S.r[0]);
-    return Math.cos(th - coveA) > coveCos - T.cove.soft;
+    const th = dm.atan2(v / S.r[1], (u - S.c) / S.r[0]);
+    return dm.cos(th - coveA) > coveCos - T.cove.soft;
   };
   const anchors: IslandData['anchors'] = {};
   const topW = fr.toWorld(top.x, top.z);
@@ -330,7 +331,7 @@ const beaconrock: ProfileFactory = ({ island, rng, noise, windDir }) => {
     fr.toWorld(u * cl - v * sl, u * sl + v * cl);
   if (T) {
     const S = shelves[last];
-    const lw = axisW(S.c + S.r[0] * 0.78 * Math.cos(coveA), S.r[1] * 0.78 * Math.sin(coveA));
+    const lw = axisW(S.c + S.r[0] * 0.78 * dm.cos(coveA), S.r[1] * 0.78 * dm.sin(coveA));
     anchors.landing = { x: lw.x, z: lw.z, rotY: windDir + lean };
     shelves.forEach((S, k) => {
       const p = axisW(S.mid, 0);
@@ -359,7 +360,7 @@ const millbrook: ProfileFactory = ({ island, rng, noise, windDir }) => {
   for (let tries = 0; knolls.length < nKnolls && tries < 80; tries++) {
     const a = rng.range(0, 2 * Math.PI);
     const dist = rng.range(0.2, 0.5);
-    const k = { x: Math.cos(a) * dist, z: Math.sin(a) * dist };
+    const k = { x: dm.cos(a) * dist, z: dm.sin(a) * dist };
     if (knolls.some((o) => Math.hypot(o.x - k.x, o.z - k.z) < 0.42)) continue;
     knolls.push(k);
   }
@@ -367,14 +368,14 @@ const millbrook: ProfileFactory = ({ island, rng, noise, windDir }) => {
   for (let tries = 0; tries < 80; tries++) {
     const a = rng.range(0, 2 * Math.PI);
     const dist = rng.range(0.15, 0.45);
-    pond = { x: Math.cos(a) * dist, z: Math.sin(a) * dist };
+    pond = { x: dm.cos(a) * dist, z: dm.sin(a) * dist };
     if (knolls.every((o) => Math.hypot(o.x - pond.x, o.z - pond.z) > 0.32)) break;
   }
   const pondR = 6 / r;
   const fieldAngle = rng.range(0, Math.PI);
   const fieldSeed = rng.nextU32();
-  const fc = Math.cos(fieldAngle);
-  const fs = Math.sin(fieldAngle);
+  const fc = dm.cos(fieldAngle);
+  const fs = dm.sin(fieldAngle);
   const q: [number, number] = [0, 0];
   const w: [number, number] = [0, 0];
   const plateauMask = (lx: number, lz: number): number => {
@@ -406,16 +407,13 @@ const millbrook: ProfileFactory = ({ island, rng, noise, windDir }) => {
   ] as const)
     for (const b of bearings)
       for (const d of H.dists) {
-        const c = { x: -Math.cos(b) * d, z: Math.sin(b) * d };
+        const c = { x: -dm.cos(b) * d, z: dm.sin(b) * d };
         if (plateauMask(c.x, c.z) < H.minMask) continue;
         let shoulder = Infinity;
         for (let k = 0; k < 8; k++) {
           const a = (k / 8) * Math.PI * 2;
           const sr = (H.shoulder[0] * H.foot) / r;
-          shoulder = Math.min(
-            shoulder,
-            plateauMask(c.x + Math.cos(a) * sr, c.z + Math.sin(a) * sr),
-          );
+          shoulder = Math.min(shoulder, plateauMask(c.x + dm.cos(a) * sr, c.z + dm.sin(a) * sr));
         }
         const gap = parkGap(c);
         const rank = gap < H.parkClear ? 0 : (late ? 1 : 3) + (shoulder < H.shoulder[1] ? 0 : 1);
@@ -571,7 +569,7 @@ const emberpeak: ProfileFactory = ({ island, rng, noise, windDir }) => {
   const side = spring.z >= 0 ? -1 : 1;
   const shelves = (ARCHETYPES.emberpeak.shelves ?? []).flatMap((S) => {
     const a = side * rng.range(S.angle[0], S.angle[1]) * (Math.PI / 180);
-    const base = { ...S, a, c: Math.cos(a), s: Math.sin(a) };
+    const base = { ...S, a, c: dm.cos(a), s: dm.sin(a) };
     return [base, ...(S.steps ?? []).map((t) => ({ ...base, ...t, warp: S.warp }))];
   });
   /** Raw shelf value (> 0 = land), level at `h` inside its rounded rectangle. */
@@ -582,7 +580,7 @@ const emberpeak: ProfileFactory = ({ island, rng, noise, windDir }) => {
       const v = (-lx * S.s + lz * S.c) / S.tangential;
       if (Math.abs(u) > 1.6 || Math.abs(v) > 1.6) continue;
       const e =
-        Math.cbrt(Math.abs(u) ** 3 + Math.abs(v) ** 3) +
+        dm.cbrt(dm.pow(Math.abs(u), 3) + dm.pow(Math.abs(v), 3)) +
         S.warp * noise.fbm(lx * 4.1 + 13.7, lz * 4.1 - 8.9, 2);
       best = Math.max(best, smoothstep(1, 0.82, e) * (S.h + COAST_LEVEL + 0.8) - 0.8);
     }
@@ -612,7 +610,7 @@ const emberpeak: ProfileFactory = ({ island, rng, noise, windDir }) => {
     const d = Math.hypot(lx + w[0] * 0.2 * wf, lz + w[1] * 0.2 * wf);
     let h: number;
     if (d >= cr) {
-      h = rimH * Math.pow(Math.max(0, (1 - d) / (1 - cr)), 1.35);
+      h = rimH * dm.pow(Math.max(0, (1 - d) / (1 - cr)), 1.35);
     } else {
       h = floorH + (rimH - floorH) * smoothstep(0.45, 1, d / cr);
     }
@@ -623,7 +621,7 @@ const emberpeak: ProfileFactory = ({ island, rng, noise, windDir }) => {
       flank;
     // notch through the rim
     const da = angDiff(angleOf(lx, lz), notchA);
-    h -= 10 * Math.exp(-(((da * d) / 0.07) ** 2)) * smoothstep(0.62, cr, d);
+    h -= 10 * dm.exp(-(((da * d) / 0.07) ** 2)) * smoothstep(0.62, cr, d);
     // hot-spring terrace (lee)
     const ds = Math.hypot(lx - spring.x, lz - spring.z) / springR;
     h = lerp(h, springH, smoothstep(1.5, 0.8, ds) * smoothstep(0.5, 2, h));
@@ -649,7 +647,7 @@ const emberpeak: ProfileFactory = ({ island, rng, noise, windDir }) => {
   const anchors: IslandData['anchors'] = {};
   const cw = fr.toWorld(0, 0);
   anchors.crater = { x: cw.x, z: cw.z, rotY: 0 };
-  const nw = fr.toWorld(Math.cos(notchA) * cr * 1.6, Math.sin(notchA) * cr * 1.6);
+  const nw = fr.toWorld(dm.cos(notchA) * cr * 1.6, dm.sin(notchA) * cr * 1.6);
   anchors.notch = { x: nw.x, z: nw.z, rotY: windDir + notchA };
   const sw = fr.toWorld(spring.x, spring.z);
   anchors.hotspring = { x: sw.x, z: sw.z, rotY: windDir };
@@ -670,11 +668,11 @@ const emberpeak: ProfileFactory = ({ island, rng, noise, windDir }) => {
 const palmlagoon: ProfileFactory = ({ island, rng, noise, windDir }) => {
   const fr = frame(island, windDir);
   const rot = rng.range(-0.5, 0.5);
-  const c = Math.cos(rot);
-  const s = Math.sin(rot);
+  const c = dm.cos(rot);
+  const s = dm.sin(rot);
   const yard = { x: rng.range(0.08, 0.22), z: rng.range(-0.15, 0.15) };
   const towerA = Math.PI + rng.range(-0.55, 0.55);
-  const tower = { x: Math.cos(towerA) * 0.42, z: Math.sin(towerA) * 0.42 };
+  const tower = { x: dm.cos(towerA) * 0.42, z: dm.sin(towerA) * 0.42 };
   const q: [number, number] = [0, 0];
   const w: [number, number] = [0, 0];
   const sample = (x: number, z: number): number => {
@@ -684,7 +682,7 @@ const palmlagoon: ProfileFactory = ({ island, rng, noise, windDir }) => {
     warpAt(noise, lx, lz, w);
     const u = Math.abs(lx * c + lz * s + w[0] * 0.07);
     const v = Math.abs((-lx * s + lz * c + w[1] * 0.07) / 0.9);
-    const d = Math.cbrt(u * u * u + v * v * v);
+    const d = dm.cbrt(u * u * u + v * v * v);
     const body = smoothstep(1.0, 0.8, d);
     const knoll = gauss2(lx - tower.x, lz - tower.z, 0.3);
     const e = 2.2 + 0.3 * noise.fbm(lx * 2.2 + 5.1, lz * 2.2 - 3.3, 2) + 1.3 * knoll;
@@ -711,7 +709,7 @@ const mossgrove: ProfileFactory = ({ island, rng, noise, windDir }) => {
   const fr = frame(island, windDir);
   const r = island.radius;
   const treeA = rng.range(0.6, 1.4) * (rng.chance(0.5) ? 1 : -1) + Math.PI;
-  const tree = { x: Math.cos(treeA) * 0.28, z: Math.sin(treeA) * 0.28 };
+  const tree = { x: dm.cos(treeA) * 0.28, z: dm.sin(treeA) * 0.28 };
   const treeR = 9 / r;
   const dome = (d: number): number => 20 * Math.max(0, 1 - d * d) ** 2;
   const treeH = dome(0.28) + 2;
@@ -725,7 +723,7 @@ const mossgrove: ProfileFactory = ({ island, rng, noise, windDir }) => {
     const t = k / 24;
     local.push({
       x: src.x + t * (1.05 - src.x),
-      z: src.z + bend * t * t + amp * Math.sin(t * 7 + phase) * t,
+      z: src.z + bend * t * t + amp * dm.sin(t * 7 + phase) * t,
     });
   }
   const streamW = 2.4 / r;
@@ -756,7 +754,7 @@ const mossgrove: ProfileFactory = ({ island, rng, noise, windDir }) => {
     // stream carve (≈ 1 u deep, fades out on the beach)
     if (h > 0.5) {
       const sd = segDist(lx, lz) / streamW;
-      if (sd < 3) h -= 1.1 * Math.exp(-sd * sd) * smoothstep(0.8, 3, h);
+      if (sd < 3) h -= 1.1 * dm.exp(-sd * sd) * smoothstep(0.8, 3, h);
     }
     return Math.max(RAW_FLOOR, h - COAST_LEVEL);
   };
@@ -788,8 +786,8 @@ const lonelypalm: ProfileFactory = ({ island, rng, noise, windDir }) => {
   const fr = frame(island, windDir);
   const m = rng.chance(0.5) ? 1 : -1;
   const rot = rng.range(-C.turn, C.turn);
-  const c = Math.cos(rot);
-  const s = Math.sin(rot);
+  const c = dm.cos(rot);
+  const s = dm.sin(rot);
   const jit = (): number => rng.range(-C.jitter, C.jitter);
   // a layout point (local, mirrored + turned) → island-local
   const lay = (x: number, z: number): { x: number; z: number } => ({
@@ -799,10 +797,9 @@ const lonelypalm: ProfileFactory = ({ island, rng, noise, windDir }) => {
   const T = { ...lay(C.terrace.x + jit(), C.terrace.z + jit()), r: C.terrace.r, h: C.terrace.h };
   const S = { ...lay(C.summit.x + jit(), C.summit.z + jit()), r: C.summit.r, h: C.summit.h };
   const DEG = Math.PI / 180;
-  const spurA =
-    Math.atan2(Math.sin(C.spur.angleDeg * DEG) * m, Math.cos(C.spur.angleDeg * DEG)) + rot;
+  const spurA = dm.atan2(dm.sin(C.spur.angleDeg * DEG) * m, dm.cos(C.spur.angleDeg * DEG)) + rot;
   const headA =
-    Math.atan2(Math.sin(C.headland.angleDeg * DEG) * m, Math.cos(C.headland.angleDeg * DEG)) + rot;
+    dm.atan2(dm.sin(C.headland.angleDeg * DEG) * m, dm.cos(C.headland.angleDeg * DEG)) + rot;
   const plateau = (dx: number, dz: number, r: number): number =>
     smoothstep(r + C.soft, r - C.soft, Math.hypot(dx, dz));
   // the summit crag (TASK-524): a narrow riser with a jagged outline
@@ -821,7 +818,7 @@ const lonelypalm: ProfileFactory = ({ island, rng, noise, windDir }) => {
     const a = angleOf(lx, lz);
     const ds = angDiff(a, spurA) / (C.spur.widthDeg * DEG);
     const dh = angDiff(a, headA) / (C.headland.widthDeg * DEG);
-    const reach = C.coast + C.spur.len * Math.exp(-ds * ds) + C.headland.len * Math.exp(-dh * dh);
+    const reach = C.coast + C.spur.len * dm.exp(-ds * ds) + C.headland.len * dm.exp(-dh * dh);
     const d = Math.hypot(lx, lz) + C.warp * noise.fbm(lx * 2.1 + 4.3, lz * 2.1 - 7.9, 2);
     shore.body = smoothstep(reach + C.coastSoft, reach - C.coastSoft, d);
     shore.rim = smoothstep(reach - C.rimFade[0], reach - C.rimFade[1], d);
@@ -853,7 +850,7 @@ const lonelypalm: ProfileFactory = ({ island, rng, noise, windDir }) => {
     : undefined;
   const w = (p: { x: number; z: number }) => fr.toWorld(p.x, p.z);
   const at = (p: { x: number; z: number }, rotY = windDir) => ({ ...w(p), rotY });
-  const tip = (a: number, r: number) => w({ x: Math.cos(a) * r, z: Math.sin(a) * r });
+  const tip = (a: number, r: number) => w({ x: dm.cos(a) * r, z: dm.sin(a) * r });
   return {
     sample,
     lift: cragLift,
@@ -900,8 +897,8 @@ const skerry: IsletProfileFactory = ({ islet, rng, noise }) => {
     const a = a0 + (i * Math.PI * 2) / 3 + rng.range(-0.4, 0.4);
     const dist = rng.range(0.75, 1.0);
     lobes.push({
-      x: Math.cos(a) * dist,
-      z: Math.sin(a) * dist,
+      x: dm.cos(a) * dist,
+      z: dm.sin(a) * dist,
       r: rng.range(0.3, 0.45),
       h: rng.range(0.3, 0.55),
     });
@@ -931,8 +928,8 @@ const sandbar: IsletProfileFactory = ({ islet, rng, noise }) => {
   const inv = 1 / islet.radius;
   const stretch = rng.range(0.8, 1.0);
   const turn = rng.range(0, Math.PI);
-  const c = Math.cos(turn);
-  const s = Math.sin(turn);
+  const c = dm.cos(turn);
+  const s = dm.sin(turn);
   const w: [number, number] = [0, 0];
   const sample = (x: number, z: number): number => {
     const lx = (x - islet.cx) * inv;

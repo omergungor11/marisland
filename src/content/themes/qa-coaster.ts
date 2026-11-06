@@ -5,6 +5,7 @@
  * the numbers TASK-541 reads. Defs: content/props-themes/qa-coaster.ts. TASK-539 owns the real spline
  * and publishes it in the same `{ points, closed }` format as `QA_COASTER_FIXTURE`.
  */
+import * as dm from '../../core/math/dmath.ts';
 
 /** White / mint / yellow toy palette (same family as the Proving Grounds). */
 export const COASTER_PAL = {
@@ -255,7 +256,7 @@ function fixture(): CoasterSplineData {
   const y0 = 1.5;
   for (let k = 0; k <= 12; k++) {
     const th = (k / 12) * Math.PI * 2;
-    add(x0 + R_LOOP * Math.sin(th), y0 + R_LOOP * (1 - Math.cos(th)), LOOP_SHIFT * smooth(k / 12));
+    add(x0 + R_LOOP * dm.sin(th), y0 + R_LOOP * (1 - dm.cos(th)), LOOP_SHIFT * smooth(k / 12));
   }
   // camelback: two airtime hills
   add(46, 1.6, LOOP_SHIFT);
@@ -267,7 +268,7 @@ function fixture(): CoasterSplineData {
   const r2 = 7.5;
   for (let k = 1; k <= 5; k++) {
     const th = (k / 6) * Math.PI;
-    add(62 + r2 * Math.sin(th), 1.7 + 0.1 * k, LOOP_SHIFT + r2 * (1 - Math.cos(th)));
+    add(62 + r2 * dm.sin(th), 1.7 + 0.1 * k, LOOP_SHIFT + r2 * (1 - dm.cos(th)));
   }
   // return leg with a bunny hill, heading -x on z = 3 + 15
   const zr = LOOP_SHIFT + 2 * r2;
@@ -284,7 +285,7 @@ function fixture(): CoasterSplineData {
   const r3 = zr / 2;
   for (let k = 1; k <= 5; k++) {
     const th = (k / 6) * Math.PI;
-    add(-8 - r3 * Math.sin(th), 2.2 - (1.1 * k) / 6, r3 + r3 * Math.cos(th));
+    add(-8 - r3 * dm.sin(th), 2.2 - (1.1 * k) / 6, r3 + r3 * dm.cos(th));
   }
   return {
     points: pts,

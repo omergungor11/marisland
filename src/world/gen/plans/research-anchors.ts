@@ -54,6 +54,7 @@ import {
   type Shape,
   type SiteCtx,
 } from '../sites.ts';
+import * as dm from '../../../core/math/dmath.ts';
 
 const DEG = Math.PI / 180;
 const TAU = Math.PI * 2;
@@ -120,7 +121,7 @@ export function reserveMeridian(
     const b = k * M.stepDeg * DEG;
     if (angGap(b, face) < M.flankGap * DEG) continue;
     const c = add(obs, dirOf(b), d);
-    const score = avoid.reduce((acc, p) => acc + Math.cos(b - heading(obs, p)), 0);
+    const score = avoid.reduce((acc, p) => acc + dm.cos(b - heading(obs, p)), 0);
     cands.push({ c, score });
   }
   cands.sort((p, q) => p.score - q.score);
@@ -528,7 +529,7 @@ function deckCands(
       if (docks.some((k) => dist(k, d.c) < DK.pier)) continue;
       if (head && dist(head, d.c) < DK.promontory) continue;
       if (!deckGround(ctx, d, rel) || !ok(d)) continue;
-      cands.push({ ...d, key: -Math.cos(d.rot - windward) });
+      cands.push({ ...d, key: -dm.cos(d.rot - windward) });
     }
   cands.sort((p, q) => p.key - q.key);
   return cands.map((k) => ({ c: k.c, rot: k.rot }));

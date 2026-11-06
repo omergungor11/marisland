@@ -57,6 +57,7 @@ import {
   type SiteCtx,
   type SitePlan,
 } from '../sites.ts';
+import * as dm from '../../../core/math/dmath.ts';
 
 const DEG = Math.PI / 180;
 const TAG = 'qaPark';
@@ -93,8 +94,8 @@ const TEMPLATE: readonly CoasterTemplatePoint[] = COASTER_PARTS.flatMap((p) => [
 
 /** Site-frame (x, z) → world. */
 export const coasterToWorld = (o: XZ, rotY: number, x: number, z: number): XZ => ({
-  x: o.x + Math.sin(rotY) * x + Math.cos(rotY) * z,
-  z: o.z - Math.cos(rotY) * x + Math.sin(rotY) * z,
+  x: o.x + dm.sin(rotY) * x + dm.cos(rotY) * z,
+  z: o.z - dm.cos(rotY) * x + dm.sin(rotY) * z,
 });
 
 /** World → site frame (x, z). */
@@ -102,8 +103,8 @@ const worldToCoaster = (o: XZ, rotY: number, p: XZ): XZ => {
   const dx = p.x - o.x;
   const dz = p.z - o.z;
   return {
-    x: Math.sin(rotY) * dx - Math.cos(rotY) * dz,
-    z: Math.cos(rotY) * dx + Math.sin(rotY) * dz,
+    x: dm.sin(rotY) * dx - dm.cos(rotY) * dz,
+    z: dm.cos(rotY) * dx + dm.sin(rotY) * dz,
   };
 };
 
@@ -248,7 +249,7 @@ export function* qaParkCandidates(ctx: SiteCtx, isl: IslandData, yard: XZ): Gene
     const inner = w / 2 + tier.rim;
     for (const p of cells) {
       if (shore(p) < inner) continue;
-      const a = Math.atan2(p.z - yard.z, p.x - yard.x) + Math.PI;
+      const a = dm.atan2(p.z - yard.z, p.x - yard.x) + Math.PI;
       const sector = Math.min(K.sectors - 1, Math.floor((a / (2 * Math.PI)) * K.sectors));
       const score0 = K.near * shore(p);
       const cur = best[sector];
@@ -360,7 +361,7 @@ function fitPoints(
     for (let i = 0; i < n; i++)
       for (let o = -F.reach; o <= F.reach; o++) {
         const j = (i + o + n) % n;
-        up[j] = Math.max(up[j], need[i] * F.spread ** Math.abs(o));
+        up[j] = Math.max(up[j], need[i] * dm.pow(F.spread, Math.abs(o)));
       }
     let loopUp = 0;
     for (let i = lp0; i <= lp1; i++) loopUp = Math.max(loopUp, up[i]);
@@ -470,7 +471,7 @@ export function placeQaParkKit(ctx: SiteCtx, isl: IslandData, s: ParkSite): void
   const level = (id: string, p: XZ): boolean => {
     const r = FIXTURE_RADIUS[id] ?? 1;
     const ys = [0, 1, 2, 3, 4, 5, 6, 7].map((k) =>
-      heightAt(ctx.h, p.x + Math.cos(k * 0.785) * r, p.z + Math.sin(k * 0.785) * r),
+      heightAt(ctx.h, p.x + dm.cos(k * 0.785) * r, p.z + dm.sin(k * 0.785) * r),
     );
     const y0 = heightAt(ctx.h, p.x, p.z);
     return Math.max(y0, ...ys) - Math.min(y0, ...ys) <= K.kit.maxRelief;
@@ -515,7 +516,7 @@ export function finishQaPark(ctx: SiteCtx, isl: IslandData, s: ParkSite): void {
   const { side } = apronOf(s);
   const edge = side * ((K.rect[0] * s.scale) / 2 + A.entry);
   // facing out of the station side (the arriving walkers read the board)
-  const out = Math.atan2(atLocal(s, side, 0).z - s.p.z, atLocal(s, side, 0).x - s.p.x);
+  const out = dm.atan2(atLocal(s, side, 0).z - s.p.z, atLocal(s, side, 0).x - s.p.x);
   const e = atLocal(s, edge, A.z * s.scale);
   put('coasterEntry', e, out + Math.PI, H(e));
   const b = atLocal(s, edge, A.boardZ * s.scale);

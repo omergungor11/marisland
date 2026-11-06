@@ -88,6 +88,7 @@ import {
   type SitePlan,
 } from '../sites.ts';
 import type { ThemePlanner } from './types.ts';
+import * as dm from '../../../core/math/dmath.ts';
 
 /** Campus frame: origin + unit axes (u along the patch axis, v across it). */
 interface Frame {
@@ -100,8 +101,8 @@ interface Frame {
 const frameAt = (o: XZ, a: number): Frame => ({
   o,
   a,
-  U: { x: Math.cos(a), z: Math.sin(a) },
-  V: { x: -Math.sin(a), z: Math.cos(a) },
+  U: { x: dm.cos(a), z: dm.sin(a) },
+  V: { x: -dm.sin(a), z: dm.cos(a) },
 });
 const at = (f: Frame, u: number, v: number): XZ => ({
   x: f.o.x + f.U.x * u + f.V.x * v,
@@ -250,7 +251,7 @@ function siteOnRing(
   for (let r = ring[0]; r <= ring[1]; r += 2)
     for (let k = 0; k < 24; k++) {
       const ang = phase + (k / 24) * Math.PI * 2;
-      const p = add(f.o, { x: Math.cos(ang), z: Math.sin(ang) }, r);
+      const p = add(f.o, { x: dm.cos(ang), z: dm.sin(ang) }, r);
       const g = frameAt(p, f.a);
       const sh = frameRect(g, 0, 0, size[0] / 2, size[1] / 2);
       if (!onLand(ctx, isl, sh, minShore)) continue;
@@ -304,8 +305,8 @@ function solarCells(
 ): { real: FieldPatchData[]; grid: FieldPatchData[] } {
   const real = ctx.fields.filter((fp) => fp.islandId === isl.id);
   const [cu, cv] = PATCHWORK.cell;
-  const fc = Math.cos(a);
-  const fs = Math.sin(a);
+  const fc = dm.cos(a);
+  const fs = dm.sin(a);
   const R = isl.reach;
   const grid: FieldPatchData[] = [];
   const u0 = Math.floor((isl.cx * fc + isl.cz * fs - R) / cu);
@@ -725,7 +726,7 @@ export const planCoding: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
       isl.anchors.windTunnel = { x: site.sh.x, z: site.sh.z, rotY: site.a };
       // TASK-498 (CO:C1): the tunnel (local +x = the axis, downwind: fixture rotY = a + pi/2) and its fan
       // at the upwind mouth (local +z = downwind: rotY = a); the pad above is its level ground
-      const ax = { x: Math.cos(site.a), z: Math.sin(site.a) };
+      const ax = { x: dm.cos(site.a), z: dm.sin(site.a) };
       ctx.fixtures.push({
         defId: 'windTunnel',
         x: site.sh.x,
@@ -918,7 +919,7 @@ function windTunnelSite(
   for (const li of near) {
     const t = ctx.landmarks[li];
     const D = dist(hp, t);
-    const a = Math.atan2(t.z - hp.z, t.x - hp.x);
+    const a = dm.atan2(t.z - hp.z, t.x - hp.x);
     const dir = dirOf(a);
     const perp = { x: -dir.z, z: dir.x };
     const lo = Math.max(T.fromTop, tr + T.endGap) + L / 2;
@@ -964,8 +965,8 @@ function windTunnelSite(
   }
   const site = best as { sh: Shape; a: number } | null;
   if (!site) return null;
-  const a = Math.cos(site.a - ctx.windDir) < 0 ? site.a + Math.PI : site.a;
-  return { sh: site.sh, a: Math.atan2(Math.sin(a), Math.cos(a)) };
+  const a = dm.cos(site.a - ctx.windDir) < 0 ? site.a + Math.PI : site.a;
+  return { sh: site.sh, a: dm.atan2(dm.sin(a), dm.cos(a)) };
 }
 
 /**
@@ -991,7 +992,7 @@ function hillBench(ctx: SiteCtx, isl: IslandData, hp: XZ, paths: readonly Polyli
       for (const sd of [1, -1]) {
         const p = { x: p0.x + nx * B.side * sd, z: p0.z + nz * B.side * sd };
         const out = unit(hp, p);
-        const rotY = Math.atan2(out.z, out.x);
+        const rotY = dm.atan2(out.z, out.x);
         const sh = rectShape(p.x, p.z, rotY, B.rect[0], B.rect[1]);
         if (!onLand(ctx, isl, sh, 2) || relief(ctx, sh) > B.maxRelief) continue;
         if (ctx.shapes[isl.id].some((o) => o.tag !== 'plaza' && shapesOverlap(o, sh, 0.3)))
@@ -1035,7 +1036,7 @@ function rimBenches(
   for (const smp of rimSamples(walk, B.step)) {
     const p = add(smp.p, smp.inland, B.back);
     // front (+z) = (cos rotY, sin rotY) points down the normal, out to sea
-    const rotY = Math.atan2(-smp.inland.z, -smp.inland.x);
+    const rotY = dm.atan2(-smp.inland.z, -smp.inland.x);
     const sh = rectShape(p.x, p.z, rotY, B.rect[0], B.rect[1]);
     if (!onLand(ctx, isl, sh, 2) || relief(ctx, sh) > B.maxRelief) continue;
     if (slopeAtXZ(ctx, p.x, p.z) > CODING_RIM_WALK.maxSlope) continue;
@@ -1086,7 +1087,7 @@ function rimBenches(
 /** Straight strip park → `t`, `width` u wide (kept clear while the big sites are searched). */
 function hubStrip(park: XZ, t: XZ, width: number): Shape {
   const len = dist(park, t);
-  const g = frameAt(park, Math.atan2(t.z - park.z, t.x - park.x));
+  const g = frameAt(park, dm.atan2(t.z - park.z, t.x - park.x));
   return frameRect(g, len / 2, 0, len / 2, width / 2);
 }
 
@@ -1252,7 +1253,7 @@ function m22Quick(
     paint(ctx, isl, sh, Zone.meadow);
   };
   // fixture heading (local +z) that turns local +x along (dx, dz)
-  const headingOfX = (dx: number, dz: number): number => Math.atan2(dx, -dz);
+  const headingOfX = (dx: number, dz: number): number => dm.atan2(dx, -dz);
 
   // ---- C11 windsock avenue: both long sides of the park, just outside the perimeter walk
   const W = M.windsocks;
@@ -1350,8 +1351,7 @@ function m22Quick(
       GL.ring,
       GL.maxRelief,
       GL.minShore,
-      (p, rel, r) =>
-        rel + 0.02 * r - 2 * Math.cos(Math.atan2(p.z - park.z, p.x - park.x) - GL.bearing),
+      (p, rel, r) => rel + 0.02 * r - 2 * dm.cos(dm.atan2(p.z - park.z, p.x - park.x) - GL.bearing),
     );
     if (!gg) continue;
     bed(gg, size);
@@ -1384,7 +1384,7 @@ function m22Quick(
   const PW = M.pinwheels;
   const pr = rng.fork('pinwheels');
   const windward = (p: XZ): number =>
-    -((p.x - centre.x) * Math.cos(wd) + (p.z - centre.z) * Math.sin(wd)) / (dist(p, centre) || 1);
+    -((p.x - centre.x) * dm.cos(wd) + (p.z - centre.z) * dm.sin(wd)) / (dist(p, centre) || 1);
   // no room on a tight plateau (TASK-497: the Kite Hill took its share): the smallest grid may then
   // cross the hub strips, then stand on the Kite Hill foot (unlevelled there, see `bed`)
   const relax: (() => void)[] = [
@@ -1588,7 +1588,7 @@ function windGardens(ctx: SiteCtx, isl: IslandData, rng: Rng, s: CultureSite): S
       place('kite', p, ctx.windDir + Math.PI / 2 + kr.range(-0.25, 0.25), k % 3),
     );
     // the rack: just outside the foot, toward the park first, facing the hill
-    const toPark = Math.atan2(f.o.z - hp.z, f.o.x - hp.x);
+    const toPark = dm.atan2(f.o.z - hp.z, f.o.x - hp.x);
     let rack: { p: XZ; rotY: number; sh: Shape } | null = null;
     for (let k = 0; k < 24 && !rack; k++) {
       const ang = toPark + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (Math.PI / 12);
@@ -1607,7 +1607,7 @@ function windGardens(ctx: SiteCtx, isl: IslandData, rng: Rng, s: CultureSite): S
       addPad(ctx, isl, rack.sh, KH.rackPad);
       place('kiteRack', rack.p, rack.rotY, KF.rackVariant);
       // the duck beside the rack: across (local x) and toward the hill (local z)
-      const ax = { x: -Math.sin(rack.rotY), z: Math.cos(rack.rotY) };
+      const ax = { x: -dm.sin(rack.rotY), z: dm.cos(rack.rotY) };
       const rd = add(add(rack.p, ax, KF.rackDuck[0]), dirOf(rack.rotY), KF.rackDuck[1]);
       place('rubberDuck', rd, rack.rotY, kr.int(0, 2));
       story('kiteDay', rack.p, rack.rotY, ['kiteRack', 'kite']);
@@ -1632,20 +1632,20 @@ function windGardens(ctx: SiteCtx, isl: IslandData, rng: Rng, s: CultureSite): S
   for (const li of [...s.turbines].sort((x, y) => chime(x) - chime(y) || x - y)) {
     const m = ctx.landmarks[li];
     const phase = hr.range(0, Math.PI * 2);
-    const toPark = Math.atan2(f.o.z - m.z, f.o.x - m.x);
+    const toPark = dm.atan2(f.o.z - m.z, f.o.x - m.x);
     let best: { p: XZ; rotY: number } | null = null;
     let bs = -Infinity;
     for (let r = H.ring[0]; r <= H.ring[1]; r += 0.8)
       for (let j = 0; j < H.samples; j++) {
         const ang = phase + (j / H.samples) * Math.PI * 2;
-        if (Math.cos(ang - toPark) > H.parkCos) continue;
-        const p = add(m, { x: Math.cos(ang), z: Math.sin(ang) }, r);
+        if (dm.cos(ang - toPark) > H.parkCos) continue;
+        const p = add(m, { x: dm.cos(ang), z: dm.sin(ang) }, r);
         // rotY = ang: local z along the radius, the hammock's length (local x) tangent to the ring
         const sh = rectOf('hammock', p, ang);
         if (!onLand(ctx, isl, sh, H.minShore) || relief(ctx, sh) > H.maxRelief) continue;
         if (!clear(ctx, isl, sh, H.gap)) continue;
         // the lee side of the mast (sheltered), close in
-        const sc = Math.cos(ang - ctx.windDir) - 0.1 * r;
+        const sc = dm.cos(ang - ctx.windDir) - 0.1 * r;
         if (sc > bs) {
           bs = sc;
           best = { p, rotY: ang };
@@ -1653,7 +1653,7 @@ function windGardens(ctx: SiteCtx, isl: IslandData, rng: Rng, s: CultureSite): S
       }
     if (!best) continue;
     addPad(ctx, isl, rectOf('hammock', best.p, best.rotY), FLATTEN.discMargin);
-    const out = { x: Math.cos(best.rotY), z: Math.sin(best.rotY) };
+    const out = { x: dm.cos(best.rotY), z: dm.sin(best.rotY) };
     if (!napped) nap(best.p, best.rotY, add(best.p, out, H.napMug));
     else place('hammock', best.p, best.rotY, 1);
   }
@@ -1665,7 +1665,7 @@ function windGardens(ctx: SiteCtx, isl: IslandData, rng: Rng, s: CultureSite): S
 
   // ---- kite field on the windward side (no Kite Hill): poles across the windward edge, the rack
   // at the lee edge
-  const W = { x: Math.cos(ctx.windDir), z: Math.sin(ctx.windDir) };
+  const W = { x: dm.cos(ctx.windDir), z: dm.sin(ctx.windDir) };
   const centre = { x: isl.cx, z: isl.cz };
   let field: { g: Frame; su: number; sv: number } | null = null;
   let fs = -Infinity;

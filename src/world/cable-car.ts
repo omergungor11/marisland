@@ -12,6 +12,7 @@ import { MARKETING_ANCHORS as A } from '../content/themes/marketing-anchors.ts';
 import { MARKETING_M27_MOTION as M } from '../content/themes/marketing-m27-site.ts';
 import { beaconTracks, cablePoint, type P3 } from './gen/plans/marketing-anchors.ts';
 import type { IslandData } from './types.ts';
+import * as dm from '../core/math/dmath.ts';
 
 const G = M.gondola;
 
@@ -45,7 +46,7 @@ export interface GondolaPose {
   dv: number;
 }
 
-const ang = (x: number, z: number): number => Math.atan2(z, x);
+const ang = (x: number, z: number): number => dm.atan2(z, x);
 const smooth = (t: number): number => {
   const c = Math.min(1, Math.max(0, t));
   return c * c * (3 - 2 * c);
@@ -71,9 +72,9 @@ export function cableLoop(isl: IslandData): CableLoop | null {
     const an = isl.anchors[`cable${k}`];
     const c = { x: an.x, y: a.y, z: an.z };
     const a0 = ang(a.x - c.x, a.z - c.z);
-    const back = ang(-Math.cos(an.rotY), -Math.sin(an.rotY));
+    const back = ang(-dm.cos(an.rotY), -dm.sin(an.rotY));
     // the half turn whose midpoint (a0 ± π/2) is the back
-    const sweep = Math.cos(a0 + Math.PI / 2 - back) >= 0 ? Math.PI : -Math.PI;
+    const sweep = dm.cos(a0 + Math.PI / 2 - back) >= 0 ? Math.PI : -Math.PI;
     pieces.push({ kind: 'wheel', c, r: A.cable.track, a0, sweep, len: Math.PI * A.cable.track });
   };
   for (let k = 0; k + 1 < n; k++) span(t0[k], t0[k + 1]);
@@ -169,9 +170,9 @@ export function gondolaPose(L: CableLoop, k: number, time: number, out: GondolaP
     heading = ang(p.b.x - p.a.x, p.b.z - p.a.z);
   } else {
     const th = p.a0 + p.sweep * f;
-    out.x = p.c.x + Math.cos(th) * p.r;
+    out.x = p.c.x + dm.cos(th) * p.r;
     out.y = p.c.y;
-    out.z = p.c.z + Math.sin(th) * p.r;
+    out.z = p.c.z + dm.sin(th) * p.r;
     heading = th + (p.sweep > 0 ? Math.PI / 2 : -Math.PI / 2);
   }
   // turn through a sheave: blend the headings within the corner reach (spans only)

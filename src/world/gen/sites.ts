@@ -44,6 +44,7 @@ import {
   resample,
   type PathNetwork,
 } from './paths.ts';
+import * as dm from '../../core/math/dmath.ts';
 
 /**
  * Settlement site primitives (M14b TASK-361, D-029): planner state (`SiteCtx`), the plan record
@@ -72,7 +73,7 @@ export interface Shape {
 }
 
 export function rectShape(x: number, z: number, rotY: number, w: number, d: number): Shape {
-  return { x, z, c: Math.cos(rotY), s: Math.sin(rotY), hw: w / 2, hd: d / 2, r: 0 };
+  return { x, z, c: dm.cos(rotY), s: dm.sin(rotY), hw: w / 2, hd: d / 2, r: 0 };
 }
 
 export function discShape(x: number, z: number, r: number): Shape {
@@ -230,7 +231,7 @@ export interface SiteCtx {
   fixtures: FixtureData[];
 }
 
-export const ang = (dx: number, dz: number): number => Math.atan2(dz, dx);
+export const ang = (dx: number, dz: number): number => dm.atan2(dz, dx);
 export const segDist = (p: XZ, a: XZ, b: XZ): number => {
   const vx = b.x - a.x;
   const vz = b.z - a.z;
@@ -238,7 +239,7 @@ export const segDist = (p: XZ, a: XZ, b: XZ): number => {
   const t = l2 > 0 ? Math.max(0, Math.min(1, ((p.x - a.x) * vx + (p.z - a.z) * vz) / l2)) : 0;
   return Math.hypot(p.x - a.x - vx * t, p.z - a.z - vz * t);
 };
-export const dirOf = (a: number): XZ => ({ x: Math.cos(a), z: Math.sin(a) });
+export const dirOf = (a: number): XZ => ({ x: dm.cos(a), z: dm.sin(a) });
 export const add = (p: XZ, d: XZ, t: number): XZ => ({ x: p.x + d.x * t, z: p.z + d.z * t });
 export const dist = (a: XZ, b: XZ): number => Math.hypot(a.x - b.x, a.z - b.z);
 export const unit = (from: XZ, to: XZ): XZ => {
@@ -1342,8 +1343,8 @@ export function heroHeading(isl: IslandData, islands: readonly IslandData[]): nu
   let bestScore = -Infinity;
   for (let k = -h.searchSteps; k <= h.searchSteps; k++) {
     const az = h.azimuthDeg + k * h.searchStepDeg;
-    const vx = -Math.sin(az * DEG);
-    const vz = -Math.cos(az * DEG);
+    const vx = -dm.sin(az * DEG);
+    const vz = -dm.cos(az * DEG);
     let clearDeg = 180;
     for (const o of islands) {
       if (o.id === isl.id) continue;
@@ -1351,8 +1352,8 @@ export function heroHeading(isl: IslandData, islands: readonly IslandData[]): nu
       const dz = o.cz - isl.cz;
       const d = Math.hypot(dx, dz);
       if (d < 1e-6) continue;
-      const sep = Math.acos(clamp((dx * vx + dz * vz) / d, -1, 1)) / DEG;
-      clearDeg = Math.min(clearDeg, sep - Math.atan(o.reach / d) / DEG);
+      const sep = dm.acos(clamp((dx * vx + dz * vz) / d, -1, 1)) / DEG;
+      clearDeg = Math.min(clearDeg, sep - dm.atan(o.reach / d) / DEG);
     }
     const score = Math.min(clearDeg, h.clearDeg) - h.turnCost * Math.abs(k * h.searchStepDeg);
     if (score > bestScore) {

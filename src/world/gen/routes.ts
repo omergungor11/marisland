@@ -7,6 +7,7 @@ import { heightAt, sampleGrid } from '../types.ts';
 import { gridAStar, resample } from './paths.ts';
 import { reefNodeMask, type ReefField } from './reefs.ts';
 import { REEFS } from '../../content/reefs.ts';
+import * as dm from '../../core/math/dmath.ts';
 
 /**
  * Boat routes (ARCHITECTURE §2 step 6, TASK-133): closed loops found by A* on
@@ -283,10 +284,10 @@ export function buildRoutes(input: RouteInput, rng: Rng): Polyline[] {
   const stops: { dock: number; node: number; p: XZ; islandId: number }[] = [];
   docks.forEach((d, i) => {
     const L = d.segments * DOCK.segment;
-    const end = { x: d.x + Math.cos(d.rotY) * L, z: d.z + Math.sin(d.rotY) * L };
+    const end = { x: d.x + dm.cos(d.rotY) * L, z: d.z + dm.sin(d.rotY) * L };
     const basin = {
-      x: end.x + Math.cos(d.rotY) * DOCK.basinOffset,
-      z: end.z + Math.sin(d.rotY) * DOCK.basinOffset,
+      x: end.x + dm.cos(d.rotY) * DOCK.basinOffset,
+      z: end.z + dm.sin(d.rotY) * DOCK.basinOffset,
     };
     let node = nearestNode(h, c, basin, 3);
     if (
@@ -348,8 +349,8 @@ export function buildRoutes(input: RouteInput, rng: Rng): Polyline[] {
     const ctr = centroid(set.map((i) => stops[i].p));
     const ring = set.sort(
       (a, b) =>
-        Math.atan2(stops[a].p.z - ctr.z, stops[a].p.x - ctr.x) -
-        Math.atan2(stops[b].p.z - ctr.z, stops[b].p.x - ctr.x),
+        dm.atan2(stops[a].p.z - ctr.z, stops[a].p.x - ctr.x) -
+        dm.atan2(stops[b].p.z - ctr.z, stops[b].p.x - ctr.x),
     );
     emit(
       ring.map((i) => stops[i].node),
@@ -372,7 +373,7 @@ export function buildRoutes(input: RouteInput, rng: Rng): Polyline[] {
     for (let r = 0; r < rays; r++) {
       const a = (r / rays) * Math.PI * 2;
       for (let d = isl.reach * 0.6; d <= isl.reach + 60; d += 2) {
-        const p = { x: isl.cx + Math.cos(a) * d, z: isl.cz + Math.sin(a) * d };
+        const p = { x: isl.cx + dm.cos(a) * d, z: isl.cz + dm.sin(a) * d };
         const node = nearestNode(h, c, p, 2.9, ROUTES.preferDepth[0]);
         if (node >= 0) {
           if (!wps.includes(node)) wps.push(node);
@@ -394,7 +395,7 @@ export function buildRoutes(input: RouteInput, rng: Rng): Polyline[] {
     for (const [i, d] of docks.entries()) {
       if (d.islandId !== islandId) continue;
       const L = d.segments * DOCK.segment;
-      const end = { x: d.x + Math.cos(d.rotY) * L, z: d.z + Math.sin(d.rotY) * L };
+      const end = { x: d.x + dm.cos(d.rotY) * L, z: d.z + dm.sin(d.rotY) * L };
       const node = nearestNode(h, c, end, HQ_FERRY.reach);
       if (node >= 0) return { dock: i, node, p: posOf(h, c, node), islandId };
     }
@@ -408,8 +409,7 @@ export function buildRoutes(input: RouteInput, rng: Rng): Polyline[] {
       const s = isl.id !== hq.islandId ? ferryStop(isl.id) : undefined;
       if (s) dest.push(s);
     }
-    const bearing = (s: (typeof stops)[number]): number =>
-      Math.atan2(s.p.z - hq.p.z, s.p.x - hq.p.x);
+    const bearing = (s: (typeof stops)[number]): number => dm.atan2(s.p.z - hq.p.z, s.p.x - hq.p.x);
     dest.sort((a, b) => bearing(a) - bearing(b) || a.dock - b.dock);
     let cut = 0;
     let widest = -1;

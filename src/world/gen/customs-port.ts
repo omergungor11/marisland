@@ -1,5 +1,6 @@
 import { CUSTOMS_PORT as C, QA_CUSTOMS as K } from '../../content/themes/qa-customs.ts';
 import type { XZ } from '../types.ts';
+import * as dm from '../../core/math/dmath.ts';
 
 /**
  * Customs Port layout maths (M30 TASK-508, D-087). Pure (no three): the planner (gen/plans/qa-customs.ts)
@@ -64,7 +65,7 @@ export function shipPath(s: 1 | -1, lane: number): ShipPath {
   const L = C.lanes[Math.min(C.lanes.length - 1, lane)];
   const gamma = C.laneDeg * DEG;
   const R = C.turnR;
-  const tl = R * Math.tan(gamma / 2);
+  const tl = R * dm.tan(gamma / 2);
   const x0 = s * C.bayShift;
   const z0 = C.laneZ;
   const arc = R * gamma;
@@ -79,10 +80,10 @@ export function shipPath(s: 1 | -1, lane: number): ShipPath {
     run,
     length: arc + run,
     archD: arc + Math.max(0, L.arch - tl),
-    ux: s * Math.cos(gamma),
-    uz: Math.sin(gamma),
-    t1x: x0 + R * s * Math.sin(gamma),
-    t1z: z0 + R * (1 - Math.cos(gamma)),
+    ux: s * dm.cos(gamma),
+    uz: dm.sin(gamma),
+    t1x: x0 + R * s * dm.sin(gamma),
+    t1z: z0 + R * (1 - dm.cos(gamma)),
   };
 }
 
@@ -99,10 +100,10 @@ export function pathAt(p: ShipPath, d: number, out: PathPoint): PathPoint {
   const dd = Math.min(p.length, Math.max(0, d));
   if (dd <= p.arc) {
     const phi = dd / p.R;
-    out.x = p.x0 + p.R * p.s * Math.sin(phi);
-    out.z = p.z0 + p.R * (1 - Math.cos(phi));
-    out.hx = p.s * Math.cos(phi);
-    out.hz = Math.sin(phi);
+    out.x = p.x0 + p.R * p.s * dm.sin(phi);
+    out.z = p.z0 + p.R * (1 - dm.cos(phi));
+    out.hx = p.s * dm.cos(phi);
+    out.hz = dm.sin(phi);
   } else {
     const e = dd - p.arc;
     out.x = p.t1x + p.ux * e;
@@ -122,7 +123,7 @@ export function portLayout(spec: PortSpec): PortLayout {
     spec,
     ok: { ...at(C.okLine.x, C.okLine.z), variant: C.okLine.variant },
     // the arch faces along the arrival heading: its local +z = (-ux, -uz)
-    arch: { x: a.x, z: a.z, turn: Math.atan2(-path.ux, -path.uz) },
+    arch: { x: a.x, z: a.z, turn: dm.atan2(-path.ux, -path.uz) },
     pontoons: C.pontoons.map((p) => {
       // `lane: true` sits on the side opposite the ship lane, the others on the belt side
       const x = p.lane ? -sl * Math.abs(p.x) : p.x;
@@ -136,8 +137,8 @@ export function portLayout(spec: PortSpec): PortLayout {
 
 /** Crane frame -> world for a port whose crane stands at (ox, oz) with the fixture turn `rotY`. */
 export function frameToWorld(ox: number, oz: number, rotY: number, x: number, z: number): XZ {
-  const c = Math.cos(rotY);
-  const sn = Math.sin(rotY);
+  const c = dm.cos(rotY);
+  const sn = dm.sin(rotY);
   return { x: ox + sn * x + c * z, z: oz - c * x + sn * z };
 }
 
@@ -170,8 +171,8 @@ export function waterProbes(lay: PortLayout, step = 3): WaterProbe[] {
   for (let k = 0; k < 8; k++) {
     const a = (k / 8) * Math.PI * 2;
     out.push({
-      x: spot.x + Math.cos(a) * (SHIP_HALF.l - 2),
-      z: spot.z + Math.sin(a) * (SHIP_HALF.l - 2),
+      x: spot.x + dm.cos(a) * (SHIP_HALF.l - 2),
+      z: spot.z + dm.sin(a) * (SHIP_HALF.l - 2),
       r: 2.4,
       kind: 'ring',
     });

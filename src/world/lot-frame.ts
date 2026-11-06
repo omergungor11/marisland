@@ -4,16 +4,17 @@
  * desks and seats never drift apart. Pure, no three import.
  */
 import { heightAt, type Heightfield, type LotData } from './types.ts';
+import * as dm from '../core/math/dmath.ts';
 
 type LotFrame = Pick<LotData, 'x' | 'z' | 'rotY'>;
 
 /** three `rotation.y` that turns a lot-local model (door on +z) to face the lot's rotY. */
-export const lotYaw = (lot: LotFrame): number => Math.atan2(Math.cos(lot.rotY), Math.sin(lot.rotY));
+export const lotYaw = (lot: LotFrame): number => dm.atan2(dm.cos(lot.rotY), dm.sin(lot.rotY));
 
 /** Lot-local (lx, lz) → world (x, z). */
 export function lotLocalToWorld(lot: LotFrame, lx: number, lz: number): { x: number; z: number } {
-  const fx = Math.cos(lot.rotY);
-  const fz = Math.sin(lot.rotY);
+  const fx = dm.cos(lot.rotY);
+  const fz = dm.sin(lot.rotY);
   // right hand = (fz, −fx)
   return { x: lot.x + lx * fz + lz * fx, z: lot.z - lx * fx + lz * fz };
 }

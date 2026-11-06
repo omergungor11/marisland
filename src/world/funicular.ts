@@ -13,6 +13,7 @@
  */
 import { DEVOPS_M25_MOTION, DEVOPS_M25_SITE } from '../content/themes/devops-m25-site.ts';
 import { heightAt, type Heightfield, type XZ } from './types.ts';
+import * as dm from '../core/math/dmath.ts';
 
 const R = DEVOPS_M25_SITE.rail;
 
@@ -99,7 +100,7 @@ function build(
       x: lo.x,
       z: lo.z,
       y: Math.min(ya, yb) - R.clearance * sp.s,
-      yaw: Math.atan2(hi.x - lo.x, hi.z - lo.z),
+      yaw: dm.atan2(hi.x - lo.x, hi.z - lo.z),
       variant: Math.min(R.maxStep, Math.round(Math.abs(yb - ya) / step)),
       scale: sp.s,
       leg: sp.leg,
@@ -274,7 +275,7 @@ export const newCarPose = (): CarPose => ({
   turnT: 0,
 });
 
-const ease = (u: number): number => u - Math.sin(2 * Math.PI * u) / (2 * Math.PI);
+const ease = (u: number): number => u - dm.sin(2 * Math.PI * u) / (2 * Math.PI);
 const smooth = (t: number): number => {
   const c = Math.min(1, Math.max(0, t));
   return c * c * (3 - 2 * c);
@@ -293,11 +294,11 @@ function onLeg(L: RailLine, i: number, s: number, out: CarPose): void {
   out.x = a.x + (b.x - a.x) * t;
   out.z = a.z + (b.z - a.z) * t;
   out.y = railY(L, c);
-  out.yaw = Math.atan2(b.x - a.x, b.z - a.z);
+  out.yaw = dm.atan2(b.x - a.x, b.z - a.z);
   const ch = DEVOPS_M25_MOTION.car.chord;
   const lo = Math.max(s0, c - ch);
   const hi = Math.min(s1, c + ch);
-  out.pitch = hi > lo ? Math.atan((railY(L, hi) - railY(L, lo)) / (hi - lo)) : 0;
+  out.pitch = hi > lo ? dm.atan((railY(L, hi) - railY(L, lo)) / (hi - lo)) : 0;
 }
 
 /** Signed shortest a → b (rad). */

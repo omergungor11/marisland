@@ -78,6 +78,7 @@ import { reserveBeaconAnchors } from './marketing-anchors.ts';
 import { placeCarnivalKit, planCarnivalPier } from './marketing-harbour.ts';
 import { placeBeaconKit } from './marketing-m27.ts';
 import type { ThemePlanner } from './types.ts';
+import * as dm from '../../../core/math/dmath.ts';
 
 const TAU = Math.PI * 2;
 const xz = (p: XZ): [number, number] => [p.x, p.z];
@@ -531,7 +532,7 @@ export const planMarketing: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
       },
     );
     if (st) fixture(ctx, isl, 'stage', st.p, st.rot, st.sh, { pad: FLATTEN.discMargin });
-    const a0 = st ? Math.atan2(C.z - st.p.z, C.x - st.p.x) : 0;
+    const a0 = st ? dm.atan2(C.z - st.p.z, C.x - st.p.x) : 0;
     // striped tents half on the paving rim, spaced round it
     const fr = rng.fork('fair');
     const nTents = fr.int(P.tent.count[0], P.tent.count[1]);
@@ -889,8 +890,7 @@ const toward = (from: XZ, to: XZ): number => {
 };
 
 /** Smallest angle between two bearings. */
-const angGap = (a: number, b: number): number =>
-  Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+const angGap = (a: number, b: number): number => Math.abs(dm.atan2(dm.sin(a - b), dm.cos(a - b)));
 
 /**
  * Carnival Broadcasters (M19 TASK-423, ISLAND_CULTURES §2.4): the culture kit round the fair, the
@@ -1074,11 +1074,11 @@ function carnival(ctx: SiteCtx, isl: IslandData, rng: Rng, s: CarnivalSite): Sto
     const br = rng.fork('masts');
     const M = CS.masts;
     const nMasts = br.int(M.count[0], M.count[1]);
-    const avoid: number[] = stage ? [Math.atan2(stage.z - C.z, stage.x - C.x)] : [];
+    const avoid: number[] = stage ? [dm.atan2(stage.z - C.z, stage.x - C.x)] : [];
     const radii: number[] = [];
     for (let r = M.ring[0]; r <= M.ring[1] + 1e-6; r += 1) radii.push(FR + r);
     const phase = br.range(0, TAU);
-    const bearing = (p: XZ): number => Math.atan2(p.z - C.z, p.x - C.x);
+    const bearing = (p: XZ): number => dm.atan2(p.z - C.z, p.x - C.x);
     for (let k = 0; k < nMasts; k++) {
       const spreadOut = (cands: Cand[]): Cand[] =>
         cands
@@ -1097,13 +1097,13 @@ function carnival(ctx: SiteCtx, isl: IslandData, rng: Rng, s: CarnivalSite): Sto
     }
 
     // no room at the entrance: the mascot greets from the fair shelf, nearest the way in
-    const eb = Math.atan2(e.z, e.x);
+    const eb = dm.atan2(e.z, e.x);
     const fr: number[] = [];
     for (let r = CS.mascotRing[0]; r <= CS.mascotRing[1]; r++) fr.push(FR + r);
     mascot ??= placeFirst(
       'mascotStatue',
       ringCands(C, fr, 24, eb, (p) => toward(C, p))
-        .map((c) => ({ c, g: angGap(Math.atan2(c.p.z - C.z, c.p.x - C.x), eb) }))
+        .map((c) => ({ c, g: angGap(dm.atan2(c.p.z - C.z, c.p.x - C.x), eb) }))
         .sort((x, y) => x.g - y.g || dist(x.c.p, C) - dist(y.c.p, C))
         .map((x) => x.c),
       lv,

@@ -80,6 +80,7 @@ import {
   type ParkSite,
 } from './qa-park.ts';
 import type { ThemePlanner } from './types.ts';
+import * as dm from '../../../core/math/dmath.ts';
 
 const TAU = Math.PI * 2;
 const DEG = Math.PI / 180;
@@ -383,7 +384,7 @@ function placeGates(ctx: SiteCtx, isl: IslandData, yard: XZ): void {
     fixture(ctx, isl, defId, p, rotY, discShape(p.x, p.z, r), { block: false });
   const gates: XZ[] = [];
   const W = P.gateTangent;
-  const straight = Math.cos(P.gateStraightDeg * DEG);
+  const straight = dm.cos(P.gateStraightDeg * DEG);
   for (const lane of ctx.lanes[isl.id]) {
     const s = [0];
     for (let k = 1; k < lane.length; k++) s.push(s[k - 1] + dist(lane[k - 1], lane[k]));
@@ -547,7 +548,7 @@ export const planQa: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   }
 
   // hangars on the yard rim, conveyor bridges between neighbours
-  const dockA = site ? Math.atan2(site.root.z - yard.z, site.root.x - yard.x) : 0;
+  const dockA = site ? dm.atan2(site.root.z - yard.z, site.root.x - yard.x) : 0;
   const hangars = placeHangars(
     ctx,
     isl,
@@ -601,7 +602,7 @@ function placeSlalom(ctx: SiteCtx, isl: IslandData, dockA: number): void {
   const S = QA_CULTURE_SITES.slalom;
   const R = isl.radius + CULTURE_BOATS.patrol.margin;
   const da = S.spacing / R;
-  const at = (a: number): XZ => ({ x: isl.cx + Math.cos(a) * R, z: isl.cz + Math.sin(a) * R });
+  const at = (a: number): XZ => ({ x: isl.cx + dm.cos(a) * R, z: isl.cz + dm.sin(a) * R });
   let best = -1;
   let bestA = 0;
   for (let k = 0; k < S.angles; k++) {
@@ -713,8 +714,8 @@ interface QaSite {
 
 /** Geometry-local (x, z) of a prop facing `rotY` → world (+z = dirOf(rotY), +x = (sin, −cos)). */
 const loc = (p: XZ, rotY: number, x: number, z: number): XZ => ({
-  x: p.x + Math.sin(rotY) * x + Math.cos(rotY) * z,
-  z: p.z - Math.cos(rotY) * x + Math.sin(rotY) * z,
+  x: p.x + dm.sin(rotY) * x + dm.cos(rotY) * z,
+  z: p.z - dm.cos(rotY) * x + dm.sin(rotY) * z,
 });
 
 /** applyPads' relaxation bound of a pad (circumradius + margin). */

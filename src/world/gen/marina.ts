@@ -25,6 +25,7 @@ import { HQ_MARINA as M, MARINA_PIER_V as PV } from '../../content/themes/hq-mar
 import type { DockData, FixtureData, Heightfield, IslandData, Polyline, XZ } from '../types.ts';
 import { heightAt, sampleGrid } from '../types.ts';
 import { discShape, type Shape } from './sites.ts';
+import * as dm from '../../core/math/dmath.ts';
 
 export interface MarinaInput {
   h: Heightfield;
@@ -53,7 +54,7 @@ interface Spine {
 const DEG = Math.PI / 180;
 const EMPTY: MarinaResult = { fixtures: [], shapes: [], reserved: [], boats: 0 };
 const dist = (a: XZ, b: XZ): number => Math.hypot(a.x - b.x, a.z - b.z);
-const headingOf = (dx: number, dz: number): number => Math.atan2(dz, dx);
+const headingOf = (dx: number, dz: number): number => dm.atan2(dz, dx);
 
 /** Distance from p to the segment a-b. */
 function segDist(p: XZ, a: XZ, b: XZ): number {
@@ -110,7 +111,7 @@ export function placeMarina(input: MarinaInput, rng: Rng): MarinaResult {
   const dockIdx = docks.findIndex((d) => d.islandId === hq.id);
   if (dockIdx < 0) return EMPTY;
   const dock = docks[dockIdx];
-  const dir = { x: Math.cos(dock.rotY), z: Math.sin(dock.rotY) };
+  const dir = { x: dm.cos(dock.rotY), z: dm.sin(dock.rotY) };
   const root: XZ = { x: dock.x, z: dock.z };
   const L = dock.segments * DOCK.segment;
   const pierEnd: XZ = { x: root.x + dir.x * L, z: root.z + dir.z * L };
@@ -162,7 +163,7 @@ export function placeMarina(input: MarinaInput, rng: Rng): MarinaResult {
       const g = gradAt(p);
       if (g.x === 0 && g.z === 0) break;
       const t = { x: -g.z * sign, z: g.x * sign };
-      if (prev) turn += Math.atan2(prev.x * t.z - prev.z * t.x, prev.x * t.x + prev.z * t.z);
+      if (prev) turn += dm.atan2(prev.x * t.z - prev.z * t.x, prev.x * t.x + prev.z * t.z);
       prev = t;
       if (Math.abs(turn) > S.maxTurn * DEG) break;
       let q = { x: p.x + t.x * S.step, z: p.z + t.z * S.step };
@@ -271,8 +272,8 @@ export function placeMarina(input: MarinaInput, rng: Rng): MarinaResult {
   if (fort) {
     const MO = M.mole;
     const hd = { x: -gEnd.x, z: -gEnd.z };
-    const toPier = Math.atan2(pierEnd.z - fort.z, pierEnd.x - fort.x);
-    const a0 = Math.atan2(hd.z, hd.x);
+    const toPier = dm.atan2(pierEnd.z - fort.z, pierEnd.x - fort.x);
+    const a0 = dm.atan2(hd.z, hd.x);
     let delta = toPier - a0;
     while (delta > Math.PI) delta -= 2 * Math.PI;
     while (delta <= -Math.PI) delta += 2 * Math.PI;
@@ -282,7 +283,7 @@ export function placeMarina(input: MarinaInput, rng: Rng): MarinaResult {
       for (const total of MO.lengths) {
         if (placed) break;
         const a = a0 + sgn * Math.min(Math.abs(delta), bend * DEG);
-        const d = { x: Math.cos(a), z: Math.sin(a) };
+        const d = { x: dm.cos(a), z: dm.sin(a) };
         const A = { x: fort.x + d.x * MO.from, z: fort.z + d.z * MO.from };
         let good = true;
         for (let t = 0; t <= total && good; t += MO.step) {
