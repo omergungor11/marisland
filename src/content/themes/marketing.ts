@@ -257,7 +257,7 @@ export const MARKETING_QUICK = {
   /**
    * M8 party pontoon (`sailboat` variant 5, a floating fixture): a `w` × `l` raft in the bay,
    * `off[0]…off[1]` u off the pier axis, `along[0]…along[1]` u out from the root, in water ≥ `minDepth` u deep
-   * and ≥ `minShore` u off the coast; the score prefers the nearest to the pier, around 14 u out.
+   * and ≥ `minShore` u off the coast; the score prefers the nearest to the pier, around `aim` u out.
    */
   pontoon: {
     variant: 5,
@@ -265,8 +265,13 @@ export const MARKETING_QUICK = {
     l: 6.2,
     off: [5, 12] as const,
     along: [8, 20] as const,
-    /** With a Carnival Pier (TASK-536): past the boardwalk's far end, clear of the sea view of it. */
-    harbour: { off: [16, 26] as const, along: [2, 8] as const },
+    aim: 14,
+    /**
+     * With a Carnival Pier (TASK-536): past the boardwalk's far end, clear of the sea view of it. TASK-556:
+     * at off 16 / along 8 its corner sat in the near corner of every boardwalk view from the sea; now
+     * off ≥ 20 and as far inshore as the water allows (`aim`).
+     */
+    harbour: { off: [20, 26] as const, along: [2, 8] as const, aim: 2 },
     minDepth: 1.2,
     minShore: 4,
   },

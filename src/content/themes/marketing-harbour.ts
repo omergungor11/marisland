@@ -149,8 +149,9 @@ export const CARNIVAL_PIER = {
   },
   /**
    * Bulb arches (`bunting` v5): over the pier every `pierEvery` segments from `pierFrom`, and across
-   * the deck at `deckScale`, `deckAt` u from its far end (between the wheel and the screen, and at the
-   * end itself), so none crosses the screen seen from the sea. Poles at ± w / 2, a hoop of chasing
+   * the deck at `deckScale`, `deckAt` u from its far end (the end itself only: an arch between the
+   * wheel and the screen stands its sea pole in front of the board from every oblique sea view,
+   * TASK-556), so none crosses the screen seen from the sea. Poles at ± w / 2, a hoop of chasing
    * bulbs rising `rise` over them.
    */
   arch: {
@@ -169,7 +170,7 @@ export const CARNIVAL_PIER = {
     pierFrom: 1,
     pierEvery: 2,
     deckScale: 1.6,
-    deckAt: [0.15, 6.05] as const,
+    deckAt: [0.15] as const,
   },
   /**
    * Lantern posts (their street pools light the water): on the deck's sea edge `at` u from its far end

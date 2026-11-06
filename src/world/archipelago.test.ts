@@ -123,9 +123,9 @@ describe('archipelago — 30-seed full generation', () => {
       const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
       expect(snap).toMatchInlineSnapshot(`
         {
-          "1": "6d01c4f91bab0f59",
-          "1001": "67091f90c7b6c709",
-          "42": "1a8ce94f36fc95e8",
+          "1": "f57e3755d7c66dcc",
+          "1001": "6aa5136fe0f1782c",
+          "42": "b866901bf8a48d79",
         }
       `);
     },
@@ -637,8 +637,9 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // TASK-532 harbour skeleton + Research Tide-Lab / sunken-city anchors, re-pinned
       // TASK-534 Research harbour kit + sunken city placed, kiosk pads, sub path, re-pinned
       // TASK-544 Coding sites, TASK-545 the M33 kit on them, TASK-536 Marketing harbour + Carnival Pier, TASK-537 Colour Wharf, re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('aac9c25ff2f0505e');
-      expect(generateWorld(1).hashes.world).toBe('9fad2b9f5677eeca');
+      // TASK-556 Carnival deck arch dropped, party pontoon further off and inshore, re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('69ff715f513e785f');
+      expect(generateWorld(1).hashes.world).toBe('81bcff972b383088');
     } finally {
       for (const b of saved) b.on = true;
     }
