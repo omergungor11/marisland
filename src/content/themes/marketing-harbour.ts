@@ -217,10 +217,20 @@ export const CARNIVAL_MOTION = {
     floor: -0.65,
   },
   /**
-   * The screen's flash: `pulses` flashes `period` s each from `delay` s after the arrival, a lit
-   * panel over the board growing from `from` × its size to the full board.
+   * The screen's flash: `pulses` blinks `period` s apart from `delay` s after the arrival, each lit for
+   * `on` × the period. TASK-555: the frame flashes, the word stays: four lit strips over the frame
+   * ring and `edge` u past it, `z` u proud of the face, swelling `pop` × the board at a blink's peak.
    */
-  flash: { delay: 0.1, pulses: 4, period: 0.5, from: 0.8, color: '#FFF6D8' },
+  flash: {
+    delay: 0.1,
+    pulses: 5,
+    period: 0.42,
+    on: 0.45,
+    pop: 0.03,
+    edge: 0.18,
+    z: 0.02,
+    color: '#FFD45C',
+  },
   /** The wheel gains `turns` whole extra turns over `seconds` s after each arrival (closed form). */
   wheel: { turns: 1, seconds: 18 },
 } as const;

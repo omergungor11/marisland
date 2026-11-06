@@ -25,7 +25,7 @@ export const PART_SLOTS: Readonly<Record<string, number>> = {
   arm: 16,
   cap: 16,
   fish: 48,
-  panel: 2,
+  panel: 8,
   pane: 12,
 };
 

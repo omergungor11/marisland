@@ -174,17 +174,23 @@ export const WHARF_MOTION = {
     },
   },
   /**
-   * Boathouse colour on the evening water (no real reflections in the water shader): a soft patch of
-   * each house's paint off its door, from `hours[0]` to `hours[1]` (fades over `fade` h). Size
-   * [across, 1, along], `out` u past the door, `y` over the water; it breathes `shimmer` over `period` s.
+   * Boathouse colour on the evening water (no real reflections in the water shader): a broken streak
+   * of each house's paint off its door, from `hours[0]` to `hours[1]` (fades over `fade` h). TASK-555:
+   * `dashes` thin dashes (one soft patch read as a blob), the first `out` u past the door, `gap` u
+   * apart, each `taper` narrower than the last. Size [across, 1, along], `y` over the water; each dash
+   * breathes `shimmer` over `period` s and sways `sway` u across, out of step with its neighbours.
    */
   streak: {
     hours: [17.25, 21] as const,
     fade: 0.75,
-    out: 3.1,
-    size: [1.2, 1, 2] as const,
+    out: 2.2,
+    dashes: 3,
+    gap: 1.35,
+    taper: 0.18,
+    size: [0.5, 1, 1.05] as const,
     y: 0.05,
     shimmer: 0.12,
+    sway: 0.08,
     period: 4.6,
     range: 110,
   },

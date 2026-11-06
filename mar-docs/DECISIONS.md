@@ -2,6 +2,25 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-130: Glow and flash fixes from the 2026-11-06 QA with the parts we have, and a morning light key (TASK-555) — 2026-11-06
+
+**Decision**: (1) **Quantum pavilion core**: the opaque core ball gets a pale heart on its camera side and a stippled halo disc
+(`PART.patch`, its dither rim) behind it, both turned to the camera (`CultureCtx.cam` now carries y). The halo comes in with the night.
+The pavilion's lantern pool goes 6.5 u / 0.8 / hue 0.5 → 4.5 u / 0.5 / hue 0.15 and its glass / frame albedo `#D2F1FB` / `#E9F1F8` →
+`#B4DDEA` / `#CFDDE8`: the near-white glass under the half-violet pool and the night hemisphere was the lavender wash. (2) **WELCOME flash**:
+the frame flashes, not the face: four gold strips over the frame ring and 0.18 u past it, 5 blinks of 0.19 s every 0.42 s; nothing covers
+the word (`PART_SLOTS.panel` 2 → 8). The "WFLCOME" was the wheel's spokes and cabins in front of the board at the arrival cam, not the flash.
+(3) **Paint streaks**: three thin dashes per boathouse (0.5 → 0.32 u across, 1.05 u along, 1.35 u apart) that sway out of step instead of
+one 1.2 × 2 u blob. (4) **Siren rings**: three flat rings round the ✓ lamp's mast, r 0.4 → 3.1 (kit u) as they rise 1.1, instead of two
+r ≤ 0.9 rings out of the station's +z face. (5) **Morning key** at 07:00 (warm sun `#FFD498` / 2.8, warm horizon and haze, a little less sky
+fill); the plain day key starts at 08:30 instead of 07:00, so 06:00–08:30 now ramps dawn → morning → day.
+**Numbers**: programs 17 (no new program, texture or target). Instance slots +2 per pavilion, +3 per WELCOME board, +1 per coaster lamp,
++6 per Colour Wharf; at 88 B × the uncapped kinds that is a few kB. See the TASK-555 report for the shot numbers.
+**Not taken**: a transparent / additive halo material (a new program, limit 20, 17 used); flashing the face to a colour under the ink
+(5 mm z gaps, z-fighting risk); a lower 07:00 sun (the 24° elevation already gives 2 × shadows; see Open).
+**Open**: W-morning-shift's subjects (agents, foundry movers) are `castShadow = false`, so "long shadows" cannot read there whatever the
+sun does; the ladder of who casts belongs to engine / life. The halo stipple and the flash bloom are judged on SwiftShader only.
+
 ## D-128: Low memory 78 -> 80 MB, warm settlements generation bound 400 -> 500 ms; `site:<anchor>@<theme>` cams (user 2026-11-02; after TASK-545 / 536 / 537) — 2026-11-02
 
 **Decision**: (1) **Low `gpuMemoryMB` 78 → 80**: with the Carnival Pier, Colour Wharf and the placed M33 kit merged, L-coding, L-qa, L-marketing, L-design and L-pairs-design all read 79 MB at the 170–240 u rungs (148.4 u on the pairs ladder); each kit alone fit 78 after its own trims (LOD1 sharing, `PART_SLOTS`, the pane buffer). The user picked 80 over 79 (no room) and over a trim task (no clear 1 MB to cut without losing kit detail). (2) **`settlements` "full world generation time (warm)" bound 400 → 500 ms**: 440 and 471 ms solo at load 4.5–8 on the merged tree; agents measured +26–44 ms for the Marketing harbour (under load) and +8 ms for Colour Wharf; the game's medium `newSeedMs` 800 is not exceeded. TASK-553 profiles generation. (3) **`site:<anchor>@<theme>:x,y,z,tx,ty,tz`** (camera/controls.ts): every ferry island now publishes the harbour anchors, so a bare `site:harbourPier1:` found Marketing's pier first and the Colour Wharf wow presets framed the Carnival Pier (W-colour-wharf-dusk 324 calls / 800k tris). The theme picks the island; with no `@` the first island holding the anchor wins, as before.

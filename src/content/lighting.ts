@@ -344,7 +344,9 @@ export const POOLS = {
     tideLab: { radius: 7.5, intensity: 0.85, offset: 0 },
     // M33 TASK-545: Data Lake blue LEDs and the pavilion on the shore, the Drone Port's rim lamps
     serverPod: { radius: 4.2, intensity: 0.7, offset: 0.9, hue: 1 },
-    quantumPavilion: { radius: 6.5, intensity: 0.8, offset: 0, hue: 0.5 },
+    // TASK-555: the full 6.5 u half-violet pool washed the pale glass walls lavender, brighter than
+    // the lamps: a smaller, dimmer, warmer pool (warm lit faces at night, ART_BIBLE §2)
+    quantumPavilion: { radius: 4.5, intensity: 0.5, offset: 0, hue: 0.15 },
     dronePad: { radius: 4.6, intensity: 0.6, offset: 0 },
     cottage: { radius: 3.4, intensity: 0.45, offset: 1.9 },
     logCabin: { radius: 3.4, intensity: 0.45, offset: 1.9 },

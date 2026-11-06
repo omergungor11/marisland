@@ -60,7 +60,8 @@
 | Key | Time | Zenith | Horizon | Sun / intensity | Hemi sky / ground | Fog | Shadow tint |
 |---|---|---|---|---|---|---|---|
 | Dawn | 05:30 | `#7C8FD6` | `#FFC2A8` | `#FFD2A1` / 1.6 | `#B9C3F0` / `#C9A98E` | `#F2C9C0` | `#6B5BA8` |
-| Day | 07:00–16:30 | `#5CB8F2` | `#CDEFFF` | `#FFF6E5` / 3.0 | `#CFEAFF` / `#B9D08A` | `#D6EEF7` | `#5A6FB0` |
+| Morning (D-130) | 07:00 | `#64B2EC` | `#F8E6D4` | `#FFD498` / 2.8 | `#C3D9F6` / `#C2BC88` | `#E8E4DC` | `#5C64B0` |
+| Day | 08:30–16:30 | `#5CB8F2` | `#CDEFFF` | `#FFF6E5` / 3.0 | `#CFEAFF` / `#B9D08A` | `#D6EEF7` | `#5A6FB0` |
 | Golden | 17:30 | `#6FA6E0` | `#FFD08A` | `#FFB866` / 2.4 | `#C9D6F0` / `#D9B27A` | `#F6DDB0` | `#6A58A6` |
 | Dusk | 19:15 | `#3E4C9A` | `#FF9A8B` | `#FF8A70` / 1.0 | `#8E8FD0` / `#A07A8A` | `#C792A8` | `#4C3F8C` |
 | Night | 20:30–05:00 | `#141C3D` | `#2E3A6E` | moon `#BFD4FF` / 0.6 | `#4A5A9A` / `#2E3350` | `#26305A` | `#2A2A5E` |
