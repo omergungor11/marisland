@@ -383,6 +383,9 @@ function botHead(acc: Acc, hi: boolean, eyes: boolean): void {
   const B = P.bot;
   if (!hi) {
     put(acc, new THREE.BoxGeometry(0.34, 0.38, 0.5), [0, 0.78, 0], B.shell, { aoAmt: 0.05 });
+    // the face survives LOD1 (low has no LOD0): a dark screen, and one eye bar when the bot has eyes
+    cbx(acc, [0.02, 0.29, 0.4], [0.174, 0.775, 0], B.screen);
+    if (eyes) cbx(acc, [0.024, 0.1, 0.25], [0.186, 0.805, 0], B.eye, lit);
     return;
   }
   put(acc, bevOr(hi, 0.34, 0.38, 0.5, 0.06), [0, 0.78, 0], B.shell, { aoAmt: 0.05 });
@@ -650,7 +653,20 @@ function botCourse({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const path: { from: Pt; to: Pt } = { from: [-1.2, 0, 0], to: [1.2, 0, 0] };
   if (variant === 0) {
     // three steps going up along +x, yellow nosing
-    if (!hi) bx(acc, [2.1, 0.55, hz * 2], [0, 0, 0], P.teal, 0.15);
+    if (!hi) {
+      // one extruded two-tread profile (20 tris, LOD1 may keep 30 % of LOD0): reads as steps from far, not a slab
+      const stairs = new THREE.Shape([
+        V2(-1.05, 0),
+        V2(1.05, 0),
+        V2(1.05, 0.6),
+        V2(0, 0.6),
+        V2(0, 0.3),
+        V2(-1.05, 0.3),
+      ]);
+      const geo = new THREE.ExtrudeGeometry(stairs, { depth: hz * 2, bevelEnabled: false });
+      geo.translate(0, 0, -hz);
+      put(acc, geo, [0, 0, 0], P.teal, { aoAmt: 0.15 });
+    }
     for (let i = 0; i < (hi ? 3 : 0); i++) {
       const h = 0.2 * (i + 1);
       bx(acc, [0.7, h, hz * 2], [-0.7 + i * 0.7, 0, 0], i % 2 ? P.cream : P.teal, 0.15);

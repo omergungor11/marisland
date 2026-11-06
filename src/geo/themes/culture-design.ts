@@ -1743,51 +1743,128 @@ export function withGlassChimeLine(base: PropBuilder, chimeVariant = 3): PropBui
 
 /* =============================== lantern boat hull ============================ */
 
-const HULL: Pt[] = [
-  [-0.68, -2.5],
-  [0.68, -2.5],
-  [0.9, -0.9],
-  [0.8, 1.0],
-  [0.34, 2.0],
-  [0, 2.55],
-  [-0.34, 2.0],
-  [-0.8, 1.0],
-  [-0.9, -0.9],
+/** Half beam along the hull (z, u): stern transom, the widest part, the bow tip. */
+const HULL_BEAM: Pt[] = [
+  [-2.5, 0.68],
+  [-0.9, 0.9],
+  [1.0, 0.8],
+  [2.0, 0.34],
+  [2.55, 0],
 ];
+
+const lerpPt = (k: readonly Pt[], z: number): number => {
+  for (let i = 0; i + 1 < k.length; i++)
+    if (z <= k[i + 1][0])
+      return k[i][1] + ((k[i + 1][1] - k[i][1]) * (z - k[i][0])) / (k[i + 1][0] - k[i][0]);
+  return k[k.length - 1][1];
+};
+
+/**
+ * Hull as a loft over cross-sections (not an extruded plan): the deck line rises to a bow and a lower
+ * stern (sheer), the section is a V (the bilge is 55 % of the beam, the keel rakes up under the bow), the
+ * gunwale is a pale band. Each strip is oriented outward from a hint, so the winding cannot go wrong.
+ */
+function hullLoft(
+  acc: Acc,
+  hullH: number,
+  zs: readonly number[],
+  band: boolean,
+  c: { hull: THREE.Color | string; keel: THREE.Color | string; deck: THREE.Color | string },
+): void {
+  const st = zs.map((z) => {
+    const w = lerpPt(HULL_BEAM, z) * 1.04;
+    const bow = Math.max(0, (z - 0.9) / 1.65);
+    const stern = Math.max(0, (-z - 1.6) / 0.9);
+    const yD = hullH + 0.5 * bow * bow + 0.22 * stern * stern;
+    const yK = 0.1 + Math.max(0, (z - 1.0) / 1.55) ** 2 * (hullH - 0.1);
+    return { z, w, yD, yK, wb: w * 0.55 };
+  });
+  const side = (
+    k: { w: number; yD: number; yK: number; wb: number },
+    sgn: number,
+    s: number,
+  ): THREE.Vector3 => V(sgn * (k.wb + (k.w - k.wb) * s), k.yK + (k.yD - k.yK) * s, 0);
+  const quadsOf = (
+    a: (i: number) => THREE.Vector3,
+    b: (i: number) => THREE.Vector3,
+    color: THREE.Color | string,
+    hint: (c: THREE.Vector3) => THREE.Vector3,
+  ): void => {
+    const pos: number[] = [];
+    for (let i = 0; i + 1 < st.length; i++) {
+      const q = [a(i), b(i), b(i + 1), a(i + 1)];
+      const cen = q[0].clone().add(q[1]).add(q[2]).add(q[3]).multiplyScalar(0.25);
+      const n = new THREE.Vector3()
+        .subVectors(q[1], q[0])
+        .cross(new THREE.Vector3().subVectors(q[2], q[0]));
+      const order = n.dot(hint(cen)) >= 0 ? [0, 1, 2, 0, 2, 3] : [0, 2, 1, 0, 3, 2];
+      for (const o of order) pos.push(q[o].x, q[o].y, q[o].z);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.computeVertexNormals();
+    put(acc, g, [0, 0, 0], color, { aoAmt: 0.12, windAbs: 0 });
+  };
+  const at = (i: number, sgn: number, s: number): THREE.Vector3 =>
+    side(st[i], sgn, s).setZ(st[i].z);
+  const bandFrom = band ? 0.8 : 1;
+  for (const sgn of [-1, 1]) {
+    const out = (): THREE.Vector3 => V(sgn, 0.2, 0);
+    quadsOf(
+      (i) => at(i, sgn, 0),
+      (i) => at(i, sgn, bandFrom),
+      c.hull,
+      out,
+    );
+    if (band)
+      quadsOf(
+        (i) => at(i, sgn, bandFrom),
+        (i) => at(i, sgn, 1),
+        K.woodLight,
+        out,
+      );
+  }
+  quadsOf(
+    (i) => at(i, -1, 0),
+    (i) => at(i, 1, 0),
+    c.keel,
+    () => V(0, -1, 0),
+  );
+  quadsOf(
+    (i) => at(i, -1, 1),
+    (i) => at(i, 1, 1),
+    c.deck,
+    () => V(0, 1, 0),
+  );
+  // stern transom, closing the section at the first station
+  {
+    const q = [at(0, -1, 0), at(0, -1, 1), at(0, 1, 1), at(0, 1, 0)];
+    const n = new THREE.Vector3()
+      .subVectors(q[1], q[0])
+      .cross(new THREE.Vector3().subVectors(q[2], q[0]));
+    const order = n.z <= 0 ? [0, 1, 2, 0, 2, 3] : [0, 2, 1, 0, 3, 2];
+    const pos: number[] = [];
+    for (const o of order) pos.push(q[o].x, q[o].y, q[o].z);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.computeVertexNormals();
+    put(acc, g, [0, 0, 0], c.hull, { aoAmt: 0.12, windAbs: 0 });
+  }
+}
 
 /** Sailboat v5 "fener kayığı": dark violet hull, six glass lanterns on the rails, a lateen sail. */
 export function lanternBoat({ rng, lod }: BuildOpts): THREE.BufferGeometry {
   const hi = lod === 0;
   const acc = new Acc();
   const hullH = 0.75;
-  const ext = (depth: number, s = 1): THREE.BufferGeometry =>
-    new THREE.ExtrudeGeometry(
-      new THREE.Shape(HULL.map(([x, y]) => new THREE.Vector2(x * s, y * (s > 0.95 ? 1 : 0.96)))),
-      {
-        depth,
-        bevelEnabled: false,
-      },
-    ).rotateX(Math.PI / 2);
-  if (hi) {
-    put(acc, ext(0.4, 0.88), [0, 0.4, 0], K.plumDeep, { aoAmt: 0.25, windAbs: 0 });
-    put(
-      acc,
-      ext(0.35, 1.04),
-      [0, hullH, 0],
-      (p) => (p.y > hullH - 0.01 ? col(K.woodLight) : col(G.plum)),
-      {
-        aoAmt: 0.1,
-        windAbs: 0,
-      },
-    );
-  } else
-    put(
-      acc,
-      ext(hullH),
-      [0, hullH, 0],
-      (p) => (p.y > hullH * 0.5 ? col(G.plum) : col(K.plumDeep)),
-      { aoAmt: 0.2, windAbs: 0 },
-    );
+  // TASK-557: a sheer line, a V section and a pale gunwale instead of a flat extruded plan (a box from above)
+  hullLoft(
+    acc,
+    hullH,
+    hi ? [-2.5, -1.7, -0.9, 0, 1.0, 1.5, 2.0, 2.3, 2.55] : [-2.5, -0.9, 1.0, 2.0, 2.55],
+    hi,
+    { hull: G.plum, keel: K.plumDeep, deck: K.woodLight },
+  );
   // rails and lantern arms
   const lanterns: Array<[number, number, number]> = [
     [-0.84, 0.9, 0],
