@@ -10,6 +10,7 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-11-06 gotcha (TASK-558)**: `__marisland.step(dt)` silently clamps each frame to `MAX_FRAME_DT` 0.1 s (`src/core/clock.ts`): `step(0.25)` advances 0.1 s. For stepped motion QA use `step(<=0.1, n)` or the `simt` URL param. Motion QA verdicts are in `mar-docs/qa/motion-2026-11-06.md`; follow-ups in TASK-559.
 - **2026-11-06 (TASK-552 in review, D-132)**: seed 1 CI / Mac split = 1-ulp `Math.sin` arm64 vs x64 flipping a sort
   tie in `devops-works crates()`; fixed with `core/math/dmath` everywhere in generation (hashes unchanged, amd64 now
   equal). Timing: `pnpm test` 154 / 154 files at load 24-40; perf in `pnpm test:perf` + CI `perf` job. Not pushed:
