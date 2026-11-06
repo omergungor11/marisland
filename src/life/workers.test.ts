@@ -395,7 +395,7 @@ describe('workers: outposts', () => {
 });
 
 describe('workers: cost', () => {
-  it('fixed step stays cheap (agents × µs)', () => {
+  it('fixed step stays cheap (agents × µs)', { tags: ['perf'] }, () => {
     const r = rig(1001, 'high');
     const w = r.w;
     run(r, 100);

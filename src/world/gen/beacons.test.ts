@@ -35,27 +35,23 @@ describe('pickBeaconSkerries (W:B1)', () => {
 
 describe('beacon towers in the world', () => {
   for (const seed of [1001, 1]) {
-    it(
-      `seed ${seed}: one mini lighthouse on each picked skerry's peak`,
-      { timeout: 60_000 },
-      () => {
-        const w = generateWorld(seed, {});
-        const picked = pickBeaconSkerries(w.islands, w.islets);
-        const def = PROP_DEFS.findIndex((d) => d.id === 'beaconTower');
-        expect(def).toBeGreaterThan(0);
-        const placed: number[] = [];
-        for (let i = 0; i < w.props.count; i++) {
-          if (w.props.defId[i] !== def) continue;
-          const islet = w.islets.find((s) => s.id === w.props.islandId[i]);
-          expect(islet?.kind).toBe('skerry');
-          expect(Math.hypot(w.props.x[i] - islet!.peakX, w.props.z[i] - islet!.peakZ)).toBeLessThan(
-            1,
-          );
-          placed.push(w.props.islandId[i]);
-        }
-        expect(placed.sort()).toEqual([...picked].sort());
-        expect(placed.length).toBeGreaterThanOrEqual(Math.min(2, BEACON_NET.skerries));
-      },
-    );
+    it(`seed ${seed}: one mini lighthouse on each picked skerry's peak`, () => {
+      const w = generateWorld(seed, {});
+      const picked = pickBeaconSkerries(w.islands, w.islets);
+      const def = PROP_DEFS.findIndex((d) => d.id === 'beaconTower');
+      expect(def).toBeGreaterThan(0);
+      const placed: number[] = [];
+      for (let i = 0; i < w.props.count; i++) {
+        if (w.props.defId[i] !== def) continue;
+        const islet = w.islets.find((s) => s.id === w.props.islandId[i]);
+        expect(islet?.kind).toBe('skerry');
+        expect(Math.hypot(w.props.x[i] - islet!.peakX, w.props.z[i] - islet!.peakZ)).toBeLessThan(
+          1,
+        );
+        placed.push(w.props.islandId[i]);
+      }
+      expect(placed.sort()).toEqual([...picked].sort());
+      expect(placed.length).toBeGreaterThanOrEqual(Math.min(2, BEACON_NET.skerries));
+    });
   }
 });

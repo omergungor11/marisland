@@ -100,33 +100,29 @@ const M26_DEFS = new Set([
 ]);
 
 describe('DevOps island plan (TASK-364) — 30 seeds', () => {
-  it(
-    'landmarks: volcano crater, cooling pool and two cooling towers beside it',
-    { timeout: 60_000 },
-    () => {
-      let n = 0;
-      let towers2 = 0;
-      for (const seed of SEEDS) {
-        const d = devops(seed);
-        if (!d) continue;
-        n++;
-        const kinds = d.landmarks.map((l) => l.kind);
-        expect(kinds, `seed ${seed}`).toContain('volcanoCrater');
-        expect(kinds, `seed ${seed}`).toContain('hotSpring');
-        const pool = d.landmarks.find((l) => l.kind === 'hotSpring') as XZ;
-        const towers = d.fixtures.filter((f) => f.defId === 'coolingTower');
-        for (const t of towers)
-          expect(dist(t, pool), `seed ${seed} tower`).toBeLessThanOrEqual(
-            DEVOPS_SITE.plant.ring[1] + 0.5,
-          );
-        if (towers.length === 2) towers2++;
-      }
-      expect(n).toBeGreaterThan(20);
-      expect(rate(towers2, n), 'two cooling towers').toBeGreaterThanOrEqual(0.9);
-      // the T0 landmark defs exist (structures draw from T0)
-      expect(PROP_DEFS.find((p) => p.id === 'coolingTower')?.tier).toBe(0);
-    },
-  );
+  it('landmarks: volcano crater, cooling pool and two cooling towers beside it', () => {
+    let n = 0;
+    let towers2 = 0;
+    for (const seed of SEEDS) {
+      const d = devops(seed);
+      if (!d) continue;
+      n++;
+      const kinds = d.landmarks.map((l) => l.kind);
+      expect(kinds, `seed ${seed}`).toContain('volcanoCrater');
+      expect(kinds, `seed ${seed}`).toContain('hotSpring');
+      const pool = d.landmarks.find((l) => l.kind === 'hotSpring') as XZ;
+      const towers = d.fixtures.filter((f) => f.defId === 'coolingTower');
+      for (const t of towers)
+        expect(dist(t, pool), `seed ${seed} tower`).toBeLessThanOrEqual(
+          DEVOPS_SITE.plant.ring[1] + 0.5,
+        );
+      if (towers.length === 2) towers2++;
+    }
+    expect(n).toBeGreaterThan(20);
+    expect(rate(towers2, n), 'two cooling towers').toBeGreaterThanOrEqual(0.9);
+    // the T0 landmark defs exist (structures draw from T0)
+    expect(PROP_DEFS.find((p) => p.id === 'coolingTower')?.tier).toBe(0);
+  });
 
   it('lots: ≥ 4 in ≥ 90 % of seeds; 2–3 antenna masts; only DevOps defs', () => {
     let n = 0;
@@ -359,7 +355,7 @@ describe('DevOps island plan (TASK-364) — 30 seeds', () => {
 
 /** TASK-405 "Ember Works": the shelves and the harbour / foundry facilities over 30 seeds. */
 describe('DevOps Ember Works (TASK-405) — 30 seeds', () => {
-  it('shelf anchors; land stays inside the reach disc', { timeout: 60_000 }, () => {
+  it('shelf anchors; land stays inside the reach disc', () => {
     for (const seed of SEEDS) {
       const d = devops(seed);
       if (!d) continue;

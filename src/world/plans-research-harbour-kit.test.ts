@@ -45,7 +45,7 @@ function site(seed: number) {
 }
 
 describe('Research harbour kit (TASK-534)', () => {
-  it('every seed places the whole shared kit on its anchors', { timeout: 60_000 }, () => {
+  it('every seed places the whole shared kit on its anchors', () => {
     for (const seed of SEEDS) {
       const { A, at } = site(seed);
       const m = `seed ${seed}`;

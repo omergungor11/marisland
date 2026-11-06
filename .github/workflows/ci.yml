@@ -22,6 +22,7 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm typecheck
       - run: pnpm lint
+      # D-132: correctness suite, all cores; wall-clock limits are report-only here (the perf job asserts them)
       - run: pnpm test
       - run: pnpm build
       - run: pnpm shots ci --assert --no-build
@@ -31,3 +32,17 @@ jobs:
           name: shots-ci
           path: shots/ci
           if-no-files-found: ignore
+
+  # D-132: wall-clock limits on a quiet runner of its own, one worker, calibrated to the runner's speed
+  perf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:perf

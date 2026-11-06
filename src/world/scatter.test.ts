@@ -71,7 +71,7 @@ describe('prop scatter', () => {
     expect(overlaps).toBe(0);
   });
 
-  it('is fast enough', () => {
+  it('is fast enough', { tags: ['perf'] }, () => {
     expect(ms).toBeLessThan(perfLimit(600));
   });
 
