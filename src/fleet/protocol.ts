@@ -45,6 +45,8 @@ export interface FleetSession {
   lastLine?: string;
   /** Status detail for `error` / `stopped` (exit code, bridge restarted…). */
   reason?: string;
+  /** Highest line `seq` the bridge holds for this session (M41: a reconnecting client tails from `linesOf(id).length`). */
+  lastSeq?: number;
 }
 
 export type LineKind =

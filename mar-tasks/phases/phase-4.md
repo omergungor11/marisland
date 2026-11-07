@@ -83,3 +83,43 @@ shortcuts later: keep the key map in content.
 
 F-panel and a Coding close-up with a bound bot; checks: panel legible at 960×540 and 1280×720, no overlap
 with the HUD dock / island labels, durations and accents right, bot marker visible at T2, budgets unchanged.
+
+---
+
+## M41 — Detail + fleet view
+
+Contract additions: `FleetSession.lastSeq` (bridge sets it on every `session` event). `send` and `tail` exist in
+`FleetCommand` already. Keys: the prompt box and the search box must swallow WASD / Q / E / B / H while focused
+(the camera keys already ignore INPUT / TEXTAREA focus; verify the HUD H toggle does too).
+
+### TASK-568 — Bridge M41 (devops)
+- `send(sessionId, prompt)`: only when the session is not live; spawn `claude -p --resume <id> "<prompt>"` with
+  the same `islandSpawn` flags (`--settings`, `--add-dir`, `--allowedTools`, `--max-turns`, `--model`) and cwd;
+  status → `running`, `turns` / `costUsd` accumulate, lines append with continuing `seq` to the same jsonl;
+  `result` → `done` again; the bounds check runs again. A `send` on a live session answers `error`.
+- `tail(sessionId, from)`: serve from memory when `from ≥ first cached seq`, else reduce the jsonl from disk.
+- `lastSeq` on every `session` event and in `snapshot`.
+- Request title: when the root session's haiku title lands, copy it to the request and broadcast `request`.
+- `GET /api/sessions?q=` and a `query` on the snapshot are NOT needed; the client filters locally. Skip.
+- Tests: resume arg builder, tail source selection, request title propagation. One real resume is the only
+  token spend allowed (the user's bridge on 5174 must not be used; run your own on 5175 with `PORT=5175` or a
+  config override — add `FLEET_PORT` env support to `server/config.ts` if missing).
+
+### TASK-569 — Panel M41 (engine)
+- Terminal view inside the fleet panel (same card, slides over the list): header with back arrow, title, agent,
+  status dot, duration, cost; body = lines (`assistant` body text, `tool_use` as `▸ Bash pnpm test`, `tool_result`
+  muted first line, `result` summary bar, `stderr` red), autoscroll unless the user scrolled up ("↓ yeni satırlar"
+  pill), `tail` on open (`linesOf(id).length` → `from`); footer = prompt textarea (Enter sends, Shift+Enter newline)
+  → `send` when the session is not live, disabled with "çalışıyor…" while live, plus a Stop button on live rows.
+- Bot click (`hit.name === 'workers'` with a bound session) → opens that session's terminal; bot click without a
+  session → prompt box "Bu adada yeni session" → `start { island, prompt }`. The row's `onSelect` from TASK-563
+  opens the terminal.
+- Fleet view: when no island is focused (tier 0 or `islandNear` null) the panel shows all islands: one block per
+  island (icon, name, "N canlı"), rows as today; a search box on top filters title / agent / island / status
+  (local, case- and Turkish-insensitive: `ı/i`, `ş/s`…); row click flies to the island (reuse the app's fly-to)
+  and selects. Panel width may grow to `FLEET.fleetWidth` in this mode.
+- Row-diff renderer: keyed rows, update text / classes in place; no innerHTML rebuild on feed lines.
+- Mock: `send` and `start` work offline (new session with the prompt as draft title, a scripted 6-line run
+  over ~10 s of feed, then `done`), so the whole flow is testable without the bridge and in shots.
+- Dev shots `F-terminal` (Coding, terminal open on the running session, simt 2) and `F-fleet` (overview with the
+  fleet view and a search term via a `fleetQuery` preset field); both deterministic twice; ci untouched.

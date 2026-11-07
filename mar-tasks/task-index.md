@@ -470,12 +470,20 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 |----|------|-------|-----------|--------|-------------|
 | TASK-562 | Bridge server: `pnpm bridge` (ws + http :5174), `claude -p` stream-json spawn per island cwd, `FleetLine` reducer, `fleet/runs/*.jsonl` + `index.json`, haiku titles, `fleet/fleet.config.json`, 7 island `CLAUDE.md` skeletons, reducer / index tests | devops | M | COMPLETED (D-142) | — |
 | TASK-563 | Fleet client (WS store, reconnect, `?fleet=mock` deterministic feed) + island panel (left dock: status dot, agent, title, live duration, last line; shows at tier ≥ 1 for the focused island), `src/content/fleet.ts`, `F-panel` dev shot | engine | M | COMPLETED (D-143) | — |
-| TASK-564 | Session ↔ bot binding: a live session seats a department bot with a marker, hover title, deterministic mapping | life | S | IN_PROGRESS | TASK-563 |
+| TASK-564 | Session ↔ bot binding: a live session seats a department bot with a marker, hover title, deterministic mapping | life | S | COMPLETED (D-144) | TASK-563 |
 | TASK-565 | Keyboard camera: WASD / arrows truck + forward, Q/E azimuth rotate, distance-scaled speed, `CAMERA_MOVE.keys`, ignores text inputs / capture / modifiers, stops the tour | engine | S | COMPLETED (D-142; Sandbox key E → B) | — |
 | TASK-567 | `scripts/fleet-lint.ts` + `pnpm fleet:lint` + vitest wrapper: island layout (required files, `island.json` vs `schema/island.schema.json`, dir name = theme = ThemeId, CLAUDE.md ≤ 120 lines, memory frontmatter, settings deny block intact, agent name prefix); the six remaining island skeletons cloned from `coding` with department text | devops | S | COMPLETED (D-142) | TASK-562 |
-| TASK-566 | M40 shots + QA: F-panel at two sizes, bound bot at T2, HUD overlap, budgets | qa | S | PENDING | TASK-563, TASK-564, TASK-565 |
+| TASK-566 | M40 shots + QA: F-panel at two sizes, bound bot at T2, HUD overlap, budgets | qa | S | IN_PROGRESS | TASK-563, TASK-564, TASK-565 |
 
-### M41 — Detail + fleet view (row → terminal stream, bot → prompt box, all-islands view + search, `--resume` follow-ups) — PLANNED
+### M41 — Detail + fleet view
+*Opened 2026-11-07 after M40 merged. 568 ∥ 569; 570 after both.*
+
+| ID | Task | Agent | Complexity | Status | Dependencies |
+|----|------|-------|-----------|--------|-------------|
+| TASK-568 | Bridge M41: `send` = `claude -p --resume <id>` with the island flags re-passed (session back to `running`, `seq` continues, same jsonl), `tail` from disk beyond the memory cap, `lastSeq` on every `session` event, request title follows the root session's haiku title, `GET /api/sessions?q=` search over title / agent / island / status, `stop` for a resumed run; tests on the pure parts | devops | S | IN_PROGRESS | TASK-562 |
+| TASK-569 | Panel M41: row click → terminal view (line stream with kind styling, autoscroll, tail on open / reconnect, follow-up prompt box → `send`, Stop button), bot click → prompt box → `start` on that island, Esc / back; fleet view when no island is focused (tier 0): all sessions grouped by island with live counts, search box (title / agent / island / status, local filter), click → fly to the island + select; row-diff renderer (no innerHTML rebuild); mock supports `start` / `send` so it all works offline; `F-terminal`, `F-fleet` dev shots | engine | M | IN_PROGRESS | TASK-563, TASK-564 |
+| TASK-570 | M41 QA: terminal legibility at 960×540, prompt box focus / key capture vs WASD, fleet view at 20+ sessions, search, live check against the bridge with one real resume | qa | S | PENDING | TASK-568, TASK-569 |
+
 ### M42 — Request chains + approval gates (island → island hand-off, request tree, per-request caps) — PLANNED
 ### M43 — Knowledge base + HQ review (fleet/kb, island CLAUDE.md, agent / skill self-generation gated by HQ) — PLANNED
 ### M44 — Reports (daily / weekly / monthly / all-time per island; top topics, long sessions, lessons) — PLANNED
