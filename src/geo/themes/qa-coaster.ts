@@ -693,7 +693,10 @@ function car({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   });
 }
 
-function rider({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
+function rider({ rng, lod, variant: variantIn }: BuildOpts): THREE.BufferGeometry {
+  // variants 3..5 = 0..2 with the arms down (the parked train's idle, TASK-559)
+  const armsDown = variantIn >= 3;
+  const variant = variantIn % 3;
   const hi = lod === 0;
   const acc = mk(rng, lod);
   const dummy = variant === 0;
@@ -717,9 +720,12 @@ function rider({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
     rod(acc, V(sx * 0.1, 0.06, 0.02), V(sx * 0.1, 0.1, 0.36), 0.065, limb);
     rod(acc, V(sx * 0.1, 0.1, 0.36), V(sx * 0.1, -0.22, 0.4), 0.055, limb);
     bx(acc, [0.12, 0.07, 0.2], [sx * 0.1, -0.28, 0.44], P.ink, 0.05);
-    // arms up in a V (hands in the air)
-    rod(acc, V(sx * 0.2, 0.52, -0.02), V(sx * 0.34, 1.05, 0.08), 0.05, limb);
-    put(acc, ball(0.055, true), [sx * 0.34, 1.07, 0.08], skin, { aoAmt: 0 });
+    // arms up in a V (hands in the air), or down with the hands on the lap
+    const hand = armsDown ? V(sx * 0.17, 0.12, 0.2) : V(sx * 0.34, 1.05, 0.08);
+    rod(acc, V(sx * 0.2, 0.52, -0.02), hand, 0.05, limb);
+    put(acc, ball(0.055, true), [hand.x, hand.y + (armsDown ? 0 : 0.02), hand.z], skin, {
+      aoAmt: 0,
+    });
   }
   // head: dummy ball with a target mark and a stripe, bots a cube-ish head with eyes, antenna and a cap
   if (dummy) {
@@ -1027,7 +1033,7 @@ export const QA_COASTER_GEO: readonly PropGeoDef[] = [
   },
   {
     id: 'coasterRider',
-    variants: 3,
+    variants: 6,
     build: rider,
     footprint: F.rider.footprint,
     height: F.rider.height,

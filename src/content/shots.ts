@@ -550,8 +550,8 @@ const COASTER_SHOTS: readonly ShotPreset[] = (
     // bumper cars
     ['D-coaster-bumpers', '2,4.5,-13,0,0.6,-5', 14, 8],
     // ✓ lamps at night: dark while the dummy waits (+20 s), lit with the bots aboard (+60 s)
-    ['D-coaster-lamp-off', '-16,5,-16,-7,2,-9', 21, 20],
-    ['D-coaster-lamp-on', '-16,5,-16,-7,2,-9', 21, 60],
+    ['D-coaster-lamp-off', '-17,6,-17,-7,3.2,-9', 21, 20],
+    ['D-coaster-lamp-on', '-17,6,-17,-7,3.2,-9', 21, 60],
     // chain lift, the click ring at the last car
     ['D-coaster-lift', '-16,9,-4,-4,5,7', 10, 15],
     // the whole site, the loop face on (from the station side)
@@ -617,7 +617,7 @@ const FOUNDRY_SHOTS: readonly ShotPreset[] = (
     ['D-foundry-arm', 'site:foundryYard:5,5.5,-4.5,-0.5,1,-1.2', 10, 2.1],
     ['D-foundry-hop', 'site:foundryYard:8,3.5,18,0.5,1,10.5', 10, 2.2],
     ['D-port-park', 'site:dronePort:-11,6,-11,0,1.5,2', 10, 18],
-    ['D-track', 'site:botTrackYard:12,8.5,-4,0,0.6,1.5', 11, 25],
+    ['D-track', 'site:botTrackYard:14,11,-8,0,0.6,1.5', 11, 29.7],
     ['D-lake-day', 'site:dataLake:-14,9,-16,0,1,0', 14, 8],
     ['D-lake-pavilion', 'site:lakePavilion:7,5.5,-6,0,1.2,0', 21, 8],
   ] as const

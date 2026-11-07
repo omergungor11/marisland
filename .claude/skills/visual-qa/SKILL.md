@@ -86,6 +86,7 @@ Do these in order, every time:
 Frozen frames cannot show motion, so capture pairs: same shot at `time=T` and `time=T+Δt`
 (the harness `+Δt` frame). Diff them: foliage, water and creatures should change; terrain and
 buildings must not. Two captures with the same parameters must be byte-identical (determinism).
+Stepping: a frame is clamped to `MAX_FRAME_DT` 0.1 s, so `__marisland.step(0.25, 1)` advances only 0.1 s (it now warns once); use `step(<=0.1, n)` or the `simt` URL param.
 
 ## Budget checks
 
