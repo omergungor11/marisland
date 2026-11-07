@@ -1,0 +1,27 @@
+{
+  "theme": "hq",
+  "name": "HQ",
+  "role": "Filonun denetim merkezi: ada manifest ve izinlerini yönetir, önerileri gözden geçirir, raporları derler.",
+  "model": "opus",
+  "maxTurns": 30,
+  "maxChildren": 6,
+  "allowedTools": [
+    "Read",
+    "Edit",
+    "Write",
+    "Glob",
+    "Grep",
+    "Bash(pnpm typecheck*)",
+    "Bash(pnpm lint*)",
+    "Bash(pnpm test*)",
+    "Bash(pnpm vitest*)",
+    "Bash(git status*)",
+    "Bash(git diff*)",
+    "Bash(git log*)",
+    "Bash(ls*)",
+    "Bash(pnpm fleet:lint*)"
+  ],
+  "addDirs": ["fleet"],
+  "owner": "user",
+  "agents": ["default"]
+}

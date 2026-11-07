@@ -1,0 +1,20 @@
+{
+  "$comment": "User-owned. HQ manages every other island's island.json and .claude/settings.json, so the sibling-write deny rules of the other islands are absent here; its own manifest and settings stay closed.",
+  "permissions": {
+    "deny": [
+      "Edit(./island.json)",
+      "Write(./island.json)",
+      "Edit(./.claude/settings.json)",
+      "Write(./.claude/settings.json)",
+      "Edit(../../CLAUDE.md)",
+      "Write(../../CLAUDE.md)",
+      "Edit(../../schema/**)",
+      "Write(../../schema/**)",
+      "Bash(git push*)",
+      "Bash(git commit*)",
+      "Bash(git reset*)",
+      "Bash(git checkout*)",
+      "Bash(rm -rf*)"
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "theme": "design",
+  "name": "Tasarım",
+  "role": "Görünüm ve hareket kararlarını ART_BIBLE ile uyumlu tutar: palet, prop dili, zoom kademeleri.",
+  "model": "sonnet",
+  "maxTurns": 30,
+  "maxChildren": 6,
+  "allowedTools": [
+    "Read",
+    "Edit",
+    "Write",
+    "Glob",
+    "Grep",
+    "Bash(pnpm typecheck*)",
+    "Bash(pnpm lint*)",
+    "Bash(pnpm test*)",
+    "Bash(pnpm vitest*)",
+    "Bash(git status*)",
+    "Bash(git diff*)",
+    "Bash(git log*)",
+    "Bash(ls*)"
+  ],
+  "addDirs": ["mar-docs", "src/content"],
+  "owner": "hq",
+  "agents": ["default"]
+}

@@ -13,7 +13,9 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "test:perf": "PERF_STRICT=1 vitest run --tagsFilter perf --maxWorkers=1 --no-file-parallelism src/world src/life",
-    "shots": "tsx scripts/shots.ts"
+    "shots": "tsx scripts/shots.ts",
+    "bridge": "tsx server/bridge.ts",
+    "fleet:lint": "tsx scripts/fleet-lint.ts"
   },
   "engines": {
     "node": ">=22.12"
@@ -25,13 +27,15 @@
     "camera-controls": "3.1.2",
     "postprocessing": "6.39.5",
     "simplex-noise": "4.0.3",
-    "three": "0.186.1"
+    "three": "0.186.1",
+    "ws": "8.18.3"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "26.6.4",
     "@types/pngjs": "6.0.5",
     "@types/three": "0.186.0",
+    "@types/ws": "8.18.1",
     "eslint": "10.12.0",
     "eslint-config-prettier": "10.1.8",
     "globals": "17.13.0",

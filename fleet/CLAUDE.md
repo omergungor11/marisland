@@ -40,7 +40,8 @@ aynı adda bir şey yaratırsan cwd'ye yakın olan kazanır, bu yüzden ada agen
 ## Hafıza
 
 `memory/MEMORY.md` indeks, bir satır = bir hafıza (`- [Başlık](dosya.md) — kanca`). Her hafıza ayrı
-dosya, frontmatter: `name`, `description`, `type: user | feedback | project | reference`. Eskiyeni sil,
+dosya, frontmatter: `name`, `description`, `type: user | feedback | project | reference` (`type`
+`metadata:` altında da olabilir). Eskiyeni sil,
 tekrar yazma, ilişkili olanları `[[name]]` ile bağla. Session'ın ilk işi `memory/MEMORY.md`'yi okumak.
 
 ## Rapor biçimi (her session sonu, son mesajın)
