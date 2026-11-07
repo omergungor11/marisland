@@ -4,6 +4,7 @@
  * Pure data (no three), deterministic: one rng fork per island.
  */
 import type { Rng } from '../../core/rng.ts';
+import { hypotLess } from '../../core/math/index.ts';
 import { ARCHETYPES } from '../../content/islands.ts';
 import { WATERFALLS as W } from '../../content/waterfalls.ts';
 import { heightAt, Zone, type WaterfallData, type WorldData } from '../types.ts';
@@ -57,7 +58,7 @@ function nearAny(
   pts: readonly { x: number; z: number }[],
   r: number,
 ): boolean {
-  for (const p of pts) if (Math.hypot(x - p.x, z - p.z) < r) return true;
+  for (const p of pts) if (hypotLess(x - p.x, z - p.z, r)) return true;
   return false;
 }
 

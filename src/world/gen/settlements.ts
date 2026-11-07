@@ -102,6 +102,7 @@ import {
   segDist,
   shapeCorners,
   shapeDist,
+  shapeNear,
   siteFree,
   stairCorridor,
   stepCtx,
@@ -797,7 +798,7 @@ function fieldFences(
     const i = cellOf(ctx, p.x, p.z);
     const z = ctx.zone[i];
     if (z !== Zone.field && z !== Zone.grass && z !== Zone.meadow) return false;
-    return !ctx.shapes[isl.id].some((o) => shapeDist(o, p.x, p.z) < 1);
+    return !ctx.shapes[isl.id].some((o) => shapeNear(o, p.x, p.z, 1));
   };
   const out: Polyline[] = [];
   const posts: XZ[] = [];
@@ -1049,7 +1050,7 @@ export function buildSettlements(input: SettlementInput, rng: Rng): SettlementRe
   const valid = (x: number, z: number, islandId: number): boolean => {
     if (sdfAt(ctx, x, z) < 0.3) return false;
     const sh = islandId >= 0 ? ctx.shapes[islandId] : [];
-    for (const o of sh) if (o.r === 0 && shapeDist(o, x, z) < 0.2) return false;
+    for (const o of sh) if (o.r === 0 && shapeNear(o, x, z, 0.2)) return false;
     return true;
   };
   const built = buildPathGraph(ctx.net, n, valid);

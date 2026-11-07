@@ -56,6 +56,7 @@ import {
   sdfAt,
   segDist,
   shapeDist,
+  shapeNear,
   shapesOverlap,
   unit,
   type Shape,
@@ -250,7 +251,7 @@ function gatesOf(ctx: SiteCtx, isl: IslandData, I: FoundryInput, r: Rect, toward
   const free = mids.filter(
     (p) =>
       onLand(ctx, isl, discShape(p.x, p.z, 0.5), 1) &&
-      !ctx.shapes[isl.id].some((o) => shapeDist(o, p.x, p.z) < 0.6) &&
+      !ctx.shapes[isl.id].some((o) => shapeNear(o, p.x, p.z, 0.6)) &&
       pinsJoined(ctx, isl, I.hub, [p], []),
   );
   return free.length > 0 ? free : [mids[0]];

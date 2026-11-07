@@ -50,6 +50,7 @@ import {
   sdfAt,
   seedHub,
   shapeDist,
+  shapeNear,
   shapesOverlap,
   siteFree,
   tryLot,
@@ -581,20 +582,25 @@ function routeLine(
   const valid = (x: number, z: number): boolean => {
     if (!onIsland(ctx, isl, x, z) || sdfAt(ctx, x, z) < P.minShore) return false;
     if (ends.some((e) => Math.hypot(e.x - x, e.z - z) < 2.5)) return true;
-    for (const o of shapes) if (o.tag !== 'plaza' && shapeDist(o, x, z) < P.clear) return false;
+    for (const o of shapes) if (o.tag !== 'plaza' && shapeNear(o, x, z, P.clear)) return false;
     return true;
   };
   const s0 = cellOf(ctx, start.x, start.z);
   const g0 = cellOf(ctx, end.x, end.z);
   if (s0 < 0 || g0 < 0) return null;
   const run = ctx.h.cellSize;
+  // the search reaches a cell from up to 8 sides: `valid` once per cell (0 = not yet, 1 ok, 2 not)
+  const cellOk = new Uint8Array(ctx.n * ctx.n);
   const cells = gridAStar({
     ...islandWindow(ctx, isl),
     start: s0,
     goal: g0,
     step: (a, b, d) => {
-      const p = cellPos(ctx, b);
-      if (!valid(p.x, p.z)) return Infinity;
+      if (cellOk[b] === 0) {
+        const p = cellPos(ctx, b);
+        cellOk[b] = valid(p.x, p.z) ? 1 : 2;
+      }
+      if (cellOk[b] === 2) return Infinity;
       const slope = Math.abs(ctx.h.data[b] - ctx.h.data[a]) / (d * run);
       if (slope > maxSlope) return Infinity;
       return d * run * (1 + 3 * slope);

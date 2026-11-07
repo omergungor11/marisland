@@ -39,6 +39,7 @@ import {
   ang,
   bestSample,
   campusLots,
+  cellOf,
   cellPos,
   clear,
   dirOf,
@@ -283,11 +284,17 @@ function placeStuntYard(
   toward: XZ | null,
   minPad = 0,
 ): Stunt | null {
-  // pass 0 also wants room for the Proving Grounds kit round the rect (`stuntKitPads`, each side)
+  // pass 0 also wants room for the Proving Grounds kit round the rect (`stuntKitPads`, each side).
+  // Nothing is reserved until a pass wins, so the rim passes of a (pad, size) share one memo of
+  // the rim-free part of the test (TASK-553)
+  const memos = new Map<string, Map<number, number>>();
   for (const rim of PV.stuntRimClear)
     for (const pad of PV.stuntKitPads.filter((q) => q >= minPad))
       for (const [w, d] of PV.stunt) {
-        const test = stuntTest(ctx, isl, track, rim, pad, w, d);
+        const key = `${pad}/${w}/${d}`;
+        const memo = memos.get(key) ?? new Map<number, number>();
+        memos.set(key, memo);
+        const test = stuntTest(ctx, isl, track, rim, pad, w, d, memo);
         const rots = [track.rot, track.rot + Math.PI / 2];
         const p = bestSample(ctx, isl, track.p, PV.stuntSearch, (q, i) => {
           if (ctx.sdf[i] < PV.stuntMinShore) return Infinity;
@@ -312,7 +319,12 @@ function placeStuntYard(
   return null;
 }
 
-/** The stunt rect test at (p, rot): its relief when it fits with this `rim` and kit `pad`, else Infinity. */
+/**
+ * The stunt rect test at (p, rot): its relief when it fits with this `rim` and kit `pad`, else
+ * Infinity. `memo` (keyed by grid position and which of the two rots; valid while no shape is
+ * added) keeps the rim-free part, so another `rim` pass of the same pad and size only redoes the
+ * corner test.
+ */
 function stuntTest(
   ctx: SiteCtx,
   isl: IslandData,
@@ -321,18 +333,36 @@ function stuntTest(
   pad: number,
   w: number,
   d: number,
+  memo?: Map<number, number>,
 ): (p: XZ, rot: number) => number {
+  // inland of the rim walkway and the palm row (their bands start ≈ 8–10 u in from the shore)
+  const rimOk = (sh: Shape): boolean => {
+    for (const c of shapeCorners(sh)) if (sdfAt(ctx, c.x, c.z) < rim) return false;
+    return true;
+  };
   return (p, rot) => {
     const sh = rectShape(p.x, p.z, rot, w + 2 * pad, d + 2 * pad);
-    if (!onLand(ctx, isl, sh, PV.stuntMinShore)) return Infinity;
-    // inland of the rim walkway and the palm row (their bands start ≈ 8–10 u in from the shore)
-    for (const c of shapeCorners(sh)) if (sdfAt(ctx, c.x, c.z) < rim) return Infinity;
-    // the loop track's own kit (UV lamps, scoreboard, cone pyramid, grandstand) needs its side room
-    if (shapesOverlap(track.sh, sh, PV.stuntTrackGap)) return Infinity;
-    const rl = relief(ctx, sh);
-    if (rl > PV.stuntRelief + pad * 0.1 || !clear(ctx, isl, sh, PV.stuntGap)) return Infinity;
-    return siteFree(ctx, isl, sh) ? rl : Infinity;
+    const key = memo ? cellOf(ctx, p.x, p.z) * 2 + (rot === track.rot ? 0 : 1) : 0;
+    const known = memo?.get(key);
+    if (known !== undefined) return known < Infinity && rimOk(sh) ? known : Infinity;
+    if (!onLand(ctx, isl, sh, PV.stuntMinShore)) {
+      memo?.set(key, Infinity);
+      return Infinity;
+    }
+    if (!rimOk(sh)) return Infinity;
+    const out = stuntRest(ctx, isl, track, pad, sh);
+    memo?.set(key, out);
+    return out;
   };
+}
+
+/** The rim-free rest of the stunt test, on a shape already on land. */
+function stuntRest(ctx: SiteCtx, isl: IslandData, track: Track, pad: number, sh: Shape): number {
+  // the loop track's own kit (UV lamps, scoreboard, cone pyramid, grandstand) needs its side room
+  if (shapesOverlap(track.sh, sh, PV.stuntTrackGap)) return Infinity;
+  const rl = relief(ctx, sh);
+  if (rl > PV.stuntRelief + pad * 0.1 || !clear(ctx, isl, sh, PV.stuntGap)) return Infinity;
+  return siteFree(ctx, isl, sh) ? rl : Infinity;
 }
 
 /** Does the smallest stunt rect fit at all? (Cheap: lets a park trial fail without the 24-pass search.) */
