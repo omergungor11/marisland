@@ -7,10 +7,6 @@ import { reportBackPrompt } from './chain.ts';
 export type StoredGate = FleetGate & {
   parentSummary?: string;
   parentSummaryExplicit?: boolean;
-  /** Gates opened by one message share a round; the parent resumes once all of them resolved. */
-  round?: string;
-  /** Child session started on allow. */
-  childId?: string;
   /** Resume text of this gate (child report / failure); denied gates need none. */
   report?: string;
 };
@@ -23,15 +19,16 @@ export interface FleetIndex {
 
 export const emptyIndex = (): FleetIndex => ({ sessions: [], requests: [], gates: [] });
 
-/** Wire form of a gate (no bridge-internal fields). */
+export const GATE_REPORT_CHARS = 400;
+
+/** Wire form of a gate (no bridge-internal fields; the resume text is clipped to a preview). */
 export const publicGate = ({
   parentSummary: _s,
   parentSummaryExplicit: _x,
-  round: _r,
-  childId: _c,
-  report: _p,
+  report,
   ...g
-}: StoredGate): FleetGate => g;
+}: StoredGate): FleetGate =>
+  report === undefined ? g : { ...g, report: report.slice(0, GATE_REPORT_CHARS) };
 
 /** Tolerant parse: missing / corrupt / wrong-shaped text gives an empty index. */
 export function parseIndex(text: string | undefined): FleetIndex {

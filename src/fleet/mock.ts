@@ -243,6 +243,9 @@ export function mockChain(
     prompt: g.handoff,
     status: variant === 'allowed' && i === 0 ? 'allowed' : 'pending',
     createdAt: ended + i,
+    ...(variant === 'allowed' && i === 0
+      ? { answeredAt: now - C.childAgoS * 1000, childId: g.childId }
+      : {}),
   }));
   if (variant === 'allowed') {
     const g = C.gates[0];
@@ -550,7 +553,11 @@ export function createFleetMock(o: FleetMockOptions, emit: (ev: FleetEvent) => v
         case 'gate': {
           const g = gates.get(cmd.gateId);
           if (!g || g.status !== 'pending') return false;
-          const next: FleetGate = { ...g, status: cmd.allow ? 'allowed' : 'denied' };
+          const next: FleetGate = {
+            ...g,
+            status: cmd.allow ? 'allowed' : 'denied',
+            answeredAt: at,
+          };
           gates.set(g.id, next);
           emit({ type: 'gate', gate: next });
           if (cmd.allow) {
@@ -563,6 +570,9 @@ export function createFleetMock(o: FleetMockOptions, emit: (ev: FleetEvent) => v
               requestId: g.requestId,
             });
             gateChild.set(g.id, child);
+            const withChild: FleetGate = { ...next, childId: child };
+            gates.set(g.id, withChild);
+            emit({ type: 'gate', gate: withChild });
           }
           settle(g.fromSessionId);
           return true;

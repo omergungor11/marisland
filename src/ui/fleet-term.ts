@@ -6,6 +6,7 @@ import {
   chainOf,
   linePlan,
   lineView,
+  pendingGates,
   sessionDuration,
   statusGlyph,
   tailFrom,
@@ -182,7 +183,17 @@ export function createFleetTerm(
     put(meta, parts.join(' · '));
     const live = isLive(s);
     prompt.disabled = live;
-    prompt.placeholder = live ? (s.status === 'waiting' ? T.waiting : T.running) : T.placeholder;
+    const gates =
+      s.status === 'waiting'
+        ? pendingGates(store).filter((g) => g.fromSessionId === s.id).length
+        : 0;
+    prompt.placeholder = live
+      ? s.status === 'waiting'
+        ? gates
+          ? T.gateWaiting(gates)
+          : T.waiting
+        : T.running
+      : T.placeholder;
     put(go, T.send);
     go.hidden = live;
     stopBtn.hidden = !live;

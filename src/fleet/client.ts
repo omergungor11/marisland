@@ -28,6 +28,8 @@ export interface FleetStore {
   readonly requests: ReadonlyMap<string, FleetRequest>;
   /** Island hand-off gates (M42): pending, allowed, denied. */
   readonly gates: ReadonlyMap<string, FleetGate>;
+  /** Rejected `gate` commands per gate id (a count: the panel re-enables the card on a rise). */
+  readonly gateErrors: ReadonlyMap<string, number>;
   linesOf(sessionId: string): readonly FleetLine[];
   /** Called after every applied event and on connection changes; returns the unsubscribe. */
   subscribe(cb: () => void): () => void;
@@ -41,6 +43,7 @@ export interface FleetState {
   sessions: Map<string, FleetSession>;
   requests: Map<string, FleetRequest>;
   gates: Map<string, FleetGate>;
+  gateErrors: Map<string, number>;
   lines: Map<string, FleetLine[]>;
   ready: boolean;
 }
@@ -49,6 +52,7 @@ export const emptyFleetState = (): FleetState => ({
   sessions: new Map(),
   requests: new Map(),
   gates: new Map(),
+  gateErrors: new Map(),
   lines: new Map(),
   ready: false,
 });
@@ -92,6 +96,7 @@ export function applyFleetEvent(st: FleetState, ev: FleetEvent): void {
       break;
     case 'error':
       console.warn(`fleet: ${ev.message}`);
+      if (ev.gateId) st.gateErrors.set(ev.gateId, (st.gateErrors.get(ev.gateId) ?? 0) + 1);
       break;
     case 'gate':
       st.gates.set(ev.gate.id, ev.gate);
@@ -201,6 +206,7 @@ export function createFleetClient(o: FleetClientOptions): FleetStore {
     sessions: st.sessions,
     requests: st.requests,
     gates: st.gates,
+    gateErrors: st.gateErrors,
     linesOf: (id) => st.lines.get(id) ?? [],
     subscribe(cb) {
       subs.add(cb);

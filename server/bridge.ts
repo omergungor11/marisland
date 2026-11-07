@@ -329,6 +329,7 @@ async function resolveGate(gate: StoredGate, report: string): Promise<void> {
   if (gate.status === 'denied' ? false : gate.report !== undefined) return;
   gate.report = report;
   writeIndex();
+  publishGate(gate);
   const round = index.gates.filter(
     (g) => g.fromSessionId === gate.fromSessionId && g.round === gate.round,
   );
@@ -359,6 +360,7 @@ async function decideGate(gateId: string, allow: boolean): Promise<void> {
   const parent = index.sessions.find((x) => x.id === gate.fromSessionId);
   if (!parent || parent.status !== 'waiting') throw new Error('gate: parent is not waiting');
   gate.status = allow ? 'allowed' : 'denied';
+  gate.answeredAt = Date.now();
   publishGate(gate);
   if (!allow) return resolveGate(gate, reportBackPrompt(gate.toIsland, '', 'denied'));
   const req = index.requests.find((x) => x.id === gate.requestId);
@@ -373,6 +375,7 @@ async function decideGate(gateId: string, allow: boolean): Promise<void> {
     });
     gate.childId = child.id;
     writeIndex();
+    publishGate(gate);
   } catch (e) {
     await resolveGate(gate, reportBackPrompt(gate.toIsland, (e as Error).message, 'error'));
   }
@@ -702,9 +705,12 @@ function handleCommand(ws: WebSocket, raw: string): void {
           message: 'gate: gateId and allow required',
           command: 'gate',
         });
-      decideGate(v.gateId, v.allow).catch((e: Error) =>
-        reply({ type: 'error', message: e.message, command: 'gate' }),
-      );
+      {
+        const gateId = v.gateId;
+        decideGate(gateId, v.allow).catch((e: Error) =>
+          reply({ type: 'error', message: e.message, command: 'gate', gateId }),
+        );
+      }
       return;
     default:
       return reply({ type: 'error', message: `unknown command "${v.type}"` });

@@ -85,6 +85,14 @@ export interface FleetGate {
   prompt: string;
   status: 'pending' | 'allowed' | 'denied';
   createdAt: number;
+  /** Gates opened by one message share a round id (panel groups by it). */
+  round?: string;
+  /** Child session started on allow. */
+  childId?: string;
+  /** First ~400 chars of the child's report, once it came back. */
+  report?: string;
+  /** When the gate was answered (bridge clock, ms). */
+  answeredAt?: number;
 }
 
 export interface BridgeInfo {
@@ -107,7 +115,7 @@ export type FleetEvent =
   | { type: 'line'; line: FleetLine }
   | { type: 'lines'; sessionId: string; lines: FleetLine[] }
   | { type: 'gate'; gate: FleetGate }
-  | { type: 'error'; message: string; command?: FleetCommand['type'] };
+  | { type: 'error'; message: string; command?: FleetCommand['type']; gateId?: string };
 
 export type FleetCommand =
   | {

@@ -443,8 +443,8 @@ export function groupRows(rows: readonly FleetSession[], store: Sessions & Reque
 }
 
 /**
- * Note when the panel saw each gate answered: a gate seen `pending` and now answered gets `now`;
- * one never seen pending (already answered in the snapshot) gets −Infinity (never shown).
+ * Note when each gate was answered: the bridge's `answeredAt` when it sent one; else a gate seen
+ * `pending` and now answered gets `now`; one never seen pending gets −Infinity (never shown).
  */
 export function trackAnswers(
   gates: Iterable<FleetGate>,
@@ -454,6 +454,7 @@ export function trackAnswers(
 ): void {
   for (const g of gates) {
     if (g.status === 'pending') seenPending.add(g.id);
+    else if (g.answeredAt !== undefined) answeredAt.set(g.id, g.answeredAt);
     else if (!answeredAt.has(g.id)) answeredAt.set(g.id, seenPending.has(g.id) ? now : -Infinity);
   }
 }
@@ -502,10 +503,13 @@ export function gateGroups(
   }
   const groups = new Map<string, GateGroup>();
   for (const v of views) {
-    const id = v.gate.fromSessionId;
+    const id = v.gate.round ?? v.gate.fromSessionId;
     let gr = groups.get(id);
     if (!gr)
-      groups.set(id, (gr = { parentId: id, island: v.gate.fromIsland, pending: 0, views: [] }));
+      groups.set(
+        id,
+        (gr = { parentId: v.gate.fromSessionId, island: v.gate.fromIsland, pending: 0, views: [] }),
+      );
     gr.views.push(v);
     if (v.mode === 'card') gr.pending++;
   }

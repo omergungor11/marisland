@@ -132,7 +132,8 @@ export function createFleetPanel(
   /** M42: gates seen pending, when each answer was seen, answers sent and not yet echoed. */
   const seenPending = new Set<string>();
   const answeredAt = new Map<string, number>();
-  const asked = new Set<string>();
+  /** Answers sent and not yet echoed → the rejected-command count at send time. */
+  const asked = new Map<string, number>();
   let gatesKey = '';
 
   /** Focused island; null = fleet view; undefined until the first `setIsland`. */
@@ -335,7 +336,7 @@ export function createFleetPanel(
         const to = THEMES[g.toIsland].displayName;
         const route = `${grouped ? '' : `${discHtml(g.fromIsland, 'mar-fgate-disc')}<b>${esc(from)}</b>`}<i class="mar-fgate-arrow">${G.arrow}</i>${discHtml(g.toIsland, 'mar-fgate-disc')}<b>${esc(to)}</b>`;
         if (mode === 'line')
-          return `<div class="mar-fgate-done" data-s="${g.status}">${esc(from)} ${G.arrow} ${esc(to)} · ${esc(text)}</div>`;
+          return `<div class="mar-fgate-done" data-s="${g.status}"${g.childId ? ` data-child="${esc(g.childId)}" style="cursor:pointer"` : ''}>${esc(from)} ${G.arrow} ${esc(to)} · ${esc(text)}</div>`;
         const off = asked.has(g.id) ? ' disabled' : '';
         const acts = `<div class="mar-fgate-acts"><button class="mar-fgate-allow" type="button" data-g="${esc(g.id)}" data-allow="1"${off}>${G.allow}</button><button class="mar-fgate-deny" type="button" data-g="${esc(g.id)}" data-allow="0"${off}>${G.deny}</button></div>`;
         const prompt = `<p class="mar-fgate-prompt">${esc(g.prompt)}</p>`;
@@ -350,6 +351,8 @@ export function createFleetPanel(
   /** Rebuilt only when what it shows changed (a pending card's buttons keep hover / focus). */
   function renderGates(now: number): void {
     trackAnswers(store.gates.values(), seenPending, answeredAt, now);
+    // a rejected `gate` command (error with gateId) re-enables its card
+    for (const [id, n] of asked) if ((store.gateErrors.get(id) ?? 0) > n) asked.delete(id);
     const groups =
       theme === undefined ? [] : gateGroups(store.gates.values(), theme, answeredAt, now);
     const key = JSON.stringify(
@@ -400,10 +403,13 @@ export function createFleetPanel(
   };
   const onScroll = (): void => measure();
   const onGate = (e: MouseEvent): void => {
+    const child = (e.target as Element).closest<HTMLElement>('.mar-fgate-done')?.dataset.child;
+    if (child && store.sessions.has(child)) return term.show(child);
     const b = (e.target as Element).closest<HTMLButtonElement>('button[data-g]');
     const gateId = b?.dataset.g;
     if (!b || !gateId || b.disabled) return;
-    if (store.send({ type: 'gate', gateId, allow: b.dataset.allow === '1' })) asked.add(gateId);
+    if (store.send({ type: 'gate', gateId, allow: b.dataset.allow === '1' }))
+      asked.set(gateId, store.gateErrors.get(gateId) ?? 0);
     dirty = true;
   };
   list.addEventListener('click', onClick);

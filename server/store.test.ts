@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import type { FleetSession } from '../src/fleet/protocol.ts';
+import type { FleetGate, FleetSession } from '../src/fleet/protocol.ts';
 
-import { emptyIndex, parseIndex, recoverIndex, serializeIndex, upsertSession } from './store.ts';
+import {
+  emptyIndex,
+  parseIndex,
+  publicGate,
+  recoverIndex,
+  serializeIndex,
+  upsertSession,
+  type StoredGate,
+} from './store.ts';
 
 const sess = (id: string, status: FleetSession['status']): FleetSession => ({
   id,
@@ -67,5 +75,45 @@ describe('store', () => {
     const out = recoverIndex(idx, 99);
     expect(out.sessions.map((s) => s.status)).toEqual(['waiting', 'done']);
     expect(out.gates).toEqual([gate]);
+  });
+});
+
+const oldGate: FleetGate = {
+  id: 'g',
+  requestId: 'r-p',
+  fromSessionId: 'p',
+  fromIsland: 'marketing',
+  toIsland: 'design',
+  prompt: 'x',
+  status: 'allowed',
+  createdAt: 1,
+};
+
+describe('store: gate fields (TASK-578)', () => {
+  it('publicGate exposes round / childId / answeredAt and a 400-char report preview, hides internals', () => {
+    const g: StoredGate = {
+      ...oldGate,
+      round: 'r1',
+      childId: 'c',
+      answeredAt: 5,
+      report: 'a'.repeat(900),
+      parentSummary: 'secret',
+      parentSummaryExplicit: true,
+    };
+    const pub = publicGate(g);
+    expect(pub).toMatchObject({ round: 'r1', childId: 'c', answeredAt: 5 });
+    expect(pub.report).toHaveLength(400);
+    expect('parentSummary' in pub).toBe(false);
+    expect('parentSummaryExplicit' in pub).toBe(false);
+    expect('report' in publicGate(oldGate)).toBe(false);
+  });
+
+  it('an old index entry without the fields survives parse + recover', () => {
+    const idx = parseIndex(
+      JSON.stringify({ sessions: [sess('p', 'done')], requests: [], gates: [oldGate] }),
+    );
+    const rec = recoverIndex(idx, 9);
+    expect(publicGate(rec.gates[0])).toMatchObject({ id: 'g', status: 'allowed' });
+    expect(publicGate(rec.gates[0]).answeredAt).toBeUndefined();
   });
 });
