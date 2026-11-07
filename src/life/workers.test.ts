@@ -573,3 +573,24 @@ describe('workers: bot culture (TASK-432)', () => {
     }
   });
 });
+
+describe('workers: dock slots (TASK-548, D-136)', () => {
+  it('bots waiting on a pier stand on distinct chain nodes', () => {
+    for (const seed of [1001, 7, 2578]) {
+      const r = rig(seed, 'medium');
+      const w = r.w;
+      const at = (w as unknown as { dockAt: Int32Array }).dockAt;
+      run(r, 30 * 180, () => {
+        const seen = new Set<number>();
+        for (let i = 0; i < w.capacity; i++) {
+          const k = at[i];
+          if (!w.active[i] || k < 0) continue;
+          if (Math.hypot(w.x[i] - w.graph.x[k], w.z[i] - w.graph.z[k]) > 0.05) continue;
+          // the end node doubles up only when every slot behind it is taken
+          if (seen.has(k) && w.graph.dockOf[k] < 0) expect(`${seed}:${k}`).toBe('unique');
+          seen.add(k);
+        }
+      });
+    }
+  }, 120_000);
+});

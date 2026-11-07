@@ -156,6 +156,8 @@ export class Workers extends LandKind {
   private readonly chatSwap: Float32Array;
   private readonly chatCool: Float32Array;
   private readonly stopOwner: Int32Array;
+  /** Dock-chain node each worker claimed as its waiting slot (−1 none): TASK-548 spacing on the pier. */
+  private readonly dockAt: Int32Array;
   private readonly stopsBy = new Map<string, number[]>();
   private readonly lotSeats = new Map<number, number[]>();
   private readonly lotsBy = new Map<string, number[]>();
@@ -271,6 +273,7 @@ export class Workers extends LandKind {
     this.chatSwap = new Float32Array(n);
     this.chatCool = new Float32Array(n);
     this.stopOwner = new Int32Array(stops.length).fill(-1);
+    this.dockAt = new Int32Array(n).fill(-1);
     this.itins = THEME_ORDER.map((t) => ACTIVITY.itinerary[t] ?? []);
     const lots = ctx.world.lots ?? [];
     stops.forEach((st, k) => {
@@ -526,8 +529,10 @@ export class Workers extends LandKind {
         : doors.length > 0
           ? doors
           : this.nodes.all[c];
+    this.dockAt[i] = -1;
     for (let t = 0; t < 4; t++) {
-      const to = pool[Math.floor(this.draw(i) * pool.length) % pool.length];
+      let to = pool[Math.floor(this.draw(i) * pool.length) % pool.length];
+      if (pool === docks) to = this.dockSlot(i, to);
       if (to === here) continue;
       const r = walkRoute(this.graph, here, to);
       if (r && r.length > 1) {
@@ -1182,6 +1187,35 @@ export class Workers extends LandKind {
     return scored[Math.floor(this.draw(i) * n) % n].k;
   }
 
+  /**
+   * Waiting slot on a dock chain: the end node (the boarding spot) first, then the chain nodes
+   * back along the pier, `WORKERS.dockSlotGap` u apart; the lowest slot nobody else claimed, so
+   * bots never stack on one deck node. The chain is the run of consecutive node ids the land
+   * graph builds behind a dock end (land-world.ts); a node off that line is never taken.
+   */
+  private dockSlot(i: number, end: number): number {
+    const g = this.graph;
+    const every = Math.max(1, Math.round(WORKERS.dockSlotGap));
+    for (let s = 0; s < WORKERS.dockSlots; s++) {
+      const k = end - s * every;
+      if (k < 0) break;
+      if (s > 0 && Math.hypot(g.x[k] - g.x[end], g.z[k] - g.z[end]) < s * every * 0.9) break;
+      let taken = false;
+      for (let j = 0; j < this.dockAt.length; j++) {
+        if (j !== i && this.dockAt[j] === k) {
+          taken = true;
+          break;
+        }
+      }
+      if (!taken) {
+        this.dockAt[i] = k;
+        return k;
+      }
+    }
+    this.dockAt[i] = end;
+    return end;
+  }
+
   /** Walk to graph node `to` (or just pause when already there) and remember the errand. */
   private routeTo(i: number, to: number, kind: number, stop: number, lot: number): boolean {
     const here = this.na[i];
@@ -1218,7 +1252,8 @@ export class Workers extends LandKind {
       const all = this.nodes.docks[c];
       const docks = this.hiddenEnds.size ? all.filter((k) => !this.hiddenEnds.has(k)) : all;
       if (docks.length === 0) return false;
-      const to = docks[Math.floor(this.draw(i) * docks.length) % docks.length];
+      this.dockAt[i] = -1;
+      const to = this.dockSlot(i, docks[Math.floor(this.draw(i) * docks.length) % docks.length]);
       return to !== this.na[i] && this.routeTo(i, to, G_DOCK, -1, -1);
     }
     if (goal.kind === 'hub') {
