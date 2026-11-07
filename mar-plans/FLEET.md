@@ -68,7 +68,9 @@ start(island, prompt) ─▶ queued ─▶ running ─▶ done | error | stopped
 4. İlk `assistant` metninden sonra başlık işi: `claude -p --model haiku --max-turns 1
    --no-session-persistence` "bu işi 4-7 kelimeyle Türkçe başlıkla" → `title` güncellenir.
 5. `result` → `done`/`error`, `endedAt`, `costUsd`, `turns`. Süreç ölürse `error`, `stop` → `stopped`.
-6. `send(sessionId, prompt)` → `claude -p --resume <id>` aynı kayda ekler (M41).
+6. `send(sessionId, prompt)` → `claude -p --resume <id>` aynı kayda ekler (D-145): ada flag'leri yeniden verilir,
+   `user` satırı tur sınırını işaretler, `turns` / `costUsd` koşular arası toplanır. `tail` cevabı en çok 2000 satır;
+   client `last.seq + 1`'den yeniden ister.
 
 Bridge yeniden başlarsa `fleet/runs/index.json`'dan session listesini geri yükler; `running` olanlar
 `error` (`bridge restarted`) olur.
