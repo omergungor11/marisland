@@ -4,7 +4,7 @@ import { FIXED_STEP } from '../core/clock.ts';
 import { Scope } from '../core/scope.ts';
 import type { Quality } from '../core/params.ts';
 import { LAND, LIFE_PLAN, VILLAGERS, WORKER_ZONES, WORKERS } from '../content/life.ts';
-import { CARRIED_ITEM_SLOT, FLEET_BEACON_SLOT, THEMES } from '../content/themes.ts';
+import { CARRIED_ITEM_SLOT, THEMES } from '../content/themes.ts';
 import { SHARED } from '../render/uniforms.ts';
 import {
   FLOOR_Y,
@@ -595,26 +595,35 @@ describe('workers: dock slots (TASK-548, D-136)', () => {
   }, 120_000);
 });
 
-describe('workers: fleet pin (TASK-564)', () => {
-  it('a pinned resident goes to work and stays there wearing the beacon; unpinned it carries on', () => {
+describe('workers: fleet pin (TASK-564 / 571)', () => {
+  it('a pinned resident of every department goes to a desk and stays put there; unpinned it carries on', () => {
+    const STATE_USE = 8;
     const r = rig(1001, 'medium', 2);
     const w = r.w;
-    const theme = 3; // qa: no open-air desk, so it must find a seat
-    const bots = w.residentsOf(theme);
-    expect(bots.length).toBeGreaterThan(0);
-    const beacon = FLEET_BEACON_SLOT + theme - 6;
-    // pick a bot that is not seated at once, so the walk to the desk is exercised
-    const bot = bots.find((i) => w.stateOf(i) !== STATE_WORK) ?? bots[0];
-    w.pin(bot);
-    expect(w.itemOf(bot)).toBe(beacon);
-    run(r, 120 * 30);
-    expect(w.stateOf(bot)).toBe(STATE_WORK);
-    expect(w.itemOf(bot)).toBe(beacon);
-    run(r, 120 * 30);
-    expect(w.stateOf(bot)).toBe(STATE_WORK);
-    w.unpin(bot);
-    expect(w.itemOf(bot)).not.toBe(beacon);
-    run(r, 120 * 30);
-    expect(w.stateOf(bot)).not.toBe(STATE_WORK);
-  }, 120_000);
+    let pinned = 0;
+    for (let theme = 0; theme < 7; theme++) {
+      const bots = w.residentsOf(theme);
+      if (bots.length === 0) continue;
+      pinned++;
+      // pick a bot that is not seated at once, so the walk to the desk is exercised
+      const bot = bots.find((i) => w.stateOf(i) !== STATE_WORK) ?? bots[0];
+      w.pin(bot);
+      // the beacon is its own mesh now: the carried item is untouched
+      expect(w.itemOf(bot)).toBeLessThan(16);
+      // the walk to a far desk can take a few minutes of sim time
+      for (let q = 0; q < 40 && ![STATE_WORK, STATE_USE].includes(w.stateOf(bot)); q++)
+        run(r, 15 * 30);
+      const st = w.stateOf(bot);
+      expect([STATE_WORK, STATE_USE], `theme ${theme} state ${st}`).toContain(st);
+      const x = w.x[bot];
+      const z = w.z[bot];
+      run(r, 120 * 30);
+      expect(w.stateOf(bot)).toBe(st);
+      expect(Math.hypot(w.x[bot] - x, w.z[bot] - z)).toBeLessThan(0.05);
+      w.unpin(bot);
+      run(r, 150 * 30);
+      expect(Math.hypot(w.x[bot] - x, w.z[bot] - z) > 0.05 || w.stateOf(bot) !== st).toBe(true);
+    }
+    expect(pinned).toBeGreaterThanOrEqual(5);
+  }, 240_000);
 });

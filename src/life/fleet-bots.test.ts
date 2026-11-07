@@ -71,6 +71,13 @@ describe('bindFleetToBots', () => {
     fb.update(1);
     const first = [...a.pinned].sort();
     expect(first).toHaveLength(2);
+    expect(
+      fb
+        .boundBots()
+        .map((b) => b.bot)
+        .sort(),
+    ).toEqual(first);
+    expect(fb.boundBots().every((b) => b.island === 'coding')).toBe(true);
     expect(fb.sessionOf(first[0])).not.toBeNull();
     const b = rig();
     const fb2 = b.bind();
@@ -91,8 +98,10 @@ describe('bindFleetToBots', () => {
     expect(fb.bound).toBe(1);
     fb.update(14.9);
     expect(fb.bound).toBe(1);
+    expect(fb.boundBots()).toHaveLength(1);
     fb.update(15);
     expect(fb.bound).toBe(0);
+    expect(fb.boundBots()).toHaveLength(0);
     expect(r.pinned.size).toBe(0);
   });
 

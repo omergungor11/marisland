@@ -12,7 +12,7 @@ import {
   type LifePlan,
 } from '../content/life.ts';
 import { FLEET_BOTS } from '../content/fleet.ts';
-import { CARRIED_ITEM_SLOT, FLEET_BEACON_SLOT, THEMES } from '../content/themes.ts';
+import { CARRIED_ITEM_SLOT, THEMES } from '../content/themes.ts';
 import { springIn } from '../core/math/spring.ts';
 import { wrapAngle } from './agents.ts';
 import type { LifeCtx } from './ctx.ts';
@@ -133,7 +133,7 @@ export class Workers extends LandKind {
   /** The step's item (what `item` returns to by day) and whether the night items are on. */
   private readonly dayItem: Uint8Array;
   private nightOn = false;
-  /** Fleet marker (TASK-564): the beacon item code while the bot holds a live session, else 0. */
+  /** Fleet marker (TASK-564): 1 while the bot holds a live session (the beacon is drawn by life/fleet-beacons.ts), else 0. */
   private readonly beacon: Uint8Array;
   /** The desk a pinned bot walks to (seat index, −1 = any free seat of the lot it reaches). */
   private readonly wantSeat: Int32Array;
@@ -1125,9 +1125,7 @@ export class Workers extends LandKind {
   private setItem(i: number, want: number): void {
     this.dayItem[i] = want;
     // Q17 lantern bots: at night the theme's night item replaces the step's (TASK-480)
-    const code =
-      this.beacon[i] ||
-      (this.nightOn && NIGHT_CODE[this.themeOf[i]] ? NIGHT_CODE[this.themeOf[i]] : want);
+    const code = this.nightOn && NIGHT_CODE[this.themeOf[i]] ? NIGHT_CODE[this.themeOf[i]] : want;
     if (this.item[i] === code) return;
     this.item[i] = code;
     this.seedArr[i] = this.accOf[i] + ITEM_STRIDE * code + Math.min(this.phase[i], 0.999);
@@ -1159,18 +1157,16 @@ export class Workers extends LandKind {
 
   /** Hold worker `i` at a desk with the island's beacon over its head until `unpin`. */
   pin(i: number): void {
-    this.beacon[i] = FLEET_BEACON_SLOT + this.themeOf[i] - 6;
+    this.beacon[i] = 1;
     this.leave[i] =
       this.state[i] === W_WORK && FLEET_BOTS.openDesks[THEME_ORDER[this.themeOf[i]]] ? 1 : 0;
     if (this.leave[i]) this.dur[i] = 0;
-    this.setItem(i, this.dayItem[i]);
   }
 
   /** Back to the normal routine: the bot finishes its stretch beat, stands up and carries on. */
   unpin(i: number): void {
     this.beacon[i] = 0;
     this.wantSeat[i] = -1;
-    this.setItem(i, this.dayItem[i]);
   }
 
   /**

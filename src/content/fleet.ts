@@ -147,7 +147,7 @@ export const FLEET_TERM = {
 
 /**
  * Session <-> bot binding (TASK-564, `life/fleet-bots.ts`): a live session seats one department bot
- * at a desk and floats an accent diamond over its head (FLEET_BEACON_SLOT, life/geo/workers.ts).
+ * at a desk and floats an accent diamond over its head (its own InstancedMesh, life/fleet-beacons.ts).
  */
 export const FLEET_BOTS = {
   /** Sim seconds a bot keeps its desk and marker after its session ended (done / error / stopped). */
@@ -164,8 +164,23 @@ export const FLEET_BOTS = {
     shine: '#FFF6E0',
     shineMix: 0.25,
   },
-  /** Open-air desk stops (content/offices WORK_SPOTS defs) a department's bot prefers: they read from outside. */
-  openDesks: { coding: ['pergolaDesk'] } as Readonly<Partial<Record<string, readonly string[]>>>,
+  /** Capacity of the beacon InstancedMesh (one instance per bound bot; count 0 = no draw call). */
+  maxBeacons: 24,
+  /** Beacon motion on sim time (scaled by the motion scale): bob height (u, bot space) and period (s), spin (rad/s). */
+  beaconMotion: { bob: 0.12, period: 2.4, spin: 0.9 },
+  /**
+   * Open-air stops (content/offices WORK_SPOTS defs, all in ACTIVITY itineraries) a department's bot prefers: they
+   * read from outside, so the beacon is not hidden under a roof. First free stop of the list wins.
+   */
+  openDesks: {
+    hq: ['bellPost', 'timetableBoard'],
+    coding: ['pergolaDesk'],
+    marketing: ['megaphoneStand', 'marqueeSign'],
+    qa: ['stampDesk', 'clipboardWall'],
+    design: ['hotShop', 'stainedScreen'],
+    devops: ['anvil', 'incidentSign'],
+    research: ['chalkboard', 'orrery'],
+  } as Readonly<Partial<Record<string, readonly string[]>>>,
   /** Hover title: pointer offset (px) and max width (px); text = agent (small caps) + title. */
   tip: { dx: 14, dy: 18, maxWidth: 260 },
 } as const;
