@@ -58,6 +58,7 @@ import {
   requestWithTitle,
   tailSource,
   userRecord,
+  onlyCurrent,
 } from './resume.ts';
 import {
   clip,
@@ -493,25 +494,40 @@ function attachProc(run: Run, argv: string[], cwd: string): void {
   const proc = spawn('claude', argv, { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
   run.proc = proc;
 
-  proc.stdout.on('data', (d: Buffer) => {
-    run.buf += d.toString();
-    let nl: number;
-    while ((nl = run.buf.indexOf('\n')) >= 0) {
-      const raw = run.buf.slice(0, nl);
-      run.buf = run.buf.slice(nl + 1);
-      handleStdoutLine(run, raw);
-    }
-  });
-  proc.stderr.on('data', (d: Buffer) => {
-    for (const text of d.toString().split('\n')) {
-      if (!text.trim()) continue;
-      const at = Date.now();
-      appendRaw(run, JSON.stringify({ type: 'bridge_stderr', at, text }));
-      pushLine(run, { kind: 'stderr', text: text.slice(0, 400) }, at);
-    }
-  });
-  proc.on('error', (e) => endRun(run, null, `spawn failed: ${e.message}`));
-  proc.on('close', (code, signal) => endRun(run, code, signal ?? undefined));
+  const guard = <T extends unknown[]>(fn: (...a: T) => void) => onlyCurrent(run, proc, fn);
+  proc.stdout.on(
+    'data',
+    guard((d: Buffer) => {
+      run.buf += d.toString();
+      let nl: number;
+      while ((nl = run.buf.indexOf('\n')) >= 0) {
+        const raw = run.buf.slice(0, nl);
+        run.buf = run.buf.slice(nl + 1);
+        handleStdoutLine(run, raw);
+      }
+    }),
+  );
+  proc.stderr.on(
+    'data',
+    guard((d: Buffer) => {
+      for (const text of d.toString().split('\n')) {
+        if (!text.trim()) continue;
+        const at = Date.now();
+        appendRaw(run, JSON.stringify({ type: 'bridge_stderr', at, text }));
+        pushLine(run, { kind: 'stderr', text: text.slice(0, 400) }, at);
+      }
+    }),
+  );
+  proc.on(
+    'error',
+    guard((e: Error) => endRun(run, null, `spawn failed: ${e.message}`)),
+  );
+  proc.on(
+    'close',
+    guard((code: number | null, signal: NodeJS.Signals | null) =>
+      endRun(run, code, signal ?? undefined),
+    ),
+  );
 }
 
 /** Follow-up turn: `claude -p --resume <id>` with the first run's flags and cwd, same record. */

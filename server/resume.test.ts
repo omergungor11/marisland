@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { FleetRequest } from '../src/fleet/protocol.ts';
 import { withEnvPort, parseConfig } from './config.ts';
-import { accumulate, claudeArgs, requestWithTitle, tailSource, userRecord } from './resume.ts';
+import {
+  accumulate,
+  claudeArgs,
+  onlyCurrent,
+  requestWithTitle,
+  tailSource,
+  userRecord,
+} from './resume.ts';
 import { reduceJsonl } from './stream.ts';
 
 const islandArgs = ['--allowedTools', 'Read', '--settings', '{}', '--add-dir', '/x'];
@@ -78,5 +85,19 @@ describe('withEnvPort', () => {
     expect(withEnvPort(c, { FLEET_PORT: '5175' }).port).toBe(5175);
     expect(withEnvPort(c, { FLEET_PORT: 'x' }).port).toBe(c.port);
     expect(withEnvPort(c, {}).port).toBe(c.port);
+  });
+});
+
+describe('onlyCurrent', () => {
+  it("drops events from a process that is no longer the run's", () => {
+    const a = {};
+    const b = {};
+    const run = { proc: a as unknown };
+    const seen: string[] = [];
+    const onClose = onlyCurrent(run, a, (tag: string) => seen.push(tag));
+    onClose('first');
+    run.proc = b; // a send replaced the process
+    onClose('stale');
+    expect(seen).toEqual(['first']);
   });
 });

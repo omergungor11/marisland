@@ -62,3 +62,18 @@ export function requestWithTitle(
   const req = requests.find((x) => x.id === s.requestId);
   return req && req.rootSessionId === s.id && req.title !== title ? { ...req, title } : undefined;
 }
+
+/**
+ * Stale-process guard (QA 570 FAIL): a `send` right after `done` replaces `run.proc`; the old
+ * process's late `close` / `error` / buffered output must not touch the record (it flipped the
+ * resumed session to `error` and let a second `send` run concurrently). Call handlers through this.
+ */
+export function onlyCurrent<T extends unknown[]>(
+  run: { proc?: unknown },
+  proc: unknown,
+  fn: (...a: T) => void,
+): (...a: T) => void {
+  return (...a: T) => {
+    if (run.proc === proc) fn(...a);
+  };
+}
