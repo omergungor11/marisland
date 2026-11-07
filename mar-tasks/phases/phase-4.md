@@ -123,3 +123,60 @@ Contract additions: `FleetSession.lastSeq` (bridge sets it on every `session` ev
   over ~10 s of feed, then `done`), so the whole flow is testable without the bridge and in shots.
 - Dev shots `F-terminal` (Coding, terminal open on the running session, simt 2) and `F-fleet` (overview with the
   fleet view and a search term via a `fleetQuery` preset field); both deterministic twice; ci untouched.
+
+---
+
+## M42 — Request chains + approval gates
+
+The user's scenario: "Marketing adasındaki bir agent'a 'benim için 5 sosyal medya gönderisi hazırla' dedim; o
+Design adasıyla konuşsun, Design'dan gelen rapora göre gerekirse Coding'le konuşsun; hepsi bir arada çalışsın."
+Hand-offs are approval-gated (user decision 2026-11-07) with per-request caps.
+
+**Mechanism (D-149, option A "report line")**: an island asks another island by ending its final message with
+one or more `## → <ada>: <istek>` sections (already in `fleet/CLAUDE.md`'s report format). The bridge parses
+the final assistant text of every run; each line becomes a `FleetGate { fromSessionId, fromIsland, toIsland,
+prompt, status: 'pending' }`, the parent session goes `waiting`, the panel shows a gate card ("Marketing →
+Design: … · İzin ver / Reddet"). On allow the bridge starts a child session on `toIsland` (same `requestId`,
+`parentId`) whose prompt is the hand-off text plus a short context header (request title, parent island, the
+parent's "Özet" section). When the child finishes, the bridge **resumes the parent** with "Design adasından
+rapor:\n<child Özet>" so the parent can continue, answer the user, or ask the next island (→ Coding), each
+step gated again. Caps: `maxChildren` per request (manifest, default 6), depth ≤ 3, one pending gate per
+parent at a time; deny → the parent is resumed with "Design'a devir reddedildi" so it can finish on its own.
+Option B (a bridge MCP tool the agent calls mid-run, parent blocks until the child answers) is deferred: it
+needs an MCP server in the bridge and keeps a session open while waiting; the report-line route reuses
+resume (D-145) and spends nothing while a gate waits.
+
+### TASK-574 — Bridge chains (devops)
+- `server/chain.ts` (pure): `parseHandoffs(finalText)` → `{ island, prompt }[]` (tolerant: `## → design:`, `→
+  Design :`, Turkish names from `island.json.name` and ThemeIds), `childPrompt(request, parent, handoff,
+  parentSummary)`, `reportBackPrompt(childIsland, childSummary)`, `parseSummary(finalText)` ("## Özet"), cap
+  checks (`maxChildren`, depth, one pending per parent).
+- Lifecycle: on `result` of a run with hand-offs → gates created (`gate` events), parent `waiting`; `gate
+  allow` → child `start` with `parentId` / `requestId`; child `done` → parent `send(reportBackPrompt)`; child
+  `error` / `stopped` → parent resumed with the failure line; `gate deny` → parent resumed with the denial.
+  Gates persist in `index.json`; a restart keeps pending gates. `snapshot.gates` filled.
+- `FleetRequest` gains nothing new; children are found by `requestId` + `parentId`.
+- Tests on the pure parts; ONE real chain allowed for acceptance (marketing → design, 2 short runs + 1 resume)
+  on your own bridge port 5175.
+
+### TASK-575 — Panel chains (engine)
+- Gate card at the top of the island list and the fleet view: "Marketing → Design" with the prompt (2-line
+  clamp), İzin ver / Reddet buttons → `gate` command; pending gates also pulse the parent's status glyph
+  (waiting ring) and show a count badge in the fleet header ("2 kapı").
+- Terminal header shows the request: "İstek: <title> · 3 session" with a chain strip (island discs in order,
+  current one lit); clicking a disc opens that session.
+- Fleet view groups chained sessions under their request title when a request has > 1 session.
+- Mock: a scripted chain (marketing → design → coding) with a pending gate so shots cover it; `F-gate`,
+  `F-chain` dev shots.
+
+### TASK-576 — Fleet docs for chains (docs, haiku)
+- `fleet/CLAUDE.md`: the `## → <ada>: <istek>` syntax becomes the official hand-off (one per section, what to
+  include, that a report comes back and the session continues), the `## Özet` section is mandatory because it
+  travels; island `CLAUDE.md`s get one line each on whom they typically hand to (marketing → design / coding,
+  design → coding / marketing, coding → qa / devops, qa → coding, devops → coding, research → anyone, hq → all).
+- `mar-plans/FLEET.md` "İstek zinciri" section with the diagram.
+
+### TASK-577 — M42 scenario QA (qa)
+- The 5-social-media-posts request end to end on a scratch bridge (3-4 real short runs): gates appear, allow
+  → child runs, parent resumes with the report, chain strip in the terminal, fleet view grouping; budgets and
+  determinism unchanged (mock shots). Report `mar-docs/qa/m42-chains-<date>.md`.

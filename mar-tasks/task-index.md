@@ -487,6 +487,15 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 | TASK-570 | M41 QA: terminal legibility at 960×540, prompt box focus / key capture vs WASD, fleet view at 20+ sessions, search, live check against the bridge with one real resume | qa | S | IN_PROGRESS | TASK-571, TASK-572 |
 | TASK-573 | Research has 0 resident workers at low / medium (weight 0.3, cap 2 → quota 0 on every seed tried), so a Research session binds no bot and shows no beacon (D-148 Open). Options: raise the research `workers` weight / cap (moves bot counts and shot hashes) or let a visitor bot be pinned. User decision | life + worldgen | XS | PENDING (decision) | TASK-571 |
 
-### M42 — Request chains + approval gates (island → island hand-off, request tree, per-request caps) — PLANNED
+### M42 — Request chains + approval gates
+*Planned 2026-11-07 (D-149 pending user): report-line hand-offs `## → <ada>: <istek>` → gate → child session → parent resumed with the child's Özet. 574 ∥ 575 ∥ 576; 577 last.*
+
+| ID | Task | Agent | Complexity | Status | Dependencies |
+|----|------|-------|-----------|--------|-------------|
+| TASK-574 | Bridge chains: `parseHandoffs` on the final assistant text, `FleetGate` lifecycle (pending → allow → child start with `parentId` / `requestId`; child done → parent `send` with the report; deny / error → parent resumed with the reason), caps (`maxChildren`, depth 3, one pending per parent), gates persisted + in `snapshot`; one real marketing → design chain for acceptance | devops | M | PENDING | TASK-568 |
+| TASK-575 | Panel chains: gate cards (İzin ver / Reddet) in island list + fleet view, "N kapı" badge, request header + chain strip in the terminal, request grouping in the fleet view, mock chain + pending gate, `F-gate` / `F-chain` dev shots | engine | M | PENDING | TASK-569, TASK-572 |
+| TASK-576 | Fleet docs: hand-off syntax + mandatory Özet in `fleet/CLAUDE.md`, per-island "kime devreder" lines, FLEET.md "İstek zinciri" | docs | XS | PENDING | — |
+| TASK-577 | M42 scenario QA: "5 sosyal medya gönderisi" marketing → design (→ coding) end to end on a scratch bridge, panel chain views, budgets / determinism | qa | S | PENDING | TASK-574, TASK-575, TASK-576 |
+
 ### M43 — Knowledge base + HQ review (fleet/kb, island CLAUDE.md, agent / skill self-generation gated by HQ) — PLANNED
 ### M44 — Reports (daily / weekly / monthly / all-time per island; top topics, long sessions, lessons) — PLANNED
