@@ -31,6 +31,15 @@ export interface IslandManifest {
 const isObj = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
 
+/** `FLEET_PORT` env wins over the file (a second bridge next to the user's own). */
+export function withEnvPort(
+  cfg: FleetConfig,
+  env: Record<string, string | undefined>,
+): FleetConfig {
+  const n = Number(env.FLEET_PORT);
+  return Number.isInteger(n) && n >= 1 && n <= 65535 ? { ...cfg, port: n } : cfg;
+}
+
 function posInt(v: unknown, where: string, fallback: number): number {
   if (v === undefined) return fallback;
   if (typeof v !== 'number' || !Number.isInteger(v) || v < 1)

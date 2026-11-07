@@ -161,6 +161,10 @@ export function reduceEvent(state: StreamState, ev: unknown): Reduced {
       );
       return { lines: [{ kind: 'result', text }], lastLine: clip(text, 120), result: info };
     }
+    case 'bridge_user':
+      return typeof ev.text === 'string'
+        ? { lines: [{ kind: 'user', text: clip(ev.text) }] }
+        : none;
     case 'bridge_stderr':
       // synthetic record the bridge writes into the jsonl so disk replay keeps the live seq
       return typeof ev.text === 'string'
