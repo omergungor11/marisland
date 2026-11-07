@@ -401,7 +401,7 @@ Details in `phases/phase-3.md`.
 | TASK-534 | Research harbour placement + motion: kit on the anchors, sunken city in the lagoon (tops above water), fish schools round the ruins, sub dives 09:00 / surfaces 16:00 with bubbles, lab + tank glow, ferry arrival ritual; wow Sunken Noon + Tide-Lab Dusk; hash re-pin | worldgen + life | L | COMPLETED (D-118) | — |
 | TASK-535 | M31 Research shots + QA: wow + ladder L-research low / medium `--assert`, budgets, QA report | qa | S | COMPLETED (`mar-docs/qa/m31-research-2026-11-01.md`) | — |
 | TASK-548 | Pier-neck bot queue: spacing against the moored vessel, three bots stack in W-tide-lab-dusk | life | S | COMPLETED (D-136) | — |
-| TASK-549 | Harbour beam over land: olive wash on rock and green in W-tide-lab-dusk | shader | S | PENDING | — |
+| TASK-549 | Harbour beam over land: olive wash on rock and green in W-tide-lab-dusk | shader | S | COMPLETED (D-137) | — |
 | TASK-550 | Sunken city paving: flush slabs on a lattice instead of loose tiles; sand wedge on the arm rock face | props + worldgen | S | PENDING | — |
 | TASK-551 | Re-frame W26 (gantry, steam, §11); wire `detail` into `measureGpuMemory` so memory splits are visible; D-culture-research 916k / 800k; low memory reference comment vs 960x540 | engine | S | PENDING | — |
 | TASK-552 | CI green again: red since 2026-10-12 (last green `c3b0561`). `pnpm test` fails on runner timeouts and generation-time limits, so `shots ci --assert` never runs. Seed 1 stage hash differs on Linux CI (`ce41…` vs local `f5d5…` at `d55b02b`, seeds 42 and 1001 match): find the determinism cause first | devops + worldgen | M | COMPLETED (D-132, D-134; CI run 42365776387 green 2026-11-07, first since c3b0561) | — |
