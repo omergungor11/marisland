@@ -36,3 +36,15 @@ export const angleDelta = (from: number, to: number): number => {
   if (d < -Math.PI) d += TAU;
   return d;
 };
+/**
+ * Exactly `Math.hypot(dx, dz) < r`, without the hypot on the clear-cut cases (TASK-553): the
+ * squared distance decides outside a 1e-9 relative band round r², the band falls back to hypot.
+ */
+export function hypotLess(dx: number, dz: number, r: number): boolean {
+  if (!(r > 1e-100 && r < 1e100)) return Math.hypot(dx, dz) < r;
+  const d2 = dx * dx + dz * dz;
+  const r2 = r * r;
+  if (d2 < r2 * (1 - 1e-9)) return true;
+  if (d2 > r2 * (1 + 1e-9)) return false;
+  return Math.hypot(dx, dz) < r;
+}

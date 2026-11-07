@@ -80,6 +80,7 @@ import {
   seedHub,
   sdfAt,
   shapeDist,
+  shapeNear,
   stepCtx,
   tryLot,
   unit,
@@ -362,7 +363,7 @@ function solarBlock(
       if (slopeAtCell(ctx.h, i % ctx.n, Math.floor(i / ctx.n)) > S.maxSlope) continue;
       let free = true;
       for (const o of ctx.shapes[isl.id])
-        if (shapeDist(o, p.x, p.z) < S.clear) {
+        if (shapeNear(o, p.x, p.z, S.clear)) {
           free = false;
           break;
         }

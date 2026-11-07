@@ -50,6 +50,7 @@ import {
   sdfAt,
   segDist,
   shapeDist,
+  shapeNear,
   shapesOverlap,
   type Shape,
   type SiteCtx,
@@ -169,7 +170,7 @@ function pointFree(s: StairCtx, p: XZ): boolean {
   const clearR = ST.halfWidth + ST.gap;
   for (const o of s.shapes)
     // the legs end on the plaza rim, never across the paving
-    if (shapeDist(o, p.x, p.z) < (o.tag === 'plaza' ? -ST.plazaIn : clearR)) return false;
+    if (shapeNear(o, p.x, p.z, o.tag === 'plaza' ? -ST.plazaIn : clearR)) return false;
   return true;
 }
 

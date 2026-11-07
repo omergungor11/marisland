@@ -209,12 +209,14 @@ function stadium(s: Pick<ParkSite, 'p' | 'rot' | 'scale'>): Shape[] {
   ];
 }
 
+/** The end caps' 12 rim bearings (built once). */
+const CAP_RING = Array.from({ length: 12 }, (_, k) => dirOf((k * 2 * Math.PI) / 12));
+
 /** Stadium outline samples for the rim test (mid rect corners + the end caps' far points). */
 function outline(pieces: readonly Shape[]): XZ[] {
   const [mid, a, b] = pieces;
   const pts = shapeCorners(mid);
-  for (const c of [a, b])
-    for (let k = 0; k < 12; k++) pts.push(add(c, dirOf((k * 2 * Math.PI) / 12), c.r));
+  for (const c of [a, b]) for (const d of CAP_RING) pts.push(add(c, d, c.r));
   return pts;
 }
 
@@ -225,18 +227,21 @@ function outline(pieces: readonly Shape[]): XZ[] {
  * nearest the yard. Nothing is reserved here.
  */
 export function* qaParkCandidates(ctx: SiteCtx, isl: IslandData, yard: XZ): Generator<ParkSite> {
-  const cells: XZ[] = [];
+  const found: XZ[] = [];
   const [x0, x1] = gridRange(yard.x - K.search, yard.x + K.search);
   const [z0, z1] = gridRange(yard.z - K.search, yard.z + K.search);
   for (let iz = z0; iz <= z1; iz++)
     for (let ix = x0; ix <= x1; ix++) {
       const i = iz * ctx.n + ix;
       if (ctx.islandMap[i] === isl.id + 1 && ctx.sdf[i] >= K.minCentreShore)
-        cells.push({ x: cellX(ix), z: cellZ(iz) });
+        found.push({ x: cellX(ix), z: cellZ(iz) });
     }
   // outermost first: a sector's first site then rules out most of the inner cells
-  const shore = (c: XZ): number => sdfAt(ctx, c.x, c.z);
-  cells.sort((a, b) => shore(a) - shore(b));
+  // (shore distance sampled once per cell, TASK-553; the stable sort keeps the same order)
+  const shoreOf = found.map((c) => sdfAt(ctx, c.x, c.z));
+  const order = found.map((_, k) => k).sort((a, b) => shoreOf[a] - shoreOf[b]);
+  const cells = order.map((k) => found[k]);
+  const shores = order.map((k) => shoreOf[k]);
   const nRot = Math.round(180 / K.stepDeg);
   for (const tier of K.tiers) {
     const w = K.rect[0] * tier.scale;
@@ -247,11 +252,13 @@ export function* qaParkCandidates(ctx: SiteCtx, isl: IslandData, yard: XZ): Gene
     );
     // (the end discs stand on land `rim` off the shore: the centre is at least that far in)
     const inner = w / 2 + tier.rim;
-    for (const p of cells) {
-      if (shore(p) < inner) continue;
+    for (let ci = 0; ci < cells.length; ci++) {
+      const p = cells[ci];
+      const shore = shores[ci];
+      if (shore < inner) continue;
       const a = dm.atan2(p.z - yard.z, p.x - yard.x) + Math.PI;
       const sector = Math.min(K.sectors - 1, Math.floor((a / (2 * Math.PI)) * K.sectors));
-      const score0 = K.near * shore(p);
+      const score0 = K.near * shore;
       const cur = best[sector];
       if (cur && score0 >= cur.score) continue;
       for (let k = 0; k < nRot; k++) {

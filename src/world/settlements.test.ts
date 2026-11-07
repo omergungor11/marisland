@@ -508,8 +508,9 @@ describe('settlements — 20-seed sweep', () => {
         `stage ms sites/routes/props: ${runs.map((t) => `${t.sites.toFixed(0)}/${t.routes.toFixed(0)}/${t.props.toFixed(0)}`).join('  ')}`,
       );
       const sorted = runs.map((t) => t.total).sort((x, y) => x - y);
-      // D-128 (user 2026-11-02): 400 → 500 after the M31 harbours and the M33 kit (440–471 ms solo, load 4.5–8); TASK-553 profiles it
-      expect(sorted[2]).toBeLessThan(perfLimit(500));
+      // D-128 (user 2026-11-02): 400 → 500 after the M31 harbours and the M33 kit (440–471 ms solo, load 4.5–8);
+      // D-138 (TASK-553): 450, the hash-neutral wins read a median of 382–394 ms solo at load 3–4 (~15 % margin)
+      expect(sorted[2]).toBeLessThan(perfLimit(450));
     },
   );
 });

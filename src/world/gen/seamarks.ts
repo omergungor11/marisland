@@ -11,6 +11,7 @@
  *   of the routes, pier ends, islets, buoys and the culture boat rings (QA patrol, Design lantern).
  */
 import type { Rng } from '../../core/rng.ts';
+import { hypotLess } from '../../core/math/index.ts';
 import { DOCK, SEAMARKS } from '../../content/settlements.ts';
 import { CULTURE_BOATS } from '../../content/life.ts';
 import type {
@@ -84,17 +85,16 @@ export function placeSeamarks(input: SeamarkInput, rng: Rng): FixtureData[] {
     totals.push(a[r.points.length]);
     r.points.forEach((p, i) => samples.push({ route: ri, arc: a[i], x: p.x, z: p.z }));
   });
-  const routeDist = (p: XZ, own: number, ownArc: number, skip: number): number => {
-    let best = Infinity;
+  /** Some route sample (not own-route within `skip` of arc) is closer than `clear` (TASK-553). */
+  const routeNear = (p: XZ, own: number, ownArc: number, skip: number, clear: number): boolean => {
     for (const s of samples) {
       if (s.route === own) {
         const da = Math.abs(s.arc - ownArc);
         if (Math.min(da, totals[own] - da) < skip) continue;
       }
-      const d = Math.hypot(s.x - p.x, s.z - p.z);
-      if (d < best) best = d;
+      if (hypotLess(s.x - p.x, s.z - p.z, clear)) return true;
     }
-    return best;
+    return false;
   };
 
   // ---- channel buoys along the ferry routes
@@ -109,7 +109,7 @@ export function placeSeamarks(input: SeamarkInput, rng: Rng): FixtureData[] {
       dockClear(p, B.dockClear) &&
       isletClear(p, B.isletClear) &&
       reserved.every((c) => dist(p, c) >= c.r) &&
-      routeDist(p, ri, arc, B.spacing * 0.6) >= B.routeClear
+      !routeNear(p, ri, arc, B.spacing * 0.6, B.routeClear)
     );
   };
   routes.forEach((r, ri) => {
@@ -134,7 +134,7 @@ export function placeSeamarks(input: SeamarkInput, rng: Rng): FixtureData[] {
       const rot = bRng.range(0, Math.PI * 2);
       if (!buoyOk(port, ri, s) || !buoyOk(star, ri, s)) continue;
       // a pair never straddles another route (two ferries crossing between the buoys)
-      if (routeDist(p, ri, s, B.spacing * 0.6) < B.routeClear) continue;
+      if (routeNear(p, ri, s, B.spacing * 0.6, B.routeClear)) continue;
       const islandId = nearestIsland(p).id;
       out.push({ defId: 'buoy', x: port.x, z: port.z, rotY: rot, islandId, variant: B.port });
       out.push({ defId: 'buoy', x: star.x, z: star.z, rotY: rot, islandId, variant: B.starboard });
@@ -160,7 +160,7 @@ export function placeSeamarks(input: SeamarkInput, rng: Rng): FixtureData[] {
       dockClear(p, S.dockClear) &&
       isletClear(p, S.isletClear) &&
       reserved.every((c) => dist(p, c) >= c.r) &&
-      routeDist(p, -1, 0, 0) >= S.routeClear &&
+      !routeNear(p, -1, 0, 0, S.routeClear) &&
       buoys.every((b) => dist(p, b) >= S.buoyClear) &&
       rings.every((g) => Math.abs(distC(p, g.isl) - g.r) >= S.ringClear) &&
       placed.every((o) => dist(p, o) >= S.spacing)

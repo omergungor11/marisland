@@ -72,8 +72,34 @@ export interface Shape {
   tag?: string;
 }
 
+/**
+ * The last two (rotY → cos, sin) pairs of `rectShape`: searches try one or two rots over many
+ * positions (TASK-553). `Object.is` keeps −0 apart from 0 (their sines differ in sign).
+ */
+const rotMemo = { a: NaN, ac: 1, as: 0, b: NaN, bc: 1, bs: 0 };
+
 export function rectShape(x: number, z: number, rotY: number, w: number, d: number): Shape {
-  return { x, z, c: dm.cos(rotY), s: dm.sin(rotY), hw: w / 2, hd: d / 2, r: 0 };
+  const m = rotMemo;
+  if (!Object.is(rotY, m.a)) {
+    if (Object.is(rotY, m.b)) {
+      const c = m.bc;
+      const s = m.bs;
+      m.b = m.a;
+      m.bc = m.ac;
+      m.bs = m.as;
+      m.a = rotY;
+      m.ac = c;
+      m.as = s;
+    } else {
+      m.b = m.a;
+      m.bc = m.ac;
+      m.bs = m.as;
+      m.a = rotY;
+      m.ac = dm.cos(rotY);
+      m.as = dm.sin(rotY);
+    }
+  }
+  return { x, z, c: m.ac, s: m.as, hw: w / 2, hd: d / 2, r: 0 };
 }
 
 export function discShape(x: number, z: number, r: number): Shape {
@@ -92,44 +118,75 @@ export function shapeDist(sh: Shape, x: number, z: number): number {
   return eu > 0 || ev > 0 ? Math.hypot(Math.max(eu, 0), Math.max(ev, 0)) : Math.max(eu, ev);
 }
 
+/**
+ * Bounding-circle margin (u) of the far-apart early-outs in `shapeNear` / `shapesOverlap`: a
+ * shape lies within (hw + hd) / r of its centre, so a point or shape further off than that plus
+ * this margin is decided without the exact test, and the answer is the same bit for bit (TASK-553).
+ */
+const OVERLAP_EPS = 1e-6;
+
+/**
+ * Exactly `shapeDist(sh, x, z) < d`, skipping the distance for points clearly out of reach: a
+ * shape lies within (hw + hd) / r of its centre (TASK-553).
+ */
+export function shapeNear(sh: Shape, x: number, z: number, d: number): boolean {
+  const R = (sh.r > 0 ? sh.r : sh.hw + sh.hd) + d + OVERLAP_EPS;
+  if (R > 0) {
+    const dx = x - sh.x;
+    const dz = z - sh.z;
+    if (dx * dx + dz * dz > R * R) return false;
+  }
+  return shapeDist(sh, x, z) < d;
+}
+
+/** One SAT axis (ax, az): true when the inflated rects' projections are disjoint on it. */
+function separates(
+  a: Shape,
+  b: Shape,
+  dx: number,
+  dz: number,
+  g: number,
+  ax: number,
+  az: number,
+): boolean {
+  const ra =
+    (a.hd + g) * Math.abs(a.c * ax + a.s * az) + (a.hw + g) * Math.abs(-a.s * ax + a.c * az);
+  const rb =
+    (b.hd + g) * Math.abs(b.c * ax + b.s * az) + (b.hw + g) * Math.abs(-b.s * ax + b.c * az);
+  return Math.abs(dx * ax + dz * az) >= ra + rb;
+}
+
 /** True when two shapes come closer than `gap` (SAT for rect pairs). */
 export function shapesOverlap(a: Shape, b: Shape, gap: number): boolean {
   if (a.r > 0 && b.r > 0) return Math.hypot(a.x - b.x, a.z - b.z) < a.r + b.r + gap;
-  if (a.r > 0) return shapeDist(b, a.x, a.z) < a.r + gap;
-  if (b.r > 0) return shapeDist(a, b.x, b.z) < b.r + gap;
   const dx = b.x - a.x;
   const dz = b.z - a.z;
-  const g = gap / 2;
-  const axes: [number, number][] = [
-    [a.c, a.s],
-    [-a.s, a.c],
-    [b.c, b.s],
-    [-b.s, b.c],
-  ];
-  for (const [ax, az] of axes) {
-    const ra =
-      (a.hd + g) * Math.abs(a.c * ax + a.s * az) + (a.hw + g) * Math.abs(-a.s * ax + a.c * az);
-    const rb =
-      (b.hd + g) * Math.abs(b.c * ax + b.s * az) + (b.hw + g) * Math.abs(-b.s * ax + b.c * az);
-    if (Math.abs(dx * ax + dz * az) >= ra + rb) return false;
+  // far apart: a shape lies within (hw + hd) of its centre, so no overlap (gap ≥ 0 only)
+  if (gap >= 0) {
+    const R = (a.r > 0 ? a.r : a.hw + a.hd) + (b.r > 0 ? b.r : b.hw + b.hd) + 2 * gap + OVERLAP_EPS;
+    if (dx * dx + dz * dz > R * R) return false;
   }
-  return true;
+  if (a.r > 0) return shapeDist(b, a.x, a.z) < a.r + gap;
+  if (b.r > 0) return shapeDist(a, b.x, b.z) < b.r + gap;
+  const g = gap / 2;
+  return !(
+    separates(a, b, dx, dz, g, a.c, a.s) ||
+    separates(a, b, dx, dz, g, -a.s, a.c) ||
+    separates(a, b, dx, dz, g, b.c, b.s) ||
+    separates(a, b, dx, dz, g, -b.s, b.c)
+  );
 }
 
 /** Footprint corners of a rect shape. */
 export function shapeCorners(sh: Shape): XZ[] {
-  const out: XZ[] = [];
-  for (const [su, sv] of [
-    [1, 1],
-    [1, -1],
-    [-1, -1],
-    [-1, 1],
-  ]) {
-    const u = su * sh.hw;
-    const v = sv * sh.hd;
-    out.push({ x: sh.x - u * sh.s + v * sh.c, z: sh.z + u * sh.c + v * sh.s });
-  }
-  return out;
+  const u = sh.hw;
+  const v = sh.hd;
+  return [
+    { x: sh.x - u * sh.s + v * sh.c, z: sh.z + u * sh.c + v * sh.s },
+    { x: sh.x - u * sh.s + -v * sh.c, z: sh.z + u * sh.c + -v * sh.s },
+    { x: sh.x - -u * sh.s + -v * sh.c, z: sh.z + -u * sh.c + -v * sh.s },
+    { x: sh.x - -u * sh.s + v * sh.c, z: sh.z + -u * sh.c + v * sh.s },
+  ];
 }
 
 export const lotShape = (l: LotData): Shape => rectShape(l.x, l.z, l.rotY, l.w, l.d);
@@ -240,6 +297,9 @@ export const segDist = (p: XZ, a: XZ, b: XZ): number => {
   return Math.hypot(p.x - a.x - vx * t, p.z - a.z - vz * t);
 };
 export const dirOf = (a: number): XZ => ({ x: dm.cos(a), z: dm.sin(a) });
+/** Constant bearing rings, built once (TASK-553): `relief` (8 bearings), disc `onLand` (6 × 1.047). */
+const RELIEF_RING = Array.from({ length: 8 }, (_, k) => dirOf((k / 8) * Math.PI * 2));
+const LAND_RING = Array.from({ length: 6 }, (_, k) => dirOf(k * 1.047));
 export const add = (p: XZ, d: XZ, t: number): XZ => ({ x: p.x + d.x * t, z: p.z + d.z * t });
 export const dist = (a: XZ, b: XZ): number => Math.hypot(a.x - b.x, a.z - b.z);
 export const unit = (from: XZ, to: XZ): XZ => {
@@ -266,26 +326,27 @@ export const onIsland = (ctx: SiteCtx, isl: IslandData, x: number, z: number): b
 
 /** Height relief (max − min) over a rect/disc footprint (centre, corners, edge mids). */
 export function relief(ctx: SiteCtx, sh: Shape): number {
-  let lo = Infinity;
-  let hi = -Infinity;
-  const pts: XZ[] = [{ x: sh.x, z: sh.z }];
+  let lo = heightAt(ctx.h, sh.x, sh.z);
+  let hi = lo;
+  const at = (x: number, z: number): void => {
+    const y = heightAt(ctx.h, x, z);
+    if (y < lo) lo = y;
+    if (y > hi) hi = y;
+  };
   if (sh.r > 0) {
-    for (let k = 0; k < 8; k++) {
-      const a = (k / 8) * Math.PI * 2;
-      pts.push(add(sh, dirOf(a), sh.r), add(sh, dirOf(a), sh.r / 2));
+    const r2 = sh.r / 2;
+    for (const d of RELIEF_RING) {
+      at(sh.x + d.x * sh.r, sh.z + d.z * sh.r);
+      at(sh.x + d.x * r2, sh.z + d.z * r2);
     }
   } else {
     const cs = shapeCorners(sh);
     for (let k = 0; k < 4; k++) {
       const a = cs[k];
       const b = cs[(k + 1) % 4];
-      pts.push(a, { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 });
+      at(a.x, a.z);
+      at((a.x + b.x) / 2, (a.z + b.z) / 2);
     }
-  }
-  for (const p of pts) {
-    const y = heightAt(ctx.h, p.x, p.z);
-    if (y < lo) lo = y;
-    if (y > hi) hi = y;
   }
   return hi - lo;
 }
@@ -319,8 +380,7 @@ export function onLand(
   cornerMin = 0.3,
 ): boolean {
   if (!onIsland(ctx, isl, sh.x, sh.z) || sdfAt(ctx, sh.x, sh.z) < minShore) return false;
-  const pts =
-    sh.r > 0 ? [0, 1, 2, 3, 4, 5].map((k) => add(sh, dirOf(k * 1.047), sh.r)) : shapeCorners(sh);
+  const pts = sh.r > 0 ? LAND_RING.map((d) => add(sh, d, sh.r)) : shapeCorners(sh);
   for (const p of pts) {
     if (!onIsland(ctx, isl, p.x, p.z) || heightAt(ctx.h, p.x, p.z) < cornerMin) return false;
     if (sh.r === 0 && !cellOnLand(ctx, isl, p.x, p.z)) return false;
@@ -340,7 +400,7 @@ export function clear(
     if (shapesOverlap(o, sh, gap)) return false;
   }
   for (const lane of ctx.lanes[isl.id])
-    for (const p of lane) if (shapeDist(sh, p.x, p.z) < PATHS.halfWidth + 0.4) return false;
+    for (const p of lane) if (shapeNear(sh, p.x, p.z, PATHS.halfWidth + 0.4)) return false;
   return true;
 }
 
@@ -417,7 +477,7 @@ export function siteFree(ctx: SiteCtx, isl: IslandData, sh: Shape): boolean {
     if (f.islandId === isl.id && shapeDist(sh, f.x, f.z) <= 0) return false;
   for (const s of ctx.streams) {
     if (s.islandId !== isl.id) continue;
-    for (const q of s.points) if (shapeDist(sh, q.x, q.z) < OUTPOSTS.cabinStreamClear) return false;
+    for (const q of s.points) if (shapeNear(sh, q.x, q.z, OUTPOSTS.cabinStreamClear)) return false;
   }
   return true;
 }
@@ -499,7 +559,7 @@ export function dockHitsShapes(site: DockSite, shapes: readonly Shape[]): boolea
   const len = site.segments * DOCK.segment + DOCK.basinOffset + DOCK.basinRadius;
   for (let t = 0; t <= len; t += 2) {
     const q = add(site.root, site.dir, t);
-    if (shapes.some((sh) => shapeDist(sh, q.x, q.z) < DOCK.avoidGap)) return true;
+    if (shapes.some((sh) => shapeNear(sh, q.x, q.z, DOCK.avoidGap))) return true;
   }
   return false;
 }
@@ -583,7 +643,7 @@ export function findDock(
         let hit = false;
         for (let t = 0; t <= len && !hit; t += 2) {
           const q = add(root, dir, t);
-          hit = opts.avoid.some((sh) => shapeDist(sh, q.x, q.z) < DOCK.avoidGap);
+          hit = opts.avoid.some((sh) => shapeNear(sh, q.x, q.z, DOCK.avoidGap));
         }
         if (hit) continue;
       }
@@ -746,8 +806,10 @@ export function bestSample(
     for (let ix = x0; ix <= x1; ix++) {
       const i = iz * ctx.n + ix;
       if (ctx.islandMap[i] !== isl.id + 1) continue;
-      const p = { x: cellX(ix), z: cellZ(iz) };
-      if (dist(p, c) > radius) continue;
+      const x = cellX(ix);
+      const z = cellZ(iz);
+      if (Math.hypot(x - c.x, z - c.z) > radius) continue;
+      const p = { x, z };
       const s = score(p, i);
       if (s < bs) {
         bs = s;
@@ -1299,7 +1361,7 @@ export function placeBuoys(ctx: SiteCtx, isl: IslandData, rng: Rng): void {
   for (const p of spots) {
     if (placed.length >= nb) break;
     if (placed.some((o) => dist(o, p) < OUTPOSTS.buoySpacing)) continue;
-    if (ctx.shapes[isl.id].some((o) => shapeDist(o, p.x, p.z) < 4)) continue;
+    if (ctx.shapes[isl.id].some((o) => shapeNear(o, p.x, p.z, 4))) continue;
     placed.push(p);
     pushFixture(ctx, isl, 'buoy', p, rng.range(0, Math.PI * 2));
   }
@@ -1325,7 +1387,7 @@ export function placeTidePools(ctx: SiteCtx, isl: IslandData, rng: Rng): void {
   for (const p of wet) {
     if (pools.length >= nt) break;
     if (pools.some((o) => dist(o, p) < OUTPOSTS.tidePoolSpacing)) continue;
-    if (ctx.shapes[isl.id].some((o) => shapeDist(o, p.x, p.z) < 3)) continue;
+    if (ctx.shapes[isl.id].some((o) => shapeNear(o, p.x, p.z, 3))) continue;
     pools.push(p);
     pushFixture(ctx, isl, 'tidePool', p, rng.range(0, Math.PI * 2));
   }
