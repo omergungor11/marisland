@@ -23,3 +23,7 @@ iş yapan adaları yönlendirirsin.
 ## Bitiş ölçütü
 
 Değişiklik yaptıysam `pnpm test` içindeki fleet-lint yeşil; raporumda hangi adanın neden değiştiğini yazarım.
+
+## Kime devrederim
+
+Her adaya devredebilirim (`## → <ada>: …`). Aynı anda birden çok adaya devreden tek ada HQ'dur.

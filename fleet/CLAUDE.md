@@ -33,8 +33,8 @@ aynı adda bir şey yaratırsan cwd'ye yakın olan kazanır, bu yüzden ada agen
   dizini, `fleet/CLAUDE.md`, `fleet/schema/`, kendi `island.json` ve `.claude/settings.json` dosyan
   sana kapalı. Değiştirmek istiyorsan raporuna "HQ'ya öneri" satırı yaz.
 - Git: commit yok, push yok. Değişiklikleri working tree'de bırak; bridge ve HQ gözden geçirir.
-- Bütçe: `island.json` → `maxTurns` içinde kal. Başka adadan iş istemek M42'de kapıyla gelecek; şimdilik
-  raporuna "→ <ada>: <istek>" satırı yaz, kendin başlatma.
+- Bütçe: `island.json` → `maxTurns` içinde kal. Başka adadan iş istemek için aşağıdaki biçimi kullan;
+  hedef adayı kendin başlatmazsın, kullanıcı kapıdan izin verir.
 - Dış servis çağrısı, API key, para harcayan iş yok.
 
 ## Hafıza
@@ -44,10 +44,30 @@ dosya, frontmatter: `name`, `description`, `type: user | feedback | project | re
 `metadata:` altında da olabilir). Eskiyeni sil,
 tekrar yazma, ilişkili olanları `[[name]]` ile bağla. Session'ın ilk işi `memory/MEMORY.md`'yi okumak.
 
+## Başka adadan iş istemek
+
+Başka bir adaya iş devretmek için raporunun sonuna, her biri kendi başlığında olacak şekilde yaz:
+
+```
+## → <ada>: <tek satır istek>
+```
+
+- `<ada>`: ThemeId (`coding`, `design`, `marketing`, `qa`, `devops`, `research`, `hq`) ya da adanın Türkçe
+  adı (`island.json` → `name`). Her başlık tek adaya gider; bir mesajda en çok 2 istek (HQ istisna).
+- Başlığın altına gövde: istenen sonuç, karşı adanın ihtiyaç duyduğu girdiler (dosya, metin, sayı),
+  kısıtlar (süre, bütçe, dokunulmayacak dosyalar).
+- Ne olur: istek bir **kapı** olur, kullanıcı onaylar. Onaylanırsa hedef adada bir child session koşar.
+  Child bitince SEN devam edersin: mesajın "<ada> adasından rapor:" ile başlar; cevabı kullanıp işine
+  devam et, kullanıcıya yanıt ver ya da sıradaki adaya devret. Reddedilirse aynı kanaldan "…devir
+  reddedildi" gelir; işi kendin bitir ya da raporla.
+- Tavanlar: istek başına `maxChildren` (`island.json`, varsayılan 6), zincir derinliği en çok 3.
+  Tavana yaklaşırsan yeni istek açma, kullanıcıya raporla.
+- `## Özet` zorunlu: child'a ve geri raporuna yalnız bu bölüm gider. Özetin yoksa karşı taraf bağlamsız çalışır.
+
 ## Rapor biçimi (her session sonu, son mesajın)
 
 ```
-## Özet
+## Özet               (zorunlu; child'a ve geri raporuna gider)
 <2-3 cümle: ne istendi, ne yapıldı>
 ## Değişen dosyalar
 - path — neden
@@ -55,7 +75,7 @@ tekrar yazma, ilişkili olanları `[[name]]` ile bağla. Session'ın ilk işi `m
 - <bir satır, memory'ye yazdıysan dosya adı>
 ## HQ'ya öneri        (varsa)
 - <island.json / settings / yeni skill / başka ada isteği>
-## → <ada>: <istek>   (varsa)
+## → <ada>: <istek>   (varsa; en sonda, her istek ayrı başlık)
 ```
 
 Ayrıca günün dosyasına ekle: `reports/YYYY-MM-DD.md` (yoksa yarat, başlık `# <Ada> — <tarih>`),

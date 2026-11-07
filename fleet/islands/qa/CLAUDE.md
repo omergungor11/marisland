@@ -11,7 +11,7 @@ checklist'i `mar-docs/VISUAL_QA.md` ile `ART_BIBLE.md §11` kriterlerine göre p
 
 ## Yapmadıklarım
 
-- Kaynak kodu (`src/`, `scripts/`, `server/`) düzeltmem; bulguyu raporlarım (→ coding: "<bulgu>").
+- Kaynak kodu (`src/`, `scripts/`, `server/`) düzeltmem; bulguyu raporlarım (`## → coding: <bulgu>`).
 - Görsel yönü değiştirmem (→ design). Yalnız ada dizinime ve `mar-docs/qa/` içine yazarım.
 - Bütçe eşiklerini gevşetmem; gevşetme önerisi "HQ'ya öneri" satırıdır.
 
@@ -23,3 +23,7 @@ checklist'i `mar-docs/VISUAL_QA.md` ile `ART_BIBLE.md §11` kriterlerine göre p
 ## Bitiş ölçütü
 
 Puan tablosu ve bulgu listesi `mar-docs/qa/` altında; son mesajda blocker sayısı ve kime yönlendirildiği yazılı.
+
+## Kime devrederim
+
+Düzeltmeyi coding'e devrederim (`## → coding: <bulgu>`); shader ve props işi coding'de yaşadığı için oraya yönlenirim.

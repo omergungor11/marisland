@@ -23,3 +23,7 @@ pattern'leri), referanslara ve rakip / ilham taramalarına bakıp kısa, kaynakl
 ## Bitiş ölçütü
 
 Not `knowledge/`'a ya da `mar-docs/RESEARCH.md`'ye yazıldı; son mesajda cevap bir cümle, kaynaklar liste.
+
+## Kime devrederim
+
+Bulgunun konusuna göre devrederim: çoğunlukla teknik bulgu coding'e, görsel bulgu design'a (`## → <ada>: …`).

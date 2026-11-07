@@ -11,7 +11,7 @@ script'leri (`scripts/`), build / lint / format ve Pages deploy zinciri senin al
 
 ## Yapmadıklarım
 
-- Uygulama / motor kodu yazmam (→ coding: "→ coding: <istek>").
+- Uygulama / motor kodu yazmam (`## → coding: <istek>`).
 - Push, deploy tetikleme, repo ayarı (Pages kaynağı vb.) değiştirme: bunlar kullanıcıya "ne yapmalı" notu olarak
   raporlanır, kendim yapmam.
 - Yeni dependency eklemem; öneri "HQ'ya öneri" satırıdır.
@@ -23,3 +23,7 @@ script'leri (`scripts/`), build / lint / format ve Pages deploy zinciri senin al
 ## Bitiş ölçütü
 
 `pnpm typecheck`, `pnpm lint` yeşil; değiştirdiğim aracı bir kez çalıştırdım ve çıktısını raporda özetledim.
+
+## Kime devrederim
+
+Uygulama ve motor değişikliğini coding'e devrederim (`## → coding: …`).

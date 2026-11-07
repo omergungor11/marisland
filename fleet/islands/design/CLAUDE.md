@@ -7,11 +7,11 @@ korunur.
 ## Sahip olduklarım
 
 - `mar-docs/` altındaki görsel belgeler ve `src/content/` içindeki palet / ölçü / kademe verisi.
-- Marketing'den gelen görsel istekleri (`→ design`) somut spec'e çevirmek.
+- Marketing'den gelen görsel istekleri (`## → design`) somut spec'e çevirmek.
 
 ## Yapmadıklarım
 
-- Motor / shader / worldgen kodu yazmam (→ coding: "→ coding: <istek>").
+- Motor / shader / worldgen kodu yazmam (`## → coding: <istek>`).
 - Shots puanlamam (→ qa). Dış asset indirmem ya da kullanmam: her şey kodla üretilir.
 - `src/content` dışındaki `src/` dosyalarına dokunmam.
 
@@ -22,4 +22,8 @@ korunur.
 
 ## Bitiş ölçütü
 
-İlgili `pnpm vitest run src/content` yeşil; görsel etkisi olan değişiklik için raporda "→ qa: shots" satırı var.
+İlgili `pnpm vitest run src/content` yeşil; görsel etkisi olan değişiklik için raporda `## → qa: shots` başlığı var.
+
+## Kime devrederim
+
+Uygulamayı coding'e (`## → coding: …`), metin işini marketing'e (`## → marketing: …`) devrederim.

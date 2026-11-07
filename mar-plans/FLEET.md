@@ -19,7 +19,7 @@ onay kapısından geçer. Uzun vadede filo kendi knowledge base'ini, agent'ları
 | **Departman** | Ada (`ThemeId`: hq, coding, marketing, qa, design, devops, research) | `fleet/islands/<theme>/` dizini, kendi `CLAUDE.md`'si (persona + bilgi) |
 | **Session** | Adadaki bir bot, çalışırken masaya oturur / iş noktasına gider | `FleetSession` (protocol.ts), ham akış `fleet/runs/<id>.jsonl` |
 | **İstek (request)** | Kullanıcının bir prompt'la başlattığı iş; alt session'lar aynı isteğe bağlanır | `FleetRequest`, `parentId` zinciri |
-| **Kapı (gate)** | Bir adanın başka adaya iş devretmek istemesi; panelde "devam?" | `FleetGate` (M42) |
+| **Kapı (gate)** | Bir adanın başka adaya iş devretmek istemesi; panelde "İzin ver / Reddet" | `FleetGate` (M42) |
 | **Başlık** | Panelde okunur tek satır | ilk prompt'tan haiku ile üretilir, sonra sabit |
 
 ## Mimari
@@ -55,7 +55,7 @@ tarayıcı (Vite app)                      bridge (Node, pnpm bridge, :5174)    
 ```
 start(island, prompt) ─▶ queued ─▶ running ─▶ done | error | stopped
                                      │
-                                     └─▶ waiting (kapı bekliyor, M42)
+                                     └─▶ waiting (kapı bekliyor, bkz. İstek zinciri)
 ```
 
 1. `FleetCommand start` gelir → bridge `FleetSession` yaratır (`status queued`, başlık = prompt'un
@@ -71,9 +71,56 @@ start(island, prompt) ─▶ queued ─▶ running ─▶ done | error | stopped
 6. `send(sessionId, prompt)` → `claude -p --resume <id>` aynı kayda ekler (D-145): ada flag'leri yeniden verilir,
    `user` satırı tur sınırını işaretler, `turns` / `costUsd` koşular arası toplanır. `tail` cevabı en çok 2000 satır;
    client `last.seq + 1`'den yeniden ister.
+7. Raporun sonundaki `## → <ada>: <istek>` başlıkları → her biri için `FleetGate` (`pending`), ana session
+   `waiting`. İzin → child session (aynı `requestId`, `parentId`); child bitince ana session `resume` edilir.
+   Ayrıntı: İstek zinciri.
 
 Bridge yeniden başlarsa `fleet/runs/index.json`'dan session listesini geri yükler; `running` olanlar
 `error` (`bridge restarted`) olur.
+
+## İstek zinciri (M42)
+
+Kullanıcı bir adaya prompt yazar; ada işin bir kısmını başka adaya devretmek isterse raporunun sonuna
+`## → <ada>: <istek>` yazar. Her devir **kapıdan** geçer: kullanıcı izin vermeden hedef adada hiçbir şey
+koşmaz. Devir sırasında hedef ada bir child session olarak çalışır, bittiğinde ana session "…adasından
+rapor:" mesajıyla devam eder. Yazım biçimi ve ada tarafındaki kurallar `fleet/CLAUDE.md` →
+"Başka adadan iş istemek".
+
+```
+kullanıcı: "5 sosyal medya gönderisi hazırla"
+   │
+   ▼
+Marketing session (istek R1, depth 0) ── final: ## Özet … ## → design: görsel spec
+   │
+   ▼
+[kapı: Marketing → Design] ── reddet ──▶ Marketing'e "devir reddedildi", kendi bitirir
+   │ izin
+   ▼
+Design child (R1, parentId = Marketing, depth 1) ── final: ## Özet
+   │
+   ▼
+Design biter → Marketing resume: "Design adasından rapor: …"
+   │  Marketing devam eder ── final: ## Özet … ## → coding: …
+   ▼
+[kapı: Marketing → Coding] ── izin ──▶ Coding child (depth 2) ── biter ──▶ Marketing resume
+   │
+   ▼
+Marketing final: ## Özet (kullanıcıya teslim)
+```
+
+**Tavanlar**
+- `maxChildren`: istek başına en çok alt session (`island.json`, varsayılan 6).
+- Derinlik en çok 3 (ana session 0).
+- Bekleyen kapı: ana session başına bir (D-149; plan TASK-574).
+- Her child kendi `maxTurns` ve `allowedTools` sınırında koşar; ada sınırları (`owner`, `addDirs`) aynen geçerli.
+- "Tam serbest" yok: kapı her geçişte sorar.
+
+**Ertelenen fikirler** (D-149, "Open")
+- **MCP devir aracı** (seçenek B): bridge'de bir MCP server, agent koşu sırasında çağırır, ana session
+  cevap gelene kadar bloke olur. Bekleyen session'ı açık tutar ve MCP server gerektirir; şimdilik rapor
+  satırı (A) kullanılır.
+- **Allowlist kapıyı atlar**: `fleet.config.json`'da "marketing → design" gibi kalıcı izin. Kapı
+  güvenliğini zayıflatır; kullanıcının isteyip istemediği açık değil.
 
 ## Dizin yapısı — ada = kendi başına bir Claude Code projesi
 
