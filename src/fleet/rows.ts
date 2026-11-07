@@ -1,11 +1,18 @@
 /** Island panel view math (TASK-563, M41): pure, tested without a DOM. */
-import { FLEET_DURATION as D, FLEET_PANEL as P, FLEET_TERM as T } from '../content/fleet.ts';
+import {
+  FLEET_DURATION as D,
+  FLEET_PANEL as P,
+  FLEET_STATUS as S,
+  FLEET_TERM as T,
+  type StatusGlyph,
+} from '../content/fleet.ts';
 import {
   isLive,
   type FleetIsland,
   type FleetLine,
   type FleetSession,
   type LineKind,
+  type SessionStatus,
 } from './protocol.ts';
 
 /** "az önce", "3 dk", "2 sa 10 dk", "2 sa", "1 g". */
@@ -46,6 +53,77 @@ export function panelRows(
   rest.sort((a, b) => b.updatedAt - a.updatedAt || (a.id < b.id ? -1 : 1));
   const all = live.concat(rest);
   return { rows: all.slice(0, cap), live: live.length, more: Math.max(0, all.length - cap) };
+}
+
+// ---- panel layout, footer, status glyphs (TASK-572) --------------------------------------------
+
+/**
+ * What the card shows: the open terminal wins (a camera move must not disturb it), then the fleet
+ * view (no island focused), the compact strip at close-up tiers, else the island list.
+ */
+export type PanelLayout = 'term' | 'fleet' | 'compact' | 'island';
+export function panelLayout(
+  tier: number,
+  island: FleetIsland | null,
+  termOpen: boolean,
+): PanelLayout {
+  if (termOpen) return 'term';
+  if (island === null) return 'fleet';
+  return tier >= P.compact.fromTier ? 'compact' : 'island';
+}
+
+/** Compact strip rows: the live ones only, at most `max`; `more` = live rows left out. */
+export function compactRows(
+  rows: readonly FleetSession[],
+  max: number,
+): { rows: FleetSession[]; more: number } {
+  const live = rows.filter(isLive);
+  return { rows: live.slice(0, max), more: Math.max(0, live.length - max) };
+}
+
+/**
+ * Rows the scroll box cuts: a row whose bottom reaches more than half way into the bottom fade (or
+ * past the box) counts as hidden. `bottoms` in list px (offsetTop + offsetHeight), `viewBottom` =
+ * scrollTop + clientHeight.
+ */
+export function rowsBelow(bottoms: readonly number[], viewBottom: number, fadePx: number): number {
+  const edge = viewBottom - fadePx / 2;
+  let n = 0;
+  for (const b of bottoms) if (b > edge + 0.5) n++;
+  return n;
+}
+
+/** Footer text: rows past the cap plus rows cut by the scroll; '' when everything shows. */
+export const footerText = (capMore: number, cut: number): string =>
+  capMore + cut > 0 ? P.more(capMore + cut) : '';
+
+const GLYPH_SVG: Readonly<Record<StatusGlyph, (w: number) => string>> = {
+  halo: () =>
+    '<circle class="mar-fhalo" cx="6" cy="6" r="5.6" fill="currentColor" opacity=".3"/><circle cx="6" cy="6" r="3.3" fill="currentColor"/>',
+  ring: (w) =>
+    `<circle cx="6" cy="6" r="4.5" fill="none" stroke="currentColor" stroke-width="${w * 0.85}"/><circle cx="6" cy="6" r="1.6" fill="currentColor"/>`,
+  check: (w) =>
+    `<path d="M2.3 6.5l2.5 2.5L9.8 3.4" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`,
+  cross: (w) =>
+    `<path d="M3.2 3.2l5.6 5.6M8.8 3.2l-5.6 5.6" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round"/>`,
+  square: () => '<rect x="2.6" y="2.6" width="6.8" height="6.8" rx="1.6" fill="currentColor"/>',
+  dashed: (w) =>
+    `<circle cx="6" cy="6" r="4.4" fill="none" stroke="currentColor" stroke-width="${w * 0.75}" stroke-dasharray="2.3 1.8"/>`,
+};
+
+/** Status glyph: its kind, colour (`var(--acc)` for the accent) and inline SVG markup. */
+export function statusGlyph(status: SessionStatus): {
+  glyph: StatusGlyph;
+  color: string;
+  svg: string;
+} {
+  const glyph = S.glyph[status];
+  const px = S.sizePx;
+  return {
+    glyph,
+    color: S.color[status] || 'var(--acc)',
+    svg: `<svg width="${px}" height="${px}" viewBox="0 0 12 12" aria-hidden="true">${GLYPH_SVG[glyph](S.stroke)}</svg>`,
+  };
 }
 
 // ---- fleet view search (M41) -----------------------------------------------------------------

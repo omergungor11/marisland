@@ -23,6 +23,29 @@ import {
 
 const TOOLS = new Set(['Read', 'Edit', 'Write', 'Bash', 'Grep', 'Glob']);
 
+/**
+ * A snapshot row's last line on a department island: its first (running) row shows the pool's
+ * headline, a line an earlier row of the island shows moves on to the next unused one (no draw).
+ * Coding (no own pool) keeps the drawn line.
+ */
+function lastLine(
+  island: FleetSession['island'],
+  i: number,
+  drawn: string,
+  used: Set<string>,
+): string {
+  const own = M.islandLines[island];
+  if (!own) return drawn;
+  let k = i === 0 ? 0 : own.indexOf(drawn);
+  for (let n = 0; n < own.length && used.has(own[k]); n++) k = (k + 1) % own.length;
+  used.add(own[k]);
+  return own[k];
+}
+
+/** The island's line pool (its department lines, else the dev tool lines): one draw either way. */
+const linesOf = (island: FleetSession['island']): readonly string[] =>
+  M.islandLines[island] ?? M.lines;
+
 function weighted(rng: Rng, table: readonly (readonly [SessionStatus, number])[]): SessionStatus {
   const total = table.reduce((s, [, w]) => s + w, 0);
   let x = rng.next() * total;
@@ -42,6 +65,7 @@ export function mockFleet(
     const rng = root.fork('island', k);
     const titles = rng.shuffle([...M.titles[island]]);
     const n = Math.min(rng.int(M.perIsland[0], M.perIsland[1]), titles.length);
+    const usedLines = new Set<string>();
     for (let i = 0; i < n; i++) {
       const status: SessionStatus = i === 0 ? 'running' : weighted(rng, M.statusWeights);
       const startedAt = now - Math.round(rng.range(M.startedAgoS[0], M.startedAgoS[1])) * 1000;
@@ -72,7 +96,10 @@ export function mockFleet(
         requestId,
         cwd: `fleet/islands/${island}`,
         model: 'opus',
-        lastLine: status === 'queued' ? undefined : rng.pick(M.lines),
+        lastLine:
+          status === 'queued'
+            ? undefined
+            : lastLine(island, i, rng.pick(linesOf(island)), usedLines),
         ...(status === 'error' ? { reason: 'exit 1' } : {}),
       });
       requests.push({
@@ -94,7 +121,7 @@ export function mockFleet(
   return { sessions, requests };
 }
 
-/** A tool / assistant line from the `M.lines` pool (+ its result line for a tool). */
+/** A tool / assistant line from an island pool (+ its result line for a tool). */
 function poolLines(text: string, rng: Rng): Array<Omit<FleetLine, 'sessionId' | 'seq' | 'at'>> {
   const tool = text.split(' ')[0];
   if (!TOOLS.has(tool)) return [{ kind: 'assistant', text }];
@@ -121,7 +148,7 @@ export function mockHistory(seed: number, s: FleetSession): FleetLine[] {
     { kind: 'user', text: s.title },
   ];
   const n = rng.int(M.historySteps[0], M.historySteps[1]);
-  for (let i = 0; i < n; i++) raw.push(...poolLines(rng.pick(M.lines), rng));
+  for (let i = 0; i < n; i++) raw.push(...poolLines(rng.pick(linesOf(s.island)), rng));
   if (s.status === 'error') raw.push({ kind: 'stderr', text: M.errorLine });
   else if (s.status === 'done')
     raw.push({
@@ -210,7 +237,7 @@ export function createFleetMock(o: FleetMockOptions, emit: (ev: FleetEvent) => v
       const ms = Math.round(rng.range(M.feedEveryS[0], M.feedEveryS[1]) * 1000);
       later(ms, () => {
         const s = rng.pick(running);
-        const text = rng.pick(M.lines);
+        const text = rng.pick(linesOf(s.island));
         const tool = text.split(' ')[0];
         // a stopped or scripted session gets no pool lines
         if (state.get(s.id)?.status === 'running' && !scripted.has(s.id))

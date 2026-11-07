@@ -2223,6 +2223,32 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     fleetQuery: 'shader',
     sets: ['dev'],
   },
+  // ---- TASK-572: a terminal open over the fleet view (the overview: the list behind it has sticky
+  // island heads that used to paint through the overlay); the terminal must be opaque and on top
+  {
+    id: 'F-terminal-out',
+    title: 'Fleet terminal over the fleet view',
+    seed: 1001,
+    cam: 'overview',
+    time: 14,
+    simt: 2,
+    hud: true,
+    fleet: 'mock',
+    fleetOpen: 'running',
+    sets: ['dev'],
+  },
+  // ---- TASK-572: F-bot's tier-3 framing with the HUD: the card is the compact strip
+  {
+    id: 'F-bot-hud',
+    title: 'Fleet compact strip · T3',
+    seed: 1001,
+    cam: '-109,19,158,-113.56,11.5,150.3',
+    time: 14,
+    simt: 30,
+    hud: true,
+    fleet: 'mock',
+    sets: ['dev'],
+  },
   // ---- sandbox edits (TASK-221): `pnpm shots edit`. Logs on seed 1001 generated with
   // `encodeLog` (world/edit.ts); re-recorded for the Phase 3 layout (TASK-309: moved with their
   // island, rejected placements dropped) and the theme-first world (TASK-380: one pine that now
