@@ -10,6 +10,7 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-11-07 (CI `check` editpick)**: run 42239010753 got through `pnpm test` (D-132 holds) and died only on the harness `editpick` selftest: the M31 harbours fill the `village` view on seed 1001, so the 7 × 5 / 10 % spot grid had one free land spot and none for the move (every other reads `occupied` = site / pad reservation, not a prop collision). Grid is 17 × 13 / 5 % now (33 free move spots); `shots ci --assert --only=D-overview` ok in 108 s. Perf job is report-only (D-134). Next: 559 motion polish, 548-551, 553.
 - **2026-11-06 last (TASK-557 done, D-133)**: low steps = one 2-tread extrude (3 treads = 28 tris > the 30 % LOD1 cap), bot head keeps screen + eye bar; low 79 / 80 MB unchanged.
   Foundry sleeps in the Coding lamp window (`awake` = 1 - `culture.state.lamps.coding`: arms park, bots shrink away, tint by `uNight`), phase stays on sim time, so no cam / capture moved.
   Fireflies skip `FIREFLIES.trackClear` of the coaster rails (7 of 72 on 1001). Lantern boat hull is a loft (sheer, V, gunwale). Agents: medium plan was exactly 60 so dolphins / jumpers made 62-63:

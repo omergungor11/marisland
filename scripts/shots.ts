@@ -407,9 +407,11 @@ const EDITPICK_EXPR = `(() => {
   const c = document.querySelector('canvas');
   const W = c.clientWidth;
   const H = c.clientHeight;
+  // 17 × 13 at 5 % steps: the M31 harbours fill the village view on seed 1001, the old 7 × 5 grid
+  // at 10 % left one free spot and none for the move (CI run 42239010753)
   const spots = [];
-  for (let j = 0; j < 5; j++)
-    for (let i = 0; i < 7; i++) spots.push([W * (0.2 + i * 0.1), H * (0.35 + j * 0.1)]);
+  for (let j = 0; j < 13; j++)
+    for (let i = 0; i < 17; i++) spots.push([W * (0.1 + i * 0.05), H * (0.2 + j * 0.05)]);
   const land = (x, y) => {
     const h = api.pick(x, y);
     return h && h.kind === 'terrain' && h.name === 'terrain' ? h : null;
