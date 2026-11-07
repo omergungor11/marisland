@@ -46,6 +46,10 @@ tekrar yazma, ilişkili olanları `[[name]]` ile bağla. Session'ın ilk işi `m
 
 ## Başka adadan iş istemek
 
+**Önce kendin bitir.** Devir, yalnız kendi alanın dışında kalan ve sonucu gerçekten değiştiren iş içindir
+(ilk denemede design child'ı basit bir spec için coding ve qa'ya da kapı açtı; bu gürültüdür). Spec, metin,
+özet, plan gibi işleri devretme; "doğrulansın" diye devir açma. Şüphedeysen raporuna "HQ'ya öneri" yaz, kapı açma.
+
 Başka bir adaya iş devretmek için raporunun sonuna, her biri kendi başlığında olacak şekilde yaz:
 
 ```
