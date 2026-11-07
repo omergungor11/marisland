@@ -1,6 +1,12 @@
-/** Island panel view math (TASK-563): pure, tested without a DOM. */
-import { FLEET_DURATION as D } from '../content/fleet.ts';
-import { isLive, type FleetIsland, type FleetSession } from './protocol.ts';
+/** Island panel view math (TASK-563, M41): pure, tested without a DOM. */
+import { FLEET_DURATION as D, FLEET_PANEL as P, FLEET_TERM as T } from '../content/fleet.ts';
+import {
+  isLive,
+  type FleetIsland,
+  type FleetLine,
+  type FleetSession,
+  type LineKind,
+} from './protocol.ts';
 
 /** "az önce", "3 dk", "2 sa 10 dk", "2 sa", "1 g". */
 export function formatDuration(ms: number): string {
@@ -40,4 +46,163 @@ export function panelRows(
   rest.sort((a, b) => b.updatedAt - a.updatedAt || (a.id < b.id ? -1 : 1));
   const all = live.concat(rest);
   return { rows: all.slice(0, cap), live: live.length, more: Math.max(0, all.length - cap) };
+}
+
+// ---- fleet view search (M41) -----------------------------------------------------------------
+
+const FOLD: Readonly<Record<string, string>> = {
+  ı: 'i',
+  İ: 'i',
+  I: 'i',
+  î: 'i',
+  ş: 's',
+  Ş: 's',
+  ğ: 'g',
+  Ğ: 'g',
+  ü: 'u',
+  Ü: 'u',
+  û: 'u',
+  ö: 'o',
+  Ö: 'o',
+  ç: 'c',
+  Ç: 'c',
+  â: 'a',
+  Â: 'a',
+};
+
+/** Case- and Turkish-insensitive key: "İŞ Çığ" and "is cig" fold to the same string. */
+export const fold = (s: string): string =>
+  s.replace(/[ıİIîşŞğĞüÜûöÖçÇâÂ]/g, (c) => FOLD[c] ?? c).toLowerCase();
+
+/** Every whitespace-separated query word occurs in title / agent / island / status. */
+export function matchesQuery(s: FleetSession, islandLabel: string, query: string): boolean {
+  const words = fold(query).split(/\s+/).filter(Boolean);
+  if (!words.length) return true;
+  const hay = fold(
+    [s.title, s.agent, s.island, islandLabel, P.statusLabel[s.status], s.status].join(' '),
+  );
+  return words.every((w) => hay.includes(w));
+}
+
+export interface FleetBlock {
+  island: FleetIsland;
+  rows: FleetSession[];
+  /** Live sessions of the island (not just the matching ones). */
+  live: number;
+  more: number;
+}
+
+/** One block per island (in `islands` order) with its matching rows; islands without one are left out. */
+export function fleetBlocks(
+  sessions: Iterable<FleetSession>,
+  islands: readonly FleetIsland[],
+  cap: number,
+  keep: (s: FleetSession) => boolean,
+): FleetBlock[] {
+  const all = [...sessions];
+  const out: FleetBlock[] = [];
+  for (const island of islands) {
+    const mine = all.filter((s) => s.island === island);
+    const { rows, more } = panelRows(mine.filter(keep), island, cap);
+    if (rows.length) out.push({ island, rows, live: mine.filter(isLive).length, more });
+  }
+  return out;
+}
+
+// ---- terminal view (M41) ---------------------------------------------------------------------
+
+export interface LineView {
+  kind: LineKind;
+  /** Leading mark ("▸", "↳", …; '' for assistant text). */
+  mark: string;
+  /** Tool name shown bold after the mark (tool_use only). */
+  tool: string;
+  text: string;
+  /** Result bar of a failed run. */
+  fail: boolean;
+}
+
+/** How a reduced line reads in the terminal: `tool_use` "Bash pnpm test" → ▸ **Bash** pnpm test. */
+export function lineView(l: FleetLine): LineView {
+  const v: LineView = { kind: l.kind, mark: T.marks[l.kind], tool: '', text: l.text, fail: false };
+  if (l.kind === 'tool_use') {
+    const tool = l.tool ?? l.text.split(' ')[0];
+    v.tool = tool;
+    v.text = l.text.startsWith(tool) ? l.text.slice(tool.length).trimStart() : l.text;
+  } else if (l.kind === 'tool_result') {
+    v.text = l.text.split('\n')[0];
+  } else if (l.kind === 'result' && !l.text.startsWith('done')) {
+    v.mark = T.failMark;
+    v.fail = true;
+  }
+  return v;
+}
+
+/**
+ * `tail.from` when a terminal opens: `linesOf(id).length` if the store holds the session's lines
+ * dense from 0, else 0 (joined mid-run or capped: replay all, the store dedupes by seq).
+ */
+export function tailFrom(lines: readonly Pick<FleetLine, 'seq'>[]): number {
+  const n = lines.length;
+  return n && lines[0].seq === 0 && lines[n - 1].seq === n - 1 ? n : 0;
+}
+
+/**
+ * Terminal body update: `drop` lines off the top (the store capped them), then append
+ * `next[from..]`; null when the shown lines are not a prefix of the store's (rebuild).
+ */
+export function linePlan(
+  shown: readonly number[],
+  next: readonly number[],
+): { drop: number; from: number } | null {
+  let drop = 0;
+  while (drop < shown.length && (next.length === 0 || shown[drop] < next[0])) drop++;
+  const keep = shown.length - drop;
+  if (keep > next.length) return null;
+  for (let i = 0; i < keep; i++) if (shown[drop + i] !== next[i]) return null;
+  return { drop, from: keep };
+}
+
+// ---- keyed rows (M41): DOM nodes survive feed updates, so hover / focus do -------------------
+
+export interface KeyedOps<N> {
+  make(key: string): N;
+  /** Insert (or move) `node` before `ref` (null: at the end). */
+  insert(node: N, ref: N | null): void;
+  drop(node: N): void;
+}
+
+/**
+ * Bring `nodes` (keyed, currently in `order`) to `keys`: unknown keys are made, vanished ones
+ * dropped, the rest moved only when out of place. Returns the new order; the caller then updates
+ * the nodes' text / classes in place.
+ */
+export function syncKeyed<N>(
+  nodes: Map<string, N>,
+  order: readonly string[],
+  keys: readonly string[],
+  ops: KeyedOps<N>,
+): string[] {
+  const want = new Set(keys);
+  const cur: string[] = [];
+  for (const k of order) {
+    const n = nodes.get(k);
+    if (!n) continue;
+    if (want.has(k)) cur.push(k);
+    else {
+      ops.drop(n);
+      nodes.delete(k);
+    }
+  }
+  keys.forEach((k, i) => {
+    if (cur[i] === k) return;
+    let n = nodes.get(k);
+    if (!n) nodes.set(k, (n = ops.make(k)));
+    const ref = i < cur.length ? (nodes.get(cur[i]) ?? null) : null;
+    ops.insert(n, ref);
+    const j = cur.indexOf(k, i);
+    if (j >= 0) cur.splice(j, 1);
+    cur.splice(i, 0, k);
+  });
+  return [...keys];
 }

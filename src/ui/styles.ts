@@ -3,7 +3,7 @@ import { CURTAIN_CSS } from './curtain.ts';
 import { UI } from '../content/palette.ts';
 import { HUD } from '../content/ui.ts';
 import { mixHex } from './hud-math.ts';
-import { FLEET_BOTS, FLEET_PANEL } from '../content/fleet.ts';
+import { FLEET_BOTS, FLEET_PANEL, FLEET_TERM } from '../content/fleet.ts';
 
 export function injectStyles(): void {
   const style = document.createElement('style');
@@ -317,7 +317,58 @@ export const FLEET_PANEL_CSS = `
 .mar-ftitle{grid-column:2 / 4;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;}
 .mar-fline{grid-column:2 / 4;font:700 12px/1.3 'Nunito',sans-serif;color:${mixHex(UI.ink, UI.muted, 0.5)};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .mar-fleet-more{padding:6px 10px 2px;font:800 12px/1 'Nunito',sans-serif;color:${mixHex(UI.ink, UI.muted, 0.45)};}
-.mar-fleet-more[hidden],.mar-fleet-live[hidden]{display:none;}
+.mar-fleet-more[hidden],.mar-fleet-live[hidden],.mar-fline[hidden]{display:none;}
+/* M41: fleet view (no island focused) and an open terminal widen the card; the terminal takes its full height */
+.mar-fleet-wide{width:${F.fleetWidth}px;}
+.mar-fleet-termon{height:calc(100% - ${F.top + F.bottomClear}px);}
+.mar-fleet-all .mar-fleet-head .mar-fleet-disc{display:none;}
+.mar-fleet-search{flex:none;margin:2px 4px 6px;height:34px;border:0;border-radius:999px;background:#3B3A5A0D;padding:0 14px;font:700 13px/1 'Nunito',sans-serif;color:${UI.ink};outline:none;-webkit-appearance:none;appearance:none;}
+.mar-fleet-search:focus-visible{box-shadow:inset 0 0 0 2px ${UI.secondary};outline:none;}
+.mar-fleet-search::placeholder{color:${mixHex(UI.ink, UI.muted, 0.5)};}
+.mar-fleet-search[hidden]{display:none;}
+.mar-fblock{position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:7px;padding:8px 8px 4px;background:${UI.surface};font:600 15px/1.1 'Fredoka',sans-serif;}
+.mar-fblock:not(:first-child){margin-top:4px;border-top:1.5px solid #3B3A5A12;}
+.mar-fblock .mar-fleet-disc{width:20px;height:20px;}
+.mar-fblock-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mar-fblock .mar-fleet-live{padding:4px 8px;font-size:11px;}
+/* terminal view (M41, fleet-term.ts): slides in over the list */
+.mar-fterm{position:absolute;inset:0;display:flex;flex-direction:column;background:${UI.surface};border-radius:18px;padding:10px 8px 8px;
+  opacity:0;visibility:hidden;transform:translateX(18px);transition:opacity .18s ease,transform .3s ${ease},visibility 0s .3s;}
+.mar-fterm.mar-fterm-on{opacity:1;visibility:visible;transform:none;transition:opacity .18s ease,transform .3s ${ease},visibility 0s;}
+.mar-fterm [hidden]{display:none!important;}
+.mar-fterm-head{flex:none;display:flex;align-items:flex-start;gap:7px;padding:0 4px 8px 0;border-bottom:2.5px solid var(--acc,${UI.secondary});}
+.mar-fterm-back{flex:none;width:30px;height:30px;border:0;border-radius:50%;padding:0;background:#3B3A5A10;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+@media (hover:hover){.mar-hud .mar-fterm-back:hover{background:#3B3A5A1C;}}
+.mar-fterm-head .mar-fdot{flex:none;margin-top:8px;}
+.mar-fterm-id{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;padding-top:2px;}
+.mar-fterm-title{font:600 15px/1.25 'Fredoka',sans-serif;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;}
+.mar-fterm-meta{font:800 11px/1.2 'Nunito',sans-serif;font-variant-numeric:tabular-nums;color:${mixHex(UI.ink, UI.muted, 0.4)};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mar-fterm-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:8px 2px 4px;scrollbar-width:thin;scrollbar-color:${UI.muted} transparent;}
+.mar-fterm-lines{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px;}
+.mar-fl{position:relative;padding:1px 4px 1px 18px;font:${FLEET_TERM.fonts.line};color:${UI.ink};overflow-wrap:anywhere;}
+.mar-fl-mark{position:absolute;left:4px;top:1px;width:11px;text-align:center;color:${mixHex(UI.ink, UI.muted, 0.45)};font-weight:800;}
+.mar-fl[data-k="tool_use"]{font:${FLEET_TERM.fonts.mono};}
+.mar-fl[data-k="tool_use"] b{font-weight:800;color:${UI.ink};}
+.mar-fl[data-k="tool_use"] .mar-fl-mark{color:var(--acc,${UI.secondary});}
+.mar-fl[data-k="tool_result"],.mar-fl[data-k="system"]{font:${FLEET_TERM.fonts.mono};color:${mixHex(UI.ink, UI.muted, 0.55)};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mar-fl[data-k="system"]{font-size:10.5px;}
+.mar-fl[data-k="user"]{white-space:pre-wrap;margin:4px 0 2px;padding:5px 8px 5px 20px;border-radius:10px;background:${FLEET_TERM.colors.userBg};font-weight:800;}
+.mar-fl[data-k="user"] .mar-fl-mark,.mar-fl[data-k="result"] .mar-fl-mark{left:6px;top:5px;}
+.mar-fl[data-k="result"]{margin-top:4px;padding:5px 8px 5px 20px;border-radius:8px;background:${FLEET_TERM.colors.resultBg};font:800 12px/1.35 'Nunito',sans-serif;font-variant-numeric:tabular-nums;}
+.mar-fl[data-fail]{background:${FLEET_TERM.colors.failBg};}
+.mar-fl[data-k="stderr"]{font:${FLEET_TERM.fonts.mono};color:${FLEET_TERM.colors.stderr};}
+.mar-fl[data-k="stderr"] .mar-fl-mark{color:${FLEET_TERM.colors.stderr};}
+.mar-fterm-note{padding:6px 4px;font:700 12px/1.35 'Nunito',sans-serif;color:${mixHex(UI.ink, UI.muted, 0.45)};}
+.mar-fterm-note:empty{display:none;}
+.mar-fterm .mar-fterm-pill{position:absolute;left:50%;bottom:62px;transform:translateX(-50%);border:0;border-radius:999px;background:${UI.ink};color:${UI.surface};font:800 12px/1 'Nunito',sans-serif;padding:7px 12px;box-shadow:${lip};cursor:pointer;white-space:nowrap;}
+.mar-fterm-foot{flex:none;display:flex;align-items:flex-end;gap:6px;padding-top:8px;border-top:1.5px solid #3B3A5A14;}
+.mar-fterm-prompt{flex:1;min-width:0;height:${FLEET_TERM.promptPx[0]}px;resize:none;border:0;border-radius:12px;background:#3B3A5A0D;padding:10px 12px 8px;font:700 13px/1.4 'Nunito',sans-serif;color:${UI.ink};outline:none;}
+.mar-fterm-prompt::placeholder{color:${mixHex(UI.ink, UI.muted, 0.5)};}
+.mar-fterm-prompt:focus-visible{box-shadow:inset 0 0 0 2px var(--acc,${UI.secondary});outline:none;}
+.mar-fterm-prompt:disabled{cursor:not-allowed;background:#3B3A5A08;}
+.mar-fterm .mar-fterm-go,.mar-fterm .mar-fterm-stop{flex:none;height:${FLEET_TERM.promptPx[0]}px;border:0;border-radius:999px;padding:0 14px;font:800 13px/1 'Nunito',sans-serif;cursor:pointer;box-shadow:0 3px 0 #3B3A5A22;}
+.mar-fterm .mar-fterm-go{background:var(--acc,${UI.secondary});color:#fff;}
+.mar-fterm .mar-fterm-stop{background:#3B3A5A12;color:${UI.ink};}
 .mar-hud-instant .mar-fdot{animation:none!important;}
 @media (max-width:${F.minViewport - 1}px){.mar-fleet{display:none;}}
 @media (max-height:480px){.mar-fleet{top:60px;max-height:calc(100% - ${60 + 84}px);}}

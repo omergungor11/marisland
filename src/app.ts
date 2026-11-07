@@ -63,6 +63,7 @@ import { createFleetPanel } from './ui/fleet-panel.ts';
 import { createFleetTip } from './ui/fleet-tip.ts';
 import { bindFleetToBots, type FleetBots } from './life/fleet-bots.ts';
 import { FLEET } from './content/fleet.ts';
+import type { ThemeId } from './world/types.ts';
 import { THEMES } from './content/themes.ts';
 import { themeIcon } from './ui/theme-icons.ts';
 import { islandNear, themeOf } from './camera/poses.ts';
@@ -812,11 +813,31 @@ export async function boot(): Promise<void> {
       // tier >= 1; hidden in photo / edit mode, with the HUD hidden (H) and before it pops in.
       if (fleet.mode !== 'off') {
         const h = hud;
+        const isleOf = (t: ThemeId): string =>
+          testScene.cameraWorld.islands.find((i) => themeOf(i) === t)?.name ?? '';
         const fp = createFleetPanel(h.el, fleet, {
           accents: THEME_ACCENTS,
           iconFor: (t) => themeIcon(THEMES[t].icon, 15),
+          islandName: isleOf,
+          onFly: (t) => void cam.flyToIsland(isleOf(t)),
+          focus: !params.freeze,
         });
         appScope.defer(() => fp.dispose());
+        // M41: a bound bot opens its session's terminal, any other department bot a new-session box
+        let focusTheme: ThemeId | null = null;
+        appScope.defer(
+          events.on('picked', ({ kind, id }) => {
+            if (kind !== 'agent:workers' || !fleetBots) return;
+            const s = fleetBots.sessionOf(id);
+            const isl = s ? null : (fleetBots.islandOf(id) ?? focusTheme);
+            if (s) fp.open(s.id);
+            else if (isl) fp.draft(isl);
+          }),
+        );
+        // capture presets (F-terminal / F-fleet): open the first live row, type a search
+        const preset = findShot(params.shot);
+        if (preset?.fleetQuery) fp.setQuery(preset.fleetQuery);
+        if (preset?.fleetOpen) fp.openFirstLive();
         const tip = createFleetTip(h.el);
         appScope.defer(() => tip.dispose());
         botTip = (hit, x, y) => {
@@ -827,12 +848,13 @@ export async function boot(): Promise<void> {
         // the island is re-picked only once the target moved `focusMoveU` (or the world changed)
         let fx = NaN;
         let fz = NaN;
+        let focusName = '';
         events.on('seedChanged', () => (fx = NaN));
         const target = new THREE.Vector3();
         syncFleet = () => {
+          // tier 0 or open sea: the fleet view (all islands)
           const on =
             fleet.ready &&
-            cam.tier >= 1 &&
             !h.photoMode &&
             !h.editing &&
             h.visible &&
@@ -843,8 +865,11 @@ export async function boot(): Promise<void> {
               fx = target.x;
               fz = target.z;
               const isl = islandNear(testScene.cameraWorld, fx, fz, FLEET.focusReach);
-              fp.setIsland(isl ? (themeOf(isl) ?? null) : null, isl?.name ?? '');
+              focusTheme = isl ? (themeOf(isl) ?? null) : null;
+              focusName = isl?.name ?? '';
             }
+            const t = cam.tier >= 1 ? focusTheme : null;
+            fp.setIsland(t, t ? focusName : '');
           }
           fp.setVisible(on);
           fp.update(wallNow());

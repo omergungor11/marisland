@@ -38,6 +38,10 @@ export interface ShotPreset {
   edit?: string;
   /** Fleet feed (`fleet=`, TASK-563): the deterministic mock fills the island panel. */
   fleet?: 'mock';
+  /** Fleet panel (M41): open the first live row's terminal after the warm-up. */
+  fleetOpen?: 'running';
+  /** Fleet view search text (M41). */
+  fleetQuery?: string;
   /** Opening-sequence still at this time (s) (`introt=`). */
   introt?: number;
   /**
@@ -2191,6 +2195,32 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     time: 14,
     simt: 30,
     fleet: 'mock',
+    sets: ['dev'],
+  },
+  // ---- fleet terminal (TASK-569): Coding at T1, the first live session's terminal open (mock history)
+  {
+    id: 'F-terminal',
+    title: 'Fleet terminal · Coding',
+    seed: 1001,
+    cam: 'island:coding',
+    time: 14,
+    simt: 2,
+    hud: true,
+    fleet: 'mock',
+    fleetOpen: 'running',
+    sets: ['dev'],
+  },
+  // ---- fleet view (TASK-569): the overview (no island focused) lists every island; "shader" typed in the search
+  {
+    id: 'F-fleet',
+    title: 'Fleet view · search',
+    seed: 1001,
+    cam: 'overview',
+    time: 14,
+    simt: 2,
+    hud: true,
+    fleet: 'mock',
+    fleetQuery: 'shader',
     sets: ['dev'],
   },
   // ---- sandbox edits (TASK-221): `pnpm shots edit`. Logs on seed 1001 generated with
