@@ -75,6 +75,11 @@ export const HUD = {
   labelRingPad: 12,
   labelRingSamples: 12,
   labelGapPx: 4,
+  /**
+   * With an avoid box (the fleet card, TASK-579): a pill nudged farther than this (px) from its
+   * nearest wanted spot is hidden rather than parked beside another island.
+   */
+  labelAvoidMaxPx: 56,
   /** Dock buttons pop in staggered by this (ms). */
   dockStaggerMs: 60,
   /** Photo mode: HUD fade (ms), shutter flash (ms), polaroid on screen (ms). */

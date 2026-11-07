@@ -212,12 +212,46 @@ export function lineView(l: FleetLine): LineView {
     v.text = l.text.startsWith(tool) ? l.text.slice(tool.length).trimStart() : l.text;
   } else if (l.kind === 'tool_result') {
     v.text = l.text.split('\n')[0];
-  } else if (l.kind === 'result' && !l.text.startsWith('done')) {
-    v.mark = T.failMark;
-    v.fail = true;
+  } else if (l.kind === 'result') {
+    v.text = resultBar(l.text);
+    if (!l.text.startsWith('done')) {
+      v.mark = T.failMark;
+      v.fail = true;
+    }
   }
   return v;
 }
+
+/** "13 sn", "59 dk", "1 sa 5 dk", "2 sa" (run time of a result bar, TASK-579). */
+export function formatRunTime(seconds: number): string {
+  const s = Math.max(0, Math.floor(seconds));
+  if (s < 60) return `${s} ${T.sec}`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m} ${D.min}`;
+  const h = Math.floor(m / 60);
+  return m % 60 ? `${h} ${D.hour} ${m % 60} ${D.min}` : `${h} ${D.hour}`;
+}
+
+const RESULT_RE = /^(\w+) · (\d+) turns?( · \$([\d.]+))?( · ([\d.]+) s)?( · ([\s\S]*))?$/;
+
+/**
+ * The bridge's result bar ("done · 13 turns · $0.4100 · 3551.0 s[ · text]", `server/stream.ts`
+ * formatResult) in Turkish: "tamamlandı · 13 tur · $0.41 · 59 dk"; other text unchanged.
+ */
+export function resultBar(text: string): string {
+  const m = RESULT_RE.exec(text);
+  if (!m) return text;
+  const key = Object.keys(T.resultStatus).find((k) => m[1].startsWith(k));
+  const parts = [key ? T.resultStatus[key] : m[1], T.turns(Number(m[2]))];
+  if (m[4] !== undefined) parts.push(T.cost(Number(m[4])));
+  if (m[6] !== undefined) parts.push(formatRunTime(Number(m[6])));
+  if (m[8] !== undefined) parts.push(m[8]);
+  return parts.join(' · ');
+}
+
+/** Esc in the terminal (TASK-579): the focused prompt blurs first, the next Esc closes the view. */
+export const termEscape = (promptFocused: boolean): 'blur' | 'close' =>
+  promptFocused ? 'blur' : 'close';
 
 /**
  * `tail.from` when a terminal opens: `linesOf(id).length` if the store holds the session's lines

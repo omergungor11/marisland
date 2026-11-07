@@ -130,6 +130,15 @@ export const FLEET_TERM = {
   } satisfies Record<LineKind, string>,
   /** Result bar of a failed run (the text does not start with `done`). */
   failMark: '✕',
+  /**
+   * Result bar copy (TASK-579): the bridge writes "done · 13 turns · $0.4100 · 3551.0 s", the
+   * terminal shows "tamamlandı · 13 tur · $0.41 · 59 dk". Status words by prefix (`error_max_turns`
+   * reads as `error`); the run time in `sec` under a minute, else `FLEET_DURATION` minutes / hours.
+   */
+  resultStatus: { done: 'tamamlandı', error: 'hata', stopped: 'durduruldu' } as Readonly<
+    Record<string, string>
+  >,
+  sec: 'sn',
   fonts: {
     line: "600 12.5px/1.4 'Nunito',sans-serif",
     mono: "500 11.5px/1.45 ui-monospace,'SF Mono',Menlo,monospace",

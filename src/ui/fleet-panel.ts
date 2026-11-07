@@ -381,6 +381,16 @@ export function createFleetPanel(
     const text = footerText(capMore, cut) || emptyText;
     put(moreEl, text);
     moreEl.hidden = text === '';
+    // TASK-579: the block heads are flat sticky siblings, so every passed one stays stuck at the
+    // top and peeks out above the next; the next head pushes the stuck one up (clipped by the list)
+    const heads = list.querySelectorAll<HTMLElement>('.mar-fblock');
+    const ys: number[] = [];
+    for (let i = 0; i < heads.length; i++) {
+      const prev = heads[i + 1]?.previousElementSibling as HTMLElement | null | undefined;
+      const next = prev ? prev.offsetTop + prev.offsetHeight : Infinity;
+      ys.push(Math.min(0, next - list.scrollTop - heads[i].offsetHeight));
+    }
+    heads.forEach((h, i) => (h.style.transform = ys[i] < 0 ? `translateY(${ys[i]}px)` : ''));
   }
 
   const unsub = store.subscribe(() => {

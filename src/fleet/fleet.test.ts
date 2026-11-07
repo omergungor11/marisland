@@ -14,13 +14,16 @@ import {
   rowsBelow,
   statusGlyph,
   formatDuration,
+  formatRunTime,
   linePlan,
   lineView,
   matchesQuery,
   panelRows,
   sessionDuration,
   syncKeyed,
+  resultBar,
   tailFrom,
+  termEscape,
 } from './rows.ts';
 import type { FleetEvent, FleetLine, FleetSession, SessionStatus } from './protocol.ts';
 
@@ -324,6 +327,27 @@ describe('fleet: terminal lines (M41)', () => {
       mark: '✕',
       fail: true,
     });
+  });
+  it('result bar reads Turkish with a humanised run time (TASK-579)', () => {
+    expect(resultBar('done · 13 turns · $0.4100 · 3551.0 s')).toBe(
+      'tamamlandı · 13 tur · $0.41 · 59 dk',
+    );
+    expect(resultBar('done · 1 turns · $0.1311 · 4.2 s')).toBe('tamamlandı · 1 tur · $0.13 · 4 sn');
+    expect(resultBar('error_max_turns · 9 turns · $1.2000 · 3900.0 s · ran out')).toBe(
+      'hata · 9 tur · $1.20 · 1 sa 5 dk · ran out',
+    );
+    expect(resultBar('stopped · 2 turns')).toBe('durduruldu · 2 tur');
+    expect(resultBar('Bir şey oldu')).toBe('Bir şey oldu');
+    expect(formatRunTime(59.9)).toBe('59 sn');
+    expect(formatRunTime(60)).toBe('1 dk');
+    expect(formatRunTime(7200)).toBe('2 sa');
+    expect(lineView(L('result', 'done · 6 turns · $0.3100 · 690.0 s')).text).toBe(
+      'tamamlandı · 6 tur · $0.31 · 11 dk',
+    );
+  });
+  it('Esc in the terminal: the focused prompt blurs, the next Esc closes (TASK-579)', () => {
+    expect(termEscape(true)).toBe('blur');
+    expect(termEscape(false)).toBe('close');
   });
   it('tail from: the count when dense from 0, else everything', () => {
     expect(tailFrom([])).toBe(0);
