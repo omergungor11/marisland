@@ -469,8 +469,8 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
 | TASK-562 | Bridge server: `pnpm bridge` (ws + http :5174), `claude -p` stream-json spawn per island cwd, `FleetLine` reducer, `fleet/runs/*.jsonl` + `index.json`, haiku titles, `fleet/fleet.config.json`, 7 island `CLAUDE.md` skeletons, reducer / index tests | devops | M | COMPLETED (D-142) | — |
-| TASK-563 | Fleet client (WS store, reconnect, `?fleet=mock` deterministic feed) + island panel (left dock: status dot, agent, title, live duration, last line; shows at tier ≥ 1 for the focused island), `src/content/fleet.ts`, `F-panel` dev shot | engine | M | IN_PROGRESS | — |
-| TASK-564 | Session ↔ bot binding: a live session seats a department bot with a marker, hover title, deterministic mapping | life | S | PENDING | TASK-563 |
+| TASK-563 | Fleet client (WS store, reconnect, `?fleet=mock` deterministic feed) + island panel (left dock: status dot, agent, title, live duration, last line; shows at tier ≥ 1 for the focused island), `src/content/fleet.ts`, `F-panel` dev shot | engine | M | COMPLETED (D-143) | — |
+| TASK-564 | Session ↔ bot binding: a live session seats a department bot with a marker, hover title, deterministic mapping | life | S | IN_PROGRESS | TASK-563 |
 | TASK-565 | Keyboard camera: WASD / arrows truck + forward, Q/E azimuth rotate, distance-scaled speed, `CAMERA_MOVE.keys`, ignores text inputs / capture / modifiers, stops the tour | engine | S | COMPLETED (D-142; Sandbox key E → B) | — |
 | TASK-567 | `scripts/fleet-lint.ts` + `pnpm fleet:lint` + vitest wrapper: island layout (required files, `island.json` vs `schema/island.schema.json`, dir name = theme = ThemeId, CLAUDE.md ≤ 120 lines, memory frontmatter, settings deny block intact, agent name prefix); the six remaining island skeletons cloned from `coding` with department text | devops | S | COMPLETED (D-142) | TASK-562 |
 | TASK-566 | M40 shots + QA: F-panel at two sizes, bound bot at T2, HUD overlap, budgets | qa | S | PENDING | TASK-563, TASK-564, TASK-565 |
