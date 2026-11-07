@@ -7,7 +7,7 @@ import { HARBOUR, HARBOUR_VARIANTS } from '../../content/themes/harbours.ts';
 import type { PropStore } from '../../world/prop-store.ts';
 import type { WorldData } from '../../world/types.ts';
 import { SHARED } from '../uniforms.ts';
-import { createSkyProgramMaterial } from '../sky/sky.ts';
+import { createSkyProgramMaterial, type BeamLand } from '../sky/sky.ts';
 import { buildBeamGeometry, type BeamView } from './beam.ts';
 
 /**
@@ -47,6 +47,7 @@ export function createBeaconNet(
   world: Pick<WorldData, 'islands'>,
   lighthouse: BeamView,
   scope: Scope,
+  land?: BeamLand,
 ): BeaconNet {
   const nodes: Node[] = [];
   const rank: { d: number; node: Node }[] = [];
@@ -65,6 +66,7 @@ export function createBeaconNet(
       createSkyProgramMaterial('beam', {
         flareRadius: BEAM.flareRadius * B.scale * B.flare,
         flarePull: BEAM.flarePull * B.scale,
+        land,
       }),
     );
     const mesh = new THREE.Mesh(geo, mat);
@@ -97,6 +99,7 @@ export function createBeaconNet(
       createSkyProgramMaterial('beam', {
         flareRadius: BEAM.flareRadius * k * HB.flare,
         flarePull: BEAM.flarePull * k,
+        land,
       }),
     );
     const mesh = new THREE.Mesh(geo, mat);
