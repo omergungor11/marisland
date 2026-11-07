@@ -14,7 +14,7 @@ export default defineConfig({
   },
   server: { port: 5173, strictPort: false },
   test: {
-    include: ['src/**/*.test.ts', 'scripts/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'scripts/**/*.test.ts', 'server/**/*.test.ts'],
     environment: 'node',
     testTimeout: timeout,
     hookTimeout: timeout,

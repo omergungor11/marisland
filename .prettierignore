@@ -8,3 +8,4 @@ mar-docs/shots
 public
 dist-*
 .claude/worktrees
+server/fixtures

@@ -17,3 +17,7 @@ shots/*
 !shots/.gitkeep
 dist-*/
 .claude/worktrees/
+
+# fleet bridge: run logs are local state
+fleet/runs/*
+!fleet/runs/.gitkeep
