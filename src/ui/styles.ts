@@ -3,7 +3,7 @@ import { CURTAIN_CSS } from './curtain.ts';
 import { UI } from '../content/palette.ts';
 import { HUD } from '../content/ui.ts';
 import { mixHex } from './hud-math.ts';
-import { FLEET_BOTS, FLEET_PANEL, FLEET_STATUS, FLEET_TERM } from '../content/fleet.ts';
+import { FLEET_BOTS, FLEET_GATE, FLEET_PANEL, FLEET_STATUS, FLEET_TERM } from '../content/fleet.ts';
 
 export function injectStyles(): void {
   const style = document.createElement('style');
@@ -358,6 +358,7 @@ export const FLEET_PANEL_CSS = `
 .mar-fterm-lines{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px;}
 .mar-fl{position:relative;padding:1px 4px 1px 18px;font:${FLEET_TERM.fonts.line};color:${UI.ink};overflow-wrap:anywhere;}
 .mar-fl-mark{position:absolute;left:4px;top:1px;width:11px;text-align:center;color:${mixHex(UI.ink, UI.muted, 0.45)};font-weight:800;}
+.mar-fl[data-k="assistant"]{white-space:pre-line;}
 .mar-fl[data-k="tool_use"]{font:${FLEET_TERM.fonts.mono};}
 .mar-fl[data-k="tool_use"] b{font-weight:800;color:${UI.ink};}
 .mar-fl[data-k="tool_use"] .mar-fl-mark{color:var(--acc,${UI.secondary});}
@@ -384,6 +385,67 @@ export const FLEET_PANEL_CSS = `
 @media (max-width:${F.minViewport - 1}px){.mar-fleet{display:none;}}
 @media (max-height:480px){.mar-fleet{top:60px;max-height:calc(100% - ${60 + 84}px);}}
 @media (prefers-reduced-motion:reduce){.mar-fdot .mar-fhalo{animation:none;}}
+/* M42 hand-off gates (fleet-panel.ts): cards over the list; HUD-scoped (.mar-hud button rule, D-146) */
+.mar-fleet-gatecount{flex:none;font:800 12px/1 'Nunito',sans-serif;color:#3B3A5A;background:${FLEET_GATE.colors.bar};border-radius:999px;padding:5px 9px;}
+.mar-fleet-gatecount[hidden]{display:none;}
+.mar-fgates{flex:0 0.05 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;display:flex;flex-direction:column;gap:6px;margin:0 0 6px;}
+.mar-fgates>*{flex:none;}
+.mar-fgates:empty{display:none;}
+.mar-fgroup{display:flex;flex-direction:column;gap:6px;}
+.mar-fgroup-on{background:${FLEET_GATE.colors.cardBg};border-radius:14px;box-shadow:inset 4px 0 0 ${FLEET_GATE.colors.bar};padding:8px 8px 8px 12px;}
+.mar-fgroup-head{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font:600 15px/1.15 'Fredoka',sans-serif;color:${UI.ink};}
+.mar-fgroup-head span:last-child{flex:1 0 100%;font:700 12px/1.25 'Nunito',sans-serif;color:${mixHex(UI.ink, UI.muted, 0.45)};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mar-fgate{display:flex;flex-direction:column;gap:5px;background:${FLEET_GATE.colors.cardBg};border-radius:14px;box-shadow:inset 4px 0 0 ${FLEET_GATE.colors.bar};padding:9px 10px 10px 14px;}
+.mar-fgroup-on .mar-fgate{background:${UI.surface};box-shadow:0 1px 0 #3B3A5A14;padding:8px 9px 9px 10px;}
+.mar-fgate-route{display:flex;align-items:center;gap:6px;font:600 16px/1.1 'Fredoka',sans-serif;color:${UI.ink};}
+.mar-fgate-disc{width:22px;height:22px;border-radius:50%;flex:none;display:inline-flex;align-items:center;justify-content:center;color:#fff;box-shadow:inset 0 -2px 0 #3B3A5A1F;}
+.mar-fgate-disc svg{display:block;width:13px;height:13px;}
+.mar-fgate-arrow{font-style:normal;font-weight:700;color:${FLEET_GATE.colors.bar};padding:0 1px;}
+.mar-fgate-label{font:800 10.5px/1 'Nunito',sans-serif;letter-spacing:.4px;text-transform:uppercase;color:#A87412;}
+.mar-fgate-prompt{margin:0;font:700 12.5px/1.35 'Nunito',sans-serif;color:${UI.ink};display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:${FLEET_GATE.promptLines};overflow:hidden;overflow-wrap:anywhere;}
+.mar-fgate-acts{display:flex;gap:6px;margin-top:2px;}
+.mar-fgates .mar-fgate-allow,.mar-fgates .mar-fgate-deny{flex:1;height:32px;border:0;border-radius:999px;font:800 13px/1 'Nunito',sans-serif;cursor:pointer;}
+.mar-fgates .mar-fgate-allow{background:${FLEET_GATE.colors.allowBg};color:${FLEET_GATE.colors.allowInk};box-shadow:0 3px 0 #2A6B3C;}
+.mar-fgates .mar-fgate-deny{flex:0 0 auto;padding:0 16px;background:${FLEET_GATE.colors.denyBg};color:${UI.ink};}
+.mar-fgates button:disabled{opacity:.5;cursor:default;}
+.mar-fgroup-on .mar-fgate-route{gap:5px;font-size:15px;}
+.mar-fgroup-on .mar-fgate-acts{margin:0 0 0 auto;gap:5px;}
+.mar-fgates .mar-fgroup-on .mar-fgate-allow,.mar-fgates .mar-fgroup-on .mar-fgate-deny{flex:none;height:28px;padding:0 12px;font-size:12.5px;}
+.mar-fgates .mar-fgroup-on .mar-fgate-allow{box-shadow:0 2px 0 #2A6B3C;}
+@media (hover:hover){.mar-fgates .mar-fgate-allow:hover:not(:disabled){filter:brightness(1.08);}.mar-fgates .mar-fgate-deny:hover:not(:disabled){background:#3B3A5A22;}}
+.mar-fgate-done{font:700 12px/1.3 'Nunito',sans-serif;color:${mixHex(UI.ink, UI.muted, 0.5)};padding:2px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mar-fleet-compact .mar-fgate-label,.mar-fleet-compact .mar-fgroup-head span:last-child{display:none;}
+.mar-fleet-compact .mar-fgate-prompt{-webkit-line-clamp:2;font-size:12px;}
+.mar-fgate-route b{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mar-fleet-compact .mar-fgate-route{flex-wrap:wrap;font-size:14px;}
+.mar-fleet-compact .mar-fgate-route>b:not(:last-of-type){display:none;}
+/* M42 fleet view: request group label, hand-off children indented with a connector */
+.mar-freq{padding:6px 8px 1px 28px;font:800 11px/1.2 'Nunito',sans-serif;letter-spacing:.2px;color:${mixHex(UI.ink, UI.muted, 0.45)};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mar-fleet-rows li[data-depth]{position:relative;padding-left:calc(var(--depth) * ${FLEET_GATE.indentPx}px);}
+.mar-fleet-rows li[data-depth]::before{content:'';position:absolute;left:calc(var(--depth) * ${FLEET_GATE.indentPx}px - 6px);top:0;height:18px;width:7px;border-left:2px solid #3B3A5A2A;border-bottom:2px solid #3B3A5A2A;border-bottom-left-radius:6px;}
+/* M42 terminal: request line + chain strip (fleet-term.ts) */
+.mar-fterm-head{flex-wrap:wrap;}
+.mar-fterm-req{display:flex;min-width:0;font:800 11.5px/1.25 'Nunito',sans-serif;color:${UI.ink};white-space:nowrap;}
+.mar-fterm-req span{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.mar-fterm-req b{flex:none;font-weight:800;color:${mixHex(UI.ink, UI.muted, 0.4)};}
+.mar-fchain{flex:1 0 100%;padding:8px 0 2px 37px;overflow-x:auto;scrollbar-width:none;}
+.mar-fchain-tree{display:flex;gap:${FLEET_GATE.strip.gapPx}px;}
+.mar-fchain-node{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:${FLEET_GATE.strip.currentPx + 26}px;}
+.mar-fchain-kids{position:relative;display:flex;gap:${FLEET_GATE.strip.gapPx}px;margin-top:14px;}
+.mar-fchain-kids::before{content:'';position:absolute;left:50%;top:-14px;height:6px;border-left:2px solid #3B3A5A33;}
+.mar-fchain-kids>.mar-fchain-node::before{content:'';position:absolute;top:-8px;left:50%;height:8px;border-left:2px solid #3B3A5A33;}
+.mar-fchain-kids>.mar-fchain-node::after{content:'';position:absolute;top:-8px;left:-${FLEET_GATE.strip.gapPx / 2}px;right:-${FLEET_GATE.strip.gapPx / 2}px;border-top:2px solid #3B3A5A33;}
+.mar-fchain-kids>.mar-fchain-node:first-child::after{left:50%;}
+.mar-fchain-kids>.mar-fchain-node:last-child::after{right:50%;}
+.mar-fchain-kids>.mar-fchain-node:only-child::after{display:none;}
+.mar-fchain .mar-fchain-disc{position:relative;width:${FLEET_GATE.strip.discPx}px;height:${FLEET_GATE.strip.discPx}px;border-radius:50%;border:0;padding:0;display:inline-flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;opacity:.62;box-shadow:inset 0 -2px 0 #3B3A5A1F;}
+.mar-fchain .mar-fchain-disc svg{display:block;width:${FLEET_GATE.strip.iconPx}px;height:${FLEET_GATE.strip.iconPx}px;}
+.mar-fchain .mar-fchain-on{width:${FLEET_GATE.strip.currentPx}px;height:${FLEET_GATE.strip.currentPx}px;opacity:1;cursor:default;box-shadow:0 0 0 3px ${UI.surface},0 0 0 5px var(--acc,${UI.secondary});}
+.mar-fchain .mar-fchain-gate{background:${UI.surface};border:2px dashed var(--acc);cursor:default;opacity:1;box-shadow:none;}
+@media (hover:hover){.mar-fchain button.mar-fchain-disc:not(.mar-fchain-on):hover{opacity:.9;}}
+.mar-fchain-badge{position:absolute;right:-4px;bottom:-4px;width:${FLEET_GATE.strip.badgePx + 2}px;height:${FLEET_GATE.strip.badgePx + 2}px;border-radius:50%;background:${UI.surface};display:flex;align-items:center;justify-content:center;}
+.mar-fchain .mar-fchain-badge svg{width:${FLEET_GATE.strip.badgePx - 2}px;height:${FLEET_GATE.strip.badgePx - 2}px;}
+.mar-fchain-name{font:800 10px/1.1 'Nunito',sans-serif;color:${mixHex(UI.ink, UI.muted, 0.4)};white-space:nowrap;}
 /* hover tip of a bound bot (TASK-564) */
 .mar-ftip{position:absolute;left:0;top:0;max-width:${FLEET_BOTS.tip.maxWidth}px;display:flex;flex-direction:column;gap:1px;background:${UI.surface};border-radius:12px;
   box-shadow:inset 3px 0 0 var(--acc,${UI.secondary}),${lip},${soft};padding:6px 10px 7px 12px;font:${F.fonts.row};color:${UI.ink};pointer-events:none;opacity:0;visibility:hidden;transition:opacity .12s;}

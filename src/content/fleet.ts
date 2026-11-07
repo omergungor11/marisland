@@ -103,6 +103,8 @@ export const FLEET_TERM = {
   placeholder: 'Devam prompt’u… (Enter gönderir)',
   newPlaceholder: 'Ne yapılsın? (Enter başlatır)',
   running: 'çalışıyor…',
+  /** Composer placeholder of a `waiting` session (a gate or its children, M42). */
+  waiting: 'devir bekliyor…',
   send: 'Gönder',
   start: 'Başlat',
   stop: 'Durdur',
@@ -386,4 +388,117 @@ export const FLEET_MOCK = {
   ] as readonly { afterS: number; kind: LineKind; text: string; tool?: string }[],
   doneAfterS: 0.8,
   scriptCostUsd: 0.04,
+  /**
+   * Scripted request chain (M42, D-149): appended after the drawn sessions (no RNG, so those stay as
+   * they were). The Marketing parent's run ended with two hand-off sections: one round (the parent
+   * waits until both are answered and the allowed children are done, then resumes once with all
+   * reports). Variant `pending`: both gates wait. Variant `allowed`: the Design gate was allowed and
+   * its child runs, the Coding gate still waits. Ago times in s before `now`.
+   */
+  chain: {
+    requestId: 'req-chain',
+    parentId: 'mock-marketing-chain',
+    title: 'Lansman haftası için 5 sosyal medya gönderisi',
+    parentAgent: 'social',
+    from: 'marketing' as ThemeId,
+    parentAgoS: 840,
+    /** The parent's first run ended (and the gates opened) this long ago. */
+    gateAgoS: 150,
+    /** `allowed`: the first gate's answer and its child's start. */
+    childAgoS: 120,
+    turns: 6,
+    costUsd: 0.31,
+    parentLines: [
+      { kind: 'tool_use', tool: 'Read', text: 'Read knowledge/marka-sesi.md' },
+      { kind: 'tool_result', tool: 'Read', text: '96 satır' },
+      { kind: 'assistant', text: 'Lansman haftası için 5 gönderi: 2 duyuru, 3 ada tanıtımı' },
+      { kind: 'tool_use', tool: 'Write', text: 'Write drafts/sosyal-5.md' },
+      { kind: 'tool_result', tool: 'Write', text: 'Dosya yazıldı' },
+      {
+        kind: 'assistant',
+        text: '## Özet\n5 gönderi metni drafts/sosyal-5.md içinde, Türkçe ve İngilizce.\n\n## → design: 5 gönderi için kare görsel önerisi\n\n## → coding: demo sayfasına gönderi önizleme kartları',
+      },
+    ] as readonly { kind: LineKind; text: string; tool?: string }[],
+    /** The parent row's last line while the gates wait. */
+    parentLast: '2 devir onay bekliyor: design, coding',
+    /** One gate per hand-off section; `handoff` = the gate prompt (the section's text). */
+    gates: [
+      {
+        id: 'gate-chain-design',
+        to: 'design' as ThemeId,
+        childId: 'mock-design-chain',
+        childAgent: 'art-director',
+        handoff:
+          '5 gönderi için kare görsel önerisi. Her biri 1080×1080, marka paleti (kum + turkuaz); gönderi metinleri drafts/sosyal-5.md içinde, ilk ikisi lansman duyurusu, son üçü ada tanıtımı.',
+        childLines: [
+          { kind: 'tool_use', tool: 'Read', text: 'Read drafts/sosyal-5.md' },
+          { kind: 'tool_result', tool: 'Read', text: '64 satır' },
+          { kind: 'assistant', text: 'Palet: kum + turkuaz, 5 kare için kompozisyon çiziyorum' },
+          { kind: 'tool_use', tool: 'Write', text: 'Write knowledge/sosyal-kareler.md' },
+        ] as readonly { kind: LineKind; text: string; tool?: string }[],
+        report: '5 kare görsel önerisi knowledge/sosyal-kareler.md içinde.',
+      },
+      {
+        id: 'gate-chain-coding',
+        to: 'coding' as ThemeId,
+        childId: 'mock-coding-chain',
+        childAgent: 'engine',
+        handoff:
+          'Demo sayfasına gönderi önizleme kartları: 5 kart, metin + kare görsel yeri, mobilde tek sütun.',
+        childLines: [
+          { kind: 'tool_use', tool: 'Glob', text: 'Glob src/ui/*.ts' },
+          { kind: 'tool_result', tool: 'Glob', text: '14 dosya' },
+        ] as readonly { kind: LineKind; text: string; tool?: string }[],
+        report: 'Önizleme kartları demo sayfasında, testler yeşil.',
+      },
+    ],
+    /** Child prompt = context header + hand-off (the bridge's `childPrompt`, short). */
+    childPrompt: (title: string, from: string, handoff: string): string =>
+      `İstek: ${title}\n${from} adasından devir.\n\n${handoff}`,
+    /** The parent's resume after the round: one block per gate. */
+    report: (island: string, text: string): string => `${island} adasından rapor:\n${text}`,
+    denied: (island: string): string => `${island} adasına devir reddedildi`,
+  },
+} as const;
+
+/**
+ * Island hand-off gates and request chains (M42, D-149; `ui/fleet-panel.ts`, `ui/fleet-term.ts`):
+ * the gate card on top of the island list / fleet view, the terminal's request line + chain strip,
+ * the fleet view's request groups.
+ */
+export const FLEET_GATE = {
+  /** Card head: "Marketing → Design". */
+  arrow: '→',
+  allow: 'İzin ver',
+  deny: 'Reddet',
+  /** Label over the prompt of a pending card. */
+  pending: 'devir onayı bekliyor',
+  /** Prompt clamp (lines) on the card. */
+  promptLines: 3,
+  /**
+   * An answered card collapses to one muted line ("izin verildi · 2 dk") for this many seconds
+   * (since the panel saw the answer), then disappears. Gates already answered when first seen are
+   * not shown.
+   */
+  collapseS: 300,
+  answered: { allowed: 'izin verildi', denied: 'reddedildi' } as const,
+  /** Fleet header badge ("2 kapı") while any gate is pending. */
+  count: (n: number): string => `${n} kapı`,
+  /** Terminal header line when the request has > 1 session or any gate: "İstek: <title>" (ellipsis) + " · 3 session". */
+  request: (title: string): string => `İstek: ${title}`,
+  sessions: (n: number): string => ` · ${n} session`,
+  /** Fleet view group label over the sessions of a multi-session request. */
+  group: (title: string): string => `İstek · ${title}`,
+  /** Chain strip discs (px): a session, the shown one (lit), gap; the status badge on a disc. */
+  strip: { discPx: 24, currentPx: 30, gapPx: 14, badgePx: 12, iconPx: 13 },
+  /** Fleet view: indent (px) per hand-off depth. */
+  indentPx: 16,
+  colors: {
+    /** Card tint and its left bar (the waiting amber of FLEET_STATUS). */
+    cardBg: '#FFF3D9',
+    bar: '#E0A21F',
+    allowBg: '#3E9A57',
+    allowInk: '#FFFFFF',
+    denyBg: '#3B3A5A14',
+  },
 } as const;
