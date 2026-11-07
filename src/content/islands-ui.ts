@@ -1,4 +1,4 @@
-import type { ArchetypeId } from '../world/types.ts';
+import { THEME_IDS, type ArchetypeId, type ThemeId } from '../world/types.ts';
 import { ARCHETYPES } from './islands.ts';
 import { THEMES, THEME_BY_ARCHETYPE } from './themes.ts';
 
@@ -12,3 +12,8 @@ export const ISLAND_ACCENTS: Record<string, string> = Object.fromEntries(
     THEMES[THEME_BY_ARCHETYPE[a]].accent,
   ]),
 );
+
+/** Department accents by theme id (the fleet panel, TASK-563). */
+export const THEME_ACCENTS: Record<ThemeId, string> = Object.fromEntries(
+  THEME_IDS.map((t) => [t, THEMES[t].accent]),
+) as Record<ThemeId, string>;

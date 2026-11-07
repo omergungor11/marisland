@@ -64,6 +64,11 @@ export interface Params {
    * auto-starts, `idle` (default) starts after `TOUR.idleAfter` seconds without input.
    */
   tour: 'off' | 'idle' | 'now';
+  /**
+   * Fleet feed (Faz 4, TASK-563): `live` (bridge socket), `mock` (deterministic sample fleet), `off`
+   * (`fleet=0` or anything else); '' = unset (live on a local host outside capture, else off).
+   */
+  fleet: '' | 'live' | 'mock' | 'off';
 }
 
 export type HudPanel = '' | 'photo' | 'settings' | 'edit';
@@ -99,6 +104,7 @@ export function parseParams(search: string): Params {
   const panelTool = (EDIT_TOOLS as readonly string[]).includes(panelToolRaw)
     ? (panelToolRaw as EditToolKind)
     : '';
+  const fleetRaw = q.get('fleet');
   const introtRaw = q.get('introt');
   const introt = introtRaw === null || introtRaw === '' ? NaN : Number(introtRaw);
   return {
@@ -138,5 +144,6 @@ export function parseParams(search: string): Params {
     birds: parseBool(q.get('birds'), true),
     fog: parseBool(q.get('fog'), true),
     tour: q.get('tour') === null ? 'idle' : parseBool(q.get('tour'), true) ? 'now' : 'off',
+    fleet: fleetRaw === null ? '' : fleetRaw === 'live' || fleetRaw === 'mock' ? fleetRaw : 'off',
   };
 }

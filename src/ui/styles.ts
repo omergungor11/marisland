@@ -3,6 +3,7 @@ import { CURTAIN_CSS } from './curtain.ts';
 import { UI } from '../content/palette.ts';
 import { HUD } from '../content/ui.ts';
 import { mixHex } from './hud-math.ts';
+import { FLEET_PANEL } from '../content/fleet.ts';
 
 export function injectStyles(): void {
   const style = document.createElement('style');
@@ -15,6 +16,7 @@ canvas.mar-canvas{display:block;width:100%;height:100%;touch-action:none;outline
 ${LOADER_CSS}
 ${HUD_CSS}
 ${EDIT_PANEL_CSS}
+${FLEET_PANEL_CSS}
 ${CURTAIN_CSS}
 `;
   document.head.appendChild(style);
@@ -280,4 +282,44 @@ export const EDIT_PANEL_CSS = `
   .mar-edit-props{max-height:none;flex:1 1 auto;}
   .mar-edit .mar-slider{height:32px;}
 }
+`;
+
+/**
+ * Fleet island panel (TASK-563, `fleet-panel.ts`): a cream card on the left under the wordmark,
+ * clear of the bottom dock; `--acc` is the island accent (header rule, running dot).
+ */
+const F = FLEET_PANEL;
+export const FLEET_PANEL_CSS = `
+.mar-fleet{position:absolute;left:16px;top:${F.top}px;width:${F.width}px;max-width:calc(100vw - 32px);max-height:calc(100% - ${F.top + F.bottomClear}px);display:flex;flex-direction:column;
+  background:${UI.surface};border-radius:18px;box-shadow:${lip},${soft};padding:10px 8px 8px;pointer-events:auto;opacity:0;visibility:hidden;transform:translateX(-12px);
+  transition:opacity ${fade},transform .3s ${ease},visibility 0s ${fade};}
+.mar-fleet.mar-fleet-on{opacity:1;visibility:visible;transform:none;transition:opacity ${fade},transform .3s ${ease},visibility 0s;}
+.mar-fleet-head{display:flex;align-items:center;gap:8px;padding:0 6px 8px;margin-bottom:4px;border-bottom:2.5px solid var(--acc,${UI.secondary});}
+.mar-fleet-disc{width:26px;height:26px;border-radius:50%;flex:none;display:inline-flex;align-items:center;justify-content:center;color:#fff;box-shadow:inset 0 -2px 0 #3B3A5A1F;}
+.mar-fleet-disc svg{display:block;}
+.mar-fleet-name{flex:1;min-width:0;font:${F.fonts.header};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mar-fleet-isle{font:700 12px/1 'Nunito',sans-serif;color:${mixHex(UI.ink, UI.muted, 0.45)};padding-left:6px;}
+.mar-fleet-isle::before{content:'·';margin-right:5px;}
+.mar-fleet-live{flex:none;font:800 12px/1 'Nunito',sans-serif;color:${UI.ink};background:#3B3A5A10;border-radius:999px;padding:5px 9px;}
+.mar-fleet-rows{list-style:none;margin:0;padding:0;overflow-y:auto;overscroll-behavior:contain;min-height:0;scrollbar-width:thin;scrollbar-color:${UI.muted} transparent;}
+.mar-fleet-scroll .mar-fleet-rows{-webkit-mask-image:linear-gradient(#000 calc(100% - 28px),transparent);mask-image:linear-gradient(#000 calc(100% - 28px),transparent);padding-bottom:20px;}
+.mar-frow{display:grid;grid-template-columns:14px 1fr auto;column-gap:6px;row-gap:1px;width:100%;text-align:left;border:0;background:none;border-radius:12px;padding:6px 8px;cursor:pointer;
+  font:${F.fonts.row};color:${UI.ink};transition:background-color .15s;}
+@media (hover:hover){.mar-hud .mar-frow:hover{background:#3B3A5A0A;}}
+.mar-frow[aria-pressed="true"]{background:#3B3A5A12;box-shadow:inset 3px 0 0 var(--acc,${UI.secondary});}
+.mar-fdot{grid-row:1;align-self:center;width:9px;height:9px;border-radius:50%;background:var(--acc,${UI.secondary});}
+/* running: accent with a halo (+ pulse); error: a hollow ring, so neither reads as the other on a red / orange island */
+.mar-fdot[data-s="running"]{box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 28%,transparent);animation:mar-fpulse ${F.pulseSeconds}s ease-in-out infinite;}
+@keyframes mar-fpulse{0%,100%{box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 28%,transparent)}50%{box-shadow:0 0 0 5px color-mix(in srgb,var(--acc) 0%,transparent)}}
+.mar-fdot[data-s="error"]{background:transparent!important;box-shadow:inset 0 0 0 2.5px ${F.status.error};}
+.mar-fagent{font:800 11px/1.2 'Nunito',sans-serif;letter-spacing:.3px;text-transform:uppercase;color:${mixHex(UI.ink, UI.muted, 0.35)};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mar-fdur{font:800 12px/1.2 'Nunito',sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.mar-ftitle{grid-column:2 / 4;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;}
+.mar-fline{grid-column:2 / 4;font:700 12px/1.3 'Nunito',sans-serif;color:${mixHex(UI.ink, UI.muted, 0.5)};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mar-fleet-more{padding:6px 10px 2px;font:800 12px/1 'Nunito',sans-serif;color:${mixHex(UI.ink, UI.muted, 0.45)};}
+.mar-fleet-more[hidden],.mar-fleet-live[hidden]{display:none;}
+.mar-hud-instant .mar-fdot{animation:none!important;}
+@media (max-width:${F.minViewport - 1}px){.mar-fleet{display:none;}}
+@media (max-height:480px){.mar-fleet{top:60px;max-height:calc(100% - ${60 + 84}px);}}
+@media (prefers-reduced-motion:reduce){.mar-fdot[data-s="running"]{animation:none;}}
 `;

@@ -66,6 +66,28 @@ export function themeOf(i: CameraIsland): ThemeId | undefined {
   return Object.hasOwn(THEME_BY_ARCHETYPE, id) ? THEME_BY_ARCHETYPE[id as ArchetypeId] : undefined;
 }
 
+/**
+ * Island whose land the point (the orbit target) is on or nearest, in units of its reach; null when
+ * every island is farther than `maxReach` reaches (open sea). The fleet panel's focus (TASK-563).
+ */
+export function islandNear(
+  world: CameraWorld,
+  x: number,
+  z: number,
+  maxReach: number,
+): CameraIsland | null {
+  let best: CameraIsland | null = null;
+  let bs = maxReach;
+  for (const i of world.islands) {
+    const s = Math.hypot(x - i.cx, z - i.cz) / reachOf(i);
+    if (s < bs) {
+      bs = s;
+      best = i;
+    }
+  }
+  return best;
+}
+
 /** Island by name, archetype name, theme id or theme display name (`cam=island:coding`); '' = the first. */
 export function findIsland(world: CameraWorld, name: string): CameraIsland | undefined {
   const norm = (v: string | undefined): string => (v ?? '').toLowerCase().replace(/\s+/g, '');
