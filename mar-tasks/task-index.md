@@ -458,3 +458,23 @@ Details in `phases/phase-3.md`.
 | TASK-353 | Water reflections: heightfield ray-march land reflection + albedo texture (high), sun glint (W9 debt), lit-window shimmer at night | shader | L | PENDING | M14 |
 | TASK-354 | Phase 3 exit QA: wow + dev sets ×3 qualities, budget decision D-028 final, user real-GPU check | qa | M | PENDING | TASK-351…353 |
 | TASK-355 | Docs: DECISIONS D-029…D-031, ARCHITECTURE §3/§8, MEMORY gotchas, README | docs | S | PENDING | TASK-354 |
+
+## Phase 4: Fleet — control room for a self-improving agent fleet
+
+Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/protocol.ts` (D-141).
+
+### M40 — Fleet Bridge + Island Panel
+*D-141 (user 2026-11-07): CLI runtime, gated hand-offs, start with bridge + panel. 562 ∥ 563 ∥ 565; 564 after 563; 566 last.*
+
+| ID | Task | Agent | Complexity | Status | Dependencies |
+|----|------|-------|-----------|--------|-------------|
+| TASK-562 | Bridge server: `pnpm bridge` (ws + http :5174), `claude -p` stream-json spawn per island cwd, `FleetLine` reducer, `fleet/runs/*.jsonl` + `index.json`, haiku titles, `fleet/fleet.config.json`, 7 island `CLAUDE.md` skeletons, reducer / index tests | devops | M | IN_PROGRESS | — |
+| TASK-563 | Fleet client (WS store, reconnect, `?fleet=mock` deterministic feed) + island panel (left dock: status dot, agent, title, live duration, last line; shows at tier ≥ 1 for the focused island), `src/content/fleet.ts`, `F-panel` dev shot | engine | M | IN_PROGRESS | — |
+| TASK-564 | Session ↔ bot binding: a live session seats a department bot with a marker, hover title, deterministic mapping | life | S | PENDING | TASK-563 |
+| TASK-565 | Keyboard camera: WASD / arrows truck + forward, Q/E azimuth rotate, distance-scaled speed, `CAMERA_MOVE.keys`, ignores text inputs / capture / modifiers, stops the tour | engine | S | IN_PROGRESS | — |
+| TASK-566 | M40 shots + QA: F-panel at two sizes, bound bot at T2, HUD overlap, budgets | qa | S | PENDING | TASK-563, TASK-564, TASK-565 |
+
+### M41 — Detail + fleet view (row → terminal stream, bot → prompt box, all-islands view + search, `--resume` follow-ups) — PLANNED
+### M42 — Request chains + approval gates (island → island hand-off, request tree, per-request caps) — PLANNED
+### M43 — Knowledge base + HQ review (fleet/kb, island CLAUDE.md, agent / skill self-generation gated by HQ) — PLANNED
+### M44 — Reports (daily / weekly / monthly / all-time per island; top topics, long sessions, lessons) — PLANNED
