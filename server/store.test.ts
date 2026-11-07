@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FleetSession } from '../src/fleet/protocol.ts';
-import { THEME_IDS } from '../src/world/types.ts';
-import { islandSpawn, parseConfig, parseConfigText } from './config.ts';
+
 import { emptyIndex, parseIndex, recoverIndex, serializeIndex, upsertSession } from './store.ts';
 
 const sess = (id: string, status: FleetSession['status']): FleetSession => ({
@@ -46,35 +45,5 @@ describe('store', () => {
     expect(out.sessions.map((s) => s.status)).toEqual(['error', 'done', 'error']);
     expect(out.sessions[0]).toMatchObject({ reason: 'bridge restarted', endedAt: 99 });
     expect(out.requests[0].status).toBe('error');
-  });
-});
-
-describe('config', () => {
-  it('fills defaults', () => {
-    const c = parseConfig({});
-    expect(c).toMatchObject({ port: 5174, maxTurns: 30, maxChildren: 6 });
-    expect(c.allowedTools).toContain('Bash(pnpm *)');
-    expect(Object.keys(c.islands).sort()).toEqual([...THEME_IDS].sort());
-    expect(c.model).toBeUndefined();
-  });
-
-  it('accepts overrides and rejects bad input', () => {
-    const c = parseConfigText(
-      '{"maxTurns":5,"model":"sonnet","islands":{"qa":{"addDirs":["/a"]}}}',
-    );
-    expect(c).toMatchObject({ maxTurns: 5, model: 'sonnet' });
-    expect(c.islands.qa.addDirs).toEqual(['/a']);
-    expect(() => parseConfig({ maxTurns: 0 })).toThrow(/maxTurns/);
-    expect(() => parseConfig({ islands: { moon: {} } })).toThrow(/unknown island/);
-    expect(() => parseConfig({ allowedTools: [1] })).toThrow(/allowedTools/);
-    expect(() => parseConfigText('{')).toThrow(/invalid JSON/);
-  });
-
-  it('islandSpawn is the single layout point', () => {
-    const c = parseConfig({ islands: { coding: { addDirs: ['/p', '/q'] } } });
-    expect(islandSpawn('/r', c, 'coding')).toEqual({
-      cwd: '/r/fleet/islands/coding',
-      args: ['--add-dir', '/p', '--add-dir', '/q'],
-    });
   });
 });

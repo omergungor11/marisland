@@ -3,7 +3,7 @@
  * island, reduces their stream-json to `FleetLine`s, persists raw jsonl + index, and serves
  * HTTP + WebSocket on FLEET_PORT. Node only (no three, no DOM); the wall clock is fine here.
  */
-import { spawn, type ChildProcess } from 'node:child_process';
+import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import {
   appendFileSync,
@@ -30,7 +30,15 @@ import {
   type FleetSession,
 } from '../src/fleet/protocol.ts';
 import { THEME_IDS } from '../src/world/types.ts';
-import { islandSpawn, parseConfigText, parseConfig, type FleetConfig } from './config.ts';
+import { firstOutOfBounds } from './bounds.ts';
+import {
+  islandSpawn,
+  parseConfig,
+  parseConfigText,
+  parseManifestText,
+  type FleetConfig,
+  type IslandManifest,
+} from './config.ts';
 import {
   newStreamState,
   parseTitle,
@@ -54,6 +62,8 @@ const RUNS = resolve(ROOT, 'fleet/runs');
 const CONFIG_PATH = resolve(ROOT, 'fleet/fleet.config.json');
 const MEM_LINES = 2000;
 const KILL_GRACE_MS = 5000;
+/** Partial-message `lastLine` updates are broadcast at most this often. */
+const LAST_LINE_MS = 300;
 
 const cfg: FleetConfig = existsSync(CONFIG_PATH)
   ? parseConfigText(readFileSync(CONFIG_PATH, 'utf8'))
@@ -85,6 +95,10 @@ interface Run {
   stopRequested: boolean;
   titled: boolean;
   prompt: string;
+  /** Repo-relative write prefixes and the `git status` taken at start (bounds check). */
+  writable: string[];
+  baseline: string;
+  lastPublish: number;
 }
 const runs = new Map<string, Run>();
 const clients = new Set<WebSocket>();
@@ -153,18 +167,49 @@ function handleStdoutLine(run: Run, raw: string): void {
     run.gotResult = true;
     patch.turns = r.result.turns;
     if (r.result.costUsd !== undefined) patch.costUsd = r.result.costUsd;
-    if (!run.stopRequested) {
-      patch.status = r.result.ok ? 'done' : 'error';
+    if (!run.stopRequested && !r.result.ok) {
+      patch.status = 'error';
       patch.endedAt = now;
-      if (!r.result.ok) patch.reason = r.result.subtype;
+      patch.reason = r.result.subtype;
     }
   }
-  if (Object.keys(patch).length) publishSession(run, patch);
+  const keys = Object.keys(patch);
+  if (keys.length === 1 && keys[0] === 'lastLine' && now - run.lastPublish < LAST_LINE_MS) {
+    run.session.lastLine = patch.lastLine; // partials: keep it in memory, flushed by the next publish
+  } else if (keys.length) {
+    run.lastPublish = now;
+    publishSession(run, patch);
+  }
   if (r.assistantText && !run.titled) {
     run.titled = true;
     void runTitleJob(run);
   }
-  if (r.result && !run.stopRequested) finishRequest(run, r.result.ok ? 'done' : 'error');
+  if (r.result && !run.stopRequested) {
+    if (r.result.ok) void settleOk(run);
+    else finishRequest(run, 'error');
+  }
+}
+
+function gitStatus(): Promise<string> {
+  return new Promise((ok) =>
+    execFile('git', ['status', '--porcelain', '--untracked-files=all'], { cwd: ROOT }, (_e, out) =>
+      ok(out ?? ''),
+    ),
+  );
+}
+
+/** Successful result: the bounds check decides between `done` and `error` (FLEET.md "Kontrol"). */
+async function settleOk(run: Run): Promise<void> {
+  const after = await gitStatus();
+  // concurrent sessions legitimately write in their own dirs: their prefixes are allowed too
+  const allowed = [...runs.values()].filter((r) => isLive(r.session)).flatMap((r) => r.writable);
+  const bad = firstOutOfBounds(run.baseline, after, [...run.writable, ...allowed]);
+  if (run.stopRequested || !isLive(run.session)) return;
+  const patch: Partial<FleetSession> = bad
+    ? { status: 'error', reason: `out-of-bounds write: ${bad}`, endedAt: Date.now() }
+    : { status: 'done', endedAt: Date.now() };
+  publishSession(run, patch);
+  finishRequest(run, bad ? 'error' : 'done');
 }
 
 function finishRequest(run: Run, status: FleetRequest['status']): void {
@@ -180,7 +225,7 @@ function runTitleJob(run: Run): Promise<void> {
       [
         '-p',
         '--model',
-        'haiku',
+        cfg.titleModel,
         '--max-turns',
         '1',
         '--no-session-persistence',
@@ -209,11 +254,18 @@ function runTitleJob(run: Run): Promise<void> {
   });
 }
 
-function startSession(cmd: Extract<FleetCommand, { type: 'start' }>): FleetSession {
+function loadManifest(island: FleetIsland): IslandManifest {
+  const file = resolve(ROOT, 'fleet/islands', island, 'island.json');
+  if (!existsSync(file)) throw new Error(`island "${island}" has no island.json`);
+  return parseManifestText(readFileSync(file, 'utf8'), island, cfg);
+}
+
+async function startSession(cmd: Extract<FleetCommand, { type: 'start' }>): Promise<FleetSession> {
   const id = randomUUID();
   const now = Date.now();
-  const sp = islandSpawn(ROOT, cfg, cmd.island);
-  mkdirSync(sp.cwd, { recursive: true });
+  const manifest = loadManifest(cmd.island);
+  const sp = islandSpawn(ROOT, manifest);
+  const baseline = await gitStatus();
   const title = draftTitle(cmd.prompt);
   const requestId = cmd.requestId ?? randomUUID();
   const session: FleetSession = {
@@ -228,7 +280,7 @@ function startSession(cmd: Extract<FleetCommand, { type: 'start' }>): FleetSessi
     requestId,
     cwd: sp.cwd,
     ...(cmd.parentId ? { parentId: cmd.parentId } : {}),
-    ...(cfg.model ? { model: cfg.model } : {}),
+    model: manifest.model,
   };
   const run: Run = {
     session,
@@ -240,6 +292,9 @@ function startSession(cmd: Extract<FleetCommand, { type: 'start' }>): FleetSessi
     stopRequested: false,
     titled: false,
     prompt: cmd.prompt,
+    writable: sp.writable,
+    baseline,
+    lastPublish: 0,
   };
   runs.set(id, run);
   upsertSession(index, session);
@@ -268,12 +323,7 @@ function startSession(cmd: Extract<FleetCommand, { type: 'start' }>): FleetSessi
     'acceptEdits',
     '--permission-prompts',
     'none',
-    '--max-turns',
-    String(cfg.maxTurns),
-    ...(cfg.model ? ['--model', cfg.model] : []),
     ...sp.args,
-    '--allowedTools',
-    cfg.allowedTools.join(','),
   ];
   const proc = spawn('claude', argv, { cwd: sp.cwd, stdio: ['ignore', 'pipe', 'pipe'] });
   run.proc = proc;
@@ -363,7 +413,9 @@ function handleCommand(ws: WebSocket, raw: string): void {
     case 'start': {
       const cmd = parseStart(v);
       if (typeof cmd === 'string') return reply({ type: 'error', message: cmd, command: 'start' });
-      startSession(cmd);
+      startSession(cmd).catch((e: Error) =>
+        reply({ type: 'error', message: e.message, command: 'start' }),
+      );
       return;
     }
     case 'stop':
@@ -443,7 +495,11 @@ const server = createServer((req, res) => {
       }
       const cmd = parseStart(body);
       if (typeof cmd === 'string') return json(res, 400, { error: cmd });
-      return json(res, 200, { session: startSession(cmd) });
+      try {
+        return json(res, 200, { session: await startSession(cmd) });
+      } catch (e) {
+        return json(res, 400, { error: (e as Error).message });
+      }
     }
     json(res, 404, { error: 'not found' });
   })().catch((e: Error) => json(res, 500, { error: e.message }));

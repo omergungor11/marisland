@@ -1,0 +1,26 @@
+{
+  "theme": "marketing",
+  "name": "Pazarlama",
+  "role": "Marisland tanıtım metinlerini, sosyal medya gönderi fikirlerini ve duyuru taslaklarını hazırlar.",
+  "model": "sonnet",
+  "maxTurns": 30,
+  "maxChildren": 6,
+  "allowedTools": [
+    "Read",
+    "Edit",
+    "Write",
+    "Glob",
+    "Grep",
+    "Bash(pnpm typecheck*)",
+    "Bash(pnpm lint*)",
+    "Bash(pnpm test*)",
+    "Bash(pnpm vitest*)",
+    "Bash(git status*)",
+    "Bash(git diff*)",
+    "Bash(git log*)",
+    "Bash(ls*)"
+  ],
+  "addDirs": [],
+  "owner": "hq",
+  "agents": ["default"]
+}

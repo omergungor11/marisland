@@ -1,42 +1,35 @@
-/** `fleet/fleet.config.json` load + validate (pure: no fs). Defaults fill whatever is missing. */
+/**
+ * Fleet config (pure: no fs). `fleet/fleet.config.json` holds fleet-wide values; each island's
+ * `island.json` is validated by hand against `fleet/schema/island.schema.json` (no ajv).
+ */
 import { THEME_IDS } from '../src/world/types.ts';
 import { FLEET_PORT, type FleetIsland } from '../src/fleet/protocol.ts';
 
-export interface IslandConfig {
-  addDirs: string[];
-}
-
 export interface FleetConfig {
   port: number;
+  /** Model alias of the title job. */
+  titleModel: string;
+  /** Defaults used when a manifest omits them. */
   maxTurns: number;
-  /** Child sessions per request (M42). */
   maxChildren: number;
-  /** Model alias for `--model`; omitted = the CLI default. */
-  model?: string;
-  allowedTools: string[];
-  islands: Record<FleetIsland, IslandConfig>;
 }
 
-export const DEFAULT_ALLOWED_TOOLS: readonly string[] = [
-  'Read',
-  'Edit',
-  'Write',
-  'Glob',
-  'Grep',
-  'Bash(pnpm *)',
-  'Bash(git status*)',
-  'Bash(git diff*)',
-  'Bash(git log*)',
-];
+export interface IslandManifest {
+  theme: FleetIsland;
+  name: string;
+  role: string;
+  model: 'haiku' | 'sonnet' | 'opus';
+  maxTurns: number;
+  maxChildren: number;
+  allowedTools: string[];
+  addDirs: string[];
+  owner: 'hq' | 'user';
+  agents?: string[];
+  panel?: { accent?: string };
+}
 
 const isObj = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
-
-function strList(v: unknown, where: string): string[] {
-  if (!Array.isArray(v) || v.some((x) => typeof x !== 'string' || x === ''))
-    throw new Error(`fleet.config: ${where} must be a list of non-empty strings`);
-  return v as string[];
-}
 
 function posInt(v: unknown, where: string, fallback: number): number {
   if (v === undefined) return fallback;
@@ -49,61 +42,131 @@ export function parseConfig(raw: unknown): FleetConfig {
   if (!isObj(raw)) throw new Error('fleet.config: root must be an object');
   const port = posInt(raw.port, 'port', FLEET_PORT);
   if (port > 65535) throw new Error('fleet.config: port out of range');
-  if (raw.model !== undefined && (typeof raw.model !== 'string' || raw.model === ''))
-    throw new Error('fleet.config: model must be a non-empty string');
-  const rawIslands = raw.islands ?? {};
-  if (!isObj(rawIslands)) throw new Error('fleet.config: islands must be an object');
-  for (const k of Object.keys(rawIslands))
-    if (!(THEME_IDS as readonly string[]).includes(k))
-      throw new Error(`fleet.config: unknown island "${k}"`);
-  const islands = {} as Record<FleetIsland, IslandConfig>;
-  for (const id of THEME_IDS) {
-    const c = rawIslands[id];
-    if (c !== undefined && !isObj(c))
-      throw new Error(`fleet.config: islands.${id} must be an object`);
-    islands[id] = {
-      addDirs: c?.addDirs === undefined ? [] : strList(c.addDirs, `islands.${id}.addDirs`),
-    };
-  }
+  if (raw.titleModel !== undefined && (typeof raw.titleModel !== 'string' || !raw.titleModel))
+    throw new Error('fleet.config: titleModel must be a non-empty string');
   return {
     port,
+    titleModel: (raw.titleModel as string | undefined) ?? 'haiku',
     maxTurns: posInt(raw.maxTurns, 'maxTurns', 30),
     maxChildren: posInt(raw.maxChildren, 'maxChildren', 6),
-    ...(raw.model !== undefined ? { model: raw.model as string } : {}),
-    allowedTools:
-      raw.allowedTools === undefined
-        ? [...DEFAULT_ALLOWED_TOOLS]
-        : strList(raw.allowedTools, 'allowedTools'),
-    islands,
   };
 }
 
-/** `JSON.parse` + `parseConfig`, with a readable error for broken JSON. */
-export function parseConfigText(text: string): FleetConfig {
-  let raw: unknown;
+function parseJson(text: string, what: string): unknown {
   try {
-    raw = JSON.parse(text);
+    return JSON.parse(text);
   } catch (e) {
-    throw new Error(`fleet.config: invalid JSON (${(e as Error).message})`, { cause: e });
+    throw new Error(`${what}: invalid JSON (${(e as Error).message})`, { cause: e });
   }
-  return parseConfig(raw);
 }
+
+export const parseConfigText = (text: string): FleetConfig =>
+  parseConfig(parseJson(text, 'fleet.config'));
+
+const MODELS = ['haiku', 'sonnet', 'opus'];
+const KEYS = [
+  'theme',
+  'name',
+  'role',
+  'model',
+  'maxTurns',
+  'maxChildren',
+  'allowedTools',
+  'addDirs',
+  'owner',
+  'agents',
+  'panel',
+];
+const REQUIRED = ['theme', 'name', 'role', 'model', 'maxTurns', 'allowedTools', 'addDirs', 'owner'];
+
+const strArr = (v: unknown, minLen: number): v is string[] =>
+  Array.isArray(v) && v.every((x) => typeof x === 'string' && x.length >= minLen);
+
+/** Problems with an island manifest (empty = valid). `dirName` must equal `theme`. */
+export function validateManifest(raw: unknown, dirName: string): string[] {
+  if (!isObj(raw)) return ['island.json: root must be an object'];
+  const p: string[] = [];
+  for (const k of REQUIRED) if (raw[k] === undefined) p.push(`missing required key "${k}"`);
+  for (const k of Object.keys(raw)) if (!KEYS.includes(k)) p.push(`unknown key "${k}"`);
+  const { theme, name, role, model, maxTurns, maxChildren, owner } = raw;
+  if (theme !== undefined) {
+    if (!(THEME_IDS as readonly string[]).includes(theme as string))
+      p.push(`theme "${String(theme)}" is not a ThemeId`);
+    if (theme !== dirName) p.push(`theme "${String(theme)}" != directory "${dirName}"`);
+  }
+  const str = (v: unknown, k: string, min: number, max: number): void => {
+    if (v !== undefined && (typeof v !== 'string' || v.length < min || v.length > max))
+      p.push(`${k} must be a string of ${min}-${max} chars`);
+  };
+  str(name, 'name', 2, 40);
+  str(role, 'role', 10, 200);
+  if (model !== undefined && !MODELS.includes(model as string))
+    p.push(`model "${String(model)}" must be one of ${MODELS.join('|')} (never fable)`);
+  const int = (v: unknown, k: string, min: number, max: number): void => {
+    if (v !== undefined && (!Number.isInteger(v) || (v as number) < min || (v as number) > max))
+      p.push(`${k} must be an integer ${min}-${max}`);
+  };
+  int(maxTurns, 'maxTurns', 1, 200);
+  int(maxChildren, 'maxChildren', 0, 20);
+  if (raw.allowedTools !== undefined && !strArr(raw.allowedTools, 1))
+    p.push('allowedTools must be a list of non-empty strings');
+  if (raw.addDirs !== undefined && !strArr(raw.addDirs, 1))
+    p.push('addDirs must be a list of non-empty strings');
+  if (owner !== undefined && owner !== 'hq' && owner !== 'user') p.push('owner must be hq|user');
+  if (raw.agents !== undefined && !strArr(raw.agents, 0))
+    p.push('agents must be a list of strings');
+  if (raw.panel !== undefined) {
+    const a = isObj(raw.panel) ? raw.panel.accent : undefined;
+    if (!isObj(raw.panel) || (a !== undefined && !/^#[0-9a-fA-F]{6}$/.test(String(a))))
+      p.push('panel.accent must be #rrggbb');
+  }
+  return p;
+}
+
+/** Validate + fill the `maxChildren` default. Throws with every problem listed. */
+export function parseManifest(raw: unknown, dirName: string, fleet: FleetConfig): IslandManifest {
+  const problems = validateManifest(raw, dirName);
+  if (problems.length) throw new Error(`island ${dirName}: ${problems.join('; ')}`);
+  const m = raw as IslandManifest;
+  return { ...m, maxChildren: m.maxChildren ?? fleet.maxChildren };
+}
+
+export const parseManifestText = (
+  text: string,
+  dirName: string,
+  fleet: FleetConfig,
+): IslandManifest => parseManifest(parseJson(text, `island ${dirName}`), dirName, fleet);
 
 export interface IslandSpawn {
   /** Working directory of the session. */
   cwd: string;
-  /** Layout flags (`--add-dir`, later `--plugin-dir` / `--settings`) appended to the claude argv. */
+  /** Manifest-derived claude flags (tools, turns, model, add-dir, settings). */
   args: string[];
+  /** Repo-relative prefixes (trailing slash) the session may write to. */
+  writable: string[];
 }
 
 /**
- * The one place the island folder layout is applied (cwd and per-island spawn flags). Current
- * layout: `<root>/fleet/islands/<island>/` as cwd + `--add-dir` per `islands.<island>.addDirs`.
- * TODO(layout spec): `--plugin-dir`, `--settings` for per-island skills/agents/memory.
+ * The one place the island folder layout is applied (FLEET.md "Dizin yapısı"): cwd is the island
+ * dir, the rest comes from its manifest. Auto-memory lands in `<island>/memory/` through
+ * `autoMemoryDirectory`.
  */
-export function islandSpawn(root: string, cfg: FleetConfig, island: FleetIsland): IslandSpawn {
-  return {
-    cwd: `${root}/fleet/islands/${island}`,
-    args: cfg.islands[island].addDirs.flatMap((d) => ['--add-dir', d]),
-  };
+export function islandSpawn(root: string, m: IslandManifest): IslandSpawn {
+  const cwd = `${root}/fleet/islands/${m.theme}`;
+  const args = [
+    '--allowedTools',
+    m.allowedTools.join(','),
+    '--max-turns',
+    String(m.maxTurns),
+    '--model',
+    m.model,
+    ...m.addDirs.flatMap((d) => ['--add-dir', `${root}/${d}`]),
+    '--settings',
+    JSON.stringify({ autoMemoryDirectory: `${cwd}/memory` }),
+  ];
+  const writable = [
+    `fleet/islands/${m.theme}/`,
+    ...m.addDirs.map((d) => `${d.replace(/\/+$/, '')}/`),
+  ];
+  return { cwd, args, writable };
 }

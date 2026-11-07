@@ -1,0 +1,22 @@
+{
+  "$comment": "HQ-owned. Read by Claude Code from this cwd only (project scope). Islands never edit it; fleet-lint checks the deny block is intact.",
+  "permissions": {
+    "deny": [
+      "Edit(./island.json)",
+      "Write(./island.json)",
+      "Edit(./.claude/settings.json)",
+      "Write(./.claude/settings.json)",
+      "Edit(../../CLAUDE.md)",
+      "Write(../../CLAUDE.md)",
+      "Edit(../../schema/**)",
+      "Write(../../schema/**)",
+      "Edit(../*/**)",
+      "Write(../*/**)",
+      "Bash(git push*)",
+      "Bash(git commit*)",
+      "Bash(git reset*)",
+      "Bash(git checkout*)",
+      "Bash(rm -rf*)"
+    ]
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "port": 5174,
+  "titleModel": "haiku",
+  "maxTurns": 30,
+  "maxChildren": 6
+}
