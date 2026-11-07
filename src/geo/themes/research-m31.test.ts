@@ -6,6 +6,7 @@ import { RESEARCH_CULTURE } from '../../content/cultures/research.ts';
 import { validateCultures } from '../../content/cultures/validate.ts';
 import { PROP_DEFS, PROP_DEF_INDEX } from '../../content/props.ts';
 import { RESEARCH_M31_PROP_DEFS } from '../../content/props-themes/research-m31.ts';
+import { RESEARCH_HARBOUR as RH } from '../../content/themes/research-harbour.ts';
 import { RESEARCH_M31 as F } from '../../content/themes/research-m31.ts';
 import { STRUCTURE_MIN_SIZE, isLargeStructure } from '../../render/props/batcher.ts';
 import { PropFlag } from '../../world/prop-store.ts';
@@ -230,5 +231,19 @@ describe('TASK-533 sunkenCity kit', () => {
       return sum / Math.max(1, n);
     };
     expect(greenness(0, 0.5)).toBeGreaterThan(greenness(1.8, 3));
+  });
+});
+
+describe('TASK-550 paving cell (D-139)', () => {
+  it('spans exactly one city lattice cell (slot pitch along the street x row pitch across)', () => {
+    expect(F.city.pave.along).toBe(RH.city.pitch);
+    expect(F.city.pave.across).toBe(RH.city.rowPitch);
+    const g = buildProp('sunkenCity', 5, 4, 0);
+    const b = box(g);
+    expect(b.max.z - b.min.z).toBeLessThanOrEqual(F.city.pave.along + 0.05);
+    expect(b.max.x - b.min.x).toBeLessThanOrEqual(F.city.pave.across + 0.05);
+    expect(b.max.z - b.min.z).toBeGreaterThan(F.city.pave.along - 0.4);
+    expect(b.min.y).toBeGreaterThanOrEqual(-0.12); // flush: nothing below the bed bar the joint bed
+    expect(b.max.y).toBeLessThan(0.3);
   });
 });

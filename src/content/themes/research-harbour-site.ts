@@ -26,7 +26,7 @@ export const RESEARCH_HARBOUR_SITE = {
    * may just break it (the kit's sea height would make every column a 1.8 u post).
    */
   ruins: {
-    paving: [4, 4, 4, 4, 5, 7] as const,
+    paving: [4, 4, 4, 4, 4, 4, 4, 5, 7] as const,
     arch: [2, 3] as const,
     column: [0, 1, 1] as const,
     top: [6, 6, 3] as const,

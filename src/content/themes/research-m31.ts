@@ -119,7 +119,7 @@ export const RESEARCH_M31 = {
       { h: 1.94, r: 1.0, waterline: 0.8, sit: 'sea' },
       { h: 2.75, r: 1.7, waterline: 1.0, sit: 'sea' },
       { h: 2.59, r: 1.6, waterline: 0.9, sit: 'sea' },
-      { h: 0.2, r: 1.7, waterline: 0.2, sit: 'floor' },
+      { h: 0.17, r: 1.7, waterline: 0.2, sit: 'floor' },
       { h: 1.15, r: 1.2, waterline: 0.6, sit: 'floor' },
       { h: 2.47, r: 1.5, waterline: 1.1, sit: 'sea' },
       { h: 0.63, r: 1.4, waterline: 0.3, sit: 'floor' },
@@ -127,5 +127,22 @@ export const RESEARCH_M31 = {
     /** The weathering ramp: algae below waterline - fade, bare sandstone, bleached tops. */
     fade: 0.55,
     footprint: 1.7,
+    /**
+     * Paving cell (variant 4, TASK-550, D-139): `along` (the street) x `across` u = the slot pitch of
+     * the city lattice (content/themes/research-harbour.ts `city.pitch` / `rowPitch`, pinned by a
+     * test), `nx` x `nz` slabs across x along with `gap` u joints, thickness `thick`, per-slab tilt
+     * (rad), sink (u, vs the bed) and the share left out.
+     */
+    pave: {
+      along: 2,
+      across: 1.8,
+      nx: 2,
+      nz: 2,
+      gap: 0.07,
+      thick: [0.1, 0.16] as const,
+      tilt: 0.03,
+      sink: [-0.05, 0.02] as const,
+      missing: 0.1,
+    },
   },
 } as const;
