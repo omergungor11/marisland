@@ -165,6 +165,32 @@ describe('fleet chains: tree, gates, groups (M42)', () => {
     expect(gone[0].views.map((v) => v.gate.id)).toEqual(['b']);
     expect(gateGroups(later, 'coding', at, NOW)).toEqual([]);
   });
+  it('answeredAt drives the collapse, even for a gate answered before the snapshot', () => {
+    const seen = new Set<string>();
+    const at = new Map<string, number>();
+    const fresh = gate('f', { status: 'allowed', answeredAt: NOW - MIN, childId: 'c9' });
+    const stale = gate('s', {
+      status: 'denied',
+      answeredAt: NOW - (FLEET_GATE.collapseS + 5) * 1000,
+    });
+    trackAnswers([fresh, stale], seen, at, NOW);
+    const groups = gateGroups([fresh, stale], null, at, NOW);
+    expect(groups[0].views.map((v) => [v.gate.id, v.text])).toEqual([
+      ['f', `${FLEET_GATE.answered.allowed} · 1 dk`],
+    ]);
+  });
+  it('groups by round when present, else by parent', () => {
+    const gs = [gate('a', { round: 'r1' }), gate('b', { round: 'r2' }), gate('c')];
+    const groups = gateGroups(gs, null, new Map(), NOW);
+    expect(groups.map((g) => g.views.map((v) => v.gate.id))).toEqual([['a'], ['b'], ['c']]);
+  });
+  it('a gate error counts per gateId (the panel re-enables the card)', () => {
+    const st = emptyFleetState();
+    applyFleetEvent(st, { type: 'error', message: 'gate: x', command: 'gate', gateId: 'g1' });
+    applyFleetEvent(st, { type: 'error', message: 'gate: x', command: 'gate', gateId: 'g1' });
+    applyFleetEvent(st, { type: 'error', message: 'other' });
+    expect([...st.gateErrors]).toEqual([['g1', 2]]);
+  });
 });
 
 describe('fleet chains: mock (M42)', () => {

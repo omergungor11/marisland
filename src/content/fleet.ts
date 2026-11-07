@@ -105,6 +105,8 @@ export const FLEET_TERM = {
   running: 'çalışıyor…',
   /** Composer placeholder of a `waiting` session (a gate or its children, M42). */
   waiting: 'devir bekliyor…',
+  /** Composer placeholder of a `waiting` session with pending gates. */
+  gateWaiting: (n: number): string => `kapı bekliyor · ${n} kapı`,
   send: 'Gönder',
   start: 'Başlat',
   stop: 'Durdur',
@@ -477,8 +479,8 @@ export const FLEET_GATE = {
   promptLines: 3,
   /**
    * An answered card collapses to one muted line ("izin verildi · 2 dk") for this many seconds
-   * (since the panel saw the answer), then disappears. Gates already answered when first seen are
-   * not shown.
+   * (since `answeredAt`, else since the panel saw the answer), then disappears. Without
+   * `answeredAt`, gates already answered when first seen are not shown.
    */
   collapseS: 300,
   answered: { allowed: 'izin verildi', denied: 'reddedildi' } as const,
