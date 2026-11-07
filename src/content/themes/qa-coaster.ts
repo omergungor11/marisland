@@ -152,9 +152,15 @@ export const QA_COASTER_MOTION = {
     stopV: 0.6,
   },
   /** Chain-lift ratchet: the train advances `link` u in `move` of the click, then holds (no audio: the eye hears it). */
-  click: { link: 0.85, move: 0.55, ring: { life: 0.32, r0: 0.08, r1: 0.5, color: P.steel } },
+  click: {
+    link: 0.85,
+    move: 0.55,
+    ring: { life: 0.45, r0: 0.2, r1: 0.95, minY: 0.5, color: '#FF5C8A' },
+  },
   /** Arrival nod (spring on the cars' pitch, rad). */
-  nod: { amp: 0.05, omega: 10, zeta: 0.3 },
+  nod: { amp: 0.14, omega: 10, zeta: 0.3 },
+  /** Riders on the parked train: arms down, breathing (scale y) and a small seat bob (u), Hz, phase step per seat (rad). */
+  idle: { hz: 0.45, breath: 0.035, bob: 0.025, phase: 1.3 },
   /** Seconds between runs: the dummy waits, then lamp on + bots board, then the bots get off. Longest first. */
   dwell: { dummy: 6, swap: 7, off: 4 },
   /** Boarding pop (s), stagger per seat (s). */

@@ -160,6 +160,8 @@ export function createCoasterMovers(
       const lod: Lod = dist < plan.lod0 ? 0 : 1;
       coasterStateAt(show, day, st);
       const nod = arrivalNod(st.lap < 0 ? st.sinceStop : -1);
+      const parked = st.lap < 0;
+      const I = M.idle;
       let seatK = 0;
       for (let k = 0; k < plan.cars; k++) {
         carSample(kit, st.u, k, smp);
@@ -183,13 +185,16 @@ export function createCoasterMovers(
           const bots = st.bots > 0 && st.dummy <= 0;
           seatK++;
           if (scale < 0.01) continue;
+          // parked: arms down (variant + 3) and a slow breath + bob, closed form on the sim clock (TASK-559)
+          const ph = time * I.hz * Math.PI * 2 + (seatK - 1) * I.phase;
+          const idle = parked ? Math.sin(ph) : 0;
           _l.compose(
-            _p.set(sx * seatList.seatX, seatList.seatY, seatList.seatZ),
+            _p.set(sx * seatList.seatX, seatList.seatY + I.bob * idle, seatList.seatZ),
             _q.identity(),
-            _s.setScalar(scale),
+            _s.set(scale, scale * (1 + I.breath * idle), scale),
           );
           _m.multiplyMatrices(pivot, _c).multiply(_l);
-          put('coasterRider', bots ? 1 + s : 0, lod, _m);
+          put('coasterRider', (bots ? 1 + s : 0) + (parked ? 3 : 0), lod, _m);
         }
       }
       // bumper cars + their drivers

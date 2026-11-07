@@ -403,7 +403,7 @@ function coasterClickScene(kit: CoasterKit, show: CoasterShow, cars: number): Sc
       PART.ring,
       [smp.pos[0] - smp.up[0] * f, smp.pos[1] - smp.up[1] * f, smp.pos[2] - smp.up[2] * f],
       [0, 0, 0],
-      [r, r * Math.max(0.15, 1 - ph), r],
+      [r, r * Math.max(C.minY, 1 - ph), r],
       C.color,
     );
   };
@@ -934,6 +934,7 @@ function confettiBurst(
     fall: number;
     size: number;
     floor: number;
+    fade: number;
   },
 ): void {
   const { dir, muzzle, colors } = M.confetti;
@@ -952,8 +953,9 @@ function confettiBurst(
     const z = muzzle[2] + vz * C.tau * e - flutter;
     const y = Math.max(C.floor, muzzle[1] + (vy + fall) * C.tau * e - fall * age);
     const settle = y <= C.floor + 0.001 ? 0.6 : 1;
-    const fade = Math.min(1, (C.life - age) / 0.8);
-    if (fade <= 0) continue;
+    const f = Math.min(1, (C.life - age) / C.fade);
+    if (f <= 0) continue;
+    const fade = f * f * (3 - 2 * f);
     w.put(
       PART.quad,
       [x, y, z],

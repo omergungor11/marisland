@@ -75,7 +75,7 @@ describe('TASK-540 defs and ledger', () => {
       expect(QA_CULTURE.kit.map((k) => k.id)).not.toContain(id);
     }
     expect(PROP_GEO.coasterCar.variants).toBe(2);
-    expect(PROP_GEO.coasterRider.variants).toBe(3);
+    expect(PROP_GEO.coasterRider.variants).toBe(6);
     expect(PROP_GEO.bumperCar.variants).toBe(3);
   });
 

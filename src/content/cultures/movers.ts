@@ -264,6 +264,8 @@ export const CULTURE_MOVERS = {
     pieces: 24,
     /** Burst length at the window's end, s. */
     life: 6,
+    /** Shrink-out at the end of life, s (smoothstep). */
+    fade: 1.6,
     speed: [5, 9] as const,
     spread: 0.55,
     tau: 0.9,

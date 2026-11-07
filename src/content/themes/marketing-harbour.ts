@@ -209,6 +209,8 @@ export const CARNIVAL_MOTION = {
     pieces: 30,
     delay: [0.1, 0.4] as const,
     life: 7,
+    /** Shrink-out at the end of life, s (smoothstep). */
+    fade: 1.8,
     speed: [4, 8] as const,
     spread: 0.7,
     tau: 0.9,

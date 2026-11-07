@@ -1,4 +1,4 @@
-import { Clock, FIXED_STEP } from './clock.ts';
+import { Clock, FIXED_STEP, MAX_FRAME_DT } from './clock.ts';
 
 /**
  * A system plugs into the loop. `fixedUpdate` runs at 30 Hz, `update` once per
@@ -30,6 +30,7 @@ export class Loop {
   private raf = 0;
   private last = -1;
   private running = false;
+  private warnedClamp = false;
   private opts: LoopOptions;
   /** Frames rendered. */
   frame = 0;
@@ -51,6 +52,12 @@ export class Loop {
 
   /** Run `n` frames of `dt` seconds each, deterministically. */
   step(dt: number = FIXED_STEP, n = 1): void {
+    if (dt > MAX_FRAME_DT && !this.warnedClamp) {
+      this.warnedClamp = true;
+      console.warn(
+        `[marisland] step(${dt}) is clamped to MAX_FRAME_DT ${MAX_FRAME_DT} s per frame; use step(<=${MAX_FRAME_DT}, n) or the simt URL param`,
+      );
+    }
     for (let i = 0; i < n; i++) this.frameAdvance(dt);
   }
 
