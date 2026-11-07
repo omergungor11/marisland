@@ -1,8 +1,16 @@
-import { FLEET_PANEL as P, FLEET_TERM as T } from '../content/fleet.ts';
+import { FLEET_GATE as G, FLEET_PANEL as P, FLEET_TERM as T } from '../content/fleet.ts';
 import { THEMES } from '../content/themes.ts';
 import type { FleetStore } from '../fleet/client.ts';
 import { isLive, type FleetLine, type FleetSession } from '../fleet/protocol.ts';
-import { linePlan, lineView, sessionDuration, statusGlyph, tailFrom } from '../fleet/rows.ts';
+import {
+  chainOf,
+  linePlan,
+  lineView,
+  sessionDuration,
+  statusGlyph,
+  tailFrom,
+  type ChainNode,
+} from '../fleet/rows.ts';
 import type { ThemeId } from '../world/types.ts';
 
 /**
@@ -10,7 +18,8 @@ import type { ThemeId } from '../world/types.ts';
  * the list; `styles.ts` `.mar-fterm`). Plain DOM, line nodes appended / dropped by seq
  * (`linePlan`), never rebuilt on a feed line.
  *
- *   header — back arrow, status dot, title, "agent · 12 dk · 3 tur · $0.42"
+ *   header — back arrow, status dot, title, "agent · 12 dk · 3 tur · $0.42"; M42: "İstek: … · 3
+ *            session" and the chain strip (island discs in tree order, a click opens that one)
  *   body   — lines by kind; autoscroll unless scrolled up, then a "↓ yeni satırlar" pill
  *   footer — prompt (Enter sends, Shift+Enter newline) → `send` on a finished session,
  *            disabled "çalışıyor…" + Stop while live; draft mode ("Bu adada yeni session") → `start`
@@ -33,6 +42,8 @@ export interface FleetTerm {
 export interface FleetTermOptions {
   accents: Readonly<Record<ThemeId, string>>;
   islandName(theme: ThemeId): string;
+  /** Island icon markup (chain strip discs, M42). */
+  iconFor(theme: ThemeId): string;
   /** The view opened / closed (the card resizes, the list re-marks its selected row). */
   onChange(): void;
   /** Interactive (not capture): focus the prompt box of a draft. */
@@ -58,7 +69,8 @@ export function createFleetTerm(
     <header class="mar-fterm-head">
       <button class="mar-fterm-back" type="button" aria-label="${T.back}" title="${T.back}">${BACK}</button>
       <i class="mar-fdot"></i>
-      <div class="mar-fterm-id"><span class="mar-fterm-title"></span><span class="mar-fterm-meta"></span></div>
+      <div class="mar-fterm-id"><span class="mar-fterm-title"></span><span class="mar-fterm-meta"></span><span class="mar-fterm-req" hidden><span></span><b></b></span></div>
+      <div class="mar-fchain" hidden></div>
     </header>
     <div class="mar-fterm-body"><ol class="mar-fterm-lines"></ol><div class="mar-fterm-note"></div></div>
     <button class="mar-fterm-pill" type="button" hidden>${T.newLines}</button>
@@ -73,6 +85,9 @@ export function createFleetTerm(
   const dot = q<HTMLElement>('.mar-fdot');
   const titleEl = q<HTMLElement>('.mar-fterm-title');
   const meta = q<HTMLElement>('.mar-fterm-meta');
+  const reqEl = q<HTMLElement>('.mar-fterm-req');
+  const chainEl = q<HTMLElement>('.mar-fchain');
+  const [reqTitle, reqCount] = reqEl.children as unknown as HTMLElement[];
   const body = q<HTMLElement>('.mar-fterm-body');
   const list = q<HTMLOListElement>('.mar-fterm-lines');
   const note = q<HTMLElement>('.mar-fterm-note');
@@ -167,11 +182,46 @@ export function createFleetTerm(
     put(meta, parts.join(' · '));
     const live = isLive(s);
     prompt.disabled = live;
-    prompt.placeholder = live ? T.running : T.placeholder;
+    prompt.placeholder = live ? (s.status === 'waiting' ? T.waiting : T.running) : T.placeholder;
     put(go, T.send);
     go.hidden = live;
     stopBtn.hidden = !live;
+    renderChain(s.id);
   };
+
+  // ---- request line + chain strip (M42) -------------------------------------------------------
+  let chainKey = '';
+  const nodeHtml = (n: ChainNode, current: string): string => {
+    const name = THEMES[n.island].displayName;
+    const acc = o.accents[n.island];
+    let disc: string;
+    if (n.session) {
+      const g = statusGlyph(n.session.status);
+      const on = n.session.id === current ? ' mar-fchain-on' : '';
+      disc = `<button class="mar-fchain-disc${on}" type="button" data-id="${n.session.id.replace(/"/g, '')}" title="${name} · ${P.statusLabel[n.session.status]}" style="background:${acc}">${o.iconFor(n.island)}<i class="mar-fchain-badge" style="color:${g.color.startsWith('var(') ? acc : g.color}">${g.svg}</i></button>`;
+    } else
+      disc = `<span class="mar-fchain-disc mar-fchain-gate" title="${name} · ${G.pending}" style="--acc:${acc};color:${acc}">${o.iconFor(n.island)}</span>`;
+    const kids = n.children.length
+      ? `<div class="mar-fchain-kids">${n.children.map((c) => nodeHtml(c, current)).join('')}</div>`
+      : '';
+    return `<div class="mar-fchain-node">${disc}<span class="mar-fchain-name">${name}</span>${kids}</div>`;
+  };
+  const statusKey = (n: ChainNode): string =>
+    `${n.session ? `${n.session.id}:${n.session.status}` : `g:${n.gate?.id ?? ''}`}(${n.children.map(statusKey).join(',')})`;
+  function renderChain(id: string): void {
+    const c = mode === 'session' ? chainOf(store, id) : null;
+    reqEl.hidden = chainEl.hidden = !c;
+    if (!c) {
+      chainKey = '';
+      return;
+    }
+    put(reqTitle, G.request(c.title));
+    put(reqCount, G.sessions(c.count));
+    const key = `${id}|${c.roots.map(statusKey).join(',')}`;
+    if (key === chainKey) return;
+    chainKey = key;
+    chainEl.innerHTML = `<div class="mar-fchain-tree">${c.roots.map((r) => nodeHtml(r, id)).join('')}</div>`;
+  }
 
   const render = (now: number): void => {
     dirty = false;
@@ -194,6 +244,7 @@ export function createFleetTerm(
     } else if (mode === 'draft' && draftIsland) {
       accent(draftIsland);
       dot.hidden = true;
+      renderChain('');
       put(titleEl, T.newTitle);
       put(meta, `${THEMES[draftIsland].displayName} · ${o.islandName(draftIsland)}`);
       prompt.disabled = pending !== null;
@@ -243,6 +294,11 @@ export function createFleetTerm(
   const onScroll = (): void => {
     if (!pill.hidden && atBottom()) pill.hidden = true;
   };
+  const onChain = (e: MouseEvent): void => {
+    const id = (e.target as Element).closest<HTMLElement>('.mar-fchain-disc[data-id]')?.dataset.id;
+    if (id && store.sessions.has(id)) api.show(id);
+  };
+  chainEl.addEventListener('click', onChain);
   back.addEventListener('click', onBack);
   go.addEventListener('click', submit);
   stopBtn.addEventListener('click', onStop);
@@ -322,6 +378,7 @@ export function createFleetTerm(
       prompt.removeEventListener('keydown', onKey);
       prompt.removeEventListener('input', fit);
       body.removeEventListener('scroll', onScroll);
+      chainEl.removeEventListener('click', onChain);
       el.remove();
     },
   };

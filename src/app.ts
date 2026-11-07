@@ -183,6 +183,7 @@ export async function boot(): Promise<void> {
       seed: params.seed,
       now: wallNow(),
       frozen: params.freeze || params.simt > 0,
+      chain: findShot(params.shot)?.fleetChain ?? 'pending',
     });
     appScope.defer(() => fleet.dispose());
     const scene = new THREE.Scene();
@@ -852,7 +853,8 @@ export async function boot(): Promise<void> {
         // capture presets (F-terminal / F-fleet): open the first live row, type a search
         const preset = findShot(params.shot);
         if (preset?.fleetQuery) fp.setQuery(preset.fleetQuery);
-        if (preset?.fleetOpen) fp.openFirstLive();
+        if (preset?.fleetOpen === 'running') fp.openFirstLive();
+        else if (preset?.fleetOpen) fp.open(preset.fleetOpen);
         const tip = createFleetTip(h.el);
         appScope.defer(() => tip.dispose());
         botTip = (hit, x, y) => {

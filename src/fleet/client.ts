@@ -4,12 +4,13 @@
  * No three.js; the only wall-clock reads are the live socket's (the mock gets `now` passed in).
  */
 import { FLEET } from '../content/fleet.ts';
-import { createFleetMock, type FleetMock } from './mock.ts';
+import { createFleetMock, type FleetChain, type FleetMock } from './mock.ts';
 import {
   FLEET_PORT,
   FLEET_WS_PATH,
   type FleetCommand,
   type FleetEvent,
+  type FleetGate,
   type FleetLine,
   type FleetRequest,
   type FleetSession,
@@ -25,6 +26,8 @@ export interface FleetStore {
   readonly ready: boolean;
   readonly sessions: ReadonlyMap<string, FleetSession>;
   readonly requests: ReadonlyMap<string, FleetRequest>;
+  /** Island hand-off gates (M42): pending, allowed, denied. */
+  readonly gates: ReadonlyMap<string, FleetGate>;
   linesOf(sessionId: string): readonly FleetLine[];
   /** Called after every applied event and on connection changes; returns the unsubscribe. */
   subscribe(cb: () => void): () => void;
@@ -37,6 +40,7 @@ export interface FleetStore {
 export interface FleetState {
   sessions: Map<string, FleetSession>;
   requests: Map<string, FleetRequest>;
+  gates: Map<string, FleetGate>;
   lines: Map<string, FleetLine[]>;
   ready: boolean;
 }
@@ -44,6 +48,7 @@ export interface FleetState {
 export const emptyFleetState = (): FleetState => ({
   sessions: new Map(),
   requests: new Map(),
+  gates: new Map(),
   lines: new Map(),
   ready: false,
 });
@@ -67,8 +72,10 @@ export function applyFleetEvent(st: FleetState, ev: FleetEvent): void {
     case 'snapshot':
       st.sessions.clear();
       st.requests.clear();
+      st.gates.clear();
       for (const s of ev.sessions) st.sessions.set(s.id, s);
       for (const r of ev.requests) st.requests.set(r.id, r);
+      for (const g of ev.gates ?? []) st.gates.set(g.id, g);
       st.ready = true;
       break;
     case 'session':
@@ -87,7 +94,8 @@ export function applyFleetEvent(st: FleetState, ev: FleetEvent): void {
       console.warn(`fleet: ${ev.message}`);
       break;
     case 'gate':
-      break; // M42
+      st.gates.set(ev.gate.id, ev.gate);
+      break;
   }
 }
 
@@ -104,6 +112,8 @@ export interface FleetClientOptions {
   now: number;
   /** Mock: no feed timer (capture), so a shot sees the same sessions at any warm-up. */
   frozen?: boolean;
+  /** Mock: the scripted request chain's variant (M42, default `pending`). */
+  chain?: FleetChain;
   /** Live: socket URL (default `ws://localhost:5174/ws`). */
   url?: string;
 }
@@ -125,7 +135,10 @@ export function createFleetClient(o: FleetClientOptions): FleetStore {
   let mock: FleetMock | null = null;
 
   if (o.mode === 'mock')
-    mock = createFleetMock({ seed: o.seed, now: o.now, frozen: o.frozen ?? false }, apply);
+    mock = createFleetMock(
+      { seed: o.seed, now: o.now, frozen: o.frozen ?? false, chain: o.chain ?? 'pending' },
+      apply,
+    );
   else if (o.mode === 'live') {
     const url = o.url ?? `ws://localhost:${FLEET_PORT}${FLEET_WS_PATH}`;
     const R = FLEET.reconnect;
@@ -187,6 +200,7 @@ export function createFleetClient(o: FleetClientOptions): FleetStore {
     },
     sessions: st.sessions,
     requests: st.requests,
+    gates: st.gates,
     linesOf: (id) => st.lines.get(id) ?? [],
     subscribe(cb) {
       subs.add(cb);

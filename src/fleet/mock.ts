@@ -8,6 +8,7 @@
  * (no wall clock).
  */
 import { FLEET_MOCK as M } from '../content/fleet.ts';
+import { THEMES } from '../content/themes.ts';
 import { createRng, type Rng } from '../core/rng.ts';
 import { THEME_IDS } from '../world/types.ts';
 import {
@@ -15,6 +16,8 @@ import {
   isLive,
   type FleetCommand,
   type FleetEvent,
+  type FleetGate,
+  type FleetIsland,
   type FleetLine,
   type FleetRequest,
   type FleetSession,
@@ -165,10 +168,134 @@ export function mockHistory(seed: number, s: FleetSession): FleetLine[] {
   }));
 }
 
+/** Scripted request chain variant (M42): both gates pending, or the Design one allowed with its child running. */
+export type FleetChain = 'pending' | 'allowed';
+
+type RawLine = Omit<FleetLine, 'sessionId' | 'seq' | 'at'>;
+/** `raw` spread evenly from `from` to `to` (ms), seq dense from 0. */
+const spread = (id: string, raw: readonly RawLine[], from: number, to: number): FleetLine[] =>
+  raw.map((l, seq) => ({
+    ...l,
+    sessionId: id,
+    seq,
+    at: Math.round(from + ((to - from) * seq) / Math.max(1, raw.length - 1)),
+  }));
+
+const isleName = (t: FleetIsland): string => THEMES[t].displayName;
+
+/**
+ * The scripted chain (pure, no RNG: `FLEET_MOCK.chain`): a Marketing parent whose run ended with
+ * two hand-off sections (one round), its gates, and in `allowed` the Design child.
+ */
+export function mockChain(
+  now: number,
+  variant: FleetChain,
+): {
+  sessions: FleetSession[];
+  requests: FleetRequest[];
+  gates: FleetGate[];
+  lines: Map<string, FleetLine[]>;
+} {
+  const C = M.chain;
+  const startedAt = now - C.parentAgoS * 1000;
+  const ended = now - C.gateAgoS * 1000;
+  const lines = new Map<string, FleetLine[]>();
+  const cwd = (t: FleetIsland): string => `fleet/islands/${t}`;
+  const pl = spread(
+    C.parentId,
+    [
+      { kind: 'system', text: `init · opus · 18 tools · ${cwd(C.from)}` },
+      { kind: 'user', text: C.title },
+      ...C.parentLines,
+      {
+        kind: 'result',
+        text: resultText(C.turns, C.costUsd, (ended - startedAt) / 1000),
+      },
+    ],
+    startedAt,
+    ended,
+  );
+  lines.set(C.parentId, pl);
+  const sessions: FleetSession[] = [
+    {
+      id: C.parentId,
+      island: C.from,
+      agent: C.parentAgent,
+      title: C.title,
+      status: 'waiting',
+      startedAt,
+      updatedAt: ended,
+      turns: C.turns,
+      costUsd: C.costUsd,
+      requestId: C.requestId,
+      cwd: cwd(C.from),
+      model: 'opus',
+      lastLine: C.parentLast,
+      lastSeq: pl.length - 1,
+    },
+  ];
+  const gates: FleetGate[] = C.gates.map((g, i) => ({
+    id: g.id,
+    requestId: C.requestId,
+    fromSessionId: C.parentId,
+    fromIsland: C.from,
+    toIsland: g.to,
+    prompt: g.handoff,
+    status: variant === 'allowed' && i === 0 ? 'allowed' : 'pending',
+    createdAt: ended + i,
+  }));
+  if (variant === 'allowed') {
+    const g = C.gates[0];
+    const at = now - C.childAgoS * 1000;
+    const last = now - 20_000;
+    const cl = spread(
+      g.childId,
+      [
+        { kind: 'system', text: `init · opus · 18 tools · ${cwd(g.to)}` },
+        { kind: 'user', text: C.childPrompt(C.title, isleName(C.from), g.handoff) },
+        ...g.childLines,
+      ],
+      at,
+      last,
+    );
+    lines.set(g.childId, cl);
+    sessions.push({
+      id: g.childId,
+      island: g.to,
+      agent: g.childAgent,
+      title: draftTitle(g.handoff),
+      status: 'running',
+      startedAt: at,
+      updatedAt: last,
+      turns: 0,
+      costUsd: 0,
+      parentId: C.parentId,
+      requestId: C.requestId,
+      cwd: cwd(g.to),
+      model: 'opus',
+      lastLine: g.childLines[g.childLines.length - 1]?.text,
+      lastSeq: cl.length - 1,
+    });
+  }
+  const requests: FleetRequest[] = [
+    {
+      id: C.requestId,
+      title: C.title,
+      island: C.from,
+      rootSessionId: C.parentId,
+      createdAt: startedAt,
+      status: 'open',
+    },
+  ];
+  return { sessions, requests, gates, lines };
+}
+
 export interface FleetMockOptions {
   seed: number;
   now: number;
   frozen: boolean;
+  /** Scripted chain variant (default `pending`). */
+  chain?: FleetChain;
 }
 
 export interface FleetMock {
@@ -187,12 +314,26 @@ export function createFleetMock(o: FleetMockOptions, emit: (ev: FleetEvent) => v
     lines.set(s.id, h);
     state.set(s.id, h.length ? { ...s, lastSeq: h.length - 1 } : s);
   }
+  // M42: the scripted chain after the drawn sessions (no draws)
+  const chain = mockChain(o.now, o.chain ?? 'pending');
+  for (const s of chain.sessions) state.set(s.id, s);
+  for (const [id, l] of chain.lines) lines.set(id, l);
+  const gates = new Map<string, FleetGate>(chain.gates.map((g) => [g.id, g]));
+  /** Allowed gate id → its child session id (the round waits for these). */
+  const gateChild = new Map<string, string>();
+  for (const g of chain.gates)
+    if (g.status === 'allowed') {
+      const child = M.chain.gates.find((x) => x.id === g.id)?.childId;
+      if (child) gateChild.set(g.id, child);
+    }
+  /** Gates whose answer already went back to the parent (a finished round). */
+  const reported = new Set<string>();
   emit({
     type: 'snapshot',
     bridge: { version: 0, root: 'mock', startedAt: o.now },
     sessions: [...state.values()],
-    requests: snap.requests,
-    gates: [],
+    requests: [...snap.requests, ...chain.requests],
+    gates: [...gates.values()],
   });
   let at = o.now;
   const timers = new Set<ReturnType<typeof setTimeout>>();
@@ -251,6 +392,8 @@ export function createFleetMock(o: FleetMockOptions, emit: (ev: FleetEvent) => v
     if (running.length) tick();
   }
 
+  /** Called when a scripted run ends `done` (a child's end may finish its parent's round). */
+  let onDone = (_id: string): void => {};
   const runScript = (id: string, prompt: string): void => {
     push(id, { kind: 'user', text: prompt });
     if (o.frozen) return;
@@ -275,10 +418,100 @@ export function createFleetMock(o: FleetMockOptions, emit: (ev: FleetEvent) => v
         const cost = Math.round(((s.costUsd ?? 0) + M.scriptCostUsd) * 100) / 100;
         push(id, { kind: 'result', text: resultText(turns, cost, (at - base) / 1000) });
         upsert(id, { status: 'done', turns, costUsd: cost, endedAt: at });
+        onDone(id);
       }),
     );
   };
   let started = 0;
+
+  /** A new running session (+ its request when it opens one) running the script. */
+  const spawn = (c: {
+    island: FleetIsland;
+    prompt: string;
+    agent?: string;
+    title?: string;
+    parentId?: string;
+    requestId?: string;
+  }): string => {
+    const k = started++;
+    const id = `mock-${c.island}-new${k}`;
+    const requestId = c.requestId ?? `req-${c.island}-new${k}`;
+    const title = c.title ?? draftTitle(c.prompt);
+    state.set(id, {
+      id,
+      island: c.island,
+      agent: c.agent ?? 'default',
+      title,
+      status: 'running',
+      startedAt: at,
+      updatedAt: at,
+      turns: 0,
+      costUsd: 0,
+      ...(c.parentId ? { parentId: c.parentId } : {}),
+      requestId,
+      cwd: `fleet/islands/${c.island}`,
+      model: 'opus',
+    });
+    if (!c.requestId)
+      emit({
+        type: 'request',
+        request: {
+          id: requestId,
+          title,
+          island: c.island,
+          rootSessionId: id,
+          createdAt: at,
+          status: 'open',
+        },
+      });
+    runScript(id, c.prompt);
+    return id;
+  };
+
+  /** Resume a finished / waiting session with a follow-up prompt (the bridge's resume). */
+  const resume = (s: FleetSession, prompt: string): void => {
+    const next: FleetSession = { ...s, status: 'running', updatedAt: at };
+    delete next.endedAt;
+    delete next.reason;
+    state.set(s.id, next);
+    emit({ type: 'session', session: next });
+    runScript(s.id, prompt);
+  };
+
+  /**
+   * D-149 round: once no gate of the parent waits and every allowed child has ended, the parent
+   * resumes once with all reports (denials included).
+   */
+  const settle = (parentId: string): void => {
+    const round = [...gates.values()].filter(
+      (g) => g.fromSessionId === parentId && !reported.has(g.id),
+    );
+    if (!round.length || round.some((g) => g.status === 'pending')) return;
+    const kids = round.flatMap((g) => {
+      const c = gateChild.get(g.id);
+      return c ? [state.get(c)] : [];
+    });
+    if (kids.some((c) => !c || isLive(c))) return;
+    const parent = state.get(parentId);
+    if (!parent) return;
+    for (const g of round) reported.add(g.id);
+    const text = round
+      .map((g) => {
+        const name = isleName(g.toIsland);
+        if (g.status === 'denied') return M.chain.denied(name);
+        const scripted = M.chain.gates.find((x) => x.id === g.id)?.report;
+        return M.chain.report(
+          name,
+          scripted ?? state.get(gateChild.get(g.id) ?? '')?.lastLine ?? '',
+        );
+      })
+      .join('\n\n');
+    resume(parent, text);
+  };
+  onDone = (id) => {
+    const p = state.get(id)?.parentId;
+    if (p) settle(p);
+  };
 
   return {
     command(cmd) {
@@ -294,47 +527,13 @@ export function createFleetMock(o: FleetMockOptions, emit: (ev: FleetEvent) => v
           return true;
         }
         case 'start': {
-          const k = started++;
-          const id = `mock-${cmd.island}-new${k}`;
-          const requestId = `req-${cmd.island}-new${k}`;
-          const title = draftTitle(cmd.prompt);
-          state.set(id, {
-            id,
-            island: cmd.island,
-            agent: cmd.agent ?? 'default',
-            title,
-            status: 'running',
-            startedAt: at,
-            updatedAt: at,
-            turns: 0,
-            costUsd: 0,
-            requestId,
-            cwd: `fleet/islands/${cmd.island}`,
-            model: 'opus',
-          });
-          emit({
-            type: 'request',
-            request: {
-              id: requestId,
-              title,
-              island: cmd.island,
-              rootSessionId: id,
-              createdAt: at,
-              status: 'open',
-            },
-          });
-          runScript(id, cmd.prompt);
+          spawn(cmd);
           return true;
         }
         case 'send': {
           const s = state.get(cmd.sessionId);
           if (!s || isLive(s)) return false;
-          const next: FleetSession = { ...s, status: 'running', updatedAt: at };
-          delete next.endedAt;
-          delete next.reason;
-          state.set(s.id, next);
-          emit({ type: 'session', session: next });
-          runScript(s.id, cmd.prompt);
+          resume(s, cmd.prompt);
           return true;
         }
         case 'stop': {
@@ -348,8 +547,26 @@ export function createFleetMock(o: FleetMockOptions, emit: (ev: FleetEvent) => v
           upsert(s.id, { status: 'stopped', endedAt: at, reason: 'durduruldu' });
           return true;
         }
-        case 'gate':
-          return false; // M42
+        case 'gate': {
+          const g = gates.get(cmd.gateId);
+          if (!g || g.status !== 'pending') return false;
+          const next: FleetGate = { ...g, status: cmd.allow ? 'allowed' : 'denied' };
+          gates.set(g.id, next);
+          emit({ type: 'gate', gate: next });
+          if (cmd.allow) {
+            const title = state.get(g.fromSessionId)?.title ?? '';
+            const child = spawn({
+              island: g.toIsland,
+              prompt: M.chain.childPrompt(title, isleName(g.fromIsland), g.prompt),
+              title: draftTitle(g.prompt),
+              parentId: g.fromSessionId,
+              requestId: g.requestId,
+            });
+            gateChild.set(g.id, child);
+          }
+          settle(g.fromSessionId);
+          return true;
+        }
       }
     },
     stop() {

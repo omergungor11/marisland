@@ -38,8 +38,10 @@ export interface ShotPreset {
   edit?: string;
   /** Fleet feed (`fleet=`, TASK-563): the deterministic mock fills the island panel. */
   fleet?: 'mock';
-  /** Fleet panel (M41): open the first live row's terminal after the warm-up. */
-  fleetOpen?: 'running';
+  /** Fleet panel (M41): open the first live row's terminal after the warm-up, or this session's (M42). */
+  fleetOpen?: 'running' | `mock-${string}`;
+  /** Mock request chain variant (M42): the Design gate allowed, its child running (default: both gates pending). */
+  fleetChain?: 'allowed';
   /** Fleet view search text (M41). */
   fleetQuery?: string;
   /** Opening-sequence still at this time (s) (`introt=`). */
@@ -2235,6 +2237,33 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     hud: true,
     fleet: 'mock',
     fleetOpen: 'running',
+    sets: ['dev'],
+  },
+  // ---- TASK-575 (M42): Marketing at T2, the parent's two pending hand-off gates on top of the list
+  {
+    id: 'F-gate',
+    title: 'Fleet gate cards · Marketing',
+    seed: 1001,
+    cam: 'ladder:marketing:110',
+    time: 14,
+    simt: 2,
+    hud: true,
+    fleet: 'mock',
+    sets: ['dev'],
+  },
+  // ---- TASK-575 (M42): the Marketing parent's terminal, chain strip fanned out (Design child
+  // running, Coding gate pending), `allowed` variant
+  {
+    id: 'F-chain',
+    title: 'Fleet request chain · Marketing parent',
+    seed: 1001,
+    cam: 'island:marketing',
+    time: 14,
+    simt: 2,
+    hud: true,
+    fleet: 'mock',
+    fleetChain: 'allowed',
+    fleetOpen: 'mock-marketing-chain',
     sets: ['dev'],
   },
   // ---- TASK-572: F-bot's tier-3 framing with the HUD: the card is the compact strip
