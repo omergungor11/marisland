@@ -61,6 +61,7 @@ import { EDIT_PANEL } from './content/edit-ui.ts';
 import { createFleetClient, fleetModeOf } from './fleet/client.ts';
 import { createFleetPanel } from './ui/fleet-panel.ts';
 import { createFleetTip } from './ui/fleet-tip.ts';
+import { createFleetBeacons } from './life/fleet-beacons.ts';
 import { bindFleetToBots, type FleetBots } from './life/fleet-bots.ts';
 import { FLEET } from './content/fleet.ts';
 import type { ThemeId } from './world/types.ts';
@@ -478,6 +479,12 @@ export async function boot(): Promise<void> {
         };
         loop.add(fbs);
         worldScope.defer(() => (loop.remove(fbs), fb.dispose()));
+        const wk = wv.life.kinds.workers;
+        if (wk) {
+          const fbb = createFleetBeacons(wv.life.group, worldScope, wk, () => fb.boundBots());
+          loop.add(fbb);
+          worldScope.defer(() => loop.remove(fbb));
+        }
       }
       worldWeather = wv.weather;
       if (cam.reducedMotion) wv.life.setMotionScale(motionScale());

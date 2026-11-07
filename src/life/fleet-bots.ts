@@ -10,6 +10,7 @@ import { FLEET_BOTS } from '../content/fleet.ts';
 import type { FleetStore } from '../fleet/client.ts';
 import { isLive, type FleetSession } from '../fleet/protocol.ts';
 import { THEME_IDS, type ThemeId } from '../world/types.ts';
+import type { BoundBot } from './fleet-beacons.ts';
 import { assignBots, type BotSession } from './fleet-bots-map.ts';
 
 /** What the binding needs from the workers kind (`Workers` implements it). */
@@ -29,6 +30,8 @@ export interface FleetBots {
   islandOf(i: number): ThemeId | null;
   /** Bots currently pinned (tests / reports). */
   readonly bound: number;
+  /** The bound bots and their departments (the beacons follow them); a new array only when the set changes. */
+  boundBots(): readonly BoundBot[];
   dispose(): void;
 }
 
@@ -56,6 +59,10 @@ export function bindFleetToBots(
     counts[t] = pools[t].length;
   });
   let dirty = true;
+  let list: BoundBot[] = [];
+  const refresh = (): void => {
+    list = [...bindings.values()].map((b) => ({ bot: b.bot, island: b.island as ThemeId }));
+  };
   const unsub = store.subscribe(() => (dirty = true));
 
   const reconcile = (now: number): void => {
@@ -89,6 +96,7 @@ export function bindFleetToBots(
       byBot.set(bot, s.id);
       bindings.set(s.id, { island: s.island, slot, bot, releaseAt: -1 });
     }
+    refresh();
   };
 
   return {
@@ -102,6 +110,7 @@ export function bindFleetToBots(
         bindings.delete(id);
         // the freed bot may belong to a waiting session that found the island full
         dirty = true;
+        refresh();
       }
     },
     sessionOf(i) {
@@ -114,11 +123,15 @@ export function bindFleetToBots(
     get bound() {
       return bindings.size;
     },
+    boundBots() {
+      return list;
+    },
     dispose() {
       unsub();
       for (const b of bindings.values()) host?.unpin(b.bot);
       bindings.clear();
       byBot.clear();
+      list = [];
     },
   };
 }
