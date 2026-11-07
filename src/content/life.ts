@@ -479,6 +479,12 @@ export const WORKERS = {
   pauseNode: [1.2, 2.4] as const,
   pauseDock: [5, 10] as const,
   lookYaw: 0.7,
+  /**
+   * TASK-548 (D-136): waiting slots on a dock chain, the end node first (the boarding spot), then
+   * back along the pier, `dockSlotGap` u apart (a bot is ~0.5 u wide). A bot takes the lowest free slot.
+   */
+  dockSlots: 4,
+  dockSlotGap: 1,
   /** Trips: chance to head to a dock end, else a random door / hub. */
   dockChance: 0.12,
   /** At a lot door: chance to go in and sit down when a seat is free. */
