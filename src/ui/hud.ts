@@ -649,6 +649,11 @@ export function createHud(
         const p = placeLabel(w, lh, spots, placed, { width, height }, (b) =>
           underDock(b.x, b.y, b.w, b.h),
         );
+        // dodging the fleet card must not park the pill beside another island: hide it instead
+        if (av && spots.every((s) => Math.hypot(p.x - s.x, p.y - s.y) > HUD.labelAvoidMaxPx)) {
+          l.el.style.display = 'none';
+          continue;
+        }
         placed.push(p);
         l.el.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) translate(-50%, -50%)`;
       }

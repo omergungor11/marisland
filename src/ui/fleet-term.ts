@@ -10,6 +10,7 @@ import {
   sessionDuration,
   statusGlyph,
   tailFrom,
+  termEscape,
   type ChainNode,
 } from '../fleet/rows.ts';
 import type { ThemeId } from '../world/types.ts';
@@ -133,7 +134,23 @@ export function createFleetTerm(
   const atBottom = (): boolean =>
     body.scrollHeight - body.scrollTop - body.clientHeight <= T.stickPx;
   const toBottom = (): void => {
+    list.style.paddingBottom = '';
     body.scrollTop = body.scrollHeight;
+    // clip the top on a line boundary (TASK-579): pad the list end by the cut line's visible part
+    const top = body.getBoundingClientRect().top;
+    const kids = list.children;
+    let lo = 0;
+    let hi = kids.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (kids[mid].getBoundingClientRect().bottom <= top) lo = mid + 1;
+      else hi = mid;
+    }
+    const r = kids[lo]?.getBoundingClientRect();
+    if (r && r.top < top) {
+      list.style.paddingBottom = `${Math.ceil(r.bottom - top)}px`;
+      body.scrollTop = body.scrollHeight;
+    }
     pill.hidden = true;
   };
 
@@ -297,6 +314,15 @@ export function createFleetTerm(
       submit();
     }
   };
+  /** Esc (TASK-579): the prompt blurs (camera keys work again), the next Esc closes the view. */
+  const onEsc = (e: KeyboardEvent): void => {
+    if (e.key !== 'Escape' || mode === 'closed' || e.isComposing) return;
+    const t = e.target as HTMLElement | null;
+    const typing = t?.tagName === 'INPUT' || t?.tagName === 'TEXTAREA' || t?.isContentEditable;
+    if (typing && t !== prompt) return;
+    if (termEscape(t === prompt) === 'blur') prompt.blur();
+    else api.close();
+  };
   const onBack = (): void => api.close();
   const onStop = (): void => {
     hint = store.send({ type: 'stop', sessionId }) ? '' : T.offline;
@@ -315,6 +341,7 @@ export function createFleetTerm(
   stopBtn.addEventListener('click', onStop);
   pill.addEventListener('click', toBottom);
   prompt.addEventListener('keydown', onKey);
+  window.addEventListener('keydown', onEsc);
   prompt.addEventListener('input', fit);
   body.addEventListener('scroll', onScroll, { passive: true });
 
@@ -387,6 +414,7 @@ export function createFleetTerm(
       stopBtn.removeEventListener('click', onStop);
       pill.removeEventListener('click', toBottom);
       prompt.removeEventListener('keydown', onKey);
+      window.removeEventListener('keydown', onEsc);
       prompt.removeEventListener('input', fit);
       body.removeEventListener('scroll', onScroll);
       chainEl.removeEventListener('click', onChain);
