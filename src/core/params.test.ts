@@ -62,4 +62,11 @@ describe('params', () => {
     expect(parseParams('?panel=edit:nope').panelTool).toBe('');
     expect(parseParams('?panel=photo:prop').panelTool).toBe('');
   });
+
+  it('bridge: a valid port or NaN', () => {
+    expect(parseParams('?bridge=5177').bridge).toBe(5177);
+    expect(parseParams('').bridge).toBeNaN();
+    expect(parseParams('?bridge=abc').bridge).toBeNaN();
+    expect(parseParams('?bridge=70000').bridge).toBeNaN();
+  });
 });

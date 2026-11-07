@@ -59,6 +59,7 @@ import { runEditSelftest, testBrush } from './render/rebuild-testing.ts';
 import { staticEditBinding } from './ui/edit-panel.ts';
 import { EDIT_PANEL } from './content/edit-ui.ts';
 import { createFleetClient, fleetModeOf } from './fleet/client.ts';
+import { FLEET_WS_PATH } from './fleet/protocol.ts';
 import { createFleetPanel } from './ui/fleet-panel.ts';
 import { createFleetTip } from './ui/fleet-tip.ts';
 import { createFleetBeacons } from './life/fleet-beacons.ts';
@@ -184,6 +185,9 @@ export async function boot(): Promise<void> {
       now: wallNow(),
       frozen: params.freeze || params.simt > 0,
       chain: findShot(params.shot)?.fleetChain ?? 'pending',
+      url: Number.isNaN(params.bridge)
+        ? undefined
+        : `ws://localhost:${params.bridge}${FLEET_WS_PATH}`,
     });
     appScope.defer(() => fleet.dispose());
     const scene = new THREE.Scene();

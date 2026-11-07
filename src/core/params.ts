@@ -69,6 +69,8 @@ export interface Params {
    * (`fleet=0` or anything else); '' = unset (live on a local host outside capture, else off).
    */
   fleet: '' | 'live' | 'mock' | 'off';
+  /** `bridge=5177`: port of the fleet bridge to connect to (TASK-577); NaN = the default `FLEET_PORT`. */
+  bridge: number;
 }
 
 export type HudPanel = '' | 'photo' | 'settings' | 'edit';
@@ -105,6 +107,8 @@ export function parseParams(search: string): Params {
     ? (panelToolRaw as EditToolKind)
     : '';
   const fleetRaw = q.get('fleet');
+  const bridgeRaw = q.get('bridge');
+  const bridge = bridgeRaw === null || bridgeRaw === '' ? NaN : Number(bridgeRaw);
   const introtRaw = q.get('introt');
   const introt = introtRaw === null || introtRaw === '' ? NaN : Number(introtRaw);
   return {
@@ -145,5 +149,6 @@ export function parseParams(search: string): Params {
     fog: parseBool(q.get('fog'), true),
     tour: q.get('tour') === null ? 'idle' : parseBool(q.get('tour'), true) ? 'now' : 'off',
     fleet: fleetRaw === null ? '' : fleetRaw === 'live' || fleetRaw === 'mock' ? fleetRaw : 'off',
+    bridge: Number.isInteger(bridge) && bridge > 0 && bridge < 65536 ? bridge : NaN,
   };
 }
