@@ -167,3 +167,8 @@ export const CARRIED_ITEM_SLOT = {
   lantern: 15,
 } as const;
 export type CarriedItem = keyof typeof CARRIED_ITEM_SLOT;
+/**
+ * Fleet beacon (TASK-564): slots `FLEET_BEACON_SLOT + theme index` (THEME_IDS order), one accent
+ * diamond per department, riding the carried-item slot of a bot that holds a live session.
+ */
+export const FLEET_BEACON_SLOT = 16;

@@ -15,9 +15,9 @@ describe('worker bot geometry (TASK-306)', () => {
   const limb = g.getAttribute('limb');
   const emi = g.getAttribute('emissive');
 
-  it('has the villager attribute set plus emissive, and stays within 1900 triangles (accessories + carried items)', () => {
+  it('has the villager attribute set plus emissive, and stays within 2200 triangles (accessories + carried items + fleet beacons)', () => {
     expect(attrNames(g)).toEqual([...attrNames(buildVillager()), 'emissive'].sort());
-    expect(pos.count / 3).toBeLessThanOrEqual(1900);
+    expect(pos.count / 3).toBeLessThanOrEqual(2200);
     expect(pos.count / 3).toBeGreaterThan(400);
   });
 
@@ -27,7 +27,8 @@ describe('worker bot geometry (TASK-306)', () => {
     expect(bb.min.y).toBeGreaterThanOrEqual(-1e-6);
     expect(bb.min.y).toBeLessThan(0.01);
     expect(bb.max.y).toBeGreaterThan(1.0);
-    expect(bb.max.y).toBeLessThan(1.4);
+    // the fleet beacons (TASK-564) float above: gem centre + half height ~ 2.5 u
+    expect(bb.max.y).toBeLessThan(3.0);
     // chunky: head wider than 0.5 u
     expect(bb.max.z - bb.min.z).toBeGreaterThan(0.5);
   });
@@ -44,10 +45,9 @@ describe('worker bot geometry (TASK-306)', () => {
     // no villager-only modes sneak in
     for (const m of [3, 4, 5, 6]) expect(modes.has(m)).toBe(false);
     // 0..6 department accessories, 7..15 carried items (laptop, clipboard, crate, paint pot, satchel,
-    // megaphone, blowpipe, books, the QA bug-hunt lantern of TASK-480)
-    expect([...acc].sort((a, b) => a - b)).toEqual([
-      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-    ]);
+    // megaphone, blowpipe, books, the QA bug-hunt lantern of TASK-480), 16..22 the fleet beacons
+    // (one per theme, TASK-564)
+    expect([...acc].sort((a, b) => a - b)).toEqual(Array.from({ length: 23 }, (_, k) => k));
     for (const id of THEME_IDS) expect(acc.has(THEMES[id].accessory)).toBe(true);
   });
 
@@ -59,7 +59,7 @@ describe('worker bot geometry (TASK-306)', () => {
       if (emi.getX(i) > 0) lit++;
     }
     expect(eyes).toBeGreaterThan(0);
-    expect(lit / emi.count).toBeLessThan(0.15);
+    expect(lit / emi.count).toBeLessThan(0.2);
   });
 
   it('accessories are never pure white (they would take the team tint)', () => {

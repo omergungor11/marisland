@@ -3,7 +3,7 @@ import { CURTAIN_CSS } from './curtain.ts';
 import { UI } from '../content/palette.ts';
 import { HUD } from '../content/ui.ts';
 import { mixHex } from './hud-math.ts';
-import { FLEET_PANEL } from '../content/fleet.ts';
+import { FLEET_BOTS, FLEET_PANEL } from '../content/fleet.ts';
 
 export function injectStyles(): void {
   const style = document.createElement('style');
@@ -322,4 +322,8 @@ export const FLEET_PANEL_CSS = `
 @media (max-width:${F.minViewport - 1}px){.mar-fleet{display:none;}}
 @media (max-height:480px){.mar-fleet{top:60px;max-height:calc(100% - ${60 + 84}px);}}
 @media (prefers-reduced-motion:reduce){.mar-fdot[data-s="running"]{animation:none;}}
+/* hover tip of a bound bot (TASK-564) */
+.mar-ftip{position:absolute;left:0;top:0;max-width:${FLEET_BOTS.tip.maxWidth}px;display:flex;flex-direction:column;gap:1px;background:${UI.surface};border-radius:12px;
+  box-shadow:inset 3px 0 0 var(--acc,${UI.secondary}),${lip},${soft};padding:6px 10px 7px 12px;font:${F.fonts.row};color:${UI.ink};pointer-events:none;opacity:0;visibility:hidden;transition:opacity .12s;}
+.mar-ftip.mar-ftip-on{opacity:1;visibility:visible;}
 `;

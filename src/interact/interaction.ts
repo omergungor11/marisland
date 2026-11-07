@@ -65,6 +65,8 @@ export interface InteractionDeps {
   motionScale: number;
   /** Attach pointer listeners (false in capture mode: scripts drive `pickAt`/`clickAt`). */
   listen: boolean;
+  /** Hover changed or moved (canvas CSS px; null hit = off): the fleet bot tip (TASK-564). */
+  onHover?: (hit: PickHit | null, x: number, y: number) => void;
 }
 
 export interface Interaction {
@@ -441,7 +443,8 @@ export function createInteraction(d: InteractionDeps): Interaction {
     return r ? terrainOnly.pick(r) : null;
   };
 
-  const hoverFrom = (hit: PickHit | null): void => {
+  const hoverFrom = (hit: PickHit | null, x = 0, y = 0): void => {
+    d.onHover?.(hit, x, y);
     const target = hit && hit.kind !== 'terrain' ? meshesOf(hit) : null;
     hover = hit && target ? { hit, target } : null;
     setCursor(hover || hit?.name === 'whale' ? 'pointer' : '');
@@ -452,7 +455,7 @@ export function createInteraction(d: InteractionDeps): Interaction {
 
   const hoverAt = (x: number, y: number): PickHit | null => {
     const hit = doPick(x, y);
-    hoverFrom(hit);
+    hoverFrom(hit, x, y);
     return hit;
   };
 
