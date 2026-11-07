@@ -72,8 +72,34 @@ export interface Shape {
   tag?: string;
 }
 
+/**
+ * The last two (rotY → cos, sin) pairs of `rectShape`: searches try one or two rots over many
+ * positions (TASK-553). `Object.is` keeps −0 apart from 0 (their sines differ in sign).
+ */
+const rotMemo = { a: NaN, ac: 1, as: 0, b: NaN, bc: 1, bs: 0 };
+
 export function rectShape(x: number, z: number, rotY: number, w: number, d: number): Shape {
-  return { x, z, c: dm.cos(rotY), s: dm.sin(rotY), hw: w / 2, hd: d / 2, r: 0 };
+  const m = rotMemo;
+  if (!Object.is(rotY, m.a)) {
+    if (Object.is(rotY, m.b)) {
+      const c = m.bc;
+      const s = m.bs;
+      m.b = m.a;
+      m.bc = m.ac;
+      m.bs = m.as;
+      m.a = rotY;
+      m.ac = c;
+      m.as = s;
+    } else {
+      m.b = m.a;
+      m.bc = m.ac;
+      m.bs = m.as;
+      m.a = rotY;
+      m.ac = dm.cos(rotY);
+      m.as = dm.sin(rotY);
+    }
+  }
+  return { x, z, c: m.ac, s: m.as, hw: w / 2, hd: d / 2, r: 0 };
 }
 
 export function discShape(x: number, z: number, r: number): Shape {
