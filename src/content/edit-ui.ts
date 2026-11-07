@@ -63,7 +63,7 @@ export const EDIT_UI = {
   cursorHz: 60,
   /** Cursor radius follows `[` / `]` with this damping (1/s); instant under reduced motion. */
   cursorRadiusLambda: 16,
-  keys: { toggle: 'e', radiusDown: '[', radiusUp: ']', exit: 'Escape' },
+  keys: { toggle: 'b', radiusDown: '[', radiusUp: ']', exit: 'Escape' },
 } as const;
 
 /**
@@ -134,8 +134,8 @@ export const EDIT_PANEL = {
     redo: 'Redo · Shift Ctrl Z',
     share: 'Copy share link',
     reset: 'Reset all edits',
-    done: 'Done · E',
-    edit: 'Edit · E',
+    done: 'Done · B',
+    edit: 'Edit · B',
   },
   doneLabel: 'Done',
   /** Share: toast text and how long it stays (ms); the prompt fallback when the clipboard fails. */

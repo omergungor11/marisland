@@ -19,6 +19,7 @@ import {
   type Viewport,
 } from './poses.ts';
 import { azimuthToward, type Pose, type View } from './framing.ts';
+import { createKeyState, velocityFor } from './keys.ts';
 
 CameraControls.install({ THREE });
 
@@ -149,6 +150,32 @@ export function createCameraSystem(
     if (!flying) return;
     flying = false;
     controls.smoothTime = CAMERA.smoothTime;
+  };
+  const keys = createKeyState(CAMERA_MOVE.keys.map);
+  /** Held keys → this frame's truck / ground-forward / azimuth, instant (the ramp is the ease). */
+  const applyKeys = (dt: number): void => {
+    if (!keys.active) return;
+    const m = velocityFor(keys, dt, controls.distance, CAMERA_MOVE.keys);
+    if (!controls.enabled || (m.truckX === 0 && m.forward === 0 && m.azimuth === 0)) return;
+    if (flying) {
+      // an instant move would snap the fly-to to its end: stop it where it is now
+      controls.getPosition(_pos, false);
+      controls.getTarget(_target, false);
+      void controls.setLookAt(_pos.x, _pos.y, _pos.z, _target.x, _target.y, _target.z, false);
+      endFly();
+    }
+    // camera-controls `forward` moves along up × right: the ground-plane heading, never a dive
+    if (m.truckX !== 0 || m.forward !== 0) {
+      void controls.truck(m.truckX, 0, false);
+      void controls.forward(m.forward, false);
+      // the target rides the ground (sea level over water), so a close-up glides over a hill
+      // instead of the orbit pivot sinking into it and the clearance push flattening the view
+      controls.getTarget(_target);
+      const gy = Math.max(0, world.heightAt(_target.x, _target.z));
+      const k = 1 - Math.exp(-CAMERA_MOVE.keys.groundFollow * Math.min(dt, 0.1));
+      void controls.moveTo(_target.x, _target.y + (gy - _target.y) * k, _target.z, false);
+    }
+    if (m.azimuth !== 0) void controls.rotate(m.azimuth, 0, false);
   };
   const cleanups: Array<() => void> = [];
   function listen<K extends keyof WindowEventMap>(
@@ -398,6 +425,7 @@ export function createCameraSystem(
         return;
       }
       applyPitchClamp();
+      applyKeys(dt);
       controls.update(dt);
       // Keep the camera above the terrain.
       controls.getPosition(_pos);
@@ -468,6 +496,21 @@ export function createCameraSystem(
     };
     listen(dom, 'pointerup', up);
     listen(dom, 'pointercancel', up);
+
+    // Keyboard camera (TASK-565): not while typing or with a modifier (shortcuts belong to the
+    // browser; a held Meta also swallows the keyup on macOS, so a modifier releases everything).
+    listen(window, 'keydown', (e) => {
+      const t = e.target as HTMLElement | null;
+      const tag = t?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || t?.isContentEditable) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) {
+        keys.clear();
+        return;
+      }
+      if (keys.down(e.key)) e.preventDefault();
+    });
+    listen(window, 'keyup', (e) => keys.up(e.key));
+    listen(window, 'blur', () => keys.clear());
   }
 
   function updateTier(): void {

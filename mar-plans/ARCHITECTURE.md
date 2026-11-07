@@ -390,9 +390,9 @@ validation, ghost previews, seed + versioned edit log in localStorage / the URL 
   touched instances and grows groups with headroom; removed props fade out through a reversed `aAppear`.
 - **Editor** (`edit/`): `EditSession` (apply → rebuild → log → debounced autosave
   `marisland.edit.<seed>.v1`, undo/redo where a stroke is one step, share URL), tools + stroke sampler,
-  brush ring (terrain `uBrush`), ghost prop through the shared lit program, input routing (`E`, Esc,
+  brush ring (terrain `uBrush`), ghost prop through the shared lit program, input routing (`B`, Esc,
   `Ctrl/⌘+Z`, `[` `]`; left / one-finger drag edits, two fingers navigate). Capture never creates it.
-- **Panel** (`ui/edit-panel.ts`, TASK-221): the HUD dock's brush button (or `E`) folds the dock into the
+- **Panel** (`ui/edit-panel.ts`, TASK-221): the HUD dock's brush button (or `B`; `E` rotates the camera, TASK-565) folds the dock into the
   panel — tool row, size / strength sliders, zone swatches, a prop picker with thumbnails, undo / redo,
   share (clipboard + toast), two-tap reset, an "edited · N changes" tab. Desktop card / portrait bottom
   sheet / landscape side sheet; labels avoid whichever box it is. `editModeChanged` ↔ `hud.openPanel`

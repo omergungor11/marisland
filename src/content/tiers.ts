@@ -54,4 +54,29 @@ export const CAMERA_MOVE = {
   pickStep: 2,
   /** A hit within radius × this of an island centre picks it (shallows count). */
   pickSlack: 1.3,
+  /**
+   * Keyboard camera (TASK-565). `map`: action → `KeyboardEvent.key` values (letters match either
+   * case); add shortcuts here. Ground speed is `unitsPerSecond` at `refDistance` (the overview: W
+   * crosses a ~150 u island in ~2 s), linear with distance, the factor clamped to
+   * [minScale, maxScale] (a T2 close-up at 60 u glides at ~10 u/s). Q/E: a full turn in 4 s.
+   * `rampSeconds`: smoothstep ease-in on press, ease-out on release.
+   */
+  keys: {
+    map: {
+      forward: ['w', 'ArrowUp'],
+      back: ['s', 'ArrowDown'],
+      left: ['a', 'ArrowLeft'],
+      right: ['d', 'ArrowRight'],
+      rotateLeft: ['q'],
+      rotateRight: ['e'],
+    },
+    unitsPerSecond: 75,
+    refDistance: 450,
+    minScale: 0.05,
+    maxScale: 1.8,
+    rotateRadPerSecond: Math.PI / 2,
+    rampSeconds: 0.25,
+    /** While moving, the orbit target eases to the ground height at this rate (1/s, damp). */
+    groundFollow: 4,
+  },
 } as const;

@@ -225,7 +225,7 @@ describe('tour stops', () => {
 type Listener = (e: { target: EventTarget | null }) => void;
 function fakeWindow(): {
   listeners: Map<string, Listener[]>;
-  fire(type: string, target?: unknown): void;
+  fire(type: string, target?: unknown, extra?: Record<string, unknown>): void;
 } {
   const listeners = new Map<string, Listener[]>();
   (globalThis as { window?: unknown }).window = {
@@ -239,8 +239,9 @@ function fakeWindow(): {
   };
   return {
     listeners,
-    fire: (type, target = null) => {
-      for (const fn of listeners.get(type) ?? []) fn({ target: target as EventTarget | null });
+    fire: (type, target = null, extra = {}) => {
+      for (const fn of listeners.get(type) ?? [])
+        fn({ ...extra, target: target as EventTarget | null } as unknown as Event);
     },
   };
 }
@@ -311,6 +312,7 @@ describe('tour system', () => {
     expect(looks.at(-1)?.transition).toBe(false);
     // the HUD toggle's own pointerdown is not "any input"
     win.fire('pointerdown', toggle);
+    win.fire('keydown', toggle, { key: 'Enter' });
     expect(tour.active).toBe(true);
     // a wheel notch hands the camera back with a damped glide to the pose just ahead
     win.fire('wheel');
@@ -319,6 +321,10 @@ describe('tour system', () => {
     expect(looks.at(-1)?.transition).toBe(true);
     expect(onActive).toHaveBeenLastCalledWith(false);
     expect(Number.isNaN(tour.time)).toBe(true);
+    // a camera key with the toggle still focused (after a click) stops it too
+    tour.start();
+    win.fire('keydown', toggle, { key: 'w' });
+    expect(tour.active).toBe(false);
     tour.dispose();
     expect(win.listeners.get('pointerdown')).toHaveLength(0);
   });

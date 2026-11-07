@@ -282,7 +282,11 @@ export function createTour(o: TourOptions): Tour {
 
   if (o.listen) {
     const onInput = (e: Event): void => {
-      if (o.ignoreInput?.(e.target)) return;
+      // the toggle's own click / Enter / Space toggles it; any other key (WASD with the toggle
+      // still focused after a click) is input like everywhere else
+      const key = (e as Partial<KeyboardEvent>).key;
+      const activates = key === undefined || key === 'Enter' || key === ' ';
+      if (activates && o.ignoreInput?.(e.target)) return;
       idle = 0;
       tour.stop();
     };
