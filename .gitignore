@@ -17,3 +17,7 @@ shots/*
 !shots/.gitkeep
 dist-*/
 .claude/worktrees/
+
+# fleet: raw session streams stay local
+fleet/runs/*
+!fleet/runs/.gitkeep

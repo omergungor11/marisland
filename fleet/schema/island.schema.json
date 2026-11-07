@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "marisland/fleet/island.schema.json",
+  "title": "Fleet island manifest (fleet/islands/<theme>/island.json)",
+  "description": "Written by HQ (or the user). The bridge reads it to spawn sessions; fleet-lint validates it. Islands read it, never edit it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["theme", "name", "role", "model", "maxTurns", "allowedTools", "addDirs", "owner"],
+  "properties": {
+    "theme": {
+      "enum": ["hq", "coding", "marketing", "qa", "design", "devops", "research"],
+      "description": "Must equal the directory name and a world ThemeId."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 40,
+      "description": "Panel display name, Turkish."
+    },
+    "role": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 200,
+      "description": "One sentence: what this department owns."
+    },
+    "model": {
+      "enum": ["haiku", "sonnet", "opus"],
+      "description": "Default model for sessions started on this island. Never fable."
+    },
+    "maxTurns": { "type": "integer", "minimum": 1, "maximum": 200 },
+    "maxChildren": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 20,
+      "default": 6,
+      "description": "Hand-off sessions one request may open from here (M42)."
+    },
+    "allowedTools": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Passed as --allowedTools. Edit/Write are confined by .claude/settings.json deny rules."
+    },
+    "addDirs": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Extra writable roots (--add-dir), relative to the repo root. HQ gets \"fleet\"; others usually []."
+    },
+    "owner": {
+      "enum": ["hq", "user"],
+      "description": "Who may change this manifest and the settings file."
+    },
+    "agents": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Island sub-agent names (.claude/agents/<name>.md) offered in the panel's agent picker; 'default' = the CLAUDE.md persona."
+    },
+    "panel": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "accent": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "description": "Overrides the world ISLAND_ACCENTS colour in the panel."
+        }
+      }
+    }
+  }
+}
