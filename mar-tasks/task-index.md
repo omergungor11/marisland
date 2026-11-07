@@ -400,7 +400,7 @@ Details in `phases/phase-3.md`.
 | TASK-533 | Harbour kit props: shared (harbour light, waiting shelter, ticket booth, timetable board, bollards; variants where possible) + Research theme: stilt marine lab (tier-1) with glass tide tank, yellow submersible, sunken city kit (columns, arches, paving slabs, broken tower tops: one def, variants), tide gauge; Research cap override; gallery | props | M | COMPLETED (D-114) | — |
 | TASK-534 | Research harbour placement + motion: kit on the anchors, sunken city in the lagoon (tops above water), fish schools round the ruins, sub dives 09:00 / surfaces 16:00 with bubbles, lab + tank glow, ferry arrival ritual; wow Sunken Noon + Tide-Lab Dusk; hash re-pin | worldgen + life | L | COMPLETED (D-118) | — |
 | TASK-535 | M31 Research shots + QA: wow + ladder L-research low / medium `--assert`, budgets, QA report | qa | S | COMPLETED (`mar-docs/qa/m31-research-2026-11-01.md`) | — |
-| TASK-548 | Pier-neck bot queue: spacing against the moored vessel, three bots stack in W-tide-lab-dusk | life | S | PENDING | — |
+| TASK-548 | Pier-neck bot queue: spacing against the moored vessel, three bots stack in W-tide-lab-dusk | life | S | COMPLETED (D-136) | — |
 | TASK-549 | Harbour beam over land: olive wash on rock and green in W-tide-lab-dusk | shader | S | PENDING | — |
 | TASK-550 | Sunken city paving: flush slabs on a lattice instead of loose tiles; sand wedge on the arm rock face | props + worldgen | S | PENDING | — |
 | TASK-551 | Re-frame W26 (gantry, steam, §11); wire `detail` into `measureGpuMemory` so memory splits are visible; D-culture-research 916k / 800k; low memory reference comment vs 960x540 | engine | S | PENDING | — |

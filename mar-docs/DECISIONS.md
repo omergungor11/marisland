@@ -2,6 +2,13 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-136: Workers claim spaced waiting slots on the dock chain instead of stacking on the pier end (TASK-548; M31 Research QA defect 1) — 2026-11-07
+
+**Decision**: every dock trip and `dock` goal in `life/workers.ts` used the one dock-end node, so 2-3 Research bots stood on the same deck node on the pier neck beside the moored vessel and hid the sub (W-tide-lab-dusk 840-960 × 580-700). Workers now claim a slot on the dock chain: the end node first (the boarding spot), then up to 3 nodes back along the pier, `WORKERS.dockSlotGap` 1 u apart (`WORKERS.dockSlots` 4, `dockSlot(i, end)`): the lowest slot nobody else holds, falling back to the end node when all four are taken; the claim clears when the bot plans its next trip. The chain is the run of consecutive node ids `land-world.ts` builds behind a dock end, guarded by a distance check. No new RNG draws (determinism unchanged), no agents or meshes added; a ≤ 4 × agents scan at route-pick time. Test: seeds 1001 / 7 / 2578 over 180 s of sim time, no two bots on a claimed non-end node.
+**Numbers**: W-tide-lab-dusk seed 1001 simt 229: 3 bots on the neck → 1, the whole sub visible; 242 calls / 713k tris / 17 programs unchanged. `wow --assert` W-tide-lab-dusk passes on 1001, 7 (181 calls), 2578 (158), 2841 (243 / 746k).
+**Not taken**: a real queue that steps forward when the front slot frees (extra state for a 5-10 s dock pause); a footprint mask round the vessel (it sits 2.1 u off the pier axis, so the pier slots clear it by construction).
+**Open**: the tide-lab cam is framed on the seed 1001 harbour, so 7 / 2578 / 2841 rest on the test, not a picture; a claim held through a non-dock goal only clears on the next trip (a slot may be skipped for a while); villagers (`land.ts`) keep the single-node dock behaviour; the new test would pass if no bot visited a dock in the run.
+
 ## D-134: The CI perf job is report-only until TASK-553 (user 2026-11-06) — 2026-11-06
 
 **Decision**: `perf` in `.github/workflows/ci.yml` gets `continue-on-error: true`. It still runs `pnpm test:perf` and prints every measurement, but a miss does not turn CI red. Bounds unchanged.
