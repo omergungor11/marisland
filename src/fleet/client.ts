@@ -4,7 +4,7 @@
  * No three.js; the only wall-clock reads are the live socket's (the mock gets `now` passed in).
  */
 import { FLEET } from '../content/fleet.ts';
-import { createFleetMock } from './mock.ts';
+import { createFleetMock, type FleetMock } from './mock.ts';
 import {
   FLEET_PORT,
   FLEET_WS_PATH,
@@ -28,7 +28,7 @@ export interface FleetStore {
   linesOf(sessionId: string): readonly FleetLine[];
   /** Called after every applied event and on connection changes; returns the unsubscribe. */
   subscribe(cb: () => void): () => void;
-  /** Send a command to the bridge; false when it cannot (off, mock, socket closed). */
+  /** Send a command to the bridge (mock: answered offline); false when it cannot (off, socket closed). */
   send(cmd: FleetCommand): boolean;
   dispose(): void;
 }
@@ -122,10 +122,10 @@ export function createFleetClient(o: FleetClientOptions): FleetStore {
   let ws: WebSocket | null = null;
   let retry: ReturnType<typeof setTimeout> | null = null;
   let disposed = false;
-  let stopMock: (() => void) | null = null;
+  let mock: FleetMock | null = null;
 
   if (o.mode === 'mock')
-    stopMock = createFleetMock({ seed: o.seed, now: o.now, frozen: o.frozen ?? false }, apply);
+    mock = createFleetMock({ seed: o.seed, now: o.now, frozen: o.frozen ?? false }, apply);
   else if (o.mode === 'live') {
     const url = o.url ?? `ws://localhost:${FLEET_PORT}${FLEET_WS_PATH}`;
     const R = FLEET.reconnect;
@@ -193,6 +193,7 @@ export function createFleetClient(o: FleetClientOptions): FleetStore {
       return () => subs.delete(cb);
     },
     send(cmd) {
+      if (mock) return mock.command(cmd);
       if (!ws || ws.readyState !== WebSocket.OPEN) return false;
       ws.send(JSON.stringify(cmd));
       return true;
@@ -206,8 +207,8 @@ export function createFleetClient(o: FleetClientOptions): FleetStore {
         ws.close();
         ws = null;
       }
-      stopMock?.();
-      stopMock = null;
+      mock?.stop();
+      mock = null;
       subs.clear();
     },
   };

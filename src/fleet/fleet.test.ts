@@ -3,9 +3,20 @@ import { FLEET, FLEET_MOCK } from '../content/fleet.ts';
 import { THEME_IDS } from '../world/types.ts';
 import { islandNear, type CameraWorld } from '../camera/poses.ts';
 import { applyFleetEvent, createFleetClient, emptyFleetState, fleetModeOf } from './client.ts';
-import { createFleetMock, mockFleet } from './mock.ts';
-import { formatDuration, panelRows, sessionDuration } from './rows.ts';
-import type { FleetEvent, FleetSession } from './protocol.ts';
+import { createFleetMock, mockFleet, mockHistory } from './mock.ts';
+import {
+  fleetBlocks,
+  fold,
+  formatDuration,
+  linePlan,
+  lineView,
+  matchesQuery,
+  panelRows,
+  sessionDuration,
+  syncKeyed,
+  tailFrom,
+} from './rows.ts';
+import type { FleetEvent, FleetLine, FleetSession } from './protocol.ts';
 
 const NOW = FLEET.captureNow;
 const MIN = 60_000;
@@ -135,12 +146,12 @@ describe('fleet: mock', () => {
     vi.advanceTimersByTime(60_000);
     expect(frozen.map((e) => e.type)).toEqual(['snapshot']);
     const evs: FleetEvent[] = [];
-    const stop = createFleetMock({ seed: 1001, now: NOW, frozen: false }, (e) => evs.push(e));
+    const mock = createFleetMock({ seed: 1001, now: NOW, frozen: false }, (e) => evs.push(e));
     vi.advanceTimersByTime(20_000);
     const lines = evs.filter((e) => e.type === 'line');
     expect(lines.length).toBeGreaterThanOrEqual(5);
     expect(lines.length).toBeLessThanOrEqual(10);
-    stop();
+    mock.stop();
     const n = evs.length;
     vi.advanceTimersByTime(20_000);
     expect(evs.length).toBe(n);
@@ -241,5 +252,203 @@ describe('fleet: island focus', () => {
     expect(islandNear(world, 10, 0, 1.6)?.name).toBe('A');
     expect(islandNear(world, 140, 0, 1.6)?.name).toBe('B'); // 140/60 = 2.3 vs 60/40 = 1.5
     expect(islandNear(world, 0, 500, 1.6)).toBeNull();
+  });
+});
+
+describe('fleet: search (M41)', () => {
+  it('folds case and Turkish letters', () => {
+    expect(fold('İŞ ÇIĞ Üzüm Ödev hikâye')).toBe('is cig uzum odev hikaye');
+    expect(fold('ışık')).toBe(fold('ISIK'));
+  });
+  it('matches every word in title / agent / island / status', () => {
+    const s = sess('a', { title: 'Su shader’ında köpük', agent: 'engine', status: 'running' });
+    const isle = 'Kodlama Sunny Cove';
+    expect(matchesQuery(s, isle, 'SHADER')).toBe(true);
+    expect(matchesQuery(s, isle, 'kopuk calisiyor')).toBe(true); // title + status label
+    expect(matchesQuery(s, isle, 'ENGİNE coding')).toBe(true);
+    expect(matchesQuery(s, isle, 'sunny')).toBe(true);
+    expect(matchesQuery(s, isle, 'shader bitti')).toBe(false);
+    expect(matchesQuery(s, isle, '  ')).toBe(true);
+  });
+  it('fleet blocks: island order, matching rows, live count of the whole island', () => {
+    const all = [
+      sess('m1', { island: 'marketing', status: 'running', title: 'post' }),
+      sess('c1', { status: 'running', title: 'shader fix' }),
+      sess('c2', { status: 'running', title: 'other' }),
+      sess('q1', { island: 'qa', title: 'other' }),
+    ];
+    const b = fleetBlocks(
+      all,
+      ['hq', 'coding', 'marketing', 'qa'],
+      12,
+      (s) => s.title.includes('shader') || s.island === 'marketing',
+    );
+    expect(b.map((x) => [x.island, x.rows.map((s) => s.id), x.live])).toEqual([
+      ['coding', ['c1'], 2],
+      ['marketing', ['m1'], 1],
+    ]);
+  });
+});
+
+describe('fleet: terminal lines (M41)', () => {
+  const L = (kind: FleetLine['kind'], text: string, tool?: string): FleetLine => ({
+    sessionId: 'a',
+    seq: 0,
+    at: NOW,
+    kind,
+    text,
+    ...(tool ? { tool } : {}),
+  });
+  it('formats each kind', () => {
+    expect(lineView(L('tool_use', 'Bash pnpm test', 'Bash'))).toMatchObject({
+      mark: '▸',
+      tool: 'Bash',
+      text: 'pnpm test',
+    });
+    expect(lineView(L('tool_result', '218 satır\nmore', 'Read'))).toMatchObject({
+      mark: '↳',
+      tool: '',
+      text: '218 satır',
+    });
+    expect(lineView(L('assistant', 'Tamam'))).toMatchObject({ mark: '', text: 'Tamam' });
+    expect(lineView(L('user', 'Bir şey yap')).mark).toBe('›');
+    expect(lineView(L('stderr', 'exit 1')).mark).toBe('!');
+    expect(lineView(L('result', 'done · 3 turns'))).toMatchObject({ mark: '✓', fail: false });
+    expect(lineView(L('result', 'error_max_turns · 9 turns'))).toMatchObject({
+      mark: '✕',
+      fail: true,
+    });
+  });
+  it('tail from: the count when dense from 0, else everything', () => {
+    expect(tailFrom([])).toBe(0);
+    expect(tailFrom([{ seq: 0 }, { seq: 1 }, { seq: 2 }])).toBe(3);
+    expect(tailFrom([{ seq: 40 }, { seq: 41 }])).toBe(0); // joined mid-run
+  });
+  it('line plan: append, drop the capped top, rebuild on a gap', () => {
+    expect(linePlan([], [0, 1])).toEqual({ drop: 0, from: 0 });
+    expect(linePlan([0, 1], [0, 1, 2, 3])).toEqual({ drop: 0, from: 2 });
+    expect(linePlan([0, 1, 2], [1, 2, 3])).toEqual({ drop: 1, from: 2 });
+    expect(linePlan([5, 6], [0, 1, 2, 5, 6])).toBeNull(); // tail filled in older lines
+    expect(linePlan([0, 1], [0, 1])).toEqual({ drop: 0, from: 2 });
+  });
+});
+
+describe('fleet: keyed rows (M41)', () => {
+  /** A fake list: nodes are objects, the "DOM" is an array, so identity and moves are observable. */
+  const fake = (): {
+    dom: Array<{ k: string }>;
+    nodes: Map<string, { k: string }>;
+    made: string[];
+    sync(order: string[], keys: string[]): string[];
+  } => {
+    const dom: Array<{ k: string }> = [];
+    const nodes = new Map<string, { k: string }>();
+    const made: string[] = [];
+    return {
+      dom,
+      nodes,
+      made,
+      sync: (order, keys) =>
+        syncKeyed(nodes, order, keys, {
+          make: (k) => (made.push(k), { k }),
+          insert: (n, ref) => {
+            const i = dom.indexOf(n);
+            if (i >= 0) dom.splice(i, 1);
+            dom.splice(ref ? dom.indexOf(ref) : dom.length, 0, n);
+          },
+          drop: (n) => dom.splice(dom.indexOf(n), 1),
+        }),
+    };
+  };
+  it('keeps a node across updates, moves and drops by key', () => {
+    const f = fake();
+    let order = f.sync([], ['a', 'b', 'c']);
+    const b = f.nodes.get('b');
+    order = f.sync(order, ['a', 'b', 'c']); // a feed line: nothing made, nothing moved
+    expect(f.made).toEqual(['a', 'b', 'c']);
+    order = f.sync(order, ['c', 'a', 'd', 'b']);
+    expect(f.dom.map((n) => n.k)).toEqual(['c', 'a', 'd', 'b']);
+    expect(f.nodes.get('b')).toBe(b);
+    order = f.sync(order, ['d', 'b']);
+    expect(f.dom.map((n) => n.k)).toEqual(['d', 'b']);
+    expect(f.nodes.has('a')).toBe(false);
+    expect(f.made).toEqual(['a', 'b', 'c', 'd']);
+    expect(order).toEqual(['d', 'b']);
+  });
+});
+
+describe('fleet: mock commands (M41)', () => {
+  afterEach(() => vi.useRealTimers());
+  const run = (frozen: boolean): FleetEvent[] => {
+    const evs: FleetEvent[] = [];
+    const m = createFleetMock({ seed: 1001, now: NOW, frozen }, (e) => evs.push(e));
+    expect(
+      m.command({ type: 'start', island: 'qa', prompt: 'Gece karelerini kontrol et\nayrıntı' }),
+    ).toBe(true);
+    vi.advanceTimersByTime(15_000);
+    m.stop();
+    return evs;
+  };
+  it('tail replays a deterministic history; lastSeq matches', () => {
+    const { sessions } = mockFleet(1001, NOW);
+    const s = sessions.find((x) => x.status === 'done') as FleetSession;
+    const h = mockHistory(1001, s);
+    expect(h).toEqual(mockHistory(1001, s));
+    expect(h.map((l) => l.seq)).toEqual(h.map((_, i) => i));
+    expect(h[1]).toMatchObject({ kind: 'user', text: s.title });
+    expect(h.at(-1)?.kind).toBe('result');
+    const evs: FleetEvent[] = [];
+    const m = createFleetMock({ seed: 1001, now: NOW, frozen: true }, (e) => evs.push(e));
+    const snap = evs[0].type === 'snapshot' ? evs[0].sessions.find((x) => x.id === s.id) : null;
+    expect(snap?.lastSeq).toBe(h.length - 1);
+    expect(m.command({ type: 'tail', sessionId: s.id, from: 2 })).toBe(true);
+    const ev = evs.at(-1);
+    expect(ev?.type === 'lines' && ev.lines.map((l) => l.seq)).toEqual(
+      h.slice(2).map((l) => l.seq),
+    );
+    expect(m.command({ type: 'tail', sessionId: 'nope', from: 0 })).toBe(false);
+  });
+  it('start: draft title, prompt + 6 scripted lines over ~10 s, then done; deterministic', () => {
+    vi.useFakeTimers();
+    const evs = run(false);
+    vi.useRealTimers();
+    vi.useFakeTimers();
+    expect(run(false)).toEqual(evs);
+    const mine = evs.filter((e) => e.type === 'line' && e.line.sessionId === 'mock-qa-new0');
+    const kinds = mine.map((e) => (e.type === 'line' ? e.line.kind : ''));
+    expect(kinds).toEqual(['user', ...FLEET_MOCK.script.map((x) => x.kind), 'result']);
+    const last = mine.at(-1);
+    const span = last?.type === 'line' ? last.line.at - NOW : 0;
+    expect(span).toBeGreaterThanOrEqual(8000);
+    expect(span).toBeLessThanOrEqual(12_000);
+    const sessions = evs.flatMap((e) =>
+      e.type === 'session' && e.session.id === 'mock-qa-new0' ? [e.session] : [],
+    );
+    expect(sessions[0]).toMatchObject({ title: 'Gece karelerini kontrol et', status: 'running' });
+    expect(sessions.at(-1)).toMatchObject({ status: 'done', turns: 1 });
+  });
+  it('frozen start: the session and its prompt only, no timers', () => {
+    vi.useFakeTimers();
+    const evs = run(true);
+    const lines = evs.filter((e) => e.type === 'line');
+    expect(lines.map((e) => (e.type === 'line' ? e.line.kind : ''))).toEqual(['user']);
+  });
+  it('send re-runs the script on a finished session and bumps turns; stop ends a live one', () => {
+    vi.useFakeTimers();
+    const c = createFleetClient({ mode: 'mock', seed: 1001, now: NOW });
+    const done = [...c.sessions.values()].find((s) => s.status === 'done') as FleetSession;
+    expect(c.send({ type: 'tail', sessionId: done.id, from: 0 })).toBe(true);
+    const n = c.linesOf(done.id).length;
+    expect(c.send({ type: 'send', sessionId: done.id, prompt: 'bir tur daha' })).toBe(true);
+    expect(c.sessions.get(done.id)?.status).toBe('running');
+    expect(c.send({ type: 'send', sessionId: done.id, prompt: 'yine' })).toBe(false); // live
+    vi.advanceTimersByTime(12_000);
+    expect(c.sessions.get(done.id)).toMatchObject({ status: 'done', turns: done.turns + 1 });
+    expect(c.linesOf(done.id).length).toBe(n + 1 + FLEET_MOCK.script.length + 1);
+    expect(c.linesOf(done.id)[n]).toMatchObject({ kind: 'user', text: 'bir tur daha', seq: n });
+    const live = [...c.sessions.values()].find((s) => s.status === 'running') as FleetSession;
+    expect(c.send({ type: 'stop', sessionId: live.id })).toBe(true);
+    expect(c.sessions.get(live.id)?.status).toBe('stopped');
+    c.dispose();
   });
 });

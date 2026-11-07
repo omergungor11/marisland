@@ -9,7 +9,7 @@
 import { FLEET_BOTS } from '../content/fleet.ts';
 import type { FleetStore } from '../fleet/client.ts';
 import { isLive, type FleetSession } from '../fleet/protocol.ts';
-import { THEME_IDS } from '../world/types.ts';
+import { THEME_IDS, type ThemeId } from '../world/types.ts';
 import { assignBots, type BotSession } from './fleet-bots-map.ts';
 
 /** What the binding needs from the workers kind (`Workers` implements it). */
@@ -25,6 +25,8 @@ export interface FleetBots {
   update(simTime: number): void;
   /** The session worker `i` holds (hover tip), null when it holds none. */
   sessionOf(i: number): FleetSession | null;
+  /** The department whose resident pool worker `i` is in (bot click without a session, M41). */
+  islandOf(i: number): ThemeId | null;
   /** Bots currently pinned (tests / reports). */
   readonly bound: number;
   dispose(): void;
@@ -105,6 +107,9 @@ export function bindFleetToBots(
     sessionOf(i) {
       const id = byBot.get(i);
       return id ? (store.sessions.get(id) ?? null) : null;
+    },
+    islandOf(i) {
+      return THEME_IDS.find((t) => pools[t].includes(i)) ?? null;
     },
     get bound() {
       return bindings.size;

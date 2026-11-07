@@ -1,5 +1,5 @@
 import type { ThemeId } from '../world/types.ts';
-import type { SessionStatus } from '../fleet/protocol.ts';
+import type { LineKind, SessionStatus } from '../fleet/protocol.ts';
 
 /**
  * Fleet layer (Faz 4, `mar-plans/FLEET.md`): the island panel's look and the client's timings.
@@ -22,6 +22,8 @@ export const FLEET = {
 
 export const FLEET_PANEL = {
   width: 300,
+  /** Card width (px) in the fleet view (no island focused) and while the terminal is open (M41). */
+  fleetWidth: 360,
   /** Rows shown; the rest collapse into the "+N" footer. */
   rowCap: 12,
   /** Running dot pulse (s). */
@@ -52,6 +54,50 @@ export const FLEET_PANEL = {
   liveCount: (n: number): string => `${n} canlı`,
   more: (n: number): string => `+${n} daha`,
   empty: 'Bu adada session yok',
+  /** Fleet view (M41): header and the search box. */
+  fleetTitle: 'Filo',
+  fleetIslands: (n: number): string => `${n} ada`,
+  searchPlaceholder: 'Ara: başlık, agent, ada, durum',
+  searchEmpty: 'Eşleşen session yok',
+} as const;
+
+/** Terminal view of one session (M41, `ui/fleet-term.ts`): same card, slides over the list. */
+export const FLEET_TERM = {
+  back: 'Listeye dön',
+  newTitle: 'Bu adada yeni session',
+  placeholder: 'Devam prompt’u… (Enter gönderir)',
+  newPlaceholder: 'Ne yapılsın? (Enter başlatır)',
+  running: 'çalışıyor…',
+  send: 'Gönder',
+  start: 'Başlat',
+  stop: 'Durdur',
+  newLines: '↓ yeni satırlar',
+  noLines: 'Henüz satır yok',
+  newHint: 'İlk prompt session’ı başlatır; başlık prompt’un ilk satırı olur.',
+  offline: 'Bridge bağlı değil, komut gitmedi',
+  turns: (n: number): string => `${n} tur`,
+  cost: (usd: number): string => `$${usd.toFixed(2)}`,
+  /** The body counts as "at the bottom" (keeps autoscrolling) within this many px. */
+  stickPx: 24,
+  /** Prompt box height (px): min, max (it grows with the text up to max). */
+  promptPx: [38, 120] as const,
+  /** Line marks per kind (tool_use shows the tool name in bold after the mark). */
+  marks: {
+    system: '·',
+    user: '›',
+    assistant: '',
+    tool_use: '▸',
+    tool_result: '↳',
+    result: '✓',
+    stderr: '!',
+  } satisfies Record<LineKind, string>,
+  /** Result bar of a failed run (the text does not start with `done`). */
+  failMark: '✕',
+  fonts: {
+    line: "600 12.5px/1.4 'Nunito',sans-serif",
+    mono: "500 11.5px/1.45 ui-monospace,'SF Mono',Menlo,monospace",
+  },
+  colors: { stderr: '#C2413A', resultBg: '#6CC07A26', failBg: '#E2574C1F', userBg: '#3B3A5A0D' },
 } as const;
 
 /**
@@ -184,4 +230,33 @@ export const FLEET_MOCK = {
     'Kontrast düşük kalmış, rengi koyulaştırıyorum',
     'Read mar-docs/ART_BIBLE.md',
   ] as readonly string[],
+  /** Replayed history of a snapshot session (`tail`): this many steps after the prompt. */
+  historySteps: [4, 9] as const,
+  /** Spend per mock turn (USD), for the header and the result bar. */
+  costPerTurn: [0.01, 0.09] as const,
+  /** tool_result first lines per tool. */
+  results: {
+    Read: ['218 satır', '96 satır', '412 satır'],
+    Edit: ['Dosya güncellendi'],
+    Write: ['Dosya yazıldı'],
+    Bash: ['Tests  3615 passed (162 files)', 'tsc: 0 hata', 'Done in 41.2s'],
+    Grep: ['3 eşleşme', '11 eşleşme'],
+    Glob: ['14 dosya'],
+  } as Readonly<Record<string, readonly string[]>>,
+  /** stderr line of a failed mock session. */
+  errorLine: 'exit 1: komut başarısız oldu',
+  /**
+   * `start` / `send` offline (M41): the prompt as a `user` line, then these steps (`afterS` after the
+   * previous one), then the result line and `done` after `doneAfterS`; ≈ 10 s in all.
+   */
+  script: [
+    { afterS: 1.2, kind: 'assistant', text: 'Görevi okudum, ilgili dosyalara bakıyorum' },
+    { afterS: 1.6, kind: 'tool_use', tool: 'Read', text: 'Read src/content/fleet.ts' },
+    { afterS: 1.0, kind: 'tool_result', tool: 'Read', text: '218 satır' },
+    { afterS: 2.2, kind: 'tool_use', tool: 'Bash', text: 'Bash pnpm test' },
+    { afterS: 2.4, kind: 'tool_result', tool: 'Bash', text: 'Tests  3615 passed (162 files)' },
+    { afterS: 1.4, kind: 'assistant', text: 'Tamam, değişiklik hazır ve testler yeşil' },
+  ] as readonly { afterS: number; kind: LineKind; text: string; tool?: string }[],
+  doneAfterS: 0.8,
+  scriptCostUsd: 0.04,
 } as const;
