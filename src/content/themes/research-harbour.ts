@@ -72,7 +72,7 @@ export const RESEARCH_HARBOUR = {
     coastGap: 1.2,
     siteGap: 1.5,
     crossEvery: 4,
-    plaza: 0,
+    plaza: 1,
     tops: [2, 4] as const,
     topsApart: 3.5,
     cellR: 1.4,

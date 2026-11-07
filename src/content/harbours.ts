@@ -48,6 +48,11 @@ export interface HarbourParams {
    * crest line (≥ `armour` u out, ≥ `armourY` high) and, above `rockY`, over the first `rockTip` u
    * from the tip (the mole head under the light); else above `rockY` dry sand (the sheltered side),
    * below it wet sand, so from afar the arm reads as a sand spit with a rock face to the sea.
+   * The armour turns the corner (TASK-550, D-139): on the root spur, the side away from the arm
+   * (past the bend, the way the arm was heading) is armoured too over the first `rockSpur` u after the
+   * bend, so the corner has no sand wedge on its rock face; further in the spur stays sand (the beach).
+   * The contour part is rock to the waterline on both sides of the crest line (a breakwater: the
+   * sheltered-side sand patches read as wedges on the face); sand stays on the root spur.
    */
   arm: {
     offset: number;
@@ -68,6 +73,7 @@ export interface HarbourParams {
     armour: number;
     armourY: number;
     rockTip: number;
+    rockSpur: number;
   };
   /**
    * Sheltered basin between the pier and the arm: from `from` u along the pier to the pier end,
@@ -148,6 +154,7 @@ export const HARBOURS: Partial<Record<'research' | 'marketing' | 'design', Harbo
       armour: 0.2,
       armourY: 0.15,
       rockTip: 6,
+      rockSpur: 6,
     },
     basin: { from: 1.5, pierGap: 1.2, armGap: 1.4, depth: 1.8, fall: 1.5 },
     kiosks: {
@@ -205,6 +212,7 @@ export const HARBOURS: Partial<Record<'research' | 'marketing' | 'design', Harbo
       armour: 0.2,
       armourY: 0.15,
       rockTip: 6,
+      rockSpur: 6,
     },
     basin: { from: 1.5, pierGap: 1.2, armGap: 1.4, depth: 1.8, fall: 1.5 },
     kiosks: {
@@ -263,6 +271,7 @@ export const HARBOURS: Partial<Record<'research' | 'marketing' | 'design', Harbo
       armour: 0.2,
       armourY: 0.15,
       rockTip: 6,
+      rockSpur: 6,
     },
     basin: { from: 2.6, pierGap: 1.2, armGap: 1.4, depth: 1.8, fall: 1.5 },
     kiosks: {

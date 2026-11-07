@@ -567,6 +567,12 @@ function resampleArm(arm: readonly ArmPoint[], step: number): ArmPoint[] {
  */
 export function finishHarbour(ctx: SiteCtx, hb: Harbour): void {
   const { isl, P } = hb;
+  const b0 = hb.arm[hb.bend];
+  const b1 = hb.arm[Math.max(0, hb.bend - 1)];
+  const bendArc = b0.s;
+  const tl = Math.hypot(b0.x - b1.x, b0.z - b1.z) || 1;
+  const tx = (b0.x - b1.x) / tl;
+  const tz = (b0.z - b1.z) / tl;
   for (const i of hb.land) {
     const y = ctx.h.data[i];
     if (y <= 0) continue;
@@ -583,10 +589,15 @@ export function finishHarbour(ctx: SiteCtx, hb: Harbour): void {
       }
     }
     const a = hb.arm[best];
-    const out = (p.x - a.x) * a.nx + (p.z - a.z) * a.nz;
-    // (the root spur back to the coast stays sand: it faces nothing)
-    const face = best <= hb.bend && out >= P.arm.armour && y >= P.arm.armourY;
-    if (y < P.arm.rockY && !face) ctx.zone[i] = Zone.sandWet;
+    // (the root spur back to the coast stays sand, except round the corner: its far side, past the
+    // bend, faces the open water the arm was heading into, so the armour turns it for `rockSpur` u)
+    // (the contour part is a breakwater: rock on both sides of the crest line down to the waterline; the
+    // sand patches on its sheltered half lay as diamonds and wedges on the painted face)
+    let face = best <= hb.bend;
+    if (!face && best > hb.bend && a.s - bendArc <= P.arm.rockSpur && y >= P.arm.armourY)
+      face = (p.x - a.x) * tx + (p.z - a.z) * tz >= P.arm.armour;
+    // (the mole head is rock to the waterline: a wet-sand foot there is a wedge on its face)
+    if (y < P.arm.rockY && !face && a.s > P.arm.rockTip) ctx.zone[i] = Zone.sandWet;
     else ctx.zone[i] = a.s <= P.arm.rockTip || face ? Zone.rock : Zone.sandDry;
   }
   const H = (p: XZ): number => heightAt(ctx.h, p.x, p.z);

@@ -121,12 +121,12 @@ describe('archipelago — 30-seed full generation', () => {
   it('stage hashes are locked for seeds 1, 42, 1001 (archipelago mode)', () => {
     const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
     expect(snap).toMatchInlineSnapshot(`
-        {
-          "1": "f57e3755d7c66dcc",
-          "1001": "6aa5136fe0f1782c",
-          "42": "b866901bf8a48d79",
-        }
-      `);
+      {
+        "1": "7e57aef2ecb26721",
+        "1001": "6656323857696166",
+        "42": "e8d85df9270dfed5",
+      }
+    `);
   });
 
   // TASK-552 (D-132): stage hashes quantise floats, so a 1-ulp arm64 / x64 difference only showed
@@ -143,9 +143,9 @@ describe('archipelago — 30-seed full generation', () => {
     );
     expect(snap).toMatchInlineSnapshot(`
       {
-        "1": "bits:9b6a01f0bc8c579a layout:358ca2668fc3f1cc height:64a4ccc8a825e565 sdf:6d9067df21bb1f7f islandMap:1b3b96d52be1f341 zone:21c41dab96e52d7b fields:fde62d37a0223454 chunks:dc7faad7717da3b9 sites:6e9db14fecc52833 routes:ba351f92a49adcbe seamarks:4748e8cedf7f5cce marina:55c9f6bd1dec64f8 props:ab131c8f42a166b2",
-        "1001": "bits:b35f2470b61a441a layout:2747e57b5392567c height:bb15ef3a83efacdf sdf:1f288e031c5a88b9 islandMap:82cfda5cfa742363 zone:6d9fe90994bf4c94 fields:fde62d37a0223454 chunks:1854ff6405fc1fbe sites:00eaa7995a108f45 routes:40cfc256d21e90c8 seamarks:4dcea19104575f6d marina:c87503ceb82482e3 props:dc6c85aa4a4a9b6e",
-        "42": "bits:b4c3913be78dff89 layout:7d862a142513cf36 height:10393bc7f20637cb sdf:c78607977e7d130e islandMap:f912f4e15661f0c1 zone:1d5ed83dba884758 fields:fde62d37a0223454 chunks:a7e456a628d4b886 sites:f133ffe9e41b4970 routes:beacdf5184662811 seamarks:11f15c66622ea092 marina:77cb754f77e64ed7 props:028d18b9dcc0db49",
+        "1": "bits:ebec5119ea21da71 layout:358ca2668fc3f1cc height:4ff6e5646eb4ca85 sdf:6d9067df21bb1f7f islandMap:1b3b96d52be1f341 zone:3cb287d1aa854af3 fields:fde62d37a0223454 chunks:dc7faad7717da3b9 sites:53e2af66c0666cdb routes:ba351f92a49adcbe seamarks:4748e8cedf7f5cce marina:55c9f6bd1dec64f8 props:ab131c8f42a166b2",
+        "1001": "bits:57c6827dd83dc94f layout:2747e57b5392567c height:ea49e5ab897972eb sdf:1f288e031c5a88b9 islandMap:82cfda5cfa742363 zone:8204b398ea1ccd62 fields:fde62d37a0223454 chunks:1854ff6405fc1fbe sites:b41f90cca5e56460 routes:40cfc256d21e90c8 seamarks:4dcea19104575f6d marina:c87503ceb82482e3 props:dc6c85aa4a4a9b6e",
+        "42": "bits:dc1d11029fd9fca6 layout:7d862a142513cf36 height:e3bcabdc5063d18e sdf:c78607977e7d130e islandMap:f912f4e15661f0c1 zone:5ce251a7b9504775 fields:fde62d37a0223454 chunks:a7e456a628d4b886 sites:509c1f91ea58aea0 routes:beacdf5184662811 seamarks:11f15c66622ea092 marina:77cb754f77e64ed7 props:f836bb1fb1c54a45",
       }
     `);
   });
@@ -653,8 +653,9 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // TASK-534 Research harbour kit + sunken city placed, kiosk pads, sub path, re-pinned
       // TASK-544 Coding sites, TASK-545 the M33 kit on them, TASK-536 Marketing harbour + Carnival Pier, TASK-537 Colour Wharf, re-pinned
       // TASK-556 Carnival deck arch dropped, party pontoon further off and inshore, re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('69ff715f513e785f');
-      expect(generateWorld(1).hashes.world).toBe('81bcff972b383088');
+      // TASK-550 (D-139) arm rock to the waterline + armoured spur corner, wider sunken-city plaza, re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('a679d98e40fbb2d2');
+      expect(generateWorld(1).hashes.world).toBe('ad21162e0d4fe6a0');
     } finally {
       for (const b of saved) b.on = true;
     }
