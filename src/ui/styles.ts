@@ -3,7 +3,7 @@ import { CURTAIN_CSS } from './curtain.ts';
 import { UI } from '../content/palette.ts';
 import { HUD } from '../content/ui.ts';
 import { mixHex } from './hud-math.ts';
-import { FLEET_BOTS, FLEET_PANEL, FLEET_TERM } from '../content/fleet.ts';
+import { FLEET_BOTS, FLEET_PANEL, FLEET_STATUS, FLEET_TERM } from '../content/fleet.ts';
 
 export function injectStyles(): void {
   const style = document.createElement('style');
@@ -291,7 +291,7 @@ export const EDIT_PANEL_CSS = `
 const F = FLEET_PANEL;
 export const FLEET_PANEL_CSS = `
 .mar-fleet{position:absolute;left:16px;top:${F.top}px;width:${F.width}px;max-width:calc(100vw - 32px);max-height:calc(100% - ${F.top + F.bottomClear}px);display:flex;flex-direction:column;
-  background:${UI.surface};border-radius:18px;box-shadow:${lip},${soft};padding:10px 8px 8px;pointer-events:auto;opacity:0;visibility:hidden;transform:translateX(-12px);
+  background:${UI.surface};border-radius:18px;box-shadow:${lip},${soft};padding:10px 8px 8px;pointer-events:auto;isolation:isolate;opacity:0;visibility:hidden;transform:translateX(-12px);
   transition:opacity ${fade},transform .3s ${ease},visibility 0s ${fade};}
 .mar-fleet.mar-fleet-on{opacity:1;visibility:visible;transform:none;transition:opacity ${fade},transform .3s ${ease},visibility 0s;}
 .mar-fleet-head{display:flex;align-items:center;gap:8px;padding:0 6px 8px;margin-bottom:4px;border-bottom:2.5px solid var(--acc,${UI.secondary});}
@@ -301,26 +301,37 @@ export const FLEET_PANEL_CSS = `
 .mar-fleet-isle{font:700 12px/1 'Nunito',sans-serif;color:${mixHex(UI.ink, UI.muted, 0.45)};padding-left:6px;}
 .mar-fleet-isle::before{content:'·';margin-right:5px;}
 .mar-fleet-live{flex:none;font:800 12px/1 'Nunito',sans-serif;color:${UI.ink};background:#3B3A5A10;border-radius:999px;padding:5px 9px;}
-.mar-fleet-rows{list-style:none;margin:0;padding:0;overflow-y:auto;overscroll-behavior:contain;min-height:0;scrollbar-width:thin;scrollbar-color:${UI.muted} transparent;}
-.mar-fleet-scroll .mar-fleet-rows{-webkit-mask-image:linear-gradient(#000 calc(100% - 28px),transparent);mask-image:linear-gradient(#000 calc(100% - 28px),transparent);padding-bottom:20px;}
+.mar-fleet-rows{position:relative;list-style:none;margin:0;padding:0;overflow-y:auto;overscroll-behavior:contain;min-height:0;scrollbar-width:thin;scrollbar-color:${UI.muted} transparent;}
+.mar-fleet-scroll .mar-fleet-rows{-webkit-mask-image:linear-gradient(#000 calc(100% - ${F.fadePx}px),transparent);mask-image:linear-gradient(#000 calc(100% - ${F.fadePx}px),transparent);padding-bottom:20px;}
 .mar-frow{display:grid;grid-template-columns:14px 1fr auto;column-gap:6px;row-gap:1px;width:100%;text-align:left;border:0;background:none;border-radius:12px;padding:6px 8px;cursor:pointer;
   font:${F.fonts.row};color:${UI.ink};transition:background-color .15s;}
 @media (hover:hover){.mar-hud .mar-frow:hover{background:#3B3A5A0A;}}
 .mar-frow[aria-pressed="true"]{background:#3B3A5A12;box-shadow:inset 3px 0 0 var(--acc,${UI.secondary});}
-.mar-fdot{grid-row:1;align-self:center;width:9px;height:9px;border-radius:50%;background:var(--acc,${UI.secondary});}
-/* running: accent with a halo (+ pulse); error: a hollow ring, so neither reads as the other on a red / orange island */
-.mar-fdot[data-s="running"]{box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 28%,transparent);animation:mar-fpulse ${F.pulseSeconds}s ease-in-out infinite;}
-@keyframes mar-fpulse{0%,100%{box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 28%,transparent)}50%{box-shadow:0 0 0 5px color-mix(in srgb,var(--acc) 0%,transparent)}}
-.mar-fdot[data-s="error"]{background:transparent!important;box-shadow:inset 0 0 0 2.5px ${F.status.error};}
+.mar-fdot{grid-row:1;align-self:center;display:flex;width:${FLEET_STATUS.sizePx}px;height:${FLEET_STATUS.sizePx}px;color:var(--acc,${UI.secondary});}
+.mar-fdot svg{display:block;overflow:visible;}
+/* status reads from the glyph (FLEET_STATUS), not the colour; the running halo pulses only when interactive */
+.mar-fdot[data-s="running"] .mar-fhalo{transform-origin:6px 6px;animation:mar-fpulse ${F.pulseSeconds}s ease-in-out infinite;}
+@keyframes mar-fpulse{0%,100%{opacity:.3;transform:none}50%{opacity:.08;transform:scale(1.25)}}
 .mar-fagent{font:800 11px/1.2 'Nunito',sans-serif;letter-spacing:.3px;text-transform:uppercase;color:${mixHex(UI.ink, UI.muted, 0.35)};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .mar-fdur{font:800 12px/1.2 'Nunito',sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap;}
 .mar-ftitle{grid-column:2 / 4;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;}
 .mar-fline{grid-column:2 / 4;font:700 12px/1.3 'Nunito',sans-serif;color:${mixHex(UI.ink, UI.muted, 0.5)};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.mar-fleet-more{padding:6px 10px 2px;font:800 12px/1 'Nunito',sans-serif;color:${mixHex(UI.ink, UI.muted, 0.45)};}
+.mar-fleet-more{flex:none;padding:6px 10px 2px;font:800 12px/1 'Nunito',sans-serif;color:${mixHex(UI.ink, UI.muted, 0.45)};}
 .mar-fleet-more[hidden],.mar-fleet-live[hidden],.mar-fline[hidden]{display:none;}
 /* M41: fleet view (no island focused) and an open terminal widen the card; the terminal takes its full height */
 .mar-fleet-wide{width:${F.fleetWidth}px;}
 .mar-fleet-termon{height:calc(100% - ${F.top + F.bottomClear}px);}
+/* TASK-572: the terminal is opaque and on top; the list layer behind it does not paint (sticky block heads used to bleed through) */
+.mar-fleet-termon>:not(.mar-fterm){visibility:hidden;}
+/* close-up tiers: a narrow strip, the live rows' titles only */
+.mar-fleet-compact{width:${F.compact.width}px;}
+.mar-fleet-compact .mar-fleet-head{gap:6px;padding:0 4px 6px;}
+.mar-fleet-compact .mar-fleet-disc{width:22px;height:22px;}
+.mar-fleet-compact .mar-fleet-name{font-size:15px;}
+.mar-fleet-compact .mar-fleet-head .mar-fleet-isle{display:none;}
+.mar-fleet-compact .mar-frow{padding:4px 6px;row-gap:0;}
+.mar-fleet-compact .mar-fagent,.mar-fleet-compact .mar-fdur,.mar-fleet-compact .mar-fline{display:none;}
+.mar-fleet-compact .mar-ftitle{grid-row:1;grid-column:2 / 4;font-size:12.5px;line-height:1.25;}
 .mar-fleet-all .mar-fleet-head .mar-fleet-disc{display:none;}
 .mar-fleet-search{flex:none;margin:2px 4px 6px;height:34px;border:0;border-radius:999px;background:#3B3A5A0D;padding:0 14px;font:700 13px/1 'Nunito',sans-serif;color:${UI.ink};outline:none;-webkit-appearance:none;appearance:none;}
 .mar-fleet-search:focus-visible{box-shadow:inset 0 0 0 2px ${UI.secondary};outline:none;}
@@ -332,7 +343,7 @@ export const FLEET_PANEL_CSS = `
 .mar-fblock-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .mar-fblock .mar-fleet-live{padding:4px 8px;font-size:11px;}
 /* terminal view (M41, fleet-term.ts): slides in over the list */
-.mar-fterm{position:absolute;inset:0;display:flex;flex-direction:column;background:${UI.surface};border-radius:18px;padding:10px 8px 8px;
+.mar-fterm{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;background:${UI.surface};border-radius:18px;padding:10px 8px 8px;
   opacity:0;visibility:hidden;transform:translateX(18px);transition:opacity .18s ease,transform .3s ${ease},visibility 0s .3s;}
 .mar-fterm.mar-fterm-on{opacity:1;visibility:visible;transform:none;transition:opacity .18s ease,transform .3s ${ease},visibility 0s;}
 .mar-fterm [hidden]{display:none!important;}
@@ -367,12 +378,12 @@ export const FLEET_PANEL_CSS = `
 .mar-fterm-prompt:focus-visible{box-shadow:inset 0 0 0 2px var(--acc,${UI.secondary});outline:none;}
 .mar-fterm-prompt:disabled{cursor:not-allowed;background:#3B3A5A08;}
 .mar-fterm .mar-fterm-go,.mar-fterm .mar-fterm-stop{flex:none;height:${FLEET_TERM.promptPx[0]}px;border:0;border-radius:999px;padding:0 14px;font:800 13px/1 'Nunito',sans-serif;cursor:pointer;box-shadow:0 3px 0 #3B3A5A22;}
-.mar-fterm .mar-fterm-go{background:var(--acc,${UI.secondary});color:#fff;}
+.mar-fterm .mar-fterm-go{background:var(--acc,${UI.secondary});color:var(--on-acc,#fff);}
 .mar-fterm .mar-fterm-stop{background:#3B3A5A12;color:${UI.ink};}
-.mar-hud-instant .mar-fdot{animation:none!important;}
+.mar-hud-instant .mar-fhalo{animation:none!important;}
 @media (max-width:${F.minViewport - 1}px){.mar-fleet{display:none;}}
 @media (max-height:480px){.mar-fleet{top:60px;max-height:calc(100% - ${60 + 84}px);}}
-@media (prefers-reduced-motion:reduce){.mar-fdot[data-s="running"]{animation:none;}}
+@media (prefers-reduced-motion:reduce){.mar-fdot .mar-fhalo{animation:none;}}
 /* hover tip of a bound bot (TASK-564) */
 .mar-ftip{position:absolute;left:0;top:0;max-width:${FLEET_BOTS.tip.maxWidth}px;display:flex;flex-direction:column;gap:1px;background:${UI.surface};border-radius:12px;
   box-shadow:inset 3px 0 0 var(--acc,${UI.secondary}),${lip},${soft};padding:6px 10px 7px 12px;font:${F.fonts.row};color:${UI.ink};pointer-events:none;opacity:0;visibility:hidden;transition:opacity .12s;}

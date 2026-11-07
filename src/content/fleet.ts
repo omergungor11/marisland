@@ -26,23 +26,23 @@ export const FLEET_PANEL = {
   fleetWidth: 360,
   /** Rows shown; the rest collapse into the "+N" footer. */
   rowCap: 12,
-  /** Running dot pulse (s). */
+  /** Running glyph halo pulse (s); off under capture (`.mar-hud-instant`). */
   pulseSeconds: 1.6,
+  /** Height (px) of the list's bottom fade when rows are cut; a row reaching into it counts as hidden ("+N daha"). */
+  fadePx: 28,
+  /**
+   * Tier >= `fromTier` (close-up) with no terminal open: the card shrinks to a strip (header + live
+   * count + the live rows' titles, at most `maxRows`), so it does not cover the scene.
+   */
+  compact: { fromTier: 3, width: 200, maxRows: 4 },
+  /** Overview (T0) island labels keep this gap (px) from the card (placeLabel moves them right of / below it). */
+  labelAvoidPadPx: 8,
   /** Panel hidden below this viewport width (px): it would cover a phone screen. */
   minViewport: 600,
   /** Space kept free above the bottom dock (px from the viewport bottom). */
   bottomClear: 104,
   top: 72,
   fonts: { header: "600 18px/1.1 'Fredoka',sans-serif", row: "700 13px/1.3 'Nunito',sans-serif" },
-  status: {
-    queued: '#B8B3C9',
-    // running = the island accent (pulsing)
-    running: '',
-    waiting: '#F5B83D',
-    done: '#6CC07A',
-    error: '#E2574C',
-    stopped: '#B8B3C9',
-  } satisfies Record<SessionStatus, string>,
   statusLabel: {
     queued: 'sırada',
     running: 'çalışıyor',
@@ -52,6 +52,7 @@ export const FLEET_PANEL = {
     stopped: 'durduruldu',
   } satisfies Record<SessionStatus, string>,
   liveCount: (n: number): string => `${n} canlı`,
+  /** Footer: rows past the cap plus rows the scroll cuts (short viewports), so the fade explains itself. */
   more: (n: number): string => `+${n} daha`,
   empty: 'Bu adada session yok',
   /** Fleet view (M41): header and the search box. */
@@ -59,6 +60,40 @@ export const FLEET_PANEL = {
   fleetIslands: (n: number): string => `${n} ada`,
   searchPlaceholder: 'Ara: başlık, agent, ada, durum',
   searchEmpty: 'Eşleşen session yok',
+} as const;
+
+/**
+ * Status glyphs (TASK-572): readable without colour (several island accents sit close to the status
+ * hues) and without the pulse (off under capture). `color: ''` = the island accent. SVG, 12×12 box.
+ *   halo   — filled dot with a ring around it (running)
+ *   ring   — hollow ring with a centre dot (waiting for a gate)
+ *   check  — check mark (done)
+ *   cross  — × (error)
+ *   square — rounded square (stopped)
+ *   dashed — dashed hollow ring (queued)
+ */
+export type StatusGlyph = 'halo' | 'ring' | 'check' | 'cross' | 'square' | 'dashed';
+export const FLEET_STATUS = {
+  glyph: {
+    queued: 'dashed',
+    running: 'halo',
+    waiting: 'ring',
+    done: 'check',
+    error: 'cross',
+    stopped: 'square',
+  } satisfies Record<SessionStatus, StatusGlyph>,
+  color: {
+    queued: '#9A95AE',
+    running: '',
+    waiting: '#E0A21F',
+    done: '#4FA35E',
+    error: '#D9443A',
+    stopped: '#9A95AE',
+  } satisfies Record<SessionStatus, string>,
+  /** Glyph box (px) in the rows and the terminal header. */
+  sizePx: 12,
+  /** Stroke width (glyph units of the 12-unit box). */
+  stroke: 2.2,
 } as const;
 
 /** Terminal view of one session (M41, `ui/fleet-term.ts`): same card, slides over the list. */
@@ -98,6 +133,16 @@ export const FLEET_TERM = {
     mono: "500 11.5px/1.45 ui-monospace,'SF Mono',Menlo,monospace",
   },
   colors: { stderr: '#C2413A', resultBg: '#6CC07A26', failBg: '#E2574C1F', userBg: '#3B3A5A0D' },
+  /** Gönder / Başlat label colour on the island accent: ink on the light accents (contrast ≥ 2.8, tested). */
+  onAccent: {
+    hq: '#FFFFFF',
+    coding: '#FFFFFF',
+    marketing: '#FFFFFF',
+    qa: '#3B3A5A',
+    design: '#FFFFFF',
+    devops: '#3B3A5A',
+    research: '#3B3A5A',
+  } satisfies Record<ThemeId, string>,
 } as const;
 
 /**
@@ -230,6 +275,73 @@ export const FLEET_MOCK = {
     'Kontrast düşük kalmış, rengi koyulaştırıyorum',
     'Read mar-docs/ART_BIBLE.md',
   ] as readonly string[],
+  /**
+   * Department feed / last lines (D-143 Open): an island listed here draws from its own pool instead of
+   * `lines` (same draw count, so the RNG order is unchanged); its first (running) session shows the
+   * pool's first line. Coding keeps the dev tool lines.
+   */
+  islandLines: {
+    hq: [
+      'Haftalık rapor derlendi',
+      'Read reports/2026-W45.md',
+      'Ada bütçeleri tabloya işlendi',
+      'Write memory/karar-ozeti.md',
+      'Üç ada liderine özet gitti',
+      'Grep "D-14" mar-docs/DECISIONS.md',
+      'Maliyet tavanı aşılmamış, devam',
+      'Read fleet/islands/qa/reports/son.md',
+    ],
+    marketing: [
+      'Instagram carousel taslağı 3/5',
+      'Write drafts/lansman-epostasi.md',
+      'Başlık önerileri: 4 hazır, 2 elendi',
+      'Read knowledge/marka-sesi.md',
+      'Hashtag listesi kısaltıldı',
+      'Write drafts/bulten-w46.md',
+      'Görsel altyazıları Türkçe ve İngilizce hazır',
+      'Glob drafts/*.md',
+    ],
+    qa: [
+      'W27 contact sheet puanlandı',
+      'Read shots/dev-t566/manifest.json',
+      'F-panel PASS, F-bot WARN notu düştüm',
+      'Bash pnpm shots ci --assert',
+      'Gece karelerinde 2 siyah gölge buldum',
+      'Write reports/m40-qa.md',
+      'Seed 4004 iki koşuda aynı piksel',
+      'Glob shots/dev-t566/*.png',
+    ],
+    design: [
+      'Palet önerisi: kum + turkuaz',
+      'Write knowledge/ikon-seti.md',
+      'Çatı varyantı B daha sıcak duruyor',
+      'Read mar-docs/ART_BIBLE.md',
+      'Kontrast düşük kalmış, rengi koyulaştırıyorum',
+      'Edit knowledge/palet.md',
+      'Üç tezgâh rengi seçildi',
+      'Glob knowledge/*.md',
+    ],
+    devops: [
+      'Pages deploy 1 dk 12 s',
+      'Bash pnpm build',
+      'CI önbelleği ısındı, shots 38 s',
+      'Read .github/workflows/pages.yml',
+      'pnpm audit: 0 kritik',
+      'Edit .github/workflows/ci.yml',
+      'Bridge servisi yeniden başladı',
+      'Grep "cache" .github/',
+    ],
+    research: [
+      '3 kaynak özetlendi',
+      'Read knowledge/su-render-notlari.md',
+      'Karşılaştırma tablosu hazır',
+      'Write reports/bulut-yontemleri.md',
+      'İki makale elendi, eski sürüm',
+      'Grep "toon" knowledge/',
+      'Maliyet: son 30 günde $41,20',
+      'Glob knowledge/*.md',
+    ],
+  } as Readonly<Partial<Record<ThemeId, readonly string[]>>>,
   /** Replayed history of a snapshot session (`tail`): this many steps after the prompt. */
   historySteps: [4, 9] as const,
   /** Spend per mock turn (USD), for the header and the result bar. */

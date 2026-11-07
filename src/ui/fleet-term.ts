@@ -2,7 +2,7 @@ import { FLEET_PANEL as P, FLEET_TERM as T } from '../content/fleet.ts';
 import { THEMES } from '../content/themes.ts';
 import type { FleetStore } from '../fleet/client.ts';
 import { isLive, type FleetLine, type FleetSession } from '../fleet/protocol.ts';
-import { linePlan, lineView, sessionDuration, tailFrom } from '../fleet/rows.ts';
+import { linePlan, lineView, sessionDuration, statusGlyph, tailFrom } from '../fleet/rows.ts';
 import type { ThemeId } from '../world/types.ts';
 
 /**
@@ -143,12 +143,22 @@ export function createFleetTerm(
     fresh = false;
   };
 
+  /** Island accent (header rule, glyph) and the button label colour on it. */
+  const accent = (t: ThemeId): void => {
+    el.style.setProperty('--acc', o.accents[t]);
+    el.style.setProperty('--on-acc', T.onAccent[t]);
+  };
+
   const renderHead = (s: FleetSession | undefined, now: number): void => {
     if (!s) return;
-    el.style.setProperty('--acc', o.accents[s.island]);
-    dot.dataset.s = s.status;
-    dot.style.background = P.status[s.status];
-    dot.title = P.statusLabel[s.status];
+    accent(s.island);
+    if (dot.dataset.s !== s.status) {
+      const g = statusGlyph(s.status);
+      dot.dataset.s = s.status;
+      dot.innerHTML = g.svg;
+      dot.style.color = g.color;
+      dot.title = P.statusLabel[s.status];
+    }
     dot.hidden = false;
     put(titleEl, s.title);
     durText = sessionDuration(s, now);
@@ -182,7 +192,7 @@ export function createFleetTerm(
       renderHead(store.sessions.get(sessionId), now);
       renderLines();
     } else if (mode === 'draft' && draftIsland) {
-      el.style.setProperty('--acc', o.accents[draftIsland]);
+      accent(draftIsland);
       dot.hidden = true;
       put(titleEl, T.newTitle);
       put(meta, `${THEMES[draftIsland].displayName} · ${o.islandName(draftIsland)}`);

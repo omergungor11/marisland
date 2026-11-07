@@ -84,6 +84,13 @@ export interface Hud {
   /** Intro: the clouds part, the wordmark slides to its corner. */
   dockWordmark(): void;
   setLabelsHidden(hidden: boolean): void;
+  /**
+   * A screen box (HUD px) the T0 island labels keep out of, e.g. the fleet card (TASK-572); read on
+   * every label layout, null = none.
+   */
+  setLabelAvoid(box: (() => { l: number; t: number; r: number; b: number } | null) | null): void;
+  /** Lay the labels out again with the last `update` arguments (an avoid box appeared / moved). */
+  relayout(): void;
   /** Hide everything for clean screenshots (key `h`); a ghost button brings it back. */
   setVisible(visible: boolean): void;
   readonly visible: boolean;
@@ -485,6 +492,7 @@ export function createHud(
     ring: number;
   }[] = [];
   let labelsHidden = false;
+  let labelAvoid: Parameters<Hud['setLabelAvoid']>[0] = null;
   /** Last `update` arguments: opening / closing the edit panel re-lays the labels at once. */
   let lastUpdate: Parameters<Hud['update']> | null = null;
   const hud: Hud = {
@@ -578,6 +586,10 @@ export function createHud(
       labelsEl.style.display = showLabels ? '' : 'none';
       if (!showLabels) return;
       const placed: LabelBox[] = [];
+      // an avoid box (fleet card) counts as a placed label: placeLabel nudges the pills clear of it
+      const av = labelAvoid?.();
+      if (av)
+        placed.push({ x: (av.l + av.r) / 2, y: (av.t + av.b) / 2, w: av.r - av.l, h: av.b - av.t });
       // Keep labels off the dock (layout box: unaffected by the pop-in transform).
       const dockTop = dockEl.offsetTop - 8;
       const dockHalf = dockEl.offsetWidth / 2 + 6;
@@ -654,6 +666,12 @@ export function createHud(
     },
     setLabelsHidden(hidden) {
       labelsHidden = hidden;
+    },
+    setLabelAvoid(box) {
+      labelAvoid = box;
+    },
+    relayout() {
+      if (lastUpdate) hud.update(...lastUpdate);
     },
     setVisible(v) {
       if (v === visible) return;

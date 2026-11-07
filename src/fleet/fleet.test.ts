@@ -1,12 +1,18 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { FLEET, FLEET_MOCK } from '../content/fleet.ts';
+import { FLEET, FLEET_MOCK, FLEET_PANEL, FLEET_STATUS, FLEET_TERM } from '../content/fleet.ts';
+import { THEME_ACCENTS } from '../content/islands-ui.ts';
 import { THEME_IDS } from '../world/types.ts';
 import { islandNear, type CameraWorld } from '../camera/poses.ts';
 import { applyFleetEvent, createFleetClient, emptyFleetState, fleetModeOf } from './client.ts';
 import { createFleetMock, mockFleet, mockHistory } from './mock.ts';
 import {
+  compactRows,
   fleetBlocks,
   fold,
+  footerText,
+  panelLayout,
+  rowsBelow,
+  statusGlyph,
   formatDuration,
   linePlan,
   lineView,
@@ -16,7 +22,7 @@ import {
   syncKeyed,
   tailFrom,
 } from './rows.ts';
-import type { FleetEvent, FleetLine, FleetSession } from './protocol.ts';
+import type { FleetEvent, FleetLine, FleetSession, SessionStatus } from './protocol.ts';
 
 const NOW = FLEET.captureNow;
 const MIN = 60_000;
@@ -450,5 +456,111 @@ describe('fleet: mock commands (M41)', () => {
     expect(c.send({ type: 'stop', sessionId: live.id })).toBe(true);
     expect(c.sessions.get(live.id)?.status).toBe('stopped');
     c.dispose();
+  });
+});
+
+describe('fleet: panel polish (TASK-572)', () => {
+  const STATUSES: SessionStatus[] = ['queued', 'running', 'waiting', 'done', 'error', 'stopped'];
+  it('gives every status its own glyph (readable without colour or pulse)', () => {
+    const glyphs = STATUSES.map((st) => statusGlyph(st).glyph);
+    expect(new Set(glyphs).size).toBe(STATUSES.length);
+    expect(statusGlyph('running')).toMatchObject({ glyph: 'halo', color: 'var(--acc)' });
+    expect(statusGlyph('waiting').glyph).toBe('ring');
+    expect(statusGlyph('done').glyph).toBe('check');
+    expect(statusGlyph('error').glyph).toBe('cross');
+    expect(statusGlyph('stopped').glyph).toBe('square');
+    for (const st of STATUSES) {
+      const g = statusGlyph(st);
+      expect(g.svg).toContain(`width="${FLEET_STATUS.sizePx}"`);
+      expect(g.svg).toMatch(/^<svg [^>]*viewBox="0 0 12 12"/);
+      if (st !== 'running') expect(g.color).toMatch(/^#[0-9A-F]{6}$/i);
+    }
+    // only running carries the pulsing halo
+    expect(STATUSES.filter((st) => statusGlyph(st).svg.includes('mar-fhalo'))).toEqual(['running']);
+  });
+
+  it('counts rows cut by the scroll box into the "+N daha" footer', () => {
+    const fade = FLEET_PANEL.fadePx; // 28: the edge is 14 px above the box bottom
+    const bottoms = [60, 120, 180, 240, 300, 360];
+    expect(rowsBelow(bottoms, 400, fade)).toBe(0);
+    expect(rowsBelow(bottoms, 300, fade)).toBe(2); // 300 and 360 reach past 286
+    expect(rowsBelow(bottoms, 314, fade)).toBe(1); // 300 sits exactly on the edge: visible
+    expect(rowsBelow(bottoms, 250, fade)).toBe(3);
+    expect(footerText(0, 0)).toBe('');
+    expect(footerText(0, 3)).toBe('+3 daha');
+    expect(footerText(2, 3)).toBe('+5 daha');
+  });
+
+  it('shrinks to the compact strip from tier 3, never over an open terminal or the fleet view', () => {
+    expect(FLEET_PANEL.compact.fromTier).toBe(3);
+    expect(panelLayout(1, 'coding', false)).toBe('island');
+    expect(panelLayout(2, 'coding', false)).toBe('island');
+    expect(panelLayout(3, 'coding', false)).toBe('compact');
+    expect(panelLayout(3, 'coding', true)).toBe('term');
+    expect(panelLayout(0, null, true)).toBe('term'); // tier 0 -> fleet view does not close it
+    expect(panelLayout(0, null, false)).toBe('fleet');
+    expect(panelLayout(3, null, false)).toBe('fleet');
+    const rows = [
+      sess('r1', { status: 'running' }),
+      sess('d1'),
+      sess('w1', { status: 'waiting' }),
+      sess('r2', { status: 'running' }),
+      sess('q1', { status: 'queued' }),
+    ];
+    expect(compactRows(rows, 2)).toEqual({ rows: [rows[0], rows[2]], more: 2 });
+    expect(compactRows(rows, 9).rows.map((s) => s.id)).toEqual(['r1', 'w1', 'r2', 'q1']);
+  });
+
+  it('labels the send button with a readable colour on every accent', () => {
+    const lum = (h: string): number => {
+      const c = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
+      const l = c.map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+      return 0.2126 * l[0] + 0.7152 * l[1] + 0.0722 * l[2];
+    };
+    const contrast = (a: string, b: string): number => {
+      const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
+      return (x + 0.05) / (y + 0.05);
+    };
+    for (const t of THEME_IDS)
+      expect(contrast(THEME_ACCENTS[t], FLEET_TERM.onAccent[t])).toBeGreaterThanOrEqual(2.8);
+    expect(FLEET_TERM.onAccent.qa).not.toBe('#FFFFFF');
+    expect(FLEET_TERM.onAccent.devops).not.toBe('#FFFFFF');
+  });
+
+  it('draws department last lines without moving the mock RNG', () => {
+    const { sessions } = mockFleet(1001, NOW);
+    for (const s of sessions) {
+      if (s.lastLine === undefined) continue;
+      const pool = FLEET_MOCK.islandLines[s.island] ?? FLEET_MOCK.lines;
+      expect(pool).toContain(s.lastLine);
+    }
+    expect(FLEET_MOCK.islandLines.coding).toBeUndefined();
+    const first = (t: string): string | undefined =>
+      sessions.find((s) => s.id === `mock-${t}-0`)?.lastLine;
+    expect(first('marketing')).toBe('Instagram carousel taslağı 3/5');
+    expect(first('devops')).toBe('Pages deploy 1 dk 12 s');
+    for (const t of THEME_IDS) {
+      if (!FLEET_MOCK.islandLines[t]) continue;
+      const mine = sessions.filter((s) => s.island === t && s.lastLine).map((s) => s.lastLine);
+      expect(new Set(mine).size).toBe(mine.length); // no repeated line on one island
+    }
+    // the same snapshot with the generic pool everywhere: only last lines differ
+    const m = FLEET_MOCK as { islandLines: unknown };
+    const saved = m.islandLines;
+    m.islandLines = {};
+    let generic: FleetSession[];
+    try {
+      generic = mockFleet(1001, NOW).sessions;
+    } finally {
+      m.islandLines = saved;
+    }
+    const strip = (s: FleetSession): Omit<FleetSession, 'lastLine'> => {
+      const { lastLine: _l, ...rest } = s;
+      return rest;
+    };
+    expect(sessions.map(strip)).toEqual(generic.map(strip));
+    expect(sessions.filter((s) => s.island === 'coding')).toEqual(
+      generic.filter((s) => s.island === 'coding'),
+    );
   });
 });

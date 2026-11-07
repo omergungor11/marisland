@@ -62,7 +62,7 @@ import { createFleetClient, fleetModeOf } from './fleet/client.ts';
 import { createFleetPanel } from './ui/fleet-panel.ts';
 import { createFleetTip } from './ui/fleet-tip.ts';
 import { bindFleetToBots, type FleetBots } from './life/fleet-bots.ts';
-import { FLEET } from './content/fleet.ts';
+import { FLEET, FLEET_PANEL } from './content/fleet.ts';
 import type { ThemeId } from './world/types.ts';
 import { THEMES } from './content/themes.ts';
 import { themeIcon } from './ui/theme-icons.ts';
@@ -823,6 +823,14 @@ export async function boot(): Promise<void> {
           focus: !params.freeze,
         });
         appScope.defer(() => fp.dispose());
+        // TASK-572: the T0 island labels keep clear of the card (pushed right of / below it)
+        const pad = FLEET_PANEL.labelAvoidPadPx;
+        h.setLabelAvoid(() => {
+          const b = fp.box();
+          return b && { l: b.l - pad, t: b.t - pad, r: b.r + pad, b: b.b + pad };
+        });
+        appScope.defer(() => h.setLabelAvoid(null));
+        let boxKey = '';
         // M41: a bound bot opens its session's terminal, any other department bot a new-session box
         let focusTheme: ThemeId | null = null;
         appScope.defer(
@@ -870,9 +878,17 @@ export async function boot(): Promise<void> {
             }
             const t = cam.tier >= 1 ? focusTheme : null;
             fp.setIsland(t, t ? focusName : '');
+            fp.setTier(cam.tier);
           }
           fp.setVisible(on);
           fp.update(wallNow());
+          // the card appeared / resized: the labels move now (capture renders no further HUD frame)
+          const b = fp.box();
+          const key = b ? `${b.l},${b.t},${b.r},${b.b}` : '';
+          if (key !== boxKey) {
+            boxKey = key;
+            h.relayout();
+          }
         };
       }
       loop.add({
