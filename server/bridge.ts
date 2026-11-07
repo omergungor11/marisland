@@ -34,12 +34,22 @@ import { firstOutOfBounds } from './bounds.ts';
 import {
   islandSpawn,
   parseConfig,
+  withEnvPort,
   parseConfigText,
   parseManifestText,
   type FleetConfig,
   type IslandManifest,
 } from './config.ts';
 import {
+  TAIL_MAX,
+  accumulate,
+  claudeArgs,
+  requestWithTitle,
+  tailSource,
+  userRecord,
+} from './resume.ts';
+import {
+  clip,
   newStreamState,
   parseTitle,
   reduceEvent,
@@ -65,9 +75,10 @@ const KILL_GRACE_MS = 5000;
 /** Partial-message `lastLine` updates are broadcast at most this often. */
 const LAST_LINE_MS = 300;
 
-const cfg: FleetConfig = existsSync(CONFIG_PATH)
-  ? parseConfigText(readFileSync(CONFIG_PATH, 'utf8'))
-  : parseConfig({});
+const cfg: FleetConfig = withEnvPort(
+  existsSync(CONFIG_PATH) ? parseConfigText(readFileSync(CONFIG_PATH, 'utf8')) : parseConfig({}),
+  process.env,
+);
 mkdirSync(RUNS, { recursive: true });
 
 const startedAt = Date.now();
@@ -81,6 +92,12 @@ const writeIndex = (): void => {
   renameSync(tmp, indexPath(RUNS));
 };
 writeIndex();
+// sessions recorded before M41 have no lastSeq: derive it once from the jsonl
+for (const s of index.sessions) {
+  const f = runPath(RUNS, s.id);
+  if (s.lastSeq === undefined && existsSync(f))
+    s.lastSeq = reduceJsonl(readFileSync(f, 'utf8'), s.id, s.startedAt).length - 1;
+}
 
 /* ---------------------------------------------------------------- live session runtime */
 
@@ -99,6 +116,9 @@ interface Run {
   writable: string[];
   baseline: string;
   lastPublish: number;
+  /** turns / cost of earlier runs of this session (each run's `result` counts only itself). */
+  baseTurns: number;
+  baseCost: number;
 }
 const runs = new Map<string, Run>();
 const clients = new Set<WebSocket>();
@@ -109,7 +129,7 @@ function broadcast(ev: FleetEvent): void {
 }
 
 function publishSession(run: Run, patch: Partial<FleetSession> = {}): void {
-  run.session = { ...run.session, ...patch, updatedAt: Date.now() };
+  run.session = { ...run.session, ...patch, lastSeq: run.nextSeq - 1, updatedAt: Date.now() };
   upsertSession(index, run.session);
   writeIndex();
   broadcast({ type: 'session', session: run.session });
@@ -134,12 +154,15 @@ function pushLine(run: Run, l: Pick<FleetLine, 'kind' | 'text' | 'tool'>, at: nu
 
 function linesFrom(id: string, from: number): FleetLine[] {
   const run = runs.get(id);
-  if (run && (run.mem.length === 0 || run.mem[0].seq <= from))
-    return run.mem.filter((l) => l.seq >= from);
+  const src = tailSource(run ? (run.mem[0]?.seq ?? null) : undefined, from);
+  // at most TAIL_MAX lines per answer: the client asks again from the last seq + 1
+  if (run && src === 'memory') return run.mem.filter((l) => l.seq >= from).slice(0, TAIL_MAX);
   const s = index.sessions.find((x) => x.id === id);
   const file = runPath(RUNS, id);
   if (!s || !existsSync(file)) return [];
-  return reduceJsonl(readFileSync(file, 'utf8'), id, s.startedAt).filter((l) => l.seq >= from);
+  return reduceJsonl(readFileSync(file, 'utf8'), id, s.startedAt)
+    .filter((l) => l.seq >= from)
+    .slice(0, TAIL_MAX);
 }
 
 /* ---------------------------------------------------------------- spawn */
@@ -165,8 +188,7 @@ function handleStdoutLine(run: Run, raw: string): void {
   if (r.lastLine !== undefined && r.lastLine !== run.session.lastLine) patch.lastLine = r.lastLine;
   if (r.result) {
     run.gotResult = true;
-    patch.turns = r.result.turns;
-    if (r.result.costUsd !== undefined) patch.costUsd = r.result.costUsd;
+    Object.assign(patch, accumulate({ turns: run.baseTurns, costUsd: run.baseCost }, r.result));
     if (!run.stopRequested && !r.result.ok) {
       patch.status = 'error';
       patch.endedAt = now;
@@ -249,6 +271,8 @@ function runTitleJob(run: Run): Promise<void> {
       const title = parseTitle(out);
       if (!title) return fail(`exit ${code}`);
       publishSession(run, { title });
+      const req = requestWithTitle(index.requests, run.session, title);
+      if (req) publishRequest(req);
       done();
     });
   });
@@ -295,6 +319,8 @@ async function startSession(cmd: Extract<FleetCommand, { type: 'start' }>): Prom
     writable: sp.writable,
     baseline,
     lastPublish: 0,
+    baseTurns: 0,
+    baseCost: 0,
   };
   runs.set(id, run);
   upsertSession(index, session);
@@ -310,22 +336,16 @@ async function startSession(cmd: Extract<FleetCommand, { type: 'start' }>): Prom
   writeIndex();
   broadcast({ type: 'session', session });
 
-  const argv = [
-    '-p',
-    cmd.prompt,
-    '--output-format',
-    'stream-json',
-    '--verbose',
-    '--include-partial-messages',
-    '--session-id',
-    id,
-    '--permission-mode',
-    'acceptEdits',
-    '--permission-prompts',
-    'none',
-    ...sp.args,
-  ];
-  const proc = spawn('claude', argv, { cwd: sp.cwd, stdio: ['ignore', 'pipe', 'pipe'] });
+  attachProc(
+    run,
+    claudeArgs({ prompt: cmd.prompt, sessionId: id, resume: false, islandArgs: sp.args }),
+    sp.cwd,
+  );
+  return session;
+}
+
+function attachProc(run: Run, argv: string[], cwd: string): void {
+  const proc = spawn('claude', argv, { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
   run.proc = proc;
 
   proc.stdout.on('data', (d: Buffer) => {
@@ -347,7 +367,65 @@ async function startSession(cmd: Extract<FleetCommand, { type: 'start' }>): Prom
   });
   proc.on('error', (e) => endRun(run, null, `spawn failed: ${e.message}`));
   proc.on('close', (code, signal) => endRun(run, code, signal ?? undefined));
-  return session;
+}
+
+/** Follow-up turn: `claude -p --resume <id>` with the first run's flags and cwd, same record. */
+async function sendSession(sessionId: string, prompt: string): Promise<FleetSession> {
+  const known = index.sessions.find((x) => x.id === sessionId);
+  if (!known) throw new Error(`send: unknown session ${sessionId}`);
+  if (isLive(known)) throw new Error('send: session is still running');
+  if (!prompt.trim()) throw new Error('send: prompt is required');
+  const sp = islandSpawn(ROOT, loadManifest(known.island));
+  const baseline = await gitStatus();
+  const cur = index.sessions.find((x) => x.id === sessionId);
+  if (!cur || isLive(cur)) throw new Error('send: session is still running'); // raced during the await
+  let run = runs.get(sessionId);
+  if (!run) {
+    // after a bridge restart: rebuild seq and the cache window from the jsonl
+    const file = runPath(RUNS, sessionId);
+    const all = existsSync(file)
+      ? reduceJsonl(readFileSync(file, 'utf8'), sessionId, cur.startedAt)
+      : [];
+    run = {
+      session: cur,
+      stream: newStreamState(),
+      mem: all.slice(-MEM_LINES),
+      nextSeq: all.length,
+      buf: '',
+      gotResult: false,
+      stopRequested: false,
+      titled: true,
+      prompt,
+      writable: sp.writable,
+      baseline,
+      lastPublish: 0,
+      baseTurns: 0,
+      baseCost: 0,
+    };
+    runs.set(sessionId, run);
+  }
+  Object.assign(run, {
+    stream: newStreamState(),
+    buf: '',
+    gotResult: false,
+    stopRequested: false,
+    writable: sp.writable,
+    baseline,
+    lastPublish: 0,
+    baseTurns: run.session.turns,
+    baseCost: run.session.costUsd ?? 0,
+  });
+  const at = Date.now();
+  appendRaw(run, userRecord(prompt, at));
+  pushLine(run, { kind: 'user', text: clip(prompt) }, at);
+  const { endedAt: _e, reason: _r, ...rest } = run.session;
+  run.session = rest;
+  publishSession(run, { status: 'running' });
+  const req = index.requests.find((x) => x.id === cur.requestId);
+  if (req && req.rootSessionId === sessionId && req.status !== 'open')
+    publishRequest({ ...req, status: 'open' });
+  attachProc(run, claudeArgs({ prompt, sessionId, resume: true, islandArgs: sp.args }), sp.cwd);
+  return run.session;
 }
 
 function endRun(run: Run, code: number | null, detail?: string): void {
@@ -429,12 +507,16 @@ function handleCommand(ws: WebSocket, raw: string): void {
       return reply({ type: 'lines', sessionId: v.sessionId, lines: linesFrom(v.sessionId, from) });
     }
     case 'send':
-      // TODO(M41): `claude -p --resume <id>` appended to the same record.
-      return reply({
-        type: 'error',
-        message: 'M41: send (resume) is not implemented yet',
-        command: 'send',
-      });
+      if (typeof v.sessionId !== 'string' || typeof v.prompt !== 'string')
+        return reply({
+          type: 'error',
+          message: 'send: sessionId and prompt required',
+          command: 'send',
+        });
+      sendSession(v.sessionId, v.prompt).catch((e: Error) =>
+        reply({ type: 'error', message: e.message, command: 'send' }),
+      );
+      return;
     case 'gate':
       return reply({
         type: 'error',
@@ -486,6 +568,21 @@ const server = createServer((req, res) => {
       return json(res, 200, {
         lines: linesFrom(m[1], Number(url.searchParams.get('from') ?? 0) || 0),
       });
+    const sm = /^\/api\/sessions\/([^/]+)\/send$/.exec(url.pathname);
+    if (req.method === 'POST' && sm) {
+      let body: unknown;
+      try {
+        body = JSON.parse(await readBody(req));
+      } catch {
+        return json(res, 400, { error: 'malformed JSON' });
+      }
+      const prompt = isObj(body) && typeof body.prompt === 'string' ? body.prompt : '';
+      try {
+        return json(res, 200, { session: await sendSession(sm[1], prompt) });
+      } catch (e) {
+        return json(res, 400, { error: (e as Error).message });
+      }
+    }
     if (req.method === 'POST' && url.pathname === '/api/start') {
       let body: unknown;
       try {
