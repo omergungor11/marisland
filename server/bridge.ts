@@ -32,7 +32,18 @@ import {
 import { THEME_IDS } from '../src/world/types.ts';
 import { firstOutOfBounds } from './bounds.ts';
 import {
+  childStart,
+  parseHandoffs,
+  parseSummary,
+  planGates,
+  reportBackPrompt,
+  roundPrompt,
+  summaryOf,
+  type ReportStatus,
+} from './chain.ts';
+import {
   islandSpawn,
+  maxPerMessage,
   parseConfig,
   withEnvPort,
   parseConfigText,
@@ -60,9 +71,11 @@ import {
 import {
   indexPath,
   parseIndex,
+  publicGate,
   recoverIndex,
   runPath,
   serializeIndex,
+  type StoredGate,
   upsertRequest,
   upsertSession,
 } from './store.ts';
@@ -112,6 +125,9 @@ interface Run {
   stopRequested: boolean;
   titled: boolean;
   prompt: string;
+  /** Final assistant text of the current run (hand-off + `## Özet` parsing, M42). */
+  lastText: string;
+  finalText: string;
   /** Repo-relative write prefixes and the `git status` taken at start (bounds check). */
   writable: string[];
   baseline: string;
@@ -133,6 +149,14 @@ function publishSession(run: Run, patch: Partial<FleetSession> = {}): void {
   upsertSession(index, run.session);
   writeIndex();
   broadcast({ type: 'session', session: run.session });
+  const st = patch.status;
+  if ((st === 'done' || st === 'error' || st === 'stopped') && run.session.parentId)
+    void reportBack(run, st);
+}
+
+function publishGate(g: StoredGate): void {
+  writeIndex();
+  broadcast({ type: 'gate', gate: publicGate(g) });
 }
 
 function publishRequest(r: FleetRequest): void {
@@ -188,6 +212,7 @@ function handleStdoutLine(run: Run, raw: string): void {
   if (r.lastLine !== undefined && r.lastLine !== run.session.lastLine) patch.lastLine = r.lastLine;
   if (r.result) {
     run.gotResult = true;
+    run.finalText = r.result.text || run.lastText;
     Object.assign(patch, accumulate({ turns: run.baseTurns, costUsd: run.baseCost }, r.result));
     if (!run.stopRequested && !r.result.ok) {
       patch.status = 'error';
@@ -202,6 +227,7 @@ function handleStdoutLine(run: Run, raw: string): void {
     run.lastPublish = now;
     publishSession(run, patch);
   }
+  if (r.assistantText) run.lastText = r.assistantText;
   if (r.assistantText && !run.titled) {
     run.titled = true;
     void runTitleJob(run);
@@ -227,11 +253,128 @@ async function settleOk(run: Run): Promise<void> {
   const allowed = [...runs.values()].filter((r) => isLive(r.session)).flatMap((r) => r.writable);
   const bad = firstOutOfBounds(run.baseline, after, [...run.writable, ...allowed]);
   if (run.stopRequested || !isLive(run.session)) return;
+  const gated = !bad && openGates(run);
   const patch: Partial<FleetSession> = bad
     ? { status: 'error', reason: `out-of-bounds write: ${bad}`, endedAt: Date.now() }
-    : { status: 'done', endedAt: Date.now() };
+    : gated
+      ? { status: 'waiting' }
+      : { status: 'done', endedAt: Date.now() };
   publishSession(run, patch);
-  finishRequest(run, bad ? 'error' : 'done');
+  if (!gated) finishRequest(run, bad ? 'error' : 'done');
+}
+
+/* ---------------------------------------------------------------- chains (M42, D-149) */
+
+const stderrLine = (run: Run, text: string): void => {
+  const at = Date.now();
+  appendRaw(run, JSON.stringify({ type: 'bridge_stderr', at, text }));
+  pushLine(run, { kind: 'stderr', text: text.slice(0, 400) }, at);
+};
+
+function islandNames(): { theme: FleetIsland; name: string }[] {
+  return THEME_IDS.flatMap((theme) => {
+    try {
+      return [{ theme, name: loadManifest(theme).name }];
+    } catch {
+      return [];
+    }
+  });
+}
+
+function depthOf(s: FleetSession): number {
+  let d = 0;
+  for (let cur: FleetSession | undefined = s; cur?.parentId && d < 20; d++)
+    cur = index.sessions.find((x) => x.id === cur?.parentId);
+  return d;
+}
+
+/** Hand-offs in the run's final text become one round of pending gates (caps permitting); true = parent waits. */
+function openGates(run: Run): boolean {
+  const s = run.session;
+  const handoffs = parseHandoffs(run.finalText, islandNames());
+  if (!handoffs.length) return false;
+  const requestChildren =
+    index.sessions.filter((x) => x.requestId === s.requestId && x.parentId).length +
+    index.gates.filter((g) => g.requestId === s.requestId && g.status === 'pending').length;
+  const plan = planGates(
+    handoffs,
+    { requestChildren, depth: depthOf(s), perMessage: maxPerMessage(s.island) },
+    loadManifest(s.island),
+  );
+  for (const text of plan.rejected) stderrLine(run, text);
+  if (!plan.open.length) return false;
+  const summary = summaryOf(run.finalText);
+  const round = randomUUID();
+  const gates = plan.open.map((h): StoredGate => ({
+    id: randomUUID(),
+    requestId: s.requestId,
+    fromSessionId: s.id,
+    fromIsland: s.island,
+    toIsland: h.island,
+    prompt: h.prompt,
+    status: 'pending',
+    createdAt: Date.now(),
+    parentSummary: summary.text,
+    parentSummaryExplicit: summary.explicit,
+    round,
+  }));
+  index.gates.push(...gates);
+  for (const g of gates) publishGate(g);
+  return true;
+}
+
+/** Gate outcome known (denied / child report): once the whole round is in, ONE resume of the parent. */
+async function resolveGate(gate: StoredGate, report: string): Promise<void> {
+  if (gate.status === 'denied' ? false : gate.report !== undefined) return;
+  gate.report = report;
+  writeIndex();
+  const round = index.gates.filter(
+    (g) => g.fromSessionId === gate.fromSessionId && g.round === gate.round,
+  );
+  if (round.some((g) => g.status === 'pending' || g.report === undefined)) return;
+  const parent = index.sessions.find((x) => x.id === gate.fromSessionId);
+  if (!parent || parent.status !== 'waiting') return;
+  try {
+    await sendSession(parent.id, roundPrompt(round.map((g) => g.report ?? '')), true);
+  } catch (e) {
+    console.warn(`fleet: could not resume ${parent.id}: ${(e as Error).message}`);
+  }
+}
+
+/** Child ended: its gate gets the report (or the failure variant). */
+async function reportBack(child: Run, status: ReportStatus): Promise<void> {
+  const c = child.session;
+  const gate = index.gates.find((g) => g.childId === c.id && g.status === 'allowed');
+  if (!gate || gate.report !== undefined) return;
+  const text =
+    status === 'done' ? parseSummary(child.finalText) || '(rapor boş)' : (c.reason ?? '');
+  await resolveGate(gate, reportBackPrompt(c.island, text, status));
+}
+
+async function decideGate(gateId: string, allow: boolean): Promise<void> {
+  const gate = index.gates.find((g) => g.id === gateId);
+  if (!gate) throw new Error('gate: unknown gate');
+  if (gate.status !== 'pending') throw new Error('gate: already decided');
+  const parent = index.sessions.find((x) => x.id === gate.fromSessionId);
+  if (!parent || parent.status !== 'waiting') throw new Error('gate: parent is not waiting');
+  gate.status = allow ? 'allowed' : 'denied';
+  publishGate(gate);
+  if (!allow) return resolveGate(gate, reportBackPrompt(gate.toIsland, '', 'denied'));
+  const req = index.requests.find((x) => x.id === gate.requestId);
+  try {
+    const child = await startSession({
+      type: 'start',
+      ...childStart(gate, {
+        requestTitle: req?.title ?? parent.title,
+        parentSummary: gate.parentSummary ?? '',
+        parentSummaryExplicit: gate.parentSummaryExplicit,
+      }),
+    });
+    gate.childId = child.id;
+    writeIndex();
+  } catch (e) {
+    await resolveGate(gate, reportBackPrompt(gate.toIsland, (e as Error).message, 'error'));
+  }
 }
 
 function finishRequest(run: Run, status: FleetRequest['status']): void {
@@ -316,6 +459,8 @@ async function startSession(cmd: Extract<FleetCommand, { type: 'start' }>): Prom
     stopRequested: false,
     titled: false,
     prompt: cmd.prompt,
+    lastText: '',
+    finalText: '',
     writable: sp.writable,
     baseline,
     lastPublish: 0,
@@ -370,15 +515,28 @@ function attachProc(run: Run, argv: string[], cwd: string): void {
 }
 
 /** Follow-up turn: `claude -p --resume <id>` with the first run's flags and cwd, same record. */
-async function sendSession(sessionId: string, prompt: string): Promise<FleetSession> {
+async function sendSession(
+  sessionId: string,
+  prompt: string,
+  /** The bridge's own resume of a `waiting` parent (gate decided / child reported). */
+  fromChain = false,
+): Promise<FleetSession> {
   const known = index.sessions.find((x) => x.id === sessionId);
   if (!known) throw new Error(`send: unknown session ${sessionId}`);
-  if (isLive(known)) throw new Error('send: session is still running');
+  const blocked = (s: FleetSession): string | undefined =>
+    s.status === 'waiting' && !fromChain
+      ? 'send: kapı bekliyor'
+      : isLive(s) && !(fromChain && s.status === 'waiting')
+        ? 'send: session is still running'
+        : undefined;
+  const why = blocked(known);
+  if (why) throw new Error(why);
   if (!prompt.trim()) throw new Error('send: prompt is required');
   const sp = islandSpawn(ROOT, loadManifest(known.island));
   const baseline = await gitStatus();
   const cur = index.sessions.find((x) => x.id === sessionId);
-  if (!cur || isLive(cur)) throw new Error('send: session is still running'); // raced during the await
+  const raced = cur ? blocked(cur) : 'send: unknown session';
+  if (!cur || raced) throw new Error(raced); // raced during the await
   let run = runs.get(sessionId);
   if (!run) {
     // after a bridge restart: rebuild seq and the cache window from the jsonl
@@ -396,6 +554,8 @@ async function sendSession(sessionId: string, prompt: string): Promise<FleetSess
       stopRequested: false,
       titled: true,
       prompt,
+      lastText: '',
+      finalText: '',
       writable: sp.writable,
       baseline,
       lastPublish: 0,
@@ -409,6 +569,8 @@ async function sendSession(sessionId: string, prompt: string): Promise<FleetSess
     buf: '',
     gotResult: false,
     stopRequested: false,
+    lastText: '',
+    finalText: '',
     writable: sp.writable,
     baseline,
     lastPublish: 0,
@@ -518,11 +680,16 @@ function handleCommand(ws: WebSocket, raw: string): void {
       );
       return;
     case 'gate':
-      return reply({
-        type: 'error',
-        message: 'M42: gates are not implemented yet',
-        command: 'gate',
-      });
+      if (typeof v.gateId !== 'string' || typeof v.allow !== 'boolean')
+        return reply({
+          type: 'error',
+          message: 'gate: gateId and allow required',
+          command: 'gate',
+        });
+      decideGate(v.gateId, v.allow).catch((e: Error) =>
+        reply({ type: 'error', message: e.message, command: 'gate' }),
+      );
+      return;
     default:
       return reply({ type: 'error', message: `unknown command "${v.type}"` });
   }
@@ -563,6 +730,8 @@ const server = createServer((req, res) => {
     }
     if (req.method === 'GET' && url.pathname === '/api/sessions')
       return json(res, 200, { sessions: index.sessions, requests: index.requests });
+    if (req.method === 'GET' && url.pathname === '/api/gates')
+      return json(res, 200, { gates: index.gates.map(publicGate) });
     const m = /^\/api\/sessions\/([^/]+)\/lines$/.exec(url.pathname);
     if (req.method === 'GET' && m)
       return json(res, 200, {
@@ -612,7 +781,7 @@ wss.on('connection', (ws) => {
     bridge: { version: FLEET_PROTOCOL_VERSION, root: ROOT, startedAt },
     sessions: index.sessions,
     requests: index.requests,
-    gates: [],
+    gates: index.gates.map(publicGate),
   };
   ws.send(JSON.stringify(snap));
 });
