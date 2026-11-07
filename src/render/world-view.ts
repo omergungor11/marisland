@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GPU_GROUP } from './gpu-memory.ts';
 import type { Scope } from '../core/scope.ts';
 import type { System } from '../core/loop.ts';
 import type { Quality } from '../core/params.ts';
@@ -390,6 +391,23 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     clouds.puffs.mesh.material as THREE.ShaderMaterial,
   );
   group.add(rain.mesh);
+  // GPU memory owners (`GpuMemory.detail`, TASK-551): the rest of the world group (harbour / culture
+  // movers, coaster, foundry, sky craft, beams) counts as `movers`
+  const owners: [THREE.Object3D | null | undefined, string][] = [
+    [group, 'movers'],
+    [terrain.group, 'terrain'],
+    [water.mesh, 'water'],
+    [falls.mesh, 'water'],
+    [sky.mesh, 'sky'],
+    [props.group, 'props'],
+    [cables.mesh, 'props'],
+    [life.group, 'agents'],
+    [clouds.group, 'clouds'],
+    [clouds.puffs.mesh, 'particles'],
+    [rain.mesh, 'particles'],
+    [fireworks.mesh, 'particles'],
+  ];
+  for (const [o, name] of owners) if (o) o.userData[GPU_GROUP] = name;
   // the shared weather uniforms outlive this world: reset them with it
   d.scope.defer(() => {
     writeWeatherUniforms(blendFx({ clear: 1, cloudy: 0, rain: 0, fog: 0 }, fx), env, 0, 0);

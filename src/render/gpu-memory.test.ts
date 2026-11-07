@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { bytesPerTexel, renderTargetBytes, textureBytes } from './gpu-memory.ts';
+import {
+  GPU_GROUP,
+  bytesPerTexel,
+  measureGpuMemory,
+  renderTargetBytes,
+  textureBytes,
+} from './gpu-memory.ts';
 
 describe('gpu memory (D-022)', () => {
   it('bytes per texel from format × type', () => {
@@ -37,5 +43,35 @@ describe('gpu memory (D-022)', () => {
     expect(renderTargetBytes(shadow)).toBe(64 * 64 * (4 + 4));
     rt.dispose();
     shadow.dispose();
+  });
+
+  it('detail: geometry by owner group (inherited, shared buffers once), sums to the total', () => {
+    const MB = 1048576;
+    const renderer = {
+      properties: { get: () => ({}) },
+      domElement: { width: 64, height: 32 },
+      getContext: () => ({ getContextAttributes: () => ({ depth: true, antialias: false }) }),
+    } as unknown as THREE.WebGLRenderer;
+    const scene = new THREE.Scene();
+    const world = new THREE.Group();
+    world.userData[GPU_GROUP] = 'movers';
+    const terrain = new THREE.Group();
+    terrain.userData[GPU_GROUP] = 'terrain';
+    const box = new THREE.BoxGeometry(); // 24 verts: position + normal + uv, 36 indices
+    const boxBytes = 24 * (3 + 3 + 2) * 4 + 36 * 2;
+    terrain.add(new THREE.Mesh(box));
+    world.add(terrain, new THREE.Mesh(box), new THREE.Mesh(new THREE.PlaneGeometry()));
+    scene.add(world, new THREE.Mesh(new THREE.PlaneGeometry()));
+    const plane = 4 * 8 * 4 + 6 * 2;
+    const m = measureGpuMemory(renderer, scene, null);
+    expect(m.detail.terrain * MB).toBe(boxBytes);
+    expect(m.detail.movers * MB).toBe(plane); // the shared box counted for terrain only
+    expect(m.detail.other * MB).toBe(plane);
+    expect(m.detail.canvas * MB).toBe(64 * 32 * 8);
+    expect(Object.keys(m.detail)).toEqual([...Object.keys(m.detail)].sort());
+    const sum = Object.values(m.detail).reduce((a, b) => a + b, 0);
+    expect(sum).toBeCloseTo(m.total, 9);
+    expect(m.geometry * MB).toBe(boxBytes + 2 * plane);
+    box.dispose();
   });
 });

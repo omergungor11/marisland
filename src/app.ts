@@ -250,6 +250,14 @@ export async function boot(): Promise<void> {
       enumerable: true,
       get: () => Math.round(gpuMemory().total),
     });
+    Object.defineProperty(ctx.counters, 'gpuMemoryDetail', {
+      enumerable: true,
+      get: () => {
+        const out: Record<string, number> = {};
+        for (const [k, v] of Object.entries(gpuMemory().detail)) out[k] = Math.round(v * 10) / 10;
+        return out;
+      },
+    });
     const gpuParts: [string, (g: GpuMemory) => number][] = [
       ['gpuGeometryMB', (g) => g.geometry],
       ['gpuTextureMB', (g) => g.textures],
@@ -263,6 +271,7 @@ export async function boot(): Promise<void> {
         get: () => Math.round(part(gpuMemory()) * 10) / 10,
       });
     const dofFocus = new THREE.Vector3();
+    let statsMem = '';
     const render = (): void => {
       const r = backend.renderer;
       r.info.reset();
@@ -279,15 +288,23 @@ export async function boot(): Promise<void> {
       readInfo(r, ctx.info);
       const mem = (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory;
       if (mem) ctx.timings.jsHeapMB = Math.round(mem.usedJSHeapSize / 1048576);
-      if (stats)
+      if (stats) {
+        // the memory split re-measured twice a second at 60 fps (debug overlay only)
+        if (r.info.render.frame % 30 === 1) {
+          const g = gpuMemory();
+          statsMem = `mem ${Math.round(g.total)} MB  ${Object.entries(g.detail)
+            .map(([k, v]) => `${k} ${v.toFixed(1)}`)
+            .join('  ')}`;
+        }
         stats.update(
           1000 / Math.max(frameMs, 1),
           loop.cpuMs,
           ctx.info,
           ctx.tier,
           ctx.counters,
-          governorLabel(governor.state),
+          `${governorLabel(governor.state)}\n${statsMem}`,
         );
+      }
     };
     let frameMs = 16.7;
     let lastT = now();

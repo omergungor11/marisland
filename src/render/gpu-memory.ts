@@ -14,6 +14,9 @@ import * as THREE from 'three';
  * - canvas: the drawing buffer (colour + depth/stencil, × 4 samples + resolve when antialiased).
  * Hidden objects count too (their buffers are uploaded once drawn): the figure is what the world
  * holds, not what this frame happened to touch.
+ * `detail` (TASK-551, D-140) splits the same bytes by owner: geometry by the nearest ancestor's
+ * `userData.gpuGroup` (world view: terrain, water, props, agents, …; untagged = `other`), plus
+ * `textures`, `post` (targets), `shadow` and `canvas`; its values sum to `total`.
  */
 export interface GpuMemory {
   geometry: number;
@@ -22,7 +25,12 @@ export interface GpuMemory {
   shadow: number;
   canvas: number;
   total: number;
+  /** MB per owner (geometry groups + textures / post / shadow / canvas), keys sorted. */
+  detail: Record<string, number>;
 }
+
+/** `Object3D.userData` key naming a geometry owner group for `GpuMemory.detail`. */
+export const GPU_GROUP = 'gpuGroup';
 
 const MB = 1048576;
 
@@ -149,10 +157,13 @@ export function measureGpuMemory(
 ): GpuMemory {
   const buffers = new Set<ArrayBufferLike | ArrayBufferView>();
   let geometry = 0;
+  const groups = new Map<string, number>();
+  let group = 'other';
   const addArray = (a: ArrayBufferView | undefined | null): void => {
     if (!a || buffers.has(a)) return;
     buffers.add(a);
     geometry += a.byteLength;
+    groups.set(group, (groups.get(group) ?? 0) + a.byteLength);
   };
   const addAttr = (
     attr: THREE.BufferAttribute | THREE.InterleavedBufferAttribute | null | undefined,
@@ -166,7 +177,10 @@ export function measureGpuMemory(
   const found: Found = { targets: new Set(), textures: new Set() };
   const seen = new Set<object>();
   const shadowTargets = new Set<THREE.RenderTarget>();
-  scene.traverse((o) => {
+  // depth-first in child order (deterministic): the owner group is inherited down the tree, so a
+  // buffer shared across groups counts for the first group that reaches it
+  const visit = (o: THREE.Object3D, parent: string): void => {
+    group = (o.userData[GPU_GROUP] as string | undefined) ?? parent;
     const g = (o as THREE.Mesh).geometry as THREE.BufferGeometry | undefined;
     if (g?.isBufferGeometry) {
       for (const name of Object.keys(g.attributes)) addAttr(g.attributes[name]);
@@ -181,7 +195,10 @@ export function measureGpuMemory(
     const shadow = (o as THREE.DirectionalLight).shadow as THREE.LightShadow | undefined;
     if ((o as THREE.Light).isLight && (o as THREE.Light).castShadow && shadow?.map)
       shadowTargets.add(shadow.map);
-  });
+    const own = group;
+    for (const c of o.children) visit(c, own);
+  };
+  visit(scene, 'other');
   walk(scene.background, found, seen, 0);
   walk(scene.environment, found, seen, 0);
   if (post) walk(post, found, seen, 0);
@@ -228,6 +245,16 @@ export function measureGpuMemory(
   // antialiased: 4× multisampled colour + depth, resolved into a single-sample colour buffer
   const canvas = attrs?.antialias ? px * (4 * perPx + 4) : px * perPx;
 
+  for (const [k, v] of [
+    ['textures', textures],
+    ['post', targets],
+    ['shadow', shadow],
+    ['canvas', canvas],
+  ] as const)
+    groups.set(k, (groups.get(k) ?? 0) + v);
+  const split: Record<string, number> = {};
+  for (const k of [...groups.keys()].sort()) split[k] = groups.get(k)! / MB;
+
   return {
     geometry: geometry / MB,
     textures: textures / MB,
@@ -235,5 +262,6 @@ export function measureGpuMemory(
     shadow: shadow / MB,
     canvas: canvas / MB,
     total: (geometry + textures + targets + shadow + canvas) / MB,
+    detail: split,
   };
 }

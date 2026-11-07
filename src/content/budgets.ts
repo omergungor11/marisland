@@ -12,8 +12,13 @@ export interface Budget {
   programs: number;
   /**
    * GPU memory, MB (`render/gpu-memory.ts`: geometry + textures + render targets + shadow map +
-   * drawing buffer), at the reference capture size — low ≤ 1280×720, medium / high 1920×1080, DPR 1
-   * (targets and the drawing buffer scale with the pixel count). D-022 (amends D-010).
+   * drawing buffer), at the reference capture size, DPR 1 (targets and the drawing buffer scale
+   * with the pixel count). D-022 (amends D-010). Medium / high: 1920×1080 (wow set).
+   * Low: 960×540 (dev / ladder / edit sets; the D-090 … D-128 rungs were read there). Low has no
+   * composer, so the only size-dependent part is the 4× MSAA drawing buffer (36 B / px): 17.8 MB
+   * at 960×540, 7.9 MB at 640×360 (ci set), 31.6 MB at 1280×720. TASK-551, L-coding 170 u rung
+   * (seed 1001, everything else 61.2 MB): 69 MB at 640×360, 79 MB at 960×540, 93 MB at 1280×720 —
+   * a ci frame sits ~10 MB under its dev twin, and a low frame shot at 1280×720 is ~14 MB over.
    */
   gpuMemoryMB: number;
   /** Max JS heap, MB. */

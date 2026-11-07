@@ -27,6 +27,12 @@ export interface Counters {
    * buffer, summed from the allocations (`render/gpu-memory.ts`; split in `timings.gpu*MB`).
    */
   gpuMemoryMB: number;
+  /**
+   * `gpuMemoryMB` split by owner, MB to 0.1 (`GpuMemory.detail`: terrain, water, props, agents,
+   * movers, clouds, particles, sky, other geometry + textures, post, shadow, canvas; TASK-551).
+   * Read with the measurement (snapshot, stats overlay), never per frame.
+   */
+  gpuMemoryDetail?: Record<string, number>;
   /** Terrain chunks remeshed by edits (TASK-211). */
   rebuilds: number;
 }
