@@ -29,7 +29,7 @@ import { createHud, type Hud } from './ui/hud.ts';
 import { createCurtain } from './ui/curtain.ts';
 import { createIntro, type Intro } from './camera/intro.ts';
 import { createTour } from './camera/tour.ts';
-import { ISLAND_ACCENTS } from './content/islands-ui.ts';
+import { ISLAND_ACCENTS, THEME_ACCENTS } from './content/islands-ui.ts';
 import { HUD, INTRO } from './content/ui.ts';
 import { CAMERA } from './content/tiers.ts';
 import { FRAMING } from './content/camera.ts';
@@ -58,6 +58,12 @@ import { createEditApplier } from './edit/apply.ts';
 import { runEditSelftest, testBrush } from './render/rebuild-testing.ts';
 import { staticEditBinding } from './ui/edit-panel.ts';
 import { EDIT_PANEL } from './content/edit-ui.ts';
+import { createFleetClient, fleetModeOf } from './fleet/client.ts';
+import { createFleetPanel } from './ui/fleet-panel.ts';
+import { FLEET } from './content/fleet.ts';
+import { THEMES } from './content/themes.ts';
+import { themeIcon } from './ui/theme-icons.ts';
+import { islandNear, themeOf } from './camera/poses.ts';
 
 /**
  * Composition root (ARCHITECTURE §1). Owns scopes, the loop and the systems.
@@ -165,6 +171,16 @@ export async function boot(): Promise<void> {
     const worldScope = new Scope('world');
     appScope.add({ dispose: () => backend.dispose() });
     const events = new Emitter<AppEvents>();
+    // ---- fleet (TASK-563): bridge socket or the deterministic mock; app-scoped (outlives regen).
+    // Wall clock for "since 12 min": fixed under capture so shots reproduce.
+    const wallNow = params.freeze ? (): number => FLEET.captureNow : (): number => Date.now();
+    const fleet = createFleetClient({
+      mode: fleetModeOf(params.fleet, params.freeze, location.hostname),
+      seed: params.seed,
+      now: wallNow(),
+      frozen: params.freeze || params.simt > 0,
+    });
+    appScope.defer(() => fleet.dispose());
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(35, 1, 0.5, 3000);
     camera.position.set(0, 200, 300);
@@ -690,6 +706,7 @@ export async function boot(): Promise<void> {
       events.emit('photoMode', { active: hud?.photoMode ?? false, frozen: on });
     };
     let hud: Hud | null = null;
+    let syncFleet = (): void => {};
     if (params.hud && !params.gallery) {
       hud = createHud(
         root,
@@ -776,9 +793,44 @@ export async function boot(): Promise<void> {
         if (active && !hud?.editing) hud?.openPanel('edit');
         else if (!active && hud?.editing) hud.openPanel('');
       });
+      // ---- fleet island panel (TASK-563): the sessions of the island under the orbit target at
+      // tier >= 1; hidden in photo / edit mode, with the HUD hidden (H) and before it pops in.
+      if (fleet.mode !== 'off') {
+        const h = hud;
+        const fp = createFleetPanel(h.el, fleet, {
+          accents: THEME_ACCENTS,
+          iconFor: (t) => themeIcon(THEMES[t].icon, 15),
+        });
+        appScope.defer(() => fp.dispose());
+        // the island is re-picked only once the target moved `focusMoveU` (or the world changed)
+        let fx = NaN;
+        let fz = NaN;
+        events.on('seedChanged', () => (fx = NaN));
+        const target = new THREE.Vector3();
+        syncFleet = () => {
+          const on =
+            fleet.ready &&
+            cam.tier >= 1 &&
+            !h.photoMode &&
+            !h.editing &&
+            h.visible &&
+            h.el.classList.contains('mar-hud-on');
+          if (on) {
+            cam.controls.getTarget(target);
+            if (!(Math.hypot(target.x - fx, target.z - fz) < FLEET.focusMoveU)) {
+              fx = target.x;
+              fz = target.z;
+              const isl = islandNear(testScene.cameraWorld, fx, fz, FLEET.focusReach);
+              fp.setIsland(isl ? (themeOf(isl) ?? null) : null, isl?.name ?? '');
+            }
+          }
+          fp.setVisible(on);
+          fp.update(wallNow());
+        };
+      }
       loop.add({
         name: 'hud',
-        update: () =>
+        update: () => {
           hud?.update(
             camera,
             cam.controls.azimuthAngle,
@@ -786,7 +838,9 @@ export async function boot(): Promise<void> {
             loop.clock.dayTime,
             ctx.width,
             ctx.height,
-          ),
+          );
+          syncFleet();
+        },
       });
     }
     if (reduced) events.emit('reducedMotionChanged', { reduced, motionScale: motionScale() });
@@ -1120,6 +1174,7 @@ export async function boot(): Promise<void> {
     if (!params.freeze && !runIntro && params.tour === 'now') tour.start();
     if (!runIntro && !introCapture) hud?.show();
     else if (!hudShownByIntro) hud?.showWordmark();
+    syncFleet(); // capture renders no further HUD frame after the HUD popped in
     // (`editMode` is assigned inside buildWorld: widen the narrowed `null`)
     const bootEdit = editMode as EditMode | null;
     if (params.panel === 'edit' && params.panelTool) bootEdit?.setTool(params.panelTool);
@@ -1176,6 +1231,7 @@ function applyShotPreset(p: Params): Params {
   if (!q.has('simt') && s.simt !== undefined) p.simt = s.simt;
   if (!q.has('quality') && s.quality) p.quality = s.quality;
   if (!q.has('edit') && s.edit) p.edit = s.edit;
+  if (!q.has('fleet') && s.fleet) p.fleet = s.fleet;
   return p;
 }
 

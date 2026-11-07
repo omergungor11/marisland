@@ -36,6 +36,8 @@ export interface ShotPreset {
   panel?: 'photo' | 'settings' | 'edit' | `edit:${EditToolKind}`;
   /** Phase 2 edit log (`edit=`, `encodeLog`), replayed before the first build. */
   edit?: string;
+  /** Fleet feed (`fleet=`, TASK-563): the deterministic mock fills the island panel. */
+  fleet?: 'mock';
   /** Opening-sequence still at this time (s) (`introt=`). */
   introt?: number;
   /**
@@ -2167,6 +2169,18 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     live: { crop: LIVE_CROP },
     sets: ['live'],
   })),
+  // ---- fleet island panel (TASK-563): Coding at T1 with the deterministic mock fleet
+  {
+    id: 'F-panel',
+    title: 'Fleet panel · Coding',
+    seed: 1001,
+    cam: 'island:coding',
+    time: 14,
+    simt: 2,
+    hud: true,
+    fleet: 'mock',
+    sets: ['dev'],
+  },
   // ---- sandbox edits (TASK-221): `pnpm shots edit`. Logs on seed 1001 generated with
   // `encodeLog` (world/edit.ts); re-recorded for the Phase 3 layout (TASK-309: moved with their
   // island, rejected placements dropped) and the theme-first world (TASK-380: one pine that now
