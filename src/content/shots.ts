@@ -1131,12 +1131,15 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   {
     id: 'W26',
     title: 'Test Firing Noon',
-    // Research 12:00 +3 s: the R13 launch gantry on the headland during the test firing (trench
-    // steam), the R12 hedge-maze parterres, the R17 belfry tower and the arboretum behind
+    // Research 12:00 +2.6 s (the 4 s test firing, steam near its peak): from high over the sea to
+    // the south-east, the R13 launch gantry and rocket on the headland pad with the trench steam
+    // rolling out (lower centre-right, the radio dish beside it), the R12 hedge-maze parterres and
+    // armillary across the middle, the observatory hill, and the R17 belfry tower, faculty hall and
+    // quad behind (TASK-551: the old low cam from the south-west hid the gantry behind the bluff)
     seed: 1001,
-    cam: '84,12,139,101,7,125',
+    cam: '157,41,137,120,5,109',
     time: 12,
-    simt: 3,
+    simt: 2.6,
     quality: 'medium',
     width: 1920,
     height: 1080,
@@ -1922,9 +1925,10 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     title: 'Culture · Research Star Academy (T2, 17:45)',
     // seed 1001 Observatory University (TASK-426) at golden hour: the quad with the orrery, the
     // faculty pennants and the tea trolley at the library, the comet-night observatory with its
-    // telescope terrace, the bell-cupola tower
+    // telescope terrace, the bell-cupola tower. TASK-551: raised and pitched down (was
+    // 118.71,22,124.1 → 109.71,8,101.1, 915k tris > 800k medium; now ~738k, 203 calls)
     seed: 1001,
-    cam: '118.71,22,124.1,109.71,8,101.1',
+    cam: '119,36,124,110,6,100',
     time: 17.75,
     simt: 4,
     quality: 'medium',
