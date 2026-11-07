@@ -140,8 +140,11 @@ Design: … · İzin ver / Reddet"). On allow the bridge starts a child session 
 `parentId`) whose prompt is the hand-off text plus a short context header (request title, parent island, the
 parent's "Özet" section). When the child finishes, the bridge **resumes the parent** with "Design adasından
 rapor:\n<child Özet>" so the parent can continue, answer the user, or ask the next island (→ Coding), each
-step gated again. Caps: `maxChildren` per request (manifest, default 6), depth ≤ 3, one pending gate per
-parent at a time; deny → the parent is resumed with "Design'a devir reddedildi" so it can finish on its own.
+step gated again. Caps: `maxChildren` per request (manifest, default 6; counts every session but the root), depth ≤ 3 (root =
+0, a gate from depth d opens depth d+1), up to 2 hand-offs per message (HQ 7). The hand-offs of one message
+form a **round**: the parent stays `waiting` until every gate of the round is resolved, then ONE resume
+carries all reports (denials as "Design'a devir reddedildi"). Children may hand off too (their own round).
+Only `## →` level-2 headings count; prose arrows do not. Missing `## Özet` → first 600 chars travel.
 Option B (a bridge MCP tool the agent calls mid-run, parent blocks until the child answers) is deferred: it
 needs an MCP server in the bridge and keeps a session open while waiting; the report-line route reuses
 resume (D-145) and spends nothing while a gate waits.
