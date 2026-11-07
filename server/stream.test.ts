@@ -55,7 +55,26 @@ describe('stream reducer shapes', () => {
       type: 'assistant',
       message: { content: [{ type: 'text', text: 'y'.repeat(900) }] },
     });
-    expect(long.lines[0].text.length).toBeLessThanOrEqual(400);
+    expect(long.lines[0].text.length).toBeLessThanOrEqual(4000);
+  });
+
+  it('assistant prose keeps newlines so trailing `## →` headings survive (TASK-577)', () => {
+    const st = newStreamState();
+    const body = `## Özet\n${'x'.repeat(900)}\n\n\n\n## → design: 5 gönderi için görsel\n  gövde  satırı`;
+    const r = reduceEvent(st, {
+      type: 'assistant',
+      message: { content: [{ type: 'text', text: body }] },
+    });
+    const text = r.lines[0].text;
+    expect(text).toContain('\n## → design: 5 gönderi için görsel\ngövde satırı');
+    expect(text).not.toContain('\n\n\n');
+    expect(r.lastLine).toBe('## Özet');
+    const huge = reduceEvent(st, {
+      type: 'assistant',
+      message: { content: [{ type: 'text', text: 'y'.repeat(5000) }] },
+    });
+    expect(huge.lines[0].text.length).toBe(4000);
+    expect(huge.lines[0].text.endsWith('…')).toBe(true);
   });
 
   it('partials only move lastLine', () => {

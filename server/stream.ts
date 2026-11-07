@@ -6,6 +6,8 @@
 import type { FleetLine, LineKind } from '../src/fleet/protocol.ts';
 
 export const LINE_MAX = 400;
+/** Assistant / user prose keeps its line breaks (the `## →` hand-off headings sit at the end) and a wider cap (TASK-577 FAIL 1). */
+export const TEXT_MAX = 4000;
 
 /** A line before the bridge stamps `sessionId`, `seq` and `at`. */
 export type RawLine = Pick<FleetLine, 'kind' | 'text' | 'tool'>;
@@ -42,6 +44,16 @@ const isObj = (v: unknown): v is Record<string, unknown> =>
 
 export function clip(s: string, max = LINE_MAX): string {
   const t = s.replace(/\s+/g, ' ').trim();
+  return t.length <= max ? t : `${t.slice(0, max - 1).trimEnd()}…`;
+}
+
+/** Prose clip: runs of spaces collapse, newlines stay (3+ become 2), capped at `TEXT_MAX`. */
+export function clipText(s: string, max = TEXT_MAX): string {
+  const t = s
+    .replace(/[^\S\n]+/g, ' ')
+    .replace(/ ?\n ?/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
   return t.length <= max ? t : `${t.slice(0, max - 1).trimEnd()}…`;
 }
 
@@ -115,7 +127,7 @@ export function reduceEvent(state: StreamState, ev: unknown): Reduced {
       if (!isObj(msg)) return none;
       if (typeof msg.content === 'string')
         return ev.type === 'user' && msg.content.trim()
-          ? { lines: [{ kind: 'user', text: clip(msg.content) }] }
+          ? { lines: [{ kind: 'user', text: clipText(msg.content) }] }
           : none;
       if (!Array.isArray(msg.content)) return none;
       const out: Reduced = { lines: [] };
@@ -124,7 +136,7 @@ export function reduceEvent(state: StreamState, ev: unknown): Reduced {
         if (!isObj(b)) continue;
         if (b.type === 'text' && typeof b.text === 'string' && b.text.trim()) {
           const kind: LineKind = ev.type === 'assistant' ? 'assistant' : 'user';
-          out.lines.push({ kind, text: clip(b.text) });
+          out.lines.push({ kind, text: clipText(b.text) });
           if (kind === 'assistant') {
             texts.push(b.text);
             out.lastLine = clip(firstLine(b.text), 120);
