@@ -18,9 +18,10 @@
     "Bash(git status*)",
     "Bash(git diff*)",
     "Bash(git log*)",
-    "Bash(ls*)"
+    "Bash(ls*)",
+    "Bash(pnpm fleet:lint*)"
   ],
   "addDirs": ["fleet"],
-  "owner": "hq",
+  "owner": "user",
   "agents": ["default"]
 }

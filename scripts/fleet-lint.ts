@@ -37,6 +37,9 @@ function frontmatterKeys(text: string): Set<string> | undefined {
   return keys;
 }
 
+/** HQ manages the other islands' manifests and settings (FLEET.md "Kontrol (HQ)" 3), so it may write to siblings. */
+const HQ_EXEMPT_RULES = ['Edit(../*/**)', 'Write(../*/**)'];
+
 export function lintFleet(root: string): string[] {
   const problems: string[] = [];
   const islandsDir = resolve(root, 'fleet/islands');
@@ -80,7 +83,8 @@ export function lintFleet(root: string): string[] {
       if (typeof deny === 'string') problems.push(at(`settings.json ${deny}`));
       else if (Array.isArray(refDeny))
         for (const rule of refDeny)
-          if (!deny.includes(rule)) problems.push(at(`settings.json deny lacks "${rule}"`));
+          if (dir === 'hq' && HQ_EXEMPT_RULES.includes(rule)) continue;
+          else if (!deny.includes(rule)) problems.push(at(`settings.json deny lacks "${rule}"`));
     }
 
     for (const sub of ['knowledge', 'reports', '.claude/skills', '.claude/agents'])
