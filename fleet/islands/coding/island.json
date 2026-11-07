@@ -1,0 +1,26 @@
+{
+  "theme": "coding",
+  "name": "Coding",
+  "role": "Marisland motoru ve filo araçlarının kodunu yazar: TypeScript, three.js, test ve lint yeşil kalır.",
+  "model": "sonnet",
+  "maxTurns": 30,
+  "maxChildren": 6,
+  "allowedTools": [
+    "Read",
+    "Edit",
+    "Write",
+    "Glob",
+    "Grep",
+    "Bash(pnpm typecheck*)",
+    "Bash(pnpm lint*)",
+    "Bash(pnpm test*)",
+    "Bash(pnpm vitest*)",
+    "Bash(git status*)",
+    "Bash(git diff*)",
+    "Bash(git log*)",
+    "Bash(ls*)"
+  ],
+  "addDirs": ["src", "scripts", "server"],
+  "owner": "hq",
+  "agents": ["default"]
+}

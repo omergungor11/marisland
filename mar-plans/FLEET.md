@@ -73,23 +73,52 @@ start(island, prompt) ─▶ queued ─▶ running ─▶ done | error | stopped
 Bridge yeniden başlarsa `fleet/runs/index.json`'dan session listesini geri yükler; `running` olanlar
 `error` (`bridge restarted`) olur.
 
-## Dizin yapısı
+## Dizin yapısı — ada = kendi başına bir Claude Code projesi
+
+Claude Code `CLAUDE.md`'yi cwd'den yukarı doğru hepsini yükler, `.claude/agents` ve `.claude/skills`'i
+cwd'den repo köküne kadar tarar, ama **`.claude/settings.json`'ı yalnız cwd'den okur** ve auto-memory'yi
+git köküne göre anahtarlar (`autoMemoryDirectory` ile yön verilir). Bu yüzden her ada dizini kendi
+başına bir proje gibi davranır; plugin'e gerek yok. Kontrol kolu HQ'nun yazdığı iki dosyadır:
+`island.json` (manifest) ve `.claude/settings.json` (izinler, deny kuralları).
 
 ```
-server/bridge.ts            Node bridge (ws + http, tsx ile koşar)
-server/bridge.test.ts       satır indirgeme + index geri yükleme testleri
-src/fleet/protocol.ts       paylaşılan tipler (saf)
-src/fleet/client.ts         WS client + store + reconnect + mock
-src/fleet/mock.ts           ?fleet=mock deterministik filo
-src/ui/fleet-panel.ts       ada paneli (M40), fleet görünümü + arama (M41)
-src/life/fleet-bots.ts      session ↔ bot bağı (M40b)
-src/content/fleet.ts        renkler, süreler, panel ölçüleri (içerik veridir)
-fleet/fleet.config.json     ada dizinleri, allowedTools, tavanlar
-fleet/islands/<theme>/CLAUDE.md   departman kişiliği (7 iskelet, M43 doldurur)
-fleet/runs/                 *.jsonl + index.json (gitignore)
-fleet/kb/                   knowledge base (M43)
-fleet/reports/              üretilen raporlar (M44)
+fleet/
+  CLAUDE.md                    filo anayasası: her ada session'ına otomatik yüklenir (ancestor walk)
+  schema/island.schema.json    manifest şeması; fleet-lint doğrular
+  fleet.config.json            filo geneli: port, başlık modeli, varsayılan tavanlar
+  islands/<theme>/             theme = ThemeId = dizin adı
+    island.json                HQ yazar: name, role, model, maxTurns, maxChildren, allowedTools, addDirs, owner, agents
+    CLAUDE.md                  departman kişiliği (ada geliştirir, HQ onaylar)
+    .claude/settings.json      HQ yazar: deny (kendi manifest/settings, diğer adalar, fleet/CLAUDE.md, schema, git push/commit)
+    .claude/agents/<theme>-*.md  adaya özel alt agent'lar (öneki zorunlu; cwd'ye yakın olan kazanır)
+    .claude/skills/*/SKILL.md  adaya özel skill'ler
+    memory/MEMORY.md + *.md    auto-memory hedefi (bridge `--settings '{"autoMemoryDirectory": <abs>}'` verir)
+    knowledge/                 departman knowledge base (M43)
+    reports/YYYY-MM-DD.md      günlük rapor; haftalık / aylık HQ derler (M44)
+  kb/                          filo geneli knowledge base (M43)
+  runs/                        *.jsonl + index.json (gitignore)
+server/bridge.ts               Node bridge (ws + http, tsx)
+scripts/fleet-lint.ts          `pnpm fleet:lint`: yapı + şema + frontmatter + deny bloğu; vitest'ten de çağrılır
+src/fleet/protocol.ts          paylaşılan tipler (saf)
+src/fleet/client.ts, mock.ts   WS client + store + deterministik mock
+src/ui/fleet-panel.ts          ada paneli (M40), fleet görünümü + arama (M41)
+src/life/fleet-bots.ts         session ↔ bot bağı (M40b)
+src/content/fleet.ts           renkler, süreler, panel ölçüleri
 ```
+
+**Spawn**: `cwd = fleet/islands/<theme>/`; `--allowedTools` ve `--max-turns` manifest'ten; `--add-dir
+<root>/<addDir>` her `addDirs` için; `--settings` inline JSON ile `autoMemoryDirectory` = adanın
+`memory/` mutlak yolu. Repo kökündeki `.claude/settings.json` (hook'lar, plugin'ler) bu cwd'de **okunmaz**;
+bu istenen bir şey (claude-mem / tokeneconomizer filo session'larına karışmaz). Transcript
+`~/.claude/projects/<cwd-slug>/<id>.jsonl`'e düşer; `--resume <id>` aynı cwd'den çalışır ve `--settings`,
+`--add-dir` yeniden verilmelidir.
+
+**Kontrol (HQ)**: (1) `fleet-lint` her adada zorunlu dosyaları, `island.json` şemasını, `CLAUDE.md` ≤ 120
+satır, hafıza frontmatter'ını ve settings deny bloğunun eksiksizliğini denetler; `pnpm test` içinde koşar.
+(2) Bridge her session sonunda `git status --porcelain` alır: ada dizini + `addDirs` dışına yazılmış
+dosya varsa session `error` olur (`reason: 'out-of-bounds write: <path>'`) ve panelde kırmızı görünür.
+(3) Yalnız HQ adasının `addDirs`'inde `fleet` vardır: manifest ve settings değişiklikleri HQ session'ından
+(ya da kullanıcıdan) gelir; adalar "HQ'ya öneri" satırıyla ister. (4) `owner: user` olan adaya HQ da dokunmaz.
 
 ## Milestone merdiveni
 

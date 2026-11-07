@@ -18,6 +18,6 @@ shots/*
 dist-*/
 .claude/worktrees/
 
-# fleet bridge: run logs are local state
+# fleet: raw session streams stay local
 fleet/runs/*
 !fleet/runs/.gitkeep

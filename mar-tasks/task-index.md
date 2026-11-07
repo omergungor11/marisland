@@ -464,7 +464,7 @@ Details in `phases/phase-3.md`.
 Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/protocol.ts` (D-141).
 
 ### M40 — Fleet Bridge + Island Panel
-*D-141 (user 2026-11-07): CLI runtime, gated hand-offs, start with bridge + panel. 562 ∥ 563 ∥ 565; 564 after 563; 566 last.*
+*D-141 (user 2026-11-07): CLI runtime, gated hand-offs, start with bridge + panel. 562 ∥ 563 ∥ 565; 567 after 562 (same agent); 564 after 563; 566 last. Island layout = fleet/CLAUDE.md + schema + the `coding` example (user 2026-11-07: per-island CLAUDE.md + memory, HQ-controllable).*
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
@@ -472,6 +472,7 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 | TASK-563 | Fleet client (WS store, reconnect, `?fleet=mock` deterministic feed) + island panel (left dock: status dot, agent, title, live duration, last line; shows at tier ≥ 1 for the focused island), `src/content/fleet.ts`, `F-panel` dev shot | engine | M | IN_PROGRESS | — |
 | TASK-564 | Session ↔ bot binding: a live session seats a department bot with a marker, hover title, deterministic mapping | life | S | PENDING | TASK-563 |
 | TASK-565 | Keyboard camera: WASD / arrows truck + forward, Q/E azimuth rotate, distance-scaled speed, `CAMERA_MOVE.keys`, ignores text inputs / capture / modifiers, stops the tour | engine | S | IN_PROGRESS | — |
+| TASK-567 | `scripts/fleet-lint.ts` + `pnpm fleet:lint` + vitest wrapper: island layout (required files, `island.json` vs `schema/island.schema.json`, dir name = theme = ThemeId, CLAUDE.md ≤ 120 lines, memory frontmatter, settings deny block intact, agent name prefix); the six remaining island skeletons cloned from `coding` with department text | devops | S | PENDING | TASK-562 |
 | TASK-566 | M40 shots + QA: F-panel at two sizes, bound bot at T2, HUD overlap, budgets | qa | S | PENDING | TASK-563, TASK-564, TASK-565 |
 
 ### M41 — Detail + fleet view (row → terminal stream, bot → prompt box, all-islands view + search, `--resume` follow-ups) — PLANNED
