@@ -155,7 +155,7 @@ export const QA_COASTER_MOTION = {
   click: {
     link: 0.85,
     move: 0.55,
-    ring: { life: 0.45, r0: 0.2, r1: 0.95, minY: 0.5, color: '#FF5C8A' },
+    ring: { life: 0.5, r0: 1, r1: 2.3, minY: 0.6, back: 0, color: '#FFF4E0' },
   },
   /** Arrival nod (spring on the cars' pitch, rad). */
   nod: { amp: 0.14, omega: 10, zeta: 0.3 },

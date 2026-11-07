@@ -401,7 +401,11 @@ function coasterClickScene(kit: CoasterKit, show: CoasterShow, cars: number): Sc
     const f = QA_COASTER.track.spineDrop * 0.5;
     w.put(
       PART.ring,
-      [smp.pos[0] - smp.up[0] * f, smp.pos[1] - smp.up[1] * f, smp.pos[2] - smp.up[2] * f],
+      [
+        smp.pos[0] - smp.up[0] * f - smp.tangent[0] * C.back,
+        smp.pos[1] - smp.up[1] * f - smp.tangent[1] * C.back,
+        smp.pos[2] - smp.up[2] * f - smp.tangent[2] * C.back,
+      ],
       [0, 0, 0],
       [r, r * Math.max(C.minY, 1 - ph), r],
       C.color,
