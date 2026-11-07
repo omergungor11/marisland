@@ -5,6 +5,11 @@
 import { THEME_IDS } from '../src/world/types.ts';
 import { FLEET_PORT, type FleetIsland } from '../src/fleet/protocol.ts';
 
+/** Hand-offs one final message may open (M42, D-149): 2 for every island, 7 for hq. */
+export const FLEET_CHAIN = { maxPerMessage: 2, maxPerMessageHq: 7 } as const;
+export const maxPerMessage = (island: FleetIsland): number =>
+  island === 'hq' ? FLEET_CHAIN.maxPerMessageHq : FLEET_CHAIN.maxPerMessage;
+
 export interface FleetConfig {
   port: number;
   /** Model alias of the title job. */

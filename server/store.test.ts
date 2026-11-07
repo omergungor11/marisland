@@ -40,10 +40,32 @@ describe('store', () => {
           status: 'open' as const,
         },
       ],
+      gates: [],
     };
     const out = recoverIndex(idx, 99);
     expect(out.sessions.map((s) => s.status)).toEqual(['error', 'done', 'error']);
     expect(out.sessions[0]).toMatchObject({ reason: 'bridge restarted', endedAt: 99 });
     expect(out.requests[0].status).toBe('error');
+  });
+
+  it('recover keeps a waiting parent with a pending gate, settles one without', () => {
+    const gate = {
+      id: 'g',
+      requestId: 'r-a',
+      fromSessionId: 'a',
+      fromIsland: 'coding' as const,
+      toIsland: 'design' as const,
+      prompt: 'x',
+      status: 'pending' as const,
+      createdAt: 1,
+    };
+    const idx = {
+      sessions: [sess('a', 'waiting'), sess('b', 'waiting')],
+      requests: [],
+      gates: [gate],
+    };
+    const out = recoverIndex(idx, 99);
+    expect(out.sessions.map((s) => s.status)).toEqual(['waiting', 'done']);
+    expect(out.gates).toEqual([gate]);
   });
 });
