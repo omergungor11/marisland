@@ -421,6 +421,14 @@ export const BEAM = {
   off: [6.1, 6.5] as const,
   radialSegments: 16,
   lengthSegments: 6,
+  /**
+   * Land fade (TASK-549): a lighthouse / harbour / beacon cone dims where it hangs over land or is
+   * seen against it (shore SDF at the fragment, at the view ray's sea-level hit and halfway between):
+   * the cone reads over water and in the air instead of washing rock and lawn olive / yellow.
+   * strength = share removed on land (0 = off); band = shore distance (u, > 0 inland) over which
+   * the fade ramps in.
+   */
+  land: { strength: 0.92, band: [-1.5, 3] as const },
 } as const;
 
 /** Post-processing (pmndrs) numbers beyond the bible ones in LIGHTING. */

@@ -23,6 +23,7 @@ varying float vBFacing;
 varying float vBDist;
 varying float vBApp;
 varying float vBDip;
+varying vec3 vBW;
 
 vec3 marBeamRot(vec3 p, float ang, float tilt) {
   // tilt the +x axis down (about z), then spin about y
@@ -51,6 +52,7 @@ void marBeamVertex() {
     mv.xy += position.xy * uBeamMotion.z;
     vBN = vec3(0.0, 0.0, 1.0);
     vBV = vec3(0.0, 0.0, 1.0);
+    vBW = originW.xyz;
   } else {
     vBCorner = vec2(0.0);
     vec3 p = marBeamRot(position, ang, uBeamMotion.y);
@@ -61,6 +63,7 @@ void marBeamVertex() {
     vec3 bs2 = vec3(dot(bm[0], bm[0]), dot(bm[1], bm[1]), dot(bm[2], bm[2]));
     vBN = normalize(bm * (marBeamRot(normal, ang, uBeamMotion.y) / bs2));
     vBV = normalize(cameraPosition - wp.xyz);
+    vBW = wp.xyz;
     mv = viewMatrix * wp;
   }
   vBDist = length(mv.xyz);
@@ -90,6 +93,26 @@ varying float vBFacing;
 varying float vBDist;
 varying float vBApp;
 varying float vBDip;
+varying vec3 vBW;
+// land fade (TASK-549): shore SDF (R, u, > 0 on land) on the world grid; x = strength (0 = off),
+// yz = shore-distance band of the ramp
+uniform sampler2D uBeamSdf;
+uniform vec3 uBeamGrid;
+uniform vec4 uBeamLand;
+
+float marBeamSdf(vec2 xz) { return texture2D(uBeamSdf, (xz - uBeamGrid.xy) * uBeamGrid.z).r; }
+
+/** 0..1 how much land is under the cone fragment or behind it (view ray's sea-level hit). */
+float marBeamLand() {
+  float d = marBeamSdf(vBW.xz);
+  float dy = cameraPosition.y - vBW.y;
+  // a ray that climbs or runs level sees sky: only the fragment's own ground counts
+  if (dy > 0.05 && vBW.y > 0.0) {
+    vec3 hit = cameraPosition + (vBW - cameraPosition) * (cameraPosition.y / dy);
+    d = max(d, max(marBeamSdf(hit.xz), marBeamSdf(mix(vBW.xz, hit.xz, 0.5))));
+  }
+  return smoothstep(uBeamLand.y, uBeamLand.z, d);
+}
 
 /** Additive beam colour (linear HDR); discards where nothing is added. */
 vec3 marBeamFrag() {
@@ -115,6 +138,7 @@ vec3 marBeamFrag() {
     float spread = mix(1.6, 0.7, vBT);
     float near = (1.0 - smoothstep(uBeamNear.x, uBeamNear.y, vBApp)) * vBDip;
     col = uBeamColor * (op * edge * along * haze * spread * near);
+    if (uBeamLand.x > 0.0) col *= 1.0 - uBeamLand.x * marBeamLand();
   }
   // the beam lives in the fog: far beams soften but never vanish (they light the fog)
   float fogF = 1.0 - exp(-pow(uFogDensity * vBDist, 2.0));

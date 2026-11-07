@@ -68,6 +68,12 @@ const CONST_U = {
   uConstTex: { value: null as THREE.DataTexture | null },
 };
 
+/** The world grid's shore SDF (world-textures.ts `sdf`, R > 0 on land) and its `uGridMap`. */
+export interface BeamLand {
+  sdf: THREE.Texture;
+  gridMap: { value: THREE.Vector3 };
+}
+
 /**
  * The dome program's material. `mode` 'sky' = the dome (opaque list, drawn first, no depth),
  * 'beam' = the lighthouse beam (additive, depth-tested, transparent list). Both have identical
@@ -77,7 +83,13 @@ const CONST_U = {
  */
 export function createSkyProgramMaterial(
   mode: 'sky' | 'beam',
-  beam: { flareRadius?: number; flarePull?: number; dip?: readonly [number, number] } = {},
+  beam: {
+    flareRadius?: number;
+    flarePull?: number;
+    dip?: readonly [number, number];
+    /** TASK-549: fade the cone over land (shore SDF + its grid mapping); unset = no fade. */
+    land?: BeamLand;
+  } = {},
   quality: Quality = 'medium',
 ): THREE.ShaderMaterial {
   const isBeam = mode === 'beam';
@@ -167,6 +179,16 @@ export function createSkyProgramMaterial(
         value: new THREE.Vector4(BEAM.opacity, BEAM.backOpacity, BEAM.edgePower, BEAM.fadeIn),
       },
       uBeamNear: { value: new THREE.Vector4(...BEAM.nearFade, ...(beam.dip ?? BEAM.dip)) },
+      uBeamSdf: { value: beam.land?.sdf ?? null },
+      uBeamGrid: beam.land?.gridMap ?? { value: new THREE.Vector3(0, 0, 1) },
+      uBeamLand: {
+        value: new THREE.Vector4(
+          beam.land ? BEAM.land.strength : 0,
+          BEAM.land.band[0],
+          BEAM.land.band[1],
+          0,
+        ),
+      },
       uBeamFx: {
         value: new THREE.Vector4(
           BEAM.fadeOut[0],

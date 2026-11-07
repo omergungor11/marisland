@@ -196,11 +196,13 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   );
   // night lights (TASK-171): lantern-pool texture → SHARED, lighthouse beam mesh
   const pools = createLanternPools(settlement.props, d.scope, d.renderer ?? null);
-  const beam = createBeam(settlement.props, d.scope);
+  // TASK-549: the turning cones fade over land (shore SDF), they light the sea and the air
+  const beamLand = { sdf: textures.sdf, gridMap: textures.uGridMap };
+  const beam = createBeam(settlement.props, d.scope, beamLand);
   if (beam.mesh) group.add(beam.mesh);
   // M23 TASK-490: the skerry beacons join the lighthouse on one turn with a route-order lag; the
   // 22:01 fireworks over the HQ harbour
-  const beacons = createBeaconNet(settlement.props, world, beam, d.scope);
+  const beacons = createBeaconNet(settlement.props, world, beam, d.scope, beamLand);
   group.add(beacons.group);
   const fireworks = createFireworks(d.scope, d.quality, world);
   if (fireworks.mesh) group.add(fireworks.mesh);
@@ -222,6 +224,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     d.scope,
     LIFE_PLAN[d.quality].ferries,
     d.quality,
+    beamLand,
   );
   group.add(cultureMovers.group);
   const tideSub = createTideSub(world, d.scope);

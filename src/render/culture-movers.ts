@@ -19,7 +19,7 @@ import { makeLifeMaterial } from '../life/life-material.ts';
 import { PropFlag, type PropStore } from '../world/prop-store.ts';
 import { THEME_IDS, heightAt, type ThemeId, type WorldData, type XZ } from '../world/types.ts';
 import { buildBeamGeometry } from './night/beam.ts';
-import { createSkyProgramMaterial } from './sky/sky.ts';
+import { createSkyProgramMaterial, type BeamLand } from './sky/sky.ts';
 import { SHARED } from './uniforms.ts';
 import { PART, buildPartGeometries, type PartKind } from './culture-mover-parts.ts';
 import { DEVOPS_M22 } from '../content/props-themes/devops.ts';
@@ -2100,6 +2100,8 @@ export function createCultureMovers(
   /** HQ ferries running (LIFE_PLAN[quality].ferries): the harbour rituals follow those boats. */
   ferries = LIFE_PLAN.medium.ferries,
   quality: Quality = 'medium',
+  /** TASK-549: the searchlight cones fade over land (sky.ts BeamLand); unset = no fade. */
+  land?: BeamLand,
 ): CultureMoversView {
   const group = new THREE.Group();
   group.name = 'culture-movers';
@@ -2404,6 +2406,7 @@ export function createCultureMovers(
             flareRadius: BEAM.flareRadius * B.scale * B.flare,
             flarePull: BEAM.flarePull * B.scale,
             dip: B.dip,
+            land,
           }),
         );
         const mesh = new THREE.Mesh(beamGeo, beamMat);

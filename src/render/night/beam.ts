@@ -5,7 +5,7 @@ import { PROP_DEFS } from '../../content/props.ts';
 import { HARBOUR_VARIANTS } from '../../content/themes/harbours.ts';
 import type { PropStore } from '../../world/prop-store.ts';
 import { SHARED } from '../uniforms.ts';
-import { createSkyProgramMaterial } from '../sky/sky.ts';
+import { createSkyProgramMaterial, type BeamLand } from '../sky/sky.ts';
 
 /**
  * Lighthouse beam (TASK-171, ART_BIBLE §7 #19): a rotating double cone of soft additive light
@@ -99,7 +99,7 @@ function findLighthouse(props: PropStore): { x: number; y: number; z: number; s:
   return null;
 }
 
-export function createBeam(props: PropStore, scope: Scope): BeamView {
+export function createBeam(props: PropStore, scope: Scope, land?: BeamLand): BeamView {
   const lh = findLighthouse(props);
   if (!lh) return { mesh: null, update() {} };
   const geo = scope.add(buildBeamGeometry());
@@ -108,6 +108,7 @@ export function createBeam(props: PropStore, scope: Scope): BeamView {
     createSkyProgramMaterial('beam', {
       flareRadius: BEAM.flareRadius * lh.s,
       flarePull: BEAM.flarePull * lh.s,
+      land,
     }),
   );
   const mesh = new THREE.Mesh(geo, mat);

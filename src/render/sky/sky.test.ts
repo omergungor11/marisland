@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { COMET, METEORS } from '../../content/lighting.ts';
-import { cometAt, meteorAt } from './sky.ts';
+import { BEAM, COMET, METEORS } from '../../content/lighting.ts';
+import { cometAt, createSkyProgramMaterial, meteorAt } from './sky.ts';
 
 const DEG = Math.PI / 180;
 
@@ -60,5 +60,24 @@ describe('shooting stars (TASK-472 G2)', () => {
       if (meteorAt(t, 7, s2, dir).progress >= 0 && meteorAt(t, 1001, start, dir).progress < 0)
         differs = true;
     expect(differs).toBe(true);
+  });
+});
+
+describe('beam land fade (TASK-549)', () => {
+  it('is off for the dome and unlisted beams, on with the shore SDF, same uniform set', () => {
+    const sdf = new THREE.DataTexture(new Float32Array(4), 2, 2, THREE.RedFormat, THREE.FloatType);
+    const gridMap = { value: new THREE.Vector3(-10, -10, 0.05) };
+    const sky = createSkyProgramMaterial('sky');
+    const plain = createSkyProgramMaterial('beam');
+    const land = createSkyProgramMaterial('beam', { land: { sdf, gridMap } });
+    expect((sky.uniforms.uBeamLand.value as THREE.Vector4).x).toBe(0);
+    expect((plain.uniforms.uBeamLand.value as THREE.Vector4).x).toBe(0);
+    const v = land.uniforms.uBeamLand.value as THREE.Vector4;
+    expect(v.x).toBe(BEAM.land.strength);
+    expect([v.y, v.z]).toEqual([...BEAM.land.band]);
+    expect(land.uniforms.uBeamSdf.value).toBe(sdf);
+    expect(land.uniforms.uBeamGrid).toBe(gridMap); // shared: follows the world's grid mapping
+    // one program: both materials supply every uniform
+    expect(Object.keys(land.uniforms).sort()).toEqual(Object.keys(sky.uniforms).sort());
   });
 });
