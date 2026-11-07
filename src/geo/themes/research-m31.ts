@@ -819,33 +819,47 @@ function sunkenCity({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
       break;
     }
     case 4: {
-      // paving slab cluster: a 3 x 2 patch (plan extent < 3 u in z, see the tier note), some slabs missing / sunk / tilted, a curb on one side
-      const cell = 0.92;
+      // paving cell (TASK-550, D-139): one cell of the city lattice, `pave.along` (the street, local z)
+      // x `pave.across` (local x), the pitch of the slots (content/themes/research-harbour.ts `city`):
+      // an `nx` x `nz` grid of slabs flush on a dark joint bed, each with its own thickness, tilt and
+      // sink, one now and then missing; neighbouring cells share the pitch so the slabs run on
+      const PV = C.pave;
+      const cw = PV.across / PV.nx;
+      const cd = PV.along / PV.nz;
       if (!hi) {
-        for (const [x, z, w, d] of [
-          [-0.2, -0.45, 2.6, 1.2],
-          [-0.4, 0.55, 1.4, 0.7],
-        ] as const)
-          put(acc, chunk(w, 0.13, d, noise, 0.04, 1), [x, 0, z], stoneAt(1), { aoAmt: 0.15 });
-      } else
-        for (let i = -1; i <= 1; i++)
-          for (let j = -1; j <= 0; j++) {
-            if (!(i === 0 && j === 0) && r.chance(0.2)) continue;
-            const h = 0.1 + r.range(0, 0.07);
+        put(
+          acc,
+          chunk(PV.across - PV.gap, 0.12, PV.along - PV.gap, noise, 0.03, 1),
+          [0, 0, 0],
+          stoneAt(1),
+          {
+            aoAmt: 0.15,
+          },
+        );
+      } else {
+        put(acc, baseBox(PV.across, 0.08, PV.along), [0, -0.04, 0], dark, {
+          aoAmt: 0.3,
+          noJitter: true,
+        });
+        for (let i = 0; i < PV.nx; i++)
+          for (let j = 0; j < PV.nz; j++) {
+            if (r.chance(PV.missing)) continue;
+            const h = r.range(PV.thick[0], PV.thick[1]);
             put(
               acc,
-              chunk(0.84, h, 0.84, noise, hi ? 0.1 : 0.04, i * 3 + j),
-              [i * cell, r.range(-0.03, 0.02), j * cell],
+              chunk(cw - PV.gap, h, cd - PV.gap, noise, 0.05, i * 3 + j, 2),
+              [
+                (i + 0.5) * cw - PV.across / 2,
+                r.range(PV.sink[0], PV.sink[1]),
+                (j + 0.5) * cd - PV.along / 2,
+              ],
               stoneAt(i * 3 + j + 4),
               {
-                q: qEuler(r.range(-0.05, 0.05), r.range(-0.1, 0.1), r.range(-0.05, 0.05)),
+                q: qEuler(r.range(-PV.tilt, PV.tilt), 0, r.range(-PV.tilt, PV.tilt)),
                 aoAmt: 0.15,
               },
             );
           }
-      if (hi) {
-        blk(2.6, 0.2, 0.2, [0, 0, -1.5], 2);
-        blk(0.42, 0.14, 0.34, [1.0, 0, 0.45], 3, qEuler(0, 0.7, 0));
       }
       break;
     }
