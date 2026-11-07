@@ -11,7 +11,8 @@ import {
   type ItineraryStep,
   type LifePlan,
 } from '../content/life.ts';
-import { CARRIED_ITEM_SLOT, THEMES } from '../content/themes.ts';
+import { FLEET_BOTS } from '../content/fleet.ts';
+import { CARRIED_ITEM_SLOT, FLEET_BEACON_SLOT, THEMES } from '../content/themes.ts';
 import { springIn } from '../core/math/spring.ts';
 import { wrapAngle } from './agents.ts';
 import type { LifeCtx } from './ctx.ts';
@@ -132,6 +133,12 @@ export class Workers extends LandKind {
   /** The step's item (what `item` returns to by day) and whether the night items are on. */
   private readonly dayItem: Uint8Array;
   private nightOn = false;
+  /** Fleet marker (TASK-564): the beacon item code while the bot holds a live session, else 0. */
+  private readonly beacon: Uint8Array;
+  /** The desk a pinned bot walks to (seat index, −1 = any free seat of the lot it reaches). */
+  private readonly wantSeat: Int32Array;
+  /** A pinned bot sitting indoors although an open-air desk is free: stands up once to go there. */
+  private readonly leave: Uint8Array;
   /** Walking speed multiple per THEME_ORDER index while a ritual runs (RITUAL_SPEED), set each step. */
   private readonly rmul = new Float32Array(THEME_ORDER.length).fill(1);
   /** Island whose campus the camera is focused on (−1 = none). */
@@ -243,6 +250,9 @@ export class Workers extends LandKind {
     this.residents = firstAmbient < 0 ? n : firstAmbient;
     this.item = new Uint8Array(n);
     this.dayItem = new Uint8Array(n);
+    this.beacon = new Uint8Array(n);
+    this.wantSeat = new Int32Array(n).fill(-1);
+    this.leave = new Uint8Array(n);
     this.accOf = new Uint8Array(n);
     this.gStep = new Int16Array(n);
     this.gKind = new Uint8Array(n);
@@ -604,6 +614,8 @@ export class Workers extends LandKind {
   private endPause(i: number): void {
     // an errand in progress: at its node now, start it (seat / stop / hub ring); a dock stay is over
     if (this.gKind[i] !== G_NONE && this.startGoal(i)) return;
+    // a live fleet session: go and sit down at a desk of this island
+    if (this.beacon[i] && this.seekDesk(i)) return;
     // the itinerary (desk -> kiosk queue -> meeting -> rack -> dock ...)
     if (this.planGoal(i)) return;
     // a free seat at this door? go in and sit down
@@ -713,7 +725,12 @@ export class Workers extends LandKind {
         this.stretchIn[i] -= dt;
         if (this.stretchIn[i] <= 0) this.stretchT[i] = 0;
       }
-      if (this.timer[i] >= this.dur[i] && this.stretchT[i] < 0) this.beginExit(i);
+      if (
+        this.timer[i] >= this.dur[i] &&
+        this.stretchT[i] < 0 &&
+        (!this.beacon[i] || this.leave[i])
+      )
+        this.beginExit(i);
     } else if (s === W_ENTER || s === W_EXIT) {
       this.timer[i] += dt;
       if (s === W_EXIT && this.timer[i] < V.standSeconds) {
@@ -856,7 +873,7 @@ export class Workers extends LandKind {
       if (st && st.slot >= 0) {
         moving = this.stepQueue(i, st, dt);
         want = this.queueFacing(i, st, want);
-      } else if (this.timer[i] >= this.dur[i]) this.beginBack(i);
+      } else if (this.timer[i] >= this.dur[i] && !this.beacon[i]) this.beginBack(i);
       if (this.gKind[i] === G_HUB) {
         // loiterers drift around slowly and look about
         want = this.look[i] + 0.9 * Math.sin(TAU * (0.11 * this.timer[i] + this.phase[i]));
@@ -1108,7 +1125,9 @@ export class Workers extends LandKind {
   private setItem(i: number, want: number): void {
     this.dayItem[i] = want;
     // Q17 lantern bots: at night the theme's night item replaces the step's (TASK-480)
-    const code = this.nightOn && NIGHT_CODE[this.themeOf[i]] ? NIGHT_CODE[this.themeOf[i]] : want;
+    const code =
+      this.beacon[i] ||
+      (this.nightOn && NIGHT_CODE[this.themeOf[i]] ? NIGHT_CODE[this.themeOf[i]] : want);
     if (this.item[i] === code) return;
     this.item[i] = code;
     this.seedArr[i] = this.accOf[i] + ITEM_STRIDE * code + Math.min(this.phase[i], 0.999);
@@ -1127,6 +1146,63 @@ export class Workers extends LandKind {
       this.seedDirty = false;
     }
     super.update(alpha);
+  }
+
+  // ---- fleet binding (TASK-564)
+
+  /** Always-on workers of a department (THEME_IDS index), in slot order. */
+  residentsOf(theme: number): number[] {
+    const out: number[] = [];
+    for (let i = 0; i < this.residents; i++) if (this.themeOf[i] === theme) out.push(i);
+    return out;
+  }
+
+  /** Hold worker `i` at a desk with the island's beacon over its head until `unpin`. */
+  pin(i: number): void {
+    this.beacon[i] = FLEET_BEACON_SLOT + this.themeOf[i] - 6;
+    this.leave[i] =
+      this.state[i] === W_WORK && FLEET_BOTS.openDesks[THEME_ORDER[this.themeOf[i]]] ? 1 : 0;
+    if (this.leave[i]) this.dur[i] = 0;
+    this.setItem(i, this.dayItem[i]);
+  }
+
+  /** Back to the normal routine: the bot finishes its stretch beat, stands up and carries on. */
+  unpin(i: number): void {
+    this.beacon[i] = 0;
+    this.wantSeat[i] = -1;
+    this.setItem(i, this.dayItem[i]);
+  }
+
+  /**
+   * At a pause: walk to an open-air desk of the island when it has one (it reads from outside), else
+   * to the nearest free typing desk indoors (any desk when none types).
+   */
+  private seekDesk(i: number): boolean {
+    if (this.seatOf[i] >= 0 && this.state[i] !== W_PAUSE) return false;
+    this.leave[i] = 0;
+    const open = FLEET_BOTS.openDesks[THEME_ORDER[this.themeOf[i]]];
+    if (open && this.tryGoal(i, { goal: { kind: 'spot', defs: open } })) return true;
+    const free = this.seatsOfIsland[this.islandOf[i]].filter(
+      (k) => this.seatOwner[k] < 0 && !this.hiddenLots.has(this.seats[k].lot),
+    );
+    if (free.length === 0) return false;
+    const typing = free.filter((k) => (WORKERS.typeAmount[this.seats[k].pose] ?? 0) > 0);
+    const pool = typing.length > 0 ? typing : free;
+    let best = pool[0];
+    let bd = Infinity;
+    for (const k of pool) {
+      const d = Math.hypot(this.seats[k].x - this.x[i], this.seats[k].z - this.z[i]);
+      if (d < bd) {
+        bd = d;
+        best = k;
+      }
+    }
+    if (this.compOf[i] < 0) {
+      this.beginEnter(i, best);
+      return true;
+    }
+    this.wantSeat[i] = best;
+    return this.routeTo(i, this.seats[best].node, G_SEAT, -1, this.seats[best].lot);
   }
 
   private releaseGoal(i: number): void {
@@ -1311,7 +1387,9 @@ export class Workers extends LandKind {
     const gk = this.gKind[i];
     if (gk === G_SEAT) {
       const list = this.lotSeats.get(this.gLot[i]);
-      const k = this.freeSeat(i, list);
+      const want = this.wantSeat[i];
+      this.wantSeat[i] = -1;
+      const k = want >= 0 && this.seatOwner[want] < 0 ? want : this.freeSeat(i, list);
       this.releaseGoal(i);
       if (k < 0) return false;
       this.byGoal[i] = 1;

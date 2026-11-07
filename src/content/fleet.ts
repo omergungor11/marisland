@@ -54,6 +54,31 @@ export const FLEET_PANEL = {
   empty: 'Bu adada session yok',
 } as const;
 
+/**
+ * Session <-> bot binding (TASK-564, `life/fleet-bots.ts`): a live session seats one department bot
+ * at a desk and floats an accent diamond over its head (FLEET_BEACON_SLOT, life/geo/workers.ts).
+ */
+export const FLEET_BOTS = {
+  /** Sim seconds a bot keeps its desk and marker after its session ended (done / error / stopped). */
+  releaseDelayS: 8,
+  /** The marker gem (u, bot space): centre height above the head top, half height, half width; the stalk below it. */
+  beacon: {
+    lift: 1.3,
+    ry: 0.36,
+    rx: 0.23,
+    stalkFrom: 0.26,
+    stalk: 0.02,
+    /** Cream ring radius (x gem half width) and the gem's lit top (accent mixed toward cream). */
+    ring: 1.5,
+    shine: '#FFF6E0',
+    shineMix: 0.25,
+  },
+  /** Open-air desk stops (content/offices WORK_SPOTS defs) a department's bot prefers: they read from outside. */
+  openDesks: { coding: ['pergolaDesk'] } as Readonly<Partial<Record<string, readonly string[]>>>,
+  /** Hover title: pointer offset (px) and max width (px); text = agent (small caps) + title. */
+  tip: { dx: 14, dy: 18, maxWidth: 260 },
+} as const;
+
 /** "ne zamandır" format: under `justNowS` → "az önce", then minutes, hours + minutes, days. */
 export const FLEET_DURATION = {
   justNowS: 60,

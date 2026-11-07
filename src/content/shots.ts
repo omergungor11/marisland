@@ -2181,6 +2181,18 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     fleet: 'mock',
     sets: ['dev'],
   },
+  // ---- fleet bot marker (TASK-564): a pergola desk of the Coding campus at T2 (raw cam: the desk is
+  // fixed by the seed); the live session's bot has walked there by simt 30 and wears the accent gem
+  {
+    id: 'F-bot',
+    title: 'Fleet bot marker · Coding campus',
+    seed: 1001,
+    cam: '-109,19,158,-113.56,11.5,150.3',
+    time: 14,
+    simt: 30,
+    fleet: 'mock',
+    sets: ['dev'],
+  },
   // ---- sandbox edits (TASK-221): `pnpm shots edit`. Logs on seed 1001 generated with
   // `encodeLog` (world/edit.ts); re-recorded for the Phase 3 layout (TASK-309: moved with their
   // island, rejected placements dropped) and the theme-first world (TASK-380: one pine that now

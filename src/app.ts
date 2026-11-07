@@ -60,6 +60,8 @@ import { staticEditBinding } from './ui/edit-panel.ts';
 import { EDIT_PANEL } from './content/edit-ui.ts';
 import { createFleetClient, fleetModeOf } from './fleet/client.ts';
 import { createFleetPanel } from './ui/fleet-panel.ts';
+import { createFleetTip } from './ui/fleet-tip.ts';
+import { bindFleetToBots, type FleetBots } from './life/fleet-bots.ts';
 import { FLEET } from './content/fleet.ts';
 import { THEMES } from './content/themes.ts';
 import { themeIcon } from './ui/theme-icons.ts';
@@ -398,6 +400,9 @@ export async function boot(): Promise<void> {
     let worldLife: { setMotionScale(s: number): void } | null = null;
     /** The live world's pointer interaction (picking, hover, reactions); null in the gallery. */
     let interaction: Interaction | null = null;
+    /** Fleet session <-> bot binding of the live world (TASK-564) and its hover tip (set with the HUD). */
+    let fleetBots: FleetBots | null = null;
+    let botTip: (hit: PickHit | null, x: number, y: number) => void = () => {};
     /** The live world's editor (TASK-212); null in capture / the gallery. */
     let editMode: EditMode | null = null;
     let editSession: EditSession | null = null;
@@ -464,6 +469,15 @@ export async function boot(): Promise<void> {
       const timings = wv.timings;
       Object.assign(ctx.timings, wv.timings);
       worldLife = wv.life;
+      if (fleet.mode !== 'off') {
+        const fb = (fleetBots = bindFleetToBots(fleet, wv.life));
+        const fbs = {
+          name: 'fleet-bots',
+          fixedUpdate: () => fb.update(wv.life.kinds.workers?.simT ?? 0),
+        };
+        loop.add(fbs);
+        worldScope.defer(() => (loop.remove(fbs), fb.dispose()));
+      }
       worldWeather = wv.weather;
       if (cam.reducedMotion) wv.life.setMotionScale(motionScale());
       // picking / hover / reactions run right after the world view (agent matrices are final)
@@ -480,6 +494,7 @@ export async function boot(): Promise<void> {
         reduced: cam.reducedMotion,
         motionScale: motionScale(),
         listen: !params.freeze,
+        onHover: (hit, x, y) => botTip(hit, x, y),
       });
       interaction = ia;
 
@@ -802,6 +817,13 @@ export async function boot(): Promise<void> {
           iconFor: (t) => themeIcon(THEMES[t].icon, 15),
         });
         appScope.defer(() => fp.dispose());
+        const tip = createFleetTip(h.el);
+        appScope.defer(() => tip.dispose());
+        botTip = (hit, x, y) => {
+          const s = hit?.name === 'workers' ? fleetBots?.sessionOf(hit.id) : null;
+          if (s) tip.show(s, THEME_ACCENTS[s.island], x, y);
+          else tip.hide();
+        };
         // the island is re-picked only once the target moved `focusMoveU` (or the world changed)
         let fx = NaN;
         let fz = NaN;

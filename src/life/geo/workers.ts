@@ -1,5 +1,8 @@
 import type * as THREE from 'three';
+import { FLEET_BOTS } from '../../content/fleet.ts';
 import { WORKER_COLORS as W } from '../../content/life.ts';
+import { FLEET_BEACON_SLOT, THEMES } from '../../content/themes.ts';
+import { THEME_IDS } from '../../world/types.ts';
 import { hex, TriBuilder, v3 } from './builder.ts';
 
 /**
@@ -169,6 +172,7 @@ export function buildWorker(): THREE.BufferGeometry {
 
   accessories(b);
   items(b);
+  beacons(b);
   return b.finish();
 }
 
@@ -351,5 +355,38 @@ function items(b: TriBuilder): void {
   b.box(v3(0.26, 0.22, 0.2), 0.042, 0.06, 0.042, hex(I.lanternGlow));
   b.setEmissive(0);
 
+  b.clearLimb();
+}
+
+/**
+ * Fleet beacons (TASK-564): one glowing diamond on a stalk in each department's accent above the head, tagged
+ * mode 8 slots FLEET_BEACON_SLOT + theme index. Shown through the carried-item code like any item.
+ */
+function beacons(b: TriBuilder): void {
+  const B = FLEET_BOTS.beacon;
+  THEME_IDS.forEach((t, k) => {
+    b.setLimb(FLEET_BEACON_SLOT + k, HEAD_Y, 0, 8);
+    b.setEmissive(1);
+    const c = hex(THEMES[t].accent);
+    const top = c.clone().lerp(hex(B.shine), B.shineMix);
+    b.ellipsoid(v3(-0.03, HEAD_TOP + B.lift, 0), B.rx, B.ry, B.rx, 4, 2, (u) =>
+      u > 0.5 ? top : c,
+    );
+    // a cream ring under the gem: the accent never melts into a same-coloured roof or sea
+    b.ellipsoid(
+      v3(-0.03, HEAD_TOP + B.lift - B.ry * 0.85, 0),
+      B.rx * B.ring,
+      0.025,
+      B.rx * B.ring,
+      8,
+      2,
+      () => hex(B.shine),
+    );
+    // a thin stalk from the antenna up to the gem: reads as one marker, clears a pergola's awning
+    const y0 = HEAD_TOP + B.stalkFrom;
+    const y1 = HEAD_TOP + B.lift - B.ry;
+    b.box(v3(-0.03, (y0 + y1) / 2, 0), B.stalk, (y1 - y0) / 2, B.stalk, c);
+    b.setEmissive(0);
+  });
   b.clearLimb();
 }
