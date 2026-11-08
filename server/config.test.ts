@@ -44,6 +44,26 @@ describe('island manifest', () => {
     expect(validateManifest(null, 'coding')).toHaveLength(1);
   });
 
+  it('childGates: boolean only, defaults to true, set per island', () => {
+    const c = coding as Record<string, unknown>;
+    expect(validateManifest({ ...c, childGates: false }, 'coding')).toEqual([]);
+    expect(validateManifest({ ...c, childGates: 'no' }, 'coding')[0]).toMatch(/childGates/);
+    const bare = { ...c };
+    delete bare.childGates;
+    expect(parseManifest(bare, 'coding', parseConfig({})).childGates).toBe(true);
+    expect(parseManifest({ ...c, childGates: false }, 'coding', parseConfig({})).childGates).toBe(
+      false,
+    );
+    const flag = (t: string): unknown =>
+      (
+        JSON.parse(
+          readFileSync(`${import.meta.dirname}/../fleet/islands/${t}/island.json`, 'utf8'),
+        ) as { childGates?: boolean }
+      ).childGates;
+    for (const t of ['design', 'qa', 'devops', 'research']) expect(flag(t)).toBe(false);
+    for (const t of ['marketing', 'coding', 'hq']) expect(flag(t)).toBe(true);
+  });
+
   it('fills maxChildren from the fleet config', () => {
     const c = { ...(coding as Record<string, unknown>) };
     delete c.maxChildren;

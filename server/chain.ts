@@ -107,6 +107,7 @@ export function childPrompt(o: {
     `${parent} adasının senden istediği:`,
     o.handoff.prompt,
     '',
+    "Bu bir child session; yalnız istekte açıkça adı geçen adaya devret, aksi hâlde eksikleri `## HQ'ya öneri` altında yaz.",
     `Raporunu \`## Özet\` bölümüyle bitir. Raporun ${parent} adasındaki session'a geri gider ve o devam eder.`,
   ].join('\n');
 }
@@ -130,6 +131,15 @@ export function reportBackPrompt(
       return `${c}'a devir reddedildi: kullanıcı izin vermedi. Aynı isteği tekrarlama; işi kendin bitir ya da raporunda eksik olarak belirt.`;
   }
 }
+
+/** Line appended to a child session whose island has `childGates: false` (D-154). */
+export const CHILD_GATES_CLOSED = "child session: devir kapalı, istek HQ'ya öneri olarak kaldı";
+
+/** True when the session is a child and its island's manifest closes child gates. */
+export const childGatesClosed = (
+  session: { parentId?: string },
+  manifest: { childGates?: boolean },
+): boolean => session.parentId !== undefined && manifest.childGates === false;
 
 export type CapResult = { ok: true } | { ok: false; reason: string };
 

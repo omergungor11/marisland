@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CHILD_GATES_CLOSED,
   capCheck,
+  childGatesClosed,
   childPrompt,
   childStart,
   parseHandoffs,
@@ -94,6 +96,23 @@ describe('prompts', () => {
     expect(p).toContain('metinler hazır');
     expect(p).toContain('iki görsel');
     expect(p).toContain('## Özet');
+  });
+  it('childPrompt tells the child to hand off only to a named island', () => {
+    const p = childPrompt({
+      requestTitle: 't',
+      parentIsland: 'marketing',
+      parentSummary: 's',
+      handoff,
+    });
+    expect(p).toContain('Bu bir child session; yalnız istekte açıkça adı geçen adaya devret');
+    expect(p).toContain("`## HQ'ya öneri`");
+  });
+  it('childGatesClosed: only a child of an island with childGates false', () => {
+    expect(childGatesClosed({ parentId: 'p' }, { childGates: false })).toBe(true);
+    expect(childGatesClosed({}, { childGates: false })).toBe(false);
+    expect(childGatesClosed({ parentId: 'p' }, { childGates: true })).toBe(false);
+    expect(childGatesClosed({ parentId: 'p' }, {})).toBe(false);
+    expect(CHILD_GATES_CLOSED).toBe("child session: devir kapalı, istek HQ'ya öneri olarak kaldı");
   });
   it('reportBackPrompt variants', () => {
     expect(reportBackPrompt('design', 'tamam', 'done')).toBe('Design adasından rapor:\ntamam');

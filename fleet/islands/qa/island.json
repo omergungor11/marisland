@@ -3,8 +3,9 @@
   "name": "Kalite (QA)",
   "role": "Görsel ve işlevsel kabulü puanlar: shots, wow checklist ve VISUAL_QA kriterleri; kod yazmaz.",
   "model": "sonnet",
-  "maxTurns": 30,
+  "maxTurns": 20,
   "maxChildren": 6,
+  "childGates": false,
   "allowedTools": [
     "Read",
     "Edit",

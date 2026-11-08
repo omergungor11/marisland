@@ -3,8 +3,9 @@
   "name": "DevOps",
   "role": "Build, CI ve Pages deploy altyapısını izler: workflow, script ve araç zinciri; uygulama koduna dokunmaz.",
   "model": "sonnet",
-  "maxTurns": 30,
+  "maxTurns": 20,
   "maxChildren": 6,
+  "childGates": false,
   "allowedTools": [
     "Read",
     "Edit",

@@ -36,6 +36,9 @@ aynı adda bir şey yaratırsan cwd'ye yakın olan kazanır, bu yüzden ada agen
 - Bütçe: `island.json` → `maxTurns` içinde kal. Başka adadan iş istemek için aşağıdaki biçimi kullan;
   hedef adayı kendin başlatmazsın, kullanıcı kapıdan izin verir.
 - Dış servis çağrısı, API key, para harcayan iş yok.
+- **Bash'te her çağrı tek komut: `;`, `&&`, `|` ile zincirleme yok.** Bridge seni `--permission-mode
+  acceptEdits --permission-prompts none` ile başlatır; `--allowedTools` öneklerle eşleşir, zincirli
+  komut izin listesine uymaz, sormadan reddedilir ve bir turn'e mal olur. Komutları ayrı çağrılarla ver.
 
 ## Hafıza
 
@@ -64,6 +67,9 @@ Başka bir adaya iş devretmek için raporunun sonuna, her biri kendi başlığ�
   Child bitince SEN devam edersin: mesajın "<ada> adasından rapor:" ile başlar; cevabı kullanıp işine
   devam et, kullanıcıya yanıt ver ya da sıradaki adaya devret. Reddedilirse aynı kanaldan "…devir
   reddedildi" gelir; işi kendin bitir ya da raporla.
+- Child session isen (kapıdan açıldın) ve adanın `island.json` → `childGates` değeri `false` ise
+  (design, qa, devops, research) `## → <ada>` başlıkların kapı açmaz; eksikleri `## HQ'ya öneri`
+  altına yaz. Yalnız istekte açıkça adı geçen adaya devredebilirsin.
 - Tavanlar: istek başına `maxChildren` (`island.json`, varsayılan 6), zincir derinliği en çok 3.
   Tavana yaklaşırsan yeni istek açma, kullanıcıya raporla.
 - `## Özet` zorunlu: child'a ve geri raporuna yalnız bu bölüm gider. Özetin yoksa karşı taraf bağlamsız çalışır.
