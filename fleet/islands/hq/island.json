@@ -5,6 +5,7 @@
   "model": "opus",
   "maxTurns": 30,
   "maxChildren": 6,
+  "childGates": true,
   "allowedTools": [
     "Read",
     "Edit",

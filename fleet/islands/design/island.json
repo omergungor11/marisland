@@ -3,8 +3,9 @@
   "name": "Tasarım",
   "role": "Görünüm ve hareket kararlarını ART_BIBLE ile uyumlu tutar: palet, prop dili, zoom kademeleri.",
   "model": "sonnet",
-  "maxTurns": 30,
+  "maxTurns": 20,
   "maxChildren": 6,
+  "childGates": false,
   "allowedTools": [
     "Read",
     "Edit",

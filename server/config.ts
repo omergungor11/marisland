@@ -26,6 +26,8 @@ export interface IslandManifest {
   model: 'haiku' | 'sonnet' | 'opus';
   maxTurns: number;
   maxChildren: number;
+  /** false = a child session of this island opens no gates (default true). */
+  childGates?: boolean;
   allowedTools: string[];
   addDirs: string[];
   owner: 'hq' | 'user';
@@ -85,6 +87,7 @@ const KEYS = [
   'model',
   'maxTurns',
   'maxChildren',
+  'childGates',
   'allowedTools',
   'addDirs',
   'owner',
@@ -122,6 +125,8 @@ export function validateManifest(raw: unknown, dirName: string): string[] {
   };
   int(maxTurns, 'maxTurns', 1, 200);
   int(maxChildren, 'maxChildren', 0, 20);
+  if (raw.childGates !== undefined && typeof raw.childGates !== 'boolean')
+    p.push('childGates must be a boolean');
   if (raw.allowedTools !== undefined && !strArr(raw.allowedTools, 1))
     p.push('allowedTools must be a list of non-empty strings');
   if (raw.addDirs !== undefined && !strArr(raw.addDirs, 1))
@@ -142,7 +147,11 @@ export function parseManifest(raw: unknown, dirName: string, fleet: FleetConfig)
   const problems = validateManifest(raw, dirName);
   if (problems.length) throw new Error(`island ${dirName}: ${problems.join('; ')}`);
   const m = raw as IslandManifest;
-  return { ...m, maxChildren: m.maxChildren ?? fleet.maxChildren };
+  return {
+    ...m,
+    maxChildren: m.maxChildren ?? fleet.maxChildren,
+    childGates: m.childGates ?? true,
+  };
 }
 
 export const parseManifestText = (

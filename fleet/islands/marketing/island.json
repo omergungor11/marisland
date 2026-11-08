@@ -3,8 +3,9 @@
   "name": "Pazarlama",
   "role": "Marisland tanıtım metinlerini, sosyal medya gönderi fikirlerini ve duyuru taslaklarını hazırlar.",
   "model": "sonnet",
-  "maxTurns": 30,
+  "maxTurns": 12,
   "maxChildren": 6,
+  "childGates": true,
   "allowedTools": [
     "Read",
     "Edit",

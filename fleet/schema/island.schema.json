@@ -35,6 +35,11 @@
       "default": 6,
       "description": "Hand-off sessions one request may open from here (M42)."
     },
+    "childGates": {
+      "type": "boolean",
+      "default": true,
+      "description": "false = a child session (has a parentId) of this island opens no gates; its ## → headings stay in the text and the request returns to HQ as a proposal."
+    },
     "allowedTools": {
       "type": "array",
       "items": { "type": "string", "minLength": 1 },

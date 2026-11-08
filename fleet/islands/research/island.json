@@ -3,8 +3,9 @@
   "name": "Araştırma",
   "role": "Teknik ve alan araştırması yapar, bulguları kısa notlara ve knowledge base girdilerine dönüştürür.",
   "model": "sonnet",
-  "maxTurns": 30,
+  "maxTurns": 15,
   "maxChildren": 6,
+  "childGates": false,
   "allowedTools": [
     "Read",
     "Edit",

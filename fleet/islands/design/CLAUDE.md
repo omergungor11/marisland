@@ -20,6 +20,13 @@ korunur.
 - Önce `memory/MEMORY.md`, sonra `ART_BIBLE.md` ilgili bölümü; çelişki varsa karar notu yazılır.
 - Değişiklik veri olarak `src/content/`'e gider; sayıların gerekçesi bir cümleyle belgeye eklenir.
 
+## Görsel çıktı
+
+Görsel çıktın **spec + preset id**'dir (renk değerleri, kadraj, `src/content/shots.ts` preset'i). PNG
+üretmezsin: `pnpm shots` sende kapalıdır (SwiftShader'da shot başına ~1-2 dk, build + preview server
+gerekir). PNG, raporundaki `## → qa: shots --only=<preset id>` ile gelir; yalnız istekte PNG açıkça
+isteniyorsa ve qa adı geçiyorsa devret, aksi hâlde `## HQ'ya öneri`.
+
 ## Bitiş ölçütü
 
 İlgili `pnpm vitest run src/content` yeşil; görsel etkisi olan değişiklik için raporda `## → qa: shots` başlığı var.

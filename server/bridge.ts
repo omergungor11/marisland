@@ -32,6 +32,8 @@ import {
 import { THEME_IDS } from '../src/world/types.ts';
 import { firstOutOfBounds } from './bounds.ts';
 import {
+  CHILD_GATES_CLOSED,
+  childGatesClosed,
   childStart,
   parseHandoffs,
   parseSummary,
@@ -294,6 +296,10 @@ function openGates(run: Run): boolean {
   const s = run.session;
   const handoffs = parseHandoffs(run.finalText, islandNames());
   if (!handoffs.length) return false;
+  if (childGatesClosed(s, loadManifest(s.island))) {
+    pushLine(run, { kind: 'system', text: CHILD_GATES_CLOSED }, Date.now());
+    return false;
+  }
   const requestChildren =
     index.sessions.filter((x) => x.requestId === s.requestId && x.parentId).length +
     index.gates.filter((g) => g.requestId === s.requestId && g.status === 'pending').length;
