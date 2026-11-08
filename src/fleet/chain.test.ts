@@ -6,6 +6,7 @@ import {
   chainOf,
   gatedSessions,
   gateGroups,
+  gateLineShown,
   groupRows,
   pendingGates,
   requestTree,
@@ -152,7 +153,7 @@ describe('fleet chains: tree, gates, groups (M42)', () => {
     let groups = gateGroups(gs, null, at, NOW);
     expect(groups).toHaveLength(1);
     expect(groups[0]).toMatchObject({ parentId: 'p', pending: 2 });
-    expect(groups[0].views.map((v) => v.mode)).toEqual(['card', 'card']);
+    expect(groups[0].views.map((v) => v.mode)).toEqual(['card', 'row']);
     const later = [gate('a', { status: 'allowed' }), gs[1], gs[2]];
     trackAnswers(later, seen, at, NOW + 1000);
     groups = gateGroups(later, 'design', at, NOW + 2 * MIN);
@@ -183,6 +184,52 @@ describe('fleet chains: tree, gates, groups (M42)', () => {
     const gs = [gate('a', { round: 'r1' }), gate('b', { round: 'r2' }), gate('c')];
     const groups = gateGroups(gs, null, new Map(), NOW);
     expect(groups.map((g) => g.views.map((v) => v.gate.id))).toEqual([['a'], ['b'], ['c']]);
+  });
+  it('one open card, the other pending gates compact rows; a click picks the card (TASK-580)', () => {
+    // HQ sends 7 gates in one round: one card, six rows, the head counts all seven
+    const isles = ['marketing', 'design', 'coding', 'qa', 'devops', 'research', 'design'] as const;
+    const gs = isles.map((to, i) =>
+      gate(`g${i}`, { fromIsland: 'hq', toIsland: to, round: 'r', createdAt: NOW - (9 - i) * MIN }),
+    );
+    let [gr] = gateGroups(gs, null, new Map(), NOW);
+    expect(gr.pending).toBe(7);
+    expect(gr.views.map((v) => v.mode)).toEqual(['card', ...Array<string>(6).fill('row')]);
+    [gr] = gateGroups(gs, null, new Map(), NOW, new Map(), 'g4');
+    expect(gr.views.filter((v) => v.mode === 'card').map((v) => v.gate.id)).toEqual(['g4']);
+    expect(gr.views[0].mode).toBe('row');
+    // the open gate answered (no longer pending): the oldest pending one is the card again
+    const answered = gs.map((g) => (g.id === 'g4' ? { ...g, status: 'allowed' as const } : g));
+    [gr] = gateGroups(answered, null, new Map(), NOW, new Map(), 'g4');
+    expect(gr.views.find((v) => v.mode === 'card')?.gate.id).toBe('g0');
+    expect(gr.pending).toBe(6);
+    // across groups too: only one card in the whole block
+    const two = [gate('a', { round: 'r1' }), gate('b', { round: 'r2', fromSessionId: 'q' })];
+    expect(gateGroups(two, null, new Map(), NOW).map((g) => g.views[0].mode)).toEqual([
+      'card',
+      'row',
+    ]);
+  });
+  it('the collapsed line lives with the parent, then collapseS after it ends (TASK-580)', () => {
+    const at = new Map([['a', NOW - 10 * MIN]]);
+    const gs = [gate('a', { status: 'allowed', answeredAt: NOW - 10 * MIN, childId: 'c' })];
+    const lines = (parent?: FleetSession, now: number = NOW): string[] =>
+      gateGroups(gs, null, at, now, new Map(parent ? [['p', parent]] : [])).flatMap((g) =>
+        g.views.map((v) => v.text),
+      );
+    const t = `${FLEET_GATE.answered.allowed} · 10 dk`;
+    expect(lines()).toEqual([]); // unknown parent: collapseS (300 s) from the answer, gone
+    expect(lines(sess('p', { status: 'running' }))).toEqual([t]);
+    expect(lines(sess('p', { status: 'waiting' }))).toEqual([t]);
+    expect(lines(sess('p', { status: 'queued' }))).toEqual([t]);
+    // ended 2 min ago: still there; 6 min ago: gone
+    expect(lines(sess('p', { endedAt: NOW - 2 * MIN }))).toEqual([t]);
+    expect(lines(sess('p', { endedAt: NOW - 6 * MIN }))).toEqual([]);
+    // ended without endedAt: `updatedAt` stands in
+    expect(lines(sess('p', { updatedAt: NOW - MIN }))).toEqual([t]);
+    // live past the safety cap
+    const late = NOW - 10 * MIN + FLEET_GATE.liveCapS * 1000 + 1;
+    expect(lines(sess('p', { status: 'running' }), late)).toEqual([]);
+    expect(gateLineShown(-Infinity, sess('p', { status: 'running' }), NOW)).toBe(false);
   });
   it('a gate error counts per gateId (the panel re-enables the card)', () => {
     const st = emptyFleetState();

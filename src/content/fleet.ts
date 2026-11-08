@@ -486,12 +486,24 @@ export const FLEET_GATE = {
   pending: 'devir onayı bekliyor',
   /** Prompt clamp (lines) on the card. */
   promptLines: 3,
+  /** Prompt toggle under the clamp (TASK-580): the full request, then back to the clamp. */
+  more: 'devamı',
+  less: 'daha az',
   /**
-   * An answered card collapses to one muted line ("izin verildi · 2 dk") for this many seconds
-   * (since `answeredAt`, else since the panel saw the answer), then disappears. Without
-   * `answeredAt`, gates already answered when first seen are not shown.
+   * The gates block takes at most this share of the card's height (scrolls inside), and yields
+   * further so the list below keeps `listMinPx` (two rows and the head of a third) at short viewports (TASK-580).
+   */
+  maxShare: 0.45,
+  listMinPx: 124,
+  /**
+   * An answered card collapses to one muted line ("izin verildi · 2 dk"). The line stays while the
+   * parent session is live (capped at `liveCapS` since the answer); once the parent ended it lasts
+   * this many seconds (from the later of the answer and the parent's end), then disappears.
+   * `answeredAt` comes from the bridge, else when the panel saw the answer; gates already answered
+   * when first seen without it are not shown (TASK-580).
    */
   collapseS: 300,
+  liveCapS: 24 * 3600,
   answered: { allowed: 'izin verildi', denied: 'reddedildi' } as const,
   /** Fleet header badge ("2 kapı") while any gate is pending. */
   count: (n: number): string => `${n} kapı`,

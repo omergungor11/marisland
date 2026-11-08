@@ -14,6 +14,7 @@ import {
   panelRows,
   pendingGates,
   requestTitle,
+  resultBar,
   rowsBelow,
   sessionDuration,
   statusGlyph,
@@ -35,8 +36,11 @@ import { createFleetTerm } from './fleet-term.ts';
  *                 last line (muted); live first, then recent; "+N daha" counts rows past the cap and
  *                 rows the scroll cuts (pinned under the fade)
  *   gates       — M42: hand-off gate cards over the list ("Marketing → Design", prompt, İzin ver /
- *                 Reddet → `gate` command), grouped by parent when it has > 1; an answer collapses
- *                 to one muted line for `FLEET_GATE.collapseS`. The fleet header counts pending ones
+ *                 Reddet → `gate` command), grouped by parent when it has > 1; one pending gate is
+ *                 the full card, the others one row each (click opens); "devamı" shows the whole
+ *                 prompt; the block is capped (`FLEET_GATE.maxShare`, `listMinPx`) and scrolls. An
+ *                 answer collapses to one muted line while the parent is live, then for
+ *                 `FLEET_GATE.collapseS` (TASK-580). The fleet header counts pending ones
  *   requests    — fleet view: a multi-session request's rows sit under its title, children indented
  *   compact     — tier >= `FLEET_PANEL.compact.fromTier`: a narrow strip, the live rows' titles only
  *   terminal    — `fleet-term.ts`, over the list (opaque, the list behind it is hidden): a row /
@@ -117,7 +121,7 @@ export function createFleetPanel(
   el.innerHTML = `
     <header class="mar-fleet-head"><span class="mar-fleet-disc"></span><span class="mar-fleet-name"></span><span class="mar-fleet-gatecount" hidden></span><span class="mar-fleet-live"></span></header>
     <input class="mar-fleet-search" type="search" placeholder="${P.searchPlaceholder}" aria-label="${P.searchPlaceholder}" spellcheck="false" autocomplete="off">
-    <div class="mar-fgates"></div>
+    <div class="mar-fgbox"><div class="mar-fgates"></div></div>
     <ol class="mar-fleet-rows"></ol>
     <div class="mar-fleet-more"></div>`;
   root.appendChild(el);
@@ -134,6 +138,9 @@ export function createFleetPanel(
   const answeredAt = new Map<string, number>();
   /** Answers sent and not yet echoed → the rejected-command count at send time. */
   const asked = new Map<string, number>();
+  /** TASK-580: the pending gate shown as the full card (null: the oldest), prompts shown whole. */
+  let openGate: string | null = null;
+  const fullPrompt = new Set<string>();
   let gatesKey = '';
 
   /** Focused island; null = fleet view; undefined until the first `setIsland`. */
@@ -216,7 +223,8 @@ export function createFleetPanel(
     put(r.agent, s.agent);
     put(r.dur, sessionDuration(s, now));
     put(r.title, s.title);
-    put(r.line, s.lastLine ?? '');
+    // TASK-580: a result line ("done · 13 turns · …") reads as the terminal's Turkish result bar
+    put(r.line, resultBar(s.lastLine ?? ''));
     r.line.hidden = !s.lastLine;
     const pressed = String(s.id === term.sessionId);
     if (r.btn.getAttribute('aria-pressed') !== pressed) r.btn.setAttribute('aria-pressed', pressed);
@@ -339,7 +347,11 @@ export function createFleetPanel(
           return `<div class="mar-fgate-done" data-s="${g.status}"${g.childId ? ` data-child="${esc(g.childId)}" style="cursor:pointer"` : ''}>${esc(from)} ${G.arrow} ${esc(to)} · ${esc(text)}</div>`;
         const off = asked.has(g.id) ? ' disabled' : '';
         const acts = `<div class="mar-fgate-acts"><button class="mar-fgate-allow" type="button" data-g="${esc(g.id)}" data-allow="1"${off}>${G.allow}</button><button class="mar-fgate-deny" type="button" data-g="${esc(g.id)}" data-allow="0"${off}>${G.deny}</button></div>`;
-        const prompt = `<p class="mar-fgate-prompt">${esc(g.prompt)}</p>`;
+        // TASK-580: another pending gate is one row (prompt cut to a snippet); a click opens it
+        if (mode === 'row')
+          return `<article class="mar-fgate mar-fgate-row" data-g="${esc(g.id)}"><div class="mar-fgate-route">${route}<span class="mar-fgate-snip">${esc(g.prompt)}</span>${acts}</div></article>`;
+        const full = fullPrompt.has(g.id);
+        const prompt = `<div class="mar-fgate-pwrap"><p class="mar-fgate-prompt${full ? ' mar-fgate-full' : ''}">${esc(g.prompt)}</p><button class="mar-fgate-more" type="button" data-more="${esc(g.id)}" hidden>${full ? G.less : G.more}</button></div>`;
         // a round (> 1 gate of one parent): compact cards, the buttons on the route line
         return grouped
           ? `<article class="mar-fgate" data-g="${esc(g.id)}"><div class="mar-fgate-route">${route}${acts}</div>${prompt}</article>`
@@ -354,9 +366,19 @@ export function createFleetPanel(
     // a rejected `gate` command (error with gateId) re-enables its card
     for (const [id, n] of asked) if ((store.gateErrors.get(id) ?? 0) > n) asked.delete(id);
     const groups =
-      theme === undefined ? [] : gateGroups(store.gates.values(), theme, answeredAt, now);
+      theme === undefined
+        ? []
+        : gateGroups(store.gates.values(), theme, answeredAt, now, store.sessions, openGate);
     const key = JSON.stringify(
-      groups.map((gr) => gr.views.map((v) => [v.gate.id, v.mode, v.text, asked.has(v.gate.id)])),
+      groups.map((gr) =>
+        gr.views.map((v) => [
+          v.gate.id,
+          v.mode,
+          v.text,
+          asked.has(v.gate.id),
+          fullPrompt.has(v.gate.id),
+        ]),
+      ),
     );
     if (key === gatesKey) return;
     gatesKey = key;
@@ -370,6 +392,20 @@ export function createFleetPanel(
    * once-a-second tick and scroll only.
    */
   function measure(): void {
+    // TASK-580: the gates block yields (CSS caps it at `maxShare`) so the list keeps its rows
+    const last = list.lastElementChild as HTMLElement | null;
+    const floor =
+      gatesEl.firstElementChild && last
+        ? `${Math.min(last.offsetTop + last.offsetHeight, G.listMinPx)}px`
+        : '';
+    if (list.style.minHeight !== floor) list.style.minHeight = floor;
+    gatesEl.classList.toggle('mar-fgates-scroll', gatesEl.scrollHeight > gatesEl.clientHeight + 1);
+    // the prompt toggle shows when the clamp cuts the request (or while it is shown whole)
+    for (const b of gatesEl.querySelectorAll<HTMLButtonElement>('.mar-fgate-more')) {
+      const p = b.previousElementSibling as HTMLElement;
+      const hide = !p.classList.contains('mar-fgate-full') && p.scrollHeight <= p.clientHeight + 1;
+      if (b.hidden !== hide) b.hidden = hide;
+    }
     const scroll = list.scrollHeight > list.clientHeight + 1;
     el.classList.toggle('mar-fleet-scroll', scroll);
     let cut = 0;
@@ -415,7 +451,19 @@ export function createFleetPanel(
   const onGate = (e: MouseEvent): void => {
     const child = (e.target as Element).closest<HTMLElement>('.mar-fgate-done')?.dataset.child;
     if (child && store.sessions.has(child)) return term.show(child);
+    const more = (e.target as Element).closest<HTMLElement>('[data-more]')?.dataset.more;
+    if (more) {
+      if (!fullPrompt.delete(more)) fullPrompt.add(more);
+      dirty = true;
+      return;
+    }
     const b = (e.target as Element).closest<HTMLButtonElement>('button[data-g]');
+    const row = (e.target as Element).closest<HTMLElement>('.mar-fgate-row')?.dataset.g;
+    if (!b && row) {
+      openGate = row;
+      dirty = true;
+      return;
+    }
     const gateId = b?.dataset.g;
     if (!b || !gateId || b.disabled) return;
     if (store.send({ type: 'gate', gateId, allow: b.dataset.allow === '1' }))

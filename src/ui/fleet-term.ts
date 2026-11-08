@@ -314,12 +314,18 @@ export function createFleetTerm(
       submit();
     }
   };
-  /** Esc (TASK-579): the prompt blurs (camera keys work again), the next Esc closes the view. */
+  /**
+   * Esc (TASK-579): the prompt blurs (camera keys work again), the next Esc closes the view.
+   * TASK-580: the terminal is the topmost layer, so it listens in the capture phase and marks the
+   * key handled (`preventDefault`); the HUD's Esc (Settings, photo, edit) skips a handled one.
+   */
   const onEsc = (e: KeyboardEvent): void => {
-    if (e.key !== 'Escape' || mode === 'closed' || e.isComposing) return;
+    if (e.key !== 'Escape' || mode === 'closed' || e.isComposing || e.defaultPrevented) return;
+    if (getComputedStyle(el).visibility !== 'visible') return; // HUD hidden / photo mode
     const t = e.target as HTMLElement | null;
     const typing = t?.tagName === 'INPUT' || t?.tagName === 'TEXTAREA' || t?.isContentEditable;
     if (typing && t !== prompt) return;
+    e.preventDefault();
     if (termEscape(t === prompt) === 'blur') prompt.blur();
     else api.close();
   };
@@ -341,7 +347,7 @@ export function createFleetTerm(
   stopBtn.addEventListener('click', onStop);
   pill.addEventListener('click', toBottom);
   prompt.addEventListener('keydown', onKey);
-  window.addEventListener('keydown', onEsc);
+  window.addEventListener('keydown', onEsc, true);
   prompt.addEventListener('input', fit);
   body.addEventListener('scroll', onScroll, { passive: true });
 
@@ -414,7 +420,7 @@ export function createFleetTerm(
       stopBtn.removeEventListener('click', onStop);
       pill.removeEventListener('click', toBottom);
       prompt.removeEventListener('keydown', onKey);
-      window.removeEventListener('keydown', onEsc);
+      window.removeEventListener('keydown', onEsc, true);
       prompt.removeEventListener('input', fit);
       body.removeEventListener('scroll', onScroll);
       chainEl.removeEventListener('click', onChain);

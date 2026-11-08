@@ -388,7 +388,9 @@ export const FLEET_PANEL_CSS = `
 /* M42 hand-off gates (fleet-panel.ts): cards over the list; HUD-scoped (.mar-hud button rule, D-146) */
 .mar-fleet-gatecount{flex:none;font:800 12px/1 'Nunito',sans-serif;color:#3B3A5A;background:${FLEET_GATE.colors.bar};border-radius:999px;padding:5px 9px;}
 .mar-fleet-gatecount[hidden]{display:none;}
-.mar-fgates{flex:0 0.05 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;display:flex;flex-direction:column;gap:6px;margin:0 0 6px;}
+.mar-fgbox{flex:0 1 auto;min-height:0;display:flex;flex-direction:column;margin:0 0 6px;}
+.mar-fgbox:has(>.mar-fgates:empty){display:none;}
+.mar-fgates{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;display:flex;flex-direction:column;gap:6px;}
 .mar-fgates>*{flex:none;}
 .mar-fgates:empty{display:none;}
 .mar-fgroup{display:flex;flex-direction:column;gap:6px;}
@@ -419,6 +421,29 @@ export const FLEET_PANEL_CSS = `
 .mar-fgate-route b{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .mar-fleet-compact .mar-fgate-route{flex-wrap:wrap;font-size:14px;}
 .mar-fleet-compact .mar-fgate-route>b:not(:last-of-type){display:none;}
+/* TASK-580: the block is capped (share of the card) inside .mar-fgbox, which yields to the list floor (fleet-panel.ts measure): the list shrinks first (a factor < 1 on the box would only take that share of the overflow; a max-height on the box itself would freeze it at the cap); it fades when it scrolls */
+.mar-fleet-rows{flex-shrink:20;}
+.mar-fgates{max-height:calc((100vh - ${F.top + F.bottomClear}px) * ${FLEET_GATE.maxShare});}
+@media (max-height:480px){.mar-fgates{max-height:calc((100vh - ${60 + 84}px) * ${FLEET_GATE.maxShare});}}
+.mar-fgates-scroll{-webkit-mask-image:linear-gradient(#000 calc(100% - 18px),transparent);mask-image:linear-gradient(#000 calc(100% - 18px),transparent);padding-bottom:12px;}
+/* another pending gate: one row, the prompt as a snippet, buttons inline; a click opens it */
+.mar-fgate.mar-fgate-row{padding:6px 8px 6px 12px;cursor:pointer;}
+.mar-fgroup-on .mar-fgate.mar-fgate-row{padding:6px 8px 6px 10px;}
+.mar-fgate-row .mar-fgate-route{gap:5px;font-size:15px;}
+.mar-fgate-snip{flex:1 1 0;min-width:0;font:700 12px/1.2 'Nunito',sans-serif;color:${mixHex(UI.ink, UI.muted, 0.45)};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mar-fgate-snip::before{content:'· ';}
+.mar-fgate-row .mar-fgate-acts{margin:0 0 0 auto;gap:5px;flex:none;}
+.mar-fgates .mar-fgate-row .mar-fgate-allow,.mar-fgates .mar-fgate-row .mar-fgate-deny{flex:none;height:26px;padding:0 10px;font-size:12px;}
+.mar-fgates .mar-fgate-row .mar-fgate-allow{box-shadow:0 2px 0 #2A6B3C;}
+/* "devamı" over the end of the clamped prompt; "daha az" under the whole one */
+.mar-fgate{--gbg:${FLEET_GATE.colors.cardBg};}
+.mar-fgroup-on .mar-fgate{--gbg:${UI.surface};}
+.mar-fgate-pwrap{position:relative;}
+.mar-fgates .mar-fgate-more{position:absolute;right:0;bottom:0;border:0;padding:0 0 0 24px;background:linear-gradient(90deg,transparent,var(--gbg) 20px);font:800 12px/1.35 'Nunito',sans-serif;color:#A87412;cursor:pointer;}
+.mar-fgates .mar-fgate-full{display:block;-webkit-line-clamp:unset;}
+.mar-fgates .mar-fgate-full+.mar-fgate-more{position:static;display:block;margin-left:auto;padding:2px 0 0;background:none;}
+.mar-fgates .mar-fgate-more[hidden]{display:none;}
+@media (hover:hover){.mar-fgates .mar-fgate-more:hover{text-decoration:underline;}}
 /* M42 fleet view: request group label, hand-off children indented with a connector */
 .mar-freq{padding:6px 8px 1px 28px;font:800 11px/1.2 'Nunito',sans-serif;letter-spacing:.2px;color:${mixHex(UI.ink, UI.muted, 0.45)};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .mar-fleet-rows li[data-depth]{position:relative;padding-left:calc(var(--depth) * ${FLEET_GATE.indentPx}px);}
