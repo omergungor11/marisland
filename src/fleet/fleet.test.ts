@@ -345,6 +345,17 @@ describe('fleet: terminal lines (M41)', () => {
       'tamamlandı · 6 tur · $0.31 · 11 dk',
     );
   });
+  it('panel rows map the bridge result lastLine through the result bar (TASK-580)', () => {
+    // `lastLine` is the result text clipped to 120 chars by the bridge; other lines stay as they are
+    expect(resultBar('done · 13 turns · $0.41 · 3551.0 s')).toBe(
+      'tamamlandı · 13 tur · $0.41 · 59 dk',
+    );
+    expect(
+      resultBar('error_during_execution · 4 turns · $0.2000 · 61.0 s · Bağlantı koptu, yeni…'),
+    ).toBe('hata · 4 tur · $0.20 · 1 dk · Bağlantı koptu, yeni…');
+    expect(resultBar('Edit src/content/fleet.ts')).toBe('Edit src/content/fleet.ts');
+    expect(resultBar('')).toBe('');
+  });
   it('Esc in the terminal: the focused prompt blurs, the next Esc closes (TASK-579)', () => {
     expect(termEscape(true)).toBe('blur');
     expect(termEscape(false)).toBe('close');

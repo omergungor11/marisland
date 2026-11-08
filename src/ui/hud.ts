@@ -445,6 +445,7 @@ export function createHud(
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       hud.setVisible(!visible);
     } else if (e.key === 'Escape') {
+      if (e.defaultPrevented) return; // TASK-580: the fleet terminal (on top) took this Esc
       if (photo || editing || el.classList.contains('mar-panel-settings')) hud.openPanel('');
       else if (!visible) hud.setVisible(true);
     }

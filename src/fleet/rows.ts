@@ -495,8 +495,11 @@ export function trackAnswers(
 
 export interface GateView {
   gate: FleetGate;
-  /** `card`: pending (buttons); `line`: answered, collapsed to one muted line. */
-  mode: 'card' | 'line';
+  /**
+   * `card`: the open pending gate (prompt, buttons); `row`: another pending gate as one compact
+   * row, buttons inline (a click opens it); `line`: answered, collapsed to one muted line.
+   */
+  mode: 'card' | 'row' | 'line';
   /** Collapsed line text ("izin verildi · az önce"). */
   text: string;
 }
@@ -510,31 +513,50 @@ export interface GateGroup {
   views: GateView[];
 }
 
+type Parent = Pick<FleetSession, 'status' | 'updatedAt' | 'endedAt'>;
+
+/** Whether an answered gate still shows its collapsed line (TASK-580): see `gateGroups`. */
+export function gateLineShown(at: number, parent: Parent | undefined, now: number): boolean {
+  if (at === -Infinity) return false;
+  if (parent && isLive(parent)) return now - at <= G.liveCapS * 1000;
+  const from = parent ? Math.max(at, parent.endedAt ?? parent.updatedAt) : at;
+  return now - from <= G.collapseS * 1000;
+}
+
 /**
- * Gate cards of a list (island filter as `pendingGates`; null = all): pending cards and answers
- * younger than `FLEET_GATE.collapseS`, grouped by parent (a round of hand-offs), oldest first.
+ * Gate cards of a list (island filter as `pendingGates`; null = all), grouped by parent (a round
+ * of hand-offs), oldest first. One pending gate is the open `card` (`open` when pending here, else
+ * the oldest), the other pending ones compact `row`s (TASK-580: 7 gates from HQ stay short).
+ * Answers stay a `line` while the parent (in `parents`) is live, capped at `FLEET_GATE.liveCapS`;
+ * once it ended (or is unknown) for `collapseS` from the later of the answer and the end.
  */
 export function gateGroups(
   gates: Iterable<FleetGate>,
   island: FleetIsland | null,
   answeredAt: ReadonlyMap<string, number>,
   now: number,
+  parents: ReadonlyMap<string, Parent> = new Map(),
+  open: string | null = null,
 ): GateGroup[] {
   const views: GateView[] = [];
   for (const g of [...gates].sort(byAge)) {
     if (island && g.fromIsland !== island && g.toIsland !== island) continue;
     if (g.status === 'pending') {
-      views.push({ gate: g, mode: 'card', text: '' });
+      views.push({ gate: g, mode: 'row', text: '' });
       continue;
     }
     const at = answeredAt.get(g.id) ?? -Infinity;
-    if (now - at > G.collapseS * 1000) continue;
+    if (!gateLineShown(at, parents.get(g.fromSessionId), now)) continue;
     views.push({
       gate: g,
       mode: 'line',
       text: `${G.answered[g.status]} · ${formatDuration(now - at)}`,
     });
   }
+  const card =
+    views.find((v) => v.mode === 'row' && v.gate.id === open) ??
+    views.find((v) => v.mode === 'row');
+  if (card) card.mode = 'card';
   const groups = new Map<string, GateGroup>();
   for (const v of views) {
     const id = v.gate.round ?? v.gate.fromSessionId;
@@ -545,7 +567,7 @@ export function gateGroups(
         (gr = { parentId: v.gate.fromSessionId, island: v.gate.fromIsland, pending: 0, views: [] }),
       );
     gr.views.push(v);
-    if (v.mode === 'card') gr.pending++;
+    if (v.mode !== 'line') gr.pending++;
   }
   return [...groups.values()];
 }
