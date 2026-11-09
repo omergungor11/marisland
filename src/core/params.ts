@@ -41,7 +41,7 @@ export interface Params {
   rm: boolean;
   /**
    * HUD panel open at boot (capture review of the photo bar / settings / edit panel):
-   * '' | photo | settings | edit. `panel=edit:<tool>` also selects the edit tool.
+   * '' | photo | settings | edit | admin (M43). `panel=edit:<tool>` also selects the edit tool.
    */
   panel: HudPanel;
   /** Edit tool from `panel=edit:<tool>`; '' = the default. */
@@ -69,11 +69,16 @@ export interface Params {
    * (`fleet=0` or anything else); '' = unset (live on a local host outside capture, else off).
    */
   fleet: '' | 'live' | 'mock' | 'off';
+  /**
+   * Capture: admin window view (M43, with `panel=admin`): `<tab>[:<KbFile.path>]`, e.g.
+   * `hafiza:island:coding/memory/golge-acne.md`; '' = the default (Projeler).
+   */
+  admin: string;
   /** `bridge=5177`: port of the fleet bridge to connect to (TASK-577); NaN = the default `FLEET_PORT`. */
   bridge: number;
 }
 
-export type HudPanel = '' | 'photo' | 'settings' | 'edit';
+export type HudPanel = '' | 'photo' | 'settings' | 'edit' | 'admin';
 
 export const DEFAULT_SEED = 1001;
 
@@ -141,7 +146,10 @@ export function parseParams(search: string): Params {
     intro: parseBool(q.get('intro'), true),
     gallery: parseBool(q.get('gallery'), false),
     rm: parseBool(q.get('rm'), false),
-    panel: panel === 'photo' || panel === 'settings' || panel === 'edit' ? panel : '',
+    panel:
+      panel === 'photo' || panel === 'settings' || panel === 'edit' || panel === 'admin'
+        ? panel
+        : '',
     panelTool: panel === 'edit' ? panelTool : '',
     introt: Number.isFinite(introt) && introt >= 0 ? introt : NaN,
     craft: parseBool(q.get('craft'), true),
@@ -149,6 +157,7 @@ export function parseParams(search: string): Params {
     fog: parseBool(q.get('fog'), true),
     tour: q.get('tour') === null ? 'idle' : parseBool(q.get('tour'), true) ? 'now' : 'off',
     fleet: fleetRaw === null ? '' : fleetRaw === 'live' || fleetRaw === 'mock' ? fleetRaw : 'off',
+    admin: q.get('admin') ?? '',
     bridge: Number.isInteger(bridge) && bridge > 0 && bridge < 65536 ? bridge : NaN,
   };
 }

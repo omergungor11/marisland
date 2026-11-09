@@ -12,6 +12,7 @@ import {
   type FleetEvent,
   type FleetGate,
   type FleetLine,
+  type FleetProject,
   type FleetRequest,
   type FleetSession,
 } from './protocol.ts';
@@ -30,6 +31,8 @@ export interface FleetStore {
   readonly gates: ReadonlyMap<string, FleetGate>;
   /** Rejected `gate` commands per gate id (a count: the panel re-enables the card on a rise). */
   readonly gateErrors: ReadonlyMap<string, number>;
+  /** M43: registered projects (snapshot `projects`, then `project` events, upsert by id). */
+  readonly projects: ReadonlyMap<string, FleetProject>;
   linesOf(sessionId: string): readonly FleetLine[];
   /** Called after every applied event and on connection changes; returns the unsubscribe. */
   subscribe(cb: () => void): () => void;
@@ -44,6 +47,7 @@ export interface FleetState {
   requests: Map<string, FleetRequest>;
   gates: Map<string, FleetGate>;
   gateErrors: Map<string, number>;
+  projects: Map<string, FleetProject>;
   lines: Map<string, FleetLine[]>;
   ready: boolean;
 }
@@ -53,6 +57,7 @@ export const emptyFleetState = (): FleetState => ({
   requests: new Map(),
   gates: new Map(),
   gateErrors: new Map(),
+  projects: new Map(),
   lines: new Map(),
   ready: false,
 });
@@ -80,10 +85,15 @@ export function applyFleetEvent(st: FleetState, ev: FleetEvent): void {
       for (const s of ev.sessions) st.sessions.set(s.id, s);
       for (const r of ev.requests) st.requests.set(r.id, r);
       for (const g of ev.gates ?? []) st.gates.set(g.id, g);
+      st.projects.clear();
+      for (const p of ev.projects ?? []) st.projects.set(p.id, p);
       st.ready = true;
       break;
     case 'session':
       st.sessions.set(ev.session.id, ev.session);
+      break;
+    case 'project':
+      st.projects.set(ev.project.id, ev.project);
       break;
     case 'request':
       st.requests.set(ev.request.id, ev.request);
@@ -207,6 +217,7 @@ export function createFleetClient(o: FleetClientOptions): FleetStore {
     requests: st.requests,
     gates: st.gates,
     gateErrors: st.gateErrors,
+    projects: st.projects,
     linesOf: (id) => st.lines.get(id) ?? [],
     subscribe(cb) {
       subs.add(cb);

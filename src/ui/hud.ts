@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { ENV_KEYS, UI } from '../content/palette.ts';
 import { HUD, INTRO } from '../content/ui.ts';
 import { EDIT_PANEL } from '../content/edit-ui.ts';
+import { ADMIN } from '../content/fleet.ts';
 import { createEditPanel, type EditPanelBinding } from './edit-panel.ts';
 import { CAMERA } from '../content/tiers.ts';
 import type { CameraWorld } from '../camera/controls.ts';
@@ -26,8 +27,8 @@ import {
 
 /**
  * HUD (ART_BIBLE §9): wordmark, compass, dock (time dial, weather, new seed, edit, photo, sound,
- * settings), settings sheet, photo bar, sandbox edit panel (TASK-221: the dock collapses into
- * it), island labels at T0, hidden-HUD ghost button.
+ * admin (M43, only with a fleet), settings), settings sheet, photo bar, sandbox edit panel
+ * (TASK-221: the dock collapses into it), island labels at T0, hidden-HUD ghost button.
  * Plain DOM + CSS (styles.ts) + inline SVG. `?hud=0` skips it entirely. The HUD owns its
  * display state; the app reacts through `HudActions`.
  */
@@ -52,6 +53,8 @@ export interface HudActions {
   onFreeze(on: boolean): void;
   /** Render a frame and grab the canvas. `null` when the export failed. */
   onShutter(): Promise<{ blob: Blob; filename: string } | null>;
+  /** Admin window (M43): the dock button / `openPanel('admin')` asks to open or close it. */
+  onAdmin?(open: boolean): void;
 }
 
 export interface HudState {
@@ -63,6 +66,8 @@ export interface HudState {
   frozen: boolean;
   /** The tour is running (button lit; any input or the button stops it). */
   tour: boolean;
+  /** Admin window (M43): `off` hides the dock button (no fleet), else whether it is open. */
+  admin?: 'off' | 'closed' | 'open';
 }
 
 export interface Hud {
@@ -123,6 +128,8 @@ const ICONS: Record<string, string> = {
   eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>',
   edit: '<path d="M18.5 3.5l2 2-8.5 8.5-2-2z"/><path d="M9.5 12.5c-2.6 0-4 1.7-4 4 0 1.5-.9 2.7-2.5 3h5.5a4 4 0 0 0 4-4"/>',
   hide: '<path d="M2.5 12S6 5.5 12 5.5c2 0 3.7.7 5 1.6M21.5 12S18 18.5 12 18.5c-2 0-3.7-.7-5-1.6"/><path d="M4 20L20 4"/>',
+  // admin window (M43): a small window with a title bar and a side column
+  admin: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M9.5 9v11"/>',
   tour: '<circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.2 16.6C13 15 11 9 15.8 7.4"/><path d="M10 5.5l3.5 2-3.5 2z" fill="currentColor"/>',
 };
 
@@ -158,13 +165,14 @@ export function createHud(
   const state: HudState = { ...initial };
   const el = document.createElement('div');
   el.className = instant ? 'mar-hud mar-hud-instant' : 'mar-hud';
-  const dockButtons = ['weather', 'seed', 'tour', 'edit', 'photo', 'sound', 'settings'];
+  const dockButtons = ['weather', 'seed', 'tour', 'edit', 'photo', 'sound', 'admin', 'settings'];
   const tips: Record<string, string> = {
     seed: 'New seed',
     tour: 'Tour',
     edit: EDIT_PANEL.tips.edit,
     photo: 'Photo mode',
     sound: 'Sound',
+    admin: ADMIN.title,
     settings: 'Settings',
   };
   el.innerHTML = `
@@ -240,6 +248,8 @@ export function createHud(
   const flash = q<HTMLElement>('.mar-flash');
   const editBtn = q<HTMLButtonElement>('[data-action="edit"]');
   const tourBtn = q<HTMLButtonElement>('[data-action="tour"]');
+  const adminBtn = q<HTMLButtonElement>('[data-action="admin"]');
+  adminBtn.hidden = (state.admin ?? 'off') === 'off';
   const editPanel = createEditPanel(el, {
     capture: instant,
     onDone: () => hud.openPanel(''),
@@ -291,6 +301,7 @@ export function createHud(
     edit: () => hud.openPanel(editing ? '' : 'edit'),
     photo: () => hud.openPanel('photo'),
     sound: actions.onSound,
+    admin: () => hud.openPanel('admin'),
     settings: () => hud.openPanel(el.classList.contains('mar-panel-settings') ? '' : 'settings'),
   };
   el.querySelectorAll<HTMLButtonElement>('.mar-dock .mar-btn').forEach((b) => {
@@ -572,6 +583,11 @@ export function createHud(
         tourBtn.setAttribute('aria-pressed', String(state.tour));
         tourBtn.classList.toggle('mar-on', state.tour);
       }
+      if (s.admin !== undefined) {
+        adminBtn.hidden = (state.admin ?? 'off') === 'off';
+        adminBtn.setAttribute('aria-pressed', String(state.admin === 'open'));
+        adminBtn.classList.toggle('mar-on', state.admin === 'open');
+      }
     },
     update(camera, azimuth, tier, h, width, height) {
       lastUpdate = [camera, azimuth, tier, h, width, height];
@@ -691,6 +707,13 @@ export function createHud(
       }
     },
     openPanel(panel) {
+      // M43: the admin window toggles on its own (settings may sit on top of it); photo / edit close it
+      if (panel === 'admin') {
+        if ((state.admin ?? 'off') !== 'off') actions.onAdmin?.(state.admin !== 'open');
+        return;
+      }
+      if ((panel === 'photo' || panel === 'edit') && state.admin === 'open')
+        actions.onAdmin?.(false);
       const wasPhoto = photo;
       const wasEditing = editing;
       el.classList.toggle('mar-panel-settings', panel === 'settings');
