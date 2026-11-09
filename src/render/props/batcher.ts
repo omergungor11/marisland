@@ -36,6 +36,14 @@ import {
 import { ALWAYS_APPEAR, APPEAR_OUT_SECONDS, HIDDEN_APPEAR, encodeAppearOut } from './appear.ts';
 import { createFarMerge, type FarMerge } from './far-merge.ts';
 import { NEAR_MERGE } from '../../content/budgets.ts';
+import {
+  armTier,
+  bandCasts,
+  bandReaches,
+  fadeAt,
+  hasLod1View,
+  lodArmed,
+} from '../../detail/reveal.ts';
 
 /**
  * PropBatcher (ARCHITECTURE §3, D-004): one InstancedMesh per
@@ -115,13 +123,25 @@ export interface BatcherDeps {
    * TASK-407 far structure merge: merged-mesh twin materials of a def's LOD1 material (prop
    * materials `mergedFor`). Without it the LOD1 groups always draw instanced.
    */
-  mergedMaterialFor?: (def: PropDef) => {
+  mergedMaterialFor?: (
+    def: PropDef,
+    lod: Lod,
+  ) => {
     key: string;
     material: THREE.Material;
     depth: THREE.Material | null;
   };
   /** TASK-476 near merge: max pre-transformed vertices of a LOD0 group (default NEAR_MERGE). */
   nearMergeMaxVerts?: number;
+  /**
+   * TASK-611: spend merged-copy memory to save draw calls close up — the far merge also builds at
+   * T2–T3 (LOD1 stays armed there: ~70 calls, ~10 MB on a close wow shot). Default: `castShadows`
+   * (medium / high); low has calls to spare there and an 80 MB budget. The near merge works from
+   * T1 (LOD0 is armed from T1) at every quality; without close-up merges (low) a T1 view merges
+   * only the island in focus and only its groups armed at T1 (HQ T1: 191 → 161 calls; merging
+   * every island in reach cost +7–10 MB).
+   */
+  closeUpMerges?: boolean;
   /** A def whose geometry comes from the world (TASK-541, the coaster's real track); null = the registry's. */
   geometryOverride?: (id: string, lod: Lod, variant: number) => THREE.BufferGeometry | null;
 }
@@ -153,6 +173,8 @@ export interface Group {
   visible: boolean;
   /** Casts map shadows at all (quality, def flags); `update(cam)` drops it per frame by distance. */
   casts: boolean;
+  /** Last `update(cam)`: some instance lies inside its material's dither band (TASK-611). */
+  inReach: boolean;
   cx: number;
   cz: number;
 }
@@ -517,6 +539,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
       blobs,
       visible: false,
       casts: mesh.castShadow,
+      inReach: true,
       cx: n ? cx / n : 0,
       cz: n ? cz / n : 0,
     };
@@ -635,6 +658,15 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
   const popQueue: { g: Group; k: number }[] = [];
   const stats = { instances, groundCover, groups: groups.length, visibleInstances: 0 };
   const gcRadius = d.groundCoverRadius ?? 60;
+  /** Camera of the last `update(cam)`; null before the first one. */
+  let lastCam: THREE.Vector3 | null = null;
+  /** The dither band of a group's material (null: no distance fade). */
+  const bandOf = (g: Group): [number, number] | null => {
+    const f = (
+      g.mesh.material as { fade?: { uFadeNear: { value: number }; uFadeFar: { value: number } } }
+    ).fade;
+    return f ? [f.uFadeNear.value, f.uFadeFar.value] : null;
+  };
 
   const show = (g: Group, time: number, instantIn: boolean): void => {
     if (g.visible) return;
@@ -652,9 +684,28 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
       if (!instant && !d.softAppear) d.counters.hardPops += n;
       return;
     }
-    arr.fill(HIDDEN_APPEAR);
+    // TASK-611: a group is armed ahead of its dither band, so most of its instances are still
+    // dithered away when it shows — they appear through the band as the camera comes in, without
+    // a spring. Only instances already inside the band (a jump or a fast fly-to) bloom in.
+    const band = bandOf(g);
+    const m = g.mesh.instanceMatrix.array as Float32Array;
+    for (let k = 0; k < n; k++) {
+      if (band && lastCam) {
+        const o = k * 16;
+        const dist = Math.hypot(
+          m[o + 12] - lastCam.x,
+          m[o + 13] - lastCam.y,
+          m[o + 14] - lastCam.z,
+        );
+        if (fadeAt(dist, band) <= 0) {
+          arr[k] = ALWAYS_APPEAR;
+          continue;
+        }
+      }
+      arr[k] = HIDDEN_APPEAR;
+      popQueue.push({ g, k });
+    }
     g.appear.needsUpdate = true;
-    for (let k = 0; k < n; k++) popQueue.push({ g, k });
     void time;
   };
   const hide = (g: Group): void => {
@@ -665,17 +716,9 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
     if (g.blobs) g.blobs.visible = false;
   };
 
-  const wantsVisible = (g: Group, t: number): boolean => {
-    if (g.def.tier > t) return false;
-    if (g.def.id === 'treeBlob') return t === 0;
-    if ((g.def.flags & PropFlag.clusterable) !== 0 && t === 0) return false;
-    // LOD: tier 0–1 use LOD1 (if the def has it), tiers 2–3 LOD0
-    if (!g.groundCover) {
-      const wantLod: Lod = t <= 1 ? 1 : 0;
-      if (g.lod !== wantLod && g.def.id !== 'treeBlob') return false;
-    }
-    return true;
-  };
+  // TASK-611 (detail/reveal.ts): the tier arms groups (LOD1 of far-view defs from their tier, LOD0
+  // from T1, tier 2–3 defs one tier ahead); the per-instance dither band decides what is seen
+  const wantsVisible = (g: Group, t: number): boolean => lodArmed(g.def, g.lod, g.groundCover, t);
 
   // ---- edits (TASK-211)
   const instantEdits = d.instantEdits ?? false;
@@ -997,6 +1040,10 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
   // a group's visibility, count, matrices or appear values changed (attribute versions). LOD0 used
   // to draw one call per (def, variant, island) group; that was ~35 of the ~340 calls of a close
   // sky-craft frame.
+  // TASK-611: LOD1 stays armed under LOD0, so a far-view def's blobs come from its LOD1 group only;
+  // a LOD0-only group (tier 2–3, interiors) adds its blobs while some instance is in its band.
+  const blobDraws = (g: Group, lod: Lod): boolean =>
+    g.lod === lod && !!g.blobs && g.visible && (lod === 1 || (!hasLod1View(g.def) && g.inReach));
   const blobMerge = (lod: Lod) => {
     let mesh: THREE.InstancedMesh | null = null;
     let appear: THREE.InstancedBufferAttribute | null = null;
@@ -1015,7 +1062,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
       let src: THREE.InstancedMesh | null = null;
       for (const g of groups) {
         const b = g.blobs;
-        if (g.lod !== lod || !b || !g.visible) continue;
+        if (!b || !blobDraws(g, lod)) continue;
         src = b;
         for (const v of [b.id, b.count, b.instanceMatrix.version, g.appear.version])
           sig = (Math.imul(sig, 31) + v) | 0;
@@ -1050,7 +1097,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
       let off = 0;
       for (const g of groups) {
         const b = g.blobs;
-        if (g.lod !== lod || !b || !g.visible) continue;
+        if (!b || !blobDraws(g, lod)) continue;
         mat.set((b.instanceMatrix.array as Float32Array).subarray(0, b.count * 16), off * 16);
         app.set((g.appear.array as Float32Array).subarray(0, b.count), off);
         off += b.count;
@@ -1070,15 +1117,26 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
   // (island, material class, tier class) replaces the LOD1 groups, but only while every instance
   // is settled — bloom-ins, removal fades and click reactions (instance matrices written from
   // outside) draw through the groups, so the swap itself is pixel-neutral.
+  const closeUp = d.closeUpMerges ?? d.castShadows;
+  const nearFrom = 1;
+  /** Bit t: the group is armed at tier t (t ≥ `from`). */
+  const tierBits = (g: Group, from: number): number => {
+    let bits = 0;
+    for (let t = from; t <= 3; t++) if (wantsVisible(g, t)) bits |= 1 << t;
+    return bits;
+  };
   const far = d.mergedMaterialFor
     ? createFarMerge({
         scope: d.scope,
         root,
         store,
         castShadows: d.castShadows,
-        materialsFor: d.mergedMaterialFor,
-        tierMask: (g) =>
-          (wantsVisible(g as Group, 0) ? 1 : 0) | (wantsVisible(g as Group, 1) ? 2 : 0),
+        materialsFor: (def) => d.mergedMaterialFor!(def, 1),
+        // TASK-611: LOD1 is armed at every tier (behind LOD0 close up), so the merge serves all four
+        tierMask: (g) => tierBits(g as Group, 0),
+        tiers: 0b1111,
+        // close up the LOD1 left over is far past the shadow box (the view-fitted map, shadows.ts)
+        shadowTiers: 0b0011,
       })
     : null;
   if (far) for (let i = 0; i < store.count; i++) far.markDirty(store.islandId[i]);
@@ -1094,10 +1152,9 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
         root,
         store,
         castShadows: d.castShadows,
-        materialsFor: d.mergedMaterialFor,
-        tierMask: (g) =>
-          (wantsVisible(g as Group, 2) ? 4 : 0) | (wantsVisible(g as Group, 3) ? 8 : 0),
-        tiers: 0b1100,
+        materialsFor: (def) => d.mergedMaterialFor!(def, 0),
+        tierMask: (g) => tierBits(g as Group, nearFrom),
+        tiers: 0b1110,
         name: 'near',
         islandOf: (g) => (g as Group).bucket,
       })
@@ -1186,25 +1243,64 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
     far?.markIndex(i, store.islandId[i]);
     near?.markIndex(i, store.islandId[i]);
   };
+  /**
+   * TASK-611: the LOD1 materials carry the hand-over polygon offset (prop-materials); it is on only
+   * while LOD0 is armed (T1+), so T0 draws at exactly its old depth.
+   */
+  const lod1Behind = (): void => {
+    const on = tier >= 1;
+    const set = (m: THREE.Material | THREE.Material[]): void => {
+      for (const x of Array.isArray(m) ? m : [m])
+        if (x.polygonOffsetFactor || x.polygonOffsetUnits) x.polygonOffset = on;
+    };
+    for (const g of groups) if (g.lod === 1) set(g.mesh.material);
+    if (far) for (const m of far.meshes) set(m.mesh.material);
+  };
   const syncFar = (time: number, cam?: THREE.Vector3): void => {
     if (!far) return;
     const fg = farGroups();
     if (touchedOutside(fg)) settleAt = Math.max(settleAt, time + OUTSIDE_GRACE_SECONDS);
-    const settled =
-      tier >= 0 && tier <= 1 && !popQueue.length && !pending.length && time >= settleAt;
-    if (settled && far.dirty.size) far.rebuild(fg);
+    const settled = tier >= 0 && !popQueue.length && !pending.length && time >= settleAt;
+    // a fresh close-up view builds the far merge only with `closeUpMerges` (its memory)
+    if (settled && far.dirty.size && (tier <= 1 || closeUp)) {
+      far.rebuild(fg);
+      lod1Behind();
+    }
     // without the camera skip pass nothing else restores a group mesh hidden by the merge
     if (!cam) for (const g of fg) g.mesh.visible = g.visible;
     far.sync(fg, tier, settled, cam);
   };
-  const syncNear = (time: number, cam?: THREE.Vector3): void => {
+  /** Island of the near-merge group whose centroid is nearest the orbit focus (−1: none). */
+  const focusIsland = (list: readonly Group[], fx: number, fz: number): number => {
+    let best = -1;
+    let bd = Infinity;
+    for (const g of list) {
+      const dd = (g.cx - fx) ** 2 + (g.cz - fz) ** 2;
+      if (dd < bd) [bd, best] = [dd, g.bucket];
+    }
+    return best;
+  };
+  /** Islands merged at T1 from their T1-armed groups only (low): rebuilt in full from T2. */
+  const partial = new Set<number>();
+  const syncNear = (time: number, fx: number, fz: number, cam?: THREE.Vector3): void => {
     if (!near) return;
     const ng = nearGroups();
     if (touchedOutside(ng)) settleAt = Math.max(settleAt, time + OUTSIDE_GRACE_SECONDS);
-    const settled = tier >= 2 && !popQueue.length && !pending.length && time >= settleAt;
+    const settled = tier >= nearFrom && !popQueue.length && !pending.length && time >= settleAt;
     if (settled && near.dirty.size) {
       const want = cam ? nearIslands(ng, cam) : null;
-      near.rebuild(ng, want ? (island) => want.has(island) : undefined);
+      if (want && tier === 1 && !closeUp) {
+        // low T1 (see `closeUpMerges`): the island in focus, its T1-armed groups
+        const f = focusIsland(ng, fx, fz);
+        for (const island of [...want]) if (island !== f) want.delete(island);
+        if (want.size) {
+          partial.add(f);
+          near.rebuild(
+            ng.filter((g) => wantsVisible(g, 1)),
+            (island) => want.has(island),
+          );
+        }
+      } else near.rebuild(ng, want ? (island) => want.has(island) : undefined);
     }
     if (!cam) for (const g of ng) g.mesh.visible = g.visible;
     near.sync(ng, tier, settled, cam);
@@ -1222,14 +1318,20 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
         if (wantsVisible(g, t)) show(g, time, first);
         else hide(g);
       }
+      if (t >= 2 && near) {
+        for (const island of partial) near.markDirty(island);
+        partial.clear();
+      }
+      lod1Behind();
       snapshot();
     },
     update(time, fx, fz, cam) {
-      // ground cover: only chunks near the focus, only at T3
+      if (cam) (lastCam ??= new THREE.Vector3()).copy(cam);
+      // ground cover: only chunks near the focus, from its arm tier (T2; the band opens at T2)
       if (tier >= 0) {
         for (const g of groups) {
           if (!g.groundCover) continue;
-          if (tier < 3) {
+          if (tier < armTier(g.def)) {
             hide(g);
             continue;
           }
@@ -1249,19 +1351,22 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
       firstUpdate = false;
       if (cam)
         for (const g of groups) {
-          if (g.groundCover || !g.visible) continue;
-          // the fade-out edge the group's material actually dithers with (no fade → never)
-          const mat = g.mesh.material as {
-            fade?: { uFadeNear: { value: number }; uFadeFar: { value: number } };
-          };
-          const far = mat.fade?.uFadeFar.value ?? Infinity;
+          if (!g.visible) continue;
+          // the dither band the group's material actually fades with (no fade → always drawn);
+          // both ramp directions (TASK-611: LOD1's inverted hand-over ramp)
+          const band = bandOf(g);
           const sph = g.mesh.boundingSphere;
-          const near = sph ? cam.distanceTo(sph.center) - sph.radius : -Infinity;
-          g.mesh.visible = near < far;
+          const c = sph ? cam.distanceTo(sph.center) : 0;
+          const r = sph ? sph.radius : Infinity;
+          g.inReach = !band || bandReaches(c - r, c + r, band);
+          g.mesh.visible = g.inReach;
           // the depth material cuts at half fade (vFade < 0.5): past that every caster fragment is
           // discarded, so the shadow pass would only cost a draw call (TASK-435)
-          const half = mat.fade ? 0.5 * (mat.fade.uFadeNear.value + far) : Infinity;
-          g.mesh.castShadow = g.casts && near < half;
+          // LOD1 casts at T0–T1 only: close up what is left of it (past the hand-over band, or
+          // tree LOD1 inside its LOD0 canopy) lies beyond the view-fitted shadow box or under
+          // LOD0's own shadow, and its all-islands groups would cost a shadow pass each (TASK-611)
+          g.mesh.castShadow =
+            g.casts && (g.lod === 0 || tier <= 1) && (!band || bandCasts(c - r, c + r, band));
         }
       // removal fades that are over → zero-scaled instances (TASK-211)
       if (pending.length) {
@@ -1297,7 +1402,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
       syncNearBlobs();
       syncFarBlobs();
       syncFar(time, cam);
-      syncNear(time, cam);
+      syncNear(time, fx, fz, cam);
       snapshot();
     },
     slotsOf(i) {

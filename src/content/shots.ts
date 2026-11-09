@@ -2278,6 +2278,20 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     fleet: 'mock',
     sets: ['dev'],
   },
+  // TASK-611 D-reveal: the detail-reveal flip-book — one dolly on the Coding island (the ladder
+  // heading, pitch 48°) at the distances named, medium (what a desktop sees, composer on)
+  ...[260, 200, 140, 90, 60].map((dist): ShotPreset => ({
+    id: `D-reveal-${dist}`,
+    title: `Detail reveal · ${dist} u`,
+    seed: 1001,
+    cam: `ladder:coding:${dist}`,
+    time: 14,
+    simt: 2,
+    quality: 'medium',
+    width: 1280,
+    height: 720,
+    sets: ['dev'],
+  })),
   // ---- sandbox edits (TASK-221): `pnpm shots edit`. Logs on seed 1001 generated with
   // `encodeLog` (world/edit.ts); re-recorded for the Phase 3 layout (TASK-309: moved with their
   // island, rejected placements dropped) and the theme-first world (TASK-380: one pine that now

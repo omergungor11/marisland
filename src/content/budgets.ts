@@ -143,5 +143,7 @@ export const HEADLESS_TIME_FACTOR = 40;
  * `reach` u of such a group (= the T2 fade-out, TIER_FADE[2]). The merged copy is memory
  * (≈ 60 B per vertex): sweep 2026-10-23 (W16 / W3, seed 1001, medium) maxVerts 1200 → 284 / 185
  * calls at 170 / 169 MB, 1600 → 269 / 175 at 172 / 170, 2500 → 252 / 160 at 176 / 175.
+ * TASK-611 (D-161): TIER_FADE[2] moved to 200–260, so `reach` follows to 260 (W16 −7 calls,
+ * +2 MB medium / +4 MB on a low T2 view).
  */
-export const NEAR_MERGE = { maxVerts: 1600, reach: 160 } as const;
+export const NEAR_MERGE = { maxVerts: 1600, reach: 260 } as const;

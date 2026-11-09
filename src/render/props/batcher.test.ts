@@ -181,7 +181,7 @@ describe('PropBatcher.rewrite (TASK-211)', () => {
       castShadows: false,
       instantEdits,
     });
-    b.setTier(2, 0); // LOD0 trees visible, LOD1 hidden
+    b.setTier(2, 0); // LOD0 trees visible, LOD1 armed behind them (TASK-611)
     for (let f = 0; f < 4; f++) b.update(f * 0.1, 0, 0);
     return { store, b, c };
   };
@@ -242,11 +242,12 @@ describe('PropBatcher.rewrite (TASK-211)', () => {
     expect(removeFade(a, 5, false)).toBe(1);
     expect(removeFade(a, 5 + BLOOM_IN.outMs / 1000, false)).toBe(0);
     expect(scaleOf(lod0.g.mesh, lod0.k)).toBeCloseTo(1, 5); // still there while it fades
-    expect(scaleOf(lod1.g.mesh, lod1.k)).toBe(0); // hidden LOD: instant
+    expect(scaleOf(lod1.g.mesh, lod1.k)).toBeCloseTo(1, 5); // armed LOD1 fades with it
     b.update(5.05, 0, 0);
     expect(scaleOf(lod0.g.mesh, lod0.k)).toBeCloseTo(1, 5);
     b.update(5.5, 0, 0);
     expect(scaleOf(lod0.g.mesh, lod0.k)).toBe(0);
+    expect(scaleOf(lod1.g.mesh, lod1.k)).toBe(0);
     expect(scaleOf(lod0.g.blobs!, lod0.k)).toBe(0);
     // a second rewrite of a removed index is a no-op
     expect(b.rewrite([3], 5.6).removed).toBe(0);
@@ -305,7 +306,7 @@ describe('PropBatcher.rewrite (TASK-211)', () => {
     expect(made[0].mesh.visible).toBe(true);
     const lodFar = slots(b, lone).find((x) => x.g.lod === 1)!;
     expect(lodFar.g.bucket).toBe(ALL_ISLANDS);
-    expect(lodFar.g.mesh.visible).toBe(false);
+    expect(lodFar.g.mesh.visible).toBe(true); // armed behind LOD0 at T2 (TASK-611)
     expect(c.hardPops).toBe(0);
   });
 
@@ -464,9 +465,15 @@ describe('T0 blobs and grounding (TASK-373)', () => {
     const off = l1.slice(0, l1.indexOf(g)).reduce((a, x) => a + x.blobs!.count, 0);
     far()!.getMatrixAt(off + Array.from(g.members).indexOf(2), m4);
     expect(v3.setFromMatrixScale(m4).x).toBe(0);
-    // T2: no LOD1 group visible → hidden
+    // T2 (TASK-611): LOD1 stays armed behind LOD0 and keeps the blobs; LOD0 adds none (no doubles)
     b.setTier(2, 2);
     b.update(2, 0, 0);
+    expect(far()!.visible).toBe(true);
+    const nearBlobs = b.group.children.find((o) => o.name === 'props:L0:blobs');
+    expect(nearBlobs?.visible ?? false).toBe(false);
+    // T0: trees are cluster blobs → hidden
+    b.setTier(0, 3);
+    b.update(3, 0, 0);
     expect(far()!.visible).toBe(false);
   });
 

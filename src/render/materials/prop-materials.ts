@@ -1,7 +1,8 @@
 import type * as THREE from 'three';
 import type { Scope } from '../../core/scope.ts';
 import type { Lod } from '../../geo/types.ts';
-import { TIER_FADE, type PropDef } from '../../content/props.ts';
+import { LOD_HANDOFF, type PropDef } from '../../content/props.ts';
+import { fadeBand, hasLod1View } from '../../detail/reveal.ts';
 import { NIGHT } from '../../content/lighting.ts';
 import { PropFlag } from '../../world/prop-store.ts';
 import {
@@ -19,17 +20,18 @@ import { GATES } from '../uniforms.ts';
  * (def, LOD), all sharing the factory's one lit program and one depth program (their
  * fade distances / rim / bloom-in switches are per-material uniforms). Grounded/standing props get
  * the rim; ground cover does not. Every prop blooms in from `aAppear` and
- * dither-fades by its def's (or tier's) fade distances.
+ * dither-fades by its def's (or tier's) fade distances — per LOD since TASK-611 (detail/reveal.ts
+ * `fadeBand`: LOD0 dithers in over the hand-over band, LOD1 draws behind it with a polygon offset).
  */
 export interface PropMaterials {
   materialFor(def: PropDef, lod: Lod, groundCover: boolean): THREE.Material;
   depthMaterialFor(def: PropDef, lod: Lod, groundCover: boolean): THREE.Material | null;
   /**
-   * TASK-407 far structure merge: the merged-mesh twin of a def's LOD1 material (same program,
-   * `uMarMerged` on). Defs whose LOD1 materials agree on every per-material uniform share one
-   * twin; `key` names that class.
+   * TASK-407 far structure merge: the merged-mesh twin of a def's material at `lod` (LOD1: the
+   * far merge, LOD0 (default): the near merge, TASK-476, and static cable meshes; same program, `uMarMerged` on). Defs whose
+   * materials agree on every per-material uniform and state share one twin; `key` names that class.
    */
-  mergedFor(def: PropDef): MergedMaterials;
+  mergedFor(def: PropDef, lod?: Lod): MergedMaterials;
 }
 
 export interface MergedMaterials {
@@ -69,6 +71,14 @@ function lampsOf(def: PropDef): Pick<LitOptions, 'gate'> & {
   };
 }
 
+/** LOD1 of a def with a far view draws behind its LOD0 (the hand-over cross-fade, TASK-611). */
+function offsetBehind(m: THREE.Material, def: PropDef, lod: Lod): void {
+  if (lod !== 1 || !hasLod1View(def)) return;
+  m.polygonOffset = true;
+  m.polygonOffsetFactor = LOD_HANDOFF.polygonOffset[0];
+  m.polygonOffsetUnits = LOD_HANDOFF.polygonOffset[1];
+}
+
 export function createPropMaterials(scope: Scope): PropMaterials {
   const lit = new Map<string, LitMaterial>();
   const depth = new Map<string, THREE.Material>();
@@ -77,7 +87,7 @@ export function createPropMaterials(scope: Scope): PropMaterials {
     const k = key(def, lod, gc);
     let m = lit.get(k);
     if (!m) {
-      const [near, far] = def.fade ?? TIER_FADE[def.tier] ?? TIER_FADE[0];
+      const [near, far] = fadeBand(def, lod, gc);
       m = scope.add(
         makeLitMaterial(propFeatures(def, gc), {
           fadeNear: near,
@@ -87,6 +97,7 @@ export function createPropMaterials(scope: Scope): PropMaterials {
           ...lampsOf(def),
         }),
       );
+      offsetBehind(m, def, lod);
       lit.set(k, m);
     }
     return m;
@@ -94,14 +105,15 @@ export function createPropMaterials(scope: Scope): PropMaterials {
   const merged = new Map<string, MergedMaterials>();
   return {
     materialFor: get,
-    mergedFor(def) {
+    mergedFor(def, lod = 0) {
       // every per-material uniform of a (non-ground-cover instance's) prop material: fade, lamp
-      // late-off, rim (bloom-in is on for all of them)
-      const [near, far] = def.fade ?? TIER_FADE[def.tier] ?? TIER_FADE[0];
+      // late-off, rim (bloom-in is on for all of them), and the hand-over polygon offset
+      const [near, far] = fadeBand(def, lod, false);
       const { lamps, gate } = lampsOf(def);
       const features = propFeatures(def, false);
+      const behind = lod === 1 && hasLod1View(def);
       const key =
-        `${near}:${far}:${lamps.lateOff ? 1 : 0}:${features.rim ? 1 : 0}` +
+        `${near}:${far}:${lamps.lateOff ? 1 : 0}:${features.rim ? 1 : 0}${behind ? ':o' : ''}` +
         (lamps.culture === 'sea' ? ':s' : lamps.culture ? ':c' : '') +
         (gate ? `:g${cultureGateOf(def.id)}` : '');
       let m = merged.get(key);
@@ -116,6 +128,7 @@ export function createPropMaterials(scope: Scope): PropMaterials {
             merged: true,
           }),
         );
+        offsetBehind(material, def, lod);
         const depth = scope.add(makeDepthMaterial(features, material.fade, true));
         merged.set(key, (m = { key, material, depth }));
       }
