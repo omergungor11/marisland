@@ -3,6 +3,7 @@ import { PROP_GEO } from '../geo/index.ts';
 import { THEME_GEO } from '../geo/themes/index.ts';
 import { PropFlag } from '../world/prop-store.ts';
 import { OFFICE_DEFS } from './offices.ts';
+import { COURIER_PROP_IDS } from './fleet-ships.ts';
 import { PROP_DEFS_BUILDINGS } from './props-buildings.ts';
 
 describe('PROP_DEFS_BUILDINGS', () => {
@@ -35,6 +36,8 @@ describe('PROP_DEFS_BUILDINGS', () => {
       'treeBlob',
       // M14b theme structures are covered by content/props-themes (their own PropDefs)
       ...THEME_GEO.map((d) => d.id),
+      // M51 courier ships / crates / scrolls are life-driven, never scattered (no PropDef)
+      ...COURIER_PROP_IDS,
     ]);
     const themed = new Set(THEME_GEO.map((d) => d.id));
     const want = Object.keys(PROP_GEO)

@@ -185,11 +185,24 @@ export abstract class AgentKind {
     }
   }
 
+  /** Slot-indexed matrix buffer `update` writes (a kind that splits its slots over several meshes overrides it). */
+  protected matrixOut(): Float32Array {
+    return this.mesh.instanceMatrix.array as Float32Array;
+  }
+
+  /** After `update` filled the matrices of slots `[0, top)`: publish them on the mesh. */
+  protected finishUpdate(top: number): void {
+    this.mesh.count = top;
+    this.mesh.visible = top > 0;
+    this.mesh.instanceMatrix.needsUpdate = true;
+    if (top > 0) this.mesh.computeBoundingSphere();
+  }
+
   /** Write interpolated matrices. */
   update(alpha: number): void {
     const a = Math.min(Math.max(alpha, 0), 1);
     let top = 0;
-    const arr = this.mesh.instanceMatrix.array as Float32Array;
+    const arr = this.matrixOut();
     for (let i = 0; i < this.capacity; i++) {
       if (!this.active[i]) {
         _m.makeScale(0, 0, 0);
@@ -213,10 +226,7 @@ export abstract class AgentKind {
       _m.compose(_p, _q, _s);
       _m.toArray(arr, i * 16);
     }
-    this.mesh.count = top;
-    this.mesh.visible = top > 0;
-    this.mesh.instanceMatrix.needsUpdate = true;
-    if (top > 0) this.mesh.computeBoundingSphere();
+    this.finishUpdate(top);
   }
 }
 

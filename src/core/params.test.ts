@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseParams } from './params.ts';
+import { adminSpec, parseParams } from './params.ts';
 
 describe('params', () => {
   it('parses defaults', () => {
@@ -61,6 +61,32 @@ describe('params', () => {
     expect(p.panelTool).toBe('prop');
     expect(parseParams('?panel=edit:nope').panelTool).toBe('');
     expect(parseParams('?panel=photo:prop').panelTool).toBe('');
+  });
+
+  it('parses the admin window panel and its view (TASK-585)', () => {
+    expect(parseParams('?panel=admin').panel).toBe('admin');
+    expect(parseParams('?panel=admin').panelTool).toBe('');
+    expect(parseParams('').admin).toBe('');
+    expect(parseParams('?panel=admin&admin=hafiza:island:coding/memory/golge-acne.md').admin).toBe(
+      'hafiza:island:coding/memory/golge-acne.md',
+    );
+  });
+
+  it('admin=sessionlar[:<query>]: the tab and its search text (TASK-630)', () => {
+    expect(adminSpec(parseParams('?panel=admin&admin=sessionlar').admin)).toEqual({
+      tab: 'sessionlar',
+      arg: '',
+    });
+    expect(adminSpec(parseParams('?panel=admin&admin=sessionlar:shader%20su').admin)).toEqual({
+      tab: 'sessionlar',
+      arg: 'shader su',
+    });
+    // a KB path keeps its own colons
+    expect(adminSpec('hafiza:island:coding/memory/a.md')).toEqual({
+      tab: 'hafiza',
+      arg: 'island:coding/memory/a.md',
+    });
+    expect(adminSpec('')).toEqual({ tab: '', arg: '' });
   });
 
   it('bridge: a valid port or NaN', () => {

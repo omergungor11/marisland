@@ -2,7 +2,17 @@
  * Terrain look tunables (ART_BIBLE §1 faceting, §2 palette). Pure data — the
  * mesher (render/terrain) reads these; hex values come from the palette.
  */
-import { CLIFF_STRATA, EMISSIVE, FIELDS, GRASS, HAY, ROCK, SAND, WATER } from './palette.ts';
+import {
+  CLIFF_STRATA,
+  EMISSIVE,
+  FIELDS,
+  FOLIAGE,
+  GRASS,
+  HAY,
+  ROCK,
+  SAND,
+  WATER,
+} from './palette.ts';
 
 export const TERRAIN_COLORS = {
   sandDry: SAND.dry,
@@ -10,6 +20,9 @@ export const TERRAIN_COLORS = {
   sandBlack: SAND.black,
   /** Grass by height band: [beach, mid, hill]; crests lerp toward `tip`. */
   grassBands: [GRASS[3], GRASS[2], GRASS[1]] as const,
+  /** The low stop leans cool by this much toward `grassFoot` (plateau foot / lip, ART_BIBLE P4). */
+  grassFoot: FOLIAGE.deciduous[2],
+  grassFootMix: 0.4,
   grassTip: GRASS[0],
   /** Meadow = grass lerped toward this by `meadowMix` (lighter / yellower). */
   meadowTint: GRASS[0],
@@ -43,9 +56,18 @@ export const TERRAIN_MASK = {
 } as const;
 
 export const TERRAIN_SHAPE = {
-  /** Height band for grass colour ramp, as fraction of the island peak. */
-  grassBandLow: 1.5,
-  grassBandHighFrac: 0.65,
+  /**
+   * Grass colour ramp position t (TASK-614, G2), relative to the island's own size so a 5–7 u
+   * bluff island shows it too: `grassHeightWeight` × smoothstep over [grassBandLowFrac,
+   * grassBandHighFrac] of the island peak + `grassInlandWeight` × smoothstep from the lip
+   * (`grassInland[0]` u of shore distance) to `grassInland[1]` × the island radius inland. Foot and
+   * lip → the dark cool low stop, crests / the plateau heart → the light warm high stop.
+   */
+  grassBandLowFrac: 0.25,
+  grassBandHighFrac: 0.95,
+  grassInland: [1.5, 0.42] as const,
+  grassHeightWeight: 0.55,
+  grassInlandWeight: 0.6,
   /** Underwater ramp: wet sand down to `wetDepth`, seabed below `seabedDepth`, deep seabed at `deepDepth`. */
   wetDepth: 3,
   seabedDepth: 6,

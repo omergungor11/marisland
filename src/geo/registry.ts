@@ -1,15 +1,9 @@
 import { createRng } from '../core/rng.ts';
 import { OFFICE_INTERIOR_SHELLS } from '../content/offices.ts';
 import { bush, cropRow, flower, grassTuft, haybale, lilyPad, reeds, rockCluster } from './small.ts';
-import {
-  barn,
-  cottage,
-  logCabin,
-  marketStall,
-  stiltHut,
-  towerHouse,
-  windmill,
-} from './buildings.ts';
+import { marketStall, windmill } from './buildings.ts';
+import { barn, cottage, logCabin, stiltHut, towerHouse } from './building-v2.ts';
+import { BUILDING_VARIANTS } from '../content/building-variants.ts';
 import {
   buoy,
   dock,
@@ -83,6 +77,9 @@ import { marinaBoat } from './themes/hq-marina.ts';
 import { withHarbourKit } from './themes/harbours.ts';
 import { withWharfKit } from './themes/design-harbour.ts';
 import { tugBoat } from './themes/devops-m26.ts';
+import { courierCrate, courierShip, reportScroll } from './courier.ts';
+import { COURIER_SHIPS } from '../content/fleet-ships.ts';
+import { THEME_IDS } from '../world/types.ts';
 import type { Lod, PropGeoDef } from './types.ts';
 import type * as THREE from 'three';
 
@@ -156,12 +153,12 @@ const D = (
 defs.push(
   // buildings
   // variant 3 = DevOps ops shack (M22 TASK-482), pinned by the DevOps plan only
-  D('cottage', 4, withOpsShack(cottage), 2.2, 3.7),
-  D('stiltHut', 2, stiltHut, 2.4, 4.6),
-  D('towerHouse', 3, towerHouse, 2.1, 6),
+  D('cottage', BUILDING_VARIANTS.cottage, withOpsShack(cottage), 2.2, 3.7),
+  D('stiltHut', BUILDING_VARIANTS.stiltHut, stiltHut, 2.4, 4.6),
+  D('towerHouse', BUILDING_VARIANTS.towerHouse, towerHouse, 2.1, 6),
   D('windmill', 2, windmill, 2.4, 9.9),
-  D('barn', 2, barn, 3.6, 4.6),
-  D('logCabin', 2, logCabin, 2.6, 3.9),
+  D('barn', BUILDING_VARIANTS.barn, barn, 3.6, 4.6),
+  D('logCabin', BUILDING_VARIANTS.logCabin, logCabin, 2.6, 3.9),
   D('marketStall', 3, marketStall, 1.4, 2.4),
   // coastal
   D('dock', 2, dock, 1.2, 0.95),
@@ -273,6 +270,20 @@ defs.push(
     false,
     [1.9, 1.08, 1.6, 1.18, 1.92, 1.65, 2.42, 1.6, 2.05, 1.66],
   ),
+);
+// M51 courier ships (TASK-620): instanced by life/, not scattered; variant = THEME_IDS index
+defs.push(
+  D(
+    'courierShip',
+    7,
+    courierShip,
+    4.6,
+    4.4,
+    true,
+    THEME_IDS.map((t) => COURIER_SHIPS[t].mastH + 0.1),
+  ),
+  D('courierCrate', 7, courierCrate, 0.3, 0.4),
+  D('reportScroll', 2, reportScroll, 0.25, 0.2),
 );
 // M14b theme structures (geo/themes/<theme>.ts), fixed theme order
 defs.push(...THEME_GEO);

@@ -5,8 +5,8 @@
  * layers below near the camera. A zone a theme does not list keeps today's palette colour
  * (`DEFAULT_GROUND`).
  */
-import { GRASS, HAY, ROCK, SAND } from './palette.ts';
-import { Zone, type ZoneId } from '../world/types.ts';
+import { FLOWERS, FOLIAGE, GRASS, HAY, HOT_SPRING, ROCK, SAND, WALL_STRATA } from './palette.ts';
+import { Zone, type ThemeId, type ZoneId } from '../world/types.ts';
 
 /** Global material ids. Order is stable: index = material id in the palette texture. */
 export type GroundMaterial =
@@ -155,14 +155,17 @@ export const MATERIAL_ACCENTS: Readonly<Record<GroundMaterial, readonly [string,
 /**
  * Earth walls (TASK-391, M17b concept look): every steep land face above the water — sea bluffs,
  * low banks, Beacon Rock, terrace walls — is drawn by the shader (a 2-D albedo cannot hold
- * vertical detail) as layered soil: horizontal strata in warm tones of the island's wall colour,
- * a grass lip hanging over the top edge with drips, a dark line under the lip, a darker wall foot
- * and a wet line just above the water. Identical at every distance except the band detail, which
- * fades to its mean once a band is a few pixels tall.
+ * vertical detail) as layered soil: horizontal strata in the island theme's band tones
+ * (`strata`, TASK-613), a grass lip hanging over the top edge with drips, a dark cool line under
+ * the lip, a darker cool wall foot and a wet line just above the water. Every quality, every
+ * distance: the bands fade to their mean only once a band is under ~2 px tall.
  */
 export const GROUND_WALL = {
-  /** Wall colour of islands whose theme lists no cliff ground (a theme's cliff base replaces it). */
-  soil: '#B9845A',
+  /**
+   * Band tones per island theme (palette.ts `WALL_STRATA`, cycled bottom → top); their linear mean
+   * is the island's wall colour (albedo of `Zone.cliff`, the far colour of every wall).
+   */
+  strata: WALL_STRATA,
   /**
    * Wall weight by smooth normal y (full below [0], none above [1]): cliff / rock zones are walls
    * by worldgen (slope > ZONE_RULES.cliffSlope ≈ ny 0.74 per 2 u cell), so a loose band; other
@@ -203,10 +206,18 @@ export const GROUND_WALL = {
   minHeight: [0.4, 1.0] as const,
   /** Slope probes (u) up / down the fall line for the wall top and foot. */
   probe: [1.2, 2.6, 4.5, 7] as const,
-  /** Strata: mean band height (u), thickness wobble, and the band tones (× wall colour, linear). */
+  /**
+   * Strata: band height `band` u at sea level, growing × (1 + y / bandGrow) with height (a 5–7 u
+   * bluff ≈ 3 bands of 1.6–2.6 u, the 25 u Beacon stack ≈ 7 bands up to 7 u, so ≥ 2 read at T0),
+   * thickness wobble (× the local band height / band), ± lightness hash per band, and the fade
+   * to the wall mean between bandFade[0] → [1] of a band per pixel (≈ 3 → 1.8 px).
+   */
   band: 1.6,
+  bandGrow: 8,
   bandWobble: 0.45,
-  /** Tones cycle by a per-band hash; their mean is normalised to 1 (far colour = wall colour). */
+  bandJitter: 0.05,
+  bandFade: [0.32, 0.55] as const,
+  /** Rock-zone walls (own albedo): tones cycle by a per-band hash, mean normalised to 1. */
   tones: [
     [1.2, 1.12, 0.98],
     [1.0, 0.98, 0.96],
@@ -220,22 +231,38 @@ export const GROUND_WALL = {
   dripFreq: 0.85,
   /** The lip is the top's albedo `lipInset` u in from the edge, × `lipShade` (its overhang). */
   lipInset: 2.5,
-  lipShade: 0.9,
-  /** Dark line under the lip: width (u) and darkening. */
-  lipLine: 0.35,
-  lipLineDark: 0.42,
-  /** Wall foot: darkening over the lowest `footHeight` u of the wall (above its foot). */
-  footHeight: 2.6,
-  footDark: 0.3,
+  lipShade: 0.86,
+  /**
+   * Dark line under the lip (the overhang's shadow): width (u, never under `lipLinePx` pixels so
+   * it survives at T0 / T1), darkening and cool lean (b − r share, ART_BIBLE P4).
+   */
+  lipLine: 0.45,
+  lipLinePx: 1.3,
+  lipLineDark: 0.5,
+  lipLineCool: 0.22,
+  /** Wall foot: cool darkening over the lowest `footHeight` u of the wall (above its foot). */
+  footHeight: 3,
+  footDark: 0.4,
+  footCool: 0.2,
   /** Wet line above the water: height (u), wobble (u), darkening and cool lean (b − r share). */
   wetHeight: 0.6,
   wetWobble: 0.18,
   wetDark: 0.42,
   wetCool: 0.25,
-  /** Dark groove at each strata boundary (near only: while a band is over ~15 px). */
-  groove: 0.1,
+  /** Dark groove at each strata boundary (near only: while a band is over ~15 px; T2 G4 read). */
+  groove: 0.18,
   /** Grain: share of the near detail layer's lightness kept on the wall. */
   grain: 0.6,
+  /**
+   * Macro cells (TASK-613, G4): low-frequency value noise along the wall (`macroCell` u ≈ 3.4×
+   * the 6.5 u crack-layer repeat, `macroCellY` u in y) moves the wall lightness ± `macroTone` and
+   * the grain share between macroGrain[0] → [1] × `grain`, so no detail tile reads twice on one
+   * wall. Zero-mean noise (every quality).
+   */
+  macroCell: 22,
+  macroCellY: 9,
+  macroTone: 0.11,
+  macroGrain: [0.35, 1.25] as const,
   /**
    * Carving (every quality, M14b polish): vertical cracks = ridged value noise along the wall
    * (`crackFreq` per u, × `crackStretch` in y), lines where it exceeds `crackEdge`; darkening
@@ -264,6 +291,71 @@ export const GROUND_MACRO = {
   weights: [0.65, 0.35] as const,
   lightness: { veg: 0.07, sand: 0.035, rock: 0.05, paved: 0.025, under: 0.03 },
   vegHue: 0.05,
+  /**
+   * Moisture / wear blotches on vegetation (TASK-614, G2): a seeded two-octave field (u
+   * wavelengths, weights) whose high side reads as sunny / dry patches (lighter by `dryLight`,
+   * leaning toward the theme's `lean`) and its low side as moist hollows (darker by `moistDark`,
+   * cool lean `moistCool`, b − r share, ART_BIBLE P4). Smoothstep edges over the `dry` / `moist`
+   * field ranges keep the blotch borders soft (≥ 10 u at the 34 u octave).
+   */
+  blotch: {
+    wavelengths: [34, 15] as const,
+    weights: [0.65, 0.35] as const,
+    dry: [0.05, 0.5] as const,
+    moist: [-0.1, -0.55] as const,
+    dryLight: 0.08,
+    moistDark: 0.12,
+    moistCool: 0.05,
+  },
+  /**
+   * Theme lean of the dry patches (linear lerp toward `lean` by `mix` × the patch weight): the
+   * plateau top's own hue per island, so two islands read apart by their ground alone.
+   */
+  themeLean: {
+    default: { lean: GRASS[0], mix: 0.3 },
+    // Hearthholm: warm yellow-green
+    hq: { lean: GRASS[0], mix: 0.42 },
+    // Coding: cool blue-green under the slate walls
+    coding: { lean: FOLIAGE.deciduous[1], mix: 0.4 },
+    // Beacon Rock: dry straw
+    marketing: { lean: HAY, mix: 0.36 },
+    // Palmlagoon: mint
+    qa: { lean: HOT_SPRING, mix: 0.36 },
+    // Design: a pink-tinged meadow
+    design: { lean: FLOWERS[0], mix: 0.1 },
+    // Emberpeak: ash-green
+    devops: { lean: ROCK[0], mix: 0.3 },
+    // Lonely Palm: warm olive (straw over the green)
+    research: { lean: HAY, mix: 0.36 },
+  } as Readonly<Record<ThemeId | 'default', { lean: string; mix: number }>>,
+  /**
+   * Worn grass beside paths / plazas / streets (TASK-614): within `reach` grid cells of a paved
+   * sample, darker by `dark` and desaturated by `desat` (sRGB share), fading linearly with the
+   * cell distance.
+   */
+  worn: { reach: 2, dark: 0.09, desat: 0.15 },
+  /**
+   * Grass → sand edge (TASK-614, W-G5): vegetation within `reach` cells of sand lerps toward a dry
+   * blend of its own colour and the neighbouring sand base (`dryShare` of the sand) by up to
+   * `mix`, sand within `sandReach` cells of vegetation toward the same blend by up to `sandMix`,
+   * so the colour step at the class border is small and the edge reads as a 4–6 u gradient. A
+   * value-noise speckle (`speckleScale` u, ± `speckle` of the weight) breaks it into dry-grass
+   * tufts and pebbly patches.
+   */
+  /**
+   * Grass never muddy (W-G2): vegetation HSL saturation is lifted to at least this, capped at the
+   * saturation of the zone's own base colour (DevOps scrub stays scrub).
+   */
+  vegSatFloor: 0.5,
+  shore: {
+    reach: 3,
+    sandReach: 2,
+    mix: 0.6,
+    sandMix: 0.32,
+    dryShare: 0.55,
+    speckleScale: 3.4,
+    speckle: 0.45,
+  },
 } as const;
 
 /**

@@ -11,9 +11,12 @@ import {
 import type { GroundSpec } from '../../content/ground.ts';
 import {
   PALETTE_TEXELS,
+  WALL_TONE_TEXEL,
+  WALL_TONES,
   buildAlbedoGrid,
   buildGroundPalette,
   fillAlbedoGrid,
+  wallColors,
 } from './terrain-colors.ts';
 
 describe('albedo grid + ground palette (TASK-372)', () => {
@@ -44,14 +47,38 @@ describe('albedo grid + ground palette (TASK-372)', () => {
     expect(texel(pal, 0, Zone.sandDry, 1).slice(2)).toEqual([255, 0]);
     expect(texel(pal, 0, Zone.grass, 1)[2]).toBe(0);
     expect(texel(pal, 0, Zone.crater, 1)[2]).toBe(0);
-    // wall colour: the default soil, or the theme's cliff base (Marketing's Beacon Rock)
-    expect(texel(pal, 0, Zone.cliff, 4).slice(0, 3)).toEqual(srgb(GROUND_WALL.soil));
+    // strata (TASK-613): texels 5–8 = the theme's band tones, texel 4 = their linear mean, the
+    // same for every zone of a row; row 0 = the default tones
+    const tone = (row: number, z: number, k: number): number[] =>
+      texel(pal, row, z, WALL_TONE_TEXEL + k).slice(0, 3);
+    for (let k = 0; k < WALL_TONES; k++)
+      expect(tone(0, Zone.cliff, k)).toEqual(srgb(GROUND_WALL.strata.default[k]));
     const mk = world.islands.findIndex((i) => i.theme === 'marketing');
-    const cliff = THEMES.marketing.ground?.[Zone.cliff]?.base;
     expect(mk).toBeGreaterThanOrEqual(0);
-    expect(cliff).toBeDefined();
-    for (const z of [Zone.cliff, Zone.sandWet])
-      expect(texel(pal, mk + 1, z, 4).slice(0, 3)).toEqual(srgb(cliff!));
+    for (const z of [Zone.cliff, Zone.sandWet]) {
+      for (let k = 0; k < WALL_TONES; k++)
+        expect(tone(mk + 1, z, k)).toEqual(srgb(GROUND_WALL.strata.marketing[k]));
+      const mean = wallColors('marketing').mean;
+      const enc = [mean.r, mean.g, mean.b].map((c) =>
+        Math.round((c < 0.0031308 ? c * 12.92 : 1.055 * Math.pow(c, 0.41666) - 0.055) * 255),
+      );
+      expect(texel(pal, mk + 1, z, 4).slice(0, 3)).toEqual(enc);
+    }
+    // walls of different islands differ in colour
+    const means = new Set(world.islands.map((_, i) => texel(pal, i + 1, Zone.cliff, 4).join()));
+    expect(means.size).toBe(new Set(world.islands.map((i) => i.theme)).size);
+  });
+
+  it('strata tables (TASK-613): 4 tones per theme with an HSL L spread ≥ 18 %', () => {
+    const light = (hex: string): number => {
+      const v = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+      return (Math.max(...v) + Math.min(...v)) / 2;
+    };
+    for (const tones of Object.values(GROUND_WALL.strata)) {
+      expect(tones).toHaveLength(WALL_TONES);
+      const ls = tones.map(light);
+      expect(Math.max(...ls) - Math.min(...ls)).toBeGreaterThanOrEqual(0.18);
+    }
   });
 
   it('a sub-rect refill equals the full build (edit path)', () => {

@@ -14,6 +14,7 @@ import { ZONE_COUNT } from '../world/types.ts';
 import {
   PALETTE_ROWS,
   PALETTE_TEXELS,
+  TOP_REACH,
   buildAlbedoGrid,
   buildGroundPalette,
   fillAlbedoGrid,
@@ -472,7 +473,8 @@ export function createWorldTextures(
             if (!region.sdf || sdfF[k] === world.shoreSdf[k]) continue;
             sdfF[k] = world.shoreSdf[k];
             sRect.set(sdfHalf, k * 2, THREE.DataUtils.toHalfFloat(clampSdf(sdfF[k])), i, j);
-            if (world.zone[k] === Zone.sandWet) cRect.mark(i, j);
+            // wet sand dries with it; grass ramps by distance in from the lip (TASK-614)
+            if (world.zone[k] === Zone.sandWet || world.shoreSdf[k] > 0) cRect.mark(i, j);
           }
         if (region.sdf) {
           const rr = updateRingRegion(world, ring, sb.x, sb.x + sb.w - 1, sb.y, sb.y + sb.h - 1);
@@ -497,10 +499,18 @@ export function createWorldTextures(
         cRect.mark(r.x, r.y);
         cRect.mark(r.x + r.w - 1, r.y + r.h - 1);
       }
-      // albedo smoothing spreads a changed sample over its blur radius
+      // albedo smoothing spreads a changed sample over its blur radius, top variation over its
+      // neighbour reach (TASK-614)
       const cr = cRect.rect;
       const colorRect = cr
-        ? rectFromBounds(cr.x, cr.x + cr.w - 1, cr.y, cr.y + cr.h - 1, n, GROUND_SMOOTH.radius)
+        ? rectFromBounds(
+            cr.x,
+            cr.x + cr.w - 1,
+            cr.y,
+            cr.y + cr.h - 1,
+            n,
+            GROUND_SMOOTH.radius + TOP_REACH,
+          )
         : null;
       if (colorRect) {
         const c = colorRect;

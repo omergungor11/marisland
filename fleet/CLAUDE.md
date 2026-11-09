@@ -42,6 +42,9 @@ aynı adda bir şey yaratırsan cwd'ye yakın olan kazanır, bu yüzden ada agen
 - **Bash'te her çağrı tek komut: `;`, `&&`, `|` ile zincirleme yok.** Bridge seni `--permission-mode
   acceptEdits --permission-prompts none` ile başlatır; `--allowedTools` öneklerle eşleşir, zincirli
   komut izin listesine uymaz, sormadan reddedilir ve bir turn'e mal olur. Komutları ayrı çağrılarla ver.
+  `cd` yapma: ada dizinindeki `package.json` kök script'lerini proxy'ler, `pnpm typecheck` / `pnpm lint` /
+  `pnpm test` / `pnpm vitest run <kökten yol>` burada çalışır (`pnpm --dir` ve `pnpm -C` izin dışıdır).
+  Dosya okumak için Read, aramak için Grep / Glob kullan; `sed`, `cat`, `head` izin listesinde yok.
 
 ## Hafıza
 

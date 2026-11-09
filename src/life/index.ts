@@ -32,7 +32,7 @@ import {
   Sailboats,
 } from './boats.ts';
 import { WakeFoam } from './wake.ts';
-import { makeCtx, setMotion, type LifeDeps } from './ctx.ts';
+import { makeCtx, setMotion, type LifeCtx, type LifeDeps } from './ctx.ts';
 import { FishSchools } from './fish.ts';
 import { flockCentres, Gulls, type Perch } from './gulls.ts';
 import type { Cats, Crabs, Sheep, Villagers } from './land.ts';
@@ -55,6 +55,10 @@ export interface LifeSystem extends System {
   dispose(): void;
   /** Reduced motion: 0.3, normal: 1. */
   setMotionScale(s: number): void;
+  /** The shared life context (couriers read its swell / motion scale). */
+  readonly ctx: LifeCtx;
+  /** Register a kind created outside (fleet couriers): driven and counted like the built-in ones. */
+  add(kind: AgentKind): void;
   /** Fish scatter point (world xz) or null. */
   setCursorWorld(x: number | null, z?: number | null): void;
   /**
@@ -91,6 +95,8 @@ export interface LifeSystem extends System {
     butterflies?: Butterflies;
     /** Bug Zoo ladybugs (TASK-433): the butterfly model in red, particles like the butterflies. */
     ladybugs?: Butterflies;
+    /** Fleet couriers (M51): one ship per island, added by the app when a fleet feed is on. */
+    couriers?: AgentKind;
   };
   /** Story-spot animals (TASK-433): instanced per species, not agents (not in `kinds`, never counted or picked). */
   readonly spots?: SpotCritters;
@@ -311,6 +317,12 @@ export function createLife(deps: LifeDeps): LifeSystem {
   return {
     name: 'life',
     group,
+    ctx,
+    add(kind) {
+      kind.motionScale = ctx.motion.scale;
+      all.push(kind);
+      recount();
+    },
     kinds,
     spots,
     ambient,

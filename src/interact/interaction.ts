@@ -364,6 +364,9 @@ export function createInteraction(d: InteractionDeps): Interaction {
     }
     if (hit.kind === 'agent') {
       const k = kinds[hit.name];
+      // M51 couriers: one mesh per ship (`ships[i]`, its only instance)
+      const ships = (k as { ships?: THREE.InstancedMesh[] } | undefined)?.ships;
+      if (ships) return { meshes: [ships[hit.id]], slot: 0, dynamic: true };
       return k ? { meshes: [k.mesh], slot: hit.id, dynamic: true } : null;
     }
     return null;

@@ -3,5 +3,6 @@
   "titleModel": "haiku",
   "maxTurns": 30,
   "maxChildren": 6,
+  "doneGate": { "minTurns": 5, "nudgeMaxTurns": 3 },
   "hqMemoryDir": "~/.claude/projects/-Users-arlec-Work-Restored-marisland/memory"
 }

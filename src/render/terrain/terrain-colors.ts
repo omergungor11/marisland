@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { WorldData, ZoneId } from '../../world/types.ts';
+import type { ThemeId, WorldData, ZoneId } from '../../world/types.ts';
 import { isStreetZone, Zone, ZONE_COUNT } from '../../world/types.ts';
 import { slopeAtCell } from '../../world/index.ts';
 import { createRng } from '../../core/rng.ts';
@@ -89,7 +89,9 @@ function pal(): Pal {
     sandDry: lin(C.sandDry),
     sandWet: lin(C.sandWet),
     sandBlack: lin(C.sandBlack),
-    grass: C.grassBands.map(lin),
+    grass: C.grassBands.map((h, k) =>
+      k === 0 ? lin(h).lerp(lin(C.grassFoot), C.grassFootMix) : lin(h),
+    ),
     tip: lin(C.grassTip),
     meadowTint: lin(C.meadowTint),
     forest: lin(C.forest).multiplyScalar(C.forestDarken),
@@ -220,7 +222,16 @@ function zoneColor(
       // grass family (grass / meadow / forest / field, and stray water zones on land)
       const isl = world.islandMap[i] > 0 ? world.islands[world.islandMap[i] - 1] : null;
       const peak = isl ? Math.max(isl.peakY, 4) : 10;
-      const t = smooth(S.grassBandLow, peak * S.grassBandHighFrac, y);
+      // island-relative ramp (TASK-614): its own height range + distance in from the lip
+      const inland = smooth(
+        S.grassInland[0],
+        Math.max(S.grassInland[0] + 4, S.grassInland[1] * (isl?.radius ?? 20)),
+        world.shoreSdf[i],
+      );
+      const t = clamp01(
+        S.grassHeightWeight * smooth(peak * S.grassBandLowFrac, peak * S.grassBandHighFrac, y) +
+          S.grassInlandWeight * inland,
+      );
       const col = ramp3(P.grass, t);
       const crest = clamp01(-concavity / S.crestScale);
       if (crest > 0) col.lerp(P.tip, S.crestTip * crest);
@@ -239,8 +250,9 @@ function zoneColor(
 
 /**
  * Albedo world texture data (D-030): one RGBA8 texel per grid sample. RGB = sRGB colour (theme
- * ground × smooth ramps × crest tint × seeded macro variation × AO, land L floor; no per-face
- * jitter and no strata bands — the shader draws those). A = island id (`islandMap`, 0 = none),
+ * ground × smooth ramps × crest tint × seeded macro variation × AO, land L floor; `Zone.cliff` =
+ * the island's wall mean, `wallColors`; no per-face jitter and no strata bands — a vertical wall
+ * spans one 2 u texel, so the shader draws those at every quality). A = island id (`islandMap`, 0 = none),
  * the palette row the shader reads per corner. Identical at every distance.
  */
 export interface AlbedoGrid {
@@ -269,6 +281,26 @@ export function buildAlbedoGrid(world: WorldData): AlbedoGrid {
   const grid: AlbedoGrid = { rgba: new Uint8Array(n * n * 4) };
   fillAlbedoGrid(world, grid, 0, n - 1, 0, n - 1);
   return grid;
+}
+
+/** Earth-wall colours of a theme (TASK-613): the strata band tones and their mean, linear. */
+export interface WallColors {
+  tones: THREE.Color[];
+  mean: THREE.Color;
+}
+
+const wallCache = new Map<string, WallColors>();
+/** `GROUND_WALL.strata` of a theme (undefined = islets / no island: the default row). */
+export function wallColors(theme: ThemeId | undefined): WallColors {
+  const key = theme ?? 'default';
+  let w = wallCache.get(key);
+  if (!w) {
+    const tones = GROUND_WALL.strata[key].map((h) => new THREE.Color(h));
+    const mean = new THREE.Color(0, 0, 0);
+    for (const t of tones) mean.add(t);
+    wallCache.set(key, (w = { tones, mean: mean.multiplyScalar(1 / tones.length) }));
+  }
+  return w;
 }
 
 /** Theme ground spec of sample i (null = the default palette). */
@@ -353,6 +385,93 @@ export function fillAlbedoGrid(
 
 const _px = { r: 0, g: 0, b: 0 };
 
+/** Neighbour reach of `topVariation` in grid cells (an edit recolours this far plus the blur). */
+export const TOP_REACH = Math.max(GROUND_MACRO.worn.reach, GROUND_MACRO.shore.reach);
+
+const _e = new THREE.Color();
+
+/**
+ * Plateau top variation (TASK-614, G2), linear, in place on `col`: on vegetation the moisture /
+ * wear blotches with the island theme's lean, worn grass beside paved ground and the dry blend
+ * toward a neighbouring beach; on sand the matching blend toward neighbouring vegetation. Only
+ * world data (zones, seeded noise), so a sub-rect refill equals the full build.
+ */
+function topVariation(
+  world: WorldData,
+  ix: number,
+  iz: number,
+  cls: number,
+  col: THREE.Color,
+  noise: Noise,
+): void {
+  const M = GROUND_MACRO;
+  const h = world.height;
+  const n = h.n;
+  const veg = cls === TerrainClass.veg;
+  // nearest paved / opposite-family sample (cells, Euclidean) within the reach
+  const reach = veg ? TOP_REACH : M.shore.sandReach;
+  let dPave = Infinity;
+  let dEdge = Infinity;
+  let edgeZone = -1;
+  let edgeIdx = -1;
+  for (let dz = -reach; dz <= reach; dz++) {
+    const jz = iz + dz;
+    if (jz < 0 || jz >= n) continue;
+    for (let dx = -reach; dx <= reach; dx++) {
+      const jx = ix + dx;
+      if ((dx === 0 && dz === 0) || jx < 0 || jx >= n) continue;
+      const j = jz * n + jx;
+      if (h.data[j] <= 0) continue;
+      const c = zoneClass(world.zone[j]);
+      const d = Math.hypot(dx, dz);
+      if (veg && c === TerrainClass.path && d < dPave) dPave = d;
+      if (c === (veg ? TerrainClass.sand : TerrainClass.veg) && d < dEdge) {
+        dEdge = d;
+        edgeZone = world.zone[j];
+        edgeIdx = j;
+      }
+    }
+  }
+  const x = h.originX + ix * h.cellSize;
+  const zw = h.originZ + iz * h.cellSize;
+  if (veg) {
+    const B = M.blotch;
+    const f =
+      B.weights[0] * noise.n2(x / B.wavelengths[0] - 53.1, zw / B.wavelengths[0] + 17.9) +
+      B.weights[1] * noise.n2(x / B.wavelengths[1] + 8.3, zw / B.wavelengths[1] - 41.6);
+    const dry = smooth(B.dry[0], B.dry[1], f);
+    const moist = smooth(-B.moist[0], -B.moist[1], -f);
+    const id = world.islandMap[ix + iz * n];
+    const theme = id > 0 ? world.islands[id - 1]?.theme : undefined;
+    const L = M.themeLean[theme ?? 'default'];
+    if (dry > 0) col.lerp(linOf(L.lean), L.mix * dry).multiplyScalar(1 + B.dryLight * dry);
+    if (moist > 0) {
+      const k = 1 - B.moistDark * moist;
+      col.r *= k * (1 - B.moistCool * moist);
+      col.g *= k;
+      col.b *= k * (1 + B.moistCool * moist);
+    }
+    if (dPave <= M.worn.reach) {
+      const w = 1 - (dPave - 1) / M.worn.reach;
+      const grey = (col.r + col.g + col.b) / 3;
+      col.lerp(_e.setRGB(grey, grey, grey), M.worn.desat * w).multiplyScalar(1 - M.worn.dark * w);
+    }
+  }
+  const edgeReach = veg ? M.shore.reach : M.shore.sandReach;
+  if (dEdge <= edgeReach) {
+    // the dry blend: own colour and the neighbour's base (theme spec or default)
+    const spec = themeSpec(world, edgeIdx, edgeZone);
+    const other = linOf(spec?.base ?? DEFAULT_GROUND[edgeZone as ZoneId].base);
+    const share = veg ? M.shore.dryShare : 1 - M.shore.dryShare;
+    _e.copy(col).lerp(other, share);
+    const sp =
+      1 +
+      M.shore.speckle * noise.n2(x / M.shore.speckleScale + 3.7, zw / M.shore.speckleScale - 9.2);
+    const w = (1 - (dEdge - 1) / edgeReach) * (veg ? M.shore.mix : M.shore.sandMix) * sp;
+    col.lerp(_e, clamp01(w));
+  }
+}
+
 /** Unsmoothed sRGB colour of sample (ix, iz) into `_px`; returns its blend class. */
 function rawAlbedo(world: WorldData, ix: number, iz: number): number {
   const h = world.height;
@@ -376,6 +495,13 @@ function rawAlbedo(world: WorldData, ix: number, iz: number): number {
       col.g = (ref.g + (col.g - ref.g) * k) * (base.g / Math.max(ref.g, 1e-4));
       col.b = (ref.b + (col.b - ref.b) * k) * (base.b / Math.max(ref.b, 1e-4));
     } else col.copy(base);
+  }
+  if (y > 0 && (cls === TerrainClass.veg || cls === TerrainClass.sand))
+    topVariation(world, ix, iz, cls, col, noise);
+  if (z === Zone.cliff && y > 0) {
+    // the wall's far colour: its theme's strata mean (islets: the default row)
+    const id = world.islandMap[i];
+    col.copy(wallColors(id > 0 ? world.islands[id - 1]?.theme : undefined).mean);
   }
   let r = linearToSrgb(clamp01(col.r));
   let g = linearToSrgb(clamp01(col.g));
@@ -404,6 +530,19 @@ function rawAlbedo(world: WorldData, ix: number, iz: number): number {
     const hue = noise.n2(x / 21 - 7.1, zw / 21 + 4.4) * M.vegHue;
     r *= 1 + hue;
     b *= 1 - hue;
+    if (y > 0) {
+      // saturation floor (TASK-614): the blotch / foot / worn tints never turn the grass muddy
+      const bh = linOf(spec?.base ?? DEFAULT_GROUND[z as ZoneId].base);
+      hslOf(linearToSrgb(bh.r), linearToSrgb(bh.g), linearToSrgb(bh.b));
+      const floor = Math.min(M.vegSatFloor, _hsl.s);
+      hslOf(r, g, b);
+      if (_hsl.s < floor) {
+        rgbOfHsl(_hsl.h, floor, _hsl.l);
+        r = _rgb.r;
+        g = _rgb.g;
+        b = _rgb.b;
+      }
+    }
   }
   // AO: scale the sRGB value and lean the shade slightly cool (ART_BIBLE P4), as faceColor
   const occ = _shade.ao;
@@ -425,7 +564,10 @@ function rawAlbedo(world: WorldData, ix: number, iz: number): number {
 }
 
 /** Palette texture: `PALETTE_TEXELS` texels per zone, `PALETTE_ROWS` rows (row = island id). */
-export const PALETTE_TEXELS = 5;
+export const PALETTE_TEXELS = 9;
+/** First palette texel of the strata band tones (`WALL_TONES` of them, after the wall mean). */
+export const WALL_TONE_TEXEL = 5;
+export const WALL_TONES = 4;
 export const PALETTE_ROWS = 8;
 /** Byte scales of the palette fields (decoded by the terrain shader). */
 export const PALETTE_SCALE = { amp: 100, pattern: 64, wall: 255 } as const;
@@ -436,7 +578,7 @@ export const PATTERN_LAYERS: readonly DetailLayerId[] = ['mow', 'tiles', 'mosaic
 const NO_LAYER = 255;
 
 /**
- * Ground palette (16 zones × 5 texels) × 8 rows: row 0 = no island (defaults), row k = island
+ * Ground palette (16 zones × 9 texels) × 8 rows: row 0 = no island (defaults), row k = island
  * id k with its theme's `ground` over `DEFAULT_GROUND`. Per (zone, row):
  * - texel 0: R layer 0, G layer 1 (255 = none), B amplitude × 100, A material id
  *   (texel 0 is also the shader's material-group key: equal texels blend smoothly);
@@ -444,7 +586,9 @@ const NO_LAYER = 255;
  *   (`GROUND_WALL.zoneWeight`; the shader gates it to land above the water), A wall kind
  *   (0 coastal soil, 128 cliff: soil inland too, 255 rock: own albedo, softer bands);
  * - texels 2 / 3: accent 1 / 2 (sRGB bytes);
- * - texel 4: the island's wall colour (sRGB bytes; theme cliff base, else `GROUND_WALL.soil`).
+ * - texel 4: the island's wall colour (sRGB bytes; the linear mean of its strata tones);
+ * - texels 5–8: its strata band tones (`GROUND_WALL.strata[theme]`, sRGB bytes, TASK-613).
+ * Wall texels repeat per zone (any zone can be a wall) and are equal across one row.
  */
 export function buildGroundPalette(world: WorldData): Uint8Array {
   const out = new Uint8Array(ZONE_COUNT * PALETTE_TEXELS * PALETTE_ROWS * 4);
@@ -453,14 +597,19 @@ export function buildGroundPalette(world: WorldData): Uint8Array {
     const o = (row * w + zone * PALETTE_TEXELS + t) * 4;
     for (let c = 0; c < 4; c++) out[o + c] = Math.max(0, Math.min(255, Math.round(v[c])));
   };
-  const srgb = (hex: string): number[] => {
-    const c = linOf(hex);
-    return [linearToSrgb(c.r) * 255, linearToSrgb(c.g) * 255, linearToSrgb(c.b) * 255, 255];
-  };
+  const srgbOf = (c: THREE.Color): number[] => [
+    linearToSrgb(c.r) * 255,
+    linearToSrgb(c.g) * 255,
+    linearToSrgb(c.b) * 255,
+    255,
+  ];
+  const srgb = (hex: string): number[] => srgbOf(linOf(hex));
   for (let row = 0; row < PALETTE_ROWS; row++) {
     const isl = row > 0 ? world.islands[row - 1] : undefined;
     const ground = isl ? THEMES[isl.theme]?.ground : undefined;
-    const wallColor = srgb(ground?.[Zone.cliff]?.base ?? GROUND_WALL.soil);
+    const walls = wallColors(isl?.theme);
+    const wallColor = srgbOf(walls.mean);
+    const wallTones = walls.tones.map(srgbOf);
     for (let zone = 0; zone < ZONE_COUNT; zone++) {
       const spec = ground?.[zone as ZoneId] ?? DEFAULT_GROUND[zone as ZoneId];
       const p = spec.layer ?? {};
@@ -500,6 +649,7 @@ export function buildGroundPalette(world: WorldData): Uint8Array {
       put(row, zone, 2, srgb(accents[0]));
       put(row, zone, 3, srgb(accents[1]));
       put(row, zone, 4, wallColor);
+      for (let k = 0; k < WALL_TONES; k++) put(row, zone, WALL_TONE_TEXEL + k, wallTones[k]);
     }
   }
   return out;

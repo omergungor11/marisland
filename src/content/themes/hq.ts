@@ -98,7 +98,7 @@ export const HQ_THEME: ThemeDef = {
     [Zone.grass]: { material: 'lawn', base: LAWN, layer: { mow: { amplitude: 0.03, period: 3 } } },
     [Zone.meadow]: {
       material: 'meadow',
-      base: '#A9D86E',
+      base: '#B8DC6A',
       layer: { speckle: ['#FF8A70', '#FFFFFF'] },
     },
     [Zone.forest]: { material: 'forest', base: '#5E9E4A' },

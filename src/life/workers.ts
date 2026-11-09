@@ -8,20 +8,22 @@ import {
   POSES,
   RITUAL_SPEED,
   WORKERS,
+  BOT_SHADE_L,
   type ItineraryStep,
   type LifePlan,
 } from '../content/life.ts';
 import { FLEET_BOTS } from '../content/fleet.ts';
+import { BOT_CHASSIS, botLook, type BotLook } from '../content/bot-look.ts';
 import { CARRIED_ITEM_SLOT, THEMES } from '../content/themes.ts';
 import { springIn } from '../core/math/spring.ts';
 import { wrapAngle } from './agents.ts';
 import type { LifeCtx } from './ctx.ts';
 import { buildWorker } from './geo/workers.ts';
+import { chassisIndex, encodeBotCode, eyesIndex, headIndex, ROLE_ITEM_CODE } from './bot-code.ts';
 import { unitHash } from '../core/hash.ts';
 import { buildStops, islandComps, type Stop } from './activity-world.ts';
 import { LandKind, nodesByComponent, type LandOpts, type WorldNodes } from './land.ts';
 import { lineOk, NodeKind, walkRoute, type Mask, type WalkGraph } from './land-world.ts';
-import { ITEM_STRIDE } from './life-material.ts';
 import { SHARED } from '../render/uniforms.ts';
 import {
   planAmbient,
@@ -33,6 +35,8 @@ import {
 } from './workers-world.ts';
 
 const TAU = Math.PI * 2;
+const _tint = new THREE.Color();
+const _hsl = { h: 0, s: 0, l: 0 };
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
 const damp = (dt: number, lambda: number): number => 1 - Math.exp(-lambda * dt);
 
@@ -145,8 +149,26 @@ export class Workers extends LandKind {
   focus = -1;
   private readonly accOf: Uint8Array;
   private readonly seedArr: Float32Array;
-  private readonly seedAttr: THREE.InstancedBufferAttribute;
-  private seedDirty = false;
+  // ---- bot look (TASK-590): one InstancedMesh per chassis (scout = `this.mesh`), bots compacted into their own
+  /** Meshes by chassis index; the instance buffers below are compact (a bot sits at its rank in its chassis). */
+  private readonly chassisMeshes: THREE.InstancedMesh[] = [];
+  private readonly seedAttrs: THREE.InstancedBufferAttribute[] = [];
+  private readonly gaitAttrs: THREE.InstancedBufferAttribute[] = [];
+  /** Slot-indexed matrices written by `update`, copied into the chassis meshes. */
+  private readonly slotMat: Float32Array;
+  /** Slot-indexed team tint (rgb) before the shade step. */
+  private readonly tint: Float32Array;
+  /** Slot-indexed tint actually shown (team tint + shade step). */
+  private readonly tintShown: Float32Array;
+  /** Look each bot shows now (chassis, head, shade, role item, eyes) and the resident look it falls back to. */
+  private readonly shown: BotLook[];
+  private readonly resident: BotLook[];
+  /** Fleet look asked by the binding (null = resident). */
+  private readonly asked: (BotLook | null)[];
+  /** Bots whose shown look differs from the asked one and have not reached a rest pose yet. */
+  private readonly lookPending = new Set<number>();
+  /** Role item code (ROLE_ITEM_CODE) a bound bot carries over the itinerary's, 0 = none. */
+  private readonly roleCode: Uint8Array;
   private readonly gStep: Int16Array;
   private readonly gKind: Uint8Array;
   private readonly gStop: Int32Array;
@@ -341,9 +363,54 @@ export class Workers extends LandKind {
       seed[i] = th.accessory + Math.min(this.phase[i], 0.999);
     });
     this.seedArr = seed;
-    this.seedAttr = new THREE.InstancedBufferAttribute(seed, 1);
-    this.seedAttr.setUsage(THREE.DynamicDrawUsage);
-    this.mesh.geometry.setAttribute('aSeed', this.seedAttr);
+    this.roleCode = new Uint8Array(n);
+    this.slotMat = new Float32Array(n * 16);
+    this.tint = new Float32Array(n * 3);
+    this.tintShown = new Float32Array(n * 3);
+    this.shown = [];
+    this.resident = [];
+    this.asked = new Array<BotLook | null>(n).fill(null);
+    const tintSrc = this.mesh.instanceColor!.array;
+    spawns.forEach((s, i) => {
+      this.tint[i * 3] = tintSrc[i * 3];
+      this.tint[i * 3 + 1] = tintSrc[i * 3 + 1];
+      this.tint[i * 3 + 2] = tintSrc[i * 3 + 2];
+      // resident look: a hash of the island and the bot's rank there (no rng draw, no sequence shifts)
+      const look = botLook(`${s.island}:${this.rankOf[i]}`, s.theme);
+      this.resident.push(look);
+      this.shown.push({ ...look });
+      this.paint(i);
+    });
+    // one mesh per chassis: scout is the base class's mesh, the others share its material (one program)
+    this.chassisMeshes.push(this.mesh);
+    for (const ch of BOT_CHASSIS.slice(1)) {
+      const geo = buildWorker(ch);
+      const m = new THREE.InstancedMesh(geo, this.mesh.material, n);
+      m.name = `life:workers-${ch}`;
+      m.count = 0;
+      m.visible = false;
+      m.frustumCulled = true;
+      m.castShadow = false;
+      m.receiveShadow = false;
+      m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      m.setColorAt(0, col.set('#FFFFFF'));
+      o.group.add(m);
+      o.scope.add(geo);
+      o.scope.add(m);
+      this.chassisMeshes.push(m);
+    }
+    for (const m of this.chassisMeshes) {
+      const sa = new THREE.InstancedBufferAttribute(new Float32Array(n), 1);
+      sa.setUsage(THREE.DynamicDrawUsage);
+      const ga = new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3);
+      ga.setUsage(THREE.DynamicDrawUsage);
+      m.geometry.setAttribute('aSeed', sa);
+      m.geometry.setAttribute('aGait', ga);
+      m.instanceColor!.setUsage(THREE.DynamicDrawUsage);
+      this.seedAttrs.push(sa);
+      this.gaitAttrs.push(ga);
+    }
+    for (let i = 0; i < n; i++) this.writeSeed(i);
 
     for (let i = 0; i < n; i++) {
       this.gStep[i] =
@@ -1125,11 +1192,115 @@ export class Workers extends LandKind {
   private setItem(i: number, want: number): void {
     this.dayItem[i] = want;
     // Q17 lantern bots: at night the theme's night item replaces the step's (TASK-480)
-    const code = this.nightOn && NIGHT_CODE[this.themeOf[i]] ? NIGHT_CODE[this.themeOf[i]] : want;
+    const code =
+      this.roleCode[i] ||
+      (this.nightOn && NIGHT_CODE[this.themeOf[i]] ? NIGHT_CODE[this.themeOf[i]] : want);
     if (this.item[i] === code) return;
     this.item[i] = code;
-    this.seedArr[i] = this.accOf[i] + ITEM_STRIDE * code + Math.min(this.phase[i], 0.999);
-    this.seedDirty = true;
+    this.writeSeed(i);
+  }
+
+  /** `aSeed` of bot `i`: accessory + item + head / eyes code (bot-code.ts) + its phase. */
+  private writeSeed(i: number): void {
+    const l = this.shown[i];
+    this.seedArr[i] =
+      encodeBotCode({
+        acc: this.accOf[i],
+        item: this.item[i],
+        head: headIndex(l.head),
+        eyes: eyesIndex(l.eyes),
+      }) + Math.min(this.phase[i], 0.999);
+  }
+
+  /** Team tint + the look's shade step into the slot tint. */
+  private paint(i: number): void {
+    const c = _tint.setRGB(this.tint[i * 3], this.tint[i * 3 + 1], this.tint[i * 3 + 2]);
+    const step = BOT_SHADE_L[this.shown[i].shade];
+    if (step !== 0) {
+      c.getHSL(_hsl);
+      c.setHSL(_hsl.h, _hsl.s, clamp(_hsl.l + step, 0, 1));
+    }
+    this.tintShown[i * 3] = c.r;
+    this.tintShown[i * 3 + 1] = c.g;
+    this.tintShown[i * 3 + 2] = c.b;
+  }
+
+  /** The `aSeed` value of bot `i` (accessory + item + look code + phase, bot-code.ts). */
+  seedOf(i: number): number {
+    return this.seedArr[i];
+  }
+
+  /** Tint bot `i` is drawn with (team tint + shade step). */
+  tintOf(i: number, out: THREE.Color): THREE.Color {
+    return out.setRGB(this.tintShown[i * 3], this.tintShown[i * 3 + 1], this.tintShown[i * 3 + 2]);
+  }
+
+  /** Mesh index (chassis) bot `i` is drawn in. */
+  chassisOf(i: number): number {
+    return chassisIndex(this.shown[i].chassis);
+  }
+
+  /** The look bot `i` shows right now (tests, hover tip). */
+  lookOf(i: number): BotLook {
+    return this.shown[i];
+  }
+
+  /**
+   * Ask for a fleet look (null = back to the resident one). Eyes follow at once; chassis, head, shade and
+   * the role item swap when the bot is at rest (seated, paused, at a stop), never mid-walk.
+   */
+  setLook(i: number, look: BotLook | null): void {
+    if (!(i >= 0 && i < this.capacity)) return;
+    this.asked[i] = look;
+    this.lookPending.add(i);
+  }
+
+  private static atRest(state: number): boolean {
+    return (
+      state !== W_WALK &&
+      state !== W_LOOP &&
+      state !== W_LEG &&
+      state !== W_BACK &&
+      state !== W_ENTER &&
+      state !== W_EXIT
+    );
+  }
+
+  private syncLooks(): void {
+    for (const i of this.lookPending) {
+      const want = this.asked[i] ?? this.resident[i];
+      const cur = this.shown[i];
+      let dirty = false;
+      if (cur.eyes !== want.eyes) {
+        cur.eyes = want.eyes;
+        dirty = true;
+      }
+      const same =
+        cur.chassis === want.chassis &&
+        cur.head === want.head &&
+        cur.shade === want.shade &&
+        cur.item === want.item;
+      if (!same && Workers.atRest(this.state[i])) {
+        cur.chassis = want.chassis;
+        cur.head = want.head;
+        cur.shade = want.shade;
+        cur.item = want.item;
+        cur.role = want.role;
+        this.paint(i);
+        this.roleCode[i] = this.asked[i] ? ROLE_ITEM_CODE[want.item] : 0;
+        this.setItem(i, this.dayItem[i]);
+        dirty = true;
+      }
+      if (dirty) this.writeSeed(i);
+      if (
+        cur.chassis === want.chassis &&
+        cur.head === want.head &&
+        cur.shade === want.shade &&
+        cur.item === want.item &&
+        cur.eyes === want.eyes
+      )
+        this.lookPending.delete(i);
+    }
   }
 
   override update(alpha: number): void {
@@ -1139,11 +1310,46 @@ export class Workers extends LandKind {
       for (let i = 0; i < this.item.length; i++)
         if (NIGHT_CODE[this.themeOf[i]]) this.setItem(i, this.dayItem[i]);
     }
-    if (this.seedDirty) {
-      this.seedAttr.needsUpdate = true;
-      this.seedDirty = false;
-    }
+    this.syncLooks();
     super.update(alpha);
+  }
+
+  protected override matrixOut(): Float32Array {
+    return this.slotMat;
+  }
+
+  /** Deal the slot-indexed matrices, seeds, gait and tint out to the chassis meshes (compact, active bots only). */
+  protected override finishUpdate(_top: number): void {
+    const counts = [0, 0, 0];
+    const mat = this.slotMat;
+    for (let i = 0; i < this.capacity; i++) {
+      if (!this.active[i]) continue;
+      const c = chassisIndex(this.shown[i].chassis);
+      const k = counts[c]++;
+      const m = this.chassisMeshes[c];
+      const ma = m.instanceMatrix.array as Float32Array;
+      for (let j = 0; j < 16; j++) ma[k * 16 + j] = mat[i * 16 + j];
+      this.seedAttrs[c].array[k] = this.seedArr[i];
+      const ga = this.gaitAttrs[c].array;
+      ga[k * 3] = this.gait[i * 3];
+      ga[k * 3 + 1] = this.gait[i * 3 + 1];
+      ga[k * 3 + 2] = this.gait[i * 3 + 2];
+      const ca = m.instanceColor!.array;
+      ca[k * 3] = this.tintShown[i * 3];
+      ca[k * 3 + 1] = this.tintShown[i * 3 + 1];
+      ca[k * 3 + 2] = this.tintShown[i * 3 + 2];
+    }
+    this.chassisMeshes.forEach((m, c) => {
+      const n = counts[c];
+      m.count = n;
+      m.visible = n > 0;
+      if (n === 0) return;
+      m.instanceMatrix.needsUpdate = true;
+      m.instanceColor!.needsUpdate = true;
+      this.seedAttrs[c].needsUpdate = true;
+      this.gaitAttrs[c].needsUpdate = true;
+      m.computeBoundingSphere();
+    });
   }
 
   // ---- fleet binding (TASK-564)

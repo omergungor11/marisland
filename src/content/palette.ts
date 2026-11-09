@@ -27,6 +27,29 @@ export const GRASS = ['#C9E86F', '#A6DB5E', '#7BC950', '#5FAE45'] as const; // t
 export const FLOWERS = ['#FF8FB1', '#FFE45C', '#FFFFFF', '#B39DFF', '#FF7A5C'] as const;
 export const ROCK = ['#A9AEB8', '#8A909C', '#666C7A'] as const;
 export const CLIFF_STRATA = ['#D9B48F', '#C29A74'] as const;
+/**
+ * Earth-wall strata per island theme (TASK-613, M50 Ground Look): four band tones each, cycled
+ * bottom → top (light / dark / mid / darkest), all inside the theme's §2 family with an HSL L
+ * spread ≥ 18 % between the lightest and darkest band. Their linear mean is the island's wall
+ * colour (far / low quality). `default` = islets and theme-less rows (the old soil tans).
+ */
+export const WALL_STRATA = {
+  default: ['#D9B48F', '#B9845A', '#C29A74', '#9E6E4C'],
+  // Hearthholm: warm cream / cinnamon / sandstone / rust
+  hq: ['#E9C79A', '#C08458', '#D6A574', '#A4603F'],
+  // Coding: pale slate / teal-grey / cool slate / dark slate
+  coding: ['#BCC6D2', '#7FA3A8', '#8D9AB0', '#6C788C'],
+  // Beacon Rock: cream / red rock / terracotta / deep red rock
+  marketing: ['#E8CDA6', '#B8604E', '#CC7F5E', '#94503F'],
+  // Palmlagoon: pale mint / sage-grey / sand / mint-grey
+  qa: ['#C8DACB', '#879E92', '#DCC9A0', '#A9C2B4'],
+  // Design: cream / warm plum / rose cream / deep plum
+  design: ['#EAD3B8', '#A87C8C', '#CFA7A0', '#8A6474'],
+  // Emberpeak: ash / basalt grey-violet / rust / dark basalt
+  devops: ['#BDB4B8', '#8A8296', '#A8684E', '#6E6878'],
+  // Lonely Palm: pale sand / lavender-grey / warm sand / lilac shadow
+  research: ['#EAD7AE', '#B6ACC2', '#D4B98C', '#968BA6'],
+} as const;
 export const FOLIAGE = {
   deciduous: ['#8FD16A', '#5DBB63', '#3E9A52'],
   pine: ['#3C8F68', '#2F7D5B'],

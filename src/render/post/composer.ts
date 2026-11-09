@@ -18,6 +18,7 @@ import { LIGHTING } from '../../content/palette.ts';
 import { NIGHT, POST } from '../../content/lighting.ts';
 import { SHARED } from '../uniforms.ts';
 import { MarGradeEffect } from './grade-effect.ts';
+import { bandOffset, zoomBlurAt } from './zoom-blur.ts';
 
 /**
  * pmndrs post chain (ARCHITECTURE §3 "Post", ART_BIBLE §3). Passes:
@@ -34,11 +35,11 @@ export interface PostChain {
   composer: EffectComposer;
   render(dt: number): void;
   setSize(w: number, h: number): void;
-  /** Zoom tier 0–3: tilt-shift bands / DOF. Also polled from SHARED.uTier in render(). */
+  /** Zoom tier 0–3: the blur fallback without a pinned focus. Also polled from SHARED.uTier in render(). */
   setTier(tier: number): void;
   /** Golden-hour overlay + debug-mask bypass. Also polled from SHARED in render(). */
   setEnv(env: EnvState): void;
-  /** Pin the DOF focus to a world point (high, T3); null → screen-centre ray ∩ sea plane. */
+  /** Pin the DOF focus (and the zoom-blur distance) to the orbit target; null → screen-centre ray ∩ sea plane, tier blur. */
   setFocus(target: THREE.Vector3 | null): void;
   dispose(): void;
 }
@@ -80,9 +81,10 @@ export function createPostChain(
   };
 
   let dofPass: EffectPass | null = null;
+  let dof: DepthOfFieldEffect | null = null;
   const focus = new THREE.Vector3();
   if (useDof) {
-    const dof = new DepthOfFieldEffect(camera, {
+    dof = new DepthOfFieldEffect(camera, {
       focusDistance: 30,
       focusRange: POST.dofFocusRange,
       bokehScale: LIGHTING.tiltShift[3].blur / 2,
@@ -131,8 +133,37 @@ export function createPostChain(
     focus.copy(_cp).addScaledVector(_fwd, Math.min(t, 1500));
   };
 
-  let tier = -1;
+  let tier = 0;
   let bloomNight = 0;
+  let band = -1;
+  let blurPx = -1;
+  let bokeh = -1;
+  const _ndc = new THREE.Vector3();
+  // blur from the orbit distance (camera → pinned focus) via zoomBlurAt, else from the tier: tilt-shift
+  // band / blur and DOF bokeh / range continuous in distance, weakening as you zoom in (TASK-586,
+  // POST_ZOOM); the sharp band centred on the target's screen height; DOF only while bokeh > 0
+  const applyBlur = (): void => {
+    const off = focusPinned ? bandOffset(_ndc.copy(focus).project(camera).y) : 0;
+    if (off !== tilt.offset) tilt.offset = off;
+    const z = zoomBlurAt(
+      focusPinned ? camera.getWorldPosition(_cp).distanceTo(focus) : null,
+      tier,
+      !!dof,
+    );
+    if (z.band !== band || z.blur !== blurPx) {
+      band = z.band;
+      blurPx = z.blur;
+      setTilt(band, blurPx);
+    }
+    if (dof && dofPass) {
+      if (z.bokeh !== bokeh) {
+        bokeh = z.bokeh;
+        dofPass.enabled = bokeh > 0;
+        if (bokeh > 0) dof.bokehScale = bokeh;
+      }
+      dof.cocMaterial.focusRange = z.focusRange;
+    }
+  };
   const chain: PostChain = {
     composer,
     render(dt) {
@@ -149,6 +180,7 @@ export function createPostChain(
         bloom.luminanceMaterial.threshold =
           POST.bloomThreshold + (NIGHT.bloomThreshold - POST.bloomThreshold) * nb;
       }
+      applyBlur();
       if (dofPass?.enabled && !focusPinned) centreFocus();
       composer.render(dt);
     },
@@ -156,21 +188,7 @@ export function createPostChain(
       composer.setSize(w, h);
     },
     setTier(t) {
-      if (t === tier) return;
       tier = t;
-      const ts = LIGHTING.tiltShift[Math.max(0, Math.min(3, t))];
-      if (t >= 3) {
-        if (dofPass) {
-          dofPass.enabled = true;
-          setTilt(0, 0);
-        } else {
-          // no DOF on medium: a wider tilt-shift band stands in
-          setTilt(0.25, ts.blur);
-        }
-      } else {
-        if (dofPass) dofPass.enabled = false;
-        setTilt(ts.band, ts.blur);
-      }
     },
     setEnv(env) {
       grade.setGolden(env.golden);
@@ -185,7 +203,7 @@ export function createPostChain(
       composer.dispose();
     },
   };
-  chain.setTier(0);
+  applyBlur();
   scope.add(chain);
   return chain;
 }
