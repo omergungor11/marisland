@@ -543,9 +543,9 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-590 | Bot chassis (scout / hauler / spire) + head (monitor / visor / cam) variants, each chassis its own InstancedMesh, role → carried item, eye states (idle / working / gate / error / done) from `botLook(seed)`; `F-bots` dev shot | life | M | IN_PROGRESS | — |
+| TASK-590 | Bot chassis (scout / hauler / spire) + head (monitor / visor / cam) variants, each chassis its own InstancedMesh, role → carried item, eye states (idle / working / gate / error / done) from `botLook(seed)`; `F-bots` dev shot | life | M | COMPLETED (D-157; open: line-up shot, swap pop) | — |
 | TASK-591 | Panel portraits: `botPortraitSvg(look)` on session rows, terminal header, fleet chips, hover tip; mock covers 3 × 3 looks × 5 states; `F-portraits` dev shot | engine | S | COMPLETED (D-158; open: tip gate flag in app.ts, 20 px head legibility) | — (reads `content/bot-look.ts`) |
-| TASK-592 | Bot motion variety: per-chassis gait, four idle beats, gate look-up + amber gem pulse, done hop + sparkles | life | S | PENDING | TASK-590 |
+| TASK-592 | Bot motion variety: per-chassis gait, four idle beats, gate look-up + amber gem pulse, done hop + sparkles; FIRST a deterministic bot line-up (`F-bot-lineup`: all 9 looks × 5 eye states on the Coding plaza, `?bots=lineup`) so QA can see them; chassis swap squash / poof | life | S | PENDING | TASK-590 |
 | TASK-611 | Detail reveal: earlier and continuous (user 2026-11-09: "çok yaklaşmam gerekiyor detayların netleşmesi için, o kısım smooth olmalı"). Tier-2 / tier-3 prop reveal moves out (`TIER_FADE` 2: 120–160 → ~200–260 u, 3: 40–55 → ~70–95 u) with wide dither cross-fades instead of a band pop; the tilt-shift sharp band follows the orbit target and widens so the focused island is never blurred at T1–T2; high DOF focus range scales with distance; budgets re-measured (more LOD0 in view). Composer / tilt-shift side moved to TASK-586 (peer session); 611 = prop reveal bands + cross-fade + flip-book only | engine | S | IN_PROGRESS | — |
 | TASK-593 | M45 QA: portraits vs 3D bots, F-* shots, wow budgets W5 / W26 / W-morning-shift / W-funicular-dawn, low ladder | qa | S | PENDING | TASK-590, TASK-591, TASK-592 |
 
