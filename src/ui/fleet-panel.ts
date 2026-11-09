@@ -23,6 +23,8 @@ import {
   type GateGroup,
 } from '../fleet/rows.ts';
 import { THEME_IDS, type ThemeId } from '../world/types.ts';
+import { PORTRAIT } from '../content/fleet-portrait.ts';
+import { injectPortraitCss, putPortrait, sessionLook } from './bot-portrait.ts';
 import { createFleetTerm } from './fleet-term.ts';
 
 /**
@@ -85,6 +87,8 @@ export interface FleetPanelOptions {
 interface RowNode {
   li: HTMLLIElement;
   btn: HTMLButtonElement;
+  /** TASK-591: the session's bot portrait (left of the status glyph). */
+  bot: HTMLElement;
   dot: HTMLElement;
   agent: HTMLElement;
   dur: HTMLElement;
@@ -115,11 +119,13 @@ export function createFleetPanel(
   store: FleetStore,
   opts: FleetPanelOptions,
 ): FleetPanel {
+  injectPortraitCss();
   const el = document.createElement('section');
   el.className = 'mar-fleet';
   el.setAttribute('aria-hidden', 'true');
   el.innerHTML = `
     <header class="mar-fleet-head"><span class="mar-fleet-disc"></span><span class="mar-fleet-name"></span><span class="mar-fleet-gatecount" hidden></span><span class="mar-fleet-live"></span><button class="mar-fleet-new" type="button" title="${P.newSession}" aria-label="${P.newSession}" hidden>+</button></header>
+    <div class="mar-fcrew" hidden></div>
     <input class="mar-fleet-search" type="search" placeholder="${P.searchPlaceholder}" aria-label="${P.searchPlaceholder}" spellcheck="false" autocomplete="off">
     <div class="mar-fgbox"><div class="mar-fgates"></div></div>
     <ol class="mar-fleet-rows"></ol>
@@ -134,6 +140,12 @@ export function createFleetPanel(
   const gateCount = el.querySelector('.mar-fleet-gatecount') as HTMLElement;
   const gatesEl = el.querySelector('.mar-fgates') as HTMLElement;
   const newBtn = el.querySelector('.mar-fleet-new') as HTMLButtonElement;
+  /** TASK-591: fleet view crew strip, one portrait chip per live session of the view (keyed). */
+  const crewEl = el.querySelector('.mar-fcrew') as HTMLElement;
+  const crewMore = document.createElement('span');
+  crewMore.className = 'mar-fcrew-more';
+  const chips = new Map<string, HTMLButtonElement>();
+  let crewOrder: string[] = [];
   /** M42: gates seen pending, when each answer was seen, answers sent and not yet echoed. */
   const seenPending = new Set<string>();
   const answeredAt = new Map<string, number>();
@@ -171,10 +183,20 @@ export function createFleetPanel(
 
   const makeRow = (id: string): RowNode => {
     const li = document.createElement('li');
-    li.innerHTML = `<button class="mar-frow" type="button" data-id="${esc(id)}"><i class="mar-fdot"></i><span class="mar-fagent"></span><span class="mar-fdur"></span><span class="mar-ftitle"></span><span class="mar-fline"></span></button>`;
+    li.innerHTML = `<button class="mar-frow" type="button" data-id="${esc(id)}"><span class="mar-fbot"></span><i class="mar-fdot"></i><span class="mar-fagent"></span><span class="mar-fdur"></span><span class="mar-ftitle"></span><span class="mar-fline"></span></button>`;
     const btn = li.firstElementChild as HTMLButtonElement;
-    const [dot, agent, dur, title, line] = btn.children as unknown as HTMLElement[];
-    return { li, btn, dot, agent, dur, title, line, s: store.sessions.get(id) as FleetSession };
+    const [bot, dot, agent, dur, title, line] = btn.children as unknown as HTMLElement[];
+    return {
+      li,
+      btn,
+      bot,
+      dot,
+      agent,
+      dur,
+      title,
+      line,
+      s: store.sessions.get(id) as FleetSession,
+    };
   };
   const makeHead = (): HeadNode => {
     const li = document.createElement('li');
@@ -198,8 +220,14 @@ export function createFleetPanel(
     block: boolean,
     status: SessionStatus,
     depth: number,
+    gated: boolean,
   ): void => {
     r.s = s;
+    putPortrait(
+      r.bot,
+      sessionLook({ ...s, status }, gated),
+      block ? PORTRAIT.px.fleetRow : PORTRAIT.px.row,
+    );
     if (r.dot.dataset.s !== status) {
       const g = statusGlyph(status);
       r.dot.dataset.s = status;
@@ -255,6 +283,7 @@ export function createFleetPanel(
     // TASK-583: the header "+" starts a session on the focused island (fleet view: one per block)
     newBtn.hidden = fleetView;
     const items: Item[] = [];
+    const crew: FleetSession[] = [];
     let live = 0;
     let more = 0;
     if (fleetView) {
@@ -273,6 +302,7 @@ export function createFleetPanel(
               : { k: `s:${it.session.id}`, s: it.session, depth: it.depth },
           );
         more += b.more;
+        for (const s of b.rows) if (isLive(s)) crew.push(s);
       }
       for (const s of store.sessions.values()) if (isLive(s)) live++;
       emptyText = items.length ? '' : P.searchEmpty;
@@ -292,6 +322,7 @@ export function createFleetPanel(
     gateCount.hidden = !fleetView || pending === 0;
     renderGates(now);
     const gated = gatedSessions(store);
+    renderCrew(crew, gated);
     order = syncKeyed(
       nodes,
       order,
@@ -318,6 +349,7 @@ export function createFleetPanel(
           // a pending gate shows the waiting ring even before the session event says so
           gated.has(it.s.id) && isLive(it.s) ? 'waiting' : it.s.status,
           it.depth,
+          gated.has(it.s.id),
         );
       else if ('head' in node && 'head' in it) setHead(node.head, it.head, it.live);
       else if ('req' in node && 'req' in it) put(node.req, it.req);
@@ -328,6 +360,37 @@ export function createFleetPanel(
       const first = items.find((it) => 's' in it && isLive(it.s));
       if (first && 's' in first) term.show(first.s.id);
     }
+  };
+  /** Crew chips (fleet view): capped at `PORTRAIT.crew.max`, the rest counted as "+N". */
+  const renderCrew = (crew: readonly FleetSession[], gated: ReadonlySet<string>): void => {
+    const shown = crew.slice(0, PORTRAIT.crew.max);
+    crewEl.hidden = shown.length === 0;
+    crewOrder = syncKeyed(
+      chips,
+      crewOrder,
+      shown.map((s) => s.id),
+      {
+        make: (id) => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'mar-fchip mar-fbot';
+          b.dataset.id = id;
+          return b;
+        },
+        insert: (b, ref) => crewEl.insertBefore(b, ref ?? (crewMore.parentNode ? crewMore : null)),
+        drop: (b) => b.remove(),
+      },
+    );
+    for (const s of shown) {
+      const b = chips.get(s.id) as HTMLButtonElement;
+      putPortrait(b, sessionLook(s, gated.has(s.id)), PORTRAIT.px.fleetRow);
+      const tip = `${s.agent} · ${s.title}`;
+      if (b.title !== tip) b.title = tip;
+    }
+    const rest = crew.length - shown.length;
+    put(crewMore, rest > 0 ? PORTRAIT.crew.more(rest) : '');
+    if (rest > 0 && !crewMore.parentNode) crewEl.appendChild(crewMore);
+    else if (rest <= 0) crewMore.remove();
   };
   const liOf = (n: Node): HTMLLIElement =>
     'row' in n ? n.row.li : 'head' in n ? n.head.li : n.req;
@@ -456,6 +519,13 @@ export function createFleetPanel(
     if (theme === null) opts.onFly?.(s.island);
     term.show(s.id);
   };
+  const onCrew = (e: MouseEvent): void => {
+    const id = (e.target as Element).closest<HTMLElement>('.mar-fchip')?.dataset.id;
+    const s = id ? store.sessions.get(id) : undefined;
+    if (!s) return;
+    opts.onFly?.(s.island);
+    term.show(s.id);
+  };
   const onInput = (): void => {
     query = search.value;
     dirty = true;
@@ -484,6 +554,7 @@ export function createFleetPanel(
     dirty = true;
   };
   list.addEventListener('click', onClick);
+  crewEl.addEventListener('click', onCrew);
   list.addEventListener('scroll', onScroll, { passive: true });
   search.addEventListener('input', onInput);
   gatesEl.addEventListener('click', onGate);
@@ -558,6 +629,7 @@ export function createFleetPanel(
     dispose() {
       unsub();
       list.removeEventListener('click', onClick);
+      crewEl.removeEventListener('click', onCrew);
       list.removeEventListener('scroll', onScroll);
       search.removeEventListener('input', onInput);
       gatesEl.removeEventListener('click', onGate);

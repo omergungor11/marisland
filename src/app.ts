@@ -65,6 +65,7 @@ import { createAdminWin, type AdminWin } from './ui/admin-win.ts';
 import { createFleetPanel } from './ui/fleet-panel.ts';
 import { createFleetTip } from './ui/fleet-tip.ts';
 import { createFleetBeacons } from './life/fleet-beacons.ts';
+import { Couriers } from './life/couriers.ts';
 import { bindFleetToBots, type FleetBots } from './life/fleet-bots.ts';
 import { FLEET, FLEET_PANEL } from './content/fleet.ts';
 import type { ThemeId } from './world/types.ts';
@@ -491,6 +492,19 @@ export async function boot(): Promise<void> {
           loop.add(fbb);
           worldScope.defer(() => loop.remove(fbb));
         }
+        // M51 courier ships: one per island, driven by the gates (frozen: capture clock + sim time)
+        const cour = new Couriers(
+          { seed, scope: worldScope, group: wv.life.group, cameraPos: camera.position },
+          wv.life.ctx,
+          wv.world,
+          {
+            gates: () => fleet.gates.values(),
+            sessions: () => fleet.sessions,
+            clockMs: (t) => (params.freeze ? FLEET.captureNow + t * 1000 : Date.now()),
+          },
+        );
+        wv.life.add(cour);
+        wv.life.kinds.couriers = cour;
       }
       worldWeather = wv.weather;
       if (cam.reducedMotion) wv.life.setMotionScale(motionScale());
@@ -843,6 +857,7 @@ export async function boot(): Promise<void> {
           }),
           accents: THEME_ACCENTS,
           iconFor: (t) => themeIcon(THEMES[t].icon, 15),
+          islandName: isleOf,
           now: wallNow,
           capture: params.freeze,
           onOpenSession: (id) => openSession(id),

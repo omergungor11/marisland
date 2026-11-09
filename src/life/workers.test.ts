@@ -272,15 +272,23 @@ describe('workers: behaviour', () => {
   it('each worker carries its theme accessory (aSeed integer) and a theme tint', () => {
     const r = rig(1001, 'high');
     const w = r.w;
-    const seed = w.mesh.geometry.getAttribute('aSeed');
     const wd = world(1001);
     for (let i = 0; i < w.capacity; i++) {
       const theme = wd.islands[w.islandOf[i]].theme;
-      expect(Math.floor(seed.getX(i))).toBe(THEMES[theme].accessory);
+      // accessory in the low digits; head / eyes ride above (TASK-590, bot-code.ts); idle at spawn
+      expect(Math.floor(w.seedOf(i)) % 100).toBe(THEMES[theme].accessory);
       const c = new THREE.Color();
-      w.mesh.getColorAt(i, c);
-      const tints = THEMES[theme].teamTints.map((h) => new THREE.Color(h).getHex());
-      expect(tints).toContain(c.getHex());
+      w.tintOf(i, c);
+      const tints = THEMES[theme].teamTints.map((h) => new THREE.Color(h));
+      // the team tint, or its lightness step (the look's shade): hue stays
+      const hsl = { h: 0, s: 0, l: 0 };
+      c.getHSL(hsl);
+      const near = tints.some((t) => {
+        const o = { h: 0, s: 0, l: 0 };
+        t.getHSL(o);
+        return Math.abs(o.h - hsl.h) < 0.02 && Math.abs(o.l - hsl.l) <= 0.0701;
+      });
+      expect(near).toBe(true);
     }
   });
 
@@ -462,11 +470,10 @@ describe('workers: bot culture (TASK-432)', () => {
   it('keeps the agent cap and the aSeed encoding with tableau bots awake', () => {
     const r = rig(1001, 'high', 2, new THREE.Vector3(105, 12, 35));
     run(r, 120);
-    const seed = r.w.mesh.geometry.getAttribute('aSeed');
     expect(r.w.awake).toBeLessThanOrEqual(LIFE_PLAN.high.workers);
     for (let i = 0; i < r.w.capacity; i++) {
       if (!r.w.active[i]) continue;
-      expect(Math.floor(seed.getX(i)) % 100).toBe(THEMES[THEME_OF[r.w.themeOf[i]]].accessory);
+      expect(Math.floor(r.w.seedOf(i)) % 100).toBe(THEMES[THEME_OF[r.w.themeOf[i]]].accessory);
     }
   });
 

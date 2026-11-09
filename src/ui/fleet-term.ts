@@ -14,6 +14,8 @@ import {
   type ChainNode,
 } from '../fleet/rows.ts';
 import type { ThemeId } from '../world/types.ts';
+import { PORTRAIT } from '../content/fleet-portrait.ts';
+import { putPortrait, sessionLook } from './bot-portrait.ts';
 
 /**
  * Terminal view of one session (M41, TASK-569): an overlay of the fleet panel card (slides in over
@@ -70,6 +72,7 @@ export function createFleetTerm(
   el.innerHTML = `
     <header class="mar-fterm-head">
       <button class="mar-fterm-back" type="button" aria-label="${T.back}" title="${T.back}">${BACK}</button>
+      <span class="mar-fbot mar-fterm-bot"></span>
       <i class="mar-fdot"></i>
       <div class="mar-fterm-id"><span class="mar-fterm-title"></span><span class="mar-fterm-meta"></span><span class="mar-fterm-req" hidden><span></span><b></b></span></div>
       <div class="mar-fchain" hidden></div>
@@ -84,6 +87,7 @@ export function createFleetTerm(
   card.appendChild(el);
   const q = <E extends HTMLElement>(sel: string): E => el.querySelector(sel) as E;
   const back = q<HTMLButtonElement>('.mar-fterm-back');
+  const bot = q<HTMLElement>('.mar-fterm-bot');
   const dot = q<HTMLElement>('.mar-fdot');
   const titleEl = q<HTMLElement>('.mar-fterm-title');
   const meta = q<HTMLElement>('.mar-fterm-meta');
@@ -193,6 +197,10 @@ export function createFleetTerm(
       dot.title = P.statusLabel[s.status];
     }
     dot.hidden = false;
+    // TASK-591: the session's bot; a pending gate of its own makes it ask (`?`)
+    const asks = pendingGates(store).some((g) => g.fromSessionId === s.id);
+    putPortrait(bot, sessionLook(s, asks), PORTRAIT.px.term);
+    bot.hidden = false;
     put(titleEl, s.title);
     durText = sessionDuration(s, now);
     const parts = [s.agent, durText, T.turns(s.turns)];
@@ -272,6 +280,7 @@ export function createFleetTerm(
     } else if (mode === 'draft' && draftIsland) {
       accent(draftIsland);
       dot.hidden = true;
+      bot.hidden = true;
       renderChain('');
       put(titleEl, T.newTitle);
       put(meta, `${THEMES[draftIsland].displayName} · ${o.islandName(draftIsland)}`);

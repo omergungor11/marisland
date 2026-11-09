@@ -8,7 +8,7 @@ import { THEMES } from '../content/themes.ts';
 import { perfLimit } from '../test/perf.ts';
 import { generateWorld, type WorldData } from '../world/index.ts';
 import { createLife, type LifeSystem } from './index.ts';
-import { ITEM_STRIDE } from './life-material.ts';
+import { decodeBotCode } from './bot-code.ts';
 import type { Workers } from './workers.ts';
 
 const CAPS = { low: 25, medium: 60, high: 110 } as const;
@@ -83,16 +83,15 @@ describe('activity: near-focus ambient workers (TASK-383)', () => {
   it('encodes the carried item next to the department accessory (two-slot aSeed)', () => {
     const r = rig(1001, 'high', 2);
     run(r, 90);
-    const seed = r.ws.mesh.geometry.getAttribute('aSeed');
     let carrying = 0;
     for (let i = 0; i < r.ws.capacity; i++) {
       if (!r.ws.active[i]) continue;
       const code = r.ws.itemOf(i);
-      const f = Math.floor(seed.getX(i));
+      const d = decodeBotCode(r.ws.seedOf(i));
       const acc = THEMES.coding.accessory;
       if (r.ws.islandOf[i] !== 2) continue;
-      expect(f % ITEM_STRIDE).toBe(acc);
-      expect(Math.floor(f / ITEM_STRIDE)).toBe(code);
+      expect(d.acc).toBe(acc);
+      expect(d.item).toBe(code);
       if (code > 0) carrying++;
     }
     expect(carrying).toBeGreaterThan(0);

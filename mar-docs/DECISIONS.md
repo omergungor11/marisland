@@ -2,6 +2,47 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-157: Bot chassis / head / eye variants — three worker meshes, look code in `aSeed`, role items (TASK-590) — 2026-11-09
+
+**Decision.** `buildWorker(chassis)` returns one geometry per chassis (scout = the old bot, hauler 0.9 u wide with tread feet,
+spire 1.15 u slim with a ringed antenna), each baking the three heads (monitor / visor / cam), the department accessories, the carried
+items and the eye glyphs; `life/workers.ts` draws three InstancedMeshes (`life:workers`, `-hauler`, `-spire`) on the one life program.
+Look code `floor(aSeed) = acc + 100·item + 2000·(head + 3·eyes)` (`life/bot-code.ts`; strides are multiples of 100 so existing
+phases stay whole; `aGait.y` 4..8 was rejected: `floor(y/4)` is the culture arm-pose code). Resident bots take
+`botLook(`${island}:${rank}`, theme)` with no RNG draws; a fleet-bound bot swaps chassis / head / shade / item only at rest, eyes at
+once, and reverts on release. Role items: wrench, map, hammer, duck, magnifier, hard hat added as carried-item slots 16–21. The
+1900-tri cap per geometry holds via `TriBuilder.skipBottom` (downward faces dropped): scout 1838, hauler 1858, spire 1880. Each
+mesh compacts to its active bots per frame, so wow triangles FELL (W5 789,739 → 689,155, W26 → 619,130, W-funicular-dawn →
+682,752, W-morning-shift → 562,363) at +2 draw calls; programs 17.
+
+**Open.** No shot yet shows the variants or any eye state (the `F-bots` cam frames the pergola row where bots sit under roofs; two
+closer tries showed one bot): TASK-592 adds a deterministic bot line-up shot before motion work, TASK-593 judges heads / eyes there.
+Chassis swap at the desk is a hard pop (592: squash or poof); the beacon sits ~0.18 u low over the spire's antenna; slot-indexed
+tooling must use `Workers.seedOf` / `chassisOf`.
+
+## D-162: M50 Ground Look — direction "layered rock + painted light"; wall colour comes from a per-theme strata table, bands grow with height, walls are shaded in the terrain program at every distance — 2026-11-09
+
+**Decision**: The island body (plateau top, bluff walls, shore) is upgraded along direction A + C of `mar-plans/GROUND.md` (user choice over "soft earth" B and pure "painted miniature" C): geology first (strata, grass lip with a cool shadow line, dark cool foot, rim outcrops and height variation along the coast, talus), painted light second (stronger AO, grass height gradient, rim light). Reference set = the 24 `G-*` frames (`shots ground`, 4 islands × 380 / 150 / 55 u × noon / golden), acceptance = W-G1…G6 (GROUND.md §6), "before" sheet `mar-docs/shots/M50-before.jpg`.
+TASK-613 (walls): the earth-wall colour is no longer a theme `cliff.base` tan but the mean of a per-theme 4-band `WALL_STRATA` table (`palette.ts`; HQ cream / cinnamon / rust, Coding slate / teal-grey, Marketing red-rock / cream, QA mint-grey / sand, Design plum / cream, DevOps ash / basalt / rust, Research pale sand / lavender-grey; L spread ≥ 18 % per theme, saturation < 64 %). Bands are drawn in the terrain program at every quality and distance: band height grows with wall height (`band × (1 + y / bandGrow)`: a 5–7 u bluff ≈ 3 bands, the 25 u Beacon stack ≈ 7), the anti-alias fade keeps bands down to ≈ 1.8 px (was 3–8 px, which is why T0 walls read as one tone), 22 × 9 u value-noise macro cells (± 11 % tone, grain 0.35–1.25×) break the 6.5 u crack repeat, the lip shadow line never drops under 1.3 px, foot darkening 0.4 over 3 u with a blue-violet lean (P4). The palette texture widens from 5 to 9 texels per zone (texel 4 = wall mean, 5–8 = band tones); no new program, texture or pass. Rock-zone walls (Emberpeak cone) keep the old albedo × tone path.
+**Not taken**: baking strata into the CPU albedo (2 u/texel top-down: a vertical wall owns ~1 texel, three bands cannot fit); per-island band counts in content (height-graded bands need no data and stay continuous along the coast); direction B (rounding the rim re-runs settlement placement).
+**Numbers**: calls / tris / programs identical on every G and W frame (W1 152 / 326,128 / 15, W11 196 / 362,272 / 15); fragment cost ≈ 2 value-noise + 2 texelFetch + 1 log per wall pixel on all tiers.
+**Open**: Research lavender reads purple-heavy (desaturate a step in 614 together with a warmer grass); Emberpeak cone still near-black at golden hour on its shadow side (617: rock-zone AO lift or `devops.ts` rock base); HQ T1 gully "vertical streak" to be re-judged on `G-hq-t1-gold`; ART_BIBLE §2 "Earth wall" row and §4 bluff text to be rewritten at 618 (ART_BIBLE currently carries uncommitted Design-island edits).
+
+## D-160: Building variants v2 — styled builders beside the legacy ones, 8 variants per def, rolls unchanged until TASK-600 (TASK-598) — 2026-11-09
+
+**Decision.** `geo/building-v2.ts` wraps cottage / stiltHut / towerHouse / barn / logCabin: a variant index with a row in
+`content/building-variants.ts` (`BUILDING_STYLES`: roof style gable / hip / dormer / mansard, window pattern 0–2, door plain /
+arched / double, trims shutters / flower box / awning / chimney kind / plinth) builds through the shared kit `geo/building-kit.ts`;
+an index without a row calls the legacy builder, so the 42 legacy LOD0 / LOD1 hashes are unchanged. LOD1 of a styled variant is the
+legacy LOD1 silhouette in the row's colours (ladder-safe, D-031). LOD0 tris ≤ 1.25 × the legacy max per def (test-pinned: cottage
+290, stiltHut 647, towerHouse 425, barn 305, logCabin 620). `variants` is 8 on every def; `rollVariants` is pinned to the old
+effective counts (`BUILDING_ROLL_NOW`), so the world `props` hash and W2 / W10 / W16 are pixel-identical. Gallery target
+`gallery-shots.ts buildings`.
+
+**Open for TASK-600.** Roll counts → 8 (`BUILDING_ROLL_PROPOSAL`) with one hash re-pin; cottage v3 is the pinned DevOps ops shack
+and must be skipped by rolls; `LOT_ROOFS` needs one entry per rolled variant for stiltHut / towerHouse / barn / logCabin. Nits: dormers
+small at 60 u (`BUILDING_K.dormer`), barn arched doors flat, legacy stiltHut step floats under the deck.
+
 ## D-164: M51 courier ships — hand-offs are shown as a voyage of the island's own ship, driven only by `FleetGate` state; no protocol change — 2026-11-09
 
 **Context.** The user wants a request from one island to another to be visible as a package leaving the harbour and sailing live to the target island, each island's ship uniquely designed, click → info card.

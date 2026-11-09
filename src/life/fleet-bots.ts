@@ -5,7 +5,10 @@
  * stopped the bot is released after `FLEET_BOTS.releaseDelayS` of SIM time and goes back to its
  * routine. The mapping is `fleet-bots-map.ts`. Store events only mark the binding dirty; the work
  * happens in `update(simTime)`, so a capture's `simt` fixes the result (no wall clock here).
+ * TASK-590: a bound bot also takes the session's look (`botLook(sessionId, island, agent, eyesFor(status,
+ * pending gate))`): the chassis / head / role item swap at the desk, the eye state follows the status.
  */
+import { botLook, eyesFor, type BotLook, type BotSessionStatus } from '../content/bot-look.ts';
 import { FLEET_BOTS } from '../content/fleet.ts';
 import type { FleetStore } from '../fleet/client.ts';
 import { isLive, type FleetSession } from '../fleet/protocol.ts';
@@ -19,6 +22,8 @@ export interface BotHost {
   residentsOf(theme: number): readonly number[];
   pin(i: number): void;
   unpin(i: number): void;
+  /** Look of the bot holding a session (null = its resident look again); the host swaps chassis at rest. */
+  setLook?(i: number, look: BotLook | null): void;
 }
 
 export interface FleetBots {
@@ -44,7 +49,7 @@ interface Binding {
 }
 
 export function bindFleetToBots(
-  store: Pick<FleetStore, 'sessions' | 'subscribe'>,
+  store: Pick<FleetStore, 'sessions' | 'subscribe'> & Partial<Pick<FleetStore, 'gates'>>,
   life: { kinds: { workers?: BotHost } },
   opts: { releaseDelayS?: number } = {},
 ): FleetBots {
@@ -60,6 +65,27 @@ export function bindFleetToBots(
   });
   let dirty = true;
   let list: BoundBot[] = [];
+  /** Hand every binding its session's look (eyes from the status and a pending hand-off gate). */
+  const looks = (): void => {
+    if (!host?.setLook) return;
+    for (const [id, b] of bindings) {
+      const s = store.sessions.get(id);
+      if (!s) continue;
+      let gate = false;
+      if (store.gates)
+        for (const g of store.gates.values())
+          if (g.status === 'pending' && g.fromSessionId === id) gate = true;
+      host.setLook(
+        b.bot,
+        botLook(
+          id,
+          b.island as ThemeId,
+          (s.agent ?? '').toLowerCase(),
+          eyesFor(s.status as BotSessionStatus, gate),
+        ),
+      );
+    }
+  };
   const refresh = (): void => {
     list = [...bindings.values()].map((b) => ({ bot: b.bot, island: b.island as ThemeId }));
   };
@@ -97,6 +123,7 @@ export function bindFleetToBots(
       bindings.set(s.id, { island: s.island, slot, bot, releaseAt: -1 });
     }
     refresh();
+    looks();
   };
 
   return {
@@ -106,6 +133,7 @@ export function bindFleetToBots(
       for (const [id, b] of bindings) {
         if (b.releaseAt < 0 || simTime < b.releaseAt) continue;
         host.unpin(b.bot);
+        host.setLook?.(b.bot, null);
         byBot.delete(b.bot);
         bindings.delete(id);
         // the freed bot may belong to a waiting session that found the island full
@@ -128,7 +156,10 @@ export function bindFleetToBots(
     },
     dispose() {
       unsub();
-      for (const b of bindings.values()) host?.unpin(b.bot);
+      for (const b of bindings.values()) {
+        host?.unpin(b.bot);
+        host?.setLook?.(b.bot, null);
+      }
       bindings.clear();
       byBot.clear();
       list = [];

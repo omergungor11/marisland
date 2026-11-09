@@ -4,6 +4,7 @@
 > üst yüzey, yamaç (bluff) duvarları, kıyı şeridi. Su shader'ı (TASK-353), post zinciri (TASK-586) ve
 > prop'lar bu milestone'un dışında. Karar yazısı: D-162 (yön seçilince).
 >
+> Kademe eşikleri (`detail/tier.ts` TIERS): T1 380 u, T2 140 u, T3 45 u, yakın 12 u (±%10 histerezis).
 > Numaralandırma 2026-11-09: ilk taslak M45 / TASK-590…596 idi; paralel session'ın Phase 5 planı
 > (`mar-plans/VISUAL_UPGRADE.md`, M45–M49, TASK-590…611, D-156…161) o numaraları önce aldı → M50,
 > TASK-612…618, D-162+. Phase 5 TASK-595 (terrain strata / scree / moss) buraya katlandı (613 / 614);
@@ -68,3 +69,31 @@ Sıra ve paralellik: 612 önce (referans). Sonra **613 ∥ 614 ∥ 615** (farkl�
 - T0 albedo 2 u/texel: ince bantlar aliasing yapar → band yüksekliği ≥ 3 texel, makro varyasyon ≥ 10 u.
 - SwiftShader (CI) maliyeti: terrain fragment'a eklenen her terim ci setinde süreyi uzatır; ölçülür.
 - Yerleşim (593): duvar yüksekliği değişince dock / cove kuralları yeniden koşar; placement testleri kilit.
+
+## 6. Referans seti ve kabul kriterleri (TASK-612, 2026-11-09)
+
+"Önce" seti: `pnpm shots ground --tag=before` → `shots/ground-before/` (24 kare, deterministik), kontak
+sayfası `mar-docs/shots/M50-before.jpg`. QA skoru: altı sorunun altısı doğrulandı. Kısıt: HQ ve Coding T2
+kadrajları plaza/tesise bakar, duvar yalnız `G-research-t2-*` ve `G-devops-t2-*`'de görünür; T0'da Research
+adası ~160 px (W-G1 için T1 karesi esas alınır).
+
+Kritik üç bulgu: (1) T0'da strata kontrastı çöker, HQ/Coding duvarı tek turuncu-kahve ton; DevOps bazalt
+duvarında strata yok ve altın saatte sağ yarı neredeyse siyah (L < %12 riski) → 613 / 617. (2) Research T2
+duvarı tek çatlak ağı, strata oluğu seçilmez → 613. (3) Coding / Research'te duvar yüksekliği kıyı boyunca
+sabit, çim dudağı 2 u basamaklı → 615 (+ 613/614 albedo kenar karışımı). Diğer: HQ T1 sağ alt duvarda dikey
+streak (doku dikeyde gerilmiş, triplanar yönü?); altın saatte `G-hq-t2-gold` / `G-research-t2-gold` kıyıda
+yatay hatch (su/post ya da shadow acne, kapsam dışı, shader'a bildirildi); DevOps kül şeritleri keskin kenarlı
+"kamuflaj" yamaları (G2'nin tersi: varyasyon fazla ve uyumsuz).
+
+| ID | Shot | Kareler | Geçme kuralı |
+|---|---|---|---|
+| W-G1 | Strata Wall | `G-*-t1-*` (esas), `G-*-t0-*` | Duvar tek ton değil: T1'de ≥ 3, T0'da ≥ 2 band 1280×720'de gözle seçilir; duvar yüksekliği boyunca luminance aralığı ≥ %12 L; dudak altı gölge ve etek koyulaşması T0'da da görünür |
+| W-G2 | Top Surface Variety | `G-*-t0/t1/t2-*` | Plato çimi tek düze değil: ≥ 2 ayrı ton bölgesi (nem / yükseklik / aşınma), makro leke ≥ 10 u, plato içi çim L std ≥ %4; prop'lar yokmuş gibi iki ada zemin renginden ayırt edilir |
+| W-G3 | Shore Transition | `G-*-t1-*`, `G-hq-t0-*`, `G-research-t2-*` | Duvar suya sert köşeyle inmez: su çizgisi üstünde 0.6–1.2 u koyu/serin ıslak bant ya da geniş ıslak kum gradyanı, etekte döküntü; birleşimde ≥ 1 ayrı geçiş bandı |
+| W-G4 | Wall Texture Break | `G-research-t2-*`, `G-devops-t2-*` | ≥ 2 ölçekte varyasyon (ince çatlak + kalın strata oluğu ≥ 15 px); aynı doku motifi 400 px içinde 2'den fazla tekrar etmez |
+| W-G5 | Clean Lip | `G-coding-t1-*`, `G-research-t2-*`, `G-hq-t1-*` | Dudak çizgisinde 2 u'dan uzun art arda basamak yok; çim → kum geçişi 4–6 u çakıl benekli; ≥ 10 u uzunlukta piksel merdiven görünmez |
+| W-G6 | Living Silhouette | `G-coding-t0/t1-*`, `G-research-t1-*` | Kıyı boyunca duvar yüksekliği ±%25 değişir, silüette ≥ 3 çıkıntı/girinti, plato kenarında 3–6 kaya çıkıntısı; "kesilmiş disk" okunmaz |
+
+Baseline (calls / tris / programs, medium 1280×720): T0 15 program, T1–T2 17; calls 113–193; tris
+266k–667k. Satır satır tablo `shots/ground-before/manifest.json` (ve TASK-612 raporu); "sonra"
+karşılaştırması aynı kare id'leriyle, tris ≤ +3 %, program sayısı aynı.

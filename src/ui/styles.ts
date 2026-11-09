@@ -573,6 +573,49 @@ export const ADMIN_CSS = `
 .mar-aadd-open{width:100%;min-height:92px;border:0;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;color:${muted(0.45)};font:700 12px/1.3 'Nunito',sans-serif;}
 .mar-aadd-open b{font:600 17px/1.1 'Fredoka',sans-serif;color:${UI.ink};}
 .mar-aadd-form{display:flex;flex-direction:column;gap:6px;}
+/* Session'lar (TASK-630): filter bar over a scrolling list of two-line rows */
+.mar-admin-tabn{font-style:normal;font-weight:800;color:${muted(0.45)};}
+.mar-admin-sessions{height:100%;display:flex;flex-direction:column;}
+.mar-asess-bar{flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:8px 12px;border-bottom:${line};}
+.mar-asess-grp{display:flex;align-items:center;gap:3px;flex-wrap:nowrap;}
+.mar-asess-sort{margin-left:auto;}
+.mar-asess-lbl{font:800 11px/1 'Nunito',sans-serif;color:${muted(0.5)};margin-right:3px;}
+.mar-asf{display:inline-flex;align-items:center;gap:4px;border:0;border-radius:999px;padding:5px 9px;background:#3B3A5A0A;font:800 11.5px/1 'Nunito',sans-serif;color:${muted(0.25)};cursor:pointer;white-space:nowrap;}
+.mar-asf em{font-style:normal;font-weight:800;color:${muted(0.5)};}
+.mar-asf[aria-pressed="true"]{background:${UI.ink};color:#FFFFFF;}
+.mar-asf[aria-pressed="true"] em{color:#FFFFFFAA;}
+@media (hover:hover){.mar-asf:hover{background:#3B3A5A16;}.mar-asf[aria-pressed="true"]:hover{background:${UI.ink};}}
+.mar-asdisc{flex:none;width:18px;height:18px;border:0;border-radius:50%;padding:0;background:var(--acc);cursor:pointer;opacity:.38;box-shadow:inset 0 -1.5px 0 #3B3A5A26;}
+.mar-asdisc[aria-pressed="true"]{opacity:1;box-shadow:0 0 0 2px ${UI.surface},0 0 0 3.5px var(--acc);}
+@media (hover:hover){.mar-asdisc:hover{opacity:.8;}}
+.mar-asess-proj{height:24px;max-width:150px;border:0;border-radius:999px;background:#3B3A5A0A;padding:0 8px;font:800 11.5px/1 'Nunito',sans-serif;color:${muted(0.25)};cursor:pointer;outline:none;}
+.mar-asess-proj.mar-asess-proj-on{background:${UI.ink};color:#FFFFFF;}
+.mar-asess-list{flex:1;min-height:0;overflow-y:auto;padding:6px 6px 14px;display:flex;flex-direction:column;gap:1px;scrollbar-width:thin;scrollbar-color:${UI.muted} transparent;overscroll-behavior:contain;}
+.mar-asrow{flex:none;display:flex;flex-direction:column;gap:3px;width:100%;border:0;background:none;text-align:left;border-radius:12px;padding:6px 10px 7px;cursor:pointer;color:${UI.ink};box-shadow:inset 3px 0 0 var(--acc);}
+@media (hover:hover){.mar-asrow:hover{background:#3B3A5A0A;}}
+.mar-asrow-l1,.mar-asrow-l2{display:flex;align-items:center;gap:6px;min-width:0;}
+.mar-asrow-l1 .mar-fdot{flex:none;display:inline-flex;}
+.mar-asrow-disc{flex:none;width:10px;height:10px;border-radius:50%;background:var(--acc);box-shadow:inset 0 -1.5px 0 #3B3A5A26;}
+.mar-asrow-kid{flex:none;font:800 12px/1 'Nunito',sans-serif;color:${muted(0.45)};}
+.mar-asrow-agent{flex:none;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:800 12px/1.2 'Nunito',sans-serif;color:${muted(0.35)};}
+.mar-asrow-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:800 13.5px/1.25 'Nunito',sans-serif;}
+.mar-asrow-time{flex:none;font:700 11.5px/1 'Nunito',sans-serif;color:${muted(0.45)};white-space:nowrap;}
+.mar-asrow-l2{padding-left:16px;font:600 11.5px/1.25 'Nunito',sans-serif;color:${muted(0.4)};}
+.mar-asrow-proj{flex:none;padding:2px 7px;}
+.mar-asrow-req{flex:none;max-width:34%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:800;color:${muted(0.3)};}
+.mar-asrow-req::before{content:'▸ ';color:${muted(0.55)};}
+.mar-asrow-nums{flex:none;white-space:nowrap;font-weight:800;}
+.mar-asrow-last{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:500 11px/1.25 ${mono};color:${muted(0.45)};}
+.mar-asrow-done .mar-asrow-title{color:${muted(0.2)};}
+.mar-asess-foot{flex:none;display:flex;justify-content:center;padding-top:6px;}
+.mar-asess-foot:empty{display:none;}
+.mar-admin-narrow .mar-asess-bar{gap:6px 8px;padding:7px 10px;}
+.mar-admin-narrow .mar-asess-grp{gap:2px;}
+.mar-admin-narrow .mar-asess-lbl{display:none;}
+.mar-admin-narrow .mar-asf{padding:4px 6px;font-size:11px;}
+.mar-admin-narrow .mar-asdisc{width:15px;height:15px;}
+.mar-admin-narrow .mar-asess-proj{max-width:112px;padding:0 4px;font-size:11px;}
+.mar-alink{border:0;background:none;padding:0;font:inherit;font-weight:800;color:#22686D;cursor:pointer;border-bottom:1.5px solid #4FC3C980;}
 /* Hafıza / Bilgi / Raporlar: sources → files → document */
 .mar-admin-kb{height:100%;display:grid;grid-template-columns:156px minmax(190px,.85fr) minmax(0,1.6fr);grid-template-rows:minmax(0,1fr);}
 .mar-admin-src{overflow-y:auto;padding:8px 6px;border-right:${line};display:flex;flex-direction:column;gap:1px;}

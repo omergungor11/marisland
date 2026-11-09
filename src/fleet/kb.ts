@@ -82,7 +82,9 @@ export function createKb(
 
 // ---- pure helpers ----------------------------------------------------------------------------
 
-const KB_TABS: Readonly<Record<Exclude<AdminTab, 'projeler'>, readonly KbFileKind[]>> = {
+const KB_TABS: Readonly<
+  Record<Exclude<AdminTab, 'projeler' | 'sessionlar'>, readonly KbFileKind[]>
+> = {
   hafiza: ['memory'],
   bilgi: ['knowledge', 'claude', 'config', 'doc', 'other'],
   raporlar: ['report'],
@@ -94,7 +96,7 @@ const KB_TABS: Readonly<Record<Exclude<AdminTab, 'projeler'>, readonly KbFileKin
  */
 export function tabFiles(
   files: readonly KbFile[],
-  tab: Exclude<AdminTab, 'projeler'>,
+  tab: Exclude<AdminTab, 'projeler' | 'sessionlar'>,
   source = '',
   sourceOrder: readonly string[] = [],
 ): KbFile[] {
@@ -111,7 +113,7 @@ export function tabFiles(
   );
 }
 
-export const kbTabOf = (kind: KbFileKind): Exclude<AdminTab, 'projeler'> =>
+export const kbTabOf = (kind: KbFileKind): Exclude<AdminTab, 'projeler' | 'sessionlar'> =>
   kind === 'memory' ? 'hafiza' : kind === 'report' ? 'raporlar' : 'bilgi';
 
 export const isStale = (f: Pick<KbFile, 'mtime'>, now: number, days = ADMIN.staleDays): boolean =>

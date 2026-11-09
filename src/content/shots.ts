@@ -13,7 +13,7 @@ export interface ShotPreset {
   id: string;
   title: string;
   seed: number;
-  /** overview | island:<name> | village | dock | macro-beach | site:<anchor>:x,y,z,tx,ty,tz (anchor frame) | raw x,y,z,tx,ty,tz */
+  /** overview | island:<name> | village | dock | macro-beach | ladder|zoom:<island>:<dist> | site:<anchor>:x,y,z,tx,ty,tz (anchor frame) | raw x,y,z,tx,ty,tz */
   cam: string;
   /** Game hour. */
   time: number;
@@ -2227,6 +2227,54 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     fleetQuery: 'shader',
     sets: ['dev'],
   },
+  // ---- TASK-621 (M51): Marketing's courier at its pier (loading, two crates) and 3 moments of the allowed voyage
+  {
+    id: 'F-courier-load',
+    title: 'Courier · loading at the pier',
+    seed: 1001,
+    cam: 'ladder:marketing:140',
+    time: 14,
+    simt: 2,
+    hud: false,
+    fleet: 'mock',
+    sets: ['dev'],
+  },
+  {
+    id: 'F-courier-sail-a',
+    title: 'Courier · voyage at simt 2',
+    seed: 1001,
+    cam: 'ladder:marketing:140',
+    time: 14,
+    simt: 2,
+    hud: false,
+    fleet: 'mock',
+    fleetChain: 'allowed',
+    sets: ['dev'],
+  },
+  {
+    id: 'F-courier-sail-b',
+    title: 'Courier · voyage at simt 8',
+    seed: 1001,
+    cam: 'ladder:marketing:140',
+    time: 14,
+    simt: 8,
+    hud: false,
+    fleet: 'mock',
+    fleetChain: 'allowed',
+    sets: ['dev'],
+  },
+  {
+    id: 'F-courier-sail-c',
+    title: 'Courier · voyage at simt 14',
+    seed: 1001,
+    cam: 'ladder:marketing:140',
+    time: 14,
+    simt: 14,
+    hud: false,
+    fleet: 'mock',
+    fleetChain: 'allowed',
+    sets: ['dev'],
+  },
   // ---- TASK-572: a terminal open over the fleet view (the overview: the list behind it has sticky
   // island heads that used to paint through the overlay); the terminal must be opaque and on top
   {
@@ -2310,6 +2358,35 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     fleet: 'mock',
     panel: 'admin',
     admin: 'hafiza:island:coding/memory/golge-acne.md',
+    sets: ['dev'],
+  },
+  // ---- TASK-630: the Session'lar tab at the F-admin-doc size, unfiltered (the mock's 25 sessions:
+  // live / done / stopped, projects, the Marketing hand-off parent) newest first
+  {
+    id: 'F-admin-sessions',
+    title: 'Admin window · Session’lar',
+    seed: 1001,
+    cam: 'overview',
+    time: 14,
+    simt: 2,
+    width: 1056,
+    height: 588,
+    hud: true,
+    fleet: 'mock',
+    panel: 'admin',
+    admin: 'sessionlar',
+    sets: ['dev'],
+  },
+  // TASK-591 F-portraits: the fleet view (no island focused, tier 0) with every session's bot portrait
+  {
+    id: 'F-portraits',
+    title: 'Fleet view · bot portraits',
+    seed: 1001,
+    cam: 'overview',
+    time: 14,
+    simt: 2,
+    hud: true,
+    fleet: 'mock',
     sets: ['dev'],
   },
   // ---- sandbox edits (TASK-221): `pnpm shots edit`. Logs on seed 1001 generated with
@@ -2466,6 +2543,21 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   }),
   ...MOVE_SHOTS,
   ...TUNNEL_SHOTS,
+  // Zoom-in blur pair (TASK-586): the HQ island at 24 u on the real orbit pitch curve
+  // (`cam=zoom:<island>:<dist>`), high (tilt-shift → DOF hand-over) and medium (tilt-shift only);
+  // the plaza, the clock tower and the stalls behind must all read sharp.
+  ...(['high', 'medium'] as const).map((q): ShotPreset => ({
+    id: `Z-zoom-${q}`,
+    title: `Zoom blur · ${q} · 24 u`,
+    seed: 1001,
+    cam: 'zoom:hq:24',
+    time: 14,
+    simt: 2,
+    quality: q,
+    width: 960,
+    height: 540,
+    sets: ['dev'],
+  })),
   {
     id: 'W-marina-dusk',
     title: 'Marina Dusk',
@@ -2783,6 +2875,18 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     width: 1920,
     height: 1080,
     sets: ['wow'],
+  },
+  // TASK-590 F-bots: the Coding pergola row at T2 with the mock fleet: chassis / head variants and eye states
+  {
+    id: 'F-bots',
+    title: 'Fleet bots · chassis, heads, eyes · Coding pergolas',
+    seed: 1001,
+    cam: '-108,25,170,-106,9.5,148',
+    time: 14,
+    simt: 2,
+    quality: 'medium',
+    fleet: 'mock',
+    sets: ['dev'],
   },
 ];
 
