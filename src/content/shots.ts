@@ -7,7 +7,7 @@
 import type { EditToolKind } from './edit-ui.ts';
 import { FRAMING } from './camera.ts';
 
-export type ShotSet = 'ci' | 'dev' | 'wow' | 'intro' | 'edit' | 'ladder' | 'live';
+export type ShotSet = 'ci' | 'dev' | 'wow' | 'intro' | 'edit' | 'ladder' | 'live' | 'ground';
 
 export interface ShotPreset {
   id: string;
@@ -2371,6 +2371,33 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     sets: ['edit'],
   },
   // ---- opening sequence every 0.5 s (ART_BIBLE §8 timing review): `pnpm shots intro`
+  // ---- M50 Ground Look reference set (TASK-612, mar-plans/GROUND.md): four island bodies at the
+  // three working distances (T0 postcard 380 u, T1 island 150 u, T2 close 55 u), noon and golden hour.
+  // Same seed as the wow set so before / after sheets line up.
+  ...(['hq', 'coding', 'research', 'devops'] as const).flatMap((isl) =>
+    (
+      [
+        ['t0', 380],
+        ['t1', 150],
+        ['t2', 55],
+      ] as const
+    ).flatMap(([tier, dist]) =>
+      (
+        [
+          ['noon', 13],
+          ['gold', 17.5],
+        ] as const
+      ).map(([tod, time]): ShotPreset => ({
+        id: `G-${isl}-${tier}-${tod}`,
+        title: `Ground ${isl} ${tier.toUpperCase()} ${tod}`,
+        seed: 1001,
+        cam: `ladder:${isl}:${dist}`,
+        time,
+        simt: 3,
+        sets: ['ground'],
+      })),
+    ),
+  ),
   ...Array.from({ length: 21 }, (_, i): ShotPreset => ({
     id: `I-${(i * 0.5).toFixed(1)}`,
     title: `Intro ${(i * 0.5).toFixed(1)} s`,
@@ -2738,6 +2765,8 @@ export const SET_DEFAULTS: Record<
   ladder: { width: 960, height: 540, quality: 'low' },
   // living close-up pairs (M14c): medium = 16 workers, drones, animated surfaces
   live: { width: 960, height: 540, quality: 'medium' },
+  // M50 Ground Look reference set (TASK-612): island body at T0 / T1 / T2, noon and golden hour
+  ground: { width: 1280, height: 720, quality: 'medium' },
 };
 
 export function shotsForSet(set: ShotSet): ShotPreset[] {

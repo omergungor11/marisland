@@ -508,17 +508,17 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 
 ### M43 — Knowledge base + HQ review (admin window, fleet/kb, projects, island CLAUDE.md, agent / skill self-generation gated by HQ) — IN PROGRESS (opened 2026-11-09)
 ### M44 — Reports (daily / weekly / monthly / all-time per island; top topics, long sessions, lessons) — PLANNED
-### M45 — Ground Look: ada gövdesi (üst yüzey, bluff duvarları, kıyı) görünüm yükseltmesi — plan `mar-plans/GROUND.md` — PLANNED (2026-11-09)
+### M50 — Ground Look: ada gövdesi (üst yüzey, bluff duvarları, kıyı) görünüm yükseltmesi — plan `mar-plans/GROUND.md` — PLANNED (2026-11-09)
 
 | ID | Task | Agent | Size | Status | Depends |
 |---|---|---|---|---|---|
-| TASK-590 | M45 referans seti: 4 ada × T0/T1/T2 × öğle/altın `G-*` presetleri, G1–G6 kriter taslağı, "önce" kontak sayfası | qa | S | PENDING | — |
-| TASK-591 | M45 duvar paleti ve tabakalar: tema başına 3–4 strata tonu, band yüksekliği duvarla ölçeklenir, dudak gölgesi + etek koyuluğu albedo'ya, çatlak tekrarını kıran ikinci ölçek | shader | M | PENDING | TASK-590 |
-| TASK-592 | M45 üst yüzey makro varyasyon: çim yükseklik gradyanı, nem/yıpranma lekeleri, yol kenarı aşınması, çim→kum 4–6 u geçiş | shader | M | PENDING | TASK-590 |
-| TASK-593 | M45 silüet ve kenar: kıyı boyunca duvar yüksekliği ±25 %, plato kenarı kaya çıkıntıları, teras basamağı, SDF çim dudağı, etek talus scatter ≤ 2k tris/ada | worldgen | M | PENDING | TASK-590 |
-| TASK-594 | M45 kıyı şeridi: ıslak kaya bandı, kum dalgacıkları, şelf devamı, köpük temas hizası | shader | S | PENDING | TASK-591 |
-| TASK-595 | M45 ışık ve AO: `TERRAIN_AO` güçlenir (`sandScale` ayrı), terrain rim terimi, duvar gölge tonu | shader | S | PENDING | TASK-592 |
-| TASK-596 | M45 kapanış QA + belge: "sonra" kontak sayfası, G kriter puanı, ART_BIBLE / ARCHITECTURE / D-157 | qa + docs | S | PENDING | TASK-591…595 |
+| TASK-612 | M50 referans seti: 4 ada × T0/T1/T2 × öğle/altın `G-*` presetleri, G1–G6 kriter taslağı, "önce" kontak sayfası | qa | S | PENDING | — |
+| TASK-613 | M50 duvar paleti ve tabakalar (peer Phase 5 TASK-595 strata / scree buraya katlandı): tema başına 3–4 strata tonu, band yüksekliği duvarla ölçeklenir, dudak gölgesi + etek koyuluğu albedo'ya, çatlak tekrarını kıran ikinci ölçek | shader | M | PENDING | TASK-612 |
+| TASK-614 | M50 üst yüzey makro varyasyon: çim yükseklik gradyanı, nem/yıpranma lekeleri, yol kenarı aşınması, çim→kum 4–6 u geçiş | shader | M | PENDING | TASK-612 |
+| TASK-615 | M50 silüet ve kenar: kıyı boyunca duvar yüksekliği ±25 %, plato kenarı kaya çıkıntıları, teras basamağı, SDF çim dudağı, etek talus scatter ≤ 2k tris/ada | worldgen | M | PENDING | TASK-612 |
+| TASK-616 | M50 kıyı şeridi: ıslak kaya bandı, kum dalgacıkları, şelf devamı, köpük temas hizası | shader | S | PENDING | TASK-613 |
+| TASK-617 | M50 ışık ve AO: `TERRAIN_AO` güçlenir (`sandScale` ayrı), terrain rim terimi, duvar gölge tonu | shader | S | PENDING | TASK-614 |
+| TASK-618 | M50 kapanış QA + belge: "sonra" kontak sayfası, G kriter puanı, ART_BIBLE / ARCHITECTURE / D-162 | qa + docs | S | PENDING | TASK-613…617 |
 
 
 ## Phase 5: Visual upgrade — richer surfaces, prop variety, agent identity, high tier (plan `mar-plans/VISUAL_UPGRADE.md`, details `phases/phase-5.md`, budget D-156)
