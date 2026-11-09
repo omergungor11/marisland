@@ -736,3 +736,50 @@ export const FLEET_MOCK_PROJECTS = {
     'mock-devops-1': 'realestate-pipeline',
   } as Readonly<Record<string, string>>,
 } as const;
+
+/**
+ * Courier ship card (M51, TASK-622, `ui/courier-card.ts`): click a courier ship → a card in the
+ * fleet panel's look, anchored to the ship's screen position (follows it while it sails). Hover →
+ * a one-line tip ("Kurye · Marketing → Design · yolda"). Geometry in px; times on the couriers' clock.
+ */
+export const FLEET_CARD = {
+  width: 288,
+  /** Card offset from the ship's projected deck point (px): right of / above it, flipped near the edges. */
+  dx: 26,
+  dy: 18,
+  /** Free margin to the viewport edges (px); the bottom keeps `FLEET_PANEL.bottomClear`, the top `top`. */
+  margin: 12,
+  top: 64,
+  /** Gap kept to the fleet panel card (px): the card never covers it. */
+  avoidPad: 10,
+  /** The ship's anchor point is projected this high above its waterline (u). */
+  anchorLift: 1.2,
+  /** Prompt clamp (lines), expanded by the "devamı" toggle like the gate card. */
+  promptLines: 3,
+  /** Pick sphere: radius = `lengthShare` × hull length, centre at the deck (`hullH − draft`) + `lift` (u). */
+  pick: { lengthShare: 0.5, lift: 0.3 },
+  kind: 'Kurye',
+  idle: 'kurye boşta',
+  status: {
+    pending: 'bekliyor',
+    sailing: 'yolda',
+    delivered: 'teslim edildi',
+    returning: 'rapor dönüyor',
+    idle: 'boşta',
+  },
+  /** More pending gates of this island behind the shown one ("+1 kapı"). */
+  more: (n: number): string => `+${n} kapı`,
+  openChild: 'Child session’ı aç',
+  openParent: 'Ana session’ı aç',
+  /** Idle ship: the island's last voyage ("Son sefer → Design · tamamlandı · 12 dk önce"). */
+  last: (to: string, status: string, ago: string): string =>
+    `Son sefer → ${to} · ${status} · ${ago}${ago === FLEET_DURATION.justNow ? '' : ' önce'}`,
+  lastNone: 'Henüz sefer yok',
+  /** Last voyage status when the gate was denied / the child is still running. */
+  lastDenied: 'reddedildi',
+  lastRunning: 'sürüyor',
+  colors: {
+    /** Progress track under the status line while sailing (the fill is the from island's accent). */
+    track: '#3B3A5A14',
+  },
+} as const;
