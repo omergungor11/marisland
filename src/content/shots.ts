@@ -2312,6 +2312,23 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     admin: 'hafiza:island:coding/memory/golge-acne.md',
     sets: ['dev'],
   },
+  // ---- TASK-630: the Session'lar tab at the F-admin-doc size, unfiltered (the mock's 25 sessions:
+  // live / done / stopped, projects, the Marketing hand-off parent) newest first
+  {
+    id: 'F-admin-sessions',
+    title: 'Admin window · Session’lar',
+    seed: 1001,
+    cam: 'overview',
+    time: 14,
+    simt: 2,
+    width: 1056,
+    height: 588,
+    hud: true,
+    fleet: 'mock',
+    panel: 'admin',
+    admin: 'sessionlar',
+    sets: ['dev'],
+  },
   // ---- sandbox edits (TASK-221): `pnpm shots edit`. Logs on seed 1001 generated with
   // `encodeLog` (world/edit.ts); re-recorded for the Phase 3 layout (TASK-309: moved with their
   // island, rejected placements dropped) and the theme-first world (TASK-380: one pine that now

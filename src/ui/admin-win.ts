@@ -20,7 +20,21 @@ import {
   type KbFile,
   type KbHit,
 } from '../fleet/protocol.ts';
-import { statusGlyph, syncKeyed } from '../fleet/rows.ts';
+import { requestTitle, resultBar, sessionDuration, statusGlyph, syncKeyed } from '../fleet/rows.ts';
+import {
+  DEFAULT_FILTERS,
+  filterSessions,
+  filtersActive,
+  pageOf,
+  PROJECT_ALL,
+  PROJECT_NONE,
+  relTime,
+  sessionDepth,
+  type SessionFilters,
+  type SessionList,
+  type SessionNames,
+} from '../fleet/sessions.ts';
+import { adminSpec } from '../core/params.ts';
 import { THEME_IDS, type ThemeId } from '../world/types.ts';
 import { escHtml as esc, renderMd } from './md.ts';
 
@@ -34,6 +48,10 @@ import { escHtml as esc, renderMd } from './md.ts';
  *              first with the running glyph, finished ones muted ✓ / ✗; a chip opens the session's
  *              terminal), "Bu projede başlat" (island chips + prompt → `start` with `project`),
  *              a dashed "+ proje" card (POST /api/projects; the bridge's `project` event adds it)
+ *   Session'lar — every session of the store (TASK-630): a filter bar built once (status group
+ *              chips with counts, island discs, period, project select, "yalnız kök", sort), keyed
+ *              rows (newest first, a page of `ADMIN.sessions.pageSize` + "N daha"); a row opens the
+ *              session's terminal; the title-bar search filters it (per-tab text)
  *   Hafıza / Bilgi / Raporlar — sources → files ("eski" badge past `staleDays`) → document
  *              (frontmatter chips + `renderMd`); `[[name]]` opens the file it names
  *   search   — ≥ 2 chars, debounced: hits grouped by file replace the file list; a hit opens the
@@ -47,7 +65,10 @@ export interface AdminWin {
   el: HTMLElement;
   readonly open: boolean;
   setOpen(open: boolean): void;
-  /** `<tab>[:<KbFile.path>]` (capture preset `admin=`): that tab, the file's source, the document. */
+  /**
+   * `<tab>[:<arg>]` (capture preset `admin=`): that tab; a KB tab opens the `KbFile.path` (and its
+   * source), `sessionlar` takes the arg as its search text.
+   */
   show(spec: string): void;
   /** Per frame, cheap: re-renders the projects after a store change. */
   update(): void;
@@ -62,6 +83,8 @@ export interface AdminWinOptions {
   kb: KbApi | null;
   accents: Readonly<Record<ThemeId, string>>;
   iconFor(theme: ThemeId): string;
+  /** World island name of a theme (the Session'lar search matches it). */
+  islandName(theme: ThemeId): string;
   /** Wall clock (ms; fixed under capture): the stale badges. */
   now(): number;
   /** Capture: default box (no localStorage), no focus. */
@@ -74,7 +97,8 @@ export interface AdminWinOptions {
   covered(): boolean;
 }
 
-type KbTab = Exclude<AdminTab, 'projeler'>;
+type KbTab = Exclude<AdminTab, 'projeler' | 'sessionlar'>;
+const SS = A.sessions;
 interface Box {
   x: number;
   y: number;
@@ -155,11 +179,40 @@ export function createAdminWin(root: HTMLElement, o: AdminWinOptions): AdminWin 
     <nav class="mar-admin-tabs" role="tablist">${A.tabs
       .map(
         ([id, label]) =>
-          `<button type="button" role="tab" data-tab="${id}" aria-selected="false">${esc(label)}</button>`,
+          `<button type="button" role="tab" data-tab="${id}" aria-selected="false">${esc(label)}${id === 'sessionlar' ? '<em class="mar-admin-tabn"></em>' : ''}</button>`,
       )
       .join('')}</nav>
     <div class="mar-admin-body">
       <div class="mar-admin-projects"><p class="mar-admin-note" hidden></p><div class="mar-admin-cards"></div></div>
+      <div class="mar-admin-sessions" hidden>
+        <div class="mar-asess-bar">
+          <div class="mar-asess-grp">${SS.status
+            .map(
+              ([id, label]) =>
+                `<button class="mar-asf" type="button" data-status="${id}" aria-pressed="false"><span>${esc(label)}</span><em></em></button>`,
+            )
+            .join('')}</div>
+          <div class="mar-asess-grp mar-asess-sort"><span class="mar-asess-lbl">${esc(SS.sortLabel)}</span>${SS.sort
+            .map(
+              ([id, label]) =>
+                `<button class="mar-asf" type="button" data-sort="${id}" aria-pressed="false">${esc(label)}</button>`,
+            )
+            .join('')}</div>
+          <div class="mar-asess-grp"><button class="mar-asf" type="button" data-sisle="" aria-pressed="true">${esc(SS.islandsAll)}</button>${THEME_IDS.map(
+            (t) =>
+              `<button class="mar-asdisc" type="button" data-sisle="${t}" aria-pressed="false" style="--acc:${o.accents[t]}" title="${esc(THEMES[t].displayName)}" aria-label="${esc(THEMES[t].displayName)}"></button>`,
+          ).join('')}</div>
+          <div class="mar-asess-grp">${SS.period
+            .map(
+              ([id, label]) =>
+                `<button class="mar-asf" type="button" data-period="${id}" aria-pressed="false">${esc(label)}</button>`,
+            )
+            .join('')}</div>
+          <select class="mar-asess-proj" aria-label="${esc(SS.project.label)}"></select>
+          <button class="mar-asf" type="button" data-act="root" aria-pressed="false" title="${esc(SS.rootOnlyHint)}">${esc(SS.rootOnly)}</button>
+        </div>
+        <div class="mar-asess-list"><div class="mar-asess-foot"></div></div>
+      </div>
       <div class="mar-admin-kb" hidden>
         <div class="mar-admin-src"></div>
         <div class="mar-admin-files"></div>
@@ -183,6 +236,12 @@ export function createAdminWin(root: HTMLElement, o: AdminWinOptions): AdminWin 
   const docEl = q<HTMLElement>('.mar-admin-doc');
   const stateEl = q<HTMLElement>('.mar-admin-state');
   const grip = q<HTMLElement>('.mar-admin-grip');
+  const sessEl = q<HTMLElement>('.mar-admin-sessions');
+  const sessBar = q<HTMLElement>('.mar-asess-bar');
+  const sessList = q<HTMLElement>('.mar-asess-list');
+  const sessFoot = q<HTMLElement>('.mar-asess-foot');
+  const projSel = q<HTMLSelectElement>('.mar-asess-proj');
+  const tabCount = q<HTMLElement>('.mar-admin-tabn');
 
   let open = false;
   let tab: AdminTab = 'projeler';
@@ -461,6 +520,165 @@ export function createAdminWin(root: HTMLElement, o: AdminWinOptions): AdminWin 
     if (open) render();
   };
 
+  // ---- sessions (TASK-630) -------------------------------------------------------------------
+  let filters: SessionFilters = { ...DEFAULT_FILTERS };
+  let sessQuery = '';
+  let pages = 1;
+  interface Row {
+    el: HTMLButtonElement;
+    key: string;
+  }
+  const rows = new Map<string, Row>();
+  let rowOrder: string[] = [];
+  let projKey = '';
+  const projectName = (id: string): string => projects().find((p) => p.id === id)?.name ?? id;
+  const names: SessionNames = {
+    island: (s) => `${THEMES[s.island].displayName} ${o.islandName(s.island)}`,
+    project: (s) => (s.project ? projectName(s.project) : ''),
+    request: (s) => requestTitle(store, s.requestId),
+  };
+  const tzMin = (now: number): number =>
+    o.capture ? SS.captureTzMin : -new Date(now).getTimezoneOffset();
+  const listSessions = (): SessionList => {
+    const now = o.now();
+    return filterSessions(store.sessions.values(), filters, sessQuery, {
+      names,
+      now,
+      tzMin: tzMin(now),
+    });
+  };
+  const renderTabCount = (list: SessionList): void => {
+    const narrowed = filtersActive(filters) || sessQuery.trim() !== '';
+    tabCount.textContent = ` · ${SS.tabCount(list.rows.length, list.total, narrowed)}`;
+  };
+  const rowHtml = (s: FleetSession, now: number, tz: number): string => {
+    const g = statusGlyph(s.status);
+    const depth = sessionDepth(s, store.sessions);
+    const req = requestTitle(store, s.requestId);
+    const nums = [
+      sessionDuration(s, now),
+      FLEET_TERM.turns(s.turns),
+      ...(s.costUsd !== undefined ? [FLEET_TERM.cost(s.costUsd)] : []),
+    ].join(' · ');
+    return `<span class="mar-asrow-l1"><i class="mar-fdot" data-s="${s.status}" style="color:${g.color}">${g.svg}</i><i class="mar-asrow-disc"></i>${depth ? `<span class="mar-asrow-kid">${esc(SS.childMark.repeat(Math.min(depth, 3)))}</span>` : ''}<span class="mar-asrow-agent">${esc(s.agent)}</span><b class="mar-asrow-title">${esc(s.title)}</b><span class="mar-asrow-time">${esc(relTime(s.startedAt, now, tz))}</span></span><span class="mar-asrow-l2">${s.project ? `<span class="mar-atag mar-asrow-proj">${esc(projectName(s.project))}</span>` : ''}${req && req !== s.title ? `<span class="mar-asrow-req">${esc(req)}</span>` : ''}<span class="mar-asrow-nums">${esc(nums)}</span>${s.lastLine ? `<span class="mar-asrow-last">${esc(resultBar(s.lastLine))}</span>` : ''}</span>`;
+  };
+  const syncBar = (list: SessionList): void => {
+    for (const b of sessBar.querySelectorAll<HTMLElement>('[data-status]')) {
+      const id = b.dataset.status as SessionFilters['status'];
+      b.setAttribute('aria-pressed', String(filters.status === id));
+      (b.querySelector('em') as HTMLElement).textContent = String(list.counts[id]);
+    }
+    for (const b of sessBar.querySelectorAll<HTMLElement>('[data-sort]'))
+      b.setAttribute('aria-pressed', String(filters.sort === b.dataset.sort));
+    for (const b of sessBar.querySelectorAll<HTMLElement>('[data-period]'))
+      b.setAttribute('aria-pressed', String(filters.period === b.dataset.period));
+    for (const b of sessBar.querySelectorAll<HTMLElement>('[data-sisle]')) {
+      const t = b.dataset.sisle as ThemeId | '';
+      const on = t ? filters.islands.includes(t) : filters.islands.length === 0;
+      b.setAttribute('aria-pressed', String(on));
+    }
+    (sessBar.querySelector('[data-act="root"]') as HTMLElement).setAttribute(
+      'aria-pressed',
+      String(filters.rootOnly),
+    );
+    // project options: rebuilt only when the project set changes (an open select survives)
+    const ps = projects();
+    const key = JSON.stringify(ps.map((p) => [p.id, p.name]));
+    if (key !== projKey) {
+      projKey = key;
+      projSel.innerHTML = [
+        [PROJECT_ALL, SS.project.all],
+        ...ps.map((p) => [p.id, p.name]),
+        [PROJECT_NONE, SS.project.none],
+      ]
+        .map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`)
+        .join('');
+    }
+    if (projSel.value !== filters.project) projSel.value = filters.project;
+    projSel.classList.toggle('mar-asess-proj-on', filters.project !== PROJECT_ALL);
+  };
+  const renderSessions = (): void => {
+    const list = listSessions();
+    renderTabCount(list);
+    syncBar(list);
+    const now = o.now();
+    const tz = tzMin(now);
+    const page = pageOf(list.rows, pages);
+    rowOrder = syncKeyed(
+      rows,
+      rowOrder,
+      page.rows.map((s) => s.id),
+      {
+        make: (id) => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'mar-asrow';
+          b.dataset.sid = id;
+          return { el: b, key: '' };
+        },
+        insert: (n, ref) => sessList.insertBefore(n.el, ref ? ref.el : sessFoot),
+        drop: (n) => n.el.remove(),
+      },
+    );
+    for (const s of page.rows) {
+      const r = rows.get(s.id) as Row;
+      const html = rowHtml(s, now, tz);
+      if (html === r.key) continue;
+      r.key = html;
+      r.el.innerHTML = html;
+      r.el.style.setProperty('--acc', o.accents[s.island]);
+      r.el.classList.toggle('mar-asrow-done', !isLive(s));
+      r.el.title = `${s.title}\n${s.cwd}`;
+    }
+    sessFoot.innerHTML = page.more
+      ? `<button class="mar-abtn mar-asess-more" type="button" data-act="more">${esc(SS.more(page.more))}</button>`
+      : list.rows.length
+        ? ''
+        : `<p class="mar-aempty">${esc(SS.empty)} · <button class="mar-alink" type="button" data-act="clear">${esc(SS.clear)}</button></p>`;
+  };
+  const resetPage = (): void => {
+    pages = 1;
+    sessList.scrollTop = 0;
+  };
+  const onSessClick = (e: MouseEvent): void => {
+    const t = e.target as Element;
+    const row = t.closest<HTMLElement>('.mar-asrow');
+    if (row?.dataset.sid) return o.onOpenSession(row.dataset.sid);
+    const b = t.closest<HTMLElement>('button');
+    if (!b) return;
+    const d = b.dataset;
+    if (d.status) filters = { ...filters, status: d.status as SessionFilters['status'] };
+    else if (d.sort) filters = { ...filters, sort: d.sort as SessionFilters['sort'] };
+    else if (d.period) filters = { ...filters, period: d.period as SessionFilters['period'] };
+    else if (d.sisle !== undefined) {
+      const isle = d.sisle as ThemeId | '';
+      const cur = filters.islands;
+      filters = {
+        ...filters,
+        islands: !isle
+          ? []
+          : cur.includes(isle)
+            ? cur.filter((x) => x !== isle)
+            : THEME_IDS.filter((x) => x === isle || cur.includes(x)),
+      };
+    } else if (d.act === 'root') filters = { ...filters, rootOnly: !filters.rootOnly };
+    else if (d.act === 'more') {
+      pages++;
+      return renderSessions();
+    } else if (d.act === 'clear') {
+      filters = { ...DEFAULT_FILTERS, sort: filters.sort };
+      sessQuery = '';
+      if (tab === 'sessionlar') search.value = '';
+    } else return;
+    resetPage();
+    renderSessions();
+  };
+  const onProject = (): void => {
+    filters = { ...filters, project: projSel.value };
+    resetPage();
+    renderSessions();
+  };
+
   // ---- knowledge base -------------------------------------------------------------------------
   let tree: KbTreeResponse | null = null;
   let treeState: 'idle' | 'loading' | 'ok' | 'error' = 'idle';
@@ -677,7 +895,16 @@ export function createAdminWin(root: HTMLElement, o: AdminWinOptions): AdminWin 
     for (const b of tabsEl.querySelectorAll<HTMLButtonElement>('[data-tab]'))
       b.setAttribute('aria-selected', String(b.dataset.tab === tab));
     const projectsOn = tab === 'projeler';
+    const sessionsOn = tab === 'sessionlar';
     projEl.hidden = !projectsOn;
+    sessEl.hidden = !sessionsOn;
+    if (sessionsOn) {
+      kbEl.hidden = true;
+      stateEl.hidden = true;
+      renderSessions();
+      return;
+    }
+    renderTabCount(listSessions());
     if (projectsOn) {
       kbEl.hidden = true;
       stateEl.hidden = true;
@@ -688,10 +915,21 @@ export function createAdminWin(root: HTMLElement, o: AdminWinOptions): AdminWin 
     renderKb(tab as KbTab);
   };
 
+  /** The title-bar field shows the active tab's text: the sessions query or the KB search. */
+  const syncSearch = (): void => {
+    const sess = tab === 'sessionlar';
+    const want = sess ? sessQuery : query;
+    if (search.value !== want) search.value = want;
+    const ph = sess ? SS.placeholder : A.search.placeholder;
+    search.placeholder = ph;
+    search.setAttribute('aria-label', ph);
+  };
   const setTab = (t: AdminTab): void => {
     if (t === tab) return;
     tab = t;
-    if (t !== 'projeler' && treeState === 'error') treeState = 'idle'; // retry: the bridge may be up now
+    // retry: the bridge may be up now
+    if (t !== 'projeler' && t !== 'sessionlar' && treeState === 'error') treeState = 'idle';
+    syncSearch();
     render();
   };
   const runSearch = (): void => {
@@ -728,7 +966,7 @@ export function createAdminWin(root: HTMLElement, o: AdminWinOptions): AdminWin 
   const onKbClick = (e: MouseEvent): void => {
     const t = e.target as Element;
     const src = t.closest<HTMLElement>('[data-src]');
-    if (src && tab !== 'projeler') {
+    if (src && tab !== 'projeler' && tab !== 'sessionlar') {
       source[tab] = src.dataset.src ?? '';
       render();
       return;
@@ -748,6 +986,12 @@ export function createAdminWin(root: HTMLElement, o: AdminWinOptions): AdminWin 
     }
   };
   const onSearch = (): void => {
+    if (tab === 'sessionlar') {
+      sessQuery = search.value;
+      resetPage();
+      renderSessions();
+      return;
+    }
     query = search.value;
     if (searchTimer) clearTimeout(searchTimer);
     searchTimer = setTimeout(runSearch, A.search.debounceMs);
@@ -796,6 +1040,8 @@ export function createAdminWin(root: HTMLElement, o: AdminWinOptions): AdminWin 
   cardsEl.addEventListener('keydown', onPromptKey);
   cardsEl.addEventListener('click', onCards);
   kbEl.addEventListener('click', onKbClick);
+  sessEl.addEventListener('click', onSessClick);
+  projSel.addEventListener('change', onProject);
   tabsEl.addEventListener('click', onTabs);
   search.addEventListener('input', onSearch);
   closeBtn.addEventListener('click', onClose);
@@ -821,11 +1067,14 @@ export function createAdminWin(root: HTMLElement, o: AdminWinOptions): AdminWin 
       o.onChange(v);
     },
     show(spec) {
-      const i = spec.indexOf(':');
-      const t = (i < 0 ? spec : spec.slice(0, i)) as AdminTab;
-      const path = i < 0 ? '' : spec.slice(i + 1);
-      if (A.tabs.some(([id]) => id === t)) tab = t;
-      if (!path) return void (open && render());
+      const { tab: t, arg: path } = adminSpec(spec);
+      if (A.tabs.some(([id]) => id === t)) tab = t as AdminTab;
+      if (tab === 'sessionlar') {
+        sessQuery = path;
+        resetPage();
+      }
+      syncSearch();
+      if (!path || tab === 'sessionlar') return void (open && render());
       loadTree();
       // the source filter follows the file (so its list shows the neighbours)
       const p = busy.then(() => {
@@ -836,8 +1085,14 @@ export function createAdminWin(root: HTMLElement, o: AdminWinOptions): AdminWin 
       track(p);
     },
     update() {
-      // the KB view does not follow the session feed (a re-render would cost the scroll)
-      if (open && dirty && tab === 'projeler') render();
+      // the KB view does not follow the session feed (a re-render would cost the scroll); the
+      // sessions list does (keyed rows, the filter bar is never rebuilt)
+      if (!open || !dirty) return;
+      if (tab === 'projeler' || tab === 'sessionlar') render();
+      else {
+        dirty = false;
+        renderTabCount(listSessions());
+      }
     },
     async settled() {
       // a load may start another (tree → doc): wait until nothing new was queued
@@ -862,6 +1117,8 @@ export function createAdminWin(root: HTMLElement, o: AdminWinOptions): AdminWin 
       cardsEl.removeEventListener('keydown', onPromptKey);
       cardsEl.removeEventListener('click', onCards);
       kbEl.removeEventListener('click', onKbClick);
+      sessEl.removeEventListener('click', onSessClick);
+      projSel.removeEventListener('change', onProject);
       tabsEl.removeEventListener('click', onTabs);
       search.removeEventListener('input', onSearch);
       closeBtn.removeEventListener('click', onClose);

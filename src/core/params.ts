@@ -70,8 +70,9 @@ export interface Params {
    */
   fleet: '' | 'live' | 'mock' | 'off';
   /**
-   * Capture: admin window view (M43, with `panel=admin`): `<tab>[:<KbFile.path>]`, e.g.
-   * `hafiza:island:coding/memory/golge-acne.md`; '' = the default (Projeler).
+   * Capture: admin window view (M43, with `panel=admin`): `<tab>[:<arg>]` (`adminSpec`), e.g.
+   * `hafiza:island:coding/memory/golge-acne.md` (a KB tab opens that file) or `sessionlar:shader`
+   * (TASK-630: the search text of the Session'lar tab); '' = the default (Projeler).
    */
   admin: string;
   /** `bridge=5177`: port of the fleet bridge to connect to (TASK-577); NaN = the default `FLEET_PORT`. */
@@ -81,6 +82,12 @@ export interface Params {
 export type HudPanel = '' | 'photo' | 'settings' | 'edit' | 'admin';
 
 export const DEFAULT_SEED = 1001;
+
+/** `admin=` split at the first `:`: the tab and its argument (KB file path / sessions query). */
+export function adminSpec(spec: string): { tab: string; arg: string } {
+  const i = spec.indexOf(':');
+  return i < 0 ? { tab: spec, arg: '' } : { tab: spec.slice(0, i), arg: spec.slice(i + 1) };
+}
 
 function parseTime(v: string | null): number {
   if (v === null || v === '') return NaN;
