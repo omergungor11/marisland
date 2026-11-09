@@ -5,7 +5,17 @@
  * layers below near the camera. A zone a theme does not list keeps today's palette colour
  * (`DEFAULT_GROUND`).
  */
-import { FLOWERS, FOLIAGE, GRASS, HAY, HOT_SPRING, ROCK, SAND, WALL_STRATA } from './palette.ts';
+import {
+  FLOWERS,
+  FOLIAGE,
+  GRASS,
+  HAY,
+  HOT_SPRING,
+  ROCK,
+  SAND,
+  WALLS,
+  WALL_STRATA,
+} from './palette.ts';
 import { Zone, type ThemeId, type ZoneId } from '../world/types.ts';
 
 /** Global material ids. Order is stable: index = material id in the palette texture. */
@@ -428,3 +438,21 @@ export const DEFAULT_GROUND: Readonly<Record<ZoneId, GroundSpec>> = {
   [Zone.streetDevops]: { material: 'paving', base: '#CDBFA6' },
   [Zone.streetResearch]: { material: 'paving', base: '#CDBFA6' },
 };
+
+/**
+ * Painted light on the island body (TASK-617, M50 direction C, ART_BIBLE P4 / §3): terms in the
+ * terrain program's lit output, every quality (a dot, a pow and a smoothstep per pixel).
+ * - `rim`: sun-facing silhouettes (grazing view × facing the key light) lift toward a warm cream ×
+ *   the sun colour, so the bluff top and the island edge separate from the sea without an outline.
+ * - `shade`: daytime floor for the darkest land (cone shadow side at golden hour): pixels whose lit
+ *   luminance falls under `floor` (linear) get up to `lift` × albedo × the env shadow tint back,
+ *   so shade stays blue-violet instead of sinking to black; lit ground is untouched, off at night.
+ */
+export const GROUND_LIGHT = {
+  rim: 0.32,
+  rimPower: 3,
+  /** Facing gate: smoothstep over n·sun. */
+  rimFacing: [0.0, 0.45] as const,
+  rimColor: WALLS[0],
+  shade: { floor: 0.12, lift: 1.0 },
+} as const;

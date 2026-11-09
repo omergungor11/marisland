@@ -7,6 +7,7 @@ import {
   DETAIL_LAYER_IDS,
   DETAIL_LAYERS,
   GROUND_DETAIL,
+  GROUND_LIGHT,
   GROUND_WALL,
 } from '../../content/ground.ts';
 import {
@@ -125,6 +126,7 @@ export function createTerrainMaterial(
     ...groundArtUniforms(world),
     ...lavaUniforms(world),
     ...lakeUniforms(world),
+    ...groundLightUniforms(),
   };
   const caustics = quality !== 'low';
   const prism = quality !== 'low';
@@ -190,6 +192,7 @@ ${MIST_GLSL}
 ${GROUND_ART_PARS_GLSL}
 ${LAVA_PARS_GLSL}
 ${LAKE_PARS_GLSL}
+${GROUND_LIGHT_PARS_GLSL}
 vec2 marTerrainUv(vec2 xz) {
   return ((xz - uTerrainGrid.xy) * uTerrainGrid.z + 0.5) / uTerrainGrid.w;
 }
@@ -251,6 +254,7 @@ ${LAKE_COLOR_GLSL}
     float rim = pow(1.0 - ndv, ${f(F.rimPower)}) * step(0.0, vMarWorld.y);
     totalEmissiveRadiance += uHorizon * ${f(F.rim)} * rim;
   }
+${GROUND_RIM_GLSL}
   if (uCrater.w > uCrater.z) {
     // (h) crater glow (D5): warm emissive walls, brightest on the floor, pulsing 0.7–1.0
     float cd = length(vMarWorld.xz - uCrater.xy);
@@ -268,6 +272,7 @@ ${LAKE_EMISSIVE_GLSL}`,
         '#include <opaque_fragment>',
         // (e) cloud shadows (TASK-153): same field as the clouds, ×0.82 with a 6 u soft edge
         /* glsl */ `	outgoingLight *= marCloudShadowMul(vMarWorld.xz, uDebugMask);
+${GROUND_SHADE_GLSL}
   {
     // (f) lantern pools: warm additive light on the ground around lanterns / doors / stalls
     vec2 marPl = marPool(vMarWorld.xz);
@@ -752,3 +757,43 @@ ${WALL_PROBES_GLSL}
     }
   }
 `;
+
+// ---------------------------------------------------------------- painted light (TASK-617)
+
+const GL = GROUND_LIGHT;
+
+/** Key light + shade tint for the painted-light terms (shared env uniforms, no new texture). */
+function groundLightUniforms(): Record<string, THREE.IUniform> {
+  return {
+    uSunDir: SHARED.uSunDir,
+    uShadowTint: SHARED.uShadowTint,
+    uGroundRimColor: { value: new THREE.Color(GL.rimColor) },
+  };
+}
+
+// uSunColor is declared by the ground-art pars (same shared uniform)
+const GROUND_LIGHT_PARS_GLSL = /* glsl */ `uniform vec3 uSunDir;
+uniform vec3 uShadowTint;
+uniform vec3 uGroundRimColor;`;
+
+/**
+ * Sun rim (GROUND_LIGHT.rim): grazing view × facing the key light → warm cream × sun colour on the
+ * land silhouette (bluff tops, the island edge against the sea), in the aomap block (emissive).
+ */
+const GROUND_RIM_GLSL = /* glsl */ `  {
+    vec3 marRn = normalize((vec4(normal, 0.0) * viewMatrix).xyz);
+    float marRf = pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), ${g(GL.rimPower)});
+    float marRs = smoothstep(${g(GL.rimFacing[0])}, ${g(GL.rimFacing[1])}, dot(marRn, normalize(uSunDir)));
+    totalEmissiveRadiance += uGroundRimColor * uSunColor * (${g(GL.rim)} * marRf * marRs
+      * step(0.0, vMarWorld.y) * (1.0 - uNight) * (1.0 - uDebugMask));
+  }`;
+
+/**
+ * Shade floor (GROUND_LIGHT.shade): land darker than `floor` (linear luminance) by day gets up to
+ * `lift` × albedo × the env shadow tint back — cool shade, never black; lit ground untouched.
+ */
+const GROUND_SHADE_GLSL = /* glsl */ `  if (vMarWorld.y > 0.0) {
+    float marSl = dot(outgoingLight, vec3(0.2126, 0.7152, 0.0722));
+    outgoingLight += diffuseColor.rgb * uShadowTint * (${g(GL.shade.lift)}
+      * (1.0 - smoothstep(0.0, ${g(GL.shade.floor)}, marSl)) * (1.0 - uNight));
+  }`;

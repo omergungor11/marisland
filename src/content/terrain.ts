@@ -22,7 +22,7 @@ export const TERRAIN_COLORS = {
   grassBands: [GRASS[3], GRASS[2], GRASS[1]] as const,
   /** The low stop leans cool by this much toward `grassFoot` (plateau foot / lip, ART_BIBLE P4). */
   grassFoot: FOLIAGE.deciduous[2],
-  grassFootMix: 0.4,
+  grassFootMix: 0.3,
   grassTip: GRASS[0],
   /** Meadow = grass lerped toward this by `meadowMix` (lighter / yellower). */
   meadowTint: GRASS[0],
@@ -93,8 +93,19 @@ export const TERRAIN_AO = {
   horizonFull: 0.4,
   /** Shade leans cool: at full occlusion r −x, b +x (fraction of the darkening). */
   coolShift: 0.3,
-  /** Sand takes only this fraction of the occlusion (open beaches stay bright). */
+  /** Sand takes only this fraction of the crease term (open beaches stay bright). */
   sandScale: 0.35,
+  /**
+   * Sand's horizon term (TASK-617): a beach at a bluff foot sees the wall rise beside it and takes
+   * this fraction of it (open beaches have no horizon, so they stay bright).
+   */
+  sandHorizonScale: 1,
+  /**
+   * Rock takes this fraction of the occlusion (TASK-617): the horizon term reads a planar cone
+   * slope as occluded, which doubled the hemisphere's own darkening and sank the Emberpeak shade
+   * side to near-black at golden hour.
+   */
+  rockScale: 0.5,
 } as const;
 
 /**

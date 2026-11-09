@@ -172,13 +172,16 @@ function shadeAt(world: WorldData, ix: number, iz: number, cls: number): void {
     hz += best;
   }
   hz /= 8;
-  const occl = clamp01(
-    A.creaseWeight * clamp01(concavity / A.creaseFull) +
-      A.horizonWeight * clamp01(hz / A.horizonFull),
-  );
+  // open beaches stay bright: sand takes part of the crease term but a bluff foot's horizon
+  // (TASK-617); rock takes part of both (a planar cone slope is not a crease)
+  const sand = cls === TerrainClass.sand;
+  const occl =
+    clamp01(
+      A.creaseWeight * clamp01(concavity / A.creaseFull) * (sand ? A.sandScale : 1) +
+        A.horizonWeight * clamp01(hz / A.horizonFull) * (sand ? A.sandHorizonScale : 1),
+    ) * (cls === TerrainClass.rock ? A.rockScale : 1);
   _shade.concavity = concavity;
-  // open beaches stay bright: sand only takes part of the occlusion
-  _shade.ao = 1 - A.max * occl * (cls === TerrainClass.sand ? A.sandScale : 1);
+  _shade.ao = 1 - A.max * occl;
 }
 
 /** Today's (untinted, unjittered) colour of sample i, linear, in the shared scratch `_c`. */
