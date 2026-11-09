@@ -2,6 +2,25 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-159: Material classes + crease edge light + near grain in the one lit program; `fwidth` edge light rejected (TASK-594) — 2026-11-09
+
+**Decision.** Five material classes (matte / wood / metal / glass / fabric) ride in the free range of the `emissive` attribute:
+`e = base + 8 · (class · 8 + creaseBits)`; untagged geometry keeps its u16 value bit-for-bit, tagged geometry becomes float32
+(+1–2 MB). Per-class specular / fresnel / edge gain / grain / stripes / shadow lift / sparkle live in `content/materials.ts`
+(`MATERIAL_CLASSES`, `NEAR_DETAIL`: edge light + grain full ≤ 100 u → 0 at 220 u, class lobes 220 → 380 u, distance-only so
+TIER_FADE changes do not move them; `SURFACE_QUALITY`: low = all off, no bake). `geo/kit.ts` gains `PartOpts.cls`, `Acc.cls`,
+`withClass()`; trunks / docks / fences / benches wood, rails / cranes / bollards / mullions metal, panes / clock faces / solar glass,
+awnings / sails / laundry fabric; bots default metal body + glass screen via `mat.classDefault`. **Edge light is NOT `fwidth`**
+(zero on flat-shaded props: a 2×2 quad never straddles a facet edge): `render/props/creases.ts` bakes crease bits on LOD0 edges
+bending > 32° and the shader reads its corner from `gl_VertexID` (ANGLE counts it as an attribute: prop program 14 → 15 / 16; the
+creature program is at 15 so creatures get no edge line). Line ≤ 1.4 px, light-only, day-gated. No new program (medium 17 / high
+24 / low 9), no draw-call or triangle change; W5 / W26 / W27 / W-cable-dusk +1–2 MB inside D-156; ladder 14 / 14 (worst step mean
+ΔE 2.86, p95 8.9); W1 pixel-identical, W27 night unchanged.
+
+**Open.** Buildings untagged (list in the TASK-594 report: panes glass with the `emissive === 1` tests, frames / logs / decks wood,
+railings metal, windmill sails + stall awning fabric) → TASK-599 / 601 or a props follow-up; grain ±2.5 % L is barely visible under
+tilt-shift (ladder headroom to raise it); barrel hoops share the barrel's wood class.
+
 ## D-157: Bot chassis / head / eye variants — three worker meshes, look code in `aSeed`, role items (TASK-590) — 2026-11-09
 
 **Decision.** `buildWorker(chassis)` returns one geometry per chassis (scout = the old bot, hauler 0.9 u wide with tread feet,

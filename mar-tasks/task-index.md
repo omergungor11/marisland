@@ -554,7 +554,7 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-594 | Material classes (matte / wood / metal / glass / fabric) in the free `emissive` code range, per-class specular / fresnel / edge light, `fwidth` bevel edge light + triplanar near grain (60 → 140 u fade), same programs | shader | M | IN_PROGRESS | — |
+| TASK-594 | Material classes (matte / wood / metal / glass / fabric) in the free `emissive` code range, per-class specular / fresnel / edge light, `fwidth` bevel edge light + triplanar near grain (60 → 140 u fade), same programs | shader | M | COMPLETED (D-159; crease bake instead of fwidth; buildings untagged) | — |
 | TASK-595 | Terrain detail: cliff strata bands, scree speckles, moss creep, wet sand glint, path edge wear (terrain program) | shader | S | FOLDED INTO TASK-613 / 614 (M50 Ground Look, peer session) | TASK-594 |
 | TASK-596 | Water: shallow caustics (terrain underwater term, day-gated), sun glitter sparkle, second foam band | shader | S | PENDING | TASK-594 |
 | TASK-597 | M46 QA: before / after on 8 wow ids, ladder, low ladder, programs, `wow --assert` | qa | S | PENDING | TASK-595, TASK-596 |
