@@ -67,7 +67,8 @@ export const LOT_ROLE_BY_KIND: Readonly<Partial<Record<LotKind, LotRole>>> = {
 export const LOT_ROOFS: Readonly<Record<string, readonly number[]>> = {
   // v3 = DevOps ops shack (M22 TASK-482; a fixture the DevOps plan pins, never a rolled lot): a
   // steel roof outside ROOFS, listed with v0's roof
-  cottage: [0, 2, 4, 0],
+  // v4..v7 = TASK-598 styled variants (roofs match content/building-variants.ts); not rolled until TASK-600
+  cottage: [0, 2, 4, 0, 2, 1, 4, 0],
   stiltHut: [2, 4],
   towerHouse: [5, 1, 2],
   barn: [5, 0],

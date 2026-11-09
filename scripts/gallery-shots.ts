@@ -3,13 +3,13 @@
  * a prop can be judged on its own (no world needed). One image per def (a row of every variant at
  * LOD0 + LOD1) and one close 3/4 view of variant 0 LOD0.
  *
- *   pnpm exec tsx scripts/gallery-shots.ts [m20|coding22|research|qa24|marina|devops25|devops26|marketing27|research28|harbours|research31|id,id,...] [--port=5199] [--out=shots/gallery-m20]
+ *   pnpm exec tsx scripts/gallery-shots.ts [m20|coding22|research|qa24|marina|devops25|devops26|marketing27|research28|harbours|research31|coding33|coaster|buildings|id,id,...] [--port=5199] [--out=shots/gallery-m20]
  *
  * Starts its own `vite` dev server on `--port` (killed at the end; a server already on the port is
  * reused and left alone). Software GL (swiftshader), so no GPU is needed.
  */
 import { spawn, type ChildProcess } from 'node:child_process';
-import { mkdirSync, rmSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { chromium } from 'playwright';
 import sharp from 'sharp';
@@ -38,6 +38,8 @@ const args = process.argv.slice(2);
 const opt = (n: string): string | undefined =>
   args.find((a) => a.startsWith(`--${n}=`))?.slice(n.length + 3);
 const which = args.find((a) => !a.startsWith('--')) ?? 'm20';
+/** TASK-598 (D-160): the defs whose variants are styled (roof / windows / door / trims). */
+const BUILDINGS_V2_IDS = ['cottage', 'stiltHut', 'towerHouse', 'barn', 'logCabin'];
 const ids =
   which === 'm20'
     ? M20_PROP_IDS
@@ -69,13 +71,15 @@ const ids =
                               ? QA_COASTER_PROP_IDS
                               : which === 'couriers'
                                 ? COURIER_PROP_IDS
-                                : which.split(',');
+                                : which === 'buildings'
+                                  ? BUILDINGS_V2_IDS
+                                  : which.split(',');
 const PORT = Number(opt('port') ?? 5199);
 const ROOT = resolve(import.meta.dirname, '..');
 const OUT = resolve(
   ROOT,
   opt('out') ??
-    `shots/gallery-${['m20', 'coding22', 'research', 'qa24', 'qa30', 'marina', 'devops25', 'devops26', 'marketing27', 'research28', 'harbours', 'research31', 'coding33', 'coaster', 'couriers'].includes(which) ? which : 'custom'}`,
+    `shots/gallery-${['m20', 'coding22', 'research', 'qa24', 'qa30', 'marina', 'devops25', 'devops26', 'marketing27', 'research28', 'harbours', 'research31', 'coding33', 'coaster', 'couriers', 'buildings'].includes(which) ? which : 'custom'}`,
 );
 const BASE = `http://localhost:${PORT}/`;
 
@@ -176,6 +180,49 @@ async function main(): Promise<void> {
             960,
             720,
           );
+        continue;
+      }
+      if (which === 'buildings') {
+        // TASK-598: every variant as a 640x360 tile (LOD0 left, LOD1 right), then one grid per def
+        const tiles: string[] = [];
+        for (let v = 0; v < def.variants; v++) {
+          const pair = row.filter((r) => r.variant === v);
+          const mid = (pair[0].x + pair[pair.length - 1].x) / 2;
+          const dd = Math.max(
+            ((pair[pair.length - 1].x - pair[0].x) / 2 + def.footprint) * 1.75,
+            def.height * 2.1,
+          );
+          const name = `${id}-v${v}`;
+          await shoot(
+            id,
+            name,
+            [
+              mid + dd * 0.35,
+              def.height * 0.75 + dd * 0.22,
+              pair[0].z + dd,
+              mid,
+              def.height * 0.4,
+              pair[0].z,
+            ],
+            640,
+            360,
+          );
+          tiles.push(name);
+        }
+        const gp = await browser.newPage({
+          viewport: { width: 1280, height: 360 * Math.ceil(tiles.length / 2) },
+        });
+        const imgs = tiles.map((t) => readFileSync(resolve(OUT, `${t}.png`)).toString('base64'));
+        await gp.setContent(
+          `<body style="margin:0;display:grid;grid-template-columns:640px 640px">${imgs
+            .map(
+              (b64, i) =>
+                `<div style="position:relative"><img src="data:image/png;base64,${b64}"><b style="position:absolute;left:6px;top:4px;font:bold 18px sans-serif;color:#222">${id} v${i}</b></div>`,
+            )
+            .join('')}</body>`,
+        );
+        await gp.screenshot({ path: resolve(OUT, `${id}-grid.png`) });
+        await gp.close();
         continue;
       }
       const x0 = row[0].x;
