@@ -160,6 +160,8 @@ Tier = the first tier at which the prop appears.
 | Grass tuft | 3–5 flattened tapered cones | 0.3 u | T3 |
 | Flower | Stem + 5 petal spheres around a yellow centre | 0.25 u | T3 |
 
+Tree species expansion (umbrella pine, cypress, olive, birch, willow, autumn maple, charred snag) and detail upgrades of palm / round tree / pine / blossom: `mar-docs/TREE_SPECIES.md` (spec, not yet built).
+
 **Buildings**
 
 | Prop | Recipe | Size | Tier |
