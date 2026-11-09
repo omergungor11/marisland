@@ -541,6 +541,16 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 | TASK-650 | M51 follow-ups: wake tail length = sailboats' (life); deck close-up presets `F-courier-deck-*` at ~ladder:40 for loading / outbound / returning so crate + scroll are verified (engine); night mast-lantern halo visible at ~25 px (shader); `?pick=` capture param so the card opens from a ship pick in headless QA (engine); P-couriers gallery sheet black bands + empty 8th cell; ART_BIBLE fleet entry | life + engine + shader | S | PENDING | TASK-623 |
 
 
+### M52 — Marketing at nalı liman şehri: iki mendirek, rıhtım halkası, restoranlar / dükkânlar, yat marinası (user 2026-11-10: "limanda restorantlar dükkanlar olmalı, marinanın etrafı bir şehir gibi olmalı"; yön B, karnaval iskelesi kanat olarak kalır; D-170)
+
+| ID | Task | Agent | Size | Status | Depends |
+|---|---|---|---|---|---|
+| TASK-660 | Marina town kit (props): quay houses × 6 (restaurant / café / bakery / gelato / souvenir / chandlery, awning + sign + lit windows), terraces × 3, stalls × 3, moored boats × 4, finger pontoon, mole tower; values of `content/themes/marketing-marina.ts` (`MARINA_KIT`), gallery sheet, tri / determinism tests | props | M | IN_PROGRESS | — |
+| TASK-661 | Horseshoe harbour plan (worldgen): second mole, quay ring at one level around the basin, house rows on the ring facing the water, terraces on the edge, boats stern-to, pontoons, tower on the second mole head; Carnival Pier, ferry berth and courier berth anchors kept; `marina*` anchors; 32-seed fit test; world hash re-pin | worldgen | L | IN_PROGRESS | — (reads `MARINA_KIT` keys) |
+| TASK-662 | Marina life + night (life): quay strollers / diners at the terraces, lit windows and lantern pools on the ring, moored-boat bob | life | S | PENDING | TASK-660, TASK-661 |
+| TASK-663 | M52 shots + QA + docs: `W-marina-day` / `-dusk` / `-night` + `D-marina-*` presets, budgets, determinism, ART_BIBLE island row + wow rows, D-170 | qa + docs | S | PENDING | TASK-661 |
+
+
 ## Phase 5: Visual upgrade — richer surfaces, prop variety, agent identity, high tier (plan `mar-plans/VISUAL_UPGRADE.md`, details `phases/phase-5.md`, budget D-156)
 
 ### M45 — Agent identity and portrait
