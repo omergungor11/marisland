@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { BOT_CHASSIS, BOT_HEADS, botLook, packLook, roleItem, unpackLook } from './bot-look.ts';
+import {
+  BOT_CHASSIS,
+  BOT_HEADS,
+  botLook,
+  eyesFor,
+  packLook,
+  roleItem,
+  unpackLook,
+} from './bot-look.ts';
 
 describe('botLook', () => {
   it('is deterministic for a seed', () => {
@@ -29,5 +37,16 @@ describe('botLook', () => {
       const u = unpackLook(c);
       expect(packLook({ ...u, dept: 'hq', role: '', item: 'none', eyes: 'idle' })).toBe(c);
     }
+  });
+});
+
+describe('eyesFor', () => {
+  it('maps every status', () => {
+    expect(eyesFor('running')).toBe('working');
+    expect(eyesFor('waiting', true)).toBe('gate');
+    expect(eyesFor('waiting')).toBe('idle');
+    expect(eyesFor('error')).toBe('error');
+    expect(eyesFor('done')).toBe('done');
+    expect(eyesFor('stopped')).toBe('idle');
   });
 });

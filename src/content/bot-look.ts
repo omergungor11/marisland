@@ -80,3 +80,23 @@ export function unpackLook(code: number): Pick<BotLook, 'chassis' | 'head' | 'sh
     shade: (c % 3) as 0 | 1 | 2,
   };
 }
+
+/** Session status names as the fleet protocol spells them (kept local: content imports no fleet code). */
+export type BotSessionStatus = 'queued' | 'running' | 'waiting' | 'done' | 'error' | 'stopped';
+
+/** Eye state for a session: `waiting` with a pending gate asks, without one it just idles. */
+export function eyesFor(status: BotSessionStatus, pendingGate = false): BotEyes {
+  switch (status) {
+    case 'queued':
+    case 'running':
+      return 'working';
+    case 'waiting':
+      return pendingGate ? 'gate' : 'idle';
+    case 'error':
+      return 'error';
+    case 'done':
+      return 'done';
+    default:
+      return 'idle';
+  }
+}
