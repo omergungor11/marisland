@@ -562,7 +562,7 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-598 | Building variants v2: roof style × window layout × door × trims, `variants` 3 → 8, LOD1 silhouette kept, LOD0 tris ≤ ×1.25; gallery `buildings` | props | M | IN_PROGRESS | — |
+| TASK-598 | Building variants v2: roof style × window layout × door × trims, `variants` 3 → 8, LOD1 silhouette kept, LOD0 tris ≤ ×1.25; gallery `buildings` | props | M | COMPLETED (D-160) | — |
 | TASK-599 | Vegetation + rock v2: 3 canopy silhouettes, per-island colour sets (`content/biomes.ts`), palm variants, 5 rock silhouettes + moss / strata, driftwood, kelp; far blobs follow the biome colour | props | M | PENDING | — |
 | TASK-600 | Biome scatter rules: per-island variant weights, rock fields, flower meadow patches, path edges, lot hedges, garden plots; one world hash re-pin | worldgen | M | PENDING | TASK-598, TASK-599 |
 | TASK-601 | Boats + dock dressing v2: 3 hulls, per-island sail / hull sets, net / lobster pot / rope / ladder, buoy variants | props | S | PENDING | TASK-598 |

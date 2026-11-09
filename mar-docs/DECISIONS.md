@@ -2,6 +2,21 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-160: Building variants v2 — styled builders beside the legacy ones, 8 variants per def, rolls unchanged until TASK-600 (TASK-598) — 2026-11-09
+
+**Decision.** `geo/building-v2.ts` wraps cottage / stiltHut / towerHouse / barn / logCabin: a variant index with a row in
+`content/building-variants.ts` (`BUILDING_STYLES`: roof style gable / hip / dormer / mansard, window pattern 0–2, door plain /
+arched / double, trims shutters / flower box / awning / chimney kind / plinth) builds through the shared kit `geo/building-kit.ts`;
+an index without a row calls the legacy builder, so the 42 legacy LOD0 / LOD1 hashes are unchanged. LOD1 of a styled variant is the
+legacy LOD1 silhouette in the row's colours (ladder-safe, D-031). LOD0 tris ≤ 1.25 × the legacy max per def (test-pinned: cottage
+290, stiltHut 647, towerHouse 425, barn 305, logCabin 620). `variants` is 8 on every def; `rollVariants` is pinned to the old
+effective counts (`BUILDING_ROLL_NOW`), so the world `props` hash and W2 / W10 / W16 are pixel-identical. Gallery target
+`gallery-shots.ts buildings`.
+
+**Open for TASK-600.** Roll counts → 8 (`BUILDING_ROLL_PROPOSAL`) with one hash re-pin; cottage v3 is the pinned DevOps ops shack
+and must be skipped by rolls; `LOT_ROOFS` needs one entry per rolled variant for stiltHut / towerHouse / barn / logCabin. Nits: dormers
+small at 60 u (`BUILDING_K.dormer`), barn arched doors flat, legacy stiltHut step floats under the deck.
+
 ## D-164: M51 courier ships — hand-offs are shown as a voyage of the island's own ship, driven only by `FleetGate` state; no protocol change — 2026-11-09
 
 **Context.** The user wants a request from one island to another to be visible as a package leaving the harbour and sailing live to the target island, each island's ship uniquely designed, click → info card.
