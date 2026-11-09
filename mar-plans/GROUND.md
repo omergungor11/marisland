@@ -97,3 +97,8 @@ yatay hatch (su/post ya da shadow acne, kapsam dışı, shader'a bildirildi); De
 Baseline (calls / tris / programs, medium 1280×720): T0 15 program, T1–T2 17; calls 113–193; tris
 266k–667k. Satır satır tablo `shots/ground-before/manifest.json` (ve TASK-612 raporu); "sonra"
 karşılaştırması aynı kare id'leriyle, tris ≤ +3 %, program sayısı aynı.
+
+## 7. İlerleme notları
+
+- **TASK-615 (2026-11-09)**: rim modülasyonu bluff pass'te değil, `markSites`'tan sonra ayrı bir `rimDelta` olarak uygulanır (planlanan her şeyden 2–6 u `keep` maskesi): layout / sdf / sites / routes hash'leri aynı kalır, yalnız height / zone / props değişir. Duvar ±%15–25 (`RIM.minWall` 4 u; waterfalls `minDrop` 3.5), HQ ve Design'da 120° teras; çıkıntılar `Tag.outcrop` → `Zone.rock` (QA ve Research'te dudak walkway/deck dolu olduğu için 0 çıkar); talus = `rockCluster`, ada başına ≤ 10, ölçülen ≤ 1,378 tris. Coding'de iskele yanındaki ikinci şelale puanlama değişince kayboldu (kural ihlali yok, görsel kayıp; HQ kararı bekliyor).
+- **G5 dudak merdiveni tarifi (render tarafı, 614/616)**: zone map 2 u; dudak hücresi central-difference eğimiyle `Zone.cliff` oluyor ve albedo o texel'e duvar rengi basıyor, class border plato üstüne düşüyor. Çözüm: render'da "lip" maskesi (cliff/rock hücre, `h ≥ max(4 komşu) − lipFlat` ve ≥ 1 veg komşu) → albedo'da veg komşu ortalaması + `TerrainClass.veg`, aynı override `uTerrainZone` kopyasına; dudak çizgisini mesh eğiminden gelen earth-wall overlay (bilinear) belirler. Eşik `GROUND_WALL.lipFlat` (~0.6 u).
