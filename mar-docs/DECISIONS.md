@@ -2,6 +2,13 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-163: M43 admin window — in-scene draggable card, projects with their agents, read-only knowledge base over bridge HTTP; projects live in `fleet/projects.json` — 2026-11-09
+
+**Decision**: The admin UI is a draggable / resizable in-scene window (user picked "B · Pano" over a separate browser tab and over a tear-off multi-window desk), opened from a dock button that exists only while a fleet feed is on (`?panel=admin`, Esc precedence terminal → admin → settings). Tabs: Projeler (one card per `FleetProject` with its live / finished sessions, "Bu projede başlat" → `start.project`, "+ proje" → `POST /api/projects`), Hafıza / Bilgi / Raporlar (source → file → rendered markdown, frontmatter chips, 30-day "eski" badge, `[[links]]`, 250 ms debounced search → hits grouped per file). Knowledge sources are served read-only by the bridge (`server/kb.ts`: `island:<theme>`, `fleet`, `mar-docs`, `hq-memory` from `fleet.config.json → hqMemoryDir`), every path resolved inside its source root; editing comes later behind an HQ gate (user: "önce sadece okuma + arama"). Registered projects are a committed `fleet/projects.json` (absolute `dir`, added to a session with `--add-dir`, prompt prefixed `Proje: <ad> — <dir>`); the bridge refuses a dir that does not exist. Markdown is rendered by a dependency-free `renderMd` (escape first, `data-line` per block).
+**Numbers**: F-admin / F-admin-doc 74 / 196,397 / 9 (= F-fleet); every existing preset unchanged; bridge tree on this machine 10 sources / 46 files; tests 3700 + 1 skipped (two 120 s world-plan timeouts under parallel shot load, green alone).
+**Not taken**: separate browser window (no fight with the scene, but the user wants it inside the room); localStorage-only projects (islands could not see them); a markdown dependency; editing in v1.
+**Open**: TASK-619 (hit line semantics, İ-fold search, project delete, children inherit `project`); dock button hidden when the fleet is off (Pages demo).
+
 ## D-156: Phase 5 visual upgrade — budgets raised for detail (medium tri 950k / calls 330 / 200 MB, high programs 30); bot look contract; wave 1 = 590 / 591 / 594 / 598 — 2026-11-09
 
 **Context.** The user asked for richer, higher-fidelity graphics: more detailed and varied island props, and
