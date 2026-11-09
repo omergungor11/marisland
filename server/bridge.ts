@@ -72,6 +72,7 @@ import {
   reduceJsonl,
   titlePrompt,
   type StreamState,
+  isHookNoise,
 } from './stream.ts';
 import {
   indexPath,
@@ -534,7 +535,7 @@ function attachProc(run: Run, argv: string[], cwd: string): void {
         if (!text.trim()) continue;
         const at = Date.now();
         appendRaw(run, JSON.stringify({ type: 'bridge_stderr', at, text }));
-        pushLine(run, { kind: 'stderr', text: text.slice(0, 400) }, at);
+        if (!isHookNoise(text)) pushLine(run, { kind: 'stderr', text: text.slice(0, 400) }, at);
       }
     }),
   );

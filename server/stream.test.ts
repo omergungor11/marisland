@@ -1,6 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { newStreamState, parseTitle, reduceEvent, reduceJsonl, titlePrompt } from './stream.ts';
+import {
+  isHookNoise,
+  newStreamState,
+  parseTitle,
+  reduceEvent,
+  reduceJsonl,
+  titlePrompt,
+} from './stream.ts';
 
 const sample = readFileSync(`${import.meta.dirname}/fixtures/stream-sample.jsonl`, 'utf8');
 const events = sample
@@ -116,5 +123,23 @@ describe('title', () => {
   });
   it('caps the prompt at 500 chars', () => {
     expect(titlePrompt('a'.repeat(900)).length).toBeLessThan(600);
+  });
+});
+
+describe('isHookNoise (TASK-631)', () => {
+  it('hides a cancelled SessionEnd plugin hook, keeps other stderr', () => {
+    expect(
+      isHookNoise(
+        'SessionEnd hook [_R="${CLAUDE_PLUGIN_ROOT}"; node "$_R/scripts/bun-runner.js" hook claude-code session-complete] failed: Hook cancelled',
+      ),
+    ).toBe(true);
+    expect(isHookNoise('Error: ENOENT no such file')).toBe(false);
+    expect(
+      reduceEvent(newStreamState(), {
+        type: 'bridge_stderr',
+        at: 1,
+        text: 'x hook [y] failed: Hook cancelled',
+      }).lines,
+    ).toEqual([]);
   });
 });
