@@ -1,15 +1,9 @@
 import { createRng } from '../core/rng.ts';
 import { OFFICE_INTERIOR_SHELLS } from '../content/offices.ts';
 import { bush, cropRow, flower, grassTuft, haybale, lilyPad, reeds, rockCluster } from './small.ts';
-import {
-  barn,
-  cottage,
-  logCabin,
-  marketStall,
-  stiltHut,
-  towerHouse,
-  windmill,
-} from './buildings.ts';
+import { marketStall, windmill } from './buildings.ts';
+import { barn, cottage, logCabin, stiltHut, towerHouse } from './building-v2.ts';
+import { BUILDING_VARIANTS } from '../content/building-variants.ts';
 import {
   buoy,
   dock,
@@ -156,12 +150,12 @@ const D = (
 defs.push(
   // buildings
   // variant 3 = DevOps ops shack (M22 TASK-482), pinned by the DevOps plan only
-  D('cottage', 4, withOpsShack(cottage), 2.2, 3.7),
-  D('stiltHut', 2, stiltHut, 2.4, 4.6),
-  D('towerHouse', 3, towerHouse, 2.1, 6),
+  D('cottage', BUILDING_VARIANTS.cottage, withOpsShack(cottage), 2.2, 3.7),
+  D('stiltHut', BUILDING_VARIANTS.stiltHut, stiltHut, 2.4, 4.6),
+  D('towerHouse', BUILDING_VARIANTS.towerHouse, towerHouse, 2.1, 6),
   D('windmill', 2, windmill, 2.4, 9.9),
-  D('barn', 2, barn, 3.6, 4.6),
-  D('logCabin', 2, logCabin, 2.6, 3.9),
+  D('barn', BUILDING_VARIANTS.barn, barn, 3.6, 4.6),
+  D('logCabin', BUILDING_VARIANTS.logCabin, logCabin, 2.6, 3.9),
   D('marketStall', 3, marketStall, 1.4, 2.4),
   // coastal
   D('dock', 2, dock, 1.2, 0.95),
