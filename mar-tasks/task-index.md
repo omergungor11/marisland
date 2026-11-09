@@ -522,6 +522,16 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 | TASK-618 | M50 kapanış QA + belge: "sonra" kontak sayfası, G kriter puanı, ART_BIBLE / ARCHITECTURE / D-162 | qa + docs | S | PENDING | TASK-613…617 |
 
 
+### M51 — Kurye gemileri: ada → ada devirler limandan gemiyle gider, ada başına özgün gemi, tıkla → bilgi kartı — PLANNED (2026-11-09, D-164)
+
+| ID | Task | Agent | Size | Status | Depends |
+|---|---|---|---|---|---|
+| TASK-620 | Courier ship factories + content (props): 7 theme ships + crate + report scroll in `src/geo/courier.ts`, specs in `src/content/fleet-ships.ts`, `P-couriers` preset, tri / determinism tests | props | M | PENDING | — |
+| TASK-621 | Courier agent kind + voyage FSM (life): one ship per island at its berth, land-safe route (ferry loop or tested Bezier), pure `courierState(gates, sessions, now)` (pending → load, allowed → sail, child done → return with scroll, denied → unload), mock voyage | life | M | PENDING | TASK-620 |
+| TASK-622 | Ship picking + info card (engine): click → `mar-fcard` (from → to, request title, prompt, status, İzin ver / Reddet, open child), hover tip, Esc precedence, `F-courier` / `F-courier-card` presets | engine | M | PENDING | TASK-621 |
+| TASK-623 | M51 QA + docs: shots, budgets, determinism, one real gate on the bridge; ART_BIBLE / ARCHITECTURE / FLEET.md | qa + docs | S | PENDING | TASK-622 |
+
+
 ## Phase 5: Visual upgrade — richer surfaces, prop variety, agent identity, high tier (plan `mar-plans/VISUAL_UPGRADE.md`, details `phases/phase-5.md`, budget D-156)
 
 ### M45 — Agent identity and portrait
