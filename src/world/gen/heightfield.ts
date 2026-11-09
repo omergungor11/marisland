@@ -10,6 +10,7 @@ import {
   BEACH,
   BLUFF,
   ISLETS,
+  RIM,
   LAGOON,
   RAW_FLOOR,
   SHELF,
@@ -18,6 +19,7 @@ import {
 } from '../../content/islands.ts';
 import { ISLET_PROFILES, PROFILES, Tag } from './profiles.ts';
 import * as dm from '../../core/math/dmath.ts';
+import { rimShape, type RimShape } from './rim-shape.ts';
 
 /** Smooth-max width where two islands' land overlaps. */
 const ISLAND_BLEND = 3;
@@ -44,6 +46,13 @@ export interface RawLand {
   fieldColor: Uint8Array;
   /** Bluff wall height per island id (u; 0 = no bluff; islet ids 0). */
   bluffWall: Float32Array;
+  /**
+   * TASK-615 rim silhouette, applied after the sites (gen/rim.ts `applyRim`): height change per
+   * sample (modulated bluff − plain bluff) and the wall band of the modulated walls (Tag.cliff
+   * candidates). Set by `finalizeHeight`.
+   */
+  rimDelta?: Float32Array;
+  rimBand?: Uint8Array;
 }
 
 /** Coast parameters of a land body (island or islet) by `islandMap` value. */
@@ -382,7 +391,7 @@ export function finalizeHeight(
     originX: GRID_ORIGIN,
     originZ: GRID_ORIGIN,
   };
-  applyBluffs(hf, rawLand, sdf, islands, windDir);
+  applyBluffs(hf, rawLand, sdf, islands, windDir, rng);
   smoothShelfSeams(data, sdf, owner, n);
   return hf;
 }
@@ -401,6 +410,7 @@ function applyBluffs(
   sdf: Float32Array,
   islands: IslandData[],
   windDir: number,
+  rng: Rng,
 ): void {
   const { raw, islandMap, tags, bluffWall } = rawLand;
   const n = h.n;
@@ -422,8 +432,16 @@ function applyBluffs(
     const c = scaled ? flattestDisc(h, sdf, islandMap, isl, a, scaled) : a;
     isl.anchors.cove = { x: c.x, z: c.z, rotY: 0 };
   }
+  // TASK-615: wall height round the coast + terrace sector, after the cove anchors are known
+  const rims: (RimShape | null)[] = islands.map((isl) =>
+    bluffOf(isl)
+      ? rimShape(isl, bluffWall[isl.id], islandMap, n, windDir, rng.fork('island:rim', isl.id))
+      : null,
+  );
   const low = data.slice();
   const wallBand = new Uint8Array(n * n);
+  const rimDelta = new Float32Array(n * n);
+  const rimBand = new Uint8Array(n * n);
   for (let iz = 0; iz < n; iz++) {
     const z = cellZ(iz);
     for (let ix = 0; ix < n; ix++) {
@@ -435,21 +453,47 @@ function applyBluffs(
       const wall = bluffWall[isl.id];
       const x = cellX(ix);
       const cove = coveness(isl, windDir, x, z);
-      const run = bluffRun(wall);
       const ws = wallSdf[i];
+      const run = bluffRun(wall);
       const c0 = ARCHETYPES[isl.archetype].beachWidth + bluff.coveFlat;
+      const ease = bluff.rimEase ?? BLUFF.rimEase;
       // the profile eases in behind the rim so it does not steepen the face itself
-      const ground = lerp(
-        BEACH.min,
-        Math.max(raw[i], BEACH.min),
-        smoothstep(0, run + (bluff.rimEase ?? BLUFF.rimEase), ws),
-      );
+      const ground = lerp(BEACH.min, Math.max(raw[i], BEACH.min), smoothstep(0, run + ease, ws));
       const high = ground + wall * wallShape(ws / run);
       const cv = low[i] + wall * smoothstep(c0, c0 + bluff.coveRamp, ws);
       data[i] = lerp(high, cv, cove);
       if (cove < BLUFF.cliffTagCove && ws < run + BLUFF.cliffTagPad) wallBand[i] = 1;
+      const rim = rims[isl.id];
+      if (!rim) continue;
+      // TASK-615: the coast's own wall height (same max slope), back to `wall` RIM.fade u inland,
+      // and the terrace step; stored as a delta for after the sites (the cove keeps `cv`)
+      const wallC = rim.wallAt(x, z);
+      const runC = bluffRun(wallC);
+      const w = wall + (wallC - wall) * (1 - smoothstep(runC, runC + RIM.fade, ws));
+      let shape = wallShape(ws / runC);
+      let span = runC;
+      const ter = rim.terraceAt(x, z);
+      if (ter > 0) {
+        // two steps: max(minWall, frac · w) up from the foot, a ledge, then the rest of the wall
+        // (the lower step stays a bluff wall ≥ RIM.minWall; too short an upper step fades it out)
+        const lo = Math.max(RIM.minWall, rim.frac * w);
+        const up = w - lo;
+        const t = ter * smoothstep(RIM.terraceMinUpper, RIM.terraceMinUpper + 1, up);
+        if (t > 0) {
+          const r1 = bluffRun(lo);
+          const r2 = bluffRun(up);
+          const two = (lo * wallShape(ws / r1) + up * wallShape((ws - r1 - rim.ledge) / r2)) / w;
+          shape = lerp(shape, two, t);
+          span = lerp(runC, r1 + rim.ledge + r2, t);
+        }
+      }
+      const groundC = lerp(BEACH.min, Math.max(raw[i], BEACH.min), smoothstep(0, span + ease, ws));
+      rimDelta[i] = lerp(groundC + w * shape, cv, cove) - data[i];
+      if (cove < BLUFF.cliffTagCove && ws < span + BLUFF.cliffTagPad) rimBand[i] = 1;
     }
   }
+  rawLand.rimDelta = rimDelta;
+  rawLand.rimBand = rimBand;
   // steep wall-band cells are Tag.cliff → Zone.cliff (the shader's earth-wall look); the
   // gentle foot / rim cells stay untagged so they never turn into a rock strip
   const k = BLUFF.cliffTagSlope * 2 * CELL_SIZE;

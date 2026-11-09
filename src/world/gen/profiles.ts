@@ -33,6 +33,8 @@ export const Tag = {
   pond: 32,
   /** Millbrook patchwork cell → `meadow`. */
   meadow: 64,
+  /** Rock knob on the bluff lip (TASK-615, gen/rim.ts) → zone `rock`. */
+  outcrop: 128,
 } as const;
 
 /**
