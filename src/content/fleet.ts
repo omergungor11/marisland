@@ -418,7 +418,7 @@ export const FLEET_MOCK = {
     /** The parent's first run ended (and the gates opened) this long ago. */
     gateAgoS: 150,
     /** `allowed`: the first gate's answer and its child's start. */
-    childAgoS: 120,
+    childAgoS: 10,
     turns: 6,
     costUsd: 0.31,
     parentLines: [

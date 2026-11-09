@@ -252,7 +252,7 @@ export function mockChain(
   if (variant === 'allowed') {
     const g = C.gates[0];
     const at = now - C.childAgoS * 1000;
-    const last = now - 20_000;
+    const last = Math.max(at, now - 20_000);
     const cl = spread(
       g.childId,
       [
