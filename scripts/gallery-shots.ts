@@ -12,6 +12,8 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdirSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { chromium } from 'playwright';
+import sharp from 'sharp';
+import { COURIER_PROP_IDS } from '../src/content/fleet-ships.ts';
 import { CODING_M22_SHOWCASE_IDS } from '../src/content/props-themes/coding.ts';
 import { M20_PROP_IDS } from '../src/content/props-themes/m20.ts';
 import { QA_M24_PROP_IDS } from '../src/content/props-themes/qa-proving.ts';
@@ -65,13 +67,15 @@ const ids =
                             ? CODING_M33_PROP_IDS
                             : which === 'coaster'
                               ? QA_COASTER_PROP_IDS
-                              : which.split(',');
+                              : which === 'couriers'
+                                ? COURIER_PROP_IDS
+                                : which.split(',');
 const PORT = Number(opt('port') ?? 5199);
 const ROOT = resolve(import.meta.dirname, '..');
 const OUT = resolve(
   ROOT,
   opt('out') ??
-    `shots/gallery-${['m20', 'coding22', 'research', 'qa24', 'qa30', 'marina', 'devops25', 'devops26', 'marketing27', 'research28', 'harbours', 'research31', 'coding33', 'coaster'].includes(which) ? which : 'custom'}`,
+    `shots/gallery-${['m20', 'coding22', 'research', 'qa24', 'qa30', 'marina', 'devops25', 'devops26', 'marketing27', 'research28', 'harbours', 'research31', 'coding33', 'coaster', 'couriers'].includes(which) ? which : 'custom'}`,
 );
 const BASE = `http://localhost:${PORT}/`;
 
@@ -202,6 +206,7 @@ async function main(): Promise<void> {
       if (
         args.includes('--variants') ||
         which === 'marketing27' ||
+        which === 'couriers' ||
         which === 'research28' ||
         which === 'research31'
       )
@@ -226,6 +231,30 @@ async function main(): Promise<void> {
         960,
         720,
       );
+    }
+    if (which === 'couriers') {
+      // P-couriers: the 7 ships (3/4 view, LOD0) as one 4 x 2 sheet
+      const names = [
+        'courierShip-close',
+        ...[1, 2, 3, 4, 5, 6].map((v) => `courierShip-v${v}-close`),
+      ];
+      const cw = 640;
+      const ch = 480;
+      const tiles = await Promise.all(
+        names.map(async (n, i) => ({
+          input: await sharp(resolve(OUT, `${n}.png`))
+            .resize(cw, ch)
+            .toBuffer(),
+          left: (i % 4) * cw,
+          top: Math.floor(i / 4) * ch,
+        })),
+      );
+      await sharp({
+        create: { width: cw * 4, height: ch * 2, channels: 3, background: '#7FB6D9' },
+      })
+        .composite(tiles)
+        .jpeg({ quality: 88 })
+        .toFile(resolve(OUT, 'P-couriers.jpg'));
     }
   } finally {
     await browser.close();

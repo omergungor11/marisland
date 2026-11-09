@@ -72,6 +72,10 @@ const TARGET: Record<string, number> = {
   telescope: 400,
   officeLod1: 150,
   officeInterior: 2500,
+  // M51 TASK-620: courier ships (LOD0 <= 900, LOD1 <= 250), banded crate, report scroll
+  courierShip: 900,
+  courierCrate: 60,
+  reportScroll: 40,
   ...Object.fromEntries(THEME_GEO.map((d) => [d.id, 3500])),
 };
 
