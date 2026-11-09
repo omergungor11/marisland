@@ -4,6 +4,7 @@ import { DOCK } from '../content/settlements.ts';
 import { CARNIVAL_PIER as K } from '../content/themes/marketing-harbour.ts';
 import { beaconTracks } from './gen/plans/marketing-anchors.ts';
 import { carnivalDeckDist, carnivalKeepOut } from './gen/plans/marketing-harbour.ts';
+import { inMarina } from './gen/plans/marketing-marina.ts';
 import { generateWorld, heightAt, type WorldData } from './index.ts';
 
 /** TASK-536 (D-126): the Carnival Pier on the Marketing Rock, 30 seeds + the shot seeds. */
@@ -19,7 +20,8 @@ const site = (seed: number) => {
   const w = world(seed);
   const isl = w.islands.find((i) => i.theme === 'marketing');
   if (!isl) throw new Error('no Marketing island');
-  const fx = w.fixtures.filter((f) => f.islandId === isl.id);
+  // (the marina town's pieces have their own test: plans-marketing-marina.test)
+  const fx = w.fixtures.filter((f) => f.islandId === isl.id && !inMarina(isl, f));
   return { w, isl, A: isl.anchors, fx, of: (id: string) => fx.filter((f) => f.defId === id) };
 };
 const near = (a: { x: number; z: number }, b: { x: number; z: number }): number =>

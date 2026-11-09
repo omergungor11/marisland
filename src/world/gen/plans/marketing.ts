@@ -76,6 +76,7 @@ import {
 import { finishHarbour, inApproach, placeKiosks, planHarbour, type Harbour } from './harbour.ts';
 import { reserveBeaconAnchors } from './marketing-anchors.ts';
 import { placeCarnivalKit, planCarnivalPier } from './marketing-harbour.ts';
+import { finishMarina, planMarina } from './marketing-marina.ts';
 import { placeBeaconKit } from './marketing-m27.ts';
 import type { ThemePlanner } from './types.ts';
 import * as dm from '../../../core/math/dmath.ts';
@@ -581,8 +582,10 @@ export const planMarketing: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
     prefer: landing,
     carve: true,
   });
-  // M31 (TASK-536): the ferry harbour grows from the cove dock; no harbour = the old cove pier
-  const hb = planHarbour(ctx, isl, site);
+  // M31 (TASK-536): the ferry harbour grows from the cove dock; no harbour = the old cove pier.
+  // M52 (TASK-661): the horseshoe marina town takes the arm's place where it fits
+  const marina = planMarina(ctx, isl, site);
+  const hb = marina?.hb ?? planHarbour(ctx, isl, site);
   const pierSite = hb ? hb.site : site;
   // (the run-out segments may leave the depth the dock site found: the head is dredged; only the
   // head, a channel from the root would drown the way onto the pier)
@@ -634,6 +637,14 @@ export const planMarketing: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
     dockLink.corridor = { a: site.root, b: upper, half: 7 };
     plan.links.push(dockLink);
   }
+  // the marina's alleys: lanes up the bluff behind the quay houses
+  for (const pin of marina?.alleys ?? [])
+    plan.links.push({
+      pin,
+      kind: 'stair',
+      corridor: { a: pin, b: upper, half: 7 },
+      done: () => undefined,
+    });
   lots.sort((a, b) => dist(ctx.lots[a], mid) - dist(ctx.lots[b], mid));
   for (const li of lots) linkLot(ctx, plan, li);
 
@@ -656,11 +667,14 @@ export const planMarketing: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   // ---- M27 anchors (TASK-516): late, on the final ground (pads levelled, paths carved), so every
   // piece above keeps its place and the cliff / stack faces are the ones rendered
   plan.finish = (paths) => {
+    // (the marina first: it levels its deck again, the light mole's anchors read it)
+    const quay = marina ? finishMarina(ctx, marina, paths) : [];
     if (hb) finishHarbour(ctx, hb);
     if (pier) placeCarnivalKit(ctx, pier);
     reserveBeaconAnchors(ctx, isl, lh, heightAt(ctx.h, lh.x, lh.z), paths);
     // M27 kit on the anchors (TASK-518)
     placeBeaconKit(ctx, isl);
+    return quay;
   };
   return plan;
 };

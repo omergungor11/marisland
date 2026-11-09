@@ -6,6 +6,7 @@ import { FIXTURE_RADIUS } from '../content/settlements.ts';
 import { THEMES } from '../content/themes/index.ts';
 import { MARKETING_PLAN } from '../content/themes/marketing.ts';
 import { StageHash } from './gen/hash.ts';
+import { inMarina } from './gen/plans/marketing-marina.ts';
 import { discShape, rectShape, shapeCorners, shapeDist, type Shape } from './gen/sites.ts';
 import { generateWorld, heightAt, zoneAt, Zone, type WorldData } from './index.ts';
 
@@ -22,7 +23,8 @@ const mktOf = (w: WorldData) => {
   const isl = w.islands.find((i) => i.theme === 'marketing');
   if (!isl) throw new Error('no Marketing island');
   const s = w.settlements.find((x) => x.islandId === isl.id);
-  const fx = w.fixtures.filter((f) => f.islandId === isl.id);
+  // (the marina town's pieces have their own test: plans-marketing-marina.test)
+  const fx = w.fixtures.filter((f) => f.islandId === isl.id && !inMarina(isl, f));
   const lh = w.landmarks.find((m) => m.islandId === isl.id && m.kind === 'lighthouse');
   return {
     isl,
