@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { WorldData, ZoneId } from '../../world/types.ts';
+import type { ThemeId, WorldData, ZoneId } from '../../world/types.ts';
 import { isStreetZone, Zone, ZONE_COUNT } from '../../world/types.ts';
 import { slopeAtCell } from '../../world/index.ts';
 import { createRng } from '../../core/rng.ts';
@@ -239,8 +239,9 @@ function zoneColor(
 
 /**
  * Albedo world texture data (D-030): one RGBA8 texel per grid sample. RGB = sRGB colour (theme
- * ground × smooth ramps × crest tint × seeded macro variation × AO, land L floor; no per-face
- * jitter and no strata bands — the shader draws those). A = island id (`islandMap`, 0 = none),
+ * ground × smooth ramps × crest tint × seeded macro variation × AO, land L floor; `Zone.cliff` =
+ * the island's wall mean, `wallColors`; no per-face jitter and no strata bands — a vertical wall
+ * spans one 2 u texel, so the shader draws those at every quality). A = island id (`islandMap`, 0 = none),
  * the palette row the shader reads per corner. Identical at every distance.
  */
 export interface AlbedoGrid {
@@ -269,6 +270,26 @@ export function buildAlbedoGrid(world: WorldData): AlbedoGrid {
   const grid: AlbedoGrid = { rgba: new Uint8Array(n * n * 4) };
   fillAlbedoGrid(world, grid, 0, n - 1, 0, n - 1);
   return grid;
+}
+
+/** Earth-wall colours of a theme (TASK-613): the strata band tones and their mean, linear. */
+export interface WallColors {
+  tones: THREE.Color[];
+  mean: THREE.Color;
+}
+
+const wallCache = new Map<string, WallColors>();
+/** `GROUND_WALL.strata` of a theme (undefined = islets / no island: the default row). */
+export function wallColors(theme: ThemeId | undefined): WallColors {
+  const key = theme ?? 'default';
+  let w = wallCache.get(key);
+  if (!w) {
+    const tones = GROUND_WALL.strata[key].map((h) => new THREE.Color(h));
+    const mean = new THREE.Color(0, 0, 0);
+    for (const t of tones) mean.add(t);
+    wallCache.set(key, (w = { tones, mean: mean.multiplyScalar(1 / tones.length) }));
+  }
+  return w;
 }
 
 /** Theme ground spec of sample i (null = the default palette). */
@@ -377,6 +398,11 @@ function rawAlbedo(world: WorldData, ix: number, iz: number): number {
       col.b = (ref.b + (col.b - ref.b) * k) * (base.b / Math.max(ref.b, 1e-4));
     } else col.copy(base);
   }
+  if (z === Zone.cliff && y > 0) {
+    // the wall's far colour: its theme's strata mean (islets: the default row)
+    const id = world.islandMap[i];
+    col.copy(wallColors(id > 0 ? world.islands[id - 1]?.theme : undefined).mean);
+  }
   let r = linearToSrgb(clamp01(col.r));
   let g = linearToSrgb(clamp01(col.g));
   let b = linearToSrgb(clamp01(col.b));
@@ -425,7 +451,10 @@ function rawAlbedo(world: WorldData, ix: number, iz: number): number {
 }
 
 /** Palette texture: `PALETTE_TEXELS` texels per zone, `PALETTE_ROWS` rows (row = island id). */
-export const PALETTE_TEXELS = 5;
+export const PALETTE_TEXELS = 9;
+/** First palette texel of the strata band tones (`WALL_TONES` of them, after the wall mean). */
+export const WALL_TONE_TEXEL = 5;
+export const WALL_TONES = 4;
 export const PALETTE_ROWS = 8;
 /** Byte scales of the palette fields (decoded by the terrain shader). */
 export const PALETTE_SCALE = { amp: 100, pattern: 64, wall: 255 } as const;
@@ -436,7 +465,7 @@ export const PATTERN_LAYERS: readonly DetailLayerId[] = ['mow', 'tiles', 'mosaic
 const NO_LAYER = 255;
 
 /**
- * Ground palette (16 zones × 5 texels) × 8 rows: row 0 = no island (defaults), row k = island
+ * Ground palette (16 zones × 9 texels) × 8 rows: row 0 = no island (defaults), row k = island
  * id k with its theme's `ground` over `DEFAULT_GROUND`. Per (zone, row):
  * - texel 0: R layer 0, G layer 1 (255 = none), B amplitude × 100, A material id
  *   (texel 0 is also the shader's material-group key: equal texels blend smoothly);
@@ -444,7 +473,9 @@ const NO_LAYER = 255;
  *   (`GROUND_WALL.zoneWeight`; the shader gates it to land above the water), A wall kind
  *   (0 coastal soil, 128 cliff: soil inland too, 255 rock: own albedo, softer bands);
  * - texels 2 / 3: accent 1 / 2 (sRGB bytes);
- * - texel 4: the island's wall colour (sRGB bytes; theme cliff base, else `GROUND_WALL.soil`).
+ * - texel 4: the island's wall colour (sRGB bytes; the linear mean of its strata tones);
+ * - texels 5–8: its strata band tones (`GROUND_WALL.strata[theme]`, sRGB bytes, TASK-613).
+ * Wall texels repeat per zone (any zone can be a wall) and are equal across one row.
  */
 export function buildGroundPalette(world: WorldData): Uint8Array {
   const out = new Uint8Array(ZONE_COUNT * PALETTE_TEXELS * PALETTE_ROWS * 4);
@@ -453,14 +484,19 @@ export function buildGroundPalette(world: WorldData): Uint8Array {
     const o = (row * w + zone * PALETTE_TEXELS + t) * 4;
     for (let c = 0; c < 4; c++) out[o + c] = Math.max(0, Math.min(255, Math.round(v[c])));
   };
-  const srgb = (hex: string): number[] => {
-    const c = linOf(hex);
-    return [linearToSrgb(c.r) * 255, linearToSrgb(c.g) * 255, linearToSrgb(c.b) * 255, 255];
-  };
+  const srgbOf = (c: THREE.Color): number[] => [
+    linearToSrgb(c.r) * 255,
+    linearToSrgb(c.g) * 255,
+    linearToSrgb(c.b) * 255,
+    255,
+  ];
+  const srgb = (hex: string): number[] => srgbOf(linOf(hex));
   for (let row = 0; row < PALETTE_ROWS; row++) {
     const isl = row > 0 ? world.islands[row - 1] : undefined;
     const ground = isl ? THEMES[isl.theme]?.ground : undefined;
-    const wallColor = srgb(ground?.[Zone.cliff]?.base ?? GROUND_WALL.soil);
+    const walls = wallColors(isl?.theme);
+    const wallColor = srgbOf(walls.mean);
+    const wallTones = walls.tones.map(srgbOf);
     for (let zone = 0; zone < ZONE_COUNT; zone++) {
       const spec = ground?.[zone as ZoneId] ?? DEFAULT_GROUND[zone as ZoneId];
       const p = spec.layer ?? {};
@@ -500,6 +536,7 @@ export function buildGroundPalette(world: WorldData): Uint8Array {
       put(row, zone, 2, srgb(accents[0]));
       put(row, zone, 3, srgb(accents[1]));
       put(row, zone, 4, wallColor);
+      for (let k = 0; k < WALL_TONES; k++) put(row, zone, WALL_TONE_TEXEL + k, wallTones[k]);
     }
   }
   return out;
