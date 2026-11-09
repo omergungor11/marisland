@@ -31,6 +31,7 @@ import {
 } from '../src/fleet/protocol.ts';
 import { THEME_IDS } from '../src/world/types.ts';
 import { firstOutOfBounds } from './bounds.ts';
+import { NUDGE_NOTICE, NUDGE_PROMPT, settleStep, withMaxTurns } from './done-gate.ts';
 import {
   CHILD_GATES_CLOSED,
   childGatesClosed,
@@ -134,6 +135,8 @@ interface Run {
   /** Final assistant text of the current run (hand-off + `## Özet` parsing, M42). */
   lastText: string;
   finalText: string;
+  /** Final text of the run before the done-gate nudge (kept if the nudge brings no summary). */
+  nudgeBefore?: string;
   /** Repo-relative write prefixes and the `git status` taken at start (bounds check). */
   writable: string[];
   baseline: string;
@@ -254,6 +257,18 @@ function gitStatus(): Promise<string> {
 
 /** Successful result: the bounds check decides between `done` and `error` (FLEET.md "Kontrol"). */
 async function settleOk(run: Run): Promise<void> {
+  const step = settleStep(
+    {
+      turns: run.session.turns,
+      nudged: index.nudged.includes(run.session.id),
+      before: run.nudgeBefore,
+    },
+    run.finalText,
+    cfg.doneGate,
+  );
+  if (step.kind === 'nudge' && !run.stopRequested) return nudgeSession(run);
+  // gates / parent resume / report-back all run below, once, on the final text
+  if (step.kind === 'final') run.finalText = step.text;
   const after = await gitStatus();
   // concurrent sessions legitimately write in their own dirs: their prefixes are allowed too
   const allowed = [...runs.values()].filter((r) => isLive(r.session)).flatMap((r) => r.writable);
@@ -267,6 +282,54 @@ async function settleOk(run: Run): Promise<void> {
       : { status: 'done', endedAt: Date.now() };
   publishSession(run, patch);
   if (!gated) finishRequest(run, bad ? 'error' : 'done');
+}
+
+/**
+ * Done gate (TASK-632): the session ended without `## Özet`, so instead of `done` it gets ONE
+ * more turn (`--resume`, capped by `doneGate.nudgeMaxTurns`). Status stays `running`; the second
+ * `result` lands in `settleOk` again, where `nudged` makes it final.
+ */
+async function nudgeSession(run: Run): Promise<void> {
+  const s = run.session;
+  index.nudged.push(s.id);
+  run.nudgeBefore = run.finalText;
+  writeIndex();
+  pushLine(run, { kind: 'system', text: NUDGE_NOTICE }, Date.now());
+  const old = run.proc;
+  if (old && old.exitCode === null && old.signalCode === null)
+    await new Promise<void>((ok) => {
+      const t = setTimeout(ok, 3000);
+      old.once('close', () => {
+        clearTimeout(t);
+        ok();
+      });
+    });
+  if (run.stopRequested || !isLive(run.session)) return;
+  const sp = islandSpawn(ROOT, loadManifest(s.island));
+  const project = s.project ? loadProjects(ROOT).find((p) => p.id === s.project) : undefined;
+  if (project) sp.args.push('--add-dir', project.dir);
+  Object.assign(run, {
+    stream: newStreamState(),
+    buf: '',
+    gotResult: false,
+    lastText: '',
+    finalText: '',
+    baseTurns: s.turns,
+    baseCost: s.costUsd ?? 0,
+  });
+  const at = Date.now();
+  appendRaw(run, userRecord(NUDGE_PROMPT, at));
+  pushLine(run, { kind: 'user', text: NUDGE_PROMPT }, at);
+  attachProc(
+    run,
+    claudeArgs({
+      prompt: NUDGE_PROMPT,
+      sessionId: s.id,
+      resume: true,
+      islandArgs: withMaxTurns(sp.args, cfg.doneGate.nudgeMaxTurns),
+    }),
+    sp.cwd,
+  );
 }
 
 /* ---------------------------------------------------------------- chains (M42, D-149) */
@@ -605,7 +668,9 @@ async function sendSession(
     };
     runs.set(sessionId, run);
   }
+  index.nudged = index.nudged.filter((x) => x !== sessionId); // a new user turn may be nudged again
   Object.assign(run, {
+    nudgeBefore: undefined,
     stream: newStreamState(),
     buf: '',
     gotResult: false,
@@ -642,6 +707,10 @@ function endRun(run: Run, code: number | null, detail?: string): void {
   if (run.stopRequested) {
     publishSession(run, { status: 'stopped', endedAt: now, reason: 'stopped by user' });
     finishRequest(run, 'stopped');
+  } else if (!run.gotResult && run.nudgeBefore !== undefined) {
+    // the nudge turn died without a result: settle on the report we already have
+    run.finalText = run.nudgeBefore;
+    void settleOk(run);
   } else if (!run.gotResult) {
     const reason = `exit ${code ?? '?'}${detail ? ` (${detail})` : ''} without result`;
     publishSession(run, { status: 'error', endedAt: now, reason });

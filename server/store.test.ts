@@ -31,6 +31,7 @@ describe('store', () => {
     upsertSession(idx, { ...sess('a', 'done'), title: 'new' });
     expect(parseIndex(serializeIndex(idx)).sessions).toHaveLength(1);
     expect(parseIndex(serializeIndex(idx)).sessions[0].title).toBe('new');
+    expect(parseIndex(JSON.stringify({ nudged: ['a', 3] })).nudged).toEqual(['a']);
     for (const bad of [undefined, '', '{', 'null', '{"sessions":3}'])
       expect(parseIndex(bad)).toEqual(emptyIndex());
   });
@@ -49,6 +50,7 @@ describe('store', () => {
         },
       ],
       gates: [],
+      nudged: [],
     };
     const out = recoverIndex(idx, 99);
     expect(out.sessions.map((s) => s.status)).toEqual(['error', 'done', 'error']);
@@ -71,6 +73,7 @@ describe('store', () => {
       sessions: [sess('a', 'waiting'), sess('b', 'waiting')],
       requests: [],
       gates: [gate],
+      nudged: [],
     };
     const out = recoverIndex(idx, 99);
     expect(out.sessions.map((s) => s.status)).toEqual(['waiting', 'done']);
