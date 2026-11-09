@@ -523,8 +523,8 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 | TASK-614 | M50 üst yüzey makro varyasyon: çim yükseklik gradyanı, nem/yıpranma lekeleri, yol kenarı aşınması, çim→kum 4–6 u geçiş | shader | M | PENDING | TASK-612 |
 | TASK-615 | M50 silüet ve kenar: kıyı boyunca duvar yüksekliği ±25 %, plato kenarı kaya çıkıntıları, teras basamağı, SDF çim dudağı, etek talus scatter ≤ 2k tris/ada | worldgen | M | COMPLETED (rim delta after sites, outcrops = Zone.rock, talus ≤ 1.4k tris; G5 lip recipe → 614/616) | TASK-612 |
 | TASK-616 | M50 kıyı şeridi: ıslak kaya bandı, kum dalgacıkları, şelf devamı, köpük temas hizası + G5 dudak maskesi | shader | S | COMPLETED (wet band 0.9 u + salt line, 2.5 u wet rock below, `seabedShelf`, beach drying; lip = zone flag bit, mask byte-identical) | TASK-613 |
-| TASK-617 | M50 ışık ve AO: `TERRAIN_AO` güçlenir (`sandScale` ayrı), terrain rim terimi, duvar gölge tonu, altın saat L ≥ %15, DevOps kül şeritleri, Design çim S | shader | S | IN PROGRESS | TASK-614 |
-| TASK-618 | M50 kapanış QA + belge: "sonra" kontak sayfası, G kriter puanı, ART_BIBLE / ARCHITECTURE / D-162 | qa + docs | S | PENDING | TASK-613…617 |
+| TASK-617 | M50 ışık ve AO: `TERRAIN_AO` güçlenir (`sandScale` ayrı), terrain rim terimi, duvar gölge tonu, altın saat L ≥ %15, DevOps kül şeritleri, Design çim S | shader | S | COMPLETED (sun rim 0.32, daytime shade floor, rock × 0.5 / bluff-foot AO split, DevOps road colour, Design grass S 57; ash streaks = D12 switchback roads × crisp border → 2-cell soft roads later) | TASK-614 |
+| TASK-618 | M50 kapanış QA + belge: "sonra" kontak sayfası, G kriter puanı, ART_BIBLE / ARCHITECTURE / D-162 | qa + docs | S | IN PROGRESS | TASK-613…617 |
 
 
 ### M51 — Kurye gemileri: ada → ada devirler limandan gemiyle gider, ada başına özgün gemi, tıkla → bilgi kartı — DONE (conditional, 2026-11-09, D-164; follow-ups TASK-650)
