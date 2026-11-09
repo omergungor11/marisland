@@ -316,7 +316,7 @@ function ringAround(ctx: LifeCtx, cx: number, cz: number, r0: number): Vec2[] | 
 }
 
 /** Orient a prop geometry (bow +z, keel y=0) to the life convention (bow +x, waterline y=0). */
-function orientBoat(g: THREE.BufferGeometry, draft: number): THREE.BufferGeometry {
+export function orientBoat(g: THREE.BufferGeometry, draft: number): THREE.BufferGeometry {
   g.rotateY(Math.PI / 2);
   g.translate(0, -draft, 0);
   g.computeBoundingSphere();

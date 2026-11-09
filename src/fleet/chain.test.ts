@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FLEET, FLEET_GATE, FLEET_MOCK } from '../content/fleet.ts';
 import { applyFleetEvent, createFleetClient, emptyFleetState } from './client.ts';
-import { createFleetMock, mockChain, mockFleet } from './mock.ts';
+import { createFleetMock, mockCast, mockChain, mockFleet } from './mock.ts';
 import {
   chainOf,
   gatedSessions,
@@ -250,7 +250,10 @@ describe('fleet chains: mock (M42)', () => {
     if (snap.type !== 'snapshot') throw new Error('no snapshot');
     const drawn = mockFleet(1001, NOW).sessions;
     expect(snap.sessions.slice(0, drawn.length).map((s) => s.id)).toEqual(drawn.map((s) => s.id));
-    expect(snap.sessions.slice(drawn.length).map((s) => s.id)).toEqual([C.parentId]);
+    expect(snap.sessions.slice(drawn.length).map((s) => s.id)).toEqual([
+      C.parentId,
+      ...mockCast(NOW).sessions.map((s) => s.id), // TASK-591 portrait cast after the chain
+    ]);
     expect(snap.gates.map((g) => [g.id, g.toIsland, g.status])).toEqual([
       ['gate-chain-design', 'design', 'pending'],
       ['gate-chain-coding', 'coding', 'pending'],

@@ -2,6 +2,43 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-162: M50 Ground Look — direction "layered rock + painted light"; wall colour comes from a per-theme strata table, bands grow with height, walls are shaded in the terrain program at every distance — 2026-11-09
+
+**Decision**: The island body (plateau top, bluff walls, shore) is upgraded along direction A + C of `mar-plans/GROUND.md` (user choice over "soft earth" B and pure "painted miniature" C): geology first (strata, grass lip with a cool shadow line, dark cool foot, rim outcrops and height variation along the coast, talus), painted light second (stronger AO, grass height gradient, rim light). Reference set = the 24 `G-*` frames (`shots ground`, 4 islands × 380 / 150 / 55 u × noon / golden), acceptance = W-G1…G6 (GROUND.md §6), "before" sheet `mar-docs/shots/M50-before.jpg`.
+TASK-613 (walls): the earth-wall colour is no longer a theme `cliff.base` tan but the mean of a per-theme 4-band `WALL_STRATA` table (`palette.ts`; HQ cream / cinnamon / rust, Coding slate / teal-grey, Marketing red-rock / cream, QA mint-grey / sand, Design plum / cream, DevOps ash / basalt / rust, Research pale sand / lavender-grey; L spread ≥ 18 % per theme, saturation < 64 %). Bands are drawn in the terrain program at every quality and distance: band height grows with wall height (`band × (1 + y / bandGrow)`: a 5–7 u bluff ≈ 3 bands, the 25 u Beacon stack ≈ 7), the anti-alias fade keeps bands down to ≈ 1.8 px (was 3–8 px, which is why T0 walls read as one tone), 22 × 9 u value-noise macro cells (± 11 % tone, grain 0.35–1.25×) break the 6.5 u crack repeat, the lip shadow line never drops under 1.3 px, foot darkening 0.4 over 3 u with a blue-violet lean (P4). The palette texture widens from 5 to 9 texels per zone (texel 4 = wall mean, 5–8 = band tones); no new program, texture or pass. Rock-zone walls (Emberpeak cone) keep the old albedo × tone path.
+**Not taken**: baking strata into the CPU albedo (2 u/texel top-down: a vertical wall owns ~1 texel, three bands cannot fit); per-island band counts in content (height-graded bands need no data and stay continuous along the coast); direction B (rounding the rim re-runs settlement placement).
+**Numbers**: calls / tris / programs identical on every G and W frame (W1 152 / 326,128 / 15, W11 196 / 362,272 / 15); fragment cost ≈ 2 value-noise + 2 texelFetch + 1 log per wall pixel on all tiers.
+**Open**: Research lavender reads purple-heavy (desaturate a step in 614 together with a warmer grass); Emberpeak cone still near-black at golden hour on its shadow side (617: rock-zone AO lift or `devops.ts` rock base); HQ T1 gully "vertical streak" to be re-judged on `G-hq-t1-gold`; ART_BIBLE §2 "Earth wall" row and §4 bluff text to be rewritten at 618 (ART_BIBLE currently carries uncommitted Design-island edits).
+
+## D-160: Building variants v2 — styled builders beside the legacy ones, 8 variants per def, rolls unchanged until TASK-600 (TASK-598) — 2026-11-09
+
+**Decision.** `geo/building-v2.ts` wraps cottage / stiltHut / towerHouse / barn / logCabin: a variant index with a row in
+`content/building-variants.ts` (`BUILDING_STYLES`: roof style gable / hip / dormer / mansard, window pattern 0–2, door plain /
+arched / double, trims shutters / flower box / awning / chimney kind / plinth) builds through the shared kit `geo/building-kit.ts`;
+an index without a row calls the legacy builder, so the 42 legacy LOD0 / LOD1 hashes are unchanged. LOD1 of a styled variant is the
+legacy LOD1 silhouette in the row's colours (ladder-safe, D-031). LOD0 tris ≤ 1.25 × the legacy max per def (test-pinned: cottage
+290, stiltHut 647, towerHouse 425, barn 305, logCabin 620). `variants` is 8 on every def; `rollVariants` is pinned to the old
+effective counts (`BUILDING_ROLL_NOW`), so the world `props` hash and W2 / W10 / W16 are pixel-identical. Gallery target
+`gallery-shots.ts buildings`.
+
+**Open for TASK-600.** Roll counts → 8 (`BUILDING_ROLL_PROPOSAL`) with one hash re-pin; cottage v3 is the pinned DevOps ops shack
+and must be skipped by rolls; `LOT_ROOFS` needs one entry per rolled variant for stiltHut / towerHouse / barn / logCabin. Nits: dormers
+small at 60 u (`BUILDING_K.dormer`), barn arched doors flat, legacy stiltHut step floats under the deck.
+
+## D-164: M51 courier ships — hand-offs are shown as a voyage of the island's own ship, driven only by `FleetGate` state; no protocol change — 2026-11-09
+
+**Context.** The user wants a request from one island to another to be visible as a package leaving the harbour and sailing live to the target island, each island's ship uniquely designed, click → info card.
+**Decision**: one courier ship per island (7), moored at the harbour berth. Its phase is a pure function of the fleet store: gate `pending` → crate loads (ship waits at the pier, the user has not allowed), `allowed` → voyage to the target berth and crate drop, child session ended → return voyage with a report scroll, `denied` → unload. Routes follow the HQ ferry loop when both berths are its stops, else a land-tested Bezier; voyage clamped to 18–45 s. Ships are vertex-coloured builder geometry with per-theme specs in `src/content/fleet-ships.ts` (silhouettes distinct in greyscale). The card reuses the fleet panel look and the existing `gate` command. Plan `mar-tasks/phases/phase-4.md` → M51, tasks 620–623.
+**Not taken**: sailing on `pending` (would show work moving before the user allowed it; the gate is the point of M42); one shared ferry carrying every packet (loses the "whose ship" reading); a new bridge event for voyages (the gate timestamps already carry everything, and the mock needs no change).
+**Open**: a second gate in the same round waits for the ship to return (one ship per island); whether the return voyage should also carry the child's cost / turn count on the card.
+
+## D-163: M43 admin window — in-scene draggable card, projects with their agents, read-only knowledge base over bridge HTTP; projects live in `fleet/projects.json` — 2026-11-09
+
+**Decision**: The admin UI is a draggable / resizable in-scene window (user picked "B · Pano" over a separate browser tab and over a tear-off multi-window desk), opened from a dock button that exists only while a fleet feed is on (`?panel=admin`, Esc precedence terminal → admin → settings). Tabs: Projeler (one card per `FleetProject` with its live / finished sessions, "Bu projede başlat" → `start.project`, "+ proje" → `POST /api/projects`), Hafıza / Bilgi / Raporlar (source → file → rendered markdown, frontmatter chips, 30-day "eski" badge, `[[links]]`, 250 ms debounced search → hits grouped per file). Knowledge sources are served read-only by the bridge (`server/kb.ts`: `island:<theme>`, `fleet`, `mar-docs`, `hq-memory` from `fleet.config.json → hqMemoryDir`), every path resolved inside its source root; editing comes later behind an HQ gate (user: "önce sadece okuma + arama"). Registered projects are a committed `fleet/projects.json` (absolute `dir`, added to a session with `--add-dir`, prompt prefixed `Proje: <ad> — <dir>`); the bridge refuses a dir that does not exist. Markdown is rendered by a dependency-free `renderMd` (escape first, `data-line` per block).
+**Numbers**: F-admin / F-admin-doc 74 / 196,397 / 9 (= F-fleet); every existing preset unchanged; bridge tree on this machine 10 sources / 46 files; tests 3700 + 1 skipped (two 120 s world-plan timeouts under parallel shot load, green alone).
+**Not taken**: separate browser window (no fight with the scene, but the user wants it inside the room); localStorage-only projects (islands could not see them); a markdown dependency; editing in v1.
+**Open**: TASK-619 (hit line semantics, İ-fold search, project delete, children inherit `project`); dock button hidden when the fleet is off (Pages demo).
+
 ## D-156: Phase 5 visual upgrade — budgets raised for detail (medium tri 950k / calls 330 / 200 MB, high programs 30); bot look contract; wave 1 = 590 / 591 / 594 / 598 — 2026-11-09
 
 **Context.** The user asked for richer, higher-fidelity graphics: more detailed and varied island props, and

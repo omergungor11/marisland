@@ -59,10 +59,13 @@ import { runEditSelftest, testBrush } from './render/rebuild-testing.ts';
 import { staticEditBinding } from './ui/edit-panel.ts';
 import { EDIT_PANEL } from './content/edit-ui.ts';
 import { createFleetClient, fleetModeOf } from './fleet/client.ts';
-import { FLEET_WS_PATH } from './fleet/protocol.ts';
+import { FLEET_PORT, FLEET_WS_PATH } from './fleet/protocol.ts';
+import { createKb, httpBaseOf } from './fleet/kb.ts';
+import { createAdminWin, type AdminWin } from './ui/admin-win.ts';
 import { createFleetPanel } from './ui/fleet-panel.ts';
 import { createFleetTip } from './ui/fleet-tip.ts';
 import { createFleetBeacons } from './life/fleet-beacons.ts';
+import { Couriers } from './life/couriers.ts';
 import { bindFleetToBots, type FleetBots } from './life/fleet-bots.ts';
 import { FLEET, FLEET_PANEL } from './content/fleet.ts';
 import type { ThemeId } from './world/types.ts';
@@ -179,15 +182,14 @@ export async function boot(): Promise<void> {
     // ---- fleet (TASK-563): bridge socket or the deterministic mock; app-scoped (outlives regen).
     // Wall clock for "since 12 min": fixed under capture so shots reproduce.
     const wallNow = params.freeze ? (): number => FLEET.captureNow : (): number => Date.now();
+    const fleetUrl = `ws://localhost:${Number.isNaN(params.bridge) ? FLEET_PORT : params.bridge}${FLEET_WS_PATH}`;
     const fleet = createFleetClient({
       mode: fleetModeOf(params.fleet, params.freeze, location.hostname),
       seed: params.seed,
       now: wallNow(),
       frozen: params.freeze || params.simt > 0,
       chain: findShot(params.shot)?.fleetChain ?? 'pending',
-      url: Number.isNaN(params.bridge)
-        ? undefined
-        : `ws://localhost:${params.bridge}${FLEET_WS_PATH}`,
+      url: fleetUrl,
     });
     appScope.defer(() => fleet.dispose());
     const scene = new THREE.Scene();
@@ -490,6 +492,19 @@ export async function boot(): Promise<void> {
           loop.add(fbb);
           worldScope.defer(() => loop.remove(fbb));
         }
+        // M51 courier ships: one per island, driven by the gates (frozen: capture clock + sim time)
+        const cour = new Couriers(
+          { seed, scope: worldScope, group: wv.life.group, cameraPos: camera.position },
+          wv.life.ctx,
+          wv.world,
+          {
+            gates: () => fleet.gates.values(),
+            sessions: () => fleet.sessions,
+            clockMs: (t) => (params.freeze ? FLEET.captureNow + t * 1000 : Date.now()),
+          },
+        );
+        wv.life.add(cour);
+        wv.life.kinds.couriers = cour;
       }
       worldWeather = wv.weather;
       if (cam.reducedMotion) wv.life.setMotionScale(motionScale());
@@ -734,6 +749,8 @@ export async function boot(): Promise<void> {
       events.emit('photoMode', { active: hud?.photoMode ?? false, frozen: on });
     };
     let hud: Hud | null = null;
+    /** M43 admin window (with a fleet): projects + knowledge base, opened from the dock. */
+    let admin: AdminWin | null = null;
     let syncFleet = (): void => {};
     if (params.hud && !params.gallery) {
       hud = createHud(
@@ -778,6 +795,7 @@ export async function boot(): Promise<void> {
           },
           onEditPanel: (open) => editMode?.setActive(open),
           onFov: (deg) => cam.setFov(deg),
+          onAdmin: (open) => admin?.setOpen(open),
           onFreeze: setFrozen,
           onShutter: () =>
             new Promise((resolve) => {
@@ -827,6 +845,27 @@ export async function boot(): Promise<void> {
         const h = hud;
         const isleOf = (t: ThemeId): string =>
           testScene.cameraWorld.islands.find((i) => themeOf(i) === t)?.name ?? '';
+        // M43: created before the fleet panel so its capture-phase Esc runs before the terminal's
+        // (the window stacks above the card); a project chip opens the session in the terminal
+        let openSession = (_id: string): void => {};
+        const aw = (admin = createAdminWin(h.el, {
+          store: fleet,
+          kb: createKb(fleet.mode, {
+            httpBase: httpBaseOf(fleetUrl),
+            seed: params.seed,
+            now: wallNow(),
+          }),
+          accents: THEME_ACCENTS,
+          iconFor: (t) => themeIcon(THEMES[t].icon, 15),
+          islandName: isleOf,
+          now: wallNow,
+          capture: params.freeze,
+          onOpenSession: (id) => openSession(id),
+          onChange: (open) => h.setState({ admin: open ? 'open' : 'closed' }),
+          covered: () => h.el.classList.contains('mar-panel-settings'),
+        }));
+        appScope.defer(() => aw.dispose());
+        h.setState({ admin: 'closed' });
         const fp = createFleetPanel(h.el, fleet, {
           accents: THEME_ACCENTS,
           iconFor: (t) => themeIcon(THEMES[t].icon, 15),
@@ -835,6 +874,7 @@ export async function boot(): Promise<void> {
           focus: !params.freeze,
         });
         appScope.defer(() => fp.dispose());
+        openSession = (id) => fp.open(id);
         // TASK-572: the T0 island labels keep clear of the card (pushed right of / below it)
         const pad = FLEET_PANEL.labelAvoidPadPx;
         h.setLabelAvoid(() => {
@@ -895,6 +935,7 @@ export async function boot(): Promise<void> {
           }
           fp.setVisible(on);
           fp.update(wallNow());
+          aw.update();
           // the card appeared / resized: the labels move now (capture renders no further HUD frame)
           const b = fp.box();
           const key = b ? `${b.l},${b.t},${b.r},${b.b}` : '';
@@ -1255,8 +1296,9 @@ export async function boot(): Promise<void> {
     const bootEdit = editMode as EditMode | null;
     if (params.panel === 'edit' && params.panelTool) bootEdit?.setTool(params.panelTool);
     if (params.panel) hud?.openPanel(params.panel);
-    // capture: the edit panel's thumbnails must have decoded before the screenshot
-    if (params.panel && hud) await hud.settled();
+    if (params.panel === 'admin' && params.admin) admin?.show(params.admin);
+    // capture: the edit panel's thumbnails (the admin window's KB loads) must be done before the screenshot
+    if (params.panel && hud) await Promise.all([hud.settled(), admin?.settled()]);
     booted = true;
     api.ready = gpuReady;
     // ---- TASK-213: first-edit prewarm (interactive only, idle time after ready) ----------
@@ -1308,6 +1350,7 @@ function applyShotPreset(p: Params): Params {
   if (!q.has('quality') && s.quality) p.quality = s.quality;
   if (!q.has('edit') && s.edit) p.edit = s.edit;
   if (!q.has('fleet') && s.fleet) p.fleet = s.fleet;
+  if (!q.has('admin') && s.admin) p.admin = s.admin;
   return p;
 }
 

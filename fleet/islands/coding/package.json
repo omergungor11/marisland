@@ -1,0 +1,11 @@
+{
+  "name": "marisland-island-coding",
+  "private": true,
+  "//": "HQ yazar (TASK-631): kök pnpm script'leri ada cwd'sinden çalışsın diye proxy; `pnpm typecheck` burada kök typecheck'i koşturur, `cd` gerekmez.",
+  "scripts": {
+    "typecheck": "pnpm -C ../../.. typecheck",
+    "lint": "pnpm -C ../../.. lint",
+    "test": "pnpm -C ../../.. test",
+    "vitest": "pnpm -C ../../.. exec vitest"
+  }
+}

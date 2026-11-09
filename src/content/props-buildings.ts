@@ -4,6 +4,7 @@
  * Geometry lives in src/geo (buildings/coastal/decor/landmarks.ts).
  */
 import { PropFlag } from '../world/prop-store.ts';
+import { BUILDING_ROLL_NOW, BUILDING_VARIANTS } from './building-variants.ts';
 import type { PropDef } from './props.ts';
 
 const { grounded, windy, underwater, noShadow } = PropFlag;
@@ -31,14 +32,26 @@ const d = (
 export const PROP_DEFS_BUILDINGS: PropDef[] = [
   // buildings
   // v3 = DevOps ops shack (M22 TASK-482): only where the DevOps plan pins it
-  d('cottage', 1, 4, 2.1, grounded, undefined, { rollVariants: 3 }),
+  // TASK-598 (D-160): v4..v7 = styled variants (roof / windows / door / trims, content/building-variants.ts);
+  // rolls stay on the legacy indices until TASK-600 re-pins the world hash
+  d('cottage', 1, BUILDING_VARIANTS.cottage, 2.1, grounded, undefined, {
+    rollVariants: BUILDING_ROLL_NOW.cottage,
+  }),
   // stands in shallow water: pivot = water level, so no contact blob
-  d('stiltHut', 1, 2, 2.2, 0),
-  d('towerHouse', 1, 3, 1.8, grounded),
+  d('stiltHut', 1, BUILDING_VARIANTS.stiltHut, 2.2, 0, undefined, {
+    rollVariants: BUILDING_ROLL_NOW.stiltHut,
+  }),
+  d('towerHouse', 1, BUILDING_VARIANTS.towerHouse, 1.8, grounded, undefined, {
+    rollVariants: BUILDING_ROLL_NOW.towerHouse,
+  }),
   // T0: part of the silhouette read at the far tier; blades rotate via wind=2 (not `windy`)
   d('windmill', 0, 2, 2.3, grounded),
-  d('barn', 1, 2, 3.4, grounded),
-  d('logCabin', 1, 2, 2.5, grounded),
+  d('barn', 1, BUILDING_VARIANTS.barn, 3.4, grounded, undefined, {
+    rollVariants: BUILDING_ROLL_NOW.barn,
+  }),
+  d('logCabin', 1, BUILDING_VARIANTS.logCabin, 2.5, grounded, undefined, {
+    rollVariants: BUILDING_ROLL_NOW.logCabin,
+  }),
   // v3 / v4 / v5 = harbour waiting shelter (neutral / Research / Design, M31): pinned, never rolled
   d('marketStall', 2, 6, 1.3, grounded, undefined, { rollVariants: 3 }),
   // coastal

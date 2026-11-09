@@ -7,7 +7,8 @@
  * ≈ 10 s of timers and end `done`, `stop` stops. The mock's clock is `now` plus its timers' delays
  * (no wall clock).
  */
-import { FLEET_MOCK as M } from '../content/fleet.ts';
+import { FLEET_MOCK as M, FLEET_MOCK_PROJECTS as MP } from '../content/fleet.ts';
+import { PORTRAIT_CAST } from '../content/fleet-portrait.ts';
 import { THEMES } from '../content/themes.ts';
 import { createRng, type Rng } from '../core/rng.ts';
 import { THEME_IDS } from '../world/types.ts';
@@ -19,6 +20,7 @@ import {
   type FleetGate,
   type FleetIsland,
   type FleetLine,
+  type FleetProject,
   type FleetRequest,
   type FleetSession,
   type SessionStatus,
@@ -250,7 +252,7 @@ export function mockChain(
   if (variant === 'allowed') {
     const g = C.gates[0];
     const at = now - C.childAgoS * 1000;
-    const last = now - 20_000;
+    const last = Math.max(at, now - 20_000);
     const cl = spread(
       g.childId,
       [
@@ -293,6 +295,54 @@ export function mockChain(
   return { sessions, requests, gates, lines };
 }
 
+/**
+ * TASK-591 cast (pure, no RNG: `PORTRAIT_CAST`): the roles and states the drawn sessions lack
+ * (every role item, `error`, `queued`), appended after the chain so the drawn order is untouched.
+ */
+export function mockCast(now: number): { sessions: FleetSession[]; requests: FleetRequest[] } {
+  const sessions: FleetSession[] = [];
+  const requests: FleetRequest[] = [];
+  PORTRAIT_CAST.forEach((c, k) => {
+    const id = `mock-${c.island}-cast${k}`;
+    const requestId = `req-${c.island}-cast${k}`;
+    const startedAt = now - c.agoS * 1000;
+    const live = isLive(c);
+    const endedAt = live ? undefined : startedAt + c.ranS * 1000;
+    sessions.push({
+      id,
+      island: c.island,
+      agent: c.agent,
+      title: c.title,
+      status: c.status,
+      startedAt,
+      updatedAt: endedAt ?? startedAt,
+      ...(endedAt !== undefined ? { endedAt } : {}),
+      turns: c.turns,
+      costUsd: Math.round(c.turns * 0.09 * 100) / 100,
+      requestId,
+      cwd: `fleet/islands/${c.island}`,
+      model: 'opus',
+      ...(c.lastLine ? { lastLine: c.lastLine } : {}),
+      ...(c.status === 'error' ? { reason: 'exit 1' } : {}),
+    });
+    requests.push({
+      id: requestId,
+      title: c.title,
+      island: c.island,
+      rootSessionId: id,
+      createdAt: startedAt,
+      status: live
+        ? 'open'
+        : c.status === 'done'
+          ? 'done'
+          : c.status === 'error'
+            ? 'error'
+            : 'stopped',
+    });
+  });
+  return { sessions, requests };
+}
+
 export interface FleetMockOptions {
   seed: number;
   now: number;
@@ -307,12 +357,19 @@ export interface FleetMock {
   stop(): void;
 }
 
+/** The mock's registered projects (M43), `createdAt` offset from `now`. */
+export const mockProjects = (now: number): FleetProject[] =>
+  MP.projects.map(({ createdAgoD, ...p }) => ({ ...p, createdAt: now - createdAgoD * 86_400_000 }));
+
 /** Emits the snapshot at once, then (unless frozen) the line feed. */
 export function createFleetMock(o: FleetMockOptions, emit: (ev: FleetEvent) => void): FleetMock {
   const snap = mockFleet(o.seed, o.now);
   const state = new Map<string, FleetSession>();
   const lines = new Map<string, FleetLine[]>();
-  for (const s of snap.sessions) {
+  for (const drawn of snap.sessions) {
+    // M43: a few sessions work on a mock project (by id: no draws)
+    const project = MP.sessions[drawn.id];
+    const s = project ? { ...drawn, project } : drawn;
     const h = mockHistory(o.seed, s);
     lines.set(s.id, h);
     state.set(s.id, h.length ? { ...s, lastSeq: h.length - 1 } : s);
@@ -322,6 +379,13 @@ export function createFleetMock(o: FleetMockOptions, emit: (ev: FleetEvent) => v
   for (const s of chain.sessions) state.set(s.id, s);
   for (const [id, l] of chain.lines) lines.set(id, l);
   const gates = new Map<string, FleetGate>(chain.gates.map((g) => [g.id, g]));
+  // TASK-591: the portrait cast after the chain (no draws)
+  const cast = mockCast(o.now);
+  for (const s of cast.sessions) {
+    const h = mockHistory(o.seed, s);
+    lines.set(s.id, h);
+    state.set(s.id, h.length ? { ...s, lastSeq: h.length - 1 } : s);
+  }
   /** Allowed gate id → its child session id (the round waits for these). */
   const gateChild = new Map<string, string>();
   for (const g of chain.gates)
@@ -335,8 +399,9 @@ export function createFleetMock(o: FleetMockOptions, emit: (ev: FleetEvent) => v
     type: 'snapshot',
     bridge: { version: 0, root: 'mock', startedAt: o.now },
     sessions: [...state.values()],
-    requests: [...snap.requests, ...chain.requests],
+    requests: [...snap.requests, ...chain.requests, ...cast.requests],
     gates: [...gates.values()],
+    projects: mockProjects(o.now),
   });
   let at = o.now;
   const timers = new Set<ReturnType<typeof setTimeout>>();
@@ -435,6 +500,7 @@ export function createFleetMock(o: FleetMockOptions, emit: (ev: FleetEvent) => v
     title?: string;
     parentId?: string;
     requestId?: string;
+    project?: string;
   }): string => {
     const k = started++;
     const id = `mock-${c.island}-new${k}`;
@@ -451,6 +517,7 @@ export function createFleetMock(o: FleetMockOptions, emit: (ev: FleetEvent) => v
       turns: 0,
       costUsd: 0,
       ...(c.parentId ? { parentId: c.parentId } : {}),
+      ...(c.project ? { project: c.project } : {}),
       requestId,
       cwd: `fleet/islands/${c.island}`,
       model: 'opus',
