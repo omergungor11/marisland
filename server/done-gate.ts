@@ -44,7 +44,8 @@ export const NUDGE_NOTICE = 'Özet eksik · bir kez geri gönderildi (done gate)
 export const NUDGE_PROMPT =
   'Raporunda `## Özet` bölümü yok. fleet/CLAUDE.md rapor biçimiyle yalnız şunu yaz: ' +
   '`## Özet` (2–3 cümle: ne istendi, ne yapıldı), varsa `## Değişen dosyalar`, ' +
-  'varsa `## → <ada>: <istek>` başlıkları. Başka iş yapma, araç çağırma.';
+  'varsa `## → <ada>: <istek>` başlıkları (önceki raporundaki `## →` başlıklarını aynen tekrar yaz). ' +
+  'Başka iş yapma, araç çağırma.';
 
 /** The nudge reply is final when it brought a summary; otherwise the original text (hand-offs) stays. */
 export const finalTextAfterNudge = (before: string, after: string): string =>
