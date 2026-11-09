@@ -28,6 +28,9 @@ import { slopeAtCell } from './zones.ts';
 import { OCC_STRUCTURE } from './settlements.ts';
 import { pickBeaconSkerries } from './beacons.ts';
 import * as dm from '../../core/math/dmath.ts';
+import { TALUS } from '../../content/islands.ts';
+import { smoothstep } from '../../core/math/index.ts';
+import { bluffOf, coveness } from './heightfield.ts';
 
 /**
  * Prop scatter (ARCHITECTURE §2 step 7): Bridson Poisson per island per rule in
@@ -286,7 +289,86 @@ export function scatterProps(
       ISLET_SCATTER[islet.kind],
       (rule) => rule.def === 'beaconTower' && !beacons.has(islet.id),
     );
+  scatterTalus(world, store, occupancy, root, counts);
   return { props: store, occupancy, counts };
+}
+
+/**
+ * Talus at the bluff wall foot (TASK-615, TALUS): after every rule, on its own
+ * `rng.fork('talus', islandId)`, so no existing prop moves. A candidate needs a wall top ≥
+ * `rise[0]` u above it within `reach` u (8 directions); acceptance ramps to `rise[1]` against a
+ * position hash, so the taller headland walls collect the most rocks.
+ */
+function scatterTalus(
+  world: WorldData,
+  store: ReturnType<typeof createPropStore>,
+  occupancy: OccupancyGrid,
+  root: Rng,
+  counts: Record<string, number>,
+): void {
+  const T = TALUS;
+  const defIndex = PROP_DEF_INDEX[T.def];
+  const def = PROP_DEFS[defIndex];
+  if (!def) return;
+  const h = world.height;
+  for (const isl of world.islands) {
+    // (a theme that switches the rock clusters off gets no talus either)
+    if (!bluffOf(isl) || THEMES[isl.theme].scatterOff.includes(T.def)) continue;
+    const rng = root.fork('talus', isl.id);
+    const accept = (x: number, z: number): boolean => {
+      const s = sampleGrid(h, world.shoreSdf, x, z, -999);
+      if (s < T.shore[0] || s > T.shore[1]) return false;
+      const o = ownerAt(world, x, z);
+      // a water sample belongs to the island whose coast is nearest: the shore SDF band is narrow
+      if (o !== 0 && o !== isl.id + 1) return false;
+      if (Math.hypot(x - isl.cx, z - isl.cz) > isl.radius * 2) return false;
+      const y = heightAt(h, x, z);
+      if (y < T.heights[0] || y > T.heights[1]) return false;
+      const zone = zoneAt(h, world.zone, x, z);
+      if (!(T.zones as readonly number[]).includes(zone) || BLOCKED_ZONES.includes(zone))
+        return false;
+      if (coveness(isl, world.windDir, x, z) > T.maxCove) return false;
+      let top = -Infinity;
+      for (let k = 0; k < 16; k++) {
+        const a = ((k & 7) / 8) * Math.PI * 2;
+        const d = k < 8 ? T.reach[1] : T.reach[0];
+        top = Math.max(top, heightAt(h, x + dm.cos(a) * d, z + dm.sin(a) * d));
+      }
+      const rise = top - y;
+      if (rise < T.rise[0]) return false;
+      // position hash in [0, 1): deterministic thinning by wall height
+      let q = Math.imul(Math.round(x * 8), 0x27d4eb2d) ^ Math.imul(Math.round(z * 8), 0x165667b1);
+      q = Math.imul(q ^ (q >>> 15), 0x2c1b3c6d);
+      q ^= q >>> 13;
+      return (q >>> 0) / 4294967296 < smoothstep(T.rise[0], T.rise[1], rise);
+    };
+    const pts = poissonDisc(
+      rng,
+      isl.minX - 4,
+      isl.minZ - 4,
+      isl.maxX + 4,
+      isl.maxZ + 4,
+      T.minDist,
+      accept,
+      6000,
+    );
+    let placed = 0;
+    for (let i = 0; i < pts.length && placed < T.maxPerIsland; i += 2) {
+      const x = pts[i];
+      const z = pts[i + 1];
+      const scale = rng.range(T.scale[0], T.scale[1]);
+      const radius = def.footprint * scale;
+      if (!occupancy.isFree(x, z, radius)) continue;
+      const variant = rng.int(0, def.variants - 1);
+      const rotY = rng.range(0, Math.PI * 2);
+      const y = heightAt(h, x, z);
+      store.push(defIndex, variant, x, y, z, rotY, scale, isl.id, chunkIdAt(x, z), def.flags);
+      occupancy.mark(x, z, radius);
+      placed++;
+      if (store.count >= PROP_CAPACITY - 1) return;
+    }
+    counts[T.def] = (counts[T.def] ?? 0) + placed;
+  }
 }
 
 /** `islandMap` value at a world position (nearest sample; 0 outside the grid). */

@@ -4,6 +4,7 @@
  * reads these; nothing here is computed.
  */
 import type { ArchetypeId, ColorClass, HeightClass } from '../world/types.ts';
+import { Zone } from '../world/types.ts';
 
 /** Per-archetype zone rule block (ARCHITECTURE §2 step 4). */
 export interface ZoneRuleParams {
@@ -87,6 +88,21 @@ export interface BluffParams {
   coveRamp: number;
   /** Per-archetype BLUFF.rimEase (u); unset = the shared value (TASK-400: the crater rim). */
   rimEase?: number;
+}
+
+/**
+ * Rim silhouette per bluff archetype (TASK-615, M50 G6): the wall height varies round the coast
+ * by ± `amp` · wall (`lobes` low-frequency lobes, headlands higher, the cove side lower; never
+ * below RIM.minWall), fading back to the island's wall RIM.fade u inland, so the plateau interior
+ * keeps its height. `terrace`: a second, lower step on an `arcDeg` arc facing away from the cove
+ * (`frac` = lower step / wall, at least RIM.minWall; `ledge` = ledge width in u). `outcrops`: rock knobs on the lip per
+ * island (inclusive range; RIM.outcrop shapes them).
+ */
+export interface RimParams {
+  amp: number;
+  lobes: readonly [number, number];
+  terrace?: { arcDeg: number; frac: number; ledge: number };
+  outcrops?: readonly [number, number];
 }
 
 /**
@@ -273,6 +289,8 @@ export interface ArchetypeParams {
   windwardCliff?: boolean;
   /** Bluff coast + raised plateau (BLUFF); unset = the low beach-ringed disc. */
   bluff?: BluffParams;
+  /** Rim silhouette (RIM, TASK-615): wall height round the coast, terrace step, lip outcrops. */
+  rim?: RimParams;
   /** Terraced campus hill profile (Lonely Palm only, TASK-402b). */
   campusHill?: CampusHillParams;
   /** No waterfalls off this island's bluff (TASK-402b: Research keeps its walls dry). */
@@ -322,6 +340,13 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
       },
       coveFlat: 0,
       coveRamp: 400,
+    },
+    // TASK-615: headland walls up to +25 %, a two-step terrace on the windward third, lip knobs
+    rim: {
+      amp: 0.25,
+      lobes: [2, 4],
+      terrace: { arcDeg: 120, frac: 0.6, ledge: 6 },
+      outcrops: [3, 6],
     },
     zones: DEFAULT_ZONES,
   },
@@ -379,6 +404,7 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
     beachWidth: 6,
     terrace: { step: 2, strength: 0.3 },
     bluff: { on: true, wall: [5, 6], peak: [10, 12], coveHalfDeg: 35, coveFlat: 0, coveRamp: 28 },
+    rim: { amp: 0.25, lobes: [2, 4], outcrops: [3, 6] },
     zones: { ...DEFAULT_ZONES, forestThreshold: 0.5, patchwork: true, rockMinFrac: 2 },
   },
   emberpeak: {
@@ -408,6 +434,8 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
       // the shelves stand 4–5 u above the beach at the rim: ease them in wider so faces stay ≤ 65°
       rimEase: 7.5,
     },
+    // TASK-615: gentler modulation (the shelves have their own tables), no terrace
+    rim: { amp: 0.15, lobes: [2, 3], outcrops: [3, 5] },
     // TASK-405 "Ember Works": a low harbour shelf on the lee side away from the hot spring and a
     // two-step foundry terrace further round the same side, on bluff walls; shelves stay < 1.27 r
     shelves: [
@@ -492,6 +520,7 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
       coveFlat: 0,
       coveRamp: 22,
     },
+    rim: { amp: 0.2, lobes: [2, 4], outcrops: [3, 5] },
     zones: { ...DEFAULT_ZONES, forestThreshold: 2, meadowThreshold: 0.1, rockMinFrac: 2 },
   },
   mossgrove: {
@@ -513,6 +542,12 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
       coveHalfDeg: 55,
       coveFlat: 0,
       coveRamp: 14,
+    },
+    rim: {
+      amp: 0.25,
+      lobes: [2, 4],
+      terrace: { arcDeg: 120, frac: 0.6, ledge: 6 },
+      outcrops: [3, 6],
     },
     zones: {
       ...DEFAULT_ZONES,
@@ -552,6 +587,8 @@ export const ARCHETYPES: Readonly<Record<ArchetypeId, ArchetypeParams>> = {
       coveRamp: 12,
       rimEase: 3,
     },
+    // TASK-615: modulation only (the campus hill has its own terraces); walls stay ≥ RIM.minWall
+    rim: { amp: 0.2, lobes: [2, 3], outcrops: [3, 4] },
     campusHill: {
       coast: 0.95,
       coastSoft: 0.05,
@@ -856,6 +893,71 @@ export const BLUFF = {
   cliffTagSlope: 0.5,
   /** Box-blur radius (cells) of the shore distance that drives the wall, so the rim is not a staircase. */
   sdfBlur: 1,
+} as const;
+
+/** Rim silhouette shared by every `rim` archetype (TASK-615); per-archetype blocks: `RimParams`. */
+export const RIM = {
+  /**
+   * Lowest modulated wall (u): waterfalls need a 3.5 u lip (WATERFALLS.minDrop), the Research
+   * campus walls start at 4.2 u; the cove keeps the unmodulated wall (harbour / dock invariants).
+   */
+  minWall: 4,
+  /** Bearing bins of the coast-radius table. */
+  bins: 64,
+  /** Modulation mix: lobe wave, headland (coast radius above its trend), cove side (negative). */
+  weights: { lobe: 0.55, headland: 0.6, cove: 0.45 },
+  /** Broad coast-radius trend window (fraction of the bins each side) the headlands stand out of. */
+  headlandWindow: 0.12,
+  /** The modulation fades back to the island's wall over this many u behind the wall run. */
+  fade: 16,
+  /**
+   * Applied after the sites: full change only this far (u) from anything planned (occupied cells,
+   * fixtures), none closer than `keep[0]`, so pads, paths, docks and stairs keep their ground.
+   */
+  keep: [2, 6] as const,
+  /** Terrace sector: edge softness, and its centre swings this far off the side facing away from the cove. */
+  terraceSoftDeg: 15,
+  terraceSwingDeg: 50,
+  /** The lower terrace step is ≥ minWall; the step fades out where the upper one is under this (u). */
+  terraceMinUpper: 1.5,
+  /**
+   * Lip knobs: height / across radius (u), along-rim stretch, a satellite bump (height fraction),
+   * rock core (radius fraction) → Zone.rock; lip = plateau ground with a ≥ `minDrop` u drop within
+   * `lipReach` u, cove factor ≤ `maxCove`; `spacing` between knobs, `clear` u off structures / fixtures (paths: off the core).
+   */
+  outcrop: {
+    height: [0.8, 1.6] as const,
+    radius: [2.4, 3.4] as const,
+    stretch: 1.5,
+    satellite: [0.45, 0.7] as const,
+    core: 0.5,
+    minDrop: 3,
+    lipReach: 4,
+    maxCove: 0.3,
+    spacing: 18,
+    clear: 1.5,
+  },
+} as const;
+
+/**
+ * Talus at the wall foot (TASK-615, M50 G3/G6): small rock clusters along the foot of bluff walls
+ * at least `rise[0]` u tall (acceptance ramps up to `rise[1]`, so headlands get the most), between
+ * `shore` u of the coast and in `heights`, on `zones`, none in the cove (`maxCove`),
+ * on docks or other occupied cells; ≤ `maxPerIsland` (rockCluster ≈ 110–200 tris each at LOD 0).
+ */
+export const TALUS = {
+  def: 'rockCluster',
+  /** Land zones only (a subset of the rockCluster rules' zones). */
+  zones: [Zone.sandWet, Zone.sandDry, Zone.sandBlack, Zone.rock, Zone.cliff, Zone.grass],
+  minDist: 4,
+  scale: [0.45, 0.8] as const,
+  shore: [0.3, 2.5] as const,
+  heights: [0.05, 1.4] as const,
+  rise: [4, 7] as const,
+  /** Wall top probe: highest ground at these distances (u) in 8 directions. */
+  reach: [3, 6] as const,
+  maxCove: 0.25,
+  maxPerIsland: 10,
 } as const;
 
 /** Beach band (ART_BIBLE §1/§2: 0–1.2 u above sea level, gentle). */
