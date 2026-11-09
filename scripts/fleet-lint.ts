@@ -4,7 +4,7 @@
  * (`scripts/fleet-lint.test.ts`) calls it on the real repo, so `pnpm test` guards the layout.
  */
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { isAbsolute, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { validateManifest } from '../server/config.ts';
 import { THEME_IDS } from '../src/world/types.ts';
@@ -108,6 +108,35 @@ export function lintFleet(root: string): string[] {
         if (f.endsWith('.md') && !f.startsWith(`${dir}-`))
           problems.push(at(`.claude/agents/${f} must be named ${dir}-*.md`));
   }
+
+  const projectsFile = resolve(root, 'fleet/projects.json');
+  if (existsSync(projectsFile)) problems.push(...lintProjects(read(projectsFile)));
+  return problems;
+}
+
+/** `fleet/projects.json` shape (M43): unique slug ids, non-empty names, absolute dirs. */
+export function lintProjects(text: string): string[] {
+  let o: unknown;
+  try {
+    o = JSON.parse(text);
+  } catch (e) {
+    return [`projects.json: invalid JSON (${(e as Error).message})`];
+  }
+  const list = (o as { projects?: unknown } | null)?.projects;
+  if (!Array.isArray(list)) return ['projects.json: "projects" must be a list'];
+  const problems: string[] = [];
+  const seen = new Set<string>();
+  list.forEach((p: unknown, i) => {
+    const q = (p ?? {}) as Record<string, unknown>;
+    const at = `projects.json[${i}]`;
+    if (typeof q.id !== 'string' || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(q.id))
+      problems.push(`${at}: id must be a slug`);
+    else if (seen.has(q.id)) problems.push(`${at}: duplicate id "${q.id}"`);
+    else seen.add(q.id);
+    if (typeof q.name !== 'string' || !q.name.trim()) problems.push(`${at}: name is empty`);
+    if (typeof q.dir !== 'string' || !isAbsolute(q.dir))
+      problems.push(`${at}: dir must be an absolute path`);
+  });
   return problems;
 }
 

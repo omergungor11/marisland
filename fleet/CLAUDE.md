@@ -32,6 +32,9 @@ aynı adda bir şey yaratırsan cwd'ye yakın olan kazanır, bu yüzden ada agen
 - **Yalnız kendi ada dizinine ve `island.json` → `addDirs` içindeki dizinlere yaz.** Başka adanın
   dizini, `fleet/CLAUDE.md`, `fleet/schema/`, kendi `island.json` ve `.claude/settings.json` dosyan
   sana kapalı. Değiştirmek istiyorsan raporuna "HQ'ya öneri" satırı yaz.
+- Prompt `Proje: <ad> — <dizin>` ile başlıyorsa iş o dizinde yaşar (`--add-dir` ile eklenmiştir). Yalnız
+  orada ve kendi ada dizininde yaz; projenin kendi `CLAUDE.md`'si o dizinin içinde geçerlidir.
+  Projede de commit yok, push yok.
 - Git: commit yok, push yok. Değişiklikleri working tree'de bırak; bridge ve HQ gözden geçirir.
 - Bütçe: `island.json` → `maxTurns` içinde kal. Başka adadan iş istemek için aşağıdaki biçimi kullan;
   hedef adayı kendin başlatmazsın, kullanıcı kapıdan izin verir.

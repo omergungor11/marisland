@@ -2,5 +2,6 @@
   "port": 5174,
   "titleModel": "haiku",
   "maxTurns": 30,
-  "maxChildren": 6
+  "maxChildren": 6,
+  "hqMemoryDir": "~/.claude/projects/-Users-arlec-Work-Restored-marisland/memory"
 }

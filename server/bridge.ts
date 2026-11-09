@@ -62,6 +62,8 @@ import {
   userRecord,
   onlyCurrent,
 } from './resume.ts';
+import { kbDoc, kbSearch, kbTree } from './kb.ts';
+import { addProject, loadProjects } from './projects.ts';
 import {
   clip,
   newStreamState,
@@ -441,7 +443,10 @@ async function startSession(cmd: Extract<FleetCommand, { type: 'start' }>): Prom
   const id = randomUUID();
   const now = Date.now();
   const manifest = loadManifest(cmd.island);
+  const project = cmd.project ? loadProjects(ROOT).find((p) => p.id === cmd.project) : undefined;
+  if (cmd.project && !project) throw new Error(`proje bulunamadı: ${cmd.project}`);
   const sp = islandSpawn(ROOT, manifest);
+  if (project) sp.args.push('--add-dir', project.dir);
   const baseline = await gitStatus();
   const title = draftTitle(cmd.prompt);
   const requestId = cmd.requestId ?? randomUUID();
@@ -456,6 +461,7 @@ async function startSession(cmd: Extract<FleetCommand, { type: 'start' }>): Prom
     turns: 0,
     requestId,
     cwd: sp.cwd,
+    ...(project ? { project: project.id } : {}),
     ...(cmd.parentId ? { parentId: cmd.parentId } : {}),
     model: manifest.model,
   };
@@ -493,7 +499,12 @@ async function startSession(cmd: Extract<FleetCommand, { type: 'start' }>): Prom
 
   attachProc(
     run,
-    claudeArgs({ prompt: cmd.prompt, sessionId: id, resume: false, islandArgs: sp.args }),
+    claudeArgs({
+      prompt: project ? `Proje: ${project.name} — ${project.dir}\n\n${cmd.prompt}` : cmd.prompt,
+      sessionId: id,
+      resume: false,
+      islandArgs: sp.args,
+    }),
     sp.cwd,
   );
   return session;
@@ -558,6 +569,10 @@ async function sendSession(
   if (why) throw new Error(why);
   if (!prompt.trim()) throw new Error('send: prompt is required');
   const sp = islandSpawn(ROOT, loadManifest(known.island));
+  const knownProject = known.project
+    ? loadProjects(ROOT).find((p) => p.id === known.project)
+    : undefined;
+  if (knownProject) sp.args.push('--add-dir', knownProject.dir); // not restored by --resume
   const baseline = await gitStatus();
   const cur = index.sessions.find((x) => x.id === sessionId);
   const raced = cur ? blocked(cur) : 'send: unknown session';
@@ -661,6 +676,7 @@ function parseStart(v: unknown): Extract<FleetCommand, { type: 'start' }> | stri
     ...(typeof v.agent === 'string' && v.agent ? { agent: v.agent } : {}),
     ...(typeof v.parentId === 'string' ? { parentId: v.parentId } : {}),
     ...(typeof v.requestId === 'string' ? { requestId: v.requestId } : {}),
+    ...(typeof v.project === 'string' && v.project ? { project: v.project } : {}),
   };
 }
 
@@ -760,6 +776,33 @@ const server = createServer((req, res) => {
       return json(res, 200, { sessions: index.sessions, requests: index.requests });
     if (req.method === 'GET' && url.pathname === '/api/gates')
       return json(res, 200, { gates: index.gates.map(publicGate) });
+    if (req.method === 'GET' && url.pathname === '/api/kb/tree')
+      return json(res, 200, kbTree(ROOT, cfg));
+    if (req.method === 'GET' && url.pathname === '/api/kb/file') {
+      const path = url.searchParams.get('path');
+      if (!path) return json(res, 400, { error: 'path is required' });
+      const doc = kbDoc(ROOT, cfg, path);
+      return doc ? json(res, 200, doc) : json(res, 404, { error: 'not found' });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/kb/search')
+      return json(res, 200, { hits: kbSearch(ROOT, cfg, url.searchParams.get('q') ?? '') });
+    if (req.method === 'GET' && url.pathname === '/api/projects')
+      return json(res, 200, { projects: loadProjects(ROOT) });
+    if (req.method === 'POST' && url.pathname === '/api/projects') {
+      let body: unknown;
+      try {
+        body = JSON.parse(await readBody(req));
+      } catch {
+        return json(res, 400, { error: 'malformed JSON' });
+      }
+      try {
+        const project = addProject(ROOT, body);
+        broadcast({ type: 'project', project });
+        return json(res, 201, { project });
+      } catch (e) {
+        return json(res, 400, { error: (e as Error).message });
+      }
+    }
     const m = /^\/api\/sessions\/([^/]+)\/lines$/.exec(url.pathname);
     if (req.method === 'GET' && m)
       return json(res, 200, {
@@ -810,6 +853,7 @@ wss.on('connection', (ws) => {
     sessions: index.sessions,
     requests: index.requests,
     gates: index.gates.map(publicGate),
+    projects: loadProjects(ROOT),
   };
   ws.send(JSON.stringify(snap));
 });
