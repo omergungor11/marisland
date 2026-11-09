@@ -31,12 +31,12 @@ export const RESEARCH_THEME: ThemeDef = {
   ground: {
     [Zone.grass]: {
       material: 'lawn',
-      base: '#8CCB64',
+      base: '#98CC5E',
       layer: { mow: { amplitude: 0.03, period: 3 } },
     },
     [Zone.meadow]: {
       material: 'meadow',
-      base: '#A6D86E',
+      base: '#B6CF68',
       layer: { speckle: ['#FF8FB1', '#FFFFFF', '#C3B0FF'] },
     },
     [Zone.path]: {

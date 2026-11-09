@@ -23,13 +23,13 @@ const GROUND: ThemeDef['ground'] = {
   // clover meadow (white / pink clover heads)
   [Zone.meadow]: {
     material: 'meadow',
-    base: '#96D06A',
+    base: '#88CF7E',
     layer: { speckle: ['#FFFFFF', '#F4C9DD'] },
   },
   // solar gravel under the panel rows (field = solar districts + the server yard)
   [Zone.field]: { material: 'gravel', base: '#B9B4A8' },
   // tidy grove
-  [Zone.forest]: { material: 'forest', base: '#5DAE4B' },
+  [Zone.forest]: { material: 'forest', base: '#4FA55A' },
   // light concrete paths
   [Zone.path]: { material: 'path', base: '#D6D3CB', layer: { amplitude: 0.5 } },
   // blue-grey pavers (pool surround)
