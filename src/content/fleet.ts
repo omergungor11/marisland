@@ -532,12 +532,13 @@ export const FLEET_GATE = {
  * Admin window ("Pano", M43 TASK-585, `ui/admin-win.ts`): a draggable, resizable card over the
  * scene with the fleet's projects and the knowledge base (read-only, searchable). Geometry in px.
  */
-export type AdminTab = 'projeler' | 'hafiza' | 'bilgi' | 'raporlar';
+export type AdminTab = 'projeler' | 'sessionlar' | 'hafiza' | 'bilgi' | 'raporlar';
 export const ADMIN = {
   title: 'Admin',
   /** Tab ids (URL `admin=<tab>:<path>`) and labels, in bar order. */
   tabs: [
     ['projeler', 'Projeler'],
+    ['sessionlar', 'Session’lar'],
     ['hafiza', 'Hafıza'],
     ['bilgi', 'Bilgi'],
     ['raporlar', 'Raporlar'],
@@ -587,6 +588,75 @@ export const ADMIN = {
       '#F2B740',
       '#E86A92',
     ] as readonly string[],
+  },
+  /** Session'lar tab (TASK-630): every fleet session, filtered, searched, sorted. */
+  sessions: {
+    /** Title-bar search placeholder while this tab is active. */
+    placeholder: 'Ara: başlık, agent, ada, proje, id',
+    /** Tab label count: all rows, or shown / all once a filter or the search narrows the list. */
+    tabCount: (shown: number, total: number, filtered: boolean): string =>
+      filtered ? `${shown}/${total}` : `${total}`,
+    /** Rows rendered at once; the "N daha" button adds another page. */
+    pageSize: 60,
+    more: (n: number): string => `${n} daha`,
+    status: [
+      ['all', 'Tümü'],
+      ['live', 'Canlı'],
+      ['done', 'Bitti'],
+      ['fail', 'Hata · Durdu'],
+    ] as const,
+    islandsAll: 'hepsi',
+    project: { all: 'Tüm projeler', none: 'proje yok', label: 'Proje' },
+    period: [
+      ['today', 'Bugün'],
+      ['week', '7 gün'],
+      ['all', 'Hepsi'],
+    ] as const,
+    /** Days the "7 gün" chip reaches back (from `now`). */
+    weekDays: 7,
+    rootOnly: 'yalnız kök',
+    rootOnlyHint: 'Hand-off ile açılan alt session’ları gizle',
+    sort: [
+      ['new', 'Yeni'],
+      ['duration', 'Süre'],
+      ['cost', 'Maliyet'],
+      ['turns', 'Turn'],
+    ] as const,
+    sortLabel: 'Sırala',
+    /** Child session marker (one per hand-off level). */
+    childMark: '↳',
+    empty: 'Eşleşen session yok',
+    clear: 'filtreleri temizle',
+    /**
+     * Relative start time: "az önce", "3 dk önce", "bugün 14:20", "dün 14:20", "Pzt 14:20",
+     * "12 Eki". Day boundaries in local time; capture formats at `captureTzMin` (UTC+3) so the
+     * same URL gives the same text on any machine.
+     */
+    ago: {
+      justNowS: 60,
+      justNow: 'az önce',
+      minutes: (m: number): string => `${m} dk önce`,
+      /** Below this many minutes the minutes form wins over "bugün HH:MM". */
+      minutesUpTo: 60,
+      today: 'bugün',
+      yesterday: 'dün',
+      weekdays: ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'] as readonly string[],
+      months: [
+        'Oca',
+        'Şub',
+        'Mar',
+        'Nis',
+        'May',
+        'Haz',
+        'Tem',
+        'Ağu',
+        'Eyl',
+        'Eki',
+        'Kas',
+        'Ara',
+      ] as readonly string[],
+    },
+    captureTzMin: 180,
   },
   /** The mock bridge's 400 texts for `POST /api/projects`. */
   mockErrors: {

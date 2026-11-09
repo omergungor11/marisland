@@ -843,6 +843,7 @@ export async function boot(): Promise<void> {
           }),
           accents: THEME_ACCENTS,
           iconFor: (t) => themeIcon(THEMES[t].icon, 15),
+          islandName: isleOf,
           now: wallNow,
           capture: params.freeze,
           onOpenSession: (id) => openSession(id),
