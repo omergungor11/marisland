@@ -10,6 +10,7 @@
  * and halo follow the ship's matrix; hops are closed-form arcs between the deck slot and the dock.
  */
 import * as THREE from 'three';
+import { FLEET_CARD } from '../content/fleet.ts';
 import { COURIER, courierSpec } from '../content/fleet-ships.ts';
 import { SAILBOAT } from '../content/life.ts';
 import { FIXED_STEP } from '../core/clock.ts';
@@ -205,6 +206,27 @@ export class Couriers extends AgentKind {
       this.legs.set(key, l);
     }
     return l;
+  }
+
+  /**
+   * Picking (TASK-622): one sphere per ship sized by its own hull (`FLEET_CARD.pick`), centred on
+   * the deck, instead of the kind-wide `pickRadius` / `pickHeight`.
+   */
+  override positions(out: Float32Array, ids?: Uint16Array): number {
+    const P = FLEET_CARD.pick;
+    let n = 0;
+    const room = Math.floor(out.length / 4);
+    for (let i = 0; i < this.capacity && n < room; i++) {
+      if (!this.active[i]) continue;
+      const spec = courierSpec(i);
+      out[n * 4] = this.x[i];
+      out[n * 4 + 1] = this.y[i] + spec.hullH - spec.draft + P.lift;
+      out[n * 4 + 2] = this.z[i];
+      out[n * 4 + 3] = spec.length * P.lengthShare;
+      if (ids) ids[n] = i;
+      n++;
+    }
+    return n;
   }
 
   /** Voyage seconds for the plan (default when a route is missing). */

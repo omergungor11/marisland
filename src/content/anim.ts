@@ -148,6 +148,8 @@ export const PICK = {
     rowboats: [1.0, 0.3],
     parked: [1.7, 1.1],
     gulls: [0.8, 0.1],
+    // M51 courier ships size their own sphere per hull (Couriers.positions, FLEET_CARD.pick)
+    couriers: null,
   } as Record<string, readonly [number, number] | null>,
   /** Ray-march: step = clamp(t × stepRel, stepMin, stepMax); bisect iterations on the hit. */
   march: { stepRel: 0.012, stepMin: 0.4, stepMax: 3, bisect: 14 },
@@ -395,6 +397,7 @@ export const AGENT_REACTIONS: Record<string, string> = {
   rowboats: 'boat',
   parked: 'boat',
   gulls: 'sheep',
+  couriers: 'boat',
 };
 
 /** Burst particle system (one instanced-quad draw call; positions are f(uTime), deterministic). */

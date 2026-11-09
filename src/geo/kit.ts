@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Rng } from '../core/rng.ts';
 import { createNoise, type Noise } from '../core/noise.ts';
+import { encodeSurface, MATERIAL_CLASS, type MaterialClass } from '../content/materials.ts';
 
 THREE.ColorManagement.enabled = true;
 
@@ -27,6 +28,11 @@ export interface PartOpts {
   double?: boolean;
   /** Skip the per-face HSL jitter (large smooth fabric: variation comes from the colour fn). */
   noJitter?: boolean;
+  /**
+   * Material class (TASK-594, content/materials.ts; default matte): packed into the `emissive`
+   * attribute's free code range, so a tagged part emits that attribute even without a glow.
+   */
+  cls?: MaterialClass;
 }
 
 const MIN_L = 0.13;
@@ -75,6 +81,8 @@ const smooth = (a: number, b: number, x: number): number => {
 export class Acc {
   /** Optional group transform applied (outermost) to every part added. */
   xf: THREE.Matrix4 | null = null;
+  /** Default material class of the parts added (TASK-594); a part's own `cls` wins. */
+  cls: MaterialClass | null = null;
   private pos: number[] = [];
   private colr: number[] = [];
   private wmul: number[] = [];
@@ -82,6 +90,8 @@ export class Acc {
   private emi: number[] = [];
   private wabs: number[] = [];
   private nj: number[] = [];
+  private klass: number[] = [];
+  private tagged = false;
 
   add(geo: THREE.BufferGeometry, o: PartOpts & { m?: THREE.Matrix4 }): void {
     const g = geo.index ? geo.toNonIndexed() : geo;
@@ -98,6 +108,8 @@ export class Acc {
       minY = Math.min(minY, p.y);
       maxY = Math.max(maxY, p.y);
     }
+    const pc = o.cls ?? this.cls;
+    if (pc && pc !== 'matte') this.tagged = true;
     const aoAmt = o.aoAmt ?? 0.15;
     const wm = o.windMul ?? 1;
     const e1 = new THREE.Vector3();
@@ -125,6 +137,7 @@ export class Acc {
         this.wmul.push(wm);
         this.emi.push(o.emissive ?? 0);
         this.nj.push(o.noJitter ? 1 : 0);
+        this.klass.push(pc ? MATERIAL_CLASS[pc] : 0);
         this.wabs.push(
           o.windAbs === undefined
             ? NaN
@@ -193,8 +206,11 @@ export class Acc {
     g.setAttribute('color', new THREE.BufferAttribute(color, 3));
     g.setAttribute('wind', new THREE.BufferAttribute(wind, 1));
     g.setAttribute('ao', new THREE.BufferAttribute(ao, 1));
-    if (emissive)
-      g.setAttribute('emissive', new THREE.BufferAttribute(new Float32Array(this.emi), 1));
+    if (emissive || this.tagged) {
+      const em = new Float32Array(n);
+      for (let i = 0; i < n; i++) em[i] = encodeSurface(emissive ? this.emi[i] : 0, this.klass[i]);
+      g.setAttribute('emissive', new THREE.BufferAttribute(em, 1));
+    }
     g.computeBoundingBox();
     g.computeBoundingSphere();
     g.userData = { tris: n / 3 };
@@ -236,6 +252,14 @@ export function blob(
     p.setXYZ(i, v.x * r * k, v.y * r * k, v.z * r * k);
   }
   return g;
+}
+
+/** Part options with a material class (TASK-594): `put(acc, g, p, c, withClass('wood', o))`. */
+export function withClass<T extends Partial<PartOpts>>(
+  cls: MaterialClass,
+  o?: T,
+): T & { cls: MaterialClass } {
+  return { ...(o ?? ({} as T)), cls };
 }
 
 export { createNoise };

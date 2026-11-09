@@ -6,6 +6,7 @@ import { mixHex } from './hud-math.ts';
 import {
   ADMIN,
   FLEET_BOTS,
+  FLEET_CARD,
   FLEET_GATE,
   FLEET_PANEL,
   FLEET_STATUS,
@@ -490,6 +491,38 @@ export const FLEET_PANEL_CSS = `
 .mar-ftip{position:absolute;left:0;top:0;max-width:${FLEET_BOTS.tip.maxWidth}px;display:flex;flex-direction:column;gap:1px;background:${UI.surface};border-radius:12px;
   box-shadow:inset 3px 0 0 var(--acc,${UI.secondary}),${lip},${soft};padding:6px 10px 7px 12px;font:${F.fonts.row};color:${UI.ink};pointer-events:none;opacity:0;visibility:hidden;transition:opacity .12s;}
 .mar-ftip.mar-ftip-on{opacity:1;visibility:visible;}
+/* M51 courier ship card (TASK-622, courier-card.ts): anchored to the ship, accent bar = its island */
+.mar-fcard{position:absolute;left:0;top:0;z-index:3;width:${FLEET_CARD.width}px;max-width:calc(100vw - ${2 * FLEET_CARD.margin}px);box-sizing:border-box;display:flex;flex-direction:column;gap:5px;
+  background:${UI.surface};border-radius:16px;box-shadow:inset 5px 0 0 var(--acc,${UI.secondary}),${lip},${soft};padding:10px 12px 11px 17px;color:${UI.ink};pointer-events:auto;opacity:0;visibility:hidden;transition:opacity .14s;}
+.mar-fcard.mar-fcard-on{opacity:1;visibility:visible;}
+.mar-panel-photo .mar-fcard,.mar-panel-edit .mar-fcard,.mar-panel-photo .mar-fcard-tip,.mar-panel-edit .mar-fcard-tip{opacity:0;visibility:hidden;pointer-events:none;}
+@media (max-width:${F.minViewport - 1}px){.mar-fcard{display:none;}}
+.mar-fcard-head{display:flex;align-items:center;gap:6px;min-width:0;font:600 16px/1.15 'Fredoka',sans-serif;}
+.mar-fcard-head b{min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mar-fcard-head .mar-fgate-arrow{color:var(--acc,${UI.secondary});}
+.mar-fcard-more{margin-left:auto;flex:none;letter-spacing:0;text-transform:none;font:800 11px/1 'Nunito',sans-serif;color:#A87412;background:${FLEET_GATE.colors.cardBg};border-radius:999px;padding:3px 8px;}
+.mar-fcard-kind{display:flex;align-items:center;min-height:17px;font:800 10.5px/1 'Nunito',sans-serif;letter-spacing:.4px;text-transform:uppercase;color:${mixHex(UI.ink, UI.muted, 0.35)};}
+.mar-fcard-req{font:800 13px/1.3 'Nunito',sans-serif;overflow-wrap:anywhere;}
+.mar-fcard-last{font:700 12.5px/1.35 'Nunito',sans-serif;color:${mixHex(UI.ink, UI.muted, 0.3)};}
+.mar-fcard-pwrap{position:relative;}
+.mar-fcard-prompt{margin:0;font:700 12.5px/1.35 'Nunito',sans-serif;color:${mixHex(UI.ink, UI.muted, 0.2)};display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:${FLEET_CARD.promptLines};overflow:hidden;overflow-wrap:anywhere;}
+.mar-fcard-prompt.mar-fcard-full{display:block;-webkit-line-clamp:unset;max-height:40vh;overflow-y:auto;}
+.mar-fcard .mar-fcard-tog{position:absolute;right:0;bottom:0;border:0;padding:0 0 0 24px;background:linear-gradient(90deg,transparent,${UI.surface} 20px);font:800 12px/1.35 'Nunito',sans-serif;color:#A87412;cursor:pointer;}
+.mar-fcard .mar-fcard-full+.mar-fcard-tog{position:static;display:block;margin-left:auto;padding:2px 0 0;background:none;}
+.mar-fcard .mar-fcard-tog[hidden]{display:none;}
+.mar-fcard-status{display:flex;align-items:center;gap:6px;font:800 12.5px/1.2 'Nunito',sans-serif;}
+.mar-fcard-status i{width:9px;height:9px;border-radius:50%;flex:none;background:var(--acc,${UI.secondary});}
+.mar-fcard-status[data-s="pending"] i{background:${UI.surface};box-shadow:inset 0 0 0 2.5px ${FLEET_GATE.colors.bar};}
+.mar-fcard-status[data-s="idle"] i{background:#3B3A5A33;}
+.mar-fcard-bar{height:5px;border-radius:999px;background:${FLEET_CARD.colors.track};overflow:hidden;}
+.mar-fcard-bar i{display:block;height:100%;width:0;border-radius:999px;background:var(--acc,${UI.secondary});}
+.mar-fcard-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;}
+.mar-fcard-acts button{flex:1 1 auto;height:30px;border:0;border-radius:999px;padding:0 12px;font:800 12.5px/1 'Nunito',sans-serif;background:${FLEET_GATE.colors.denyBg};color:${UI.ink};cursor:pointer;white-space:nowrap;}
+.mar-fcard-acts .mar-fcard-allow{flex:1 1 0;height:32px;font-size:13px;background:${FLEET_GATE.colors.allowBg};color:${FLEET_GATE.colors.allowInk};box-shadow:0 3px 0 #2A6B3C;}
+.mar-fcard-acts .mar-fcard-deny{flex:0 0 auto;height:32px;padding:0 16px;font-size:13px;}
+.mar-fcard-acts button:disabled{opacity:.5;cursor:default;}
+@media (hover:hover){.mar-fcard-acts button:hover:not(:disabled){filter:brightness(.96);}.mar-fcard-acts .mar-fcard-allow:hover:not(:disabled){filter:brightness(1.08);}.mar-fcard .mar-fcard-tog:hover{text-decoration:underline;}}
+.mar-fcard-tip .mar-ftip-title{font:800 12.5px/1.3 'Nunito',sans-serif;white-space:nowrap;}
 `;
 
 /**
