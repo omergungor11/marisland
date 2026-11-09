@@ -519,7 +519,7 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 | ID | Task | Agent | Size | Status | Depends |
 |---|---|---|---|---|---|
 | TASK-612 | M50 referans seti: 4 ada × T0/T1/T2 × öğle/altın `G-*` presetleri, G1–G6 kriter taslağı, "önce" kontak sayfası | qa | S | COMPLETED | — |
-| TASK-613 | M50 duvar paleti ve tabakalar (peer Phase 5 TASK-595 strata / scree buraya katlandı): tema başına 3–4 strata tonu, band yüksekliği duvarla ölçeklenir, dudak gölgesi + etek koyuluğu albedo'ya, çatlak tekrarını kıran ikinci ölçek | shader | M | IN PROGRESS | TASK-612 |
+| TASK-613 | M50 duvar paleti ve tabakalar (peer Phase 5 TASK-595 strata / scree buraya katlandı): tema başına 3–4 strata tonu, band yüksekliği duvarla ölçeklenir, dudak gölgesi + etek koyuluğu albedo'ya, çatlak tekrarını kıran ikinci ölçek | shader | M | COMPLETED (D-162) | TASK-612 |
 | TASK-614 | M50 üst yüzey makro varyasyon: çim yükseklik gradyanı, nem/yıpranma lekeleri, yol kenarı aşınması, çim→kum 4–6 u geçiş | shader | M | PENDING | TASK-612 |
 | TASK-615 | M50 silüet ve kenar: kıyı boyunca duvar yüksekliği ±25 %, plato kenarı kaya çıkıntıları, teras basamağı, SDF çim dudağı, etek talus scatter ≤ 2k tris/ada | worldgen | M | IN PROGRESS | TASK-612 |
 | TASK-616 | M50 kıyı şeridi: ıslak kaya bandı, kum dalgacıkları, şelf devamı, köpük temas hizası | shader | S | PENDING | TASK-613 |

@@ -4,6 +4,7 @@
 > üst yüzey, yamaç (bluff) duvarları, kıyı şeridi. Su shader'ı (TASK-353), post zinciri (TASK-586) ve
 > prop'lar bu milestone'un dışında. Karar yazısı: D-162 (yön seçilince).
 >
+> Kademe eşikleri (`detail/tier.ts` TIERS): T1 380 u, T2 140 u, T3 45 u, yakın 12 u (±%10 histerezis).
 > Numaralandırma 2026-11-09: ilk taslak M45 / TASK-590…596 idi; paralel session'ın Phase 5 planı
 > (`mar-plans/VISUAL_UPGRADE.md`, M45–M49, TASK-590…611, D-156…161) o numaraları önce aldı → M50,
 > TASK-612…618, D-162+. Phase 5 TASK-595 (terrain strata / scree / moss) buraya katlandı (613 / 614);

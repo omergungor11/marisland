@@ -1,5 +1,7 @@
 import { FLEET_BOTS as B } from '../content/fleet.ts';
+import { PORTRAIT } from '../content/fleet-portrait.ts';
 import type { FleetSession } from '../fleet/protocol.ts';
+import { injectPortraitCss, putPortrait, sessionLook } from './bot-portrait.ts';
 
 /**
  * Hover tip of a bound bot (TASK-564): agent (small caps) + session title, in the fleet panel's
@@ -7,22 +9,27 @@ import type { FleetSession } from '../fleet/protocol.ts';
  * so hiding the HUD hides it. Pointer positions are canvas CSS px (the HUD is full-viewport).
  */
 export interface FleetTip {
-  show(s: FleetSession, accent: string, x: number, y: number): void;
+  /** `pendingGate`: the session has a gate waiting (the portrait asks `?`). */
+  show(s: FleetSession, accent: string, x: number, y: number, pendingGate?: boolean): void;
   hide(): void;
   dispose(): void;
 }
 
 export function createFleetTip(root: HTMLElement): FleetTip {
+  injectPortraitCss();
   const el = document.createElement('div');
   el.className = 'mar-ftip';
   el.setAttribute('aria-hidden', 'true');
-  el.innerHTML = '<span class="mar-fagent"></span><span class="mar-ftip-title"></span>';
+  el.innerHTML =
+    '<span class="mar-fbot"></span><span class="mar-ftip-txt"><span class="mar-fagent"></span><span class="mar-ftip-title"></span></span>';
   root.appendChild(el);
-  const agent = el.firstElementChild as HTMLElement;
-  const title = el.lastElementChild as HTMLElement;
+  const bot = el.firstElementChild as HTMLElement;
+  const agent = el.querySelector('.mar-fagent') as HTMLElement;
+  const title = el.querySelector('.mar-ftip-title') as HTMLElement;
   let shownId = '';
   return {
-    show(s, accent, x, y) {
+    show(s, accent, x, y, pendingGate = false) {
+      putPortrait(bot, sessionLook(s, pendingGate), PORTRAIT.px.tip);
       if (shownId !== s.id) {
         shownId = s.id;
         agent.textContent = s.agent;
