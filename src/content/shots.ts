@@ -2278,6 +2278,18 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     fleet: 'mock',
     sets: ['dev'],
   },
+  // TASK-591 F-portraits: the fleet view (no island focused, tier 0) with every session's bot portrait
+  {
+    id: 'F-portraits',
+    title: 'Fleet view · bot portraits',
+    seed: 1001,
+    cam: 'overview',
+    time: 14,
+    simt: 2,
+    hud: true,
+    fleet: 'mock',
+    sets: ['dev'],
+  },
   // ---- sandbox edits (TASK-221): `pnpm shots edit`. Logs on seed 1001 generated with
   // `encodeLog` (world/edit.ts); re-recorded for the Phase 3 layout (TASK-309: moved with their
   // island, rejected placements dropped) and the theme-first world (TASK-380: one pine that now
