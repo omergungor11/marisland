@@ -459,10 +459,39 @@ export const POST = {
   tiltPxPerScale: 4.4,
   /** Feather (in the effect's −1..1 vertical units) between sharp centre and blurred band. */
   tiltFeather: 0.25,
-  /** DOF (high quality, T3): focus range in u and bokeh px. */
+  /** DOF (high quality): minimum focus range in u (the tier fallback's fixed range). */
   dofFocusRange: 18,
   /** Bloom threshold actually used: bible 0.9 is measured on tone-mapped output; in linear
    * HDR sunlit sand reaches ≈ 0.95, so we gate at 1.0 to keep land out of bloom. */
   bloomThreshold: Math.max(LIGHTING.bloom.threshold, 1.0),
   bloomSmoothing: 0.08,
+} as const;
+
+/**
+ * Zoom blur (TASK-586): the tilt-shift band / blur and the DOF bokeh follow the orbit distance
+ * (camera → orbit target, u), linear between the knots, so no tier flip jumps and the hysteresis
+ * cannot make a blur stick. The blur only weakens as you zoom in (detail sharpens smoothly);
+ * 380–140 u keeps the T1 row of `LIGHTING.tiltShift` (postcard, W4), T0 is off beyond 420 u.
+ * Knots, far → near: [dist, band, blur px (medium), blur px (high), DOF bokehScale (high)].
+ *   dist    ≥420  380   140   70    24    12    ≤8
+ *   band    .15   .15   .15   .12   .09   .07   .07    (sharp where |y − offset| < 1 − 2·band)
+ *   medium  0     2     2     1.5   1     .75   .75 px
+ *   high    0     2     2     1.5   1     0     0 px   (tilt hands over to DOF 24 → 12 u)
+ *   bokeh   0     0     0     0     0     1     2      (DOF pass off while 0)
+ * The sharp band is centred on the orbit target's screen height (|offset| ≤ maxOffset). DOF focuses
+ * on the orbit target with focus range max(POST.dofFocusRange, dofRangeScale × dist): at 20 u the
+ * island is sharp, only the far background softens at 12 u; a shallow plane only below ~8 u.
+ */
+export const POST_ZOOM = {
+  knots: [
+    [420, 0.15, 0, 0, 0],
+    [380, 0.15, 2, 2, 0],
+    [140, 0.15, 2, 2, 0],
+    [70, 0.12, 1.5, 1.5, 0],
+    [24, 0.09, 1, 1, 0],
+    [12, 0.07, 0.75, 0, 1],
+    [8, 0.07, 0.75, 0, 2],
+  ] as readonly (readonly [number, number, number, number, number])[],
+  dofRangeScale: 3,
+  maxOffset: 0.6,
 } as const;

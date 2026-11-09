@@ -264,16 +264,21 @@ export function createCameraSystem(
           lookFromOrbit(controls, a.x, Math.max(0, y), a.z, dist, pitchForDistance(dist), az, t);
           break;
         }
+        case 'zoom':
         case 'ladder': {
           // `ladder:<island>:<dist>` (D-031): fixed pitch, the village frame's heading, the frame
           // anchor as target; the tier is re-derived without hysteresis (a fresh view at `dist`).
+          // `zoom:<island>:<dist>` (TASK-586): the same target, pitch on the orbit curve.
           const cut = arg.lastIndexOf(':');
           const d = cut < 0 ? NaN : Number(arg.slice(cut + 1));
           const key = cut < 0 ? arg : arg.slice(0, cut);
           const isl = findIsland(world, key) ?? world.islands[0];
           const dist = Number.isFinite(d) && d > 0 ? d : FRAMING.ladder.dists[0];
           controls.maxDistance = Math.max(CAMERA.maxDist, dist);
-          apply(ladderPose(world, isl, key, dist), false);
+          apply(
+            ladderPose(world, isl, key, dist, kind === 'zoom' ? pitchForDistance(dist) : undefined),
+            false,
+          );
           endFly();
           controls.update(0);
           const prev = tier;
