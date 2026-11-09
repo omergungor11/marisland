@@ -261,6 +261,37 @@ export const COURIER = {
   heelScale: 0.6,
   crateHop: { height: 0.9, seconds: 0.7 },
   lantern: { emissive: 1 },
+  /**
+   * Mooring and hand-off spots (TASK-621): the berth is `out` u past the pier head along the pier
+   * heading and `side` u to starboard of it (clear of the HQ ferries' own stop); the crate lands
+   * on the pier head (`dockY` u high) and rests there `restS` s before it is put away.
+   */
+  moor: { out: 3, side: 2.4, dockY: 1.2, restS: 5 },
+  /**
+   * Voyage route search (TASK-621): the Bezier's seaward control points start at `uStart` u from
+   * the berth and grow by `uStep` up to `uMax` until every sample (every `sample` u) is at least
+   * `depth` u under water; when none works an A* over a `gridCell` u grid of water deeper than `pathDepth`
+   * (`gridMargin` u around both berths) finds the way round the islands in between; the first / last `slack` u of a route (inside the harbour basin) are exempt.
+   * The ferry loop is joined at the loop vertex nearest the berth and sampled every `loopStep` u.
+   */
+  route: {
+    uStart: 10,
+    uStep: 6,
+    uMax: 160,
+    sample: 1.5,
+    depth: 1.2,
+    slack: 4,
+    loopStep: 4,
+    gridCell: 3,
+    gridMargin: 90,
+    pathDepth: 2.5,
+  },
+  /** Crates per deck (rest stack on the slots) and the spare crate / scroll instances for hops. */
+  maxCrates: 3,
+  /** Mast lantern halo: radius multiple of the lamp, and how long it takes to light / go out (s). */
+  glow: { radius: 0.34, fadeS: 0.8 },
+  /** A turn at the berth (arrival heading -> pier heading) is eased over this share of the dwell. */
+  turnShare: 1,
 } as const;
 
 /** The def ids of this task (gallery showcase `couriers`, geometry tests). */

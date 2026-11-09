@@ -2,6 +2,24 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-157: Bot chassis / head / eye variants — three worker meshes, look code in `aSeed`, role items (TASK-590) — 2026-11-09
+
+**Decision.** `buildWorker(chassis)` returns one geometry per chassis (scout = the old bot, hauler 0.9 u wide with tread feet,
+spire 1.15 u slim with a ringed antenna), each baking the three heads (monitor / visor / cam), the department accessories, the carried
+items and the eye glyphs; `life/workers.ts` draws three InstancedMeshes (`life:workers`, `-hauler`, `-spire`) on the one life program.
+Look code `floor(aSeed) = acc + 100·item + 2000·(head + 3·eyes)` (`life/bot-code.ts`; strides are multiples of 100 so existing
+phases stay whole; `aGait.y` 4..8 was rejected: `floor(y/4)` is the culture arm-pose code). Resident bots take
+`botLook(`${island}:${rank}`, theme)` with no RNG draws; a fleet-bound bot swaps chassis / head / shade / item only at rest, eyes at
+once, and reverts on release. Role items: wrench, map, hammer, duck, magnifier, hard hat added as carried-item slots 16–21. The
+1900-tri cap per geometry holds via `TriBuilder.skipBottom` (downward faces dropped): scout 1838, hauler 1858, spire 1880. Each
+mesh compacts to its active bots per frame, so wow triangles FELL (W5 789,739 → 689,155, W26 → 619,130, W-funicular-dawn →
+682,752, W-morning-shift → 562,363) at +2 draw calls; programs 17.
+
+**Open.** No shot yet shows the variants or any eye state (the `F-bots` cam frames the pergola row where bots sit under roofs; two
+closer tries showed one bot): TASK-592 adds a deterministic bot line-up shot before motion work, TASK-593 judges heads / eyes there.
+Chassis swap at the desk is a hard pop (592: squash or poof); the beacon sits ~0.18 u low over the spire's antenna; slot-indexed
+tooling must use `Workers.seedOf` / `chassisOf`.
+
 ## D-162: M50 Ground Look — direction "layered rock + painted light"; wall colour comes from a per-theme strata table, bands grow with height, walls are shaded in the terrain program at every distance — 2026-11-09
 
 **Decision**: The island body (plateau top, bluff walls, shore) is upgraded along direction A + C of `mar-plans/GROUND.md` (user choice over "soft earth" B and pure "painted miniature" C): geology first (strata, grass lip with a cool shadow line, dark cool foot, rim outcrops and height variation along the coast, talus), painted light second (stronger AO, grass height gradient, rim light). Reference set = the 24 `G-*` frames (`shots ground`, 4 islands × 380 / 150 / 55 u × noon / golden), acceptance = W-G1…G6 (GROUND.md §6), "before" sheet `mar-docs/shots/M50-before.jpg`.

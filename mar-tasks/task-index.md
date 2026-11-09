@@ -521,7 +521,7 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 | TASK-612 | M50 referans seti: 4 ada × T0/T1/T2 × öğle/altın `G-*` presetleri, G1–G6 kriter taslağı, "önce" kontak sayfası | qa | S | COMPLETED | — |
 | TASK-613 | M50 duvar paleti ve tabakalar (peer Phase 5 TASK-595 strata / scree buraya katlandı): tema başına 3–4 strata tonu, band yüksekliği duvarla ölçeklenir, dudak gölgesi + etek koyuluğu albedo'ya, çatlak tekrarını kıran ikinci ölçek | shader | M | COMPLETED (D-162) | TASK-612 |
 | TASK-614 | M50 üst yüzey makro varyasyon: çim yükseklik gradyanı, nem/yıpranma lekeleri, yol kenarı aşınması, çim→kum 4–6 u geçiş | shader | M | PENDING | TASK-612 |
-| TASK-615 | M50 silüet ve kenar: kıyı boyunca duvar yüksekliği ±25 %, plato kenarı kaya çıkıntıları, teras basamağı, SDF çim dudağı, etek talus scatter ≤ 2k tris/ada | worldgen | M | IN PROGRESS | TASK-612 |
+| TASK-615 | M50 silüet ve kenar: kıyı boyunca duvar yüksekliği ±25 %, plato kenarı kaya çıkıntıları, teras basamağı, SDF çim dudağı, etek talus scatter ≤ 2k tris/ada | worldgen | M | COMPLETED (rim delta after sites, outcrops = Zone.rock, talus ≤ 1.4k tris; G5 lip recipe → 614/616) | TASK-612 |
 | TASK-616 | M50 kıyı şeridi: ıslak kaya bandı, kum dalgacıkları, şelf devamı, köpük temas hizası | shader | S | PENDING | TASK-613 |
 | TASK-617 | M50 ışık ve AO: `TERRAIN_AO` güçlenir (`sandScale` ayrı), terrain rim terimi, duvar gölge tonu | shader | S | PENDING | TASK-614 |
 | TASK-618 | M50 kapanış QA + belge: "sonra" kontak sayfası, G kriter puanı, ART_BIBLE / ARCHITECTURE / D-162 | qa + docs | S | PENDING | TASK-613…617 |
@@ -532,8 +532,8 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 | ID | Task | Agent | Size | Status | Depends |
 |---|---|---|---|---|---|
 | TASK-620 | Courier ship factories + content (props): 7 theme ships + crate + report scroll in `src/geo/courier.ts`, specs in `src/content/fleet-ships.ts`, `P-couriers` preset, tri / determinism tests | props | M | COMPLETED (gallery showcase `pnpm exec tsx scripts/gallery-shots.ts couriers`, no `P-couriers` preset in shots.ts) | — |
-| TASK-621 | Courier agent kind + voyage FSM (life): one ship per island at its berth, land-safe route (ferry loop or tested Bezier), pure `courierState(gates, sessions, now)` (pending → load, allowed → sail, child done → return with scroll, denied → unload), mock voyage | life | M | IN PROGRESS (life agent, worktree, 2026-11-09) | TASK-620 |
-| TASK-622 | Ship picking + info card (engine): click → `mar-fcard` (from → to, request title, prompt, status, İzin ver / Reddet, open child), hover tip, Esc precedence, `F-courier` / `F-courier-card` presets | engine | M | PENDING | TASK-621 |
+| TASK-621 | Courier agent kind + voyage FSM (life): one ship per island at its berth, land-safe route (ferry loop or tested Bezier), pure `courierState(gates, sessions, now)` (pending → load, allowed → sail, child done → return with scroll, denied → unload), mock voyage | life | M | COMPLETED (7 ships as 7 InstancedMesh, routes: ferry loop / Bezier / grid A*, F-courier-* dev presets; budgets ok, deterministic) | TASK-620 |
+| TASK-622 | Ship picking + info card (engine): click → `mar-fcard` (from → to, request title, prompt, status, İzin ver / Reddet, open child), hover tip, Esc precedence, `F-courier` / `F-courier-card` presets | engine | M | IN PROGRESS (engine agent, worktree, 2026-11-09) | TASK-621 |
 | TASK-623 | M51 QA + docs: shots, budgets, determinism, one real gate on the bridge; ART_BIBLE / ARCHITECTURE / FLEET.md | qa + docs | S | PENDING | TASK-622 |
 
 
@@ -543,9 +543,9 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-590 | Bot chassis (scout / hauler / spire) + head (monitor / visor / cam) variants, each chassis its own InstancedMesh, role → carried item, eye states (idle / working / gate / error / done) from `botLook(seed)`; `F-bots` dev shot | life | M | IN_PROGRESS | — |
-| TASK-591 | Panel portraits: `botPortraitSvg(look)` on session rows, terminal header, fleet chips, hover tip; mock covers 3 × 3 looks × 5 states; `F-portraits` dev shot | engine | S | IN_PROGRESS | — (reads `content/bot-look.ts`) |
-| TASK-592 | Bot motion variety: per-chassis gait, four idle beats, gate look-up + amber gem pulse, done hop + sparkles | life | S | PENDING | TASK-590 |
+| TASK-590 | Bot chassis (scout / hauler / spire) + head (monitor / visor / cam) variants, each chassis its own InstancedMesh, role → carried item, eye states (idle / working / gate / error / done) from `botLook(seed)`; `F-bots` dev shot | life | M | COMPLETED (D-157; open: line-up shot, swap pop) | — |
+| TASK-591 | Panel portraits: `botPortraitSvg(look)` on session rows, terminal header, fleet chips, hover tip; mock covers 3 × 3 looks × 5 states; `F-portraits` dev shot | engine | S | COMPLETED (D-158; open: tip gate flag in app.ts, 20 px head legibility) | — (reads `content/bot-look.ts`) |
+| TASK-592 | Bot motion variety: per-chassis gait, four idle beats, gate look-up + amber gem pulse, done hop + sparkles; FIRST a deterministic bot line-up (`F-bot-lineup`: all 9 looks × 5 eye states on the Coding plaza, `?bots=lineup`) so QA can see them; chassis swap squash / poof | life | S | PENDING | TASK-590 |
 | TASK-611 | Detail reveal: earlier and continuous (user 2026-11-09: "çok yaklaşmam gerekiyor detayların netleşmesi için, o kısım smooth olmalı"). Tier-2 / tier-3 prop reveal moves out (`TIER_FADE` 2: 120–160 → ~200–260 u, 3: 40–55 → ~70–95 u) with wide dither cross-fades instead of a band pop; the tilt-shift sharp band follows the orbit target and widens so the focused island is never blurred at T1–T2; high DOF focus range scales with distance; budgets re-measured (more LOD0 in view). Composer / tilt-shift side moved to TASK-586 (peer session); 611 = prop reveal bands + cross-fade + flip-book only | engine | S | IN_PROGRESS | — |
 | TASK-593 | M45 QA: portraits vs 3D bots, F-* shots, wow budgets W5 / W26 / W-morning-shift / W-funicular-dawn, low ladder | qa | S | PENDING | TASK-590, TASK-591, TASK-592 |
 
