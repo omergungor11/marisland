@@ -10,6 +10,7 @@ import {
   GROUND_WALL,
 } from '../../content/ground.ts';
 import {
+  LIP_ZONE_FLAG,
   PALETTE_SCALE,
   PALETTE_TEXELS,
   PATTERN_LAYERS,
@@ -206,7 +207,10 @@ float marCaustic(vec2 p, float t) {
         '#include <color_fragment>',
         /* glsl */ `#include <color_fragment>
   vec2 marUv = marTerrainUv(vMarWorld.xz);
-  float marZone = floor(texture2D(uTerrainZone, marUv).r * 255.0 + 0.5);
+  // lip texels (TASK-616) carry their vegetation zone + LIP_ZONE_FLAG: the material reads the
+  // vegetation zone, the semantic mask the original cliff
+  float marZoneTx = floor(texture2D(uTerrainZone, marUv).r * 255.0 + 0.5);
+  float marZone = mod(marZoneTx, ${LIP_ZONE_FLAG}.0);
 ${GROUND_COLOR_GLSL}
 ${GROUND_ART_COLOR_GLSL}
 ${LAVA_COLOR_GLSL}
@@ -316,7 +320,7 @@ ${GROUND_ART_LIGHT_GLSL}
     vec3 m = uMaskLand;
     if (vMarWorld.y < 0.0) m = uMaskSeabed;
     else if (marZone == ${Zone.sandWet}.0) m = uMaskWet;
-    else if (marZone == ${Zone.rock}.0 || marZone == ${Zone.cliff}.0) m = uMaskRock;
+    else if (marZone == ${Zone.rock}.0 || marZone == ${Zone.cliff}.0 || marZoneTx >= ${LIP_ZONE_FLAG}.0) m = uMaskRock;
     gl_FragColor = vec4(m, 1.0);
     #include <colorspace_fragment>
   }`,
@@ -367,7 +371,7 @@ ivec2 marTexel(ivec2 t) {
 }
 /** Material class of a zone texel (the albedo smoothing classes of terrain-colors.ts). */
 int marZoneClass(float z) {
-  int i = int(z * 255.0 + 0.5);
+  int i = int(z * 255.0 + 0.5) % ${LIP_ZONE_FLAG};
   ${zoneClassGlsl()}
 }
 vec4 marPal(float zone, float isl, int c) {
@@ -592,7 +596,7 @@ const GROUND_COLOR_GLSL = /* glsl */ `
       vec4 a = texelFetch(uAlbedo, t, 0);
       marAlb[k] = a.rgb;
       marIl[k] = floor(a.a * 255.0 + 0.5);
-      marZn[k] = floor(texelFetch(uTerrainZone, t, 0).r * 255.0 + 0.5);
+      marZn[k] = mod(floor(texelFetch(uTerrainZone, t, 0).r * 255.0 + 0.5), ${LIP_ZONE_FLAG}.0);
       marKey[k] = marPal(marZn[k], marIl[k], 0);
     }
     // pool corners of the same material; A = dominant material, B = runner-up
@@ -654,7 +658,7 @@ const GROUND_COLOR_GLSL = /* glsl */ `
     float marWallCliff = 0.0;
     float marOwn = 0.0;
     float marSteepCliff = 1.0 - smoothstep(${g(GW.ny.cliff[0])}, ${g(GW.ny.cliff[1])}, marWN.y);
-    if (marSteepCliff > 0.0 && vMarWorld.y > -1.2) {
+    if (marSteepCliff > 0.0 && vMarWorld.y > ${g(-GW.wetBelow)}) {
       float marSteepSoil = 1.0 - smoothstep(${g(GW.ny.soil[0])}, ${g(GW.ny.soil[1])}, marWN.y);
       float marCoast = 1.0 - smoothstep(${g(GW.coast[0])}, ${g(GW.coast[1])}, texture2D(uTerrainSdf, marUv).r);
       ivec2 marC0 = ivec2(floor(marG));
@@ -662,7 +666,9 @@ const GROUND_COLOR_GLSL = /* glsl */ `
       for (int k = 0; k < 4; k++) {
         ivec2 o = ivec2(k - 2 * (k / 2), k / 2);
         float bw = (o.x == 1 ? marCf.x : 1.0 - marCf.x) * (o.y == 1 ? marCf.y : 1.0 - marCf.y);
-        vec4 wp = marPal(floor(texelFetch(uTerrainZone, marTexel(marC0 + o), 0).r * 255.0 + 0.5), marIsl, 1);
+        // lip texels (TASK-616) stay cliff here: the slope alone draws the lip line
+        float marWz = floor(texelFetch(uTerrainZone, marTexel(marC0 + o), 0).r * 255.0 + 0.5);
+        vec4 wp = marPal(marWz >= ${LIP_ZONE_FLAG}.0 ? ${Zone.cliff}.0 : marWz, marIsl, 1);
         float inl = step(0.25, wp.a);
         float own = step(0.75, wp.a);
         float wk = bw * wp.b * ${g(255 / PALETTE_SCALE.wall)};
@@ -672,7 +678,7 @@ const GROUND_COLOR_GLSL = /* glsl */ `
         marOwn += bw * own;
       }
     }
-    float marWall = (marWallSoil + marWallCliff) * smoothstep(-1.2, 0.0, vMarWorld.y);
+    float marWall = (marWallSoil + marWallCliff) * smoothstep(${g(-GW.wetBelow)}, ${g(-0.4 * GW.wetBelow)}, vMarWorld.y);
     if (marWall > 0.0) {
       // wall top / foot along the fall line (height texture probes)
       vec2 marIn = -normalize(marWN.xz + vec2(1e-5, 0.0));
@@ -683,7 +689,7 @@ ${WALL_PROBES_GLSL}
       marFoot = max(marFoot, 0.0);
       // soil walls stand on the beach / sea (a steep hillside further up stays green)
       marWall = (marWallSoil * (1.0 - smoothstep(${g(GW.footMax[0])}, ${g(GW.footMax[1])}, marFoot)) + marWallCliff)
-              * smoothstep(-1.2, 0.0, vMarWorld.y);
+              * smoothstep(${g(-GW.wetBelow)}, ${g(-0.4 * GW.wetBelow)}, vMarWorld.y);
       marWall *= smoothstep(${g(GW.minHeight[0])}, ${g(GW.minHeight[1])}, marTop - marFoot);
       float marD = marTop - vMarWorld.y;
       // strata (TASK-613): the island theme's band tones, cycled bottom → top, in wobbling bands
@@ -734,10 +740,16 @@ ${WALL_PROBES_GLSL}
       float marLine = (1.0 - smoothstep(0.0, max(${g(GW.lipLine)}, ${g(GW.lipLinePx)} * marYw), marD - marLipY)) * (1.0 - marLip);
       vec3 marWc = mix(marSoil * mix(vec3(1.0), ${g(1 - GW.lipLineDark)} * vec3(${g(1 - GW.lipLineCool)}, ${g(1 - 0.4 * GW.lipLineCool)}, 1.0), marLine),
                        marLipCol, marLip);
-      // wet line just above the water: darker and cooler
-      float marWetY = ${g(GW.wetHeight)} + ${g(GW.wetWobble)} * sin(vMarWorld.x * 0.37 + vMarWorld.z * 0.29 + 1.7 * sin(vMarWorld.z * 0.11));
+      // wet rock band (TASK-616, G3): 0.6–1.2 u above the water (never under wetPx px), darker and
+      // cooler, carrying on below the waterline; a thin salt line on its top edge on light strata
+      float marWetY = max(${g(GW.wetHeight)} + ${g(GW.wetWobble)} * sin(vMarWorld.x * 0.37 + vMarWorld.z * 0.29 + 1.7 * sin(vMarWorld.z * 0.11)), ${g(GW.wetPx)} * marYw);
       float marWet = 1.0 - smoothstep(marWetY - marEw, marWetY + marEw, vMarWorld.y);
-      marWc *= mix(vec3(1.0), ${g(1 - GW.wetDark)} * vec3(${g(1 - GW.wetCool)}, ${g(1 - 0.4 * GW.wetCool)}, 1.0), marWet);
+      float marSd = vMarWorld.y - marWetY;
+      float marSaltW = max(${g(GW.saltWidth)}, ${g(GW.saltPx)} * marYw);
+      float marSalt = smoothstep(-marEw, 0.0, marSd) * (1.0 - smoothstep(marSaltW, marSaltW + marEw, marSd))
+                    * smoothstep(${g(GW.saltLum[0])}, ${g(GW.saltLum[1])}, dot(marBand, vec3(0.2126, 0.7152, 0.0722))) * (1.0 - marLip);
+      marWc *= mix(vec3(1.0), ${g(1 - GW.wetDark)} * vec3(${g(1 - GW.wetCool)}, ${g(1 - 0.4 * GW.wetCool)}, 1.0), marWet)
+             * (1.0 + ${g(GW.salt)} * marSalt);
       // carving: vertical cracks (ridged noise along the wall, stretched in y, mean-compensated)
       // and a ledge roll per strata band, below the lip only
       float marRock = marWall * (1.0 - marLip);

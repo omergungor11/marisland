@@ -45,6 +45,8 @@ export const TERRAIN_COLORS = {
   seabed: '#5C7E8E',
   /** Deep seabed (fades in toward −20 u). */
   seabedDeep: '#4D6E80',
+  /** Shelf under a wall foot (TASK-616, `GROUND_SHORE`): darker and greener, meets the lagoon water. */
+  seabedShelf: '#3E6A66',
 } as const;
 
 /** Debug semantic mask colours (VISUAL_QA mask metrics). Output unlit, exact. */
