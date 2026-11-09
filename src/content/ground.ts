@@ -5,8 +5,8 @@
  * layers below near the camera. A zone a theme does not list keeps today's palette colour
  * (`DEFAULT_GROUND`).
  */
-import { GRASS, HAY, ROCK, SAND, WALL_STRATA } from './palette.ts';
-import { Zone, type ZoneId } from '../world/types.ts';
+import { FLOWERS, FOLIAGE, GRASS, HAY, HOT_SPRING, ROCK, SAND, WALL_STRATA } from './palette.ts';
+import { Zone, type ThemeId, type ZoneId } from '../world/types.ts';
 
 /** Global material ids. Order is stable: index = material id in the palette texture. */
 export type GroundMaterial =
@@ -291,6 +291,71 @@ export const GROUND_MACRO = {
   weights: [0.65, 0.35] as const,
   lightness: { veg: 0.07, sand: 0.035, rock: 0.05, paved: 0.025, under: 0.03 },
   vegHue: 0.05,
+  /**
+   * Moisture / wear blotches on vegetation (TASK-614, G2): a seeded two-octave field (u
+   * wavelengths, weights) whose high side reads as sunny / dry patches (lighter by `dryLight`,
+   * leaning toward the theme's `lean`) and its low side as moist hollows (darker by `moistDark`,
+   * cool lean `moistCool`, b − r share, ART_BIBLE P4). Smoothstep edges over the `dry` / `moist`
+   * field ranges keep the blotch borders soft (≥ 10 u at the 34 u octave).
+   */
+  blotch: {
+    wavelengths: [34, 15] as const,
+    weights: [0.65, 0.35] as const,
+    dry: [0.05, 0.5] as const,
+    moist: [-0.1, -0.55] as const,
+    dryLight: 0.08,
+    moistDark: 0.12,
+    moistCool: 0.05,
+  },
+  /**
+   * Theme lean of the dry patches (linear lerp toward `lean` by `mix` × the patch weight): the
+   * plateau top's own hue per island, so two islands read apart by their ground alone.
+   */
+  themeLean: {
+    default: { lean: GRASS[0], mix: 0.3 },
+    // Hearthholm: warm yellow-green
+    hq: { lean: GRASS[0], mix: 0.42 },
+    // Coding: cool blue-green under the slate walls
+    coding: { lean: FOLIAGE.deciduous[1], mix: 0.4 },
+    // Beacon Rock: dry straw
+    marketing: { lean: HAY, mix: 0.36 },
+    // Palmlagoon: mint
+    qa: { lean: HOT_SPRING, mix: 0.36 },
+    // Design: a pink-tinged meadow
+    design: { lean: FLOWERS[0], mix: 0.1 },
+    // Emberpeak: ash-green
+    devops: { lean: ROCK[0], mix: 0.3 },
+    // Lonely Palm: warm olive (straw over the green)
+    research: { lean: HAY, mix: 0.36 },
+  } as Readonly<Record<ThemeId | 'default', { lean: string; mix: number }>>,
+  /**
+   * Worn grass beside paths / plazas / streets (TASK-614): within `reach` grid cells of a paved
+   * sample, darker by `dark` and desaturated by `desat` (sRGB share), fading linearly with the
+   * cell distance.
+   */
+  worn: { reach: 2, dark: 0.09, desat: 0.15 },
+  /**
+   * Grass → sand edge (TASK-614, W-G5): vegetation within `reach` cells of sand lerps toward a dry
+   * blend of its own colour and the neighbouring sand base (`dryShare` of the sand) by up to
+   * `mix`, sand within `sandReach` cells of vegetation toward the same blend by up to `sandMix`,
+   * so the colour step at the class border is small and the edge reads as a 4–6 u gradient. A
+   * value-noise speckle (`speckleScale` u, ± `speckle` of the weight) breaks it into dry-grass
+   * tufts and pebbly patches.
+   */
+  /**
+   * Grass never muddy (W-G2): vegetation HSL saturation is lifted to at least this, capped at the
+   * saturation of the zone's own base colour (DevOps scrub stays scrub).
+   */
+  vegSatFloor: 0.5,
+  shore: {
+    reach: 3,
+    sandReach: 2,
+    mix: 0.6,
+    sandMix: 0.32,
+    dryShare: 0.55,
+    speckleScale: 3.4,
+    speckle: 0.45,
+  },
 } as const;
 
 /**

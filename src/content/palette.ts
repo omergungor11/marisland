@@ -48,7 +48,7 @@ export const WALL_STRATA = {
   // Emberpeak: ash / basalt grey-violet / rust / dark basalt
   devops: ['#BDB4B8', '#8A8296', '#A8684E', '#6E6878'],
   // Lonely Palm: pale sand / lavender-grey / warm sand / lilac shadow
-  research: ['#EAD7AE', '#B8A9CC', '#D4B98C', '#9585AD'],
+  research: ['#EAD7AE', '#B6ACC2', '#D4B98C', '#968BA6'],
 } as const;
 export const FOLIAGE = {
   deciduous: ['#8FD16A', '#5DBB63', '#3E9A52'],
