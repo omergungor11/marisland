@@ -2,6 +2,7 @@ import { WHARF_GEO as F, WHARF_VARIANTS as WV } from '../content/themes/design-h
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { BLINK } from '../content/activity.ts';
+import { MATERIAL_CLASS_COUNT, decodeSurface, emissiveBase } from '../content/materials.ts';
 import { STAIR_FLIGHT } from '../content/stairs.ts';
 import { OFFICE_DEFS, OFFICE_INTERIOR_SHELLS, WORK_SPOTS } from '../content/offices.ts';
 import { PROP_GEO, buildProp } from './index.ts';
@@ -235,7 +236,10 @@ describe('prop geometry', () => {
             const em = g.getAttribute('emissive');
             expect(em.itemSize).toBe(1);
             expect(em.count).toBe(n);
-            const ea = em.array as Float32Array;
+            // TASK-594: material classes ride above the emissive codes (content/materials.ts)
+            const raw = em.array as Float32Array;
+            expect(raw.every((x) => decodeSurface(x).cls < MATERIAL_CLASS_COUNT)).toBe(true);
+            const ea = raw.map(emissiveBase);
             // 0..1 glow, 2 = screen / LED class (TASK-305), BLINK.base + 1 = blinking lamp (TASK-479)
             expect(
               ea.every((x) => Number.isFinite(x) && x >= 0 && (x <= 2 || x === BLINK.base + 1)),
@@ -245,7 +249,9 @@ describe('prop geometry', () => {
             for (let f = 0; f < n; f += 3)
               expect(ea[f] === ea[f + 1] && ea[f] === ea[f + 2]).toBe(true);
           } else {
-            expect(g.getAttribute('emissive')).toBeUndefined();
+            // no glow: either no emissive attribute or a class-only one (base 0 everywhere)
+            const em = g.getAttribute('emissive');
+            if (em) expect(Array.from(em.array).every((x) => emissiveBase(x) === 0)).toBe(true);
           }
           const bb = g.boundingBox!;
           // pipe support posts run down into the slope (TASK-453c; 4.2 u: a run over a terrace
