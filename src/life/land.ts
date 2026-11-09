@@ -58,7 +58,7 @@ export abstract class LandKind extends AgentKind {
   protected tier = 0;
   private readonly draws: Uint32Array;
   private readonly kindSalt: number;
-  private readonly gait: Float32Array;
+  protected readonly gait: Float32Array;
   private readonly gaitAttr: THREE.InstancedBufferAttribute;
 
   constructor(

@@ -2723,6 +2723,18 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     height: 1080,
     sets: ['wow'],
   },
+  // TASK-590 F-bots: the Coding pergola row at T2 with the mock fleet: chassis / head variants and eye states
+  {
+    id: 'F-bots',
+    title: 'Fleet bots · chassis, heads, eyes · Coding pergolas',
+    seed: 1001,
+    cam: '-108,25,170,-106,9.5,148',
+    time: 14,
+    simt: 2,
+    quality: 'medium',
+    fleet: 'mock',
+    sets: ['dev'],
+  },
 ];
 
 export const SET_DEFAULTS: Record<
