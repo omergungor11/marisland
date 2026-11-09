@@ -13,7 +13,7 @@ export interface ShotPreset {
   id: string;
   title: string;
   seed: number;
-  /** overview | island:<name> | village | dock | macro-beach | site:<anchor>:x,y,z,tx,ty,tz (anchor frame) | raw x,y,z,tx,ty,tz */
+  /** overview | island:<name> | village | dock | macro-beach | ladder|zoom:<island>:<dist> | site:<anchor>:x,y,z,tx,ty,tz (anchor frame) | raw x,y,z,tx,ty,tz */
   cam: string;
   /** Game hour. */
   time: number;
@@ -2483,6 +2483,21 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   }),
   ...MOVE_SHOTS,
   ...TUNNEL_SHOTS,
+  // Zoom-in blur pair (TASK-586): the HQ island at 24 u on the real orbit pitch curve
+  // (`cam=zoom:<island>:<dist>`), high (tilt-shift → DOF hand-over) and medium (tilt-shift only);
+  // the plaza, the clock tower and the stalls behind must all read sharp.
+  ...(['high', 'medium'] as const).map((q): ShotPreset => ({
+    id: `Z-zoom-${q}`,
+    title: `Zoom blur · ${q} · 24 u`,
+    seed: 1001,
+    cam: 'zoom:hq:24',
+    time: 14,
+    simt: 2,
+    quality: q,
+    width: 960,
+    height: 540,
+    sets: ['dev'],
+  })),
   {
     id: 'W-marina-dusk',
     title: 'Marina Dusk',
