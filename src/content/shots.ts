@@ -32,8 +32,10 @@ export interface ShotPreset {
   dollySeconds?: number;
   /** Show the HUD (the harness defaults to `hud=0`). */
   hud?: boolean;
-  /** HUD panel open (`panel=`): photo bar, settings sheet or edit panel (`edit:<tool>`). */
-  panel?: 'photo' | 'settings' | 'edit' | `edit:${EditToolKind}`;
+  /** HUD panel open (`panel=`): photo bar, settings sheet, edit panel (`edit:<tool>`) or the admin window (M43). */
+  panel?: 'photo' | 'settings' | 'edit' | `edit:${EditToolKind}` | 'admin';
+  /** Admin window view (`admin=`, M43): `<tab>[:<KbFile.path>]` of the mock knowledge base. */
+  admin?: string;
   /** Phase 2 edit log (`edit=`, `encodeLog`), replayed before the first build. */
   edit?: string;
   /** Fleet feed (`fleet=`, TASK-563): the deterministic mock fills the island panel. */
@@ -2276,6 +2278,38 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     simt: 30,
     hud: true,
     fleet: 'mock',
+    sets: ['dev'],
+  },
+  // ---- M43 admin window (TASK-585): the overview with the mock fleet, the window on its Projeler tab
+  // (960×540: the default box shrinks to fit right of the fleet card, two-column KB layout)
+  {
+    id: 'F-admin',
+    title: 'Admin window · Projeler',
+    seed: 1001,
+    cam: 'overview',
+    time: 14,
+    simt: 2,
+    hud: true,
+    fleet: 'mock',
+    panel: 'admin',
+    sets: ['dev'],
+  },
+  // ---- TASK-585: the admin window wide enough for the three-column KB view (1056×588: the
+  // low-quality gpuMemoryMB budget holds the canvas up to ~0.62 Mpx), a Coding memory open
+  // (frontmatter, table, code, a dead [[link]]; the list shows the "eski" badge)
+  {
+    id: 'F-admin-doc',
+    title: 'Admin window · Hafıza document',
+    seed: 1001,
+    cam: 'overview',
+    time: 14,
+    simt: 2,
+    width: 1056,
+    height: 588,
+    hud: true,
+    fleet: 'mock',
+    panel: 'admin',
+    admin: 'hafiza:island:coding/memory/golge-acne.md',
     sets: ['dev'],
   },
   // ---- sandbox edits (TASK-221): `pnpm shots edit`. Logs on seed 1001 generated with

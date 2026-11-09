@@ -63,6 +63,15 @@ describe('params', () => {
     expect(parseParams('?panel=photo:prop').panelTool).toBe('');
   });
 
+  it('parses the admin window panel and its view (TASK-585)', () => {
+    expect(parseParams('?panel=admin').panel).toBe('admin');
+    expect(parseParams('?panel=admin').panelTool).toBe('');
+    expect(parseParams('').admin).toBe('');
+    expect(parseParams('?panel=admin&admin=hafiza:island:coding/memory/golge-acne.md').admin).toBe(
+      'hafiza:island:coding/memory/golge-acne.md',
+    );
+  });
+
   it('bridge: a valid port or NaN', () => {
     expect(parseParams('?bridge=5177').bridge).toBe(5177);
     expect(parseParams('').bridge).toBeNaN();

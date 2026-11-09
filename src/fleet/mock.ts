@@ -7,7 +7,7 @@
  * ≈ 10 s of timers and end `done`, `stop` stops. The mock's clock is `now` plus its timers' delays
  * (no wall clock).
  */
-import { FLEET_MOCK as M } from '../content/fleet.ts';
+import { FLEET_MOCK as M, FLEET_MOCK_PROJECTS as MP } from '../content/fleet.ts';
 import { THEMES } from '../content/themes.ts';
 import { createRng, type Rng } from '../core/rng.ts';
 import { THEME_IDS } from '../world/types.ts';
@@ -19,6 +19,7 @@ import {
   type FleetGate,
   type FleetIsland,
   type FleetLine,
+  type FleetProject,
   type FleetRequest,
   type FleetSession,
   type SessionStatus,
@@ -307,12 +308,19 @@ export interface FleetMock {
   stop(): void;
 }
 
+/** The mock's registered projects (M43), `createdAt` offset from `now`. */
+export const mockProjects = (now: number): FleetProject[] =>
+  MP.projects.map(({ createdAgoD, ...p }) => ({ ...p, createdAt: now - createdAgoD * 86_400_000 }));
+
 /** Emits the snapshot at once, then (unless frozen) the line feed. */
 export function createFleetMock(o: FleetMockOptions, emit: (ev: FleetEvent) => void): FleetMock {
   const snap = mockFleet(o.seed, o.now);
   const state = new Map<string, FleetSession>();
   const lines = new Map<string, FleetLine[]>();
-  for (const s of snap.sessions) {
+  for (const drawn of snap.sessions) {
+    // M43: a few sessions work on a mock project (by id: no draws)
+    const project = MP.sessions[drawn.id];
+    const s = project ? { ...drawn, project } : drawn;
     const h = mockHistory(o.seed, s);
     lines.set(s.id, h);
     state.set(s.id, h.length ? { ...s, lastSeq: h.length - 1 } : s);
@@ -337,6 +345,7 @@ export function createFleetMock(o: FleetMockOptions, emit: (ev: FleetEvent) => v
     sessions: [...state.values()],
     requests: [...snap.requests, ...chain.requests],
     gates: [...gates.values()],
+    projects: mockProjects(o.now),
   });
   let at = o.now;
   const timers = new Set<ReturnType<typeof setTimeout>>();
@@ -435,6 +444,7 @@ export function createFleetMock(o: FleetMockOptions, emit: (ev: FleetEvent) => v
     title?: string;
     parentId?: string;
     requestId?: string;
+    project?: string;
   }): string => {
     const k = started++;
     const id = `mock-${c.island}-new${k}`;
@@ -451,6 +461,7 @@ export function createFleetMock(o: FleetMockOptions, emit: (ev: FleetEvent) => v
       turns: 0,
       costUsd: 0,
       ...(c.parentId ? { parentId: c.parentId } : {}),
+      ...(c.project ? { project: c.project } : {}),
       requestId,
       cwd: `fleet/islands/${c.island}`,
       model: 'opus',

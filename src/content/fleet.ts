@@ -527,3 +527,142 @@ export const FLEET_GATE = {
     denyBg: '#3B3A5A14',
   },
 } as const;
+
+/**
+ * Admin window ("Pano", M43 TASK-585, `ui/admin-win.ts`): a draggable, resizable card over the
+ * scene with the fleet's projects and the knowledge base (read-only, searchable). Geometry in px.
+ */
+export type AdminTab = 'projeler' | 'hafiza' | 'bilgi' | 'raporlar';
+export const ADMIN = {
+  title: 'Admin',
+  /** Tab ids (URL `admin=<tab>:<path>`) and labels, in bar order. */
+  tabs: [
+    ['projeler', 'Projeler'],
+    ['hafiza', 'Hafıza'],
+    ['bilgi', 'Bilgi'],
+    ['raporlar', 'Raporlar'],
+  ] as const satisfies readonly (readonly [AdminTab, string])[],
+  /**
+   * Window box: default size, minimum, viewport margin; the default sits `gap` right of the fleet
+   * card (`FLEET_PANEL.fleetWidth` from the left edge) at `top` (below the compass), shrunk to fit.
+   */
+  win: { w: 720, h: 480, minW: 420, minH: 300, margin: 16, gap: 16, top: 88, bottomClear: 104 },
+  /** Below this window width the KB view drops its sources column (sources become a chip row). */
+  narrowPx: 640,
+  /** Position + size (interactive only; capture always opens at the default). */
+  storageKey: 'mar-admin-win',
+  /** A file older than this (days, from `mtime`) gets the "eski" badge. */
+  staleDays: 30,
+  stale: 'eski',
+  search: {
+    placeholder: 'Ara: hafıza, bilgi, rapor',
+    minChars: 2,
+    debounceMs: 250,
+    /** Matching lines shown per file. */
+    linesPerFile: 3,
+    empty: 'Eşleşen satır yok',
+    count: (hits: number, files: number): string => `${hits} satır · ${files} dosya`,
+  },
+  close: 'Kapat',
+  resize: 'Boyutlandır',
+  /** Projeler tab. */
+  projects: {
+    counts: (live: number, done: number): string => `${live} canlı · ${done} bitti`,
+    noAgents: 'Henüz agent yok',
+    start: 'Bu projede başlat',
+    startGo: 'Başlat',
+    cancel: 'Vazgeç',
+    promptPlaceholder: 'Ne yapılsın? Proje dizini session’a eklenir.',
+    add: '+ proje',
+    addHint: 'Fleet’in çalışabileceği bir dizin kaydet',
+    fields: { name: 'Ad', dir: 'Dizin (mutlak yol)', note: 'Not' },
+    addGo: 'Kaydet',
+    empty: 'Kayıtlı proje yok',
+    /** Accent bar when a project has no `color` (by index). */
+    palette: [
+      '#4FC3C9',
+      '#FF8A65',
+      '#9C7BD8',
+      '#6CC07A',
+      '#F2B740',
+      '#E86A92',
+    ] as readonly string[],
+  },
+  /** The mock bridge's 400 texts for `POST /api/projects`. */
+  mockErrors: {
+    name: 'ad gerekli',
+    dir: 'dizin mutlak bir yol olmalı',
+    taken: 'bu adla bir proje zaten var',
+  },
+  /** KB tabs. */
+  kb: {
+    loading: 'Yükleniyor…',
+    offline: 'Bridge bağlı değil',
+    offlineHint: 'Bilgi tabanı bridge üzerinden okunur: `pnpm bridge` ile başlat.',
+    noFiles: 'Bu kaynakta dosya yok',
+    pick: 'Soldan bir dosya seç',
+    allSources: 'Tümü',
+    unresolved: 'hafıza bulunamadı',
+    kind: {
+      memory: 'hafıza',
+      knowledge: 'bilgi',
+      report: 'rapor',
+      claude: 'CLAUDE.md',
+      doc: 'belge',
+      config: 'config',
+      other: 'diğer',
+    },
+    /** Disc colour of the non-island sources (fleet, mar-docs, hq-memory). */
+    neutralDisc: '#9A95AE',
+    size: (bytes: number): string =>
+      bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(bytes < 10_240 ? 1 : 0)} KB`,
+  },
+  fonts: {
+    title: "600 18px/1.1 'Fredoka',sans-serif",
+    body: "600 13.5px/1.5 'Nunito',sans-serif",
+    small: "800 11px/1.2 'Nunito',sans-serif",
+  },
+} as const;
+
+/**
+ * `?fleet=mock` projects (M43): the snapshot's `projects` and the sessions that work on them
+ * (by mock session id; no RNG, so the drawn sessions stay as they were). `createdAgoD` in days.
+ */
+export const FLEET_MOCK_PROJECTS = {
+  projects: [
+    {
+      id: 'marisland',
+      name: 'Marisland',
+      dir: '/Users/omer/Work-Restored/marisland',
+      note: 'three.js takımada dioraması, fleet’in kendi evi',
+      color: '#4FC3C9',
+      createdAgoD: 40,
+    },
+    {
+      id: 'piton-studios',
+      name: 'Piton Studios',
+      dir: '/Users/omer/Work-Restored/piton-studios',
+      note: 'Ajans sitesi: Next.js + TS, vaka çalışmaları',
+      color: '#FF8A65',
+      createdAgoD: 12,
+    },
+    {
+      id: 'realestate-pipeline',
+      name: 'Emlak pipeline',
+      dir: '/Users/omer/Work-Restored/realestate-pipeline-cyprus',
+      note: '101evler / HangiEv ilan senkronizasyonu',
+      createdAgoD: 3,
+    },
+  ],
+  sessions: {
+    'mock-coding-0': 'marisland',
+    'mock-coding-1': 'marisland',
+    'mock-design-0': 'marisland',
+    'mock-qa-0': 'marisland',
+    'mock-qa-1': 'marisland',
+    'mock-marketing-0': 'piton-studios',
+    'mock-marketing-1': 'piton-studios',
+    'mock-research-0': 'piton-studios',
+    'mock-devops-1': 'realestate-pipeline',
+  } as Readonly<Record<string, string>>,
+} as const;
