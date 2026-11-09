@@ -266,25 +266,28 @@ describe('prop geometry', () => {
             (def.id === 'glasshouse' && v >= WV.boathouse) ||
             (def.id === 'conservatory' && v === WV.pavilion)
               ? -F.pavilion.pileDown - 0.1
-              : def.id === 'pipe'
-                ? -4.3
-                : // the marina's pile feet and the fort's plinth reach down past the waterline pivot (TASK-505)
-                  def.id === 'marinaPier' || def.id === 'starFort'
-                  ? -5
-                  : // TASK-533: the Tide-Lab piles reach the seabed under the waterline pivot
-                    def.id === 'tideLab'
-                    ? -1.1
-                    : // TASK-540: the coaster's columns are sunk 0.25 below groundY, the seated rider's boots hang under its hip pivot
-                      def.id === 'coasterTrack' || def.id === 'coasterRider'
-                      ? -0.3
-                      : // TASK-509b: the breakwater foot reaches the seabed, the bridge / deck skirts hide the bank
-                        def.id === 'devopsBreakwater'
-                        ? -2.7
-                        : def.id === 'emberBridge' || def.id === 'craterDeck'
-                          ? -0.65
-                          : def.id === 'stairFlight'
-                            ? -Math.max(...STAIR_FLIGHT.looks.map((L) => L.skirt)) - 0.05
-                            : -0.05;
+              : // TASK-660: the Horseshoe Harbour boats sink 0.2 u under the waterline pivot
+                def.id === 'quayBoat'
+                ? -0.3
+                : def.id === 'pipe'
+                  ? -4.3
+                  : // the marina's pile feet and the fort's plinth reach down past the waterline pivot (TASK-505)
+                    def.id === 'marinaPier' || def.id === 'starFort'
+                    ? -5
+                    : // TASK-533: the Tide-Lab piles reach the seabed under the waterline pivot
+                      def.id === 'tideLab'
+                      ? -1.1
+                      : // TASK-540: the coaster's columns are sunk 0.25 below groundY, the seated rider's boots hang under its hip pivot
+                        def.id === 'coasterTrack' || def.id === 'coasterRider'
+                        ? -0.3
+                        : // TASK-509b: the breakwater foot reaches the seabed, the bridge / deck skirts hide the bank
+                          def.id === 'devopsBreakwater'
+                          ? -2.7
+                          : def.id === 'emberBridge' || def.id === 'craterDeck'
+                            ? -0.65
+                            : def.id === 'stairFlight'
+                              ? -Math.max(...STAIR_FLIGHT.looks.map((L) => L.skirt)) - 0.05
+                              : -0.05;
           expect(bb.min.y).toBeGreaterThanOrEqual(below);
           const h = def.heights?.[v] ?? def.height;
           expect(bb.max.y).toBeGreaterThanOrEqual(h * 0.65);
