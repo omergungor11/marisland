@@ -20,7 +20,14 @@ describe('fleet config', () => {
       titleModel: 'haiku',
       maxTurns: 30,
       maxChildren: 6,
+      doneGate: { minTurns: 5, nudgeMaxTurns: 3 },
     });
+    expect(parseConfig({ doneGate: { minTurns: 0 } }).doneGate).toEqual({
+      minTurns: 0,
+      nudgeMaxTurns: 3,
+    });
+    expect(() => parseConfig({ doneGate: { minTurns: -1 } })).toThrow(/doneGate.minTurns/);
+    expect(() => parseConfig({ doneGate: { nudgeMaxTurns: 1.5 } })).toThrow(/nudgeMaxTurns/);
     expect(() => parseConfig({ maxTurns: 0 })).toThrow(/maxTurns/);
     expect(() => parseConfig({ port: 70000 })).toThrow(/port/);
     expect(() => parseConfigText('{')).toThrow(/invalid JSON/);
