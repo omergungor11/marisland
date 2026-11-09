@@ -119,7 +119,7 @@ export function createFleetPanel(
   el.className = 'mar-fleet';
   el.setAttribute('aria-hidden', 'true');
   el.innerHTML = `
-    <header class="mar-fleet-head"><span class="mar-fleet-disc"></span><span class="mar-fleet-name"></span><span class="mar-fleet-gatecount" hidden></span><span class="mar-fleet-live"></span></header>
+    <header class="mar-fleet-head"><span class="mar-fleet-disc"></span><span class="mar-fleet-name"></span><span class="mar-fleet-gatecount" hidden></span><span class="mar-fleet-live"></span><button class="mar-fleet-new" type="button" title="${P.newSession}" aria-label="${P.newSession}" hidden>+</button></header>
     <input class="mar-fleet-search" type="search" placeholder="${P.searchPlaceholder}" aria-label="${P.searchPlaceholder}" spellcheck="false" autocomplete="off">
     <div class="mar-fgbox"><div class="mar-fgates"></div></div>
     <ol class="mar-fleet-rows"></ol>
@@ -133,6 +133,7 @@ export function createFleetPanel(
   const moreEl = el.querySelector('.mar-fleet-more') as HTMLElement;
   const gateCount = el.querySelector('.mar-fleet-gatecount') as HTMLElement;
   const gatesEl = el.querySelector('.mar-fgates') as HTMLElement;
+  const newBtn = el.querySelector('.mar-fleet-new') as HTMLButtonElement;
   /** M42: gates seen pending, when each answer was seen, answers sent and not yet echoed. */
   const seenPending = new Set<string>();
   const answeredAt = new Map<string, number>();
@@ -178,8 +179,7 @@ export function createFleetPanel(
   const makeHead = (): HeadNode => {
     const li = document.createElement('li');
     li.className = 'mar-fblock';
-    li.innerHTML =
-      '<span class="mar-fleet-disc"></span><span class="mar-fblock-name"></span><span class="mar-fleet-live"></span>';
+    li.innerHTML = `<span class="mar-fleet-disc"></span><span class="mar-fblock-name"></span><span class="mar-fleet-live"></span><button class="mar-fleet-new" type="button" title="${P.newSession}" aria-label="${P.newSession}">+</button>`;
     return {
       li,
       name: li.children[1] as HTMLElement,
@@ -232,6 +232,7 @@ export function createFleetPanel(
   const setHead = (h: HeadNode, t: ThemeId, live: number): void => {
     if (!h.li.dataset.t) {
       h.li.dataset.t = t;
+      (h.li.lastElementChild as HTMLElement).dataset.new = t;
       h.li.style.setProperty('--acc', opts.accents[t]);
       const d = h.li.firstElementChild as HTMLElement;
       d.style.background = opts.accents[t];
@@ -251,6 +252,8 @@ export function createFleetPanel(
     el.classList.toggle('mar-fleet-wide', fleetView || term.open);
     el.classList.toggle('mar-fleet-compact', layout === 'compact');
     search.hidden = !fleetView;
+    // TASK-583: the header "+" starts a session on the focused island (fleet view: one per block)
+    newBtn.hidden = fleetView;
     const items: Item[] = [];
     let live = 0;
     let more = 0;
@@ -436,7 +439,17 @@ export function createFleetPanel(
     dirty = true;
     term.touch();
   });
+  const startOn = (t: ThemeId): void => {
+    if (theme === null) opts.onFly?.(t);
+    term.draft(t);
+  };
+  const onNew = (): void => {
+    if (theme) startOn(theme);
+  };
   const onClick = (e: MouseEvent): void => {
+    const t = (e.target as Element).closest<HTMLElement>('[data-new]')?.dataset.new as
+      ThemeId | undefined;
+    if (t) return startOn(t);
     const id = (e.target as Element).closest<HTMLButtonElement>('.mar-frow')?.dataset.id;
     const s = id ? store.sessions.get(id) : undefined;
     if (!s) return;
@@ -474,6 +487,7 @@ export function createFleetPanel(
   list.addEventListener('scroll', onScroll, { passive: true });
   search.addEventListener('input', onInput);
   gatesEl.addEventListener('click', onGate);
+  newBtn.addEventListener('click', onNew);
 
   return {
     el,

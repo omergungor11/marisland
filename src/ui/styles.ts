@@ -301,6 +301,11 @@ export const FLEET_PANEL_CSS = `
 .mar-fleet-isle{font:700 12px/1 'Nunito',sans-serif;color:${mixHex(UI.ink, UI.muted, 0.45)};padding-left:6px;}
 .mar-fleet-isle::before{content:'·';margin-right:5px;}
 .mar-fleet-live{flex:none;font:800 12px/1 'Nunito',sans-serif;color:${UI.ink};background:#3B3A5A10;border-radius:999px;padding:5px 9px;}
+.mar-fleet-new{flex:none;width:26px;height:26px;border:0;border-radius:50%;background:var(--acc,${UI.secondary});color:#fff;font:800 18px/1 'Nunito',sans-serif;cursor:pointer;box-shadow:inset 0 -2px 0 #3B3A5A1F;padding:0;}
+.mar-fleet-new:hover{filter:brightness(1.08);}
+.mar-fleet-new:focus-visible{outline:2px solid ${UI.ink};outline-offset:2px;}
+.mar-fleet-new[hidden]{display:none;}
+.mar-fblock .mar-fleet-new{width:22px;height:22px;font-size:16px;}
 .mar-fleet-rows{position:relative;list-style:none;margin:0;padding:0;overflow-y:auto;overscroll-behavior:contain;min-height:0;scrollbar-width:thin;scrollbar-color:${UI.muted} transparent;}
 .mar-fleet-scroll .mar-fleet-rows{-webkit-mask-image:linear-gradient(#000 calc(100% - ${F.fadePx}px),transparent);mask-image:linear-gradient(#000 calc(100% - ${F.fadePx}px),transparent);padding-bottom:20px;}
 .mar-frow{display:grid;grid-template-columns:14px 1fr auto;column-gap:6px;row-gap:1px;width:100%;text-align:left;border:0;background:none;border-radius:12px;padding:6px 8px;cursor:pointer;

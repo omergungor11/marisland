@@ -54,7 +54,9 @@ export const FLEET_PANEL = {
   liveCount: (n: number): string => `${n} canlı`,
   /** Footer: rows past the cap plus rows the scroll cuts (short viewports), so the fade explains itself. */
   more: (n: number): string => `+${n} daha`,
-  empty: 'Bu adada session yok',
+  empty: 'Bu adada session yok · + ile başlat',
+  /** TASK-583: the "+" button of the header / an island block opens the new-session prompt box. */
+  newSession: 'Yeni session',
   /** Fleet view (M41): header and the search box. */
   fleetTitle: 'Filo',
   fleetIslands: (n: number): string => `${n} ada`,
