@@ -508,6 +508,18 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 
 ### M43 — Knowledge base + HQ review (admin window, fleet/kb, projects, island CLAUDE.md, agent / skill self-generation gated by HQ) — IN PROGRESS (opened 2026-11-09)
 ### M44 — Reports (daily / weekly / monthly / all-time per island; top topics, long sessions, lessons) — PLANNED
+### M45 — Ground Look: ada gövdesi (üst yüzey, bluff duvarları, kıyı) görünüm yükseltmesi — plan `mar-plans/GROUND.md` — PLANNED (2026-11-09)
+
+| ID | Task | Agent | Size | Status | Depends |
+|---|---|---|---|---|---|
+| TASK-590 | M45 referans seti: 4 ada × T0/T1/T2 × öğle/altın `G-*` presetleri, G1–G6 kriter taslağı, "önce" kontak sayfası | qa | S | PENDING | — |
+| TASK-591 | M45 duvar paleti ve tabakalar: tema başına 3–4 strata tonu, band yüksekliği duvarla ölçeklenir, dudak gölgesi + etek koyuluğu albedo'ya, çatlak tekrarını kıran ikinci ölçek | shader | M | PENDING | TASK-590 |
+| TASK-592 | M45 üst yüzey makro varyasyon: çim yükseklik gradyanı, nem/yıpranma lekeleri, yol kenarı aşınması, çim→kum 4–6 u geçiş | shader | M | PENDING | TASK-590 |
+| TASK-593 | M45 silüet ve kenar: kıyı boyunca duvar yüksekliği ±25 %, plato kenarı kaya çıkıntıları, teras basamağı, SDF çim dudağı, etek talus scatter ≤ 2k tris/ada | worldgen | M | PENDING | TASK-590 |
+| TASK-594 | M45 kıyı şeridi: ıslak kaya bandı, kum dalgacıkları, şelf devamı, köpük temas hizası | shader | S | PENDING | TASK-591 |
+| TASK-595 | M45 ışık ve AO: `TERRAIN_AO` güçlenir (`sandScale` ayrı), terrain rim terimi, duvar gölge tonu | shader | S | PENDING | TASK-592 |
+| TASK-596 | M45 kapanış QA + belge: "sonra" kontak sayfası, G kriter puanı, ART_BIBLE / ARCHITECTURE / D-157 | qa + docs | S | PENDING | TASK-591…595 |
+
 
 ## Phase 5: Visual upgrade — richer surfaces, prop variety, agent identity, high tier (plan `mar-plans/VISUAL_UPGRADE.md`, details `phases/phase-5.md`, budget D-156)
 
@@ -515,8 +527,8 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-590 | Bot chassis (scout / hauler / spire) + head (monitor / visor / cam) variants, each chassis its own InstancedMesh, role → carried item, eye states (idle / working / gate / error / done) from `botLook(seed)`; `F-bots` dev shot | life | M | PENDING | — |
-| TASK-591 | Panel portraits: `botPortraitSvg(look)` on session rows, terminal header, fleet chips, hover tip; mock covers 3 × 3 looks × 5 states; `F-portraits` dev shot | engine | S | PENDING | — (reads `content/bot-look.ts`) |
+| TASK-590 | Bot chassis (scout / hauler / spire) + head (monitor / visor / cam) variants, each chassis its own InstancedMesh, role → carried item, eye states (idle / working / gate / error / done) from `botLook(seed)`; `F-bots` dev shot | life | M | IN_PROGRESS | — |
+| TASK-591 | Panel portraits: `botPortraitSvg(look)` on session rows, terminal header, fleet chips, hover tip; mock covers 3 × 3 looks × 5 states; `F-portraits` dev shot | engine | S | IN_PROGRESS | — (reads `content/bot-look.ts`) |
 | TASK-592 | Bot motion variety: per-chassis gait, four idle beats, gate look-up + amber gem pulse, done hop + sparkles | life | S | PENDING | TASK-590 |
 | TASK-593 | M45 QA: portraits vs 3D bots, F-* shots, wow budgets W5 / W26 / W-morning-shift / W-funicular-dawn, low ladder | qa | S | PENDING | TASK-590, TASK-591, TASK-592 |
 
@@ -524,7 +536,7 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-594 | Material classes (matte / wood / metal / glass / fabric) in the free `emissive` code range, per-class specular / fresnel / edge light, `fwidth` bevel edge light + triplanar near grain (60 → 140 u fade), same programs | shader | M | PENDING | — |
+| TASK-594 | Material classes (matte / wood / metal / glass / fabric) in the free `emissive` code range, per-class specular / fresnel / edge light, `fwidth` bevel edge light + triplanar near grain (60 → 140 u fade), same programs | shader | M | IN_PROGRESS | — |
 | TASK-595 | Terrain detail: cliff strata bands, scree speckles, moss creep, wet sand glint, path edge wear (terrain program) | shader | S | PENDING | TASK-594 |
 | TASK-596 | Water: shallow caustics (terrain underwater term, day-gated), sun glitter sparkle, second foam band | shader | S | PENDING | TASK-594 |
 | TASK-597 | M46 QA: before / after on 8 wow ids, ladder, low ladder, programs, `wow --assert` | qa | S | PENDING | TASK-595, TASK-596 |
@@ -533,7 +545,7 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-598 | Building variants v2: roof style × window layout × door × trims, `variants` 3 → 8, LOD1 silhouette kept, LOD0 tris ≤ ×1.25; gallery `buildings` | props | M | PENDING | — |
+| TASK-598 | Building variants v2: roof style × window layout × door × trims, `variants` 3 → 8, LOD1 silhouette kept, LOD0 tris ≤ ×1.25; gallery `buildings` | props | M | IN_PROGRESS | — |
 | TASK-599 | Vegetation + rock v2: 3 canopy silhouettes, per-island colour sets (`content/biomes.ts`), palm variants, 5 rock silhouettes + moss / strata, driftwood, kelp; far blobs follow the biome colour | props | M | PENDING | — |
 | TASK-600 | Biome scatter rules: per-island variant weights, rock fields, flower meadow patches, path edges, lot hedges, garden plots; one world hash re-pin | worldgen | M | PENDING | TASK-598, TASK-599 |
 | TASK-601 | Boats + dock dressing v2: 3 hulls, per-island sail / hull sets, net / lobster pot / rope / ladder, buoy variants | props | S | PENDING | TASK-598 |
