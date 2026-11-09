@@ -39,6 +39,8 @@ export interface FleetSession {
   /** Request (user ask) this session belongs to. */
   requestId: string;
   cwd: string;
+  /** M43: the registered project this session works on (`FleetProject.id`). */
+  project?: string;
   /** Model alias the session runs on. */
   model?: string;
   /** Last meaningful line (assistant text or tool name), for the collapsed row. */
@@ -95,6 +97,74 @@ export interface FleetGate {
   answeredAt?: number;
 }
 
+/**
+ * M43 admin window (TASK-584 / 585). A registered project the fleet may work on: `dir` is an
+ * absolute path on the bridge machine (added to a session with `--add-dir`). Stored in
+ * `fleet/projects.json` (`{ "projects": FleetProject[] }`), HQ and the window read it.
+ */
+export interface FleetProject {
+  /** Slug, unique (`marisland`, `piton-studios`). */
+  id: string;
+  name: string;
+  /** Absolute directory; the bridge refuses one that does not exist. */
+  dir: string;
+  note?: string;
+  /** Accent hex (`#RRGGBB`); the window falls back to a palette colour. */
+  color?: string;
+  createdAt: number;
+}
+
+/**
+ * Knowledge-base sources the bridge serves read-only over HTTP (TASK-584):
+ *   GET /api/kb/tree                → { sources: KbSource[]; files: KbFile[] }
+ *   GET /api/kb/file?path=<KbFile.path> → KbDoc
+ *   GET /api/kb/search?q=<text>     → { hits: KbHit[] }   (case-insensitive, ≤ 200 hits)
+ *   GET /api/projects               → { projects: FleetProject[] }
+ *   POST /api/projects {name, dir, note?, color?} → { project: FleetProject } (201) | { error } (400)
+ * `KbFile.path` is `<source id>/<relative path>`; the bridge resolves it inside that source's root
+ * only (no `..`, no symlink escape). Sources: `island:<theme>` (the island dir: CLAUDE.md, memory/,
+ * knowledge/, reports/), `fleet` (fleet/CLAUDE.md, fleet/kb/, fleet/fleet.config.json),
+ * `mar-docs` (mar-docs/MEMORY.md, DECISIONS.md), `hq-memory` (fleet.config.json → `hqMemoryDir`,
+ * `~` expanded; absent when unset). Only `.md` / `.json` files, ≤ 256 KB each, dot-dirs skipped.
+ */
+export type KbFileKind = 'memory' | 'knowledge' | 'report' | 'claude' | 'doc' | 'config' | 'other';
+export interface KbSource {
+  /** `island:coding` | `fleet` | `mar-docs` | `hq-memory` */
+  id: string;
+  label: string;
+  island?: FleetIsland;
+}
+export interface KbFile {
+  path: string;
+  source: KbSource['id'];
+  island?: FleetIsland;
+  kind: KbFileKind;
+  /** Frontmatter `name`, else the first `# ` heading, else the file name without extension. */
+  title: string;
+  /** Frontmatter `description`, when present. */
+  description?: string;
+  /** Frontmatter `type` (`user | feedback | project | reference`), top level or under `metadata:`. */
+  type?: string;
+  /** mtime (ms since epoch) and size in bytes. */
+  mtime: number;
+  size: number;
+}
+export interface KbDoc {
+  file: KbFile;
+  /** Body without the frontmatter block. */
+  text: string;
+  /** Flattened frontmatter (nested keys joined with `.`: `metadata.type`). */
+  frontmatter: Record<string, string>;
+  /** `[[name]]` targets found in the body, in order, unique. */
+  links: string[];
+}
+export interface KbHit {
+  path: string;
+  /** 1-based line of the match and that line trimmed (≤ 200 chars). */
+  line: number;
+  text: string;
+}
+
 export interface BridgeInfo {
   version: number;
   /** Repo root the bridge serves from. */
@@ -109,8 +179,12 @@ export type FleetEvent =
       sessions: FleetSession[];
       requests: FleetRequest[];
       gates: FleetGate[];
+      /** M43 (TASK-584): registered projects; older bridges omit it. */
+      projects?: FleetProject[];
     }
   | { type: 'session'; session: FleetSession }
+  /** M43: a project was added / changed (`fleet/projects.json`). */
+  | { type: 'project'; project: FleetProject }
   | { type: 'request'; request: FleetRequest }
   | { type: 'line'; line: FleetLine }
   | { type: 'lines'; sessionId: string; lines: FleetLine[] }
@@ -127,6 +201,8 @@ export type FleetCommand =
       parentId?: string;
       /** Join an existing request instead of opening a new one. */
       requestId?: string;
+      /** M43: work on a registered project (`FleetProject.id`): its dir is added with `--add-dir`. */
+      project?: string;
     }
   /** Follow-up turn on an existing session (`claude --resume`, M41). */
   | { type: 'send'; sessionId: string; prompt: string }
