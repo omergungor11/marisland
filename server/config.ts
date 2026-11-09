@@ -17,6 +17,8 @@ export interface FleetConfig {
   /** Defaults used when a manifest omits them. */
   maxTurns: number;
   maxChildren: number;
+  /** M43: HQ auto-memory dir served as the `hq-memory` kb source (`~` allowed). */
+  hqMemoryDir?: string;
 }
 
 export interface IslandManifest {
@@ -65,6 +67,9 @@ export function parseConfig(raw: unknown): FleetConfig {
     titleModel: (raw.titleModel as string | undefined) ?? 'haiku',
     maxTurns: posInt(raw.maxTurns, 'maxTurns', 30),
     maxChildren: posInt(raw.maxChildren, 'maxChildren', 6),
+    ...(typeof raw.hqMemoryDir === 'string' && raw.hqMemoryDir
+      ? { hqMemoryDir: raw.hqMemoryDir }
+      : {}),
   };
 }
 

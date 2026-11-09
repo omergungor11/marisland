@@ -2,7 +2,7 @@ import { cpSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { lintFleet } from './fleet-lint.ts';
+import { lintFleet, lintProjects } from './fleet-lint.ts';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const tmp = mkdtempSync(join(tmpdir(), 'fleet-lint-'));
@@ -29,5 +29,20 @@ describe('fleet-lint', () => {
     expect(out).toMatch(/qa: \.claude\/agents\/other\.md must be named qa-\*\.md/);
     expect(out).toMatch(/qa: settings\.json deny lacks "Bash\(git push\*\)"/);
     expect(out).not.toMatch(/coding:/);
+  });
+});
+
+describe('lintProjects', () => {
+  it('accepts a good file and flags shape problems', () => {
+    const ok = { id: 'a-b', name: 'A', dir: '/x' };
+    expect(lintProjects(JSON.stringify({ projects: [ok] }))).toEqual([]);
+    const bad = lintProjects(
+      JSON.stringify({ projects: [ok, ok, { id: 'Bad Id', name: ' ', dir: 'rel' }] }),
+    ).join('\n');
+    expect(bad).toMatch(/duplicate id "a-b"/);
+    expect(bad).toMatch(/id must be a slug/);
+    expect(bad).toMatch(/name is empty/);
+    expect(bad).toMatch(/absolute/);
+    expect(lintProjects('{')).toHaveLength(1);
   });
 });
