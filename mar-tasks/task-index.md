@@ -511,10 +511,13 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 | TASK-632 | Bridge done gate (devops): a session that ends without `## Özet` after ≥ `doneGate.minTurns` turns is sent back once (`--resume`, `nudgeMaxTurns`) for the summary; `system` line in the stream; hand-off parsing and parent resume run once on the final text (Research survey suggestion 2) | devops | S | COMPLETED | TASK-581 |
 | TASK-633 | "Seni bekliyor" signal (engine + life): `waiting` sessions pinned to the top of the island / fleet lists with a badge and elapsed counter, bot look-up / amber pulse while a gate is pending (Research suggestion 1; after Phase 5 TASK-591 merges, fleet-panel.ts) | engine | S | PENDING | TASK-591 |
 | TASK-634 | Island cost / time counters in the admin window (engine): per-island today / 7-day USD, turns, longest session, long-session warning; a strip on the Session'lar tab (Research suggestion 3; after TASK-630) | engine | S | PENDING | TASK-630 |
+| TASK-635 | M50 polish (worldgen): Coding waterfalls lost to the rim delta (before 2, after 0 at T1 — re-score waterfall sites on the final wall height or keep the pre-rim lip for scoring), Coding right-edge mesh steps (`G-coding-t1` x 930–1000), DevOps switchback roads painted 2 cells wide with soft corners (the "camouflage" patches) | worldgen | S | PENDING | TASK-615 |
+| TASK-636 | M50 polish (shader): Research lip "smoky" shade band + olive underwater band (blue lean on wet darkening), W-sunken top-left grass teeth, terrain rim visible at T1 (0.32 → tune), Coding wall one step warmer at T0 (reads "charcoal"), per-zone crisp-border weight (streetDevops ↔ rock low); golden-hour water moiré (`G-hq-t2-gold`, `G-research-t2-gold`) → water | shader | S | PENDING | TASK-617 |
+| TASK-637 | T0 program count: `G-*-t0-*` frames 15 → 17 programs and +3–4 calls after the 2026-11-09 merges while W1 / W11 stay 15; find the two programs (Phase 5 590 / 591 / 594 / 611 or M51 couriers), decide if the ci / wow budgets need a note | devops | XS | PENDING | — |
 
 ### M43 — Knowledge base + HQ review (admin window, fleet/kb, projects, island CLAUDE.md, agent / skill self-generation gated by HQ) — IN PROGRESS (opened 2026-11-09)
 ### M44 — Reports (daily / weekly / monthly / all-time per island; top topics, long sessions, lessons) — PLANNED
-### M50 — Ground Look: ada gövdesi (üst yüzey, bluff duvarları, kıyı) görünüm yükseltmesi — plan `mar-plans/GROUND.md` — PLANNED (2026-11-09)
+### M50 — Ground Look: ada gövdesi (üst yüzey, bluff duvarları, kıyı) görünüm yükseltmesi — plan `mar-plans/GROUND.md` — CLOSED 2026-11-10 (D-162; polish 635–637 open)
 
 | ID | Task | Agent | Size | Status | Depends |
 |---|---|---|---|---|---|
@@ -524,7 +527,7 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 | TASK-615 | M50 silüet ve kenar: kıyı boyunca duvar yüksekliği ±25 %, plato kenarı kaya çıkıntıları, teras basamağı, SDF çim dudağı, etek talus scatter ≤ 2k tris/ada | worldgen | M | COMPLETED (rim delta after sites, outcrops = Zone.rock, talus ≤ 1.4k tris; G5 lip recipe → 614/616) | TASK-612 |
 | TASK-616 | M50 kıyı şeridi: ıslak kaya bandı, kum dalgacıkları, şelf devamı, köpük temas hizası + G5 dudak maskesi | shader | S | COMPLETED (wet band 0.9 u + salt line, 2.5 u wet rock below, `seabedShelf`, beach drying; lip = zone flag bit, mask byte-identical) | TASK-613 |
 | TASK-617 | M50 ışık ve AO: `TERRAIN_AO` güçlenir (`sandScale` ayrı), terrain rim terimi, duvar gölge tonu, altın saat L ≥ %15, DevOps kül şeritleri, Design çim S | shader | S | COMPLETED (sun rim 0.32, daytime shade floor, rock × 0.5 / bluff-foot AO split, DevOps road colour, Design grass S 57; ash streaks = D12 switchback roads × crisp border → 2-cell soft roads later) | TASK-614 |
-| TASK-618 | M50 kapanış QA + belge: "sonra" kontak sayfası, G kriter puanı, ART_BIBLE / ARCHITECTURE / D-162 | qa + docs | S | IN PROGRESS | TASK-613…617 |
+| TASK-618 | M50 kapanış QA + belge: "sonra" kontak sayfası, G kriter puanı, ART_BIBLE / ARCHITECTURE / D-162 | qa + docs | S | COMPLETED (4/6 PASS: G2, G5 WEAK → polish 635/636/637) | TASK-613…617 |
 
 
 ### M51 — Kurye gemileri: ada → ada devirler limandan gemiyle gider, ada başına özgün gemi, tıkla → bilgi kartı — DONE (conditional, 2026-11-09, D-164; follow-ups TASK-650)
