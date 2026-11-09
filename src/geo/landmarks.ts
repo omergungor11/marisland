@@ -74,7 +74,7 @@ export function lighthouse({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
         cylB(0.055, 0.055, lampH, 4, true),
         [Math.cos(a) * 0.92, gy + 0.1, Math.sin(a) * 0.92],
         red,
-        { aoAmt: 0 },
+        { aoAmt: 0, cls: 'metal' },
       );
     }
     // glass panes lit softly
@@ -88,6 +88,7 @@ export function lighthouse({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
         ao: () => 1,
         aoAmt: 0,
         double: true,
+        cls: 'glass',
       },
     );
   } else {
@@ -142,12 +143,13 @@ export function lighthouse({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
         cylB(0.04, 0.04, 0.55, 4, true),
         [Math.cos(a) * 1.9, H + 0.24, Math.sin(a) * 1.9],
         col(WALLS[1]),
-        { aoAmt: 0.1 },
+        { aoAmt: 0.1, cls: 'metal' },
       );
     }
     put(acc, cylB(1.9, 1.9, 0.07, 12, true), [0, H + 0.24 + 0.55, 0], col(WALLS[1]), {
       double: true,
       aoAmt: 0,
+      cls: 'metal',
     });
     // door + windows on the +z facet
     const ap = (y: number): number => rOf(y) * Math.cos(Math.PI / seg);
@@ -360,6 +362,7 @@ export function clocktower({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
       q,
       emissive: 0.35,
       ao: () => 1,
+      cls: 'glass',
     });
     put(
       acc,

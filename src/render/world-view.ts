@@ -56,6 +56,7 @@ import type { SubImageRenderer } from './gl-subimage.ts';
 import { createPropMirror, type PropMirror } from './props/prop-mirror.ts';
 import { createRebuilder, type Rebuilder } from './rebuild.ts';
 import { createCultureClock, type CultureClock, type CultureFestival } from './culture-clock.ts';
+import { SURFACE_QUALITY } from '../content/materials.ts';
 
 /**
  * Everything seed-derived on the render side (ARCHITECTURE §1 "world scope").
@@ -314,6 +315,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     softAppear: d.softAppear ?? true,
     castShadows: d.quality !== 'low',
     interiorShadows: d.quality === 'high',
+    creases: SURFACE_QUALITY[d.quality][0] > 0,
     instantEdits: d.instantEdits ?? false,
     world: { height: world.height, islands: world.islands },
     geometryOverride: (id, lod, variant) =>

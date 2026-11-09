@@ -21,6 +21,7 @@ const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
 
 export function dock({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const acc = new Acc();
+  acc.cls = 'wood';
   const r = rng.fork('dock');
   const n = lod === 0 ? 4 : 1;
   const pw = lod === 0 ? 0.35 : 2.0;
@@ -57,11 +58,12 @@ export function dock({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
       cylB(0.1, 0.1, 0.32, lod === 0 ? 6 : 4, lod === 1),
       [bx, y + 0.15, 0.45],
       col(WOOD.dark),
-      { aoAmt: 0.15 },
+      { aoAmt: 0.15, cls: 'metal' },
     );
     if (lod === 0)
       put(acc, new THREE.IcosahedronGeometry(0.12, 0), [bx, y + 0.5, 0.45], col(WOOD.dark), {
         aoAmt: 0,
+        cls: 'metal',
       });
   }
   return acc.finish(rng, false, true);
@@ -69,6 +71,7 @@ export function dock({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
 
 export function rowboat({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const acc = jitterAcc(rng);
+  acc.cls = 'wood';
   const seg = lod === 0 ? 12 : 6;
   const hullCol = variant % 2 === 0 ? ROOFS[5] : ROOFS[0];
   const prof: Array<[number, number]> =
@@ -383,7 +386,7 @@ function ferry({ rng, lod }: BuildOpts): THREE.BufferGeometry {
     put(acc, cylB(0.2, 0.17, 0.55, 7), [0, deck + 1.05, -2.5], col(WALLS[1]), { aoAmt: 0.1 });
     put(acc, cylB(0.21, 0.21, 0.14, 7), [0, deck + 1.5, -2.5], col(CORAL), { aoAmt: 0 });
     // bow bollard + lantern
-    put(acc, cylB(0.1, 0.09, 0.26, 6), [0, deck, 2.55], col(ROCK[2]), { aoAmt: 0.1 });
+    put(acc, cylB(0.1, 0.09, 0.26, 6), [0, deck, 2.55], col(ROCK[2]), { aoAmt: 0.1, cls: 'metal' });
     put(acc, new THREE.IcosahedronGeometry(0.1, 0), [0, deck + 0.4, 2.55], col(EMISSIVE.lantern), {
       emissive: 1,
       aoAmt: 0,
@@ -585,7 +588,7 @@ function inspectionBoat({ rng, lod }: BuildOpts): THREE.BufferGeometry {
       });
     }
     // bow bollard + lantern
-    put(acc, cylB(0.1, 0.09, 0.22, 6), [0, deck, 2.35], col(ROCK[2]), { aoAmt: 0.1 });
+    put(acc, cylB(0.1, 0.09, 0.22, 6), [0, deck, 2.35], col(ROCK[2]), { aoAmt: 0.1, cls: 'metal' });
     put(
       acc,
       new THREE.IcosahedronGeometry(0.09, 0),
@@ -881,6 +884,8 @@ export function buoy({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
     );
     return acc.finish(rng, false, true);
   }
+  // LOD0 (TASK-594): painted steel, glass lamp; LOD1 stays matte (the far sea-lamp dots)
+  acc.cls = 'metal';
   if (variant === 1 || variant === 2) {
     const body = variant === 1 ? ROOFS[1] : FOLIAGE.deciduous[1];
     const cap = new THREE.CapsuleGeometry(0.2, 0.42, 2, 8).translate(0, 0.38, 0);
@@ -898,6 +903,7 @@ export function buoy({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
         aoAmt: 0,
         emissive: 1,
         noJitter: true,
+        cls: 'glass',
         ...bob,
       },
     );

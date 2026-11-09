@@ -6,6 +6,7 @@
  */
 import type { EditToolKind } from './edit-ui.ts';
 import { FRAMING } from './camera.ts';
+import type { ThemeId } from '../world/types.ts';
 
 export type ShotSet = 'ci' | 'dev' | 'wow' | 'intro' | 'edit' | 'ladder' | 'live' | 'ground';
 
@@ -46,6 +47,8 @@ export interface ShotPreset {
   fleetChain?: 'allowed';
   /** Fleet view search text (M41). */
   fleetQuery?: string;
+  /** M51 (TASK-622): open the courier ship card of this island (theme id) at boot. */
+  fleetCard?: ThemeId;
   /** Opening-sequence still at this time (s) (`introt=`). */
   introt?: number;
   /**
@@ -2387,6 +2390,36 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     simt: 2,
     hud: true,
     fleet: 'mock',
+    sets: ['dev'],
+  },
+  // ---- TASK-622 (M51): F-courier-sail-b's moment with the HUD, Marketing's ship card open (allowed
+  // chain: Marketing → Design under way, the Coding gate still pending), at 960×540 and 1600×900
+  {
+    id: 'F-courier-card',
+    title: 'Courier card · Marketing → Design under way',
+    seed: 1001,
+    cam: 'ladder:marketing:140',
+    time: 14,
+    simt: 8,
+    hud: true,
+    fleet: 'mock',
+    fleetChain: 'allowed',
+    fleetCard: 'marketing',
+    sets: ['dev'],
+  },
+  {
+    id: 'F-courier-card-wide',
+    title: 'Courier card · 1600×900',
+    seed: 1001,
+    cam: 'ladder:marketing:140',
+    time: 14,
+    simt: 8,
+    width: 1600,
+    height: 900,
+    hud: true,
+    fleet: 'mock',
+    fleetChain: 'allowed',
+    fleetCard: 'marketing',
     sets: ['dev'],
   },
   // ---- sandbox edits (TASK-221): `pnpm shots edit`. Logs on seed 1001 generated with

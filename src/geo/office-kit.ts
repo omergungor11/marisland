@@ -299,7 +299,7 @@ export function sawtoothRoof(
         new THREE.PlaneGeometry(len - 0.2, o.rise * 0.8),
         [0, o.y + o.rise * 0.46, zFront + 0.01],
         o.glass,
-        { emissive: 1, ao: () => 1 },
+        { emissive: 1, ao: () => 1, cls: 'glass' },
       );
     }
   }
@@ -399,6 +399,7 @@ export function fan(
     });
   }
   put(acc, new THREE.IcosahedronGeometry(r * 0.2, 0), [at.x, at.y, at.z + 0.09], C.steelLight, {
+    cls: 'metal',
     windAbs: tag,
     aoAmt: 0,
   });
@@ -413,7 +414,7 @@ export function dish(
   const { r, yaw, elev, mast } = o;
   const a = Math.PI / 2 - elev;
   const qy = qEuler(0, yaw, 0);
-  put(acc, cylB(0.09, 0.07, mast, 5, true), at, C.steel, { aoAmt: 0.1 });
+  put(acc, cylB(0.09, 0.07, mast, 5, true), at, C.steel, { cls: 'metal', aoAmt: 0.1 });
   const theta = 1.05;
   const R = r / Math.sin(theta);
   const bowl = new THREE.SphereGeometry(
@@ -437,10 +438,7 @@ export function dish(
       new THREE.CylinderGeometry(0.025, 0.025, r * 0.9, 3),
       cen.clone().add(axis.clone().multiplyScalar(r * 0.45)),
       C.steelLight,
-      {
-        q,
-        aoAmt: 0,
-      },
+      { cls: 'metal', q, aoAmt: 0 },
     );
     put(
       acc,
@@ -470,6 +468,7 @@ export function vent(
   });
   if (lod === 0)
     put(acc, cylB(r * 1.5, r * 1.5, 0.05, seg), at.clone().setY(at.y + 0.0), C.steelLight, {
+      cls: 'metal',
       aoAmt: 0,
     });
 }
@@ -487,7 +486,11 @@ export function solarRow(
   const x0 = -((n - 1) * (pw + 0.12)) / 2;
   for (let i = 0; i < n; i++) {
     const p = at.clone().add(V(x0 + i * (pw + 0.12), 0.3, 0));
-    put(acc, new THREE.BoxGeometry(pw, 0.05, pd), p, C.solar, { q: qEuler(tilt, 0, 0), aoAmt: 0 });
+    put(acc, new THREE.BoxGeometry(pw, 0.05, pd), p, C.solar, {
+      q: qEuler(tilt, 0, 0),
+      aoAmt: 0,
+      cls: 'glass',
+    });
     if (lod === 0) {
       put(
         acc,
@@ -504,7 +507,7 @@ export function solarRow(
         cylB(0.03, 0.03, 0.3, 3),
         at.clone().add(V(x0 + i * (pw + 0.12), 0, -pd * 0.25)),
         C.steel,
-        { aoAmt: 0 },
+        { cls: 'metal', aoAmt: 0 },
       );
     }
   }
@@ -866,7 +869,7 @@ export function beaconRing(
   put(acc, cylB(0.62, 0.5, 0.7, hi ? 8 : 5), [0, dy, 0], accent, { aoAmt: 0.1 });
   const hubY = st + 2.15;
   const fy = hubY + 1.45;
-  put(acc, cylB(0.07, 0.05, fy - dy, 4, true), [0, dy, 0], C.steel, { aoAmt: 0 });
+  put(acc, cylB(0.07, 0.05, fy - dy, 4, true), [0, dy, 0], C.steel, { cls: 'metal', aoAmt: 0 });
   const hub = V(0, hubY, 0);
   const tag = spin.tag(hub);
   const lit = `#${col(accent).lerp(new THREE.Color('#FFFFFF'), 0.45).getHexString()}`;
@@ -899,6 +902,7 @@ export function beaconRing(
     // spokes + static halo
     for (let k = 0; k < 3; k++)
       put(acc, new THREE.BoxGeometry(2.3, 0.04, 0.04), hub, C.steelLight, {
+        cls: 'metal',
         q: qEuler(0, 0, (k * Math.PI) / 3 + 0.3),
         windAbs: tag,
         aoAmt: 0,

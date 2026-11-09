@@ -18,6 +18,7 @@ import {
   buildAlbedoGrid,
   buildGroundPalette,
   fillAlbedoGrid,
+  zoneTexel,
 } from './terrain/terrain-colors.ts';
 import { createGroundDetailTexture, type MipUploadRenderer } from './terrain/ground-detail.ts';
 import {
@@ -352,6 +353,10 @@ export function createWorldTextures(
       sdfHalf[i * 2 + 1] = THREE.DataUtils.toHalfFloat(calm[i] ? 0 : ring.ring[i]);
     }
     zoneCopy.set(world.zone);
+    // G5 lip texels (TASK-616): the material sees plateau-lip cliff samples as their vegetation
+    for (let j = 0; j < n; j++)
+      for (let i = 0; i < n; i++)
+        if (world.zone[j * n + i] === Zone.cliff) zoneCopy[j * n + i] = zoneTexel(world, i, j);
   };
   fill();
   const mk = (
@@ -469,7 +474,7 @@ export function createWorldTextures(
         for (let j = sb.y; j < sb.y + sb.h; j++)
           for (let i = sb.x; i < sb.x + sb.w; i++) {
             const k = j * n + i;
-            if (zRect.set(zoneCopy, k, world.zone[k], i, j)) cRect.mark(i, j);
+            if (zRect.set(zoneCopy, k, zoneTexel(world, i, j), i, j)) cRect.mark(i, j);
             if (!region.sdf || sdfF[k] === world.shoreSdf[k]) continue;
             sdfF[k] = world.shoreSdf[k];
             sRect.set(sdfHalf, k * 2, THREE.DataUtils.toHalfFloat(clampSdf(sdfF[k])), i, j);

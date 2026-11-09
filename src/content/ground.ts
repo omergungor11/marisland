@@ -254,11 +254,31 @@ export const GROUND_WALL = {
   footHeight: 3,
   footDark: 0.4,
   footCool: 0.2,
-  /** Wet line above the water: height (u), wobble (u), darkening and cool lean (b − r share). */
-  wetHeight: 0.6,
-  wetWobble: 0.18,
-  wetDark: 0.42,
-  wetCool: 0.25,
+  /**
+   * Wet rock band above the water (TASK-616, G3): height (u, wobbling ± `wetWobble` along the
+   * coast so it spans 0.6–1.2 u), never thinner than `wetPx` pixels (reads at T0 / T1), darkening
+   * and cool lean (b − r share, ART_BIBLE P4). Below the waterline the wall carries on
+   * `wetBelow` u as the same wet rock before it fades into the seabed ramp. A thin lighter salt
+   * line (`salt` lightening over `saltWidth` u / `saltPx` px) sits on its top edge on light strata
+   * only (band luminance over saltLum[0] → [1]).
+   */
+  wetHeight: 0.9,
+  wetWobble: 0.3,
+  wetPx: 2.5,
+  wetDark: 0.45,
+  wetCool: 0.3,
+  wetBelow: 2.5,
+  salt: 0.22,
+  saltWidth: 0.12,
+  saltPx: 1,
+  saltLum: [0.3, 0.5] as const,
+  /**
+   * G5 lip (TASK-616, GROUND.md §7): a cliff / rock sample within `lipFlat` u of its highest
+   * 4-neighbour with ≥ 1 vegetation 4-neighbour is plateau top, not wall — its albedo takes the
+   * mean of those neighbours and the material's zone copy their zone, so the class border and
+   * the wall lookup leave the 2 u staircase to the slope-driven earth-wall overlay.
+   */
+  lipFlat: 0.6,
   /** Dark groove at each strata boundary (near only: while a band is over ~15 px; T2 G4 read). */
   groove: 0.18,
   /** Grain: share of the near detail layer's lightness kept on the wall. */
@@ -366,6 +386,21 @@ export const GROUND_MACRO = {
     speckleScale: 3.4,
     speckle: 0.45,
   },
+} as const;
+
+/**
+ * Shore strip under the water and on cove beaches (TASK-616, G3), baked into the albedo: seabed
+ * within `shelfReach` cells of a land wall (cliff / rock above the water) lerps toward the darker,
+ * greener shelf colour (`TERRAIN_COLORS.seabedShelf`) by up to `shelfMix` (linear fall-off with
+ * the cell distance), so the wall foot meets the lagoon water as a dark shelf, not a sand ring;
+ * wet sand dries inland over `beachDry` u of shore distance by up to `beachDryMix` (a soft band
+ * from the foam contact line, WATER_BANDS.foamLine, instead of a line).
+ */
+export const GROUND_SHORE = {
+  shelfReach: 3,
+  shelfMix: 0.85,
+  beachDry: [0.3, 5] as const,
+  beachDryMix: 0.6,
 } as const;
 
 /**

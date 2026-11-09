@@ -23,6 +23,7 @@ const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
 export function fence({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const r = rng.fork('fence');
   const acc = new Acc();
+  acc.cls = 'wood';
   const c = col(variant % 2 === 0 ? WOOD.planks : WALLS[1]);
   if (lod === 1) {
     put(acc, new THREE.BoxGeometry(1.5, 0.45, 0.08), [0, 0.4, 0], c, { aoAmt: 0.2 });
@@ -55,14 +56,17 @@ export function lanternPost({ rng, lod, variant }: BuildOpts): THREE.BufferGeome
   const ly = 1.75;
   if (lod === 0) {
     put(acc, baseBox(0.34, 0.22, 0.34), [0, 0, 0], col(ROCK[1]), { aoAmt: 0.25 });
+    acc.cls = 'metal';
     put(acc, cylB(0.07, 0.055, ly - 0.2, 5), [0, 0.2, 0], col(WOOD.dark), { aoAmt: 0.2 });
   } else {
+    acc.cls = 'metal';
     put(acc, baseBox(0.14, ly, 0.14), [0, 0, 0], col(WOOD.dark), { aoAmt: 0.2 });
   }
   const core = lod === 0 ? 0.24 : 0.34;
   put(acc, new THREE.BoxGeometry(core, core, core), [0, ly + 0.17, 0], col(EMISSIVE.lantern), {
     emissive: 1,
     ao: () => 1,
+    cls: 'glass',
   });
   if (lod === 0) {
     for (const sx of [-1, 1])
@@ -80,6 +84,7 @@ export function lanternPost({ rng, lod, variant }: BuildOpts): THREE.BufferGeome
   put(acc, new THREE.ConeGeometry(0.3, 0.26, 4), [0, ly + 0.5, 0], col(hat), {
     q: qEuler(0, Math.PI / 4, 0),
     aoAmt: 0,
+    cls: 'matte',
   });
   return acc.finish(rng, false, true);
 }
@@ -92,6 +97,7 @@ export function laundryLine({ rng, lod, variant }: BuildOpts): THREE.BufferGeome
   for (const s of [-1, 1])
     put(acc, cylB(0.07, 0.055, ph, lod === 0 ? 5 : 4, lod === 1), [s * px, 0, 0], col(WOOD.logs), {
       aoAmt: 0.25,
+      cls: 'wood',
     });
   const a = V(-px, ph - 0.15, 0);
   const b = V(px, ph - 0.15, 0);
@@ -112,6 +118,7 @@ export function laundryLine({ rng, lod, variant }: BuildOpts): THREE.BufferGeome
       aoAmt: 0,
       ao: () => 1,
       windAbs: (p) => 0.25 + 0.75 * clamp01((yTop - p.y) / ch),
+      cls: 'fabric',
     });
   }
   return acc.finish(rng, false, true);
@@ -123,7 +130,10 @@ export function bunting({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry 
   const px = 3;
   const ph = 2.6;
   for (const s of [-1, 1])
-    put(acc, cylB(0.06, 0.05, ph, 4, lod === 1), [s * px, 0, 0], col(WOOD.logs), { aoAmt: 0.25 });
+    put(acc, cylB(0.06, 0.05, ph, 4, lod === 1), [s * px, 0, 0], col(WOOD.logs), {
+      aoAmt: 0.25,
+      cls: 'wood',
+    });
   const sag = 0.55;
   const a = V(-px, ph - 0.1, 0);
   const b = V(px, ph - 0.1, 0);
@@ -148,6 +158,7 @@ export function bunting({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry 
       aoAmt: 0,
       ao: () => 1,
       windAbs: (p) => 0.2 + 0.8 * clamp01((y - p.y) / tl),
+      cls: 'fabric',
     });
   }
   return acc.finish(rng, false, true);
@@ -155,6 +166,7 @@ export function bunting({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry 
 
 export function bench({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const acc = jitterAcc(rng);
+  acc.cls = 'wood';
   const c = col(variant % 2 === 0 ? WOOD.planks : WALLS[1]);
   const leg = col(WOOD.dark);
   if (lod === 1) {
@@ -175,6 +187,7 @@ export function bench({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
 
 export function barrel({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const acc = jitterAcc(rng);
+  acc.cls = 'wood';
   if (lod === 1) {
     put(acc, cylB(0.25, 0.22, 0.6, 5), [0, 0, 0], col(WOOD.logs), { aoAmt: 0.2 });
     return acc.finish(rng, false, true);
@@ -207,6 +220,7 @@ export function barrel({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
 
 export function crate({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const acc = new Acc();
+  acc.cls = 'wood';
   const s = variant % 2 === 0 ? 0.6 : 0.48;
   const c = col(variant % 2 === 0 ? WOOD.planks : WOOD.logs);
   if (lod === 1) {

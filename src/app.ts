@@ -64,11 +64,12 @@ import { createKb, httpBaseOf } from './fleet/kb.ts';
 import { createAdminWin, type AdminWin } from './ui/admin-win.ts';
 import { createFleetPanel } from './ui/fleet-panel.ts';
 import { createFleetTip } from './ui/fleet-tip.ts';
+import { createCourierCard } from './ui/courier-card.ts';
 import { createFleetBeacons } from './life/fleet-beacons.ts';
 import { Couriers } from './life/couriers.ts';
 import { bindFleetToBots, type FleetBots } from './life/fleet-bots.ts';
-import { FLEET, FLEET_PANEL } from './content/fleet.ts';
-import type { ThemeId } from './world/types.ts';
+import { FLEET, FLEET_CARD, FLEET_PANEL } from './content/fleet.ts';
+import { THEME_IDS, type ThemeId } from './world/types.ts';
 import { THEMES } from './content/themes.ts';
 import { themeIcon } from './ui/theme-icons.ts';
 import { islandNear, themeOf } from './camera/poses.ts';
@@ -412,6 +413,8 @@ export async function boot(): Promise<void> {
     /** Fleet session <-> bot binding of the live world (TASK-564) and its hover tip (set with the HUD). */
     let fleetBots: FleetBots | null = null;
     let botTip: (hit: PickHit | null, x: number, y: number) => void = () => {};
+    /** M51 courier ships of the live world (TASK-622 card / picking); null without a fleet feed. */
+    let courierKind: Couriers | null = null;
     /** The live world's editor (TASK-212); null in capture / the gallery. */
     let editMode: EditMode | null = null;
     let editSession: EditSession | null = null;
@@ -505,6 +508,8 @@ export async function boot(): Promise<void> {
         );
         wv.life.add(cour);
         wv.life.kinds.couriers = cour;
+        courierKind = cour;
+        worldScope.defer(() => (courierKind = null));
       }
       worldWeather = wv.weather;
       if (cam.reducedMotion) wv.life.setMotionScale(motionScale());
@@ -866,6 +871,30 @@ export async function boot(): Promise<void> {
         }));
         appScope.defer(() => aw.dispose());
         h.setState({ admin: 'closed' });
+        // M51 courier card (TASK-622): created between the admin window and the fleet panel, so its
+        // capture-phase Esc runs after the window's and before the terminal's
+        const shipAt = new THREE.Vector3();
+        const ship = new THREE.Matrix4();
+        const cc = createCourierCard(h.el, {
+          store: fleet,
+          plans: () => courierKind?.plans ?? [],
+          accents: THEME_ACCENTS,
+          iconFor: (t) => themeIcon(THEMES[t].icon, 15),
+          anchor: (t, out) => {
+            const m = courierKind?.ships[THEME_IDS.indexOf(t)];
+            if (!m || !m.visible || m.count === 0) return false;
+            ship.fromArray(m.instanceMatrix.array as Float32Array, 0);
+            shipAt.setFromMatrixPosition(ship).setY(shipAt.y + FLEET_CARD.anchorLift);
+            shipAt.project(camera);
+            if (shipAt.z > 1 || Math.abs(shipAt.x) > 1 || Math.abs(shipAt.y) > 1) return false;
+            out.x = ((shipAt.x + 1) / 2) * canvas.clientWidth;
+            out.y = ((1 - shipAt.y) / 2) * canvas.clientHeight;
+            return true;
+          },
+          openSession: (id) => openSession(id),
+          avoid: () => fp.box(),
+        });
+        appScope.defer(() => cc.dispose());
         const fp = createFleetPanel(h.el, fleet, {
           accents: THEME_ACCENTS,
           iconFor: (t) => themeIcon(THEMES[t].icon, 15),
@@ -887,6 +916,8 @@ export async function boot(): Promise<void> {
         let focusTheme: ThemeId | null = null;
         appScope.defer(
           events.on('picked', ({ kind, id }) => {
+            if (kind === 'agent:couriers') return cc.show(THEME_IDS[id]);
+            cc.hide();
             if (kind !== 'agent:workers' || !fleetBots) return;
             const s = fleetBots.sessionOf(id);
             const isl = s ? null : (fleetBots.islandOf(id) ?? focusTheme);
@@ -899,12 +930,14 @@ export async function boot(): Promise<void> {
         if (preset?.fleetQuery) fp.setQuery(preset.fleetQuery);
         if (preset?.fleetOpen === 'running') fp.openFirstLive();
         else if (preset?.fleetOpen) fp.open(preset.fleetOpen);
+        if (preset?.fleetCard) cc.show(preset.fleetCard);
         const tip = createFleetTip(h.el);
         appScope.defer(() => tip.dispose());
         botTip = (hit, x, y) => {
           const s = hit?.name === 'workers' ? fleetBots?.sessionOf(hit.id) : null;
           if (s) tip.show(s, THEME_ACCENTS[s.island], x, y);
           else tip.hide();
+          cc.hover(hit?.name === 'couriers' ? THEME_IDS[hit.id] : null, x, y);
         };
         // the island is re-picked only once the target moved `focusMoveU` (or the world changed)
         let fx = NaN;
@@ -935,6 +968,7 @@ export async function boot(): Promise<void> {
           }
           fp.setVisible(on);
           fp.update(wallNow());
+          cc.update(courierKind?.nowMs ?? wallNow(), on);
           aw.update();
           // the card appeared / resized: the labels move now (capture renders no further HUD frame)
           const b = fp.box();

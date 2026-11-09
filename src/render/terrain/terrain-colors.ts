@@ -12,6 +12,7 @@ import {
   GROUND_DETAIL,
   GROUND_MACRO,
   GROUND_MATERIALS,
+  GROUND_SHORE,
   GROUND_SMOOTH,
   GROUND_WALL,
   MATERIAL_ACCENTS,
@@ -79,6 +80,7 @@ interface Pal {
   crater: THREE.Color;
   seabed: THREE.Color;
   seabedDeep: THREE.Color;
+  seabedShelf: THREE.Color;
 }
 
 let palCache: Pal | null = null;
@@ -104,6 +106,7 @@ function pal(): Pal {
     crater: lin(C.crater),
     seabed: lin(C.seabed),
     seabedDeep: lin(C.seabedDeep),
+    seabedShelf: lin(C.seabedShelf),
   };
   return palCache;
 }
@@ -132,6 +135,80 @@ function seabedColor(y: number, out: THREE.Color): THREE.Color {
   if (d <= S.seabedDepth)
     return out.copy(P.sandWet).lerp(P.seabed, smooth(S.wetDepth, S.seabedDepth, d));
   return out.copy(P.seabed).lerp(P.seabedDeep, smooth(S.seabedDepth, S.deepDepth, d));
+}
+
+/**
+ * Wall-foot shelf (TASK-616, G3), in place on the seabed colour `out` of underwater sample
+ * (ix, iz): within `GROUND_SHORE.shelfReach` cells of a land wall (cliff / rock above the water)
+ * it lerps toward the darker, greener shelf colour, so the wall meets the lagoon water on a dark
+ * shelf instead of a ring of wet sand.
+ */
+function shoreShelf(world: WorldData, ix: number, iz: number, out: THREE.Color): THREE.Color {
+  const h = world.height;
+  const n = h.n;
+  const reach = GROUND_SHORE.shelfReach;
+  // only samples near the coast (shore distance in u, negative offshore)
+  if (world.shoreSdf[iz * n + ix] < -(reach + 1) * h.cellSize) return out;
+  let best = Infinity;
+  for (let dz = -reach; dz <= reach; dz++) {
+    const jz = iz + dz;
+    if (jz < 0 || jz >= n) continue;
+    for (let dx = -reach; dx <= reach; dx++) {
+      const jx = ix + dx;
+      if (jx < 0 || jx >= n) continue;
+      const j = jz * n + jx;
+      const z = world.zone[j];
+      if (h.data[j] <= 0 || (z !== Zone.cliff && z !== Zone.rock)) continue;
+      const d = Math.hypot(dx, dz);
+      if (d < best) best = d;
+    }
+  }
+  if (best > reach) return out;
+  return out.lerp(pal().seabedShelf, GROUND_SHORE.shelfMix * (1 - (best - 1) / reach));
+}
+
+/**
+ * G5 lip (TASK-616, GROUND.md §7): the zone a plateau-lip sample stands in for, or -1. A cliff
+ * sample above the water within `GROUND_WALL.lipFlat` u of its highest 4-neighbour with ≥ 1
+ * vegetation 4-neighbour is top, not wall (the 2 u zone grid marks it cliff by its central-
+ * difference slope): it takes the zone of its highest vegetation neighbour. Rock (outcrop knobs,
+ * cones) keeps its own zone. Shared by the albedo bake and the material's zone texture.
+ */
+export function lipZone(world: WorldData, ix: number, iz: number): number {
+  const h = world.height;
+  const n = h.n;
+  const i = iz * n + ix;
+  const y = h.data[i];
+  if (world.zone[i] !== Zone.cliff || y <= 0) return -1;
+  let top = -Infinity;
+  let veg = -1;
+  let vegY = -Infinity;
+  for (let k = 0; k < 4; k++) {
+    const jx = ix + DIRS[k][0];
+    const jz = iz + DIRS[k][1];
+    if (jx < 0 || jx >= n || jz < 0 || jz >= n) continue;
+    const j = jz * n + jx;
+    const yj = h.data[j];
+    if (yj > top) top = yj;
+    if (yj > 0 && yj > vegY && zoneClass(world.zone[j]) === TerrainClass.veg) {
+      veg = world.zone[j];
+      vegY = yj;
+    }
+  }
+  return veg >= 0 && y >= top - GROUND_WALL.lipFlat ? veg : -1;
+}
+
+/**
+ * Flag bit of a lip texel in the material's zone texture (`uTerrainZone`): value = the stand-in
+ * vegetation zone + this, so the material reads the vegetation zone (`& 127`) and the semantic
+ * mask still the original cliff (zones < 32).
+ */
+export const LIP_ZONE_FLAG = 128;
+
+/** Zone texel of sample (ix, iz) for the material's zone texture (`lipZone` flagged). */
+export function zoneTexel(world: WorldData, ix: number, iz: number): number {
+  const lip = lipZone(world, ix, iz);
+  return lip >= 0 ? lip + LIP_ZONE_FLAG : world.zone[iz * world.height.n + ix];
 }
 
 const DIRS = [
@@ -196,13 +273,17 @@ function zoneColor(
   const y = h.data[i];
   const P = pal();
   const S = TERRAIN_SHAPE;
-  if (y <= 0) return seabedColor(y, _c);
+  if (y <= 0) return shoreShelf(world, ix, iz, seabedColor(y, _c));
   const z = world.zone[i];
   switch (z) {
     case Zone.sandWet: {
-      // wet at the waterline, drying inland; the shader lap re-wets the edge
+      // wet at the waterline, drying inland over a soft band (TASK-616); the shader lap re-wets
+      // the edge
       const sdf = world.shoreSdf[i];
-      return _c.copy(P.sandWet).lerp(P.sandDry, 0.55 * smooth(0.6, 3, sdf));
+      const B = GROUND_SHORE;
+      return _c
+        .copy(P.sandWet)
+        .lerp(P.sandDry, B.beachDryMix * smooth(B.beachDry[0], B.beachDry[1], sdf));
     }
     case Zone.sandDry:
       return _c.copy(P.sandDry);
@@ -334,11 +415,12 @@ export function fillAlbedoGrid(
   const z0 = Math.max(0, iz0);
   const z1 = Math.min(n - 1, iz1);
   if (x1 < x0 || z1 < z0) return;
-  // raw colours of the rect + the smoothing margin (sRGB 0..1) and their blend class
-  const ex0 = Math.max(0, x0 - R);
-  const ex1 = Math.min(n - 1, x1 + R);
-  const ez0 = Math.max(0, z0 - R);
-  const ez1 = Math.min(n - 1, z1 + R);
+  // raw colours of the rect + the smoothing margin + 1 (the lip pass reads neighbours) (sRGB
+  // 0..1) and their blend class
+  const ex0 = Math.max(0, x0 - R - 1);
+  const ex1 = Math.min(n - 1, x1 + R + 1);
+  const ez0 = Math.max(0, z0 - R - 1);
+  const ez1 = Math.min(n - 1, z1 + R + 1);
   const w = ex1 - ex0 + 1;
   const raw = new Float32Array(w * (ez1 - ez0 + 1) * 3);
   const cls = new Uint8Array(w * (ez1 - ez0 + 1));
@@ -350,6 +432,7 @@ export function fillAlbedoGrid(
       raw[k * 3 + 1] = _px.g;
       raw[k * 3 + 2] = _px.b;
     }
+  applyLipMask(world, raw, cls, ex0, ex1, ez0, ez1, x0 - R, x1 + R, z0 - R, z1 + R);
   // smoothing (M14b polish): a binomial blur over same-class neighbours only, so zone patches of
   // one material family (forest floor in grass, slope ramps on rock) read as soft rounded
   // shapes instead of 2 u blocks; class borders stay where they are.
@@ -387,6 +470,53 @@ export function fillAlbedoGrid(
 }
 
 const _px = { r: 0, g: 0, b: 0 };
+
+/**
+ * G5 lip override (TASK-616) on the raw rect (`ex0..ez1`, row width ex1 − ex0 + 1): every
+ * `lipZone` sample inside the inner rect `lx0..lz1` takes the mean raw colour of its vegetation
+ * 4-neighbours and the vegetation class, so the albedo's grass edge follows the plateau top and
+ * the same-class blur rounds it. Neighbours count by their world zone (never another lip), so
+ * the in-place pass is order-independent and a sub-rect refill equals the full build.
+ */
+function applyLipMask(
+  world: WorldData,
+  raw: Float32Array,
+  cls: Uint8Array,
+  ex0: number,
+  ex1: number,
+  ez0: number,
+  ez1: number,
+  lx0: number,
+  lx1: number,
+  lz0: number,
+  lz1: number,
+): void {
+  const w = ex1 - ex0 + 1;
+  const n = world.height.n;
+  for (let iz = Math.max(ez0 + 1, lz0); iz <= Math.min(ez1 - 1, lz1); iz++)
+    for (let ix = Math.max(ex0 + 1, lx0); ix <= Math.min(ex1 - 1, lx1); ix++) {
+      if (lipZone(world, ix, iz) < 0) continue;
+      const k = (iz - ez0) * w + (ix - ex0);
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      let c = 0;
+      for (let d = 0; d < 4; d++) {
+        const kj = k + DIRS[d][1] * w + DIRS[d][0];
+        const j = (iz + DIRS[d][1]) * n + ix + DIRS[d][0];
+        if (world.height.data[j] <= 0 || zoneClass(world.zone[j]) !== TerrainClass.veg) continue;
+        r += raw[kj * 3];
+        g += raw[kj * 3 + 1];
+        b += raw[kj * 3 + 2];
+        c++;
+      }
+      if (c === 0) continue;
+      raw[k * 3] = r / c;
+      raw[k * 3 + 1] = g / c;
+      raw[k * 3 + 2] = b / c;
+      cls[k] = TerrainClass.veg;
+    }
+}
 
 /** Neighbour reach of `topVariation` in grid cells (an edit recolours this far plus the blur). */
 export const TOP_REACH = Math.max(GROUND_MACRO.worn.reach, GROUND_MACRO.shore.reach);

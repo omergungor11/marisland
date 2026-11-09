@@ -67,6 +67,7 @@ function band(
     emissive,
     aoAmt: 0,
     ao: () => 1,
+    cls: 'glass',
   });
 }
 
@@ -79,13 +80,14 @@ function mullions(
   y1: number,
   color: string,
 ): void {
-  for (const x of xs) put(acc, baseBox(0.06, y1 - y0, 0.1), [x, y0, z], color, { aoAmt: 0 });
+  for (const x of xs)
+    put(acc, baseBox(0.06, y1 - y0, 0.1), [x, y0, z], color, { aoAmt: 0, cls: 'metal' });
 }
 
 /** Megaphone speaker: short neck + flared horn along +z of `yaw`. */
 function megaphone(acc: Acc, at: THREE.Vector3, yaw: number, color: string, lod: Lod): void {
   const q = qEuler(0, yaw, 0);
-  put(acc, cylB(0.04, 0.04, 0.3, 4, true), at, C.steel, { aoAmt: 0 });
+  put(acc, cylB(0.04, 0.04, 0.3, 4, true), at, C.steel, { cls: 'metal', aoAmt: 0 });
   const horn = new THREE.CylinderGeometry(0.26, 0.09, 0.42, lod === 0 ? 8 : 5, 1, true);
   const hp = at.clone().add(V(0, 0.34, 0.21).applyQuaternion(q));
   put(acc, horn, hp, color, {
@@ -107,7 +109,7 @@ function megaphone(acc: Acc, at: THREE.Vector3, yaw: number, color: string, lod:
 
 /** Mast with a lamp ball on top (emissive 1). */
 function beacon(acc: Acc, at: THREE.Vector3, h: number, lamp: string, lod: Lod): void {
-  put(acc, cylB(0.05, 0.04, h, 4, true), at, C.steel, { aoAmt: 0 });
+  put(acc, cylB(0.05, 0.04, h, 4, true), at, C.steel, { cls: 'metal', aoAmt: 0 });
   put(
     acc,
     new THREE.IcosahedronGeometry(lod === 0 ? 0.2 : 0.17, lod === 0 ? 1 : 0),
@@ -272,10 +274,16 @@ export function hqOffice({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry
       const bz = D / 2 + 0.3;
       put(acc, baseBox(3.2, 0.1, 0.6), [0, 2.45, bz], CREAM_TRIM, { aoAmt: 0.05 });
       for (const x of [-1.5, 0, 1.5])
-        put(acc, baseBox(0.07, 0.62, 0.07), [x, 2.55, bz + 0.25], shutter, { aoAmt: 0 });
-      put(acc, baseBox(3.2, 0.07, 0.07), [0, 3.15, bz + 0.25], shutter, { aoAmt: 0 });
+        put(acc, baseBox(0.07, 0.62, 0.07), [x, 2.55, bz + 0.25], shutter, {
+          aoAmt: 0,
+          cls: 'metal',
+        });
+      put(acc, baseBox(3.2, 0.07, 0.07), [0, 3.15, bz + 0.25], shutter, { aoAmt: 0, cls: 'metal' });
       for (const s of [-1, 1])
-        put(acc, baseBox(0.07, 0.07, 0.56), [s * 1.57, 3.15, bz], shutter, { aoAmt: 0 });
+        put(acc, baseBox(0.07, 0.07, 0.56), [s * 1.57, 3.15, bz], shutter, {
+          aoAmt: 0,
+          cls: 'metal',
+        });
       for (const x of [-1.1, 1.1]) plant(acc, V(x, 2.55, bz + 0.05), 0.9, 0);
     }
   }
@@ -326,7 +334,10 @@ export function hqOffice({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry
     band(acc, V(0, H - 0.25, D / 2 + 0.01), 0, 5.6, 0.12, lighten(acc1, 0.4), 0.6);
     if (v === 1) {
       // flag pole + rooftop planters
-      put(acc, cylB(0.04, 0.04, 1.6, 4, true), [2.5, ry, 1.9], C.steelLight, { aoAmt: 0 });
+      put(acc, cylB(0.04, 0.04, 1.6, 4, true), [2.5, ry, 1.9], C.steelLight, {
+        cls: 'metal',
+        aoAmt: 0,
+      });
       put(acc, new THREE.PlaneGeometry(0.7, 0.4), [2.86, ry + 1.35, 1.9], acc1, {
         double: true,
         aoAmt: 0,
@@ -426,7 +437,7 @@ export function meetingPavilion({ rng, lod, variant }: BuildOpts): THREE.BufferG
     put(acc, baseBox(3.6, 0.22, 0.2), [0, PH + 0.1, 1.75], p.trim, { aoAmt: 0.05 });
     glyph(acc, 'hq', V(0, PH + 0.21, 1.87), 0, 0.3, acc1);
     // hanging lamp (emissive)
-    put(acc, cylB(0.02, 0.02, 0.5, 3, true), [0, PH - 0.4, 0], C.steel, { aoAmt: 0 });
+    put(acc, cylB(0.02, 0.02, 0.5, 3, true), [0, PH - 0.4, 0], C.steel, { cls: 'metal', aoAmt: 0 });
   } else {
     // low rails (back + sides) as double-sided quads: the open pavilion keeps its walls' colour mass
     const rail = { double: true, aoAmt: 0, ao: () => 1 };
@@ -458,7 +469,7 @@ export function meetingPavilion({ rng, lod, variant }: BuildOpts): THREE.BufferG
       p.roof,
       { aoAmt: 0.05 },
     );
-    put(acc, cylB(0.04, 0.04, 0.5, 4, true), [0, PH + 1.2, 0], C.steel, { aoAmt: 0 });
+    put(acc, cylB(0.04, 0.04, 0.5, 4, true), [0, PH + 1.2, 0], C.steel, { cls: 'metal', aoAmt: 0 });
     put(acc, new THREE.PlaneGeometry(0.5, 0.3), [0.27, PH + 1.55, 0], acc1, {
       double: true,
       aoAmt: 0,
@@ -493,6 +504,7 @@ export function coffeeKiosk({ rng, lod, variant }: BuildOpts): THREE.BufferGeome
       {
         q: qEuler(0.28, 0, 0),
         aoAmt: 0,
+        cls: 'fabric',
       },
     );
   }
@@ -579,7 +591,10 @@ export function devOffice({ rng, lod, variant }: BuildOpts): THREE.BufferGeometr
       // patio standing desks
       for (const x of [-0.8, 0.9]) {
         put(acc, baseBox(0.8, 0.06, 0.4), [x, 0.95, D / 2 + 0.55], C.desk, { aoAmt: 0 });
-        put(acc, cylB(0.04, 0.04, 0.95, 4, true), [x, 0, D / 2 + 0.55], C.steel, { aoAmt: 0 });
+        put(acc, cylB(0.04, 0.04, 0.95, 4, true), [x, 0, D / 2 + 0.55], C.steel, {
+          cls: 'metal',
+          aoAmt: 0,
+        });
         put(acc, baseBox(0.34, 0.02, 0.24), [x, 1.01, D / 2 + 0.55], C.dark, { aoAmt: 0 });
       }
     }
@@ -786,6 +801,7 @@ export function broadcastStudio({ rng, lod, variant }: BuildOpts): THREE.BufferG
         {
           q: qEuler(0.35, 0, 0),
           aoAmt: 0,
+          cls: 'fabric',
         },
       );
   }
@@ -803,7 +819,8 @@ export function billboard({ rng, lod, variant }: BuildOpts): THREE.BufferGeometr
   put(acc, baseBox(3.6, 0.14, 1.2), [0, 0, 0], C.plinth, { aoAmt: 0.2 });
   for (const x of [-1.5, 1.5]) {
     put(acc, cylB(0.12, 0.1, PY + 0.2, hi ? 6 : 4, true), [x, 0.14, 0], C.deskDark, { aoAmt: 0.2 });
-    if (hi) put(acc, cylB(0.22, 0.22, 0.18, 6), [x, 0.14, 0], C.steel, { aoAmt: 0.1 });
+    if (hi)
+      put(acc, cylB(0.22, 0.22, 0.18, 6), [x, 0.14, 0], C.steel, { cls: 'metal', aoAmt: 0.1 });
   }
   // panel: frame + face
   put(acc, baseBox(PW + 0.2, PH + 0.2, 0.18), [0, PY - 0.1, -0.02], p.trim, { aoAmt: 0.1 });
@@ -836,6 +853,7 @@ export function billboard({ rng, lod, variant }: BuildOpts): THREE.BufferGeometr
     // lamps on arms
     for (const x of [-1.2, 0, 1.2]) {
       put(acc, cylB(0.025, 0.025, 0.35, 3, true), [x, PY + PH + 0.1, 0.1], C.steel, {
+        cls: 'metal',
         q: qEuler(0.9, 0, 0),
         aoAmt: 0,
       });
@@ -869,7 +887,7 @@ export function billboard({ rng, lod, variant }: BuildOpts): THREE.BufferGeometr
 
 /** Barrier gate: post + striped arm (arm raised a little). */
 function barrier(acc: Acc, at: THREE.Vector3, len: number, lod: Lod): void {
-  put(acc, baseBox(0.18, 0.9, 0.18), at, C.steel, { aoAmt: 0.1 });
+  put(acc, baseBox(0.18, 0.9, 0.18), at, C.steel, { cls: 'metal', aoAmt: 0.1 });
   const n = lod === 0 ? 6 : 2;
   const seg = len / n;
   for (let i = 0; i < n; i++)
@@ -896,7 +914,10 @@ function checklistBoard(
   lod: Lod,
 ): void {
   for (const x of [-w * 0.35, w * 0.35])
-    put(acc, cylB(0.05, 0.05, 0.5, 4, true), at.clone().add(V(x, 0, 0)), C.steel, { aoAmt: 0 });
+    put(acc, cylB(0.05, 0.05, 0.5, 4, true), at.clone().add(V(x, 0, 0)), C.steel, {
+      cls: 'metal',
+      aoAmt: 0,
+    });
   put(acc, baseBox(w + 0.14, h + 0.14, 0.1), at.clone().add(V(0, 0.45, 0)), trim, { aoAmt: 0.05 });
   put(
     acc,
@@ -1055,7 +1076,7 @@ export function inspectionTower({ rng, lod, variant }: BuildOpts): THREE.BufferG
     emissive: 1,
     ao: () => 1,
   });
-  put(acc, cylB(0.04, 0.04, 0.5, 4, true), [0, ty + 0.9, 0], C.steel, { aoAmt: 0 });
+  put(acc, cylB(0.04, 0.04, 0.5, 4, true), [0, ty + 0.9, 0], C.steel, { cls: 'metal', aoAmt: 0 });
   if (hi) {
     glyph(acc, 'qa', V(0, 2.9, BW / 2 + 0.05), 0, 0.5, C.white);
     // inspector's railing around the cabin slab
@@ -1066,7 +1087,7 @@ export function inspectionTower({ rng, lod, variant }: BuildOpts): THREE.BufferG
         cylB(0.03, 0.03, 0.4, 3, true),
         [Math.cos(a) * 1.22, cy + 0.2, Math.sin(a) * 1.22],
         C.steel,
-        { aoAmt: 0 },
+        { cls: 'metal', aoAmt: 0 },
       );
     }
     trafficCone(acc, V(1.5, 0, 1.45), 1.0, lod);
@@ -1353,7 +1374,10 @@ export function dataCenter({ rng, lod, variant }: BuildOpts): THREE.BufferGeomet
     // pipeline along the front base + riser up the right side
     pipe(acc, V(-3.3, 0.4, D / 2 + 0.2), V(1.4, 0.4, D / 2 + 0.2), 0.1, acc1, lod);
     for (const x of [-3.0, -1.0, 1.1])
-      put(acc, baseBox(0.1, 0.4, 0.14), [x, 0.05, D / 2 + 0.2], C.steel, { aoAmt: 0 });
+      put(acc, baseBox(0.1, 0.4, 0.14), [x, 0.05, D / 2 + 0.2], C.steel, {
+        cls: 'metal',
+        aoAmt: 0,
+      });
     pipe(acc, V(W / 2 + 0.2, 0.4, D / 2 - 0.1), V(W / 2 + 0.2, 0.4, -D / 2 + 0.1), 0.1, acc1, lod);
     pipe(
       acc,
@@ -1510,7 +1534,10 @@ export function antennaMast({ rng, lod, variant }: BuildOpts): THREE.BufferGeome
       mast: 0.01,
       lod,
     });
-  put(acc, cylB(0.03, 0.02, 1.2, 4, true), [0, TOP, -0.2], C.steelLight, { aoAmt: 0 });
+  put(acc, cylB(0.03, 0.02, 1.2, 4, true), [0, TOP, -0.2], C.steelLight, {
+    cls: 'metal',
+    aoAmt: 0,
+  });
   put(
     acc,
     new THREE.IcosahedronGeometry(0.17, hi ? 1 : 0),
@@ -1540,7 +1567,7 @@ export function antennaMast({ rng, lod, variant }: BuildOpts): THREE.BufferGeome
       ao: () => 1,
     });
     glyph(acc, 'devops', V(0.5, 0.8, 0.93), 0, 0.4, acc1);
-    put(acc, cylB(0.04, 0.04, 0.8, 4, true), [0.5, 0.14, 0.9], C.steel, { aoAmt: 0 });
+    put(acc, cylB(0.04, 0.04, 0.8, 4, true), [0.5, 0.14, 0.9], C.steel, { cls: 'metal', aoAmt: 0 });
   }
   return acc.finish(rng, false, true);
 }
@@ -1580,11 +1607,12 @@ export function researchHut({ rng, lod, variant }: BuildOpts): THREE.BufferGeome
   const mx = 1.05;
   const mz = 0.95;
   const hubY = ry + 1.5;
-  put(acc, cylB(0.05, 0.04, 1.5, 4, true), [mx, ry, mz], C.steel, { aoAmt: 0 });
+  put(acc, cylB(0.05, 0.04, 1.5, 4, true), [mx, ry, mz], C.steel, { cls: 'metal', aoAmt: 0 });
   const hub = V(mx, hubY, mz + 0.1);
   const tag = spin.tag(hub);
   for (let k = 0; k < (hi ? 2 : 1); k++)
     put(acc, new THREE.BoxGeometry(0.95, 0.06, 0.05), hub, C.steelLight, {
+      cls: 'metal',
       q: qEuler(0, 0, k * (Math.PI / 2) + 0.4),
       windAbs: tag,
       aoAmt: 0,
@@ -1610,7 +1638,10 @@ export function researchHut({ rng, lod, variant }: BuildOpts): THREE.BufferGeome
   if (hi) {
     // rain gauge, antenna
     put(acc, cylB(0.08, 0.08, 0.3, 6), [-1.0, 0, D / 2 + 0.3], C.glass, { aoAmt: 0.1 });
-    put(acc, cylB(0.025, 0.02, 1.1, 3, true), [-1.2, ry, -1.0], C.steelLight, { aoAmt: 0 });
+    put(acc, cylB(0.025, 0.02, 1.1, 3, true), [-1.2, ry, -1.0], C.steelLight, {
+      cls: 'metal',
+      aoAmt: 0,
+    });
     glyph(acc, 'research', V(0, 1.95, D / 2 + 0.05), 0, 0.3, acc1);
   }
   band(acc, V(0, H - 0.2, D / 2 + 0.01), 0, 2.4, 0.1, lighten(acc1, 0.5), 1);
@@ -1636,6 +1667,7 @@ export function telescope({ rng, lod, variant }: BuildOpts): THREE.BufferGeometr
   }
   if (hi)
     put(acc, new THREE.CylinderGeometry(0.07, 0.07, 0.12, 6), [0, headY, 0], C.steel, {
+      cls: 'metal',
       aoAmt: 0.1,
     });
   const q = qEuler(0.95, 0, 0);

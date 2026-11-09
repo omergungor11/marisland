@@ -2,6 +2,7 @@ import type * as THREE from 'three';
 import { BOT_EYE_ANIM, GULLS } from '../content/life.ts';
 import { SHARED } from '../render/uniforms.ts';
 import { makeLitMaterial, marAttr, type LitMaterial } from '../render/materials/factory.ts';
+import { LIFE_CLASS_DEFAULT } from '../content/materials.ts';
 
 /**
  * One shared program for every creature that animates in the vertex shader (gulls' wings, the land
@@ -217,6 +218,9 @@ export const LIFE_PROGRAM_KEY = 'mar-lit:life';
 
 export function makeLifeMaterial(name: string, tintAll: boolean): LitMaterial {
   const mat = makeLitMaterial({ instanced: true, rim: true }, { name });
+  // material class of untagged vertices (TASK-594): bots read as metal with glass screens
+  const cls = LIFE_CLASS_DEFAULT[name];
+  if (cls) mat.classDefault.value.set(cls[0], cls[1]);
   (mat as unknown as { defaultAttributeValues: Record<string, number[]> }).defaultAttributeValues =
     DEFAULTS;
   const tint = { value: tintAll ? 1 : 0 };

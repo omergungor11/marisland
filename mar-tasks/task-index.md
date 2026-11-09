@@ -522,19 +522,20 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 | TASK-613 | M50 duvar paleti ve tabakalar (peer Phase 5 TASK-595 strata / scree buraya katlandı): tema başına 3–4 strata tonu, band yüksekliği duvarla ölçeklenir, dudak gölgesi + etek koyuluğu albedo'ya, çatlak tekrarını kıran ikinci ölçek | shader | M | COMPLETED (D-162) | TASK-612 |
 | TASK-614 | M50 üst yüzey makro varyasyon: çim yükseklik gradyanı, nem/yıpranma lekeleri, yol kenarı aşınması, çim→kum 4–6 u geçiş | shader | M | PENDING | TASK-612 |
 | TASK-615 | M50 silüet ve kenar: kıyı boyunca duvar yüksekliği ±25 %, plato kenarı kaya çıkıntıları, teras basamağı, SDF çim dudağı, etek talus scatter ≤ 2k tris/ada | worldgen | M | COMPLETED (rim delta after sites, outcrops = Zone.rock, talus ≤ 1.4k tris; G5 lip recipe → 614/616) | TASK-612 |
-| TASK-616 | M50 kıyı şeridi: ıslak kaya bandı, kum dalgacıkları, şelf devamı, köpük temas hizası | shader | S | PENDING | TASK-613 |
-| TASK-617 | M50 ışık ve AO: `TERRAIN_AO` güçlenir (`sandScale` ayrı), terrain rim terimi, duvar gölge tonu | shader | S | PENDING | TASK-614 |
+| TASK-616 | M50 kıyı şeridi: ıslak kaya bandı, kum dalgacıkları, şelf devamı, köpük temas hizası + G5 dudak maskesi | shader | S | COMPLETED (wet band 0.9 u + salt line, 2.5 u wet rock below, `seabedShelf`, beach drying; lip = zone flag bit, mask byte-identical) | TASK-613 |
+| TASK-617 | M50 ışık ve AO: `TERRAIN_AO` güçlenir (`sandScale` ayrı), terrain rim terimi, duvar gölge tonu, altın saat L ≥ %15, DevOps kül şeritleri, Design çim S | shader | S | IN PROGRESS | TASK-614 |
 | TASK-618 | M50 kapanış QA + belge: "sonra" kontak sayfası, G kriter puanı, ART_BIBLE / ARCHITECTURE / D-162 | qa + docs | S | PENDING | TASK-613…617 |
 
 
-### M51 — Kurye gemileri: ada → ada devirler limandan gemiyle gider, ada başına özgün gemi, tıkla → bilgi kartı — PLANNED (2026-11-09, D-164)
+### M51 — Kurye gemileri: ada → ada devirler limandan gemiyle gider, ada başına özgün gemi, tıkla → bilgi kartı — DONE (conditional, 2026-11-09, D-164; follow-ups TASK-650)
 
 | ID | Task | Agent | Size | Status | Depends |
 |---|---|---|---|---|---|
 | TASK-620 | Courier ship factories + content (props): 7 theme ships + crate + report scroll in `src/geo/courier.ts`, specs in `src/content/fleet-ships.ts`, `P-couriers` preset, tri / determinism tests | props | M | COMPLETED (gallery showcase `pnpm exec tsx scripts/gallery-shots.ts couriers`, no `P-couriers` preset in shots.ts) | — |
 | TASK-621 | Courier agent kind + voyage FSM (life): one ship per island at its berth, land-safe route (ferry loop or tested Bezier), pure `courierState(gates, sessions, now)` (pending → load, allowed → sail, child done → return with scroll, denied → unload), mock voyage | life | M | COMPLETED (7 ships as 7 InstancedMesh, routes: ferry loop / Bezier / grid A*, F-courier-* dev presets; budgets ok, deterministic) | TASK-620 |
-| TASK-622 | Ship picking + info card (engine): click → `mar-fcard` (from → to, request title, prompt, status, İzin ver / Reddet, open child), hover tip, Esc precedence, `F-courier` / `F-courier-card` presets | engine | M | IN PROGRESS (engine agent, worktree, 2026-11-09) | TASK-621 |
-| TASK-623 | M51 QA + docs: shots, budgets, determinism, one real gate on the bridge; ART_BIBLE / ARCHITECTURE / FLEET.md | qa + docs | S | PENDING | TASK-622 |
+| TASK-622 | Ship picking + info card (engine): click → `mar-fcard` (from → to, request title, prompt, status, İzin ver / Reddet, open child), hover tip, Esc precedence, `F-courier` / `F-courier-card` presets | engine | M | COMPLETED (card follows the ship, Esc via capture listener, `fleetCard` preset field; F-courier-card / -wide) | TASK-621 |
+| TASK-623 | M51 QA + docs: shots, budgets, determinism, one real gate on the bridge; ART_BIBLE / ARCHITECTURE / FLEET.md | qa + docs | S | COMPLETED (`mar-docs/qa/m51-couriers-2026-11-09.md`: conditional pass — card / greyscale / determinism / budgets PASS; wake tail, night lantern, deck close-up, pick automation → TASK-650; ART_BIBLE entry pending, file held by a peer) | TASK-622 |
+| TASK-650 | M51 follow-ups: wake tail length = sailboats' (life); deck close-up presets `F-courier-deck-*` at ~ladder:40 for loading / outbound / returning so crate + scroll are verified (engine); night mast-lantern halo visible at ~25 px (shader); `?pick=` capture param so the card opens from a ship pick in headless QA (engine); P-couriers gallery sheet black bands + empty 8th cell; ART_BIBLE fleet entry | life + engine + shader | S | PENDING | TASK-623 |
 
 
 ## Phase 5: Visual upgrade — richer surfaces, prop variety, agent identity, high tier (plan `mar-plans/VISUAL_UPGRADE.md`, details `phases/phase-5.md`, budget D-156)
@@ -553,7 +554,7 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-594 | Material classes (matte / wood / metal / glass / fabric) in the free `emissive` code range, per-class specular / fresnel / edge light, `fwidth` bevel edge light + triplanar near grain (60 → 140 u fade), same programs | shader | M | IN_PROGRESS | — |
+| TASK-594 | Material classes (matte / wood / metal / glass / fabric) in the free `emissive` code range, per-class specular / fresnel / edge light, `fwidth` bevel edge light + triplanar near grain (60 → 140 u fade), same programs | shader | M | COMPLETED (D-159; crease bake instead of fwidth; buildings untagged) | — |
 | TASK-595 | Terrain detail: cliff strata bands, scree speckles, moss creep, wet sand glint, path edge wear (terrain program) | shader | S | FOLDED INTO TASK-613 / 614 (M50 Ground Look, peer session) | TASK-594 |
 | TASK-596 | Water: shallow caustics (terrain underwater term, day-gated), sun glitter sparkle, second foam band | shader | S | PENDING | TASK-594 |
 | TASK-597 | M46 QA: before / after on 8 wow ids, ladder, low ladder, programs, `wow --assert` | qa | S | PENDING | TASK-595, TASK-596 |
