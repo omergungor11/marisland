@@ -10,6 +10,14 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-11-10 M51 courier ships DONE (conditional, D-164)**: TASK-620 ships (`geo/courier.ts`, `content/fleet-ships.ts`),
+  621 voyage FSM (`life/courier-state.ts` pure plan from gates + sessions, `courier-route.ts` ferry loop / Bezier / grid A*,
+  `life/couriers.ts` 7 InstancedMesh), 622 card (`ui/courier-card.ts`, preset field `fleetCard`, Esc via capture listener),
+  623 QA `mar-docs/qa/m51-couriers-2026-11-09.md`. See it: `?shot=F-courier-card`. Open: TASK-650 follow-ups (wake tail,
+  night lantern halo, deck close-up presets, `?pick=` for headless card QA, ART_BIBLE fleet entry — ART_BIBLE.md was held
+  uncommitted by a peer session all evening, so the entry is not written yet). Most routes hit the 45 s `voyageS` cap, so
+  ships cruise 4–12 u/s: raise the cap in `COURIER` if it reads too fast. Three sessions share the checkout: ff-only merges,
+  numbers — this session 650+, HQ 630…639, marisland 2 624…629 / 640+, D-165+ to marisland 2.
 - **2026-11-09 Phase 5 visual upgrade opened (D-156)**: plan `mar-plans/VISUAL_UPGRADE.md`, tasks `mar-tasks/phases/phase-5.md`
   (M45 agent identity, M46 surface quality, M47 prop variety, M48 island detail, M49 high tier). Budgets raised: medium tri 950k /
   calls 330 / 200 MB, high programs 30. Shared contract `src/content/bot-look.ts` (`botLook`, `eyesFor`, `packLook`). Wave 1 in
