@@ -2,6 +2,23 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-156: Phase 5 visual upgrade — budgets raised for detail (medium tri 950k / calls 330 / 200 MB, high programs 30); bot look contract; wave 1 = 590 / 591 / 594 / 598 — 2026-11-09
+
+**Context.** The user asked for richer, higher-fidelity graphics: more detailed and varied island props, and
+distinguishable agents (bots) with portraits. Medium stood at the wall on `wow --assert` (W5 789,739 / 800k tris,
+W-cable-dusk 294 / 300 calls, W27 175 / 180 MB) and high at 24 / 24 programs, so no task could add LOD0 detail.
+
+**Decision (user).** Plan `mar-plans/VISUAL_UPGRADE.md`, tasks `mar-tasks/phases/phase-5.md` (M45 agent identity,
+M46 surface quality, M47 prop variety, M48 island detail layer, M49 high tier render). Budgets: medium `triangles`
+800k → 950k, `drawCalls` 300 → 330, `gpuMemoryMB` 180 → 200; high `programs` 24 → 30; low unchanged. M49 effects come
+from the pmndrs `postprocessing` package already in use (no new dependency). `src/content/bot-look.ts` is the shared
+contract: `botLook(seed, dept, role, eyes)` → chassis / head / shade / item, pure and deterministic, read by both the
+life bot meshes and the panel portrait. Wave 1 runs TASK-590 (life), 591 (engine), 594 (shader), 598 (props) in
+parallel worktrees; D-numbers reserved: 590 → D-157, 591 → D-158, 594 → D-159, 598 → D-160.
+
+**Rejected.** Budget-neutral (every task trims what it adds: slow, every wave spends tokens on trimming); high-only
+detail (medium users would see nothing).
+
 ## D-155: Gate block capped with one card + compact rows; gate line lives with the parent; `childGates` manifest flag closes hand-offs for child sessions on design / qa / devops / research; Design delivers specs, QA shoots; beacon girdle rejected (TASK-580 / 581) — 2026-11-08
 
 **Decision**: Panel: exactly one pending gate is a full card (the clicked one, else the oldest), every other pending gate is a one-line row with İzin ver / Reddet inline; the block is capped at `FLEET_GATE.maxShare` 0.45 of the card and scrolls inside, the list keeps `listMinPx` 124 px (one card + ~2 rows at 960×540, not the 3 rows asked for: 3 rows would push the buttons under the scroll). A "devamı / daha az" toggle shows the full prompt when the 3-line clamp cuts it. The collapsed gate line stays while the parent is live (`gateLineShown`, cap `liveCapS` 24 h) and `collapseS` counts from the later of `answeredAt` and the parent's end. Panel rows map `lastLine` through `resultBar` (Turkish), bridge stays English. Esc: the terminal handles it in the capture phase and `hud.ts` skips an already-handled Esc, so only the topmost closes. CSS lesson: `max-height` on the flex item itself froze it; a `.mar-fgbox` wrapper holds the cap and `.mar-fleet-rows{flex-shrink:20}` makes the list give way first. Bridge / fleet: `island.json` `childGates` (boolean, default true; design / qa / devops / research false): a session with `parentId` on a closed island gets no gates from its `## →` headings, only a `system` line "child session: devir kapalı, istek HQ'ya öneri olarak kaldı"; the child prompt says to hand off only to an island named in the request. `fleet/CLAUDE.md`: one command per Bash call, no `;` / `&&` / `|` (the allowlist matches prefixes under `--permission-mode acceptEdits --permission-prompts none`, set in `server/resume.ts`). Design's visual output is spec + preset id, the PNG comes from `## → qa: shots --only=<id>` (option b: shots needs a build + preview port and 1–2 min per frame, and Design already drifted into QA's job). `maxTurns`: marketing 12, design / qa / devops 20, research 15, coding / hq 30.

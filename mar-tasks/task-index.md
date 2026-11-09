@@ -508,3 +508,51 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 
 ### M43 — Knowledge base + HQ review (admin window, fleet/kb, projects, island CLAUDE.md, agent / skill self-generation gated by HQ) — IN PROGRESS (opened 2026-11-09)
 ### M44 — Reports (daily / weekly / monthly / all-time per island; top topics, long sessions, lessons) — PLANNED
+
+## Phase 5: Visual upgrade — richer surfaces, prop variety, agent identity, high tier (plan `mar-plans/VISUAL_UPGRADE.md`, details `phases/phase-5.md`, budget D-156)
+
+### M45 — Agent identity and portrait
+
+| ID | Task | Agent | Complexity | Status | Dependencies |
+|----|------|-------|-----------|--------|-------------|
+| TASK-590 | Bot chassis (scout / hauler / spire) + head (monitor / visor / cam) variants, each chassis its own InstancedMesh, role → carried item, eye states (idle / working / gate / error / done) from `botLook(seed)`; `F-bots` dev shot | life | M | PENDING | — |
+| TASK-591 | Panel portraits: `botPortraitSvg(look)` on session rows, terminal header, fleet chips, hover tip; mock covers 3 × 3 looks × 5 states; `F-portraits` dev shot | engine | S | PENDING | — (reads `content/bot-look.ts`) |
+| TASK-592 | Bot motion variety: per-chassis gait, four idle beats, gate look-up + amber gem pulse, done hop + sparkles | life | S | PENDING | TASK-590 |
+| TASK-593 | M45 QA: portraits vs 3D bots, F-* shots, wow budgets W5 / W26 / W-morning-shift / W-funicular-dawn, low ladder | qa | S | PENDING | TASK-590, TASK-591, TASK-592 |
+
+### M46 — Surface quality
+
+| ID | Task | Agent | Complexity | Status | Dependencies |
+|----|------|-------|-----------|--------|-------------|
+| TASK-594 | Material classes (matte / wood / metal / glass / fabric) in the free `emissive` code range, per-class specular / fresnel / edge light, `fwidth` bevel edge light + triplanar near grain (60 → 140 u fade), same programs | shader | M | PENDING | — |
+| TASK-595 | Terrain detail: cliff strata bands, scree speckles, moss creep, wet sand glint, path edge wear (terrain program) | shader | S | PENDING | TASK-594 |
+| TASK-596 | Water: shallow caustics (terrain underwater term, day-gated), sun glitter sparkle, second foam band | shader | S | PENDING | TASK-594 |
+| TASK-597 | M46 QA: before / after on 8 wow ids, ladder, low ladder, programs, `wow --assert` | qa | S | PENDING | TASK-595, TASK-596 |
+
+### M47 — Prop variety
+
+| ID | Task | Agent | Complexity | Status | Dependencies |
+|----|------|-------|-----------|--------|-------------|
+| TASK-598 | Building variants v2: roof style × window layout × door × trims, `variants` 3 → 8, LOD1 silhouette kept, LOD0 tris ≤ ×1.25; gallery `buildings` | props | M | PENDING | — |
+| TASK-599 | Vegetation + rock v2: 3 canopy silhouettes, per-island colour sets (`content/biomes.ts`), palm variants, 5 rock silhouettes + moss / strata, driftwood, kelp; far blobs follow the biome colour | props | M | PENDING | — |
+| TASK-600 | Biome scatter rules: per-island variant weights, rock fields, flower meadow patches, path edges, lot hedges, garden plots; one world hash re-pin | worldgen | M | PENDING | TASK-598, TASK-599 |
+| TASK-601 | Boats + dock dressing v2: 3 hulls, per-island sail / hull sets, net / lobster pot / rope / ladder, buoy variants | props | S | PENDING | TASK-598 |
+| TASK-602 | M47 QA | qa | S | PENDING | TASK-600, TASK-601 |
+
+### M48 — Island detail layer
+
+| ID | Task | Agent | Complexity | Status | Dependencies |
+|----|------|-------|-----------|--------|-------------|
+| TASK-603 | Coast micro-landscapes per archetype: arch / stack clusters, tide-pool fields, dune ridges, kelp beds, cliff ledges, waterfall foot pools; one hash re-pin | worldgen | M | PENDING | TASK-600 |
+| TASK-604 | Coast kit geometry: rockArch, tidePoolField, duneGrass, kelp (wind + water tint), ledgeShrub | props + shader | S | PENDING | — |
+| TASK-605 | M48 QA | qa | S | PENDING | TASK-603, TASK-604 |
+
+### M49 — High tier render
+
+| ID | Task | Agent | Complexity | Status | Dependencies |
+|----|------|-------|-----------|--------|-------------|
+| TASK-606 | High only: SSAO / GTAO pass + PCF soft shadows; medium wow pixel-identical; high programs ≤ 30 | shader | M | PENDING | TASK-594 |
+| TASK-607 | `wow-high` set (`--quality=high --tag=high`) with `BUDGETS.high` assert, tier in the stats overlay, CI report-only | devops + engine | S | PENDING | TASK-606 |
+| TASK-608 | Sky + clouds v2: 3 cloud archetypes two-tone + rim (medium +≤ 2 calls), sun disc + halo, moon phases, star density, dusk god rays (high) | shader | M | PENDING | TASK-606 |
+| TASK-609 | M49 QA | qa | S | PENDING | TASK-607, TASK-608 |
+| TASK-610 | Docs: ART_BIBLE §5 / §7 / §11 rows, ARCHITECTURE §8 table, FLEET.md bot identity, MEMORY handoff | docs | XS | PENDING | per milestone |

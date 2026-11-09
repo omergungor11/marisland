@@ -63,6 +63,10 @@ export interface Budget {
  * and M33 kit still to land (~176–177 MB, inferred): medium gpuMemoryMB 172 → 180. L-qa 78, L-coding 77: low 76 → 78.
  * D-128 (user 2026-11-02): with the Carnival Pier, Colour Wharf and the placed M33 kit, L-coding / L-qa / L-marketing /
  * L-design / L-pairs-design read 79 MB at the 170–240 u rungs: low gpuMemoryMB 78 → 80.
+ * D-156 (user 2026-11-09, Phase 5 visual upgrade): medium was at the wall before any new detail (W5 789,739 tris,
+ * W-cable-dusk 294 calls, W27 175 MB). Building / vegetation LOD0 variants, per-chassis bot meshes and cloud
+ * archetypes land on medium: triangles 800k → 950k, drawCalls 300 → 330, gpuMemoryMB 180 → 200. High gains the
+ * SSAO / soft shadow / god ray passes: programs 24 → 30. Low unchanged (nothing of M45–M49 ships on low).
  */
 export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
   low: {
@@ -78,14 +82,14 @@ export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
     newSeedMs: 1500,
   },
   medium: {
-    drawCalls: 300,
-    triangles: 800_000,
+    drawCalls: 330,
+    triangles: 950_000,
     instances: 15_000,
     groundCover: 12_000,
     agents: 60,
     particles: 6_000,
     programs: 20,
-    gpuMemoryMB: 180,
+    gpuMemoryMB: 200,
     jsHeapMB: 180,
     newSeedMs: 800,
   },
@@ -96,7 +100,7 @@ export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
     groundCover: 30_000,
     agents: 110,
     particles: 12_000,
-    programs: 24,
+    programs: 30,
     gpuMemoryMB: 480,
     jsHeapMB: 250,
     newSeedMs: 500,
