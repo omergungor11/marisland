@@ -6,6 +6,7 @@ import { SAND } from '../content/palette.ts';
 import { CODING_M22_SHOWCASE_IDS } from '../content/props-themes/coding.ts';
 import { QA_M24_PROP_IDS } from '../content/props-themes/qa-proving.ts';
 import { QA_M30_PROP_IDS } from '../content/props-themes/qa-customs.ts';
+import { MARINA_QUAY_PROP_IDS } from '../content/props-themes/marketing-marina.ts';
 import { HQ_MARINA_PROP_IDS } from '../content/props-themes/hq-marina.ts';
 import { DEVOPS_M25_PROP_IDS } from '../content/props-themes/devops-m25.ts';
 import { DEVOPS_M26_PROP_IDS } from '../content/props-themes/devops-m26.ts';
@@ -31,6 +32,7 @@ function showcaseIds(): readonly string[] | undefined {
   if (raw === 'qa24') return QA_M24_PROP_IDS;
   if (raw === 'qa30') return QA_M30_PROP_IDS;
   if (raw === 'marina') return HQ_MARINA_PROP_IDS;
+  if (raw === 'quay') return MARINA_QUAY_PROP_IDS;
   if (raw === 'devops25') return DEVOPS_M25_PROP_IDS;
   if (raw === 'devops26') return DEVOPS_M26_PROP_IDS;
   if (raw === 'marketing27') return MARKETING_M27_PROP_IDS;

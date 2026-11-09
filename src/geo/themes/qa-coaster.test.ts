@@ -46,7 +46,11 @@ const NEW_VARIANTS: ReadonlyArray<readonly [string, number]> = [
 describe('TASK-540 defs and ledger', () => {
   it('two new defs at the end of PROP_DEFS (after the M33 Coding block), geo and PropDef agree', () => {
     expect(QA_COASTER_PROP_DEFS.map((d) => d.id)).toEqual(['coasterTrack', 'coasterStation']);
-    expect(PROP_DEFS.slice(-2).map((d) => d.id)).toEqual(['coasterTrack', 'coasterStation']);
+    const at = PROP_DEF_INDEX.coasterTrack; // later kits (M52 quay) append after the pair
+    expect(PROP_DEFS.slice(at, at + 2).map((d) => d.id)).toEqual([
+      'coasterTrack',
+      'coasterStation',
+    ]);
     expect(PROP_DEF_INDEX.coasterTrack).toBeGreaterThan(PROP_DEF_INDEX.quantumPavilion);
     for (const d of QA_COASTER_PROP_DEFS) {
       expect(PROP_GEO[d.geo], d.id).toBeDefined();

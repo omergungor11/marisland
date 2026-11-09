@@ -3,7 +3,7 @@
  * a prop can be judged on its own (no world needed). One image per def (a row of every variant at
  * LOD0 + LOD1) and one close 3/4 view of variant 0 LOD0.
  *
- *   pnpm exec tsx scripts/gallery-shots.ts [m20|coding22|research|qa24|marina|devops25|devops26|marketing27|research28|harbours|research31|coding33|coaster|buildings|id,id,...] [--port=5199] [--out=shots/gallery-m20]
+ *   pnpm exec tsx scripts/gallery-shots.ts [m20|coding22|research|qa24|marina|quay|devops25|devops26|marketing27|research28|harbours|research31|coding33|coaster|buildings|id,id,...] [--port=5199] [--out=shots/gallery-m20]
  *
  * Starts its own `vite` dev server on `--port` (killed at the end; a server already on the port is
  * reused and left alone). Software GL (swiftshader), so no GPU is needed.
@@ -18,6 +18,7 @@ import { CODING_M22_SHOWCASE_IDS } from '../src/content/props-themes/coding.ts';
 import { M20_PROP_IDS } from '../src/content/props-themes/m20.ts';
 import { QA_M24_PROP_IDS } from '../src/content/props-themes/qa-proving.ts';
 import { QA_M30_PROP_IDS } from '../src/content/props-themes/qa-customs.ts';
+import { MARINA_QUAY_PROP_IDS } from '../src/content/props-themes/marketing-marina.ts';
 import { HQ_MARINA_PROP_IDS } from '../src/content/props-themes/hq-marina.ts';
 import { DEVOPS_M25_PROP_IDS } from '../src/content/props-themes/devops-m25.ts';
 import { DEVOPS_M26_PROP_IDS } from '../src/content/props-themes/devops-m26.ts';
@@ -73,13 +74,15 @@ const ids =
                                 ? COURIER_PROP_IDS
                                 : which === 'buildings'
                                   ? BUILDINGS_V2_IDS
-                                  : which.split(',');
+                                  : which === 'quay'
+                                    ? MARINA_QUAY_PROP_IDS
+                                    : which.split(',');
 const PORT = Number(opt('port') ?? 5199);
 const ROOT = resolve(import.meta.dirname, '..');
 const OUT = resolve(
   ROOT,
   opt('out') ??
-    `shots/gallery-${['m20', 'coding22', 'research', 'qa24', 'qa30', 'marina', 'devops25', 'devops26', 'marketing27', 'research28', 'harbours', 'research31', 'coding33', 'coaster', 'couriers', 'buildings'].includes(which) ? which : 'custom'}`,
+    `shots/gallery-${['m20', 'coding22', 'research', 'qa24', 'qa30', 'marina', 'devops25', 'devops26', 'marketing27', 'research28', 'harbours', 'research31', 'coding33', 'coaster', 'couriers', 'buildings', 'quay'].includes(which) ? which : 'custom'}`,
 );
 const BASE = `http://localhost:${PORT}/`;
 
@@ -182,28 +185,23 @@ async function main(): Promise<void> {
           );
         continue;
       }
-      if (which === 'buildings') {
+      if (which === 'buildings' || which === 'quay') {
         // TASK-598: every variant as a 640x360 tile (LOD0 left, LOD1 right), then one grid per def
         const tiles: string[] = [];
         for (let v = 0; v < def.variants; v++) {
           const pair = row.filter((r) => r.variant === v);
           const mid = (pair[0].x + pair[pair.length - 1].x) / 2;
+          // quay (TASK-660): per-variant heights, a front-on 3/4 view
+          const dh = which === 'quay' ? (def.heights?.[v] ?? def.height) : def.height;
           const dd = Math.max(
             ((pair[pair.length - 1].x - pair[0].x) / 2 + def.footprint) * 1.75,
-            def.height * 2.1,
+            dh * 2.1,
           );
           const name = `${id}-v${v}`;
           await shoot(
             id,
             name,
-            [
-              mid + dd * 0.35,
-              def.height * 0.75 + dd * 0.22,
-              pair[0].z + dd,
-              mid,
-              def.height * 0.4,
-              pair[0].z,
-            ],
+            [mid + dd * 0.35, dh * 0.75 + dd * 0.22, pair[0].z + dd, mid, dh * 0.4, pair[0].z],
             640,
             360,
           );
