@@ -1,7 +1,12 @@
 import * as THREE from 'three';
 import type { WorldData } from '../../world/types.ts';
-import { heightAt, THEME_IDS } from '../../world/types.ts';
-import { CARPET as CP, COMPASS_MOSAIC as CM, PRISM_POOLS as PP } from '../../content/ground-art.ts';
+import { heightAt, THEME_IDS, Zone } from '../../world/types.ts';
+import {
+  CARPET as CP,
+  COMPASS_MOSAIC as CM,
+  MARINA_QUAY as MQ,
+  PRISM_POOLS as PP,
+} from '../../content/ground-art.ts';
 import { SHARED } from '../uniforms.ts';
 
 /**
@@ -12,7 +17,8 @@ import { SHARED } from '../uniforms.ts';
  * - `GROUND_ART_COLOR_GLSL` (after the ground colour, in `color_fragment`): the mosaic over the
  *   'compass' district's albedo; needs `marDPx` / `marDPy` / `marBase` from the ground colour.
  *   The Marketing red carpet (TASK-481) is painted in the same block: a rotated strip over the
- *   first 'carpet' district, gold trim lines and star plates.
+ *   first 'carpet' district, gold trim lines and star plates. The Marketing marina quay (TASK-664)
+ *   too: flags, coping and face over the Horseshoe Harbour ring (`marinaUniforms`).
  * - `GROUND_ART_LIGHT_GLSL` (after the cloud shadow, `opaque_fragment`): the prism pools as added
  *   light × albedo (define `MAR_PRISM`; off on low quality); the day pools fade under the overcast
  *   veil (rain, fog), the night ones follow the lamps.
@@ -62,6 +68,7 @@ export function groundArtUniforms(world: WorldData): Record<string, THREE.IUnifo
     carpetDim.set(cd.w / 2 + CP.edge, cd.d / 2, heightAt(world.height, cd.x, cd.z), 1);
   }
   return {
+    ...marinaUniforms(world),
     uCarpet: { value: carpet },
     uCarpetDim: { value: carpetDim },
     uCarpetInk: { value: [CP.pile, CP.trim, CP.plate, CP.star, CP.outline].map(lin) },
@@ -81,9 +88,53 @@ export function groundArtUniforms(world: WorldData): Record<string, THREE.IUnifo
   };
 }
 
+/**
+ * Marina quay ring from the anchors (marketing-marina.ts contract): uMarina0 = (centre x, z, basin
+ * radius, deck y; w 0 = none), uMarina1 = (heading of the mid-mouth, turn sign, arc span from head
+ * to head (rad), half ring width), uMarina2 = the two head-cap centres (x, z, x, z).
+ */
+function marinaUniforms(world: WorldData): Record<string, THREE.IUniform> {
+  const m0 = new THREE.Vector4(0, 0, 0, 0);
+  const m1 = new THREE.Vector4(0, 1, 0, 0);
+  const m2 = new THREE.Vector4(0, 0, 0, 0);
+  const isl = world.islands.find((i) => i.anchors.marinaBasin && i.anchors.marinaQuay1);
+  if (isl) {
+    const A = isl.anchors;
+    const c = A.marinaBasin;
+    let k = 0;
+    while (A[`marinaQuay${k + 1}`]) k++;
+    const q0 = A.marinaQuay0;
+    const q1 = A.marinaQuay1;
+    const qk = A[`marinaQuay${k}`];
+    const ang = (q: { x: number; z: number }): number => Math.atan2(q.z - c.z, q.x - c.x);
+    const ps = Math.sign(Math.sin(ang(q1) - ang(q0))) || 1;
+    const TAU = Math.PI * 2;
+    const span = (((ps * (ang(qk) - ang(q0))) % TAU) + TAU) % TAU;
+    m0.set(c.x, c.z, A.marinaBasinSize.x / 2, A.marinaQuaySize.z);
+    m1.set(ang(q0) - ps * ((TAU - span) / 2), ps, span, A.marinaQuaySize.x / 2);
+    m2.set(q0.x, q0.z, qk.x, qk.z);
+  }
+  return {
+    uMarina0: { value: m0 },
+    uMarina1: { value: m1 },
+    uMarina2: { value: m2 },
+    uMarinaInk: {
+      value: [
+        lin(MQ.ink.deck).lerp(lin(MQ.deckLight), MQ.deckLightMix),
+        lin(MQ.ink.coping),
+        lin(MQ.ink.face),
+      ],
+    },
+  };
+}
+
 const f = (v: number): string => v.toFixed(5);
 
 export const GROUND_ART_PARS_GLSL = /* glsl */ `
+uniform vec4 uMarina0;
+uniform vec4 uMarina1;
+uniform vec4 uMarina2;
+uniform vec3 uMarinaInk[3];
 uniform vec4 uCarpet;
 uniform vec4 uCarpetDim;
 uniform vec3 uCarpetInk[5];
@@ -131,6 +182,56 @@ const RIM1 = f(CM.rim[1]);
  * pixel footprint (taken from the ground colour's derivatives, outside any branch).
  */
 export const GROUND_ART_COLOR_GLSL = /* glsl */ `
+  if (uMarina0.w > 0.0 && vMarWorld.y > ${f(-MQ.faceDepth)}) {
+    // marina quay (TASK-664): the plan's deck shape — an arc of the centre-line circle (Rc) with
+    // round head caps — as a signed distance d (< 0 on the deck); am = angle from the mid-mouth
+    vec2 marMp = vMarWorld.xz - uMarina0.xy;
+    float marMr = length(marMp);
+    float marRb = uMarina0.z;
+    float marW2 = uMarina1.w;
+    float marRc = marRb + marW2;
+    if (marMr < marRc + marW2 + ${f(MQ.edgeFlat + MQ.faceReach + 1)}) {
+      float marGap = 6.28318531 - uMarina1.z;
+      float marAm = mod(uMarina1.y * (atan(marMp.y, marMp.x) - uMarina1.x), 6.28318531);
+      float marMd;
+      float marInner = 0.0;
+      if (marAm >= 0.5 * marGap && marAm <= 0.5 * marGap + uMarina1.z) {
+        float s = (marAm - 0.5 * marGap) * marRc;
+        float t = smoothstep(0.0, ${f(MQ.taper)}, min(s, uMarina1.z * marRc - s));
+        float dIn = marRb - ${f(MQ.edgeInset)} * t - marMr;
+        float dOut = marMr - (marRc + marW2 + ${f(MQ.edgeFlat)} * t);
+        marMd = max(dIn, dOut);
+        marInner = step(dOut, dIn);
+      } else {
+        marMd = min(length(vMarWorld.xz - uMarina2.xy), length(vMarWorld.xz - uMarina2.zw)) - marW2;
+      }
+      // water edges only: the basin side always, the sea side / caps near the shore (not the bluff)
+      float marSea = max(marInner, 1.0 - smoothstep(${f(MQ.seaSdf[0])}, ${f(MQ.seaSdf[1])}, texture2D(uTerrainSdf, marUv).r));
+      float marPe = max(max(length(marDPx.xz), length(marDPy.xz)), 1e-3);
+      float marLum = dot(marBase, vec3(0.2126, 0.7152, 0.0722));
+      float marSh = clamp(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)) / max(marLum, 1e-4), ${f(MQ.faceShade[0])}, ${f(MQ.faceShade[1])});
+      vec3 marQc = diffuseColor.rgb;
+      // deck: the zone paving (its flag relief kept as lightness) recoloured to the quay stone
+      float marOnDeck = (1.0 - smoothstep(-0.5 * marPe, 0.5 * marPe, marMd))
+                      * (1.0 - smoothstep(${f(MQ.heightBand)}, ${f(MQ.heightBand + 0.3)}, abs(vMarWorld.y - uMarina0.w)));
+      marQc = mix(marQc, uMarinaInk[0] * mix(1.0, marSh, ${f(MQ.deckShade)}), ${f(MQ.deckMix)} * marOnDeck);
+      // coping band inside the water edge (≥ copingPx px), a light lip on its deck side, then the face
+      float marCw = max(${f(MQ.coping)}, ${f(MQ.copingPx)} * marPe);
+      float marCop = smoothstep(-marCw - 0.5 * marPe, -marCw + 0.5 * marPe, marMd) * marSea;
+      float marLw = max(${f(MQ.copingLip)}, ${f(MQ.copingLipPx)} * marPe);
+      float marLip = (1.0 - smoothstep(0.5 * marLw, 0.5 * marLw + marPe, abs(marMd + marCw + 0.5 * marLw))) * marSea;
+      // face: off the drawn edge, or below the deck where the 2 u grid's brink runs past it (caps);
+      // stone / deck / basin texels only (lagoon texels reach above the water between samples)
+      float marBelow = 1.0 - smoothstep(uMarina0.w - ${f(MQ.faceBelow[1])}, uMarina0.w - ${f(MQ.faceBelow[0])}, vMarWorld.y);
+      float marFace = max(smoothstep(-0.5 * marPe, 0.5 * marPe, marMd), marBelow * (1.0 - marCop))
+                    * (1.0 - smoothstep(${f(MQ.faceReach - 1)}, ${f(MQ.faceReach)}, marMd)) * marSea
+                    * float(marZone == ${Zone.rock}.0 || marZone == ${Zone.plaza}.0 || marZone == ${Zone.lagoon}.0 || vMarWorld.y < 0.05);
+      marQc = mix(marQc, uMarinaInk[1] * mix(1.0, marSh, ${f(MQ.deckShade)}), marCop * (1.0 - smoothstep(0.0, 0.5 * marPe, marMd)));
+      marQc = mix(marQc, uMarinaInk[0], ${f(MQ.copingLipMix)} * marLip);
+      marQc = mix(marQc, uMarinaInk[2] * marSh, marFace);
+      diffuseColor.rgb = marQc;
+    }
+  }
   if (uCarpetDim.w > 0.5 && abs(vMarWorld.y - uCarpetDim.z) < ${f(CP.heightBand)}) {
     vec2 marKq = vMarWorld.xz - uCarpet.xy;
     float marKa = dot(marKq, uCarpet.zw);

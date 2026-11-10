@@ -11,12 +11,17 @@
  * - Design prism pools (hq-design D3): under every `prismArch` a rainbow pool of sun light thrown
  *   through the prism — offset away from the sun, stretched and brightest at golden hour; at night
  *   (lamps on) a softer pool right under the glowing prism.
+ * - Marketing marina quay (TASK-664): over the Horseshoe Harbour's ring (the plan's deck shape,
+ *   rebuilt from the `marina*` anchors) cream stone flags laid in courses round the basin, a dark
+ *   coping band along every water edge, and a darker stone face below it, so the quay reads as a
+ *   built harbour wall, not a beach.
  */
-import { WALLS } from './palette.ts';
+import { WALLS, WALL_STRATA } from './palette.ts';
 import { CULTURE_ACCENT, GROUT, PAVING } from './themes/hq.ts';
 import { DESIGN_CULTURE_KIT } from './props-themes/design.ts';
 import { PRISM_ARCH } from './props-themes/m20.ts';
 import { MARKETING_QUICK } from './themes/marketing.ts';
+import { MARINA_SITE } from './themes/marketing-marina-site.ts';
 
 /** Compass mosaic. Distances in u (plaza radius R = district w / 2, 10 today). */
 export const COMPASS_MOSAIC = {
@@ -110,4 +115,45 @@ export const CARPET = {
   weave: 0.05,
   /** Paints only within ± this of the street height (a stair or a cliff below stays plain). */
   heightBand: 1.2,
+} as const;
+
+/**
+ * Marketing marina quay (TASK-664). Colours: Beacon Rock strata (palette.ts WALL_STRATA.marketing,
+ * ART_BIBLE §2). Distances in u, measured on the plan's deck shape (marketing-marina.ts `where`).
+ */
+const MS = WALL_STRATA.marketing;
+export const MARINA_QUAY = {
+  /** Deck stone, the coping and the quay / mole face. */
+  ink: { deck: MS[0], coping: MS[3], face: MS[2] },
+  /** The deck stone lifted toward the town's wall cream by this share (pale flags, not sand). */
+  deckLight: WALLS[0],
+  deckLightMix: 0.4,
+  /** Share of the deck colour over the zone paving. */
+  deckMix: 0.85,
+  /** Share of the paving's own lightness (its flag relief) kept on the deck and coping. */
+  deckShade: 0.6,
+  /** The drawn inner edge sits `edgeInset` u inside the basin radius (mid-way down the grid's brink). */
+  edgeInset: 0.5,
+  /** Coping band inside every water edge: `coping` u, never under `copingPx` px. */
+  coping: 0.55,
+  copingPx: 1.6,
+  /** A light line on the coping's deck side (u, px floor) and its share. */
+  copingLip: 0.08,
+  copingLipPx: 0.6,
+  copingLipMix: 0.35,
+  /** Face: from the drawn edge out `faceReach` u (the basin face and the moles' rock flank). */
+  faceReach: MARINA_SITE.ring.flank + 1.5,
+  /** The face carries on this far under the water (the shelf colour stops at the wall foot). */
+  faceDepth: 1.2,
+  /** Lightness of the wall shading (wet band, blocks) kept on the face / coping, as a ratio. */
+  faceShade: [0.55, 1.4] as const,
+  /** Outer (sea / bluff) edge: coping and face only where the shore SDF is under this (u). */
+  seaSdf: [3.5, 5.5] as const,
+  /** Deck stone only within ± this of the deck height (lanes up the bluff stay plain). */
+  heightBand: 0.12,
+  /** Below the deck by `faceBelow[0]` → `[1]` u the ground is face (the grid's brink past the edge). */
+  faceBelow: [0.08, 0.25] as const,
+  /** Deck shape (marketing-marina-site.ts): taper of the edges toward the mole heads. */
+  taper: MARINA_SITE.ring.taper,
+  edgeFlat: MARINA_SITE.ring.edgeFlat,
 } as const;
