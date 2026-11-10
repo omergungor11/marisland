@@ -11,11 +11,13 @@ export type Shift = readonly [from: number, to: number];
 
 export const MARINA_LIFE = {
   /**
-   * The town wakes while the camera focus (orbit target) is within `wake` u of the basin (3-D) and
-   * goes back to sleep beyond `sleep` (hysteresis); its bots then come first in the worker pool.
+   * The town wakes while the camera focus (orbit target) is within `wake` u (3-D) of any point of
+   * the 135 u quay (sampled every `wakeStep`-th quay anchor) and goes back to sleep beyond `sleep`
+   * (hysteresis); its bots then come first in the worker pool. The overview focus is 100+ u off.
    */
-  wake: 50,
-  sleep: 65,
+  wake: 42,
+  sleep: 56,
+  wakeStep: 4,
   /** Pool slots the town leaves to the campus (focus island) however busy the harbour is. */
   reserve: 4,
   /**
@@ -26,18 +28,20 @@ export const MARINA_LIFE = {
   counts: [
     { scale: 0, strollers: 3, diners: 4, vendors: 1 },
     { scale: 0.75, strollers: 5, diners: 9, vendors: 2 },
-    { scale: 1, strollers: 8, diners: 12, vendors: 3 },
+    { scale: 1, strollers: 10, diners: 12, vendors: 3 },
   ] as readonly { scale: number; strollers: number; diners: number; vendors: number }[],
   /**
-   * Strollers: the promenade lane between the terrace chairs and the house awnings, `lane` u out
-   * from the basin edge (basin radius + lane), the walk trimmed `endTrim` u at each mole head. They
+   * Strollers: the quay walk (MARINA_SITE.walk u in from the water edge, between the terrace
+   * chairs and the house fronts) along the paved run of the crescent, trimmed `endTrim` u at each
+   * end (the stubs, the ramps beside the pier root). They
    * go back and forth at `speed` (average, eased at both ends of a leg), pausing `pause` s at a
    * stop: a lookout over the water every `lookEvery` u, and at each stall. Per-stroller speed
    * jitter ±`speedJitter`, pause jitter ±`pauseJitter` (share).
    */
   stroll: {
-    lane: 2.65,
     endTrim: 4,
+    /** Paved runs shorter than this (after the trims) get no walk. */
+    minRun: 12,
     speed: 0.8,
     speedJitter: 0.15,
     pause: [5, 11] as const,
@@ -45,7 +49,7 @@ export const MARINA_LIFE = {
     lookEvery: 11,
     /** Stalls: stop this many u of lane either side of the stall's centre (not in its counter). */
     stallSide: 1.7,
-    /** Look pauses face the water (the basin centre) ± this yaw (rad) per stroller. */
+    /** Look pauses face the water (the quay's normal) ± this yaw (rad) per stroller. */
     lookYaw: 0.35,
   },
   /**
@@ -107,7 +111,7 @@ export const MARINA_LIFE = {
   },
   /**
    * Gulls: they perch on the tower's crenellation (`towerTop` u above the tower pivot) and on the
-   * quay's edge (every `edgeEvery`-th quay anchor pulled to `edge` u past the basin edge, `y` u
+   * quay's edge (every `edgeEvery`-th quay anchor moved to `edge` u in from the water edge, `y` u
    * above the deck: the bollard row).
    */
   gull: { towerTop: 5.65, edgeEvery: 12, edge: 0.35, y: 0.55 },

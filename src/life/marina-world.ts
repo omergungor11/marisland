@@ -9,6 +9,7 @@ import { MARINA_LIFE, marinaCounts, type Shift } from '../content/life-marina.ts
 import { MARINA_LOOK } from '../content/themes/hq-horseshoe-look.ts';
 import { MARINA_SITE } from '../content/themes/hq-horseshoe-site.ts';
 import { unitHash } from '../core/hash.ts';
+import { inMarina } from '../world/gen/plans/hq-horseshoe.ts';
 import { lotLocalToWorld } from '../world/lot-frame.ts';
 import type { WorldData } from '../world/types.ts';
 import type { TableauBot } from './workers-world.ts';
@@ -116,8 +117,10 @@ interface Stop {
 
 export interface MarinaPlan {
   island: number;
-  /** Basin centre (world xz). */
+  /** The bay's centre on the water (world xz); the quay's own reach is `QuayPoint`s (`marinaQuayPoints`). */
   centre: { x: number; z: number };
+  /** Total length of the strollers' walks along the promenade (u; tests / report). */
+  laneLength: number;
   bots: TableauBot[];
   /** Counts by class (tests / report). */
   strollers: number;
@@ -127,16 +130,70 @@ export interface MarinaPlan {
 
 const heading = (dx: number, dz: number): number => Math.atan2(dz, dx);
 
-/** Lane polyline: the quay centre line pulled radially to `basin radius + lane`. */
-function laneOf(quay: { x: number; z: number }[], C: { x: number; z: number }, r: number): Lane {
-  const n = quay.length;
+/** A quay centre-line point: position, ground height, heading to the next point. */
+export interface QuayPoint {
+  x: number;
+  y: number;
+  z: number;
+  rotY: number;
+}
+
+/** The quay's centre line from the anchors (`marinaQuay0..K`, light end first). */
+export function marinaQuayPoints(
+  A: Record<string, { x: number; y?: number; z: number; rotY: number }>,
+): QuayPoint[] {
+  const out: QuayPoint[] = [];
+  for (let k = 0; A[`marinaQuay${k}`]; k++) {
+    const q = A[`marinaQuay${k}`];
+    out.push({ x: q.x, y: q.y ?? 0, z: q.z, rotY: q.rotY });
+  }
+  return out;
+}
+
+/** A point `off` u from the centre line toward the water (the water lies at heading + 90°). */
+const waterSide = (
+  q: { x: number; z: number; rotY: number },
+  off: number,
+): { x: number; z: number } => ({
+  x: q.x - Math.sin(q.rotY) * off,
+  z: q.z + Math.cos(q.rotY) * off,
+});
+
+/**
+ * The paved stretches of the quay: runs of points on the deck (their ground at the deck height) at
+ * least `minLen` u long. The pier root's gap and its ramps lie lower and cut the quay; a stroller
+ * turns back before them rather than walking the ramp.
+ */
+function deckRuns(quay: readonly QuayPoint[], minLen: number): QuayPoint[][] {
+  const flat = MARINA_SITE.ring.deckY - 0.03;
+  const out: QuayPoint[][] = [];
+  for (let k = 0; k < quay.length;) {
+    if (quay[k].y < flat) {
+      k++;
+      continue;
+    }
+    let e = k;
+    while (e + 1 < quay.length && quay[e + 1].y >= flat) e++;
+    const run = quay.slice(k, e + 1);
+    let len = 0;
+    for (let m = 1; m < run.length; m++)
+      len += Math.hypot(run[m].x - run[m - 1].x, run[m].z - run[m - 1].z);
+    if (len >= minLen) out.push(run);
+    k = e + 1;
+  }
+  return out;
+}
+
+/** Lane polyline: the deck run's centre line moved to `offset` u from it toward the water. */
+function laneOf(run: readonly QuayPoint[], offset: number): Lane {
+  const n = run.length;
   const x = new Float32Array(n);
   const z = new Float32Array(n);
   const cum = new Float32Array(n);
-  quay.forEach((q, k) => {
-    const d = Math.hypot(q.x - C.x, q.z - C.z) || 1;
-    x[k] = C.x + ((q.x - C.x) / d) * r;
-    z[k] = C.z + ((q.z - C.z) / d) * r;
+  run.forEach((q, k) => {
+    const p = waterSide(q, offset);
+    x[k] = p.x;
+    z[k] = p.z;
     if (k > 0) cum[k] = cum[k - 1] + Math.hypot(x[k] - x[k - 1], z[k] - z[k - 1]);
   });
   return { x, z, cum };
@@ -184,7 +241,6 @@ export function planMarina(
   if (island < 0) return null;
   const A = world.islands[island].anchors;
   const C = A.marinaBasin;
-  const Rb = (A.marinaBasinSize?.x ?? 28) / 2;
   const seed = world.seed;
   const L = MARINA_LIFE;
   const counts = marinaCounts(scale);
@@ -199,50 +255,65 @@ export function planMarina(
   const base = { island, hd: 0, item: undefined, pose: 'stand' } as const;
   let group = 5000;
 
-  // ---- strollers
-  const quay: { x: number; z: number }[] = [];
-  for (let k = 0; A[`marinaQuay${k}`]; k++) quay.push(A[`marinaQuay${k}`]);
-  const lane = laneOf(quay, C, Rb + L.stroll.lane);
-  const total = lane.cum[lane.cum.length - 1];
+  // ---- strollers: one walk per paved run of the quay (the pier root's gap cuts the crescent)
+  const half = (A.marinaQuaySize?.x ?? MARINA_SITE.ring.width) / 2;
   const a = L.stroll.endTrim;
-  const b = total - L.stroll.endTrim;
-  const stops: Stop[] = [];
-  const toWater = (px: number, pz: number): number => heading(C.x - px, C.z - pz);
-  const at = (s: number): { x: number; z: number } => {
-    const p = { x: 0, z: 0 };
-    laneAt(lane, s, p);
-    return p;
-  };
   const stalls = (world.fixtures ?? []).filter(
-    (f) =>
-      f.defId === 'quayFurnish' &&
-      (f.variant ?? 0) >= 3 &&
-      Math.hypot(f.x - C.x, f.z - C.z) < Rb + MARINA_SITE.ring.width,
+    (f) => f.defId === 'quayFurnish' && (f.variant ?? 0) >= 3 && inMarina(world.islands[island], f),
   );
-  stalls.forEach((f, k) => {
-    const sc = project(lane, f.x, f.z);
-    const side = hash(k, 41) < 0.5 ? -1 : 1;
-    const s = Math.min(b - 1, Math.max(a + 1, sc + side * L.stroll.stallSide));
-    const p = at(s);
-    stops.push({ s, face: toWater(p.x, p.z), w: 1, stall: true });
-  });
-  for (let s = a + L.stroll.lookEvery / 2; s < b - 1; s += L.stroll.lookEvery) {
-    const q = Math.min(b - 1, s + (hash(Math.round(s * 10), 42) - 0.5) * 3);
-    if (stops.some((o) => Math.abs(o.s - q) < 3.5)) continue;
-    const p = at(q);
-    stops.push({
-      s: q,
-      face: toWater(p.x, p.z) + L.stroll.lookYaw * (2 * hash(Math.round(q * 10), 43) - 1),
-      w: 1,
-      stall: false,
+  interface Walk {
+    lane: Lane;
+    stops: Stop[];
+    len: number;
+  }
+  const walks: Walk[] = [];
+  deckRuns(marinaQuayPoints(A), L.stroll.minRun + 2 * a).forEach((run, r) => {
+    const lane = laneOf(run, half - MARINA_SITE.walk);
+    const b = lane.cum[lane.cum.length - 1] - a;
+    const stops: Stop[] = [];
+    const at = (s: number): { x: number; z: number } => {
+      const p = { x: 0, z: 0 };
+      laneAt(lane, s, p);
+      return p;
+    };
+    /** Heading to the water at lane arc `s`: the lane's tangent turned +90 degrees. */
+    const toWater = (s: number): number => {
+      laneAt(lane, s, { x: 0, z: 0 });
+      return Math.atan2(_tx, -_tz);
+    };
+    stalls.forEach((f, k) => {
+      const sc = project(lane, f.x, f.z);
+      const p = at(sc);
+      // (a stall off this run, on the ramps or another run, is not this walk's)
+      if (Math.hypot(p.x - f.x, p.z - f.z) > half) return;
+      const side = hash(k, 41) < 0.5 ? -1 : 1;
+      const s = Math.min(b - 1, Math.max(a + 1, sc + side * L.stroll.stallSide));
+      stops.push({ s, face: toWater(s), w: 1, stall: true });
     });
-  }
-  for (const s of [a, b]) {
-    const p = at(s);
-    stops.push({ s, face: toWater(p.x, p.z), w: 0.4, stall: false });
-  }
-  stops.sort((p, q) => p.s - q.s);
-  for (let i = 0; i < counts.strollers; i++) {
+    for (let s = a + L.stroll.lookEvery / 2; s < b - 1; s += L.stroll.lookEvery) {
+      const q = Math.min(b - 1, s + (hash(Math.round(s * 10) + r * 1000, 42) - 0.5) * 3);
+      if (stops.some((o) => Math.abs(o.s - q) < 3.5)) continue;
+      stops.push({
+        s: q,
+        face: toWater(q) + L.stroll.lookYaw * (2 * hash(Math.round(q * 10) + r * 1000, 43) - 1),
+        w: 1,
+        stall: false,
+      });
+    }
+    for (const s of [a, b]) stops.push({ s, face: toWater(s), w: 0.4, stall: false });
+    stops.sort((p, q) => p.s - q.s);
+    walks.push({ lane, stops, len: b - a });
+  });
+  const total = walks.reduce((m, w) => m + w.len, 0);
+  const given = walks.map(() => 0);
+  for (let i = 0; i < counts.strollers && walks.length > 0; i++) {
+    // the walk with the most length per stroller already on it gets the next one (d'Hondt)
+    let wi = 0;
+    walks.forEach((w, k) => {
+      if (w.len / (given[k] + 1) > walks[wi].len / (given[wi] + 1)) wi = k;
+    });
+    given[wi]++;
+    const { lane, stops } = walks[wi];
     // each stroller visits its own subset of the stops (ends always), speed and pauses jittered
     const mine = stops.filter(
       (o, k) => k === 0 || k === stops.length - 1 || hash(i * 64 + k, 51) < (o.stall ? 0.8 : 0.6),
@@ -390,6 +461,7 @@ export function planMarina(
   return {
     island,
     centre: { x: C.x, z: C.z },
+    laneLength: total,
     bots,
     strollers,
     diners,
@@ -404,21 +476,15 @@ export function marinaPerches(
   const out: { x: number; y: number; z: number }[] = [];
   for (const isl of world.islands) {
     const A = isl.anchors;
-    const C = A.marinaBasin;
-    if (!C || !A.marinaQuay0) continue;
+    if (!A.marinaBasin || !A.marinaQuay0) continue;
     const G = MARINA_LIFE.gull;
-    const Rb = (A.marinaBasinSize?.x ?? 28) / 2;
+    const half = (A.marinaQuaySize?.x ?? MARINA_SITE.ring.width) / 2;
     const T = A.marinaTower;
     if (T) out.push({ x: T.x, y: (T.y ?? 0) + G.towerTop, z: T.z });
     for (let k = G.edgeEvery; A[`marinaQuay${k}`]; k += G.edgeEvery) {
       const q = A[`marinaQuay${k}`];
-      const d = Math.hypot(q.x - C.x, q.z - C.z) || 1;
-      const r = Rb + G.edge;
-      out.push({
-        x: C.x + ((q.x - C.x) / d) * r,
-        y: (q.y ?? 0) + G.y,
-        z: C.z + ((q.z - C.z) / d) * r,
-      });
+      const p = waterSide(q, half - G.edge);
+      out.push({ x: p.x, y: (q.y ?? 0) + G.y, z: p.z });
     }
   }
   return out;

@@ -24,7 +24,7 @@ import { unitHash } from '../core/hash.ts';
 import { buildStops, islandComps, type Stop } from './activity-world.ts';
 import { MARINA_LIFE } from '../content/life-marina.ts';
 import { LUNA_LIFE } from '../content/life-luna.ts';
-import { onShift, strollAt, type StrollPose } from './marina-world.ts';
+import { marinaQuayPoints, onShift, strollAt, type StrollPose } from './marina-world.ts';
 import { LandKind, nodesByComponent, type LandOpts, type WorldNodes } from './land.ts';
 import { lineOk, NodeKind, walkRoute, type Mask, type WalkGraph } from './land-world.ts';
 import { SHARED } from '../render/uniforms.ts';
@@ -214,9 +214,9 @@ export class Workers extends LandKind {
   /** Slots of the marina town (strollers, diners, vendors), in plan order. */
   private readonly townIdx: number[] = [];
   private readonly isTown: Uint8Array;
-  /** The basin centre (y = deck) the camera focus is measured from; null = no marina. */
-  private readonly townAt: { x: number; y: number; z: number } | null;
-  /** Camera focus within `MARINA_LIFE.wake` of the basin (hysteresis to `sleep`). */
+  /** Points along the quay (y = ground) the camera focus is measured from; empty = no marina. */
+  private readonly townAt: { x: number; y: number; z: number }[];
+  /** Camera focus within `MARINA_LIFE.wake` of any sampled quay point (hysteresis to `sleep`). */
   private townNear = false;
   /** The sea-top fun park's deck centre (TASK-672) and its own wake state; null = no park / no visitors. */
   private readonly lunaAt: { x: number; y: number; z: number } | null;
@@ -309,11 +309,15 @@ export class Workers extends LandKind {
       this.townIdx.push(i);
     });
     this.townOn = new Uint8Array(this.townIdx.length);
-    const basin = ctx.world.islands.find((isl) => isl.anchors.marinaBasin)?.anchors.marinaBasin;
-    this.townAt =
-      this.townIdx.length > 0 && basin
-        ? { x: basin.x, y: ctx.h(basin.x, basin.z), z: basin.z }
-        : null;
+    this.townAt = [];
+    const qa = ctx.world.islands.find((isl) => isl.anchors.marinaQuay0)?.anchors;
+    if (qa && this.townIdx.some((i) => spawns[i].tableau?.site !== 'luna')) {
+      const pts = marinaQuayPoints(qa);
+      pts.forEach((q, k) => {
+        if (k % MARINA_LIFE.wakeStep === 0 || k === pts.length - 1)
+          this.townAt.push({ x: q.x, y: q.y, z: q.z });
+      });
+    }
     const deck = ctx.world.islands.find((isl) => isl.anchors.lunaDeck)?.anchors;
     this.lunaAt =
       deck && this.townIdx.some((i) => spawns[i].tableau?.site === 'luna')
@@ -1896,7 +1900,7 @@ export class Workers extends LandKind {
       best = cur;
     this.islDist = dist;
     let changed = best !== cur || this.step === 1;
-    if (this.townAt || this.lunaAt) {
+    if (this.townAt.length > 0 || this.lunaAt) {
       const sig = this.updateTown();
       if (sig !== this.townSig) {
         this.townSig = sig;
@@ -1917,9 +1921,8 @@ export class Workers extends LandKind {
     const c = this.ctx.focusPos;
     const within = (at: { x: number; y: number; z: number }, r: number): boolean =>
       Math.hypot(c.x - at.x, c.y - at.y, c.z - at.z) < r;
-    if (this.townAt && within(this.townAt, this.townNear ? MARINA_LIFE.sleep : MARINA_LIFE.wake))
-      this.townNear = true;
-    else this.townNear = false;
+    const rTown = this.townNear ? MARINA_LIFE.sleep : MARINA_LIFE.wake;
+    this.townNear = this.townAt.some((q) => within(q, rTown));
     if (this.lunaAt && within(this.lunaAt, this.lunaNear ? LUNA_LIFE.sleep : LUNA_LIFE.wake))
       this.lunaNear = true;
     else this.lunaNear = false;

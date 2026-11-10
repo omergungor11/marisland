@@ -7,7 +7,9 @@ import { LIFE_PLAN } from '../content/life.ts';
 import { MARINA_LIFE, marinaCounts } from '../content/life-marina.ts';
 import { MARINA_LOOK } from '../content/themes/hq-horseshoe-look.ts';
 import { MARINA_SITE } from '../content/themes/hq-horseshoe-site.ts';
+import { MARINA_KIT } from '../content/themes/hq-horseshoe.ts';
 import { generateWorld, type WorldData } from '../world/index.ts';
+import { inMarina } from '../world/gen/plans/hq-horseshoe.ts';
 import { lotLocalToWorld } from '../world/lot-frame.ts';
 import { createLife } from './index.ts';
 import { marinaPerches, onShift, planMarina, strollAt, type StrollPose } from './marina-world.ts';
@@ -44,39 +46,33 @@ describe('marina life plan (TASK-662)', () => {
     expect(JSON.stringify(a.bots)).toBe(JSON.stringify(b.bots));
   });
 
-  it('walks the strollers on the promenade lane, both ways, never in lockstep', () => {
+  it('walks the strollers along the quay, both ways, never in lockstep', () => {
     const plan = planMarina(world(), 0.75)!;
-    const isl = world().islands[plan.island];
-    const C = isl.anchors.marinaBasin;
-    const Rb = isl.anchors.marinaBasinSize.x / 2;
-    const rLane = Rb + MARINA_LIFE.stroll.lane;
     const strollers = plan.bots.filter((b) => b.kind === 'marinaStroll');
     expect(strollers.length).toBe(5);
+    expect(plan.laneLength).toBeGreaterThan(55);
     const p = pose();
-    const dirs = new Set<number>();
     const starts = new Set<string>();
+    let longest = 0;
     for (const b of strollers) {
       const route = b.town!.route!;
       starts.add(`${Math.round(b.x)},${Math.round(b.z)}`);
       let prev: { x: number; z: number } | null = null;
       let paused = 0;
       let walked = 0;
-      // two full cycles at the fixed step: on the lane, never faster than an eased walk, pauses exist
+      // two full cycles at the fixed step: never faster than an eased walk, pauses exist
       const steps = Math.ceil((route.cycle * 2) / FIXED_STEP);
       let maxStep = 0;
       for (let k = 0; k <= steps; k++) {
         strollAt(route, k * FIXED_STEP, p);
-        expect(Math.abs(Math.hypot(p.x - C.x, p.z - C.z) - rLane)).toBeLessThan(0.08);
         if (prev) {
           const d = Math.hypot(p.x - prev.x, p.z - prev.z);
           maxStep = Math.max(maxStep, d);
-          if (d > 1e-6) {
-            // heading while moving follows the displacement (the lane's tangent, either way)
-            if (p.moving && d > 0.004) {
-              const want = Math.atan2(p.z - prev.z, p.x - prev.x);
-              const diff = Math.abs(Math.atan2(Math.sin(p.hd - want), Math.cos(p.hd - want)));
-              expect(diff).toBeLessThan(0.35);
-            }
+          // heading while moving follows the displacement (the lane's tangent, either way)
+          if (p.moving && d > 0.004) {
+            const want = Math.atan2(p.z - prev.z, p.x - prev.x);
+            const diff = Math.abs(Math.atan2(Math.sin(p.hd - want), Math.cos(p.hd - want)));
+            expect(diff).toBeLessThan(0.35);
           }
         }
         if (p.moving) walked++;
@@ -95,8 +91,10 @@ describe('marina life plan (TASK-662)', () => {
       }
       expect(right).toBeGreaterThan(0);
       expect(left).toBeGreaterThan(0);
-      dirs.add(Math.sign(route.legs[0].s1 - route.legs[0].s0));
+      longest = Math.max(longest, route.cum[route.cum.length - 1]);
     }
+    // a walk along the crescent, not pacing one spot
+    expect(longest).toBeGreaterThan(55);
     // phase offsets: five strollers do not start on the same spot
     expect(starts.size).toBeGreaterThanOrEqual(4);
   });
@@ -187,10 +185,124 @@ describe('marina life plan (TASK-662)', () => {
   });
 });
 
-function rig(q: Quality, hour: number, cam: 'near' | 'far') {
+/** True when (x, z) lies inside the plan rectangle w x d of a piece at `f`, grown by `m`. */
+function inRect(
+  f: { x: number; z: number; rotY: number },
+  w: number,
+  d: number,
+  x: number,
+  z: number,
+  m: number,
+): boolean {
+  const fx = Math.cos(f.rotY);
+  const fz = Math.sin(f.rotY);
+  const lx = (x - f.x) * fz - (z - f.z) * fx;
+  const lz = (x - f.x) * fx + (z - f.z) * fz;
+  return Math.abs(lx) < w / 2 + m && Math.abs(lz) < d / 2 + m;
+}
+
+/** Every town footprint of a world: houses, terraces and stalls (plan boxes). */
+function footprints(w: WorldData, island: number) {
+  const A = w.islands[island].anchors;
+  const out: { f: { x: number; z: number; rotY: number }; w: number; d: number; what: string }[] =
+    [];
+  for (let k = 0; A[`marinaHouse${k}`]; k++) {
+    const kit = MARINA_KIT.house[A[`marinaHouseKind${k}`].x];
+    out.push({ f: A[`marinaHouse${k}`], w: kit.w, d: kit.d, what: 'house' });
+  }
+  for (let t = 0; A[`marinaTerrace${t}`]; t++) {
+    const h = [...Array(32).keys()].find((k) => A[`marinaHouseKind${k}`]?.z === t)!;
+    const kit = MARINA_KIT.terrace[MARINA_SITE.house.restaurant[A[`marinaHouseKind${h}`].x]];
+    out.push({ f: A[`marinaTerrace${t}`], w: kit.w, d: kit.d, what: 'terrace' });
+  }
+  for (const f of w.fixtures)
+    if (f.defId === 'quayFurnish' && (f.variant ?? 0) >= 3 && inMarina(w.islands[island], f)) {
+      const kit = MARINA_KIT.stall[(f.variant ?? 3) - 3];
+      out.push({ f, w: kit.w, d: kit.d, what: 'stall' });
+    }
+  return out;
+}
+
+describe('marina life on the open crescent quay (TASK-676)', () => {
+  for (const seed of [1001, 1, 42]) {
+    it(`seed ${seed}: strollers stay on the paved promenade, diners and vendors on their anchors`, () => {
+      const w = seed === SEED ? world() : generateWorld(seed);
+      const plan = planMarina(w, 1)!;
+      expect(plan).not.toBeNull();
+      const A = w.islands[plan.island].anchors;
+      const quay = [...Array(200).keys()].map((k) => A[`marinaQuay${k}`]).filter(Boolean);
+      const half = A.marinaQuaySize.x / 2;
+      const prints = footprints(w, plan.island);
+      // nearest centre-line segment: offset toward the water, and the lower ground of its ends
+      const near = (x: number, z: number) => {
+        let bd = Infinity;
+        let off = 0;
+        let y = 0;
+        for (let k = 0; k + 1 < quay.length; k++) {
+          const a = quay[k];
+          const b = quay[k + 1];
+          const dx = b.x - a.x;
+          const dz = b.z - a.z;
+          const l2 = dx * dx + dz * dz || 1;
+          const u = Math.min(1, Math.max(0, ((x - a.x) * dx + (z - a.z) * dz) / l2));
+          const d = Math.hypot(x - a.x - dx * u, z - a.z - dz * u);
+          if (d < bd) {
+            bd = d;
+            off = ((x - a.x) * -dz + (z - a.z) * dx) / Math.sqrt(l2);
+            y = Math.min(a.y ?? 0, b.y ?? 0);
+          }
+        }
+        return { off, y };
+      };
+      const strollers = plan.bots.filter((b) => b.kind === 'marinaStroll');
+      expect(strollers.length).toBe(10);
+      const p = pose();
+      let covered = 0;
+      for (const b of strollers) {
+        const route = b.town!.route!;
+        covered = Math.max(covered, route.cum[route.cum.length - 1]);
+        for (let t = 0; t < route.cycle * 2; t += 0.5) {
+          strollAt(route, t, p);
+          const n = near(p.x, p.z);
+          // on the walk line of the promenade (the band between the terraces and the house fronts)
+          expect(Math.abs(n.off - (half - MARINA_SITE.walk))).toBeLessThan(0.5);
+          // on the deck, never over the lower ground of the pier-root gap
+          expect(n.y).toBeGreaterThanOrEqual(MARINA_SITE.ring.deckY - 0.03);
+          expect(inMarina(w.islands[plan.island], p)).toBe(true);
+          for (const f of prints)
+            expect(inRect(f.f, f.w, f.d, p.x, p.z, 0.2), `${f.what} at ${p.x},${p.z}`).toBe(false);
+        }
+      }
+      expect(covered).toBeGreaterThan(30);
+      for (const d of plan.bots.filter((q) => q.kind === 'marinaDiner')) {
+        const t = prints.filter((f) => f.what === 'terrace');
+        expect(t.some((f) => inRect(f.f, f.w, f.d, d.x, d.z, 0.1))).toBe(true);
+      }
+      for (const v of plan.bots.filter((q) => q.kind === 'marinaVendor')) {
+        for (const f of prints) expect(inRect(f.f, f.w, f.d, v.x, v.z, 0)).toBe(false);
+        const stall = prints.filter((f) => f.what === 'stall');
+        const nearest = Math.min(...stall.map((f) => Math.hypot(v.x - f.f.x, v.z - f.f.z)));
+        expect(nearest).toBeLessThan(2.4);
+        expect(inMarina(w.islands[plan.island], v)).toBe(true);
+      }
+    }, 60000);
+  }
+
+  it('leaves a world without a quay inert', () => {
+    expect(planMarina(generateWorld(57), 1)).toBeNull();
+  });
+});
+
+function rig(q: Quality, hour: number, cam: 'near' | 'far' | 'end') {
   const plan = planMarina(world(), ambientOf[q])!;
   const basin = world().islands[plan.island].anchors.marinaBasin;
-  const near = new THREE.Vector3(basin.x, 0, basin.z - 6);
+  const A = world().islands[plan.island].anchors;
+  const tip = A.marinaQuay0;
+  // 'end': the orbit target on the quay's far end, 60+ u from the bay centre
+  const near =
+    cam === 'end'
+      ? new THREE.Vector3(tip.x, tip.y ?? 0, tip.z)
+      : new THREE.Vector3(basin.x, 0, basin.z - 6);
   const life = createLife({
     world: world(),
     scope: new Scope('marina-life'),
@@ -202,10 +314,10 @@ function rig(q: Quality, hour: number, cam: 'near' | 'far') {
     // (TASK-674: the open quay's bay lies within the town's wake reach of the world centre, so the
     // far frame looks 200 u off the bay)
     cameraPos:
-      cam === 'near'
-        ? new THREE.Vector3(basin.x, 40, basin.z + 30)
-        : new THREE.Vector3(basin.x + 200, 400, basin.z),
-    cameraTarget: cam === 'near' ? near : new THREE.Vector3(basin.x + 200, 0, basin.z),
+      cam === 'far'
+        ? new THREE.Vector3(basin.x + 200, 400, basin.z)
+        : new THREE.Vector3(near.x, 40, near.z + 30),
+    cameraTarget: cam === 'far' ? new THREE.Vector3(basin.x + 200, 0, basin.z) : near,
     hour: () => hour,
   });
   life.onTier(2);
@@ -242,6 +354,13 @@ describe('marina life in the workers kind (TASK-662)', () => {
   it('keeps the town asleep when the camera is far or the harbour is closed', () => {
     expect(Object.keys(townAwake(rig('medium', 13, 'far'))).length).toBe(0);
     expect(Object.keys(townAwake(rig('medium', 4, 'near'))).length).toBe(0);
+  });
+
+  it('wakes at either end of the long quay, not only at the bay centre', () => {
+    for (const cam of ['near', 'end'] as const) {
+      const awake = townAwake(rig('medium', 13, cam));
+      expect(awake.marinaStroll ?? 0).toBe(marinaCounts(0.75).strollers);
+    }
   });
 
   it('thins out at night and never grows the agent count', () => {
