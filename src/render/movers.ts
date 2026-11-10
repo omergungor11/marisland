@@ -9,6 +9,7 @@ import { DOCK } from '../content/settlements.ts';
 import { LIFE_PLAN } from '../content/life.ts';
 import { MEDIA_MOVERS, MEDIA_ROCK } from '../content/themes/marketing.ts';
 import { CARNIVAL_MOTION } from '../content/themes/marketing-harbour.ts';
+import { LUNA_MOTION } from '../content/life-luna.ts';
 import { ferryCallAt } from '../life/boats.ts';
 import { sinceFerryArrival, type FerryCall } from '../life/ferry.ts';
 import type { PropStore } from '../world/prop-store.ts';
@@ -144,8 +145,8 @@ export function beltOffset(time: number): number {
  * Turns of a wheel at `time`, closed form: the steady turn, and on the Carnival Pier the ferry's
  * arrival adds whole turns over `seconds` s (eased both ends, so it is continuous and any seek agrees).
  */
-export function wheelTurns(time: number, call?: FerryCall): number {
-  const base = time / MEDIA_MOVERS.wheelPeriod;
+export function wheelTurns(time: number, call?: FerryCall, phase = 0): number {
+  const base = time / MEDIA_MOVERS.wheelPeriod + phase;
   if (!call) return base;
   const W = CARNIVAL_MOTION.wheel;
   const k = Math.min(1, sinceFerryArrival(call, time) / W.seconds);
@@ -157,10 +158,12 @@ function createWheels(
   store: PropStore,
   scope: Scope,
   calls: ReadonlyMap<number, FerryCall> = new Map(),
+  phases: ReadonlyMap<number, number> = new Map(),
 ): { mesh: THREE.InstancedMesh | null; update(time: number): void } {
   const def = PROP_DEF_INDEX.ferrisWheel;
   const hubs: THREE.Matrix4[] = [];
   const wheelCalls: (FerryCall | undefined)[] = [];
+  const wheelPhase: number[] = [];
   for (let i = 0; i < store.count; i++)
     if (store.defId[i] === def) {
       hubs.push(
@@ -169,6 +172,7 @@ function createWheels(
         ),
       );
       wheelCalls.push(calls.get(i));
+      wheelPhase.push(phases.get(i) ?? 0);
     }
   if (hubs.length === 0) return { mesh: null, update: () => undefined };
   const features = { instanced: true, dither: true, emissive: true, rim: true };
@@ -187,7 +191,7 @@ function createWheels(
   const rot = new THREE.Matrix4();
   const update = (time: number): void => {
     hubs.forEach((h, k) => {
-      rot.makeRotationZ(wheelTurns(time, wheelCalls[k]) * Math.PI * 2);
+      rot.makeRotationZ(wheelTurns(time, wheelCalls[k], wheelPhase[k]) * Math.PI * 2);
       mesh.setMatrixAt(k, _m.multiplyMatrices(h, rot));
     });
     mesh.instanceMatrix.needsUpdate = true;
@@ -218,6 +222,20 @@ function carnivalWheelCalls(
   return out;
 }
 
+/** M53 TASK-672: the sea-top park's wheel turns on its own phase (store index → turns), so it never matches the land fair's. */
+function lunaWheelPhases(world: WorldData, store: PropStore): Map<number, number> {
+  const out = new Map<number, number>();
+  const def = PROP_DEF_INDEX.ferrisWheel;
+  for (const isl of world.islands) {
+    const a = isl.anchors.lunaWheel;
+    if (!a) continue;
+    for (let i = 0; i < store.count; i++)
+      if (store.defId[i] === def && Math.hypot(store.x[i] - a.x, store.z[i] - a.z) < 0.01)
+        out.set(i, LUNA_MOTION.wheel.phase);
+  }
+  return out;
+}
+
 export function createMovers(
   store: PropStore,
   quality: Quality,
@@ -228,6 +246,7 @@ export function createMovers(
     store,
     scope,
     world ? carnivalWheelCalls(world, store, quality) : undefined,
+    world ? lunaWheelPhases(world, store) : undefined,
   );
   const beltDef = PROP_DEF_INDEX.conveyor;
   const trackDef = PROP_DEF_INDEX.testTrack;

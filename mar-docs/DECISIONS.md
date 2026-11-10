@@ -20,7 +20,9 @@
 
 **Cost.** Kit accounting (not yet measured in a world): about 21k tris, about 20 draw calls steady and 26 in the LOD hand-over band, against a target of +25 on W-carnival-noon (273 calls, medium cap 330). Cuts available: two boat colours, no ride shadows.
 
-**Open.** Placement (TASK-671), motion and life (TASK-672), shots and QA (TASK-673). Swing chairs are small, carousel horses simple, the coaster loop is unlit at night.
+**Done (TASK-671…673).** Placed on 32 / 32 sweep seeds at size M, joined to the T-head by a 4–8 u gangway; `carnivalDeck` now marks the platform centre. Ten instanced movers without shadows (+10 calls); visitors are 4 / 8 / 12 Workers tableau slots. Measured at medium on the re-framed cams: W-carnival-noon 300 calls / 691k tris, -dusk 327 / 748k, -arrival 232 / 650k. World hashes: seed 1 `41df5dc53c04ded6` → `1d17a3a62ff41f7a`, seed 42 `c4929a9544320f49` → `12debadf4b825e23`, seed 1001 `60888f7261143aa5` → `e415ad7b9c9e7e43`. Side effects: the party pontoon survives on 4 / 32 seeds; the seabed under the platform is filled to −1 u so couriers sail round it, and the courier test allows 8 shallow samples.
+
+**Open.** W-carnival-dusk sits 3 calls under the medium cap. Swing chairs and carousel horses are rigid with their rotors (a separate ring geo would let them tilt / bob). `lunaDeck` cannot be mirrored, so on mirrored seeds the boats' landing gap faces the shore. Piles end 0.4 u under the waterline. The S tier and small-deck fallback never occur in the sweep. No separate `qa` run and no full `wow --assert` yet.
 
 ## D-171: Horseshoe Harbour belongs to HQ, not Marketing — moved to the Hearthholm cove, HQ palette, Marketing back to the arm harbour (TASK-666…668) — 2026-11-10
 

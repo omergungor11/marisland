@@ -29,6 +29,7 @@ import type { ThemeId, WorldData } from '../world/types.ts';
 import type { LifeCtx } from './ctx.ts';
 import { allocate, type Mask, type WalkGraph } from './land-world.ts';
 import { planMarina, type TownBot } from './marina-world.ts';
+import { planLuna } from './luna-world.ts';
 
 export interface Seat {
   /** Index into `world.lots` / `WORK_SPOTS[def]`. */
@@ -249,6 +250,8 @@ export interface TableauBot {
   k: number;
   /** A marina town bot (TASK-662): works a shift, may walk a closed-form route (marina-world.ts). */
   town?: TownBot;
+  /** Which town a town bot belongs to (unset: the marina; 'luna': the sea-top fun park, TASK-672). */
+  site?: 'luna';
 }
 
 /**
@@ -483,6 +486,20 @@ export function planAmbient(
         island: town.island,
         theme: ctx.world.islands[town.island].theme,
         comp: comps[town.island] ?? -1,
+        node: -1,
+        seat: -1,
+        anchor: -1,
+        ambient: true,
+        tableau: bot,
+      });
+  // TASK-672: the sea-top fun park's visitors, after the marina (the slots before keep their ranks)
+  const park = planLuna(ctx.world, scale);
+  if (park)
+    for (const bot of park.bots)
+      out.push({
+        island: park.island,
+        theme: ctx.world.islands[park.island].theme,
+        comp: comps[park.island] ?? -1,
         node: -1,
         seat: -1,
         anchor: -1,

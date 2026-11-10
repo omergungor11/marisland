@@ -40,6 +40,7 @@ import { createBeaconNet } from './night/beacons.ts';
 import { createFireworks } from './particles/fireworks.ts';
 import { createDrones } from './drones.ts';
 import { createMovers } from './movers.ts';
+import { createLunaMovers } from './luna-movers.ts';
 import { createCultureMovers } from './culture-movers.ts';
 import { createTideSub } from './tide-sub.ts';
 import { createCoasterMovers } from './coaster-movers.ts';
@@ -222,6 +223,9 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   if (movers.tugs) group.add(movers.tugs);
   if (movers.lines) group.add(movers.lines.group);
   if (movers.beacon) group.add(movers.beacon.group);
+  // M53 TASK-672: the sea-top fun park's swing / drop / carousel tops, coaster train and bumper boats
+  const luna = createLunaMovers(world, d.scope);
+  if (luna) group.add(luna.group);
   const cultureMovers = createCultureMovers(
     settlement.props,
     world,
@@ -463,6 +467,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     beacons.update(_camPos);
     drones.update(time);
     movers.update(time, _camPos);
+    luna?.update(time, _camPos);
     cultureMovers.update(time, env.hour, env, _camPos, culture.state);
     whale?.update(culture.state.day, time, _camPos);
     tideSub?.update(culture.state.day, time, _camPos);

@@ -23,6 +23,7 @@ import { chassisIndex, encodeBotCode, eyesIndex, headIndex, ROLE_ITEM_CODE } fro
 import { unitHash } from '../core/hash.ts';
 import { buildStops, islandComps, type Stop } from './activity-world.ts';
 import { MARINA_LIFE } from '../content/life-marina.ts';
+import { LUNA_LIFE } from '../content/life-luna.ts';
 import { onShift, strollAt, type StrollPose } from './marina-world.ts';
 import { LandKind, nodesByComponent, type LandOpts, type WorldNodes } from './land.ts';
 import { lineOk, NodeKind, walkRoute, type Mask, type WalkGraph } from './land-world.ts';
@@ -217,6 +218,9 @@ export class Workers extends LandKind {
   private readonly townAt: { x: number; y: number; z: number } | null;
   /** Camera focus within `MARINA_LIFE.wake` of the basin (hysteresis to `sleep`). */
   private townNear = false;
+  /** The sea-top fun park's deck centre (TASK-672) and its own wake state; null = no park / no visitors. */
+  private readonly lunaAt: { x: number; y: number; z: number } | null;
+  private lunaNear = false;
   /** Town slots on shift and near the camera now (parallel to `townIdx`), and their bit signature. */
   private readonly townOn: Uint8Array;
   private townSig = -1;
@@ -309,6 +313,11 @@ export class Workers extends LandKind {
     this.townAt =
       this.townIdx.length > 0 && basin
         ? { x: basin.x, y: ctx.h(basin.x, basin.z), z: basin.z }
+        : null;
+    const deck = ctx.world.islands.find((isl) => isl.anchors.lunaDeck)?.anchors;
+    this.lunaAt =
+      deck && this.townIdx.some((i) => spawns[i].tableau?.site === 'luna')
+        ? { x: deck.lunaDeck.x, y: deck.carnivalDeck?.y ?? 0, z: deck.lunaDeck.z }
         : null;
     this.poseK = new Uint8Array(n);
     this.leanV = new Float32Array(n);
@@ -1887,7 +1896,7 @@ export class Workers extends LandKind {
       best = cur;
     this.islDist = dist;
     let changed = best !== cur || this.step === 1;
-    if (this.townAt) {
+    if (this.townAt || this.lunaAt) {
       const sig = this.updateTown();
       if (sig !== this.townSig) {
         this.townSig = sig;
@@ -1905,15 +1914,21 @@ export class Workers extends LandKind {
    * bit signature (near, then one bit per slot) so `rebalance` runs only when it changes.
    */
   private updateTown(): number {
-    const at = this.townAt as { x: number; y: number; z: number };
     const c = this.ctx.focusPos;
-    const d = Math.hypot(c.x - at.x, c.y - at.y, c.z - at.z);
-    if (this.townNear ? d > MARINA_LIFE.sleep : d < MARINA_LIFE.wake)
-      this.townNear = !this.townNear;
+    const within = (at: { x: number; y: number; z: number }, r: number): boolean =>
+      Math.hypot(c.x - at.x, c.y - at.y, c.z - at.z) < r;
+    if (this.townAt && within(this.townAt, this.townNear ? MARINA_LIFE.sleep : MARINA_LIFE.wake))
+      this.townNear = true;
+    else this.townNear = false;
+    if (this.lunaAt && within(this.lunaAt, this.lunaNear ? LUNA_LIFE.sleep : LUNA_LIFE.wake))
+      this.lunaNear = true;
+    else this.lunaNear = false;
     const hour = this.ctx.hour();
-    let sig = this.townNear ? 1 : 0;
+    let sig = (this.townNear ? 1 : 0) + (this.lunaNear ? 2 : 0);
     this.townIdx.forEach((i, k) => {
-      const on = this.townNear && onShift((this.tab[i] as TableauBot).town!.shift, hour) ? 1 : 0;
+      const tb = this.tab[i] as TableauBot;
+      const here = tb.site === 'luna' ? this.lunaNear : this.townNear;
+      const on = here && onShift(tb.town!.shift, hour) ? 1 : 0;
       this.townOn[k] = on;
       sig = sig * 2 + on;
     });
@@ -1931,7 +1946,8 @@ export class Workers extends LandKind {
     let used = 0;
     // the harbour town first while the camera is at the quay (they take pool slots: the agent count holds)
     this.townIdx.forEach((i, k) => {
-      if (this.townOn[k] && used < R - MARINA_LIFE.reserve) {
+      const reserve = this.tab[i]?.site === 'luna' ? LUNA_LIFE.reserve : MARINA_LIFE.reserve;
+      if (this.townOn[k] && used < R - reserve) {
         want[i] = 1;
         used++;
       }
