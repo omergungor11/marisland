@@ -189,3 +189,27 @@ Files: `src/world/gen/*` scatter / placement, `src/content/placement.ts`, world 
 
 - ART_BIBLE §5 / §7 / §11 rows for the new variants and shots; ARCHITECTURE §8 budget table; FLEET.md
   bot identity paragraph; MEMORY handoff.
+
+---
+
+## Cross-cutting (opened 2026-11-09 from user feedback)
+
+### TASK-611 — Detail reveal: earlier and continuous (engine)
+
+User: "çok yaklaşmam gerekiyor detayların netleşmesi için, o kısım smooth olmalı" — detail only becomes
+clear very close to the ground, and the way it arrives is not smooth. Two causes: tier-2 / tier-3 props
+dither in late (`TIER_FADE` 2: 120–160 u, 3: 40–55 u) and the T1–T2 tilt-shift band blurs the island
+until the camera is well inside T2.
+
+- `TIER_FADE` 2 → about 200–260 u, 3 → about 70–95 u (numbers in `src/content/props.ts`, tunable),
+  with the dither cross-fade wide enough that no instance pops: LOD1 fades out while LOD0 fades in over
+  the same band (check `prop-materials.ts` fade uniforms and the LOD1 / near-merge hand-over).
+- Tilt-shift (`render/post/composer.ts`, `LIGHTING.tiltShift`, `POST.tilt*`): the sharp band follows
+  the orbit target's screen position and widens with distance so the focused island is sharp from T1;
+  blur strength is continuous in orbit distance (not a per-tier step); high-tier DOF focus range scales
+  with distance (absorbs TASK-586). W1–W4 stay practically identical (T0 unchanged).
+- Budgets: more LOD0 in view at 200 u — re-measure `pnpm shots wow --assert` on the heavy frames (W5,
+  W26, W-cable-dusk, W27, W-morning-shift, W-funicular-dawn) against D-156; if a frame exceeds, narrow
+  the band for tier 3 before tier 2 and report the numbers.
+- Zoom ladder must pass (the ladder measures exactly this hand-over); add `D-reveal-{260,200,140,90,60}`
+  dev shots on seed 1001 Coding at a fixed heading for a 5-frame flip-book.

@@ -113,6 +113,7 @@ export function palm({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
     acc.add(geo, {
       m,
       color: col(i % 2 === 0 ? WOOD.logs : WOOD.dark),
+      cls: 'wood',
       windMul: 0.5,
       aoAmt: 0.22,
       groundClamp: true,
@@ -164,7 +165,7 @@ export function roundTree({ rng, lod, variant }: BuildOpts): THREE.BufferGeometr
   const lean = new THREE.Vector3(r.range(-0.15, 0.15), 0, r.range(-0.15, 0.15));
   const tTop = new THREE.Vector3(lean.x, H * 0.62, lean.z);
   const t = frustum(new THREE.Vector3(0, 0, 0), tTop, 0.3, 0.17, lod === 0 ? 8 : 5);
-  acc.add(t.geo, { m: t.m, color: col(WOOD.logs), windMul: 0.8, aoAmt: 0.25 });
+  acc.add(t.geo, { m: t.m, color: col(WOOD.logs), windMul: 0.8, aoAmt: 0.25, cls: 'wood' });
   const n = lod === 0 ? 3 + (variant % 3) : 2;
   const d = lod === 0 ? 1 : 0;
   const R0 = H * 0.29;
@@ -222,7 +223,7 @@ export function pine({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
     0.12,
     lod === 0 ? 8 : 5,
   );
-  acc.add(t.geo, { m: t.m, color: col(WOOD.dark), windMul: 0.8, aoAmt: 0.25 });
+  acc.add(t.geo, { m: t.m, color: col(WOOD.dark), windMul: 0.8, aoAmt: 0.25, cls: 'wood' });
   let h = 0.55 * H;
   let base = 0.17 * H;
   let rad = 0.19 * H;
@@ -251,7 +252,7 @@ export function treeBlob({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry
   const fn = gradY([FOLIAGE.deciduous[2], FOLIAGE.deciduous[1], FOLIAGE.deciduous[0]], H * 0.35, H);
   if (lod === 0) {
     const t = frustum(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, H * 0.5, 0), 0.28, 0.18, 3);
-    acc.add(t.geo, { m: t.m, color: col(WOOD.logs), windMul: 0.8, aoAmt: 0.2 });
+    acc.add(t.geo, { m: t.m, color: col(WOOD.logs), windMul: 0.8, aoAmt: 0.2, cls: 'wood' });
     acc.add(blob(H * 0.3, 0, noise, 0.1), {
       m: mat([0, H * 0.66, 0], null, [1, 0.9, 1]),
       color: fn,

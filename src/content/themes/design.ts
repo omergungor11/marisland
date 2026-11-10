@@ -169,14 +169,15 @@ export const DESIGN_THEME: ThemeDef = {
   accessory: 4,
   ground: {
     // wildflower meadow: pink / yellow blossoms on the lawn, lilac / white in the moist meadows
+    // TASK-617: base a step more saturated (was #8FCF6A; the rendered main band sat at S 40 < 45)
     [grass]: {
       material: 'meadow',
-      base: '#8FCF6A',
+      base: '#86D25A',
       layer: { speckle: ['#FF8FB1', '#FFD45E'], amplitude: 1.1 },
     },
     [meadow]: {
       material: 'meadow',
-      base: '#8FCF6A',
+      base: '#86D25A',
       layer: { speckle: ['#C9A2EC', '#FFFFFF'], amplitude: 1.15 },
     },
     // moss floor with leaf litter and fallen blossom petals

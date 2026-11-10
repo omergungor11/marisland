@@ -7,9 +7,18 @@ import {
   DETAIL_LAYER_IDS,
   DETAIL_LAYERS,
   GROUND_DETAIL,
+  GROUND_LIGHT,
   GROUND_WALL,
 } from '../../content/ground.ts';
-import { PALETTE_SCALE, PALETTE_TEXELS, PATTERN_LAYERS, zoneClass } from './terrain-colors.ts';
+import {
+  LIP_ZONE_FLAG,
+  PALETTE_SCALE,
+  PALETTE_TEXELS,
+  PATTERN_LAYERS,
+  WALL_TONE_TEXEL,
+  WALL_TONES,
+  zoneClass,
+} from './terrain-colors.ts';
 import { groundDetailData } from './ground-detail.ts';
 import { SHARED } from '../uniforms.ts';
 import type { WorldTextures } from '../world-textures.ts';
@@ -118,6 +127,7 @@ export function createTerrainMaterial(
     ...groundArtUniforms(world),
     ...lavaUniforms(world),
     ...lakeUniforms(world),
+    ...groundLightUniforms(),
   };
   const caustics = quality !== 'low';
   const prism = quality !== 'low';
@@ -183,6 +193,7 @@ ${MIST_GLSL}
 ${GROUND_ART_PARS_GLSL}
 ${LAVA_PARS_GLSL}
 ${LAKE_PARS_GLSL}
+${GROUND_LIGHT_PARS_GLSL}
 vec2 marTerrainUv(vec2 xz) {
   return ((xz - uTerrainGrid.xy) * uTerrainGrid.z + 0.5) / uTerrainGrid.w;
 }
@@ -199,7 +210,10 @@ float marCaustic(vec2 p, float t) {
         '#include <color_fragment>',
         /* glsl */ `#include <color_fragment>
   vec2 marUv = marTerrainUv(vMarWorld.xz);
-  float marZone = floor(texture2D(uTerrainZone, marUv).r * 255.0 + 0.5);
+  // lip texels (TASK-616) carry their vegetation zone + LIP_ZONE_FLAG: the material reads the
+  // vegetation zone, the semantic mask the original cliff
+  float marZoneTx = floor(texture2D(uTerrainZone, marUv).r * 255.0 + 0.5);
+  float marZone = mod(marZoneTx, ${LIP_ZONE_FLAG}.0);
 ${GROUND_COLOR_GLSL}
 ${GROUND_ART_COLOR_GLSL}
 ${LAVA_COLOR_GLSL}
@@ -244,6 +258,7 @@ ${LAKE_COLOR_GLSL}
     float rim = pow(1.0 - ndv, ${f(F.rimPower)}) * step(0.0, vMarWorld.y);
     totalEmissiveRadiance += uHorizon * ${f(F.rim)} * rim;
   }
+${GROUND_RIM_GLSL}
   if (uCrater.w > uCrater.z) {
     // (h) crater glow (D5): warm emissive walls, brightest on the floor, pulsing 0.7–1.0
     float cd = length(vMarWorld.xz - uCrater.xy);
@@ -261,6 +276,7 @@ ${LAKE_EMISSIVE_GLSL}`,
         '#include <opaque_fragment>',
         // (e) cloud shadows (TASK-153): same field as the clouds, ×0.82 with a 6 u soft edge
         /* glsl */ `	outgoingLight *= marCloudShadowMul(vMarWorld.xz, uDebugMask);
+${GROUND_SHADE_GLSL}
   {
     // (f) lantern pools: warm additive light on the ground around lanterns / doors / stalls
     vec2 marPl = marPool(vMarWorld.xz);
@@ -309,7 +325,7 @@ ${GROUND_ART_LIGHT_GLSL}
     vec3 m = uMaskLand;
     if (vMarWorld.y < 0.0) m = uMaskSeabed;
     else if (marZone == ${Zone.sandWet}.0) m = uMaskWet;
-    else if (marZone == ${Zone.rock}.0 || marZone == ${Zone.cliff}.0) m = uMaskRock;
+    else if (marZone == ${Zone.rock}.0 || marZone == ${Zone.cliff}.0 || marZoneTx >= ${LIP_ZONE_FLAG}.0) m = uMaskRock;
     gl_FragColor = vec4(m, 1.0);
     #include <colorspace_fragment>
   }`,
@@ -360,15 +376,21 @@ ivec2 marTexel(ivec2 t) {
 }
 /** Material class of a zone texel (the albedo smoothing classes of terrain-colors.ts). */
 int marZoneClass(float z) {
-  int i = int(z * 255.0 + 0.5);
+  int i = int(z * 255.0 + 0.5) % ${LIP_ZONE_FLAG};
   ${zoneClassGlsl()}
 }
 vec4 marPal(float zone, float isl, int c) {
   return texelFetch(uPalette, ivec2(int(zone) * ${PALETTE_TEXELS} + c, int(isl)), 0);
 }
-/** Earth-wall strata tone of band b (hashed; × wall colour, tones normalised to mean 1). */
+/** Rock-wall strata tone of band b (hashed; × own albedo, tones normalised to mean 1). */
 vec3 marWallTone(float b) {
   ${wallTonesGlsl()}
+}
+/** Earth-wall band b of island row isl: its theme tone (cycled bottom → top) ± a hashed lightness. */
+vec3 marStrataTone(float zone, float isl, float b) {
+  int k = int(mod(b, ${WALL_TONES}.0));
+  vec3 c = marSrgbDecode(marPal(zone, isl, ${WALL_TONE_TEXEL} + k).rgb);
+  return c * (1.0 + ${g(GW.bandJitter)} * (2.0 * marHash12(vec2(b, isl + 3.7)) - 1.0));
 }
 #ifdef MAR_DETAIL
 uniform sampler2DArray uDetail;
@@ -579,7 +601,7 @@ const GROUND_COLOR_GLSL = /* glsl */ `
       vec4 a = texelFetch(uAlbedo, t, 0);
       marAlb[k] = a.rgb;
       marIl[k] = floor(a.a * 255.0 + 0.5);
-      marZn[k] = floor(texelFetch(uTerrainZone, t, 0).r * 255.0 + 0.5);
+      marZn[k] = mod(floor(texelFetch(uTerrainZone, t, 0).r * 255.0 + 0.5), ${LIP_ZONE_FLAG}.0);
       marKey[k] = marPal(marZn[k], marIl[k], 0);
     }
     // pool corners of the same material; A = dominant material, B = runner-up
@@ -641,7 +663,7 @@ const GROUND_COLOR_GLSL = /* glsl */ `
     float marWallCliff = 0.0;
     float marOwn = 0.0;
     float marSteepCliff = 1.0 - smoothstep(${g(GW.ny.cliff[0])}, ${g(GW.ny.cliff[1])}, marWN.y);
-    if (marSteepCliff > 0.0 && vMarWorld.y > -1.2) {
+    if (marSteepCliff > 0.0 && vMarWorld.y > ${g(-GW.wetBelow)}) {
       float marSteepSoil = 1.0 - smoothstep(${g(GW.ny.soil[0])}, ${g(GW.ny.soil[1])}, marWN.y);
       float marCoast = 1.0 - smoothstep(${g(GW.coast[0])}, ${g(GW.coast[1])}, texture2D(uTerrainSdf, marUv).r);
       ivec2 marC0 = ivec2(floor(marG));
@@ -649,7 +671,9 @@ const GROUND_COLOR_GLSL = /* glsl */ `
       for (int k = 0; k < 4; k++) {
         ivec2 o = ivec2(k - 2 * (k / 2), k / 2);
         float bw = (o.x == 1 ? marCf.x : 1.0 - marCf.x) * (o.y == 1 ? marCf.y : 1.0 - marCf.y);
-        vec4 wp = marPal(floor(texelFetch(uTerrainZone, marTexel(marC0 + o), 0).r * 255.0 + 0.5), marIsl, 1);
+        // lip texels (TASK-616) stay cliff here: the slope alone draws the lip line
+        float marWz = floor(texelFetch(uTerrainZone, marTexel(marC0 + o), 0).r * 255.0 + 0.5);
+        vec4 wp = marPal(marWz >= ${LIP_ZONE_FLAG}.0 ? ${Zone.cliff}.0 : marWz, marIsl, 1);
         float inl = step(0.25, wp.a);
         float own = step(0.75, wp.a);
         float wk = bw * wp.b * ${g(255 / PALETTE_SCALE.wall)};
@@ -659,7 +683,7 @@ const GROUND_COLOR_GLSL = /* glsl */ `
         marOwn += bw * own;
       }
     }
-    float marWall = (marWallSoil + marWallCliff) * smoothstep(-1.2, 0.0, vMarWorld.y);
+    float marWall = (marWallSoil + marWallCliff) * smoothstep(${g(-GW.wetBelow)}, ${g(-0.4 * GW.wetBelow)}, vMarWorld.y);
     if (marWall > 0.0) {
       // wall top / foot along the fall line (height texture probes)
       vec2 marIn = -normalize(marWN.xz + vec2(1e-5, 0.0));
@@ -670,28 +694,41 @@ ${WALL_PROBES_GLSL}
       marFoot = max(marFoot, 0.0);
       // soil walls stand on the beach / sea (a steep hillside further up stays green)
       marWall = (marWallSoil * (1.0 - smoothstep(${g(GW.footMax[0])}, ${g(GW.footMax[1])}, marFoot)) + marWallCliff)
-              * smoothstep(-1.2, 0.0, vMarWorld.y);
+              * smoothstep(${g(-GW.wetBelow)}, ${g(-0.4 * GW.wetBelow)}, vMarWorld.y);
       marWall *= smoothstep(${g(GW.minHeight[0])}, ${g(GW.minHeight[1])}, marTop - marFoot);
       float marD = marTop - vMarWorld.y;
-      // strata: hashed tones per band, wobbling bands of uneven thickness; band detail fades to
-      // its mean (the wall colour) once a band is a few pixels tall
-      float marBw = ${g(GW.bandWobble)} * (sin(vMarWorld.x * 0.09 + vMarWorld.z * 0.06) + 0.5 * sin(vMarWorld.z * 0.21 - vMarWorld.x * 0.13));
-      float marBt = (vMarWorld.y + marBw) / ${g(GW.band)};
+      // strata (TASK-613): the island theme's band tones, cycled bottom → top, in wobbling bands
+      // of uneven thickness that grow with height (bandGrow: a 25 u stack gets thicker bands
+      // than a 6 u bluff); bands fade to their mean (the wall colour) only under ~2 px
+      float marBh = ${g(GW.band)} * (1.0 + max(vMarWorld.y, 0.0) / ${g(GW.bandGrow)});
+      float marBw = ${g(GW.bandWobble / GW.band)} * marBh * (sin(vMarWorld.x * 0.09 + vMarWorld.z * 0.06) + 0.5 * sin(vMarWorld.z * 0.21 - vMarWorld.x * 0.13));
+      float marBt = ${g(GW.bandGrow / GW.band)} * log(1.0 + max(vMarWorld.y + marBw, 0.0) / ${g(GW.bandGrow)});
       marBt += 0.32 * sin(marBt * 2.1 + marIsl);
       float marBi = floor(marBt);
       float marBf = marBt - marBi;
-      float marBpx = marYw / ${g(GW.band)};
-      float marBfade = 1.0 - smoothstep(0.12, 0.3, marBpx);
-      vec3 marTone = mix(marWallTone(marBi + 17.0 * marIsl), marWallTone(marBi + 1.0 + 17.0 * marIsl),
-                         smoothstep(1.0 - clamp(marBpx * 1.5, 0.04, 0.5), 1.0, marBf));
-      marTone = mix(vec3(1.0), marTone, marBfade * (1.0 - ${g(1 - GW.rockContrast)} * marOwn));
+      float marBpx = marYw / marBh;
+      float marBfade = 1.0 - smoothstep(${g(GW.bandFade[0])}, ${g(GW.bandFade[1])}, marBpx);
+      float marBmix = smoothstep(1.0 - clamp(marBpx * 1.5, 0.04, 0.5), 1.0, marBf);
+      vec3 marTone = mix(marWallTone(marBi + 17.0 * marIsl), marWallTone(marBi + 1.0 + 17.0 * marIsl), marBmix);
+      marTone = mix(vec3(1.0), marTone, marBfade * ${g(GW.rockContrast)});
+      vec3 marBand = mix(marStrataTone(marZone, marIsl, marBi), marStrataTone(marZone, marIsl, marBi + 1.0), marBmix);
+      marBand = mix(marSrgbDecode(marPal(marZone, marIsl, 4).rgb), marBand, marBfade);
       float marGroove = 1.0 - ${g(GW.groove)} * (1.0 - smoothstep(0.035, 0.07, marBpx)) * (1.0 - smoothstep(0.0, max(0.08, 1.5 * marBpx), marBf));
+      // macro cells along the wall (G4): ± lightness and grain strength over ~22 u cells, so the
+      // 6.5 u crack layer never repeats identically on one wall (zero-mean, every quality)
+      vec2 marWd = vec2(-marIn.y, marIn.x);
+      float marU = dot(vMarWorld.xz, marWd);
+      vec2 marMq = vec2(marU / ${g(GW.macroCell)}, vMarWorld.y / ${g(GW.macroCellY)}) + 5.3 * marIsl;
+      float marMac = marVNoise(marMq) * 2.0 - 1.0;
+      float marMacG = mix(${g(GW.macroGrain[0])}, ${g(GW.macroGrain[1])}, marVNoise(marMq * 1.7 + 23.0));
       // grain: the near detail layer's lightness change, partly kept on the soil
       float marGrain = mix(1.0, clamp(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722))
-                         / max(dot(marBase, vec3(0.2126, 0.7152, 0.0722)), 1e-4), 0.6, 1.5), ${g(GW.grain)});
+                         / max(dot(marBase, vec3(0.2126, 0.7152, 0.0722)), 1e-4), 0.6, 1.5), ${g(GW.grain)} * marMacG);
+      // wall foot: darker and cooler toward the beach / sea (P4: shade leans blue-violet)
       float marFootT = 1.0 - smoothstep(0.0, ${g(GW.footHeight)}, vMarWorld.y - marFoot);
-      vec3 marSoil = mix(marSrgbDecode(marPal(marZone, marIsl, 4).rgb), marBase, marOwn) * marTone * marGroove * marGrain
-                   * (1.0 - ${g(GW.footDark)} * marFootT * marFootT);
+      vec3 marSoil = mix(marBand, marBase * marTone, marOwn) * marGroove * marGrain
+                   * (1.0 + ${g(GW.macroTone)} * marMac * (1.0 - marOwn))
+                   * mix(vec3(1.0), ${g(1 - GW.footDark)} * vec3(${g(1 - GW.footCool)}, ${g(1 - 0.4 * GW.footCool)}, 1.0), marFootT * marFootT);
       // grass lip: the top's albedo hanging over the edge, drips along the wall (along-wall axis
       // picked by the wall's facing; drips settle to their mean while a cell is under ~2 px)
       vec2 marSw = pow(abs(marWN.xz) + 1e-4, vec2(4.0));
@@ -704,18 +741,23 @@ ${WALL_PROBES_GLSL}
       float marEw = max(0.05, marYw);
       float marLip = 1.0 - smoothstep(marLipY - marEw, marLipY + marEw, marD);
       vec3 marLipCol = texture2D(uAlbedo, marTerrainUv(marTopXz + marIn * ${g(GW.lipInset)})).rgb * ${g(GW.lipShade)};
-      float marLine = (1.0 - smoothstep(0.0, ${g(GW.lipLine)} + marEw, marD - marLipY)) * (1.0 - marLip)
-                    * (1.0 - smoothstep(0.5, 1.5, marYw / ${g(GW.lipLine)}));
-      vec3 marWc = mix(marSoil * (1.0 - ${g(GW.lipLineDark)} * marLine), marLipCol, marLip);
-      // wet line just above the water: darker and cooler
-      float marWetY = ${g(GW.wetHeight)} + ${g(GW.wetWobble)} * sin(vMarWorld.x * 0.37 + vMarWorld.z * 0.29 + 1.7 * sin(vMarWorld.z * 0.11));
+      // the overhang's shadow line: never thinner than lipLinePx pixels, so it holds at T0 / T1
+      float marLine = (1.0 - smoothstep(0.0, max(${g(GW.lipLine)}, ${g(GW.lipLinePx)} * marYw), marD - marLipY)) * (1.0 - marLip);
+      vec3 marWc = mix(marSoil * mix(vec3(1.0), ${g(1 - GW.lipLineDark)} * vec3(${g(1 - GW.lipLineCool)}, ${g(1 - 0.4 * GW.lipLineCool)}, 1.0), marLine),
+                       marLipCol, marLip);
+      // wet rock band (TASK-616, G3): 0.6–1.2 u above the water (never under wetPx px), darker and
+      // cooler, carrying on below the waterline; a thin salt line on its top edge on light strata
+      float marWetY = max(${g(GW.wetHeight)} + ${g(GW.wetWobble)} * sin(vMarWorld.x * 0.37 + vMarWorld.z * 0.29 + 1.7 * sin(vMarWorld.z * 0.11)), ${g(GW.wetPx)} * marYw);
       float marWet = 1.0 - smoothstep(marWetY - marEw, marWetY + marEw, vMarWorld.y);
-      marWc *= mix(vec3(1.0), ${g(1 - GW.wetDark)} * vec3(${g(1 - GW.wetCool)}, ${g(1 - 0.4 * GW.wetCool)}, 1.0), marWet);
+      float marSd = vMarWorld.y - marWetY;
+      float marSaltW = max(${g(GW.saltWidth)}, ${g(GW.saltPx)} * marYw);
+      float marSalt = smoothstep(-marEw, 0.0, marSd) * (1.0 - smoothstep(marSaltW, marSaltW + marEw, marSd))
+                    * smoothstep(${g(GW.saltLum[0])}, ${g(GW.saltLum[1])}, dot(marBand, vec3(0.2126, 0.7152, 0.0722))) * (1.0 - marLip);
+      marWc *= mix(vec3(1.0), ${g(1 - GW.wetDark)} * vec3(${g(1 - GW.wetCool)}, ${g(1 - 0.4 * GW.wetCool)}, 1.0), marWet)
+             * (1.0 + ${g(GW.salt)} * marSalt);
       // carving: vertical cracks (ridged noise along the wall, stretched in y, mean-compensated)
       // and a ledge roll per strata band, below the lip only
       float marRock = marWall * (1.0 - marLip);
-      vec2 marWd = vec2(-marIn.y, marIn.x);
-      float marU = dot(vMarWorld.xz, marWd);
       float marCr = 1.0 - abs(2.0 * marVNoise(vec2(marU * ${g(GW.crackFreq)}, vMarWorld.y * ${g(GW.crackFreq * GW.crackStretch)})) - 1.0);
       float marCrAa = (1.0 - smoothstep(${g(GW.crackAa[0])}, ${g(GW.crackAa[1])}, marGw))
                     * (1.0 - smoothstep(${g(GW.crackSteep[0])}, ${g(GW.crackSteep[1])}, marWN.y));
@@ -727,3 +769,43 @@ ${WALL_PROBES_GLSL}
     }
   }
 `;
+
+// ---------------------------------------------------------------- painted light (TASK-617)
+
+const GL = GROUND_LIGHT;
+
+/** Key light + shade tint for the painted-light terms (shared env uniforms, no new texture). */
+function groundLightUniforms(): Record<string, THREE.IUniform> {
+  return {
+    uSunDir: SHARED.uSunDir,
+    uShadowTint: SHARED.uShadowTint,
+    uGroundRimColor: { value: new THREE.Color(GL.rimColor) },
+  };
+}
+
+// uSunColor is declared by the ground-art pars (same shared uniform)
+const GROUND_LIGHT_PARS_GLSL = /* glsl */ `uniform vec3 uSunDir;
+uniform vec3 uShadowTint;
+uniform vec3 uGroundRimColor;`;
+
+/**
+ * Sun rim (GROUND_LIGHT.rim): grazing view × facing the key light → warm cream × sun colour on the
+ * land silhouette (bluff tops, the island edge against the sea), in the aomap block (emissive).
+ */
+const GROUND_RIM_GLSL = /* glsl */ `  {
+    vec3 marRn = normalize((vec4(normal, 0.0) * viewMatrix).xyz);
+    float marRf = pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), ${g(GL.rimPower)});
+    float marRs = smoothstep(${g(GL.rimFacing[0])}, ${g(GL.rimFacing[1])}, dot(marRn, normalize(uSunDir)));
+    totalEmissiveRadiance += uGroundRimColor * uSunColor * (${g(GL.rim)} * marRf * marRs
+      * step(0.0, vMarWorld.y) * (1.0 - uNight) * (1.0 - uDebugMask));
+  }`;
+
+/**
+ * Shade floor (GROUND_LIGHT.shade): land darker than `floor` (linear luminance) by day gets up to
+ * `lift` × albedo × the env shadow tint back — cool shade, never black; lit ground untouched.
+ */
+const GROUND_SHADE_GLSL = /* glsl */ `  if (vMarWorld.y > 0.0) {
+    float marSl = dot(outgoingLight, vec3(0.2126, 0.7152, 0.0722));
+    outgoingLight += diffuseColor.rgb * uShadowTint * (${g(GL.shade.lift)}
+      * (1.0 - smoothstep(0.0, ${g(GL.shade.floor)}, marSl)) * (1.0 - uNight));
+  }`;

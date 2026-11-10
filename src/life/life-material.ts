@@ -1,7 +1,8 @@
 import type * as THREE from 'three';
-import { GULLS } from '../content/life.ts';
+import { BOT_EYE_ANIM, GULLS } from '../content/life.ts';
 import { SHARED } from '../render/uniforms.ts';
 import { makeLitMaterial, marAttr, type LitMaterial } from '../render/materials/factory.ts';
+import { LIFE_CLASS_DEFAULT } from '../content/materials.ts';
 
 /**
  * One shared program for every creature that animates in the vertex shader (gulls' wings, the land
@@ -26,6 +27,13 @@ import { makeLitMaterial, marAttr, type LitMaterial } from '../render/materials/
  * turns), so a bot picking up a laptop never twitches its eyes or antenna.
  */
 export const ITEM_STRIDE = 100;
+/**
+ * Bot look code (TASK-590): `floor(aSeed) = acc + ITEM_STRIDE * item + LOOK_STRIDE * (head + 3 * eyes)`;
+ * head 0..2 (monitor / visor / cam), eyes 0..4 (idle, working, gate, error, done). Item <= 15 keeps
+ * acc + ITEM_STRIDE * item below LOOK_STRIDE; a multiple of 100 keeps the phases whole as above. Max code
+ * 14 * 2000 + 1506 stays small enough that aSeed keeps a 1/512 phase resolution in float32.
+ */
+export const LOOK_STRIDE = 2000;
 
 const FLAP_CYCLE = GULLS.flaps * GULLS.flapPeriod + GULLS.glide;
 
@@ -159,14 +167,27 @@ const BODY = /* glsl */ `
           }
         }
       } else if (lM == 8) {
-        // worker accessory, two-slot decode of floor(aSeed) = acc + ${ITEM_STRIDE} * item: variants below
-        // 6.5 are the department accessory (acc), slots 7.. the carried item (item + 6, 0 = none); the
-        // rest collapse to a point. Villagers / critters never carry an item (item = 0).
+        // worker accessory / head / eyes, decode of floor(aSeed) = acc + ${ITEM_STRIDE} * item + ${LOOK_STRIDE} * look:
+        // variants below 6.5 are the department accessory (acc), 7.. the carried item (item + 6, 0 = none),
+        // 30.. the head, 40.. the eye glyphs; the rest collapse to a point. Villagers / critters never carry
+        // an item and keep look 0.
         float lF = floor(aSeed);
-        float lItem = floor(lF / ${ITEM_STRIDE.toFixed(1)});
-        float lAcc = lF - lItem * ${ITEM_STRIDE.toFixed(1)};
-        float lWant = limb.x < 6.5 ? lAcc : (lItem > 0.5 ? lItem + 6.0 : -1.0);
+        float lLook = floor(lF / ${LOOK_STRIDE.toFixed(1)});
+        float lRest = lF - lLook * ${LOOK_STRIDE.toFixed(1)};
+        float lItem = floor(lRest / ${ITEM_STRIDE.toFixed(1)});
+        float lAcc = lRest - lItem * ${ITEM_STRIDE.toFixed(1)};
+        float lEye = floor(lLook / 3.0);
+        float lHead = lLook - lEye * 3.0;
+        // limb.x: 0..6 accessory, 7..29 carried item, 30..32 head, 40 + 5 * head + eye = that head's eye glyphs
+        float lWant = lAcc;
+        if (limb.x > 39.5) lWant = 40.0 + lHead * 5.0 + lEye;
+        else if (limb.x > 29.5) lWant = 30.0 + lHead;
+        else if (limb.x > 6.5) lWant = lItem > 0.5 ? lItem + 6.0 : -1.0;
         if (abs(lWant - limb.x) > 0.5) transformed = vec3(0.0, limb.y, 0.0);
+        else if (limb.x > 39.5 && limb.z > 0.5) {
+          // working dots (limb.z = 1..3) hop in turn
+          transformed.y += ${BOT_EYE_ANIM.dotHop.toFixed(4)} * max(0.0, sin(uTime * ${BOT_EYE_ANIM.dotRate.toFixed(3)} - (limb.z - 1.0) * ${BOT_EYE_ANIM.dotLag.toFixed(3)})) * uMotionScale;
+        }
       } else if (lM == 6) {
         // click-burst glyphs (render/particles/bursts.ts): one geometry holds every glyph;
         // collapse all but the instance's own (aGait.y)
@@ -197,6 +218,9 @@ export const LIFE_PROGRAM_KEY = 'mar-lit:life';
 
 export function makeLifeMaterial(name: string, tintAll: boolean): LitMaterial {
   const mat = makeLitMaterial({ instanced: true, rim: true }, { name });
+  // material class of untagged vertices (TASK-594): bots read as metal with glass screens
+  const cls = LIFE_CLASS_DEFAULT[name];
+  if (cls) mat.classDefault.value.set(cls[0], cls[1]);
   (mat as unknown as { defaultAttributeValues: Record<string, number[]> }).defaultAttributeValues =
     DEFAULTS;
   const tint = { value: tintAll ? 1 : 0 };

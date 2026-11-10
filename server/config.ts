@@ -10,6 +10,12 @@ export const FLEET_CHAIN = { maxPerMessage: 2, maxPerMessageHq: 7 } as const;
 export const maxPerMessage = (island: FleetIsland): number =>
   island === 'hq' ? FLEET_CHAIN.maxPerMessageHq : FLEET_CHAIN.maxPerMessage;
 
+/** Done gate (TASK-632): `minTurns` = shortest session that gets nudged, `nudgeMaxTurns` = cap of the nudge turn. */
+export interface DoneGateConfig {
+  minTurns: number;
+  nudgeMaxTurns: number;
+}
+
 export interface FleetConfig {
   port: number;
   /** Model alias of the title job. */
@@ -19,6 +25,7 @@ export interface FleetConfig {
   maxChildren: number;
   /** M43: HQ auto-memory dir served as the `hq-memory` kb source (`~` allowed). */
   hqMemoryDir?: string;
+  doneGate: DoneGateConfig;
 }
 
 export interface IslandManifest {
@@ -56,17 +63,30 @@ function posInt(v: unknown, where: string, fallback: number): number {
   return v;
 }
 
+function nonNegInt(v: unknown, where: string, fallback: number): number {
+  if (v === undefined) return fallback;
+  if (typeof v !== 'number' || !Number.isInteger(v) || v < 0)
+    throw new Error(`fleet.config: ${where} must be an integer >= 0`);
+  return v;
+}
+
 export function parseConfig(raw: unknown): FleetConfig {
   if (!isObj(raw)) throw new Error('fleet.config: root must be an object');
   const port = posInt(raw.port, 'port', FLEET_PORT);
   if (port > 65535) throw new Error('fleet.config: port out of range');
   if (raw.titleModel !== undefined && (typeof raw.titleModel !== 'string' || !raw.titleModel))
     throw new Error('fleet.config: titleModel must be a non-empty string');
+  const dg = raw.doneGate;
+  if (dg !== undefined && !isObj(dg)) throw new Error('fleet.config: doneGate must be an object');
   return {
     port,
     titleModel: (raw.titleModel as string | undefined) ?? 'haiku',
     maxTurns: posInt(raw.maxTurns, 'maxTurns', 30),
     maxChildren: posInt(raw.maxChildren, 'maxChildren', 6),
+    doneGate: {
+      minTurns: nonNegInt(dg?.minTurns, 'doneGate.minTurns', 5),
+      nudgeMaxTurns: nonNegInt(dg?.nudgeMaxTurns, 'doneGate.nudgeMaxTurns', 3),
+    },
     ...(typeof raw.hqMemoryDir === 'string' && raw.hqMemoryDir
       ? { hqMemoryDir: raw.hqMemoryDir }
       : {}),

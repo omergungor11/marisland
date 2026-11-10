@@ -2,6 +2,7 @@ import { WHARF_GEO as F, WHARF_VARIANTS as WV } from '../content/themes/design-h
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { BLINK } from '../content/activity.ts';
+import { MATERIAL_CLASS_COUNT, decodeSurface, emissiveBase } from '../content/materials.ts';
 import { STAIR_FLIGHT } from '../content/stairs.ts';
 import { OFFICE_DEFS, OFFICE_INTERIOR_SHELLS, WORK_SPOTS } from '../content/offices.ts';
 import { PROP_GEO, buildProp } from './index.ts';
@@ -72,6 +73,10 @@ const TARGET: Record<string, number> = {
   telescope: 400,
   officeLod1: 150,
   officeInterior: 2500,
+  // M51 TASK-620: courier ships (LOD0 <= 900, LOD1 <= 250), banded crate, report scroll
+  courierShip: 900,
+  courierCrate: 60,
+  reportScroll: 40,
   ...Object.fromEntries(THEME_GEO.map((d) => [d.id, 3500])),
 };
 
@@ -235,7 +240,10 @@ describe('prop geometry', () => {
             const em = g.getAttribute('emissive');
             expect(em.itemSize).toBe(1);
             expect(em.count).toBe(n);
-            const ea = em.array as Float32Array;
+            // TASK-594: material classes ride above the emissive codes (content/materials.ts)
+            const raw = em.array as Float32Array;
+            expect(raw.every((x) => decodeSurface(x).cls < MATERIAL_CLASS_COUNT)).toBe(true);
+            const ea = raw.map(emissiveBase);
             // 0..1 glow, 2 = screen / LED class (TASK-305), BLINK.base + 1 = blinking lamp (TASK-479)
             expect(
               ea.every((x) => Number.isFinite(x) && x >= 0 && (x <= 2 || x === BLINK.base + 1)),
@@ -245,7 +253,9 @@ describe('prop geometry', () => {
             for (let f = 0; f < n; f += 3)
               expect(ea[f] === ea[f + 1] && ea[f] === ea[f + 2]).toBe(true);
           } else {
-            expect(g.getAttribute('emissive')).toBeUndefined();
+            // no glow: either no emissive attribute or a class-only one (base 0 everywhere)
+            const em = g.getAttribute('emissive');
+            if (em) expect(Array.from(em.array).every((x) => emissiveBase(x) === 0)).toBe(true);
           }
           const bb = g.boundingBox!;
           // pipe support posts run down into the slope (TASK-453c; 4.2 u: a run over a terrace
@@ -256,25 +266,28 @@ describe('prop geometry', () => {
             (def.id === 'glasshouse' && v >= WV.boathouse) ||
             (def.id === 'conservatory' && v === WV.pavilion)
               ? -F.pavilion.pileDown - 0.1
-              : def.id === 'pipe'
-                ? -4.3
-                : // the marina's pile feet and the fort's plinth reach down past the waterline pivot (TASK-505)
-                  def.id === 'marinaPier' || def.id === 'starFort'
-                  ? -5
-                  : // TASK-533: the Tide-Lab piles reach the seabed under the waterline pivot
-                    def.id === 'tideLab'
-                    ? -1.1
-                    : // TASK-540: the coaster's columns are sunk 0.25 below groundY, the seated rider's boots hang under its hip pivot
-                      def.id === 'coasterTrack' || def.id === 'coasterRider'
-                      ? -0.3
-                      : // TASK-509b: the breakwater foot reaches the seabed, the bridge / deck skirts hide the bank
-                        def.id === 'devopsBreakwater'
-                        ? -2.7
-                        : def.id === 'emberBridge' || def.id === 'craterDeck'
-                          ? -0.65
-                          : def.id === 'stairFlight'
-                            ? -Math.max(...STAIR_FLIGHT.looks.map((L) => L.skirt)) - 0.05
-                            : -0.05;
+              : // TASK-660: the Horseshoe Harbour boats sink 0.2 u under the waterline pivot
+                def.id === 'quayBoat'
+                ? -0.3
+                : def.id === 'pipe'
+                  ? -4.3
+                  : // the marina's pile feet and the fort's plinth reach down past the waterline pivot (TASK-505)
+                    def.id === 'marinaPier' || def.id === 'starFort'
+                    ? -5
+                    : // TASK-533: the Tide-Lab piles reach the seabed under the waterline pivot
+                      def.id === 'tideLab'
+                      ? -1.1
+                      : // TASK-540: the coaster's columns are sunk 0.25 below groundY, the seated rider's boots hang under its hip pivot
+                        def.id === 'coasterTrack' || def.id === 'coasterRider'
+                        ? -0.3
+                        : // TASK-509b: the breakwater foot reaches the seabed, the bridge / deck skirts hide the bank
+                          def.id === 'devopsBreakwater'
+                          ? -2.7
+                          : def.id === 'emberBridge' || def.id === 'craterDeck'
+                            ? -0.65
+                            : def.id === 'stairFlight'
+                              ? -Math.max(...STAIR_FLIGHT.looks.map((L) => L.skirt)) - 0.05
+                              : -0.05;
           expect(bb.min.y).toBeGreaterThanOrEqual(below);
           const h = def.heights?.[v] ?? def.height;
           expect(bb.max.y).toBeGreaterThanOrEqual(h * 0.65);

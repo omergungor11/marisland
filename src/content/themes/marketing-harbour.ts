@@ -99,7 +99,7 @@ export const CARNIVAL_PIER = {
     maxGround: 0.2,
     gap: 0.6,
     /** Boat routes keep this much off the deck's edge. */
-    keepOut: 1.6,
+    keepOut: 2,
     /** Geometry: planks along z, `plank` u each; slab `thick` under them; a pile row every `pile` u. */
     plank: 0.46,
     gapTone: '#7C5E45',

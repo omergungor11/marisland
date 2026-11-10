@@ -54,8 +54,9 @@ describe('terrain albedo / palette textures (TASK-372)', () => {
     const scope = new Scope('test');
     const t = createWorldTextures(world, scope, null);
     expect(t.albedo!.colorSpace).toBe(THREE.SRGBColorSpace);
-    // ZONE_COUNT zones × 5 texels (TASK-391 wall colour; 23 zones since the TASK-466 street zones)
-    expect(t.palette!.image.width).toBe(ZONE_COUNT * 5);
+    // ZONE_COUNT zones × 9 texels (TASK-391 wall colour, TASK-613 4 strata tones; 23 zones since
+    // the TASK-466 street zones)
+    expect(t.palette!.image.width).toBe(ZONE_COUNT * 9);
     // raise a land patch: heights (and so AO / ramps) change around it
     let hit = -1;
     for (let k = 0; k < n * n && hit < 0; k++) if (world.height.data[k] > 2) hit = k;

@@ -6,6 +6,7 @@ import { FIXTURE_RADIUS } from '../content/settlements.ts';
 import { THEMES } from '../content/themes/index.ts';
 import { MARKETING_PLAN } from '../content/themes/marketing.ts';
 import { StageHash } from './gen/hash.ts';
+import { inMarina } from './gen/plans/marketing-marina.ts';
 import { discShape, rectShape, shapeCorners, shapeDist, type Shape } from './gen/sites.ts';
 import { generateWorld, heightAt, zoneAt, Zone, type WorldData } from './index.ts';
 
@@ -22,7 +23,8 @@ const mktOf = (w: WorldData) => {
   const isl = w.islands.find((i) => i.theme === 'marketing');
   if (!isl) throw new Error('no Marketing island');
   const s = w.settlements.find((x) => x.islandId === isl.id);
-  const fx = w.fixtures.filter((f) => f.islandId === isl.id);
+  // (the marina town's pieces have their own test: plans-marketing-marina.test)
+  const fx = w.fixtures.filter((f) => f.islandId === isl.id && !inMarina(isl, f));
   const lh = w.landmarks.find((m) => m.islandId === isl.id && m.kind === 'lighthouse');
   return {
     isl,
@@ -235,9 +237,9 @@ describe('Marketing Media Rock plan (TASK-403), 30 seeds', () => {
     });
     expect(got).toMatchInlineSnapshot(`
       [
-        "392785512710e1fe",
-        "2ea954077982b233",
-        "cfa2d6a8f9f17ce1",
+        "8c17ee4c7419e572",
+        "43a5dc621ba88421",
+        "80d789a5c218a634",
       ]
     `);
   });

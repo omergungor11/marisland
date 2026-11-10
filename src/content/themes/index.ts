@@ -165,5 +165,12 @@ export const CARRIED_ITEM_SLOT = {
   books: 14,
   // M22 (TASK-480): QA bug-hunt lantern, carried by the QA bots at night (NIGHT_ITEMS)
   lantern: 15,
+  // M45 (TASK-590): role items of the fleet agents (content/bot-look ROLE_ITEM); brush = paintPot, book = books
+  wrench: 16,
+  map: 17,
+  hammer: 18,
+  duck: 19,
+  magnifier: 20,
+  hardHat: 21,
 } as const;
 export type CarriedItem = keyof typeof CARRIED_ITEM_SLOT;

@@ -35,6 +35,7 @@ import {
 } from './clusters.ts';
 import { ALWAYS_APPEAR, APPEAR_OUT_SECONDS, HIDDEN_APPEAR, encodeAppearOut } from './appear.ts';
 import { createFarMerge, type FarMerge } from './far-merge.ts';
+import { bakeCreases } from './creases.ts';
 import { NEAR_MERGE } from '../../content/budgets.ts';
 import {
   armTier,
@@ -108,6 +109,11 @@ export interface BatcherDeps {
   castShadows: boolean;
   /** Interior defs cast shadows too (high quality only; default false). */
   interiorShadows?: boolean;
+  /**
+   * Bake crease bits for the bevel edge light into LOD0 geometry (TASK-594; default false). Off
+   * on low: the edge light is off there, and the float emissive costs ~1 MB of GPU memory.
+   */
+  creases?: boolean;
   /** Ground-cover visibility radius around the focus (u). */
   groundCoverRadius?: number;
   /** Contact-shadow blobs under grounded props (default true). */
@@ -268,9 +274,11 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
     const key = `${def.geo}:${variant}:${lod}`;
     let g = geoCache.get(key);
     if (!g) {
-      g = compactAttributes(
-        d.geometryOverride?.(def.id, lod, variant) ?? buildProp(def.geo, d.seed, variant, lod),
-      );
+      g = d.geometryOverride?.(def.id, lod, variant) ?? buildProp(def.geo, d.seed, variant, lod);
+      // bevel edge light (TASK-594): near geometry only, never ground cover (LOD1 is drawn beyond
+      // the edge-light ramp, the far merge keeps its compact emissive)
+      if (d.creases && lod === 0 && (def.flags & PropFlag.groundCover) === 0) g = bakeCreases(g);
+      g = compactAttributes(g);
       d.scope.add(g);
       geoCache.set(key, g);
     }

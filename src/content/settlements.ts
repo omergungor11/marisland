@@ -67,7 +67,8 @@ export const LOT_ROLE_BY_KIND: Readonly<Partial<Record<LotKind, LotRole>>> = {
 export const LOT_ROOFS: Readonly<Record<string, readonly number[]>> = {
   // v3 = DevOps ops shack (M22 TASK-482; a fixture the DevOps plan pins, never a rolled lot): a
   // steel roof outside ROOFS, listed with v0's roof
-  cottage: [0, 2, 4, 0],
+  // v4..v7 = TASK-598 styled variants (roofs match content/building-variants.ts); not rolled until TASK-600
+  cottage: [0, 2, 4, 0, 2, 1, 4, 0],
   stiltHut: [2, 4],
   towerHouse: [5, 1, 2],
   barn: [5, 0],
@@ -286,6 +287,10 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   selfieSpot: 1.4,
   posterRoll: 0.55,
   megaphoneStand: 0.45,
+  // Marketing marina town (TASK-661; houses / tower, terraces / stalls, boats / pontoons afloat)
+  quayHouse: 2.2,
+  quayFurnish: 1.1,
+  quayBoat: 1.6,
   // Design
   sculptureArch: 2.4,
   sculptureStack: 1.3,
@@ -418,6 +423,8 @@ export const FLOATING_FIXTURES: readonly string[] = [
   'rainbowArc',
   // the Marketing party pontoon (sailboat variant 5, TASK-481); no other sailboat is a fixture
   'sailboat',
+  // the Horseshoe Harbour's moored boats and finger pontoon (TASK-660)
+  'quayBoat',
   // QA Q9 quarantine pontoon (TASK-506): pivot at the waterline, bobs as a whole
   'quarantinePontoon',
   // the HQ marina (TASK-505, D-085): piers, breakwater and the cove-mouth fort stand in the water

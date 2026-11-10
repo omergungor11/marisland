@@ -15,9 +15,11 @@ export interface FleetIndex {
   sessions: FleetSession[];
   requests: FleetRequest[];
   gates: StoredGate[];
+  /** Session ids whose current run was already sent back once (done gate, TASK-632). */
+  nudged: string[];
 }
 
-export const emptyIndex = (): FleetIndex => ({ sessions: [], requests: [], gates: [] });
+export const emptyIndex = (): FleetIndex => ({ sessions: [], requests: [], gates: [], nudged: [] });
 
 export const GATE_REPORT_CHARS = 400;
 
@@ -36,11 +38,12 @@ export function parseIndex(text: string | undefined): FleetIndex {
   try {
     const o: unknown = JSON.parse(text);
     if (typeof o !== 'object' || o === null) return emptyIndex();
-    const { sessions, requests, gates } = o as Partial<FleetIndex>;
+    const { sessions, requests, gates, nudged } = o as Partial<FleetIndex>;
     return {
       sessions: Array.isArray(sessions) ? sessions : [],
       requests: Array.isArray(requests) ? requests : [],
       gates: Array.isArray(gates) ? gates : [],
+      nudged: Array.isArray(nudged) ? nudged.filter((x) => typeof x === 'string') : [],
     };
   } catch {
     return emptyIndex();
@@ -84,7 +87,7 @@ export function recoverIndex(idx: FleetIndex, now: number): FleetIndex {
       ? { ...g, report: reportBackPrompt(g.toIsland, 'bridge restarted', 'error') }
       : g,
   );
-  return { sessions, requests, gates };
+  return { sessions, requests, gates, nudged: idx.nudged };
 }
 
 /** Insert or replace by id; returns the stored value. */

@@ -12,6 +12,15 @@ import { NIGHT_GLSL, POOL_GAIN } from '../shaders/chunks/night.glsl.ts';
 import { HOVER_RADIUS, HOVER_UNIFORMS } from './hover.ts';
 import { MIST_GLSL } from '../shaders/chunks/mist.glsl.ts';
 import {
+  SURFACE_FRAG_GRAIN,
+  SURFACE_FRAG_LIGHT,
+  SURFACE_FRAG_PARS,
+  SURFACE_UNIFORMS,
+  SURFACE_VERTEX_DECODE,
+  SURFACE_VERTEX_PARS,
+  SURFACE_VERTEX_RAMP,
+} from '../shaders/chunks/surface.glsl.ts';
+import {
   ACTIVITY_DISPLACE,
   ACTIVITY_FRAG_PARS,
   ACTIVITY_GLOW,
@@ -293,6 +302,7 @@ uniform vec4 uCultureIsle[${CULTURE_SLOTS}];
 uniform vec2 uCultureLamps[${CULTURE_SLOTS}];
 uniform vec3 uFestival;
 uniform float uSeaLamps;
+${SURFACE_VERTEX_PARS}
 // culture clock (TASK-430): the island whose disc (distance / reach) is nearest → (lamp set,
 // relay boost, distance / reach); vec3(0, 0, 1) without islands
 vec3 marCulture(vec2 p) {
@@ -323,7 +333,7 @@ const VERTEX_CLOUD = /* glsl */ `
   }
   // hover / click flash (TASK-162): the instance whose origin matches uHover.xyz
   vMarHover = (uHover.w > 0.0 && distance(marOrigin, uHover.xyz) < ${f(HOVER_RADIUS)}) ? uHover.w : 0.0;
-  #ifdef MAR_EMISSIVE
+${SURFACE_VERTEX_RAMP}  #ifdef MAR_EMISSIVE
   // culture clock (TASK-430): static props read their island's lamp set and relay boost
   vec3 marCu = vec3(0.0, 0.0, 1.0);
   bool marFlood = vMarEmissive <= 0.0 && wind <= 0.0;
@@ -384,7 +394,7 @@ const VERTEX_COLOR_MAIN = /* glsl */ `
   #else
     vMarEmissive = 0.0;
   #endif
-`;
+${SURFACE_VERTEX_DECODE}`;
 
 const FRAG_PARS = /* glsl */ `
 varying float vFade;
@@ -401,6 +411,7 @@ ${CLOUD_SHADOW_GLSL}
 ${NIGHT_GLSL}
 ${MIST_GLSL}
 ${ACTIVITY_FRAG_PARS}
+${SURFACE_FRAG_PARS}
 `;
 
 /**
@@ -448,6 +459,7 @@ const FRAG_OUTGOING = /* glsl */ `
   ${SHARED_LIT_GLSL.sunVisibility}
   ${SHARED_LIT_GLSL.shadowTint}
   #endif
+${SURFACE_FRAG_LIGHT}
   #ifdef MAR_RIM
   if (uMarRim > 0.5) ${SHARED_LIT_GLSL.rim}
   #endif
@@ -533,6 +545,11 @@ export class LitMaterial extends THREE.MeshLambertMaterial {
   readonly variant: ResolvedVariant;
   readonly fade: FadeUniforms;
   readonly defaultAttributeValues = DEFAULT_ATTRS;
+  /**
+   * Material class of untagged vertices (TASK-594, content/materials.ts): x = lit parts, y = screen
+   * parts; (0, 0) = matte for props. The life program sets the bots' metal / glass here.
+   */
+  readonly classDefault: THREE.IUniform<THREE.Vector2> = { value: new THREE.Vector2(0, 0) };
 
   constructor(features: LitFeatures, opts: LitOptions = {}) {
     super({
@@ -557,6 +574,13 @@ export class LitMaterial extends THREE.MeshLambertMaterial {
     const uniforms: Record<string, THREE.IUniform> = {
       ...sharedVertexUniforms(this.fade, variant, opts.merged),
       uMarRim: { value: variant.features.rim ? 1 : 0 },
+      // near surface detail (TASK-594) rides with the rim: ground cover / clouds get neither
+      uMarSurf: { value: variant.features.rim ? 1 : 0 },
+      uMarClassDef: this.classDefault,
+      uSurface: SURFACE_UNIFORMS.uSurface,
+      uMarClassA: SURFACE_UNIFORMS.uMarClassA,
+      uMarClassB: SURFACE_UNIFORMS.uMarClassB,
+      uEdgeCream: SURFACE_UNIFORMS.uEdgeCream,
       uHorizon: SHARED.uHorizon,
       uShadowTint: SHARED.uShadowTint,
       uNight: SHARED.uNight,
@@ -597,7 +621,12 @@ export class LitMaterial extends THREE.MeshLambertMaterial {
       let fs = shader.fragmentShader;
       fs = replaceOnce(fs, '#include <common>', FRAG_PARS, 'after');
       fs = replaceOnce(fs, '#include <clipping_planes_fragment>', FRAG_DITHER, 'after');
-      fs = replaceOnce(fs, '#include <color_fragment>', ACTIVITY_SURFACE, 'after');
+      fs = replaceOnce(
+        fs,
+        '#include <color_fragment>',
+        ACTIVITY_SURFACE + SURFACE_FRAG_GRAIN,
+        'after',
+      );
       fs = replaceOnce(fs, '#include <normal_fragment_begin>', FRAG_FLAT_NORMAL, 'after');
       fs = replaceOnce(fs, '#include <opaque_fragment>', FRAG_CLOUD, 'before');
       fs = replaceOnce(fs, '#include <opaque_fragment>', FRAG_OUTGOING, 'before');

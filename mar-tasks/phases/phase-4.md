@@ -183,3 +183,86 @@ resume (D-145) and spends nothing while a gate waits.
 - The 5-social-media-posts request end to end on a scratch bridge (3-4 real short runs): gates appear, allow
   → child runs, parent resumes with the report, chain strip in the terminal, fleet view grouping; budgets and
   determinism unchanged (mock shots). Report `mar-docs/qa/m42-chains-<date>.md`.
+
+## M51 — Courier ships: hand-offs sail between islands
+
+User's idea (2026-11-09): "bir adadan diğer adaya istek gittiğinde limandan bir paket gönderilsin, canlı
+şekilde o adaya gitsin; her adanın gemisi kendine özgü tasarlanmış olmalı; üzerine tıklandığında bilgi
+kartı açılmalı." Decision D-164.
+
+**Mapping onto M42.** A hand-off is a `FleetGate`; no new protocol. Each island owns ONE courier ship moored
+at its harbour berth (the ferry berth when the island has a harbour, else the dock head). The ship's state is
+a pure function of the gates and sessions in the fleet store (`courierState(gates, sessions, now)`):
+- gate `pending` → the **from** island's ship loads: a crate in the **to** island's accent pops onto the deck,
+  the mast lantern lights, the ship stays at the pier (the user has not allowed yet).
+- `allowed` → casts off, sails to the **to** island's berth, dwells, the crate hops onto the dock. The child
+  session starts there; the bound bot and its beacon take over as today.
+- the child ends (`childId` session `done` / `error` / `stopped`) → the ship sails home with a report scroll
+  on deck, dwells, unloads, idles. Error → the scroll is the fail red of `FLEET_TERM.colors`.
+- `denied` → the crate lifts off, lantern out, ship stays.
+- One round with two gates → two crates on deck, voyages in gate order (one ship per island, so the second
+  voyage starts when the first returns; the panel still shows both gates immediately).
+- Snapshot / reconnect → ships jump to the state the gates imply (no replay).
+
+**Routes.** Along the HQ ferry loop when both berths are stops of one `Route` (shortest direction; land-safe
+for free), else a cubic Bezier from berth A along its pier heading to berth B against its pier heading, the
+control points pushed seaward in `u` steps until every sample of `heightAt` stays below the shelf. Pure and
+tested. Speed from content; voyage duration clamped to `[18, 45]` s — long enough to watch at T1, short
+enough that the ship arrives before the child session's first lines. Sailboat bob / heel / wake reused; the
+ferry timetable (`ferry.ts`) gives the accelerate / cruise / brake profile.
+
+**Capture / determinism.** Positions derive from gate timestamps and `FLEET.captureNow`; the mock's scripted
+chain (marketing → design → coding) already emits gates, so `F-courier` shots are reproducible. No
+`Math.random`, no `Date.now` outside the fleet clock.
+
+**Ship identity (7, props).** Vertex-coloured, builder.ts primitives, ≤ 900 tris at LOD0 and ≤ 250 at LOD1,
+every number in `src/content/fleet-ships.ts` (length, beam, hull / trim / deck colours from the theme
+palette, superstructure kind, mast, flag, crate slots). Silhouettes must read apart at T1 without the colour:
+| Island | Ship |
+|---|---|
+| hq | white steam yacht, tall buff funnel, gold trim, pennant |
+| coding | angular container feeder, stacked bracket-coloured crates, antenna |
+| design | lantern-strung barge, patchwork palette sail (kin of the lantern boat) |
+| marketing | bright catamaran, billboard banner sail, streamers |
+| qa | patrol cutter, mast light, checklist flag (kin of the inspection boat, sailboat variant 3) |
+| devops | stubby tug, crane arm, spare-parts deck, tyre fenders |
+| research | survey vessel, instrument mast with dish, orange hull band |
+
+**Info card (engine).** Click a ship → `mar-fcard` in the fleet panel look (`styles.ts`), accent = from
+island: "Marketing → Design", request title, prompt (3-line clamp, expand on hover like the gate card),
+status line (`bekliyor · yolda · teslim edildi · rapor dönüyor · boşta`), elapsed, "child session'ı aç" →
+that session's terminal, İzin ver / Reddet while pending (same `gate` command). Hover → `fleet-tip`. Esc
+closes the card before the terminal (after the admin window). Idle ship → island name, "kurye boşta", last
+voyage.
+
+### TASK-620 — Courier ship factories + content (props, sonnet)
+- `src/content/fleet-ships.ts`: `CourierShipSpec` per theme + `COURIER` motion numbers (speed, decel, dwell,
+  bob / heel scale, crate hop, lantern).
+- `src/geo/courier.ts`: `courierShip(theme, { lod })` → `BufferGeometry`; `courierCrate(theme)`,
+  `reportScroll(ok)`. Same orientation contract as `sailboat` (`orientBoat`, draft).
+- Dev shot preset `P-couriers`: the 7 ships in a row at T2 (like the prop sheet presets). Checks: silhouettes
+  distinct in greyscale, livery = theme, no z-fighting, lantern emissive class 1.
+- Tests: tri budget per ship and LOD, deterministic geometry (same seed → same vertex buffer).
+
+### TASK-621 — Courier agent kind + voyage FSM (life, sonnet) — after 620
+- `src/life/couriers.ts`: `Couriers extends AgentKind` (one agent per island), moorings = berths;
+  `voyageRoute(world, from, to)` (ferry loop or land-tested Bezier, pure, tested); crate and scroll as child
+  instances; wake + bob / heel reuse; reduced motion → no heel, no lantern spin.
+- Pure `courierState(gates, sessions, now)` → per island `{ phase, from, to, t0, t1, crates }`, tested against
+  the chain test fixtures (pending, allowed, child done, denied, two gates in a round, reconnect snapshot).
+- Mock: scripted chain timestamps give a voyage inside the shot window; `?fleet=mock` shows one.
+- No numbers in `life/`; all in `fleet-ships.ts`.
+
+### TASK-622 — Ship picking + info card (engine, opus) — after 621
+- Couriers registered as an `AgentSource` in the picker (`PickKind 'agent'`, name `courier`); click → card;
+  hover → tip; card wiring to the `gate` command and terminal open; Esc precedence; `F-courier`,
+  `F-courier-card` shot presets; HUD overlap rules as the fleet panel (`minViewport`, `bottomClear`).
+
+### TASK-623 — M51 QA + docs (qa + docs)
+- Shots, wow budgets (draw calls + 7 at most, tris within D-156), determinism (two runs, same pixels), live
+  check against the bridge with one real allowed gate; ART_BIBLE fleet entry, ARCHITECTURE life section,
+  FLEET.md ladder done mark. Report `mar-docs/qa/m51-couriers-<date>.md`.
+
+**Acceptance.** On `?fleet=mock` a crate loads at Marketing's pier when the gate appears, the ship sails to
+Design on allow, the crate lands, the ship returns with a scroll when the child ends; clicking the ship at any
+phase shows the matching card; the 7 ships are told apart in `P-couriers`.

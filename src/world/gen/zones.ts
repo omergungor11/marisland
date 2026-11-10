@@ -194,6 +194,8 @@ function deriveNear(
   const cliff = rules.cliff === 'slope' ? slopeCliff || forced : forced;
   const pond = (tag & Tag.pond) !== 0;
   const sandZone = rules.sand === 'sandBlack' ? Zone.sandBlack : Zone.sandDry;
+  // lip knobs (TASK-615) stay rock even where their flanks are steep
+  if (tag & Tag.outcrop) return Zone.rock;
   if (cliff) return Zone.cliff;
   if (tag & Tag.crater) return Zone.crater;
   if (s <= ZONE_RULES.wetSand && !pond && !(y >= (rules.wetSandMaxY ?? Infinity)))

@@ -4,6 +4,7 @@ import type { EnvState } from '../env/env-state.ts';
 import type { Quality } from '../core/params.ts';
 import { QUALITY_PRESETS } from '../core/quality.ts';
 import { LIGHT_RIG, SHADOW } from '../content/lighting.ts';
+import { setSurfaceQuality } from './shaders/chunks/surface.glsl.ts';
 import { fitShadow, type ShadowFit } from './shadows.ts';
 
 /**
@@ -23,6 +24,8 @@ export interface LightRig {
 
 export function createLightRig(quality: Quality, scope: Scope): LightRig {
   const preset = QUALITY_PRESETS[quality];
+  // material classes / edge light / near grain (TASK-594): uniform switches, off on low
+  setSurfaceQuality(quality);
   const group = new THREE.Group();
   group.name = 'lights';
   const sun = new THREE.DirectionalLight(0xffffff, 3);

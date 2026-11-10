@@ -91,10 +91,12 @@ export const DEVOPS_THEME: ThemeDef = {
       layer: { layers: ['ripples'], amplitude: 0.5 },
     },
     // D12 switchback service roads (TASK-482; the island's own street zone, painted over the
-    // cone's stair paths): pale ochre gravel, so the zigzag reads on the dark cone by day
+    // cone's stair paths): pale ochre gravel, so the zigzag reads on the dark cone by day.
+    // TASK-617: a step darker (was #C9BDAC) — on the 2 u zone grid the 1-cell zigzag legs merge into
+    // wide crisp-edged ribbons, which at T1 read as cream "ash streaks" over the whole cone
     [Zone.streetDevops]: {
       material: 'gravel',
-      base: '#C9BDAC',
+      base: '#A9A094',
       layer: { layers: ['pebbles'] },
     },
     // salt crust round the pools: off-white with white / grey speckle

@@ -2,7 +2,17 @@
  * Terrain look tunables (ART_BIBLE §1 faceting, §2 palette). Pure data — the
  * mesher (render/terrain) reads these; hex values come from the palette.
  */
-import { CLIFF_STRATA, EMISSIVE, FIELDS, GRASS, HAY, ROCK, SAND, WATER } from './palette.ts';
+import {
+  CLIFF_STRATA,
+  EMISSIVE,
+  FIELDS,
+  FOLIAGE,
+  GRASS,
+  HAY,
+  ROCK,
+  SAND,
+  WATER,
+} from './palette.ts';
 
 export const TERRAIN_COLORS = {
   sandDry: SAND.dry,
@@ -10,6 +20,9 @@ export const TERRAIN_COLORS = {
   sandBlack: SAND.black,
   /** Grass by height band: [beach, mid, hill]; crests lerp toward `tip`. */
   grassBands: [GRASS[3], GRASS[2], GRASS[1]] as const,
+  /** The low stop leans cool by this much toward `grassFoot` (plateau foot / lip, ART_BIBLE P4). */
+  grassFoot: FOLIAGE.deciduous[2],
+  grassFootMix: 0.3,
   grassTip: GRASS[0],
   /** Meadow = grass lerped toward this by `meadowMix` (lighter / yellower). */
   meadowTint: GRASS[0],
@@ -32,6 +45,8 @@ export const TERRAIN_COLORS = {
   seabed: '#5C7E8E',
   /** Deep seabed (fades in toward −20 u). */
   seabedDeep: '#4D6E80',
+  /** Shelf under a wall foot (TASK-616, `GROUND_SHORE`): darker and greener, meets the lagoon water. */
+  seabedShelf: '#3E6A66',
 } as const;
 
 /** Debug semantic mask colours (VISUAL_QA mask metrics). Output unlit, exact. */
@@ -43,9 +58,18 @@ export const TERRAIN_MASK = {
 } as const;
 
 export const TERRAIN_SHAPE = {
-  /** Height band for grass colour ramp, as fraction of the island peak. */
-  grassBandLow: 1.5,
-  grassBandHighFrac: 0.65,
+  /**
+   * Grass colour ramp position t (TASK-614, G2), relative to the island's own size so a 5–7 u
+   * bluff island shows it too: `grassHeightWeight` × smoothstep over [grassBandLowFrac,
+   * grassBandHighFrac] of the island peak + `grassInlandWeight` × smoothstep from the lip
+   * (`grassInland[0]` u of shore distance) to `grassInland[1]` × the island radius inland. Foot and
+   * lip → the dark cool low stop, crests / the plateau heart → the light warm high stop.
+   */
+  grassBandLowFrac: 0.25,
+  grassBandHighFrac: 0.95,
+  grassInland: [1.5, 0.42] as const,
+  grassHeightWeight: 0.55,
+  grassInlandWeight: 0.6,
   /** Underwater ramp: wet sand down to `wetDepth`, seabed below `seabedDepth`, deep seabed at `deepDepth`. */
   wetDepth: 3,
   seabedDepth: 6,
@@ -71,8 +95,19 @@ export const TERRAIN_AO = {
   horizonFull: 0.4,
   /** Shade leans cool: at full occlusion r −x, b +x (fraction of the darkening). */
   coolShift: 0.3,
-  /** Sand takes only this fraction of the occlusion (open beaches stay bright). */
+  /** Sand takes only this fraction of the crease term (open beaches stay bright). */
   sandScale: 0.35,
+  /**
+   * Sand's horizon term (TASK-617): a beach at a bluff foot sees the wall rise beside it and takes
+   * this fraction of it (open beaches have no horizon, so they stay bright).
+   */
+  sandHorizonScale: 1,
+  /**
+   * Rock takes this fraction of the occlusion (TASK-617): the horizon term reads a planar cone
+   * slope as occluded, which doubled the hemisphere's own darkening and sank the Emberpeak shade
+   * side to near-black at golden hour.
+   */
+  rockScale: 0.5,
 } as const;
 
 /**

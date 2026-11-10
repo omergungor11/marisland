@@ -6,14 +6,15 @@
  */
 import type { EditToolKind } from './edit-ui.ts';
 import { FRAMING } from './camera.ts';
+import type { ThemeId } from '../world/types.ts';
 
-export type ShotSet = 'ci' | 'dev' | 'wow' | 'intro' | 'edit' | 'ladder' | 'live';
+export type ShotSet = 'ci' | 'dev' | 'wow' | 'intro' | 'edit' | 'ladder' | 'live' | 'ground';
 
 export interface ShotPreset {
   id: string;
   title: string;
   seed: number;
-  /** overview | island:<name> | village | dock | macro-beach | site:<anchor>:x,y,z,tx,ty,tz (anchor frame) | raw x,y,z,tx,ty,tz */
+  /** overview | island:<name> | village | dock | macro-beach | ladder|zoom:<island>:<dist> | site:<anchor>:x,y,z,tx,ty,tz (anchor frame) | raw x,y,z,tx,ty,tz */
   cam: string;
   /** Game hour. */
   time: number;
@@ -32,8 +33,10 @@ export interface ShotPreset {
   dollySeconds?: number;
   /** Show the HUD (the harness defaults to `hud=0`). */
   hud?: boolean;
-  /** HUD panel open (`panel=`): photo bar, settings sheet or edit panel (`edit:<tool>`). */
-  panel?: 'photo' | 'settings' | 'edit' | `edit:${EditToolKind}`;
+  /** HUD panel open (`panel=`): photo bar, settings sheet, edit panel (`edit:<tool>`) or the admin window (M43). */
+  panel?: 'photo' | 'settings' | 'edit' | `edit:${EditToolKind}` | 'admin';
+  /** Admin window view (`admin=`, M43): `<tab>[:<KbFile.path>]` of the mock knowledge base. */
+  admin?: string;
   /** Phase 2 edit log (`edit=`, `encodeLog`), replayed before the first build. */
   edit?: string;
   /** Fleet feed (`fleet=`, TASK-563): the deterministic mock fills the island panel. */
@@ -44,6 +47,8 @@ export interface ShotPreset {
   fleetChain?: 'allowed';
   /** Fleet view search text (M41). */
   fleetQuery?: string;
+  /** M51 (TASK-622): open the courier ship card of this island (theme id) at boot. */
+  fleetCard?: ThemeId;
   /** Opening-sequence still at this time (s) (`introt=`). */
   introt?: number;
   /**
@@ -2225,6 +2230,54 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     fleetQuery: 'shader',
     sets: ['dev'],
   },
+  // ---- TASK-621 (M51): Marketing's courier at its pier (loading, two crates) and 3 moments of the allowed voyage
+  {
+    id: 'F-courier-load',
+    title: 'Courier · loading at the pier',
+    seed: 1001,
+    cam: 'ladder:marketing:140',
+    time: 14,
+    simt: 2,
+    hud: false,
+    fleet: 'mock',
+    sets: ['dev'],
+  },
+  {
+    id: 'F-courier-sail-a',
+    title: 'Courier · voyage at simt 2',
+    seed: 1001,
+    cam: 'ladder:marketing:140',
+    time: 14,
+    simt: 2,
+    hud: false,
+    fleet: 'mock',
+    fleetChain: 'allowed',
+    sets: ['dev'],
+  },
+  {
+    id: 'F-courier-sail-b',
+    title: 'Courier · voyage at simt 8',
+    seed: 1001,
+    cam: 'ladder:marketing:140',
+    time: 14,
+    simt: 8,
+    hud: false,
+    fleet: 'mock',
+    fleetChain: 'allowed',
+    sets: ['dev'],
+  },
+  {
+    id: 'F-courier-sail-c',
+    title: 'Courier · voyage at simt 14',
+    seed: 1001,
+    cam: 'ladder:marketing:140',
+    time: 14,
+    simt: 14,
+    hud: false,
+    fleet: 'mock',
+    fleetChain: 'allowed',
+    sets: ['dev'],
+  },
   // ---- TASK-572: a terminal open over the fleet view (the overview: the list behind it has sticky
   // island heads that used to paint through the overlay); the terminal must be opaque and on top
   {
@@ -2292,6 +2345,97 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     height: 720,
     sets: ['dev'],
   })),
+  // ---- M43 admin window (TASK-585): the overview with the mock fleet, the window on its Projeler tab
+  // (960×540: the default box shrinks to fit right of the fleet card, two-column KB layout)
+  {
+    id: 'F-admin',
+    title: 'Admin window · Projeler',
+    seed: 1001,
+    cam: 'overview',
+    time: 14,
+    simt: 2,
+    hud: true,
+    fleet: 'mock',
+    panel: 'admin',
+    sets: ['dev'],
+  },
+  // ---- TASK-585: the admin window wide enough for the three-column KB view (1056×588: the
+  // low-quality gpuMemoryMB budget holds the canvas up to ~0.62 Mpx), a Coding memory open
+  // (frontmatter, table, code, a dead [[link]]; the list shows the "eski" badge)
+  {
+    id: 'F-admin-doc',
+    title: 'Admin window · Hafıza document',
+    seed: 1001,
+    cam: 'overview',
+    time: 14,
+    simt: 2,
+    width: 1056,
+    height: 588,
+    hud: true,
+    fleet: 'mock',
+    panel: 'admin',
+    admin: 'hafiza:island:coding/memory/golge-acne.md',
+    sets: ['dev'],
+  },
+  // ---- TASK-630: the Session'lar tab at the F-admin-doc size, unfiltered (the mock's 25 sessions:
+  // live / done / stopped, projects, the Marketing hand-off parent) newest first
+  {
+    id: 'F-admin-sessions',
+    title: 'Admin window · Session’lar',
+    seed: 1001,
+    cam: 'overview',
+    time: 14,
+    simt: 2,
+    width: 1056,
+    height: 588,
+    hud: true,
+    fleet: 'mock',
+    panel: 'admin',
+    admin: 'sessionlar',
+    sets: ['dev'],
+  },
+  // TASK-591 F-portraits: the fleet view (no island focused, tier 0) with every session's bot portrait
+  {
+    id: 'F-portraits',
+    title: 'Fleet view · bot portraits',
+    seed: 1001,
+    cam: 'overview',
+    time: 14,
+    simt: 2,
+    hud: true,
+    fleet: 'mock',
+    sets: ['dev'],
+  },
+  // ---- TASK-622 (M51): F-courier-sail-b's moment with the HUD, Marketing's ship card open (allowed
+  // chain: Marketing → Design under way, the Coding gate still pending), at 960×540 and 1600×900
+  {
+    id: 'F-courier-card',
+    title: 'Courier card · Marketing → Design under way',
+    seed: 1001,
+    cam: 'ladder:marketing:140',
+    time: 14,
+    simt: 8,
+    hud: true,
+    fleet: 'mock',
+    fleetChain: 'allowed',
+    fleetCard: 'marketing',
+    sets: ['dev'],
+  },
+  {
+    id: 'F-courier-card-wide',
+    title: 'Courier card · 1600×900',
+    seed: 1001,
+    cam: 'ladder:marketing:140',
+    time: 14,
+    simt: 8,
+    width: 1600,
+    height: 900,
+    hud: true,
+    fleet: 'mock',
+    fleetChain: 'allowed',
+    fleetCard: 'marketing',
+    sets: ['dev'],
+  },
   // ---- sandbox edits (TASK-221): `pnpm shots edit`. Logs on seed 1001 generated with
   // `encodeLog` (world/edit.ts); re-recorded for the Phase 3 layout (TASK-309: moved with their
   // island, rejected placements dropped) and the theme-first world (TASK-380: one pine that now
@@ -2385,6 +2529,33 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     sets: ['edit'],
   },
   // ---- opening sequence every 0.5 s (ART_BIBLE §8 timing review): `pnpm shots intro`
+  // ---- M50 Ground Look reference set (TASK-612, mar-plans/GROUND.md): four island bodies at the
+  // three working distances (T0 postcard 380 u, T1 island 150 u, T2 close 55 u), noon and golden hour.
+  // Same seed as the wow set so before / after sheets line up.
+  ...(['hq', 'coding', 'research', 'devops'] as const).flatMap((isl) =>
+    (
+      [
+        ['t0', 380],
+        ['t1', 150],
+        ['t2', 55],
+      ] as const
+    ).flatMap(([tier, dist]) =>
+      (
+        [
+          ['noon', 13],
+          ['gold', 17.5],
+        ] as const
+      ).map(([tod, time]): ShotPreset => ({
+        id: `G-${isl}-${tier}-${tod}`,
+        title: `Ground ${isl} ${tier.toUpperCase()} ${tod}`,
+        seed: 1001,
+        cam: `ladder:${isl}:${dist}`,
+        time,
+        simt: 3,
+        sets: ['ground'],
+      })),
+    ),
+  ),
   ...Array.from({ length: 21 }, (_, i): ShotPreset => ({
     id: `I-${(i * 0.5).toFixed(1)}`,
     title: `Intro ${(i * 0.5).toFixed(1)} s`,
@@ -2419,6 +2590,21 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
   }),
   ...MOVE_SHOTS,
   ...TUNNEL_SHOTS,
+  // Zoom-in blur pair (TASK-586): the HQ island at 24 u on the real orbit pitch curve
+  // (`cam=zoom:<island>:<dist>`), high (tilt-shift → DOF hand-over) and medium (tilt-shift only);
+  // the plaza, the clock tower and the stalls behind must all read sharp.
+  ...(['high', 'medium'] as const).map((q): ShotPreset => ({
+    id: `Z-zoom-${q}`,
+    title: `Zoom blur · ${q} · 24 u`,
+    seed: 1001,
+    cam: 'zoom:hq:24',
+    time: 14,
+    simt: 2,
+    quality: q,
+    width: 960,
+    height: 540,
+    sets: ['dev'],
+  })),
   {
     id: 'W-marina-dusk',
     title: 'Marina Dusk',
@@ -2737,6 +2923,18 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     height: 1080,
     sets: ['wow'],
   },
+  // TASK-590 F-bots: the Coding pergola row at T2 with the mock fleet: chassis / head variants and eye states
+  {
+    id: 'F-bots',
+    title: 'Fleet bots · chassis, heads, eyes · Coding pergolas',
+    seed: 1001,
+    cam: '-108,25,170,-106,9.5,148',
+    time: 14,
+    simt: 2,
+    quality: 'medium',
+    fleet: 'mock',
+    sets: ['dev'],
+  },
 ];
 
 export const SET_DEFAULTS: Record<
@@ -2752,6 +2950,8 @@ export const SET_DEFAULTS: Record<
   ladder: { width: 960, height: 540, quality: 'low' },
   // living close-up pairs (M14c): medium = 16 workers, drones, animated surfaces
   live: { width: 960, height: 540, quality: 'medium' },
+  // M50 Ground Look reference set (TASK-612): island body at T0 / T1 / T2, noon and golden hour
+  ground: { width: 1280, height: 720, quality: 'medium' },
 };
 
 export function shotsForSet(set: ShotSet): ShotPreset[] {

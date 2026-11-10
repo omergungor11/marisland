@@ -59,13 +59,17 @@ import { runEditSelftest, testBrush } from './render/rebuild-testing.ts';
 import { staticEditBinding } from './ui/edit-panel.ts';
 import { EDIT_PANEL } from './content/edit-ui.ts';
 import { createFleetClient, fleetModeOf } from './fleet/client.ts';
-import { FLEET_WS_PATH } from './fleet/protocol.ts';
+import { FLEET_PORT, FLEET_WS_PATH } from './fleet/protocol.ts';
+import { createKb, httpBaseOf } from './fleet/kb.ts';
+import { createAdminWin, type AdminWin } from './ui/admin-win.ts';
 import { createFleetPanel } from './ui/fleet-panel.ts';
 import { createFleetTip } from './ui/fleet-tip.ts';
+import { createCourierCard } from './ui/courier-card.ts';
 import { createFleetBeacons } from './life/fleet-beacons.ts';
+import { Couriers } from './life/couriers.ts';
 import { bindFleetToBots, type FleetBots } from './life/fleet-bots.ts';
-import { FLEET, FLEET_PANEL } from './content/fleet.ts';
-import type { ThemeId } from './world/types.ts';
+import { FLEET, FLEET_CARD, FLEET_PANEL } from './content/fleet.ts';
+import { THEME_IDS, type ThemeId } from './world/types.ts';
 import { THEMES } from './content/themes.ts';
 import { themeIcon } from './ui/theme-icons.ts';
 import { islandNear, themeOf } from './camera/poses.ts';
@@ -179,15 +183,14 @@ export async function boot(): Promise<void> {
     // ---- fleet (TASK-563): bridge socket or the deterministic mock; app-scoped (outlives regen).
     // Wall clock for "since 12 min": fixed under capture so shots reproduce.
     const wallNow = params.freeze ? (): number => FLEET.captureNow : (): number => Date.now();
+    const fleetUrl = `ws://localhost:${Number.isNaN(params.bridge) ? FLEET_PORT : params.bridge}${FLEET_WS_PATH}`;
     const fleet = createFleetClient({
       mode: fleetModeOf(params.fleet, params.freeze, location.hostname),
       seed: params.seed,
       now: wallNow(),
       frozen: params.freeze || params.simt > 0,
       chain: findShot(params.shot)?.fleetChain ?? 'pending',
-      url: Number.isNaN(params.bridge)
-        ? undefined
-        : `ws://localhost:${params.bridge}${FLEET_WS_PATH}`,
+      url: fleetUrl,
     });
     appScope.defer(() => fleet.dispose());
     const scene = new THREE.Scene();
@@ -410,6 +413,8 @@ export async function boot(): Promise<void> {
     /** Fleet session <-> bot binding of the live world (TASK-564) and its hover tip (set with the HUD). */
     let fleetBots: FleetBots | null = null;
     let botTip: (hit: PickHit | null, x: number, y: number) => void = () => {};
+    /** M51 courier ships of the live world (TASK-622 card / picking); null without a fleet feed. */
+    let courierKind: Couriers | null = null;
     /** The live world's editor (TASK-212); null in capture / the gallery. */
     let editMode: EditMode | null = null;
     let editSession: EditSession | null = null;
@@ -490,6 +495,21 @@ export async function boot(): Promise<void> {
           loop.add(fbb);
           worldScope.defer(() => loop.remove(fbb));
         }
+        // M51 courier ships: one per island, driven by the gates (frozen: capture clock + sim time)
+        const cour = new Couriers(
+          { seed, scope: worldScope, group: wv.life.group, cameraPos: camera.position },
+          wv.life.ctx,
+          wv.world,
+          {
+            gates: () => fleet.gates.values(),
+            sessions: () => fleet.sessions,
+            clockMs: (t) => (params.freeze ? FLEET.captureNow + t * 1000 : Date.now()),
+          },
+        );
+        wv.life.add(cour);
+        wv.life.kinds.couriers = cour;
+        courierKind = cour;
+        worldScope.defer(() => (courierKind = null));
       }
       worldWeather = wv.weather;
       if (cam.reducedMotion) wv.life.setMotionScale(motionScale());
@@ -734,6 +754,8 @@ export async function boot(): Promise<void> {
       events.emit('photoMode', { active: hud?.photoMode ?? false, frozen: on });
     };
     let hud: Hud | null = null;
+    /** M43 admin window (with a fleet): projects + knowledge base, opened from the dock. */
+    let admin: AdminWin | null = null;
     let syncFleet = (): void => {};
     if (params.hud && !params.gallery) {
       hud = createHud(
@@ -778,6 +800,7 @@ export async function boot(): Promise<void> {
           },
           onEditPanel: (open) => editMode?.setActive(open),
           onFov: (deg) => cam.setFov(deg),
+          onAdmin: (open) => admin?.setOpen(open),
           onFreeze: setFrozen,
           onShutter: () =>
             new Promise((resolve) => {
@@ -827,6 +850,51 @@ export async function boot(): Promise<void> {
         const h = hud;
         const isleOf = (t: ThemeId): string =>
           testScene.cameraWorld.islands.find((i) => themeOf(i) === t)?.name ?? '';
+        // M43: created before the fleet panel so its capture-phase Esc runs before the terminal's
+        // (the window stacks above the card); a project chip opens the session in the terminal
+        let openSession = (_id: string): void => {};
+        const aw = (admin = createAdminWin(h.el, {
+          store: fleet,
+          kb: createKb(fleet.mode, {
+            httpBase: httpBaseOf(fleetUrl),
+            seed: params.seed,
+            now: wallNow(),
+          }),
+          accents: THEME_ACCENTS,
+          iconFor: (t) => themeIcon(THEMES[t].icon, 15),
+          islandName: isleOf,
+          now: wallNow,
+          capture: params.freeze,
+          onOpenSession: (id) => openSession(id),
+          onChange: (open) => h.setState({ admin: open ? 'open' : 'closed' }),
+          covered: () => h.el.classList.contains('mar-panel-settings'),
+        }));
+        appScope.defer(() => aw.dispose());
+        h.setState({ admin: 'closed' });
+        // M51 courier card (TASK-622): created between the admin window and the fleet panel, so its
+        // capture-phase Esc runs after the window's and before the terminal's
+        const shipAt = new THREE.Vector3();
+        const ship = new THREE.Matrix4();
+        const cc = createCourierCard(h.el, {
+          store: fleet,
+          plans: () => courierKind?.plans ?? [],
+          accents: THEME_ACCENTS,
+          iconFor: (t) => themeIcon(THEMES[t].icon, 15),
+          anchor: (t, out) => {
+            const m = courierKind?.ships[THEME_IDS.indexOf(t)];
+            if (!m || !m.visible || m.count === 0) return false;
+            ship.fromArray(m.instanceMatrix.array as Float32Array, 0);
+            shipAt.setFromMatrixPosition(ship).setY(shipAt.y + FLEET_CARD.anchorLift);
+            shipAt.project(camera);
+            if (shipAt.z > 1 || Math.abs(shipAt.x) > 1 || Math.abs(shipAt.y) > 1) return false;
+            out.x = ((shipAt.x + 1) / 2) * canvas.clientWidth;
+            out.y = ((1 - shipAt.y) / 2) * canvas.clientHeight;
+            return true;
+          },
+          openSession: (id) => openSession(id),
+          avoid: () => fp.box(),
+        });
+        appScope.defer(() => cc.dispose());
         const fp = createFleetPanel(h.el, fleet, {
           accents: THEME_ACCENTS,
           iconFor: (t) => themeIcon(THEMES[t].icon, 15),
@@ -835,6 +903,7 @@ export async function boot(): Promise<void> {
           focus: !params.freeze,
         });
         appScope.defer(() => fp.dispose());
+        openSession = (id) => fp.open(id);
         // TASK-572: the T0 island labels keep clear of the card (pushed right of / below it)
         const pad = FLEET_PANEL.labelAvoidPadPx;
         h.setLabelAvoid(() => {
@@ -847,6 +916,8 @@ export async function boot(): Promise<void> {
         let focusTheme: ThemeId | null = null;
         appScope.defer(
           events.on('picked', ({ kind, id }) => {
+            if (kind === 'agent:couriers') return cc.show(THEME_IDS[id]);
+            cc.hide();
             if (kind !== 'agent:workers' || !fleetBots) return;
             const s = fleetBots.sessionOf(id);
             const isl = s ? null : (fleetBots.islandOf(id) ?? focusTheme);
@@ -859,12 +930,14 @@ export async function boot(): Promise<void> {
         if (preset?.fleetQuery) fp.setQuery(preset.fleetQuery);
         if (preset?.fleetOpen === 'running') fp.openFirstLive();
         else if (preset?.fleetOpen) fp.open(preset.fleetOpen);
+        if (preset?.fleetCard) cc.show(preset.fleetCard);
         const tip = createFleetTip(h.el);
         appScope.defer(() => tip.dispose());
         botTip = (hit, x, y) => {
           const s = hit?.name === 'workers' ? fleetBots?.sessionOf(hit.id) : null;
           if (s) tip.show(s, THEME_ACCENTS[s.island], x, y);
           else tip.hide();
+          cc.hover(hit?.name === 'couriers' ? THEME_IDS[hit.id] : null, x, y);
         };
         // the island is re-picked only once the target moved `focusMoveU` (or the world changed)
         let fx = NaN;
@@ -895,6 +968,8 @@ export async function boot(): Promise<void> {
           }
           fp.setVisible(on);
           fp.update(wallNow());
+          cc.update(courierKind?.nowMs ?? wallNow(), on);
+          aw.update();
           // the card appeared / resized: the labels move now (capture renders no further HUD frame)
           const b = fp.box();
           const key = b ? `${b.l},${b.t},${b.r},${b.b}` : '';
@@ -1255,8 +1330,9 @@ export async function boot(): Promise<void> {
     const bootEdit = editMode as EditMode | null;
     if (params.panel === 'edit' && params.panelTool) bootEdit?.setTool(params.panelTool);
     if (params.panel) hud?.openPanel(params.panel);
-    // capture: the edit panel's thumbnails must have decoded before the screenshot
-    if (params.panel && hud) await hud.settled();
+    if (params.panel === 'admin' && params.admin) admin?.show(params.admin);
+    // capture: the edit panel's thumbnails (the admin window's KB loads) must be done before the screenshot
+    if (params.panel && hud) await Promise.all([hud.settled(), admin?.settled()]);
     booted = true;
     api.ready = gpuReady;
     // ---- TASK-213: first-edit prewarm (interactive only, idle time after ready) ----------
@@ -1308,6 +1384,7 @@ function applyShotPreset(p: Params): Params {
   if (!q.has('quality') && s.quality) p.quality = s.quality;
   if (!q.has('edit') && s.edit) p.edit = s.edit;
   if (!q.has('fleet') && s.fleet) p.fleet = s.fleet;
+  if (!q.has('admin') && s.admin) p.admin = s.admin;
   return p;
 }
 

@@ -175,6 +175,11 @@ Tiers mirror bible §6 and are evaluated on orbit distance *d*, with **±10% hys
 - **Critters** (crabs, sheep, cats): wander inside a zone mask.
 - **Gulls** (from T2) and **fish schools** (T3): boids. Fish scatter from the cursor.
 - **Ambient events:** a seeded Poisson scheduler fires fish jumps, splashes and coconut drops.
+- **Couriers** (M51, D-164): one ship per island, 7 `InstancedMesh` (one geometry each). No state of their own:
+  `life/courier-state.ts` derives each ship's phase (loading → outbound → delivered → returning → idle) from the
+  fleet store's gates and sessions at `now`, so a reconnect lands on the right frame; `life/courier-route.ts`
+  picks the HQ ferry loop, a land-tested Bezier or a grid A* path between berths; the voyage is clamped to
+  `COURIER.voyageS`. Click → `ui/courier-card.ts` (DOM, follows the ship, Esc before the terminal).
 
 **Sim LOD.** Off-screen or off-tier agents advance analytically, or at 5 Hz. Capture runs `simt` worth of fixed warm-up steps, so agent state is deterministic.
 

@@ -23,7 +23,7 @@
 - Cuteness up close comes from segment counts: cylinders 8–12 radial segments, icospheres detail 1–2, terrain facets 1.5–3 u, prop facets ≈ 5–8 % of prop size.
 - **Smooth-shaded exceptions:** water, clouds, smoke/steam, eyes (black sphere + 0.3× white highlight), terrain (Catmull-Rom smooth normals with material detail, D-030). Props, buildings, trees and bots stay faceted: the terrain is the only P1 exception.
 - Seeded per-face jitter: L ±3 %, hue ±4°.
-- Baked vertex AO: −15 to −25 % L at prop bases and terrain creases.
+- Baked AO −15 to −25 % L at prop bases, terrain creases and the bluff foot; on sand only the wall-horizon term (open beaches stay bright), on rock × 0.5 (a planar cone flank is not a crease). Daytime land never drops under 15 % L: the terrain shade floor lifts deep shade with the env shadow tint (M50, TASK-617).
 - Contact-shadow blob under every grounded prop: radius 0.6× footprint, opacity 0.25.
 
 ## 2. Palette
@@ -46,7 +46,7 @@
 | Grass (tips → shade) | `#C9E86F` `#A6DB5E` `#7BC950` `#5FAE45` |
 | Flowers | `#FF8FB1` `#FFE45C` `#FFFFFF` `#B39DFF` `#FF7A5C` |
 | Rock / warm cliff strata | `#A9AEB8` `#8A909C` `#666C7A` / `#D9B48F` `#C29A74` |
-| Earth wall (bluff soil, `GROUND_WALL`; strata tones ×1.2 … ×0.7, grass lip, dark foot, wet line) | `#B9845A` |
+| Earth wall (`GROUND_WALL` + `WALL_STRATA`, M50 D-162): per-theme 4-band strata, far / low colour = band mean; bands grow with wall height (5–7 u bluff ≈ 3, 25 u stack ≈ 7); 22 × 9 u macro cells break the crack repeat; cool lip shadow line ≥ 1.3 px, cool dark foot 0.4 / 3 u; 0.9 u wet rock band + salt line above the waterline, 2.5 u wet rock below, then `seabedShelf` | HQ `#E9C79A #C08458 #D6A574 #A4603F` · Coding `#BCC6D2 #7FA3A8 #8D9AB0 #6C788C` · Marketing `#E8CDA6 #B8604E #CC7F5E #94503F` · QA `#C8DACB #879E92 #DCC9A0 #A9C2B4` · Design `#EAD3B8 #A87C8C #CFA7A0 #8A6474` · DevOps `#BDB4B8 #8A8296 #A8684E #6E6878` · Research `#EAD7AE #B6ACC2 #D4B98C #968BA6` · default `#D9B48F #B9845A #C29A74 #9E6E4C` |
 | DevOps basalt (rock base; cracks `#958FA0` / `#5A5664`) | `#7A7584` (lifted from `#4F4C57`, D-030 theme) |
 | Foliage: deciduous / pine / palm | `#8FD16A` `#5DBB63` `#3E9A52` / `#3C8F68` `#2F7D5B` / `#7FD34E` `#5DB33C` |
 | Wood: planks / logs / dark / dock | `#D2A679` / `#A8754F` / `#8A5A3B` / `#B59B7E` |
@@ -54,6 +54,8 @@
 | Roofs | `#E8735A` `#E35D6A` `#3FB8AF` `#F5C84C` `#9C8CE0` `#5DA9E9` `#7FD8B3` |
 | Emissive: window / lantern / lava / firefly | `#FFC870` / `#FFB347` / `#FF6A3D` / `#E8FF8A` |
 | UI muted (secondary labels, island name under the theme pill) | `#B8B3C9` |
+
+**Plateau grass (M50, TASK-614).** Not one tone: lip and foot cool-dark (GRASS[3] → deciduous[2] 30 %), crest and interior warm-light (GRASS[1] / tip); 34 / 15 u dry / moist blotches lean per island (HQ yellow-green, Coding blue-green, Research olive, Marketing straw, QA mint, Design pink-tinged, DevOps ash-green); a worn band along paths; grass → sand softens over 3 + 2 cells; grass S ≥ 45 % (DevOps scrub excepted). **Shore (TASK-616):** cove beaches dry over 0.3–5 u and meet the 0.4–0.8 u foam contact line.
 
 **Time of day** (lerp between keys; 1 game day = 600 s real, 1 game hour = 25 s)
 
@@ -90,7 +92,7 @@ foliage keeps W10's ≥ 40 % in the rain (D-013).
 ## 3. Lighting & atmosphere
 
 - **Shadows:** one sun/moon directional light, soft PCF, ~0.3 u penumbra at T2. Shadowed colour = lit × 0.6, lerped 35 % toward the shadow tint. Never below L 25 % by day.
-- **Sky/rim:** hemisphere light, plus a fresnel rim of 0.15 × horizon colour on foliage and roofs so silhouettes separate from the water.
+- **Sky/rim:** hemisphere light, plus a fresnel rim of 0.15 × horizon colour on foliage and roofs so silhouettes separate from the water. Terrain adds a sun-facing silhouette rim (n·sun > 0, grazing view): 0.32 × cream × sun colour, off at night, no outline (M50, TASK-617).
 - **Fog:** exponential, colour = horizon. ≈ 10 % at 200 u, 45 % at 700 u, 75 % at 1200 u. Far islands go pastel; they never vanish.
 - **Clouds:** 6–10 clouds, each 5–9 smooth icospheres with the bottom 30 % flattened. Top `#FFFFFF`, belly `#DDE6F5` (night `#3A4577`). Altitude 60–90 u, width 22–44 u (D-011), drift 1.5 u/s with the wind. They cast soft moving shadows (multiply 0.82, 6 u edge blur). Hidden below T1.
 - **Tilt-shift/DOF:**
@@ -128,6 +130,7 @@ The seed picks 5–7 islands.
 **Bluff coasts (TASK-390).** Every archetype except Beacon Rock (its own windward cliff) stands on a 5–7 u
 bluff wall with a harbour / leeward cove sector, tagged `Zone.cliff` and painted as earth wall (§2). The
 Research campus (4.2–4.8 u walls) gets no waterfalls (`noWaterfalls`, D-046).
+**Rim silhouette (M50, TASK-615).** Wall height varies along the coast ±15–25 % (headlands high, cove side low, never under 4 u; applied after site planning, so docks / paths / lots do not move); HQ and Design carry a 120° terrace with a ≥ 4 u lower step; 3–6 rock outcrops (`Zone.rock`, terrain, no draw calls) break the plateau lip where it is free of walkways / decks (QA and Research may get none); ≥ 4 u walls carry ≤ 10 `rockCluster` talus per island at the foot (≤ 1.4k tris).
 
 **Waterfalls (TASK-395).** 1–3 per bluff island, 2.6–3.6 u wide ribbons off a bluff lip into a foam disc and
 mist at the foot; the flow scrolls along the sheet. None on cove beaches or on the Research campus.
@@ -156,6 +159,8 @@ Tier = the first tier at which the prop appears.
 | Lily pad | Disc with a wedge notch, optional flower | 0.4 u | T3 |
 | Grass tuft | 3–5 flattened tapered cones | 0.3 u | T3 |
 | Flower | Stem + 5 petal spheres around a yellow centre | 0.25 u | T3 |
+
+Tree species expansion (umbrella pine, cypress, olive, birch, willow, autumn maple, charred snag) and detail upgrades of palm / round tree / pine / blossom: `mar-docs/TREE_SPECIES.md` (spec, not yet built).
 
 **Buildings**
 
@@ -394,6 +399,12 @@ Any click or key jumps to the final pose with a 400 ms ease.
 | W-thrill-noon | **Thrill Noon** | 1001 · `site:coaster:-26,19,-8,3,3,1` · 12:00 +5 s | Loop hoop whole with the bot train at the crown (>= 2 cars, riders seated); track posts on the ground with shadows; station roof covers <= 25 % of the frame and the rink is visible; siren ring (>= 2 rings, wider than the roof) readable; no gravel speckle; <= 300 calls |
 | W-morning-shift | **Morning Shift** | 1001 · `site:foundryYard:23,13,17,-3,2.5,-4` · 07:00, simt 51 | Belt with 3 arms and bots at stations; queue of at least 5 bots walking the path to the hub; track props left; port and hangar in frame; courier visible at 12 px or more (not a speck); morning light with long shadows; at most 230 calls (now 228) |
 | W-data-lake-night | **Data Lake Night** | 1001 · `site:dataLake:22,16,-10,-2,2.5,-1.5` · 21:30, simt 8 | Navy lake with 6 fibre lines and at least 6 packet dots; 3 pods with LED strips; pavilion core with a visible halo; cloud whole (not cut); land L at least 0.12; at most 200 calls (now 175) |
+| W-G1 | **Strata Wall** (M50) | 1001 · `G-*-t1-*` (primary), `G-*-t0-*` · 13:00 / 17:30, set `ground` | ≥ 3 strata bands at T1, ≥ 2 at T0 readable at 1280×720; wall luminance range ≥ 12 % L; lip shadow + foot visible at T0. 2026-11-10: PASS (4/4 islands at T1) |
+| W-G2 | **Top Surface Variety** (M50) | 1001 · `G-*-t0/t1/t2-*` | ≥ 2 tone regions per plateau, blotches ≥ 10 u, plateau grass L std ≥ 4 %; two islands tell apart by ground colour alone. 2026-11-10: WEAK (Coding flat bright patch, DevOps hard patches) |
+| W-G3 | **Shore Transition** (M50) | 1001 · `G-*-t1-*`, `G-hq-t0-*`, `G-research-t2-*`, `W-sunken-noon` | wall never meets water at a hard corner: 0.6–1.2 u cool wet band or a wide wet-sand gradient, ≥ 1 transition band. 2026-11-10: PASS |
+| W-G4 | **Wall Texture Break** (M50) | 1001 · `G-research-t2-*`, `G-devops-t2-*` | ≥ 2 scales (fine cracks + strata groove ≥ 15 px); no crack motif repeats within 400 px. 2026-11-10: PASS |
+| W-G5 | **Clean Lip** (M50) | 1001 · `G-coding-t1-*`, `G-research-t2-*`, `G-hq-t1-*` | no 2 u staircase longer than ~10 u on the lip; grass → sand over 4–6 u. 2026-11-10: WEAK (Coding right-edge mesh steps, Research smoky lip shade, W-sunken grass teeth) |
+| W-G6 | **Living Silhouette** (M50) | 1001 · `G-coding-t0/t1-*`, `G-research-t1-*` | wall height ±25 %, ≥ 3 bumps / notches, 3–6 outcrops; no "cut disc". 2026-11-10: PASS (Research T1 WEAK: 0 outcrops by design) |
 
 **Global fail (any shot):**
 - Land pixel with L < 12 %.

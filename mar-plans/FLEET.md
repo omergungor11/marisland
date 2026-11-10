@@ -178,6 +178,7 @@ dosya varsa session `error` olur (`reason: 'out-of-bounds write: <path>'`) ve pa
 | **M42** İstek zinciri + kapılar | ada → ada devir, `FleetGate`, istek ağacı panelde, bütçe tavanı | "5 sosyal medya gönderisi" senaryosu marketing → design → coding uçtan uca, her geçiş onaylı |
 | **M43** Knowledge base + HQ | `fleet/kb`, ada `CLAUDE.md` dolumu, özelleşmiş agent/skill üretimi, HQ gözden geçirme kapısı | Bir ada yeni skill önerir, HQ onaylar, skill dizine iner |
 | **M44** Raporlar | günlük / haftalık / aylık / tüm zamanlar; en önemli konular, uzun session'lar, dersler | Ada panelinde rapor sekmesi, HQ'da filo raporu |
+| **M51** Kurye gemileri — DONE 2026-11-09 (koşullu, takip TASK-650) | ada başına özgün gemi; kapı → yükle, izin → yolculuk, child biter → raporla dönüş, tıkla → kart (D-164) | `?fleet=mock`'ta Marketing gemisi Design'a yük götürüp geri döner; 7 gemi `P-couriers`'ta ayırt edilir |
 
 ## Kabul kriterleri (M40)
 

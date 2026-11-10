@@ -16,10 +16,25 @@ import {
 import { REEFS } from '../content/reefs.ts';
 import { HARBOURS } from '../content/harbours.ts';
 import { anchorPoints } from './gen/plans/research-anchors.ts';
+import { MARINA_SITE } from '../content/themes/marketing-marina-site.ts';
 import { perfLimit } from '../test/perf.ts';
 import { bitDigest } from '../test/bits.ts';
 
 /** True when (x, z) lies within `r` of the polyline. */
+/** TASK-661: on the marina town's ring or its flank (grown at plan time like a harbour arm). */
+function marinaNear(
+  isl: { anchors: Record<string, { x: number; z: number }> },
+  x: number,
+  z: number,
+) {
+  const c = isl.anchors.marinaBasin;
+  const s = isl.anchors.marinaBasinSize;
+  const q = isl.anchors.marinaQuaySize;
+  if (!c || !s || !q) return false;
+  const R = s.x / 2 + q.x + MARINA_SITE.ring.edgeFlat + MARINA_SITE.ring.flank + 1;
+  return Math.hypot(x - c.x, z - c.z) < R;
+}
+
 function armNear(
   line: readonly { x: number; z: number }[],
   x: number,
@@ -120,11 +135,13 @@ function components(w: WorldData, isl: IslandData): number {
 describe('archipelago — 30-seed full generation', () => {
   it('stage hashes are locked for seeds 1, 42, 1001 (archipelago mode)', () => {
     const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
+    // TASK-615: rim delta, lip knobs and talus change height / zone / props only, re-pinned
+    // TASK-661: the Marketing marina town (ring, basin, town, keep-outs), re-pinned
     expect(snap).toMatchInlineSnapshot(`
       {
-        "1": "7e57aef2ecb26721",
-        "1001": "6656323857696166",
-        "42": "e8d85df9270dfed5",
+        "1": "230b905fbe3e5cac",
+        "1001": "6e9d00d6bdfaf20a",
+        "42": "867fd7ee2a55b020",
       }
     `);
   });
@@ -141,11 +158,13 @@ describe('archipelago — 30-seed full generation', () => {
         return [s, `bits:${bitDigest(data)} ${stages}`];
       }),
     );
+    // TASK-615: height / zone / props stages (rim delta, lip knobs, talus); sites onward unchanged, re-pinned
+    // TASK-661: the Marketing marina town, re-pinned
     expect(snap).toMatchInlineSnapshot(`
       {
-        "1": "bits:ebec5119ea21da71 layout:358ca2668fc3f1cc height:4ff6e5646eb4ca85 sdf:6d9067df21bb1f7f islandMap:1b3b96d52be1f341 zone:3cb287d1aa854af3 fields:fde62d37a0223454 chunks:dc7faad7717da3b9 sites:53e2af66c0666cdb routes:ba351f92a49adcbe seamarks:4748e8cedf7f5cce marina:55c9f6bd1dec64f8 props:ab131c8f42a166b2",
-        "1001": "bits:57c6827dd83dc94f layout:2747e57b5392567c height:ea49e5ab897972eb sdf:1f288e031c5a88b9 islandMap:82cfda5cfa742363 zone:8204b398ea1ccd62 fields:fde62d37a0223454 chunks:1854ff6405fc1fbe sites:b41f90cca5e56460 routes:40cfc256d21e90c8 seamarks:4dcea19104575f6d marina:c87503ceb82482e3 props:dc6c85aa4a4a9b6e",
-        "42": "bits:dc1d11029fd9fca6 layout:7d862a142513cf36 height:e3bcabdc5063d18e sdf:c78607977e7d130e islandMap:f912f4e15661f0c1 zone:5ce251a7b9504775 fields:fde62d37a0223454 chunks:a7e456a628d4b886 sites:509c1f91ea58aea0 routes:beacdf5184662811 seamarks:11f15c66622ea092 marina:77cb754f77e64ed7 props:f836bb1fb1c54a45",
+        "1": "bits:a7f2538f215731ab layout:358ca2668fc3f1cc height:044232f4cf378ed1 sdf:17eef4b557176e63 islandMap:cc7e5e2a97435fbf zone:8ca8a3b8d4ef6511 fields:fde62d37a0223454 chunks:dc7faad7717da3b9 sites:29745448ce3f1ac7 routes:7b283073173a0eeb seamarks:c011e3e42006ab66 marina:60adb598db35d11a props:0b612588fa1472db",
+        "1001": "bits:c6c68ca45f8a3068 layout:2747e57b5392567c height:e237c8ff092e03b9 sdf:b3c22ad90fb262fe islandMap:cb953553ea33c14b zone:e8bb19d195c49b7e fields:fde62d37a0223454 chunks:0081d8130befb3e6 sites:a1f5ba38d7b44057 routes:c5f8f1adc7453dbd seamarks:18210a323201baba marina:bde34107f195f0db props:2a34e5ac7a6f69e4",
+        "42": "bits:b455bfd16529119d layout:7d862a142513cf36 height:36d5d2e874693dc6 sdf:0014231c0bfb5fed islandMap:6456d26e5c4be993 zone:8372188ea24b9bb8 fields:fde62d37a0223454 chunks:a7e456a628d4b886 sites:b312da90279dfce2 routes:beacdf5184662811 seamarks:11f15c66622ea092 marina:77cb754f77e64ed7 props:8c750050045c0ded",
       }
     `);
   });
@@ -184,6 +203,8 @@ describe('archipelago — 30-seed full generation', () => {
         const isl = w.islands[id - 1];
         const [x, z] = coord(w, i);
         const arm = arms[id - 1];
+        // (TASK-661: the marina ring likewise, checked by plans-marketing-marina.test)
+        if (marinaNear(isl, x, z)) continue;
         if (arm.length > 1 && armNear(arm, x, z, (isl.anchors.harbourArmSize?.x ?? 0) + 3.5)) {
           const lim = isl.reach + (HARBOURS.research?.arm.offset ?? 0) + 4;
           expect(Math.hypot(x - isl.cx, z - isl.cz), `seed ${seed} harbour arm`).toBeLessThan(lim);
@@ -420,6 +441,8 @@ describe('reef shoals + shared-shelf sills (TASK-488, W:D1 / W:K3), 30 seeds', (
       for (let i = 0; i < w.reefWeight.length; i++) {
         if (w.reefWeight[i] === 0) continue;
         const id = w.islandMap[i];
+        if (id > 0 && id <= w.islands.length && marinaNear(w.islands[id - 1], ...coord(w, i)))
+          continue;
         if (id > 0 && id <= w.islands.length && arms[id - 1].length > 1) {
           const [x, z] = coord(w, i);
           if (armNear(arms[id - 1], x, z, (w.islands[id - 1].anchors.harbourArmSize?.x ?? 0) + 3.5))
@@ -436,7 +459,11 @@ describe('reef shoals + shared-shelf sills (TASK-488, W:D1 / W:K3), 30 seeds', (
       for (const s of w.reefs.filter((r) => r.kind === 'sill')) {
         const L = axisLen(s);
         for (let t = 0.3; t <= 0.7; t += 0.05) {
-          const y = heightAt(w.height, s.x0 + (s.x1 - s.x0) * t, s.z0 + (s.z1 - s.z0) * t);
+          const x = s.x0 + (s.x1 - s.x0) * t;
+          const z = s.z0 + (s.z1 - s.z0) * t;
+          // (TASK-661: the marina ring may stand on a sill's shoulder, checked by its own test)
+          if (w.islands.some((isl) => marinaNear(isl, x, z))) continue;
+          const y = heightAt(w.height, x, z);
           expect(
             y,
             `seed ${seed} sill ${s.islands.join('-')} (${L.toFixed(0)} u) at ${t}`,
@@ -654,8 +681,10 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // TASK-544 Coding sites, TASK-545 the M33 kit on them, TASK-536 Marketing harbour + Carnival Pier, TASK-537 Colour Wharf, re-pinned
       // TASK-556 Carnival deck arch dropped, party pontoon further off and inshore, re-pinned
       // TASK-550 (D-139) arm rock to the waterline + armoured spur corner, wider sunken-city plaza, re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('a679d98e40fbb2d2');
-      expect(generateWorld(1).hashes.world).toBe('ad21162e0d4fe6a0');
+      // TASK-615 the Research campus keeps its bluff: its rim delta, lip knobs and wall-foot talus, re-pinned
+      // TASK-661 the Marketing marina town, re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('d578749465fd270d');
+      expect(generateWorld(1).hashes.world).toBe('e731c150b9231de1');
     } finally {
       for (const b of saved) b.on = true;
     }

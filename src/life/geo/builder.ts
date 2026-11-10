@@ -10,6 +10,11 @@ export class TriBuilder {
   private emiUsed = false;
   private cur: [number, number, number, number] = [0, 0, 0, 0];
   private limbUsed = false;
+  /**
+   * Skip faces that point straight down (box bottoms, ellipsoid south fans, frustum bottom caps): the camera
+   * never sees them on a bot that stands on the ground, and they were a fifth of its triangles (TASK-590).
+   */
+  skipBottom = false;
 
   /**
    * Per-vertex animation tag for every following triangle (read by the life vertex shader):
@@ -90,7 +95,8 @@ export class TriBuilder {
       [[p(-1, -1, 1), p(1, -1, 1), p(1, 1, 1), p(-1, 1, 1)], color],
       [[p(-1, -1, -1), p(1, -1, -1), p(1, 1, -1), p(-1, 1, -1)], color],
     ];
-    for (const [q, k] of faces) {
+    for (const [i, [q, k]] of faces.entries()) {
+      if (this.skipBottom && i === 3) continue;
       this.triOut(q[0], q[1], q[2], c, k);
       this.triOut(q[0], q[2], q[3], c, k);
     }
@@ -120,7 +126,7 @@ export class TriBuilder {
       const j = (i + 1) % seg;
       this.triOut(lo[i], lo[j], hi[j], mid, color);
       if (rt > 1e-4) this.triOut(lo[i], hi[j], hi[i], mid, color);
-      this.triOut(cLo, lo[i], lo[j], mid, color);
+      if (!this.skipBottom) this.triOut(cLo, lo[i], lo[j], mid, color);
       if (rt > 1e-4) this.triOut(cHi, hi[i], hi[j], mid, top);
     }
   }
@@ -183,9 +189,10 @@ export class TriBuilder {
       }
       prev = cur;
     }
-    for (let s = 0; s < seg; s++) {
-      this.tri(bot, prev[s], prev[(s + 1) % seg], colorAt(0));
-    }
+    if (!this.skipBottom)
+      for (let s = 0; s < seg; s++) {
+        this.tri(bot, prev[s], prev[(s + 1) % seg], colorAt(0));
+      }
   }
 
   get triangles(): number {

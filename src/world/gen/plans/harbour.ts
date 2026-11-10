@@ -293,7 +293,7 @@ function walkArm(
  * Pier segments the site can run out to (each new one over water, clear, leaving the shore);
  * `all`: every segment from the root re-checked (after the arm moved the shore).
  */
-function pierSegments(ctx: SiteCtx, P: HarbourParams, site: DockSite, all = false): number {
+export function pierSegments(ctx: SiteCtx, P: HarbourParams, site: DockSite, all = false): number {
   const side = { x: -site.dir.z, z: site.dir.x };
   let segs = all ? 0 : site.segments;
   for (let k = all ? 1 : site.segments + 1; k <= P.pier.segments; k++) {
@@ -357,7 +357,7 @@ function raiseArm(ctx: SiteCtx, isl: IslandData, P: HarbourParams, arm: ArmPoint
  * whose shore distance moved take the generation water band again; the new land is Zone.sandWet
  * until `finishHarbour` paints it.
  */
-function refreshCoast(ctx: SiteCtx, land: readonly number[]): void {
+export function refreshCoast(ctx: SiteCtx, land: readonly number[]): void {
   const N = ctx.n * ctx.n;
   const mask = new Uint8Array(N);
   for (let i = 0; i < N; i++) mask[i] = ctx.h.data[i] > 0 ? 1 : 0;

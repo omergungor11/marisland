@@ -6,6 +6,14 @@
 import type { FleetLine, LineKind } from '../src/fleet/protocol.ts';
 
 export const LINE_MAX = 400;
+
+/**
+ * Child stderr the panel should not show as an error: a global plugin's SessionEnd hook (claude-mem)
+ * is cancelled when `claude -p` exits right after its result (TASK-631). The raw jsonl keeps the line.
+ */
+export const isHookNoise = (text: string): boolean =>
+  /\bhook \[.*\] failed: Hook cancelled\s*$/.test(text);
+
 /** Assistant / user prose keeps its line breaks (the `## →` hand-off headings sit at the end) and a wider cap (TASK-577 FAIL 1). */
 export const TEXT_MAX = 4000;
 
@@ -179,7 +187,7 @@ export function reduceEvent(state: StreamState, ev: unknown): Reduced {
         : none;
     case 'bridge_stderr':
       // synthetic record the bridge writes into the jsonl so disk replay keeps the live seq
-      return typeof ev.text === 'string'
+      return typeof ev.text === 'string' && !isHookNoise(ev.text)
         ? { lines: [{ kind: 'stderr', text: clip(ev.text) }] }
         : none;
     default:

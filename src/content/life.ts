@@ -1012,6 +1012,16 @@ export const WORKER_COLORS = {
   eye: '#BDF7FF',
   blush: '#FF9EB5',
   antenna: '#FFD54A',
+  /** Head variants (TASK-590): cam rim, tread, visor/cam glass reuse `screen`. */
+  head: {
+    camRim: '#C4CAD8',
+    camRimDark: '#8C94A8',
+    tread: '#454B5C',
+    treadRib: '#6A7186',
+    neck: '#8C94A8',
+  },
+  /** Eye-state glyph colours (emissive screen class): idle uses `eye`. */
+  eyeState: { working: '#BDF7FF', gate: '#FFC857', error: '#FF7A82', done: '#9DFFC8' },
   /**
    * Department accessories, culture-coloured (M19 TASK-432): every hex is a hue of that island's
    * `content/cultures/<theme>.ts` palette (walls / roofs / trims) or of its team tints.
@@ -1082,8 +1092,81 @@ export const WORKER_COLORS = {
     // QA bug-hunt lantern (TASK-480): dark frame, green-glowing glass
     lanternFrame: '#4F4A5E',
     lanternGlow: '#7FD8B3',
+    // role items (TASK-590, ROLE_ITEM): wrench, map roll, hammer, duck, magnifier, hard hat in hand
+    wrench: '#A9AEB8',
+    wrenchGrip: '#E35D6A',
+    map: '#F3E2B3',
+    mapBand: '#C9754A',
+    mapEnd: '#D49A58',
+    hammerHead: '#8C94A8',
+    hammerShaft: '#A9714A',
+    duck: '#FFE45C',
+    duckBeak: '#FF9A3D',
+    duckEye: '#2B2B36',
+    lens: '#BFE9F2',
+    lensRim: '#F5C84C',
+    hardHat: '#FFD23F',
   },
 } as const;
+
+/**
+ * Bot chassis frames (TASK-590, life/geo/workers.ts): u in bot space (origin between the feet, +x forward).
+ * `scout` is the pre-Phase-5 bot; the head box (half 0.17 x 0.19 x 0.25) is the same on all three so every
+ * accessory fits, the chassis differ in body, legs, arms and antenna. `height` = head top.
+ */
+export const BOT_FRAMES = {
+  scout: {
+    headY: 0.78,
+    bodyY: 0.39,
+    bodyHx: 0.15,
+    bodyHy: 0.17,
+    bodyHz: 0.19,
+    bevel: 0.05,
+    shoulderY: 0.5,
+    armZ: 0.26,
+    armHalf: 0.13,
+    legZ: 0.1,
+    hip: 0.22,
+    legSwing: 1.5,
+    antenna: { stalk: 0.075, ball: 0.05, ring: 0 },
+  },
+  hauler: {
+    headY: 0.7,
+    bodyY: 0.33,
+    bodyHx: 0.19,
+    bodyHy: 0.17,
+    bodyHz: 0.28,
+    bevel: 0.06,
+    shoulderY: 0.46,
+    armZ: 0.34,
+    armHalf: 0.11,
+    legZ: 0.17,
+    hip: 0.18,
+    legSwing: 0.8,
+    antenna: { stalk: 0.035, ball: 0.045, ring: 0 },
+  },
+  spire: {
+    headY: 0.96,
+    bodyY: 0.52,
+    bodyHx: 0.11,
+    bodyHy: 0.17,
+    bodyHz: 0.135,
+    bevel: 0.04,
+    shoulderY: 0.66,
+    armZ: 0.2,
+    armHalf: 0.14,
+    legZ: 0.07,
+    hip: 0.35,
+    legSwing: 0.9,
+    antenna: { stalk: 0.14, ball: 0.05, ring: 0.085 },
+  },
+} as const;
+
+/** Eye-state motion (shader, uTime): the working dots hop in turn (rate rad/s, lag rad between dots, hop height u). */
+export const BOT_EYE_ANIM = { dotRate: 7.5, dotLag: 1.5, dotHop: 0.03 } as const;
+
+/** Instance tint lightness step per `BotLook.shade` (0 = the team tint as is). */
+export const BOT_SHADE_L = [0, 0.07, -0.07] as const;
 
 export const LAND_COLORS = {
   skin: '#FFD6B0',
