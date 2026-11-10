@@ -29,6 +29,7 @@ import { beaconRouteKeepOut, beaconSeaKeepOut } from './gen/plans/marketing-anch
 import { tideLabKeepOut } from './gen/plans/research-harbour.ts';
 import { harbourKeepOut } from './gen/plans/harbour.ts';
 import { carnivalKeepOut } from './gen/plans/marketing-harbour.ts';
+import { lunaKeepOut } from './gen/plans/marketing-luna.ts';
 import { marinaKeepOut } from './gen/plans/hq-horseshoe.ts';
 import { carveReefGaps, planReefs, raiseReefs, reefWeights } from './gen/reefs.ts';
 import { placeSeamarks } from './gen/seamarks.ts';
@@ -228,6 +229,7 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
         ...harbourKeepOut(islands),
         ...tideLabKeepOut(islands),
         ...carnivalKeepOut(islands),
+        ...lunaKeepOut(islands),
         // TASK-661: and none over the marina town's moles, quay or basin
         ...marinaKeepOut(islands),
       ],
@@ -258,6 +260,7 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
         ...beaconSeaKeepOut(islands),
         ...tideLabKeepOut(islands),
         ...carnivalKeepOut(islands),
+        ...lunaKeepOut(islands),
         ...marinaKeepOut(islands),
       ],
     },

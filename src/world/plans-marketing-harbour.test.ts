@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { HARBOURS } from '../content/harbours.ts';
 import { DOCK } from '../content/settlements.ts';
 import { CARNIVAL_PIER as K } from '../content/themes/marketing-harbour.ts';
+import { LUNA_KIT } from '../content/themes/marketing-luna.ts';
 import { beaconTracks } from './gen/plans/marketing-anchors.ts';
 import { carnivalDeckDist, carnivalKeepOut } from './gen/plans/marketing-harbour.ts';
+import { lunaKeepOut } from './gen/plans/marketing-luna.ts';
 import { generateWorld, heightAt, type WorldData } from './index.ts';
 
 /** TASK-536 (D-126): the Carnival Pier on the Marketing Rock, 30 seeds + the shot seeds. */
@@ -91,7 +93,8 @@ describe('TASK-536 Carnival Pier: placement', () => {
       const { A, of } = site(seed);
       const y = P.kit.deckY;
       const wheel = of('ferrisWheel').find((f) => near(f, A.carnivalWheel) < 1e-6);
-      expect(wheel?.scale).toBe(K.wheel.scale);
+      // (TASK-671: the fun park's wheel is the full-size one)
+      expect(wheel?.scale).toBe(A.lunaDeck ? LUNA_KIT.ride.wheel.scale : K.wheel.scale);
       expect(wheel?.y).toBe(y);
       const scr = of('billboardV2').find((f) => near(f, A.carnivalScreen) < 1e-6);
       expect(scr?.variant).toBe(K.screen.variant);
@@ -103,7 +106,11 @@ describe('TASK-536 Carnival Pier: placement', () => {
   }, 240_000);
 
   it('nothing but the kit stands on the boardwalk; pontoon and buoys keep off its front', () => {
-    const kit = new Set(['sailboat', 'bunting', 'lanternPost', 'ferrisWheel', 'billboardV2']);
+    // (TASK-671: and the fun park's pieces and its gangway)
+    const kit = new Set([
+      ...['sailboat', 'bunting', 'lanternPost', 'ferrisWheel', 'billboardV2', 'dock'],
+      ...['lunaDeck', 'lunaRide', 'lunaCoaster', 'lunaGate', 'lunaStand', 'lunaDecor'],
+    ]);
     let pontoons = 0;
     for (const seed of SEEDS) {
       const { isl, fx, A } = site(seed);
@@ -166,7 +173,7 @@ describe('TASK-536 Carnival Pier: placement', () => {
             expect(carnivalDeckDist(isl, p), `seed ${seed} ${r.kind}`).toBeGreaterThan(0.5);
           }
         }
-      expect(carnivalKeepOut([isl]).length).toBeGreaterThan(0);
+      expect([...carnivalKeepOut([isl]), ...lunaKeepOut([isl])].length).toBeGreaterThan(0);
       expect(A.ferryBerth).toBeDefined();
     }
   }, 240_000);
@@ -194,5 +201,6 @@ describe('TASK-536 determinism', () => {
 });
 
 const SHELTER_MIN = 28;
-const PONTOON_MIN = 30;
+// (TASK-671: the fun park takes the party pontoon's water off the pier's open side on most seeds; 4 / 32 keep it)
+const PONTOON_MIN = 4;
 const CABLE_CLEAR = 20;

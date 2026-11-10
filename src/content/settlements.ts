@@ -396,6 +396,15 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   tideLab: 3.9,
   tideGauge: 0.7,
   sunkenCity: 0.05,
+  // M53 TASK-671 the sea-top fun park (pieces on the platform, planned by gen/plans/marketing-luna.ts):
+  // the platform's pivot is the pool centre and the coaster's its loop centre on the shore edge (no
+  // walker there); the gate's pivot lies between its towers, where the visitors pass. Per variant below.
+  lunaDeck: 0.05,
+  lunaRide: 3.6,
+  lunaCoaster: 0.05,
+  lunaGate: 0.05,
+  lunaStand: 1.3,
+  lunaDecor: 0.5,
 };
 
 /**
@@ -410,6 +419,11 @@ export const FIXTURE_VARIANT_RADIUS: Readonly<Record<string, Readonly<Record<num
   // the Colour Wharf's glass pavilion (M31 TASK-537): the pier walkers pass through its open bays,
   // and the big octagon's 7.6 u would wall off the cove
   conservatory: { 1: 0.05 },
+  // the fun park (M53 TASK-671): swing (its chairs fly out to 3.7 u), drop tower, carousel; booth, carts,
+  // prize stall; balloons, bench, queue rail (a thin bar: its pivot only), bulb post
+  lunaRide: { 0: 3.7, 1: 2.1, 2: 3.85 },
+  lunaStand: { 0: 1.35, 1: 1.2, 2: 1.2, 3: 0.9, 4: 1.65 },
+  lunaDecor: { 0: 0.6, 1: 0.85, 2: 0.15, 3: 0.4 },
 };
 
 /** Fixtures that float at the waterline (render pivot y = 0, not the seabed). */

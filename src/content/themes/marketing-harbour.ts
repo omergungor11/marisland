@@ -186,6 +186,67 @@ export const CARNIVAL_PIER = {
   cannon: { variant: 0, v: 2.6, u: 0.1, splay: 0.4 },
 } as const;
 
+/**
+ * The sea-top fun park's site (M53 TASK-671, D-172): how the ring platform (`LUNA_KIT.deck`) is fitted
+ * beside the ferry pier and joined to it. Placement: world/gen/plans/marketing-luna.ts; the pieces and
+ * their suggested layout: content/themes/marketing-luna.ts. Lengths in u.
+ */
+export const LUNA_SITE = {
+  /** Fit tiers (LUNA_KIT.deck index): M first, then S; none = the small Carnival deck above. */
+  tiers: [1, 0] as const,
+  /**
+   * The gangway: `dock` pieces (2 u each, pier look) in a straight run from the T crossbar's end to the
+   * gate at the platform's pier edge, `pieces` long; the platform slides `slide` u along the pier from
+   * the crossbar (+ = seaward), at most `skewDeg` off square to the pier. The platform's pier edge stays
+   * `approachGap` u outside the ferry's approach corridor.
+   */
+  gangway: { pieces: [2, 8] as const, slide: [-4, 14] as const, skewDeg: 42, half: 0.6 },
+  approachGap: 1.5,
+  /**
+   * Seabed limits (u, world height): under the ring and the pool (the piles reach 0.4 u under the
+   * waterline, the boats float), and under the coaster's sea half (its columns stand in the water).
+   * `dry`: no land within this much of the platform; `clearOther`: no other island's land within this.
+   */
+  seabed: { deck: -0.4, coaster: -0.1 },
+  /**
+   * The bed under the platform (and the coaster's sea half) is filled up to `y` where deeper, out to
+   * `edge` u past it, blending back over `fall` u, so the couriers, which only read the depth
+   * (COURIER.route.depth 1.2 u, life/courier-route.ts), sail round the park. Not seen: the water's
+   * colour follows the shore distance and the deep band is opaque.
+   */
+  shoal: { y: -1, edge: 2.2, fall: 1.5 },
+  dry: 1.5,
+  clearOther: 8,
+  /** u off every other reserved shape. */
+  gap: 0.6,
+  /**
+   * Boat routes, couriers and seamarks: discs `disc` u apart over the platform, reaching `keepOut` u past
+   * its corners; the smoothed routes keep `hard` × the radius off each centre (≈ 0.9 u off the edges).
+   */
+  keepOut: 1.6,
+  disc: 4,
+  hard: 0.8,
+  /** The coaster's sea half: its loop hangs `overhang` u past the platform's shore edge. */
+  overhang: 3.6,
+  /**
+   * The WELCOME screen on the sea strip, back to the pool, in the widest gap between the stands (at
+   * least the board + 2 `pad`); the two carts on the carousel's side close up from `edge` u off its
+   * pad first, and when no gap is wide enough the popcorn cart (`dropCart`) gives way.
+   */
+  screen: { pad: 0.1, edge: 0.6, dropCart: 'cart1' },
+  /** The ticket booth: on the pier strip beside the gate, else off the far strip (`booth.far` u in). */
+  booth: { gap: 0.3, far: 1.6 },
+  /** Bulb arches (bunting v5) over the gangway's middle and across the stroll on the far and sea strips. */
+  arches: { minGangway: 3 },
+  /**
+   * The visitor stroll: a loop round the ring `x` u off the pool rail on the pier / far strips and `z` u
+   * on the shore / sea strips, round each corner ride at its reach + `rideGap`, a point every ≈ `step` u.
+   */
+  stroll: { x: 1.6, z: 2.2, rideGap: 0.3, step: 2 },
+  /** Browse spots `front` u in front of each stand. */
+  stall: { front: 0.7 },
+} as const;
+
 /** The ferry arrival ritual: every number keys off `sinceFerryArrival` (life/ferry.ts). */
 export const CARNIVAL_MOTION = {
   arrival: {

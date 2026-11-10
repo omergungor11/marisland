@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DOCK } from '../content/settlements.ts';
 import { MARKETING_PLAN as P, MARKETING_QUICK as Q } from '../content/themes/marketing.ts';
 import { generateWorld, heightAt, type WorldData } from './index.ts';
+import { lunaDeckDist } from './gen/plans/marketing-luna.ts';
 import { THEME_IDS } from './types.ts';
 
 // TASK-481 (M22): the Marketing quick wins — carnival gate, marquee bulb strings, sea-stack
@@ -135,10 +136,17 @@ describe('Marketing quick wins (TASK-481), 30 seeds', { timeout: 120_000 }, () =
 
   it('M8: the party pontoon floats in the bay, off the pier, clear of everything', () => {
     most(0.9, (w) => {
-      const { of, dock } = mktOf(w);
+      const { of, dock, isl } = mktOf(w);
       const p = of('sailboat').filter((f) => f.variant === Q.pontoon.variant);
+      // (TASK-671: beside the fun park the pontoon is optional: the park takes its water; where it
+      // still fits it lies on the harbour search's far ring, off the park)
+      if (isl.anchors.lunaDeck && p.length === 0) return true;
       if (!dock || p.length !== 1) return false;
-      const reach = dock.segments * DOCK.segment + 6;
+      const H = Q.pontoon.harbour;
+      const reach = isl.anchors.lunaDeck
+        ? Math.hypot(H.off[1], H.along[1]) - 6
+        : dock.segments * DOCK.segment + 6;
+      if (isl.anchors.lunaDeck && lunaDeckDist(isl, p[0]) < Q.pontoon.l / 2) return false;
       const d = Math.hypot(p[0].x - dock.x, p[0].z - dock.z);
       return d <= reach + 6 && heightAt(w.height, p[0].x, p[0].z) <= -Q.pontoon.minDepth;
     });

@@ -17,6 +17,8 @@ import { REEFS } from '../content/reefs.ts';
 import { HARBOURS } from '../content/harbours.ts';
 import { anchorPoints } from './gen/plans/research-anchors.ts';
 import { MARINA_SITE } from '../content/themes/hq-horseshoe-site.ts';
+import { LUNA_SITE } from '../content/themes/marketing-harbour.ts';
+import { lunaDeckDist } from './gen/plans/marketing-luna.ts';
 import { perfLimit } from '../test/perf.ts';
 import { bitDigest } from '../test/bits.ts';
 
@@ -138,11 +140,12 @@ describe('archipelago — 30-seed full generation', () => {
     // TASK-615: rim delta, lip knobs and talus change height / zone / props only, re-pinned
     // TASK-661: the Marketing marina town (ring, basin, town, keep-outs), re-pinned
     // TASK-666: the marina town moves to HQ (comb gone), Marketing back to its arm harbour, re-pinned
+    // TASK-671: the sea-top fun park beside the Marketing pier (platform, shoal, keep-outs), re-pinned
     expect(snap).toMatchInlineSnapshot(`
       {
-        "1": "41df5dc53c04ded6",
-        "1001": "60888f7261143aa5",
-        "42": "c4929a9544320f49",
+        "1": "1d17a3a62ff41f7a",
+        "1001": "e415ad7b9c9e7e43",
+        "42": "12debadf4b825e23",
       }
     `);
   });
@@ -162,11 +165,12 @@ describe('archipelago — 30-seed full generation', () => {
     // TASK-615: height / zone / props stages (rim delta, lip knobs, talus); sites onward unchanged, re-pinned
     // TASK-661: the Marketing marina town, re-pinned
     // TASK-666: the marina town on HQ, Marketing's arm harbour again, re-pinned
+    // TASK-671: the Marketing sea-top fun park, re-pinned
     expect(snap).toMatchInlineSnapshot(`
       {
-        "1": "bits:19958324947e0e02 layout:358ca2668fc3f1cc height:c12454da28c3e248 sdf:c77a4474f2a2340f islandMap:f7f7a8eb78db9c57 zone:79fe810e90ac6d89 fields:fde62d37a0223454 chunks:dc7faad7717da3b9 sites:5b0f55e60b9725c0 routes:3e6c9dbb6663bf71 seamarks:cbd543ac89c5cfa9 marina:525a20b06dc9a3a9 props:1c50bb40ab2c63b1",
-        "1001": "bits:3a4c0fd3bf945ffd layout:2747e57b5392567c height:0a17107bb257423f sdf:67b46e81fec813af islandMap:267b58554e2d2d89 zone:0a946c88dc6fa569 fields:fde62d37a0223454 chunks:1854ff6405fc1fbe sites:b171115d21a07fc9 routes:e038d6c990caa1ae seamarks:40c47bd27846d9f2 marina:a351d08628eee137 props:46190ef3579680a2",
-        "42": "bits:1174f22e2afddb56 layout:7d862a142513cf36 height:8de16d83dcfe1173 sdf:c1712e251c11500a islandMap:8a73157565f98dc9 zone:5d9203d01d7edcf6 fields:fde62d37a0223454 chunks:eaeec98061625167 sites:06a91255aeca8511 routes:12add3a66cc48143 seamarks:e874004aa572d75f marina:f1263937b92a7aa7 props:a3c0f6075c10364c",
+        "1": "bits:47b6ce6539e07f6b layout:358ca2668fc3f1cc height:3cc3c803714aeb41 sdf:c77a4474f2a2340f islandMap:f7f7a8eb78db9c57 zone:79fe810e90ac6d89 fields:fde62d37a0223454 chunks:dc7faad7717da3b9 sites:457d18288f789ab4 routes:46bd36b7e5cd451f seamarks:44f1f8931d6f1735 marina:36fdebb3e77edc24 props:1c50bb40ab2c63b1",
+        "1001": "bits:a7292137edccfc87 layout:2747e57b5392567c height:c19dc8a76e23446e sdf:67b46e81fec813af islandMap:267b58554e2d2d89 zone:0a946c88dc6fa569 fields:fde62d37a0223454 chunks:1854ff6405fc1fbe sites:b2357213f576bd49 routes:aa12495c6cb2f09b seamarks:29797744a846097f marina:a8f054cdfd47abd9 props:46190ef3579680a2",
+        "42": "bits:0dcef151d29d7f2d layout:7d862a142513cf36 height:6f95ef69729de411 sdf:c1712e251c11500a islandMap:8a73157565f98dc9 zone:5d9203d01d7edcf6 fields:fde62d37a0223454 chunks:eaeec98061625167 sites:7df7dd2f4a04c9c7 routes:12add3a66cc48143 seamarks:e874004aa572d75f marina:f1263937b92a7aa7 props:a3c0f6075c10364c",
       }
     `);
   });
@@ -451,8 +455,12 @@ describe('reef shoals + shared-shelf sills (TASK-488, W:D1 / W:K3), 30 seeds', (
             continue;
         }
         expect(w.height.data[i], `seed ${seed} reef cell ${i} above water`).toBeLessThan(0);
-        // off the islands' own shelf (natural −0.1…−1.5 u out to ≈ 24 u on leeward coasts)
-        if (w.shoreSdf[i] < -30) crest = Math.max(crest, w.height.data[i]);
+        // off the islands' own shelf (natural −0.1…−1.5 u out to ≈ 24 u on leeward coasts; TASK-671:
+        // not the fun park's shoal, filled to LUNA_SITE.shoal.y under the platform)
+        const [cx, cz] = coord(w, i);
+        const shoal = LUNA_SITE.shoal.edge + LUNA_SITE.shoal.fall;
+        const underPark = w.islands.some((isl) => lunaDeckDist(isl, { x: cx, z: cz }) < shoal);
+        if (w.shoreSdf[i] < -30 && !underPark) crest = Math.max(crest, w.height.data[i]);
         wet++;
       }
       expect(wet, `seed ${seed} reef cells`).toBeGreaterThan(0);
@@ -465,6 +473,9 @@ describe('reef shoals + shared-shelf sills (TASK-488, W:D1 / W:K3), 30 seeds', (
           const z = s.z0 + (s.z1 - s.z0) * t;
           // (TASK-661: the marina ring may stand on a sill's shoulder, checked by its own test)
           if (w.islands.some((isl) => marinaNear(isl, x, z))) continue;
+          // (TASK-671: and the fun park's shoal, filled to LUNA_SITE.shoal.y under the platform)
+          const shoal = LUNA_SITE.shoal.edge + LUNA_SITE.shoal.fall;
+          if (w.islands.some((isl) => lunaDeckDist(isl, { x, z }) < shoal)) continue;
           const y = heightAt(w.height, x, z);
           expect(
             y,
@@ -688,8 +699,9 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // TASK-615 the Research campus keeps its bluff: its rim delta, lip knobs and wall-foot talus, re-pinned
       // TASK-661 the Marketing marina town, re-pinned
       // TASK-666 the marina town on HQ, Marketing's arm harbour again, re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('58d4bece3ab24429');
-      expect(generateWorld(1).hashes.world).toBe('1f2321a29a2f717e');
+      // TASK-671 the Marketing sea-top fun park (platform, shoal, keep-outs), re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('2db5c810c7cc65c5');
+      expect(generateWorld(1).hashes.world).toBe('a8c46197d33e9736');
     } finally {
       for (const b of saved) b.on = true;
     }
