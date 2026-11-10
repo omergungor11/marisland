@@ -10,6 +10,15 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-11-10 Phase 5 wave 1 + TASK-611 merged (D-157…D-161), session "marisland 2" closed**: 598 building variants v2,
+  591 panel portraits, 590 bot chassis / heads / eyes, 594 material classes, 611 detail reveal (tier 2 200–260 u, tier 3 70–95 u,
+  LOD1 behind LOD0 until 175–200 u, `detail/reveal.ts`; see `?shot=D-reveal-200`). Low budgets 176 / 390k / 82 MB. `shots ci
+  --assert` 4 / 4 deterministic, world tests 42 / 42 on a quiet box. TASK-585 admin worktree was merged by the peer (no orphan left).
+  Wave 2 next (cap 3–4 agents, every brief with `--port=418N --tag=tNNN`): 592 (FIRST the `F-bot-lineup` shot, 9 looks × 5 eyes),
+  596 water, 599 vegetation (read `mar-docs/TREE_SPECIES.md` first), 601 boats; 600's hash re-pin must be sequenced with the
+  "marketing island" session (M52 TASK-660…669, D-170…172, its agents in flight on 9bd835c). Open nits: app.ts tip gate flag, 20 px
+  portrait legibility, buildings class tags, grain strength, TASK-600 roll counts / LOT_ROOFS / cottage v3 skip, D-161 open list
+  (dither `1 - bayer`, camera.ts ladder pairs, W16 327 / 330, W27 QA in 593). Numbers: this session D-165+ / TASK-624…629, 640+.
 - **2026-11-10 M51 courier ships DONE (conditional, D-164)**: TASK-620 ships (`geo/courier.ts`, `content/fleet-ships.ts`),
   621 voyage FSM (`life/courier-state.ts` pure plan from gates + sessions, `courier-route.ts` ferry loop / Bezier / grid A*,
   `life/couriers.ts` 7 InstancedMesh), 622 card (`ui/courier-card.ts`, preset field `fleetCard`, Esc via capture listener),
