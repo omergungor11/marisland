@@ -425,6 +425,8 @@ export const FLOATING_FIXTURES: readonly string[] = [
   'sailboat',
   // the Horseshoe Harbour's moored boats and finger pontoon (TASK-660)
   'quayBoat',
+  // the sea-top fun park's ring platform (TASK-670): pivot on the water, plank top at the deck height
+  'lunaDeck',
   // QA Q9 quarantine pontoon (TASK-506): pivot at the waterline, bobs as a whole
   'quarantinePontoon',
   // the HQ marina (TASK-505, D-085): piers, breakwater and the cove-mouth fort stand in the water

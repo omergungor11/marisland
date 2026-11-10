@@ -33,6 +33,7 @@ import { RESEARCH_M31_PROP_DEFS } from './props-themes/research-m31.ts';
 import { CODING_M33_PROP_DEFS } from './props-themes/coding-m33.ts';
 import { QA_COASTER_PROP_DEFS } from './props-themes/qa-coaster.ts';
 import { MARKETING_MARINA_PROP_DEFS } from './props-themes/marketing-marina.ts';
+import { MARKETING_LUNA_PROP_DEFS } from './props-themes/marketing-luna.ts';
 
 export interface PropDef {
   id: string;
@@ -187,6 +188,8 @@ const ALL_DEFS: readonly PropDef[] = [
   ...QA_COASTER_PROP_DEFS,
   // ==== TASK-660 (M52, D-170): Marketing Horseshoe Harbour kit (quayHouse, quayFurnish, quayBoat) ====
   ...MARKETING_MARINA_PROP_DEFS,
+  // ==== TASK-670 (M53, D-172): Marketing sea-top fun park (lunaDeck, lunaRide, lunaCoaster, lunaGate, lunaStand, lunaDecor) ====
+  ...MARKETING_LUNA_PROP_DEFS,
 ];
 
 /**

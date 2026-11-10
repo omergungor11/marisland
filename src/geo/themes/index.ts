@@ -27,6 +27,7 @@ import { QA_CUSTOMS_GEO } from './qa-customs.ts';
 import { CODING_TUNNEL_GEO } from './coding-tunnel.ts';
 import { HQ_MARINA_GEO } from './hq-marina.ts';
 import { MARKETING_MARINA_GEO } from './marketing-marina.ts';
+import { MARKETING_LUNA_GEO } from './marketing-luna.ts';
 import { DEVOPS_M26_GEO } from './devops-m26.ts';
 import { RESEARCH_M28_GEO, withRimDeck } from './research-m28.ts';
 import { RESEARCH_M31_GEO } from './research-m31.ts';
@@ -87,6 +88,8 @@ const BASE_THEME_GEO: readonly PropGeoDef[] = [
   ...CODING_TUNNEL_GEO,
   // M52 TASK-660 Marketing Horseshoe Harbour kit: quayHouse, quayFurnish, quayBoat
   ...MARKETING_MARINA_GEO,
+  // M53 TASK-670 Marketing sea-top fun park (Deniz Üstü Lunapark) kit
+  ...MARKETING_LUNA_GEO,
 ];
 
 export const THEME_GEO: readonly PropGeoDef[] = [

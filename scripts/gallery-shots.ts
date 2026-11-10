@@ -3,7 +3,7 @@
  * a prop can be judged on its own (no world needed). One image per def (a row of every variant at
  * LOD0 + LOD1) and one close 3/4 view of variant 0 LOD0.
  *
- *   pnpm exec tsx scripts/gallery-shots.ts [m20|coding22|research|qa24|marina|quay|devops25|devops26|marketing27|research28|harbours|research31|coding33|coaster|buildings|id,id,...] [--port=5199] [--out=shots/gallery-m20]
+ *   pnpm exec tsx scripts/gallery-shots.ts [m20|coding22|research|qa24|marina|quay|luna|devops25|devops26|marketing27|research28|harbours|research31|coding33|coaster|buildings|id,id,...] [--port=5199] [--out=shots/gallery-m20]
  *
  * Starts its own `vite` dev server on `--port` (killed at the end; a server already on the port is
  * reused and left alone). Software GL (swiftshader), so no GPU is needed.
@@ -31,6 +31,7 @@ import {
 import { HARBOUR_VARIANTS } from '../src/content/themes/harbours.ts';
 import { CODING_M33_PROP_IDS } from '../src/content/props-themes/coding-m33.ts';
 import { QA_COASTER_PROP_IDS } from '../src/content/props-themes/qa-coaster.ts';
+import { LUNA_PROP_IDS } from '../src/content/props-themes/marketing-luna.ts';
 import { RESEARCH_M22_PROP_IDS } from '../src/content/props-themes/research.ts';
 import { buildGalleryScene } from '../src/geo/gallery.ts';
 import { PROP_GEO } from '../src/geo/registry.ts';
@@ -76,15 +77,19 @@ const ids =
                                   ? BUILDINGS_V2_IDS
                                   : which === 'quay'
                                     ? MARINA_QUAY_PROP_IDS
-                                    : which.split(',');
+                                    : which === 'luna'
+                                      ? LUNA_PROP_IDS
+                                      : which.split(',');
 const PORT = Number(opt('port') ?? 5199);
 const ROOT = resolve(import.meta.dirname, '..');
 const OUT = resolve(
   ROOT,
   opt('out') ??
-    `shots/gallery-${['m20', 'coding22', 'research', 'qa24', 'qa30', 'marina', 'devops25', 'devops26', 'marketing27', 'research28', 'harbours', 'research31', 'coding33', 'coaster', 'couriers', 'buildings', 'quay'].includes(which) ? which : 'custom'}`,
+    `shots/gallery-${['m20', 'coding22', 'research', 'qa24', 'qa30', 'marina', 'devops25', 'devops26', 'marketing27', 'research28', 'harbours', 'research31', 'coding33', 'coaster', 'couriers', 'buildings', 'quay', 'luna'].includes(which) ? which : 'custom'}`,
 );
 const BASE = `http://localhost:${PORT}/`;
+/** `--night`: the lamp-class vertices glow over a dim rig (TASK-670 luna); `luna` always shoots over a turquoise floor. */
+const NIGHT = args.includes('--night');
 
 let server: ChildProcess | undefined;
 const stop = (): void => {
@@ -141,6 +146,8 @@ async function main(): Promise<void> {
       dpr: '1',
       quality: 'low',
       time: '12',
+      ...(which === 'luna' ? { sea: '1' } : {}),
+      ...(NIGHT ? { night: '1' } : {}),
     });
     await page.goto(`${BASE}?${q}`, { waitUntil: 'load' });
     await page.waitForFunction(
@@ -185,14 +192,14 @@ async function main(): Promise<void> {
           );
         continue;
       }
-      if (which === 'buildings' || which === 'quay') {
+      if (which === 'buildings' || which === 'quay' || which === 'luna') {
         // TASK-598: every variant as a 640x360 tile (LOD0 left, LOD1 right), then one grid per def
         const tiles: string[] = [];
         for (let v = 0; v < def.variants; v++) {
           const pair = row.filter((r) => r.variant === v);
           const mid = (pair[0].x + pair[pair.length - 1].x) / 2;
-          // quay (TASK-660): per-variant heights, a front-on 3/4 view
-          const dh = which === 'quay' ? (def.heights?.[v] ?? def.height) : def.height;
+          // quay (TASK-660) / luna (TASK-670): per-variant heights, a front-on 3/4 view
+          const dh = which === 'buildings' ? def.height : (def.heights?.[v] ?? def.height);
           const dd = Math.max(
             ((pair[pair.length - 1].x - pair[0].x) / 2 + def.footprint) * 1.75,
             dh * 2.1,
@@ -221,6 +228,20 @@ async function main(): Promise<void> {
         );
         await gp.screenshot({ path: resolve(OUT, `${id}-grid.png`) });
         await gp.close();
+        if (which === 'luna' && id === 'lunaPose') {
+          // the whole park (M deck, pose v4 LOD0): from the sea, from the island and from above
+          const it = row.find((r) => r.variant === 4 && r.lod === 0);
+          if (it) {
+            const views: Array<[string, number[]]> = [
+              ['sea', [it.x + 20, 15, it.z + 48, it.x, 3, it.z]],
+              ['island', [it.x - 8, 17, it.z - 46, it.x, 3, it.z]],
+              ['pier', [it.x - 40, 11, it.z + 4, it.x, 4, it.z]],
+              ['top', [it.x + 2, 52, it.z + 22, it.x, 0, it.z]],
+              ['near', [it.x + 7, 5.5, it.z + 30, it.x + 4, 4, it.z + 6]],
+            ];
+            for (const [n, cam] of views) await shoot(id, `${id}-park-${n}`, cam, 1280, 720);
+          }
+        }
         continue;
       }
       const x0 = row[0].x;
