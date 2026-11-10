@@ -653,8 +653,8 @@ const FOUNDRY_SHOTS: readonly ShotPreset[] = (
  */
 const CARNIVAL_CAM = (v: string): string => `site:carnivalDeck:${v}`;
 const CARNIVAL_CAMS = {
-  front: CARNIVAL_CAM('-11,3.3,16,13,2.8,0'),
-  arrival: CARNIVAL_CAM('-14,3.8,22,10,2.3,0'),
+  front: CARNIVAL_CAM('-6,26,58,0,0,-2'),
+  arrival: CARNIVAL_CAM('10,22,36,12,0,0'),
 };
 /**
  * Dev frames: the arrival as a strip of stills (seed 1001: the ferry stops at sim ≈ 40 s, dwells 8 s), the
