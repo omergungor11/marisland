@@ -82,6 +82,7 @@ describe('bot instance code (TASK-590)', () => {
 
 describe('workers wear their look (TASK-590)', () => {
   const world = generateWorld(1001);
+  const cam = new THREE.Vector3(0, 400, 0);
   const make = (): { life: ReturnType<typeof createLife>; w: Workers } => {
     const life = createLife({
       world,
@@ -91,7 +92,7 @@ describe('workers wear their look (TASK-590)', () => {
       water: { splat: () => undefined },
       counters: { agents: 0 } as never,
       getTier: () => 2,
-      cameraPos: new THREE.Vector3(0, 400, 0),
+      cameraPos: cam,
     });
     life.onTier(2);
     return { life, w: life.kinds.workers as Workers };
@@ -99,6 +100,10 @@ describe('workers wear their look (TASK-590)', () => {
 
   it('resident bots take botLook(`${island}:${rank}`) and every chassis mesh holds exactly its bots', () => {
     const { life, w } = make();
+    for (let i = 0; i < 90; i++) life.fixedUpdate(FIXED_STEP);
+    // the camera reveals each bot by distance (TASK-651): stand next to the first awake one
+    const first = Array.from({ length: w.capacity }, (_, k) => k).find((k) => w.active[k])!;
+    cam.set(w.x[first], w.y[first] + 10, w.z[first]);
     for (let i = 0; i < 90; i++) life.fixedUpdate(FIXED_STEP);
     life.update(1, 0);
     const meshes = life.group.children.filter(
@@ -111,14 +116,23 @@ describe('workers wear their look (TASK-590)', () => {
       'life:workers-spire',
     ]);
     const per = [0, 0, 0];
-    for (let i = 0; i < w.capacity; i++) if (w.active[i]) per[w.chassisOf(i)]++;
-    expect(meshes.reduce((n, m) => n + (m.visible ? m.count : 0), 0)).toBe(w.awake);
+    const sim = [0, 0, 0];
+    let shown = 0;
+    for (let i = 0; i < w.capacity; i++) {
+      if (!w.active[i]) continue;
+      sim[w.chassisOf(i)]++;
+      if (w.vis[i] === 0) continue;
+      per[w.chassisOf(i)]++;
+      shown++;
+    }
+    expect(shown).toBeGreaterThan(0);
+    expect(meshes.reduce((n, m) => n + (m.visible ? m.count : 0), 0)).toBe(shown);
     const byName = (n: string): THREE.InstancedMesh => meshes.find((m) => m.name === n)!;
     expect(byName('life:workers').count).toBe(per[0]);
     expect(byName('life:workers-hauler').count).toBe(per[1]);
     expect(byName('life:workers-spire').count).toBe(per[2]);
     // all three silhouettes occur among the residents of the seed
-    expect(per.filter((n) => n > 0).length).toBeGreaterThanOrEqual(2);
+    expect(sim.filter((n) => n > 0).length).toBeGreaterThanOrEqual(2);
     // idle residents: eyes idle, look is the hash of the seed string
     for (let i = 0; i < w.capacity; i++) {
       if (!w.active[i]) continue;

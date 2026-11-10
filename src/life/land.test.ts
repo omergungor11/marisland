@@ -6,6 +6,7 @@ import { QUALITY_PRESETS } from '../core/quality.ts';
 import type { Quality } from '../core/params.ts';
 import { CATS, CRABS, LAND, LIFE_PLAN, SHEEP, VILLAGERS, type LifePlan } from '../content/life.ts';
 import { generateWorld, heightAt, Zone, type WorldData } from '../world/index.ts';
+import { TIER_FADE } from '../content/props.ts';
 import { createLife, type LifeSystem } from './index.ts';
 import type { LandKind } from './land.ts';
 import { buildCat, buildCrab, buildSheep, buildVillager } from './geo/land.ts';
@@ -151,46 +152,128 @@ describe('land: spawning', () => {
   });
 });
 
-describe('land: tier gating + reveal', () => {
-  it('hidden below the minimum tier, instant when first simulated at it, springs in later', () => {
-    // instant: tier already high before the first step
-    const a = rig(1001);
-    a.tier.v = 3;
-    run(a, 1);
-    a.life.update(FIXED_STEP, 1);
-    for (const k of landOf(a.life)) {
-      expect(k.liveCount).toBe(k.capacity);
-      for (let i = 0; i < k.capacity; i++) expect(k.scale[i]).toBeCloseTo(k.size, 5);
+const simCount = (k: LandKind): number => k.active.reduce((n, v) => n + v, 0);
+/** Camera `d` u from agent `i` of `k` (straight up-wind on x). */
+const stand = (r: Rig, k: LandKind, i: number, d: number): void =>
+  void r.cam.set(k.x[i] + d, k.y[i], k.z[i]);
+
+describe('land: tier arming + distance reveal (TASK-651)', () => {
+  it('the tier arms one tier ahead; the camera distance shows each agent', () => {
+    const r = rig(1001);
+    run(r, 30);
+    for (const k of landOf(r.life)) expect(simCount(k)).toBe(0); // tier 0
+    r.tier.v = 1;
+    r.life.onTier(1);
+    run(r, 2);
+    const kinds = landOf(r.life);
+    for (const k of kinds) {
+      // armed kinds simulate at tier minTier - 1 but nobody is drawn with the camera 40 u above the origin only
+      expect(simCount(k) > 0).toBe(k.minTier <= 2);
     }
-    // later: tier 0 → nothing alive; rising to 3 blooms from scale 0
-    const b = rig(1001);
-    run(b, 30);
-    for (const k of landOf(b.life)) expect(k.liveCount).toBe(0);
-    b.tier.v = 3;
-    b.life.onTier(3);
-    run(b, 1);
-    const k0 = landOf(b.life)[0];
-    expect(k0.liveCount).toBe(k0.capacity);
-    expect(Math.min(...Array.from(k0.scale))).toBeLessThan(0.6 * k0.size);
-    run(b, 45);
-    for (const k of landOf(b.life))
-      for (let i = 0; i < k.capacity; i++) expect(k.scale[i]).toBeCloseTo(k.size, 1);
-    // dropping the tier eases out and deactivates
-    b.tier.v = 0;
-    b.life.onTier(0);
-    run(b, 10);
-    for (const k of landOf(b.life)) expect(k.liveCount).toBe(0);
+    const cats = r.life.kinds.cats ?? r.life.kinds.sheep!;
+    stand(r, cats, 0, 400);
+    run(r, 12);
+    expect(cats.vis[0]).toBe(0);
+    stand(r, cats, 0, 150);
+    run(r, 2);
+    expect(cats.vis[0]).toBe(1);
+    // dropping to tier 0 eases out and deactivates
+    r.tier.v = 0;
+    r.life.onTier(0);
+    run(r, 10);
+    for (const k of kinds) expect(simCount(k)).toBe(0);
   });
 
-  it('crabs wait for tier 3, the rest start at tier 2', () => {
+  it('instant when first simulated inside the band, springs in later', () => {
+    const a = rig(1001);
+    a.tier.v = 3;
+    const k0 = landOf(a.life)[0];
+    stand(a, k0, 0, 20);
+    run(a, 1);
+    expect(k0.vis[0]).toBe(1);
+    expect(k0.scale[0]).toBeCloseTo(k0.size, 5);
+    const b = rig(1001);
+    b.tier.v = 3;
+    b.cam.set(0, 900, 0);
+    run(b, 5); // first step far from every agent
+    const kb = landOf(b.life)[0];
+    expect(kb.vis[0]).toBe(0);
+    stand(b, kb, 0, 20);
+    run(b, 1);
+    expect(kb.vis[0]).toBe(1);
+    expect(kb.scale[0]).toBeLessThan(0.6 * kb.size);
+    run(b, 60);
+    expect(kb.scale[0]).toBeCloseTo(kb.size, 1);
+  });
+
+  it('shows between the far and near edge of the tier-2 band, with hysteresis', () => {
     const r = rig(1001);
     r.tier.v = 2;
-    run(r, 2);
-    expect(r.life.kinds.crabs?.liveCount).toBe(0);
-    expect(r.life.kinds.villagers?.liveCount).toBeGreaterThan(0);
-    r.tier.v = 3;
-    run(r, 2);
-    expect(r.life.kinds.crabs?.liveCount).toBeGreaterThan(0);
+    r.life.onTier(2);
+    run(r, 3);
+    const k = r.life.kinds.villagers ?? r.life.kinds.cats!;
+    const [near, far] = TIER_FADE[2];
+    stand(r, k, 0, far + 5);
+    run(r, 12);
+    expect(k.vis[0]).toBe(0); // none past the far edge
+    stand(r, k, 0, near - 5);
+    run(r, 3);
+    expect(k.vis[0]).toBe(1); // all inside the near edge
+    // walk out: the agent leaves only LAND.revealHysteresis past where it came in
+    let d = near - 5;
+    while (k.vis[0] === 1 && d < far + 20) {
+      d += 1;
+      stand(r, k, 0, d);
+      run(r, 1);
+    }
+    const leave = d;
+    expect(leave).toBeLessThanOrEqual(far + LAND.revealHysteresis + 2);
+    // walk back in: it shows again only once inside the plain edge, a hysteresis nearer
+    d = leave;
+    while (k.vis[0] !== 1 && d > near - 5) {
+      d -= 1;
+      stand(r, k, 0, d);
+      run(r, 1);
+    }
+    expect(k.vis[0]).toBe(1);
+    expect(leave - d).toBeGreaterThanOrEqual(LAND.revealHysteresis - 2);
+  });
+
+  it('the simulation does not depend on the camera distance', () => {
+    const snap = (r: Rig, keep: Map<LandKind, number[]>): number[] =>
+      landOf(r.life).flatMap((k) =>
+        (keep.get(k) ?? []).flatMap((i) => [k.x[i], k.y[i], k.z[i], k.yaw[i]]),
+      );
+    const near = rig(1001);
+    const far = rig(1001);
+    for (const r of [near, far]) {
+      r.tier.v = 2;
+      r.life.onTier(2);
+    }
+    const kn = landOf(near.life);
+    const kf = landOf(far.life);
+    // camera on top of agent 0 vs 600 u above it (both inside the 400 u sim-LOD radius horizontally)
+    near.cam.set(kn[0].x[0], kn[0].y[0] + 10, kn[0].z[0]);
+    far.cam.set(kf[0].x[0], kf[0].y[0] + 600, kf[0].z[0]);
+    const keep = new Map<LandKind, number[]>();
+    const keepF = new Map<LandKind, number[]>();
+    kn.forEach((k, n) => {
+      const ids: number[] = [];
+      for (let i = 0; i < k.capacity; i++) {
+        const dn = Math.hypot(k.x[i] - near.cam.x, k.z[i] - near.cam.z);
+        const df = Math.hypot(k.x[i] - far.cam.x, k.z[i] - far.cam.z);
+        if (dn < 350 && df < 350) ids.push(i);
+      }
+      keep.set(k, ids);
+      keepF.set(kf[n], ids);
+    });
+    run(near, 400);
+    run(far, 400);
+    expect(kn[0].vis[0]).toBe(1);
+    expect(kf[0].vis[0]).toBe(0);
+    const n = snap(near, keep);
+    expect(n.length).toBeGreaterThan(0);
+    expect(snap(far, keepF)).toEqual(n);
   });
 });
 

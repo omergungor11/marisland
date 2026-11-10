@@ -1362,7 +1362,7 @@ export class Workers extends LandKind {
     const counts = [0, 0, 0];
     const mat = this.slotMat;
     for (let i = 0; i < this.capacity; i++) {
-      if (!this.active[i]) continue;
+      if (!this.active[i] || !this.drawn(i)) continue;
       const c = chassisIndex(this.shown[i].chassis);
       const k = counts[c]++;
       const m = this.chassisMeshes[c];
@@ -1960,13 +1960,9 @@ export class Workers extends LandKind {
 
   private wake(i: number): void {
     this.place(i);
-    if (this.tier < this.minTier) return;
-    if (this.vis[i] === 0) {
-      this.active[i] = 1;
-      this.appearT[i] = this.simT + ACTIVITY.wake.stagger * this.draw(i);
-    } else this.appearT[i] = this.simT;
-    this.scale[i] = 0;
-    this.vis[i] = 1;
+    if (!this.armed) return;
+    this.active[i] = 1; // simulates now; `beginStep` shows it once the camera is within its reveal distance
+    if (this.vis[i] === 0) this.scale[i] = 0;
     this.snap(i);
   }
 
