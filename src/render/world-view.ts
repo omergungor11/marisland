@@ -287,6 +287,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     cameraTarget: d.getCameraTarget ? _camTarget : undefined,
     // the running ritual of an island (bell hour: the campus bots hurry; cap toss: the students cheer)
     festival: (theme) => (culture.state.festival as Record<string, CultureFestival | null>)[theme],
+    hour: d.getHour,
     plan: d.birds === false ? { flocks: 0 } : undefined,
   });
   group.add(life.group);

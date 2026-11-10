@@ -48,6 +48,8 @@ export interface LifeDeps {
   plan?: Partial<LifePlan>;
   /** The ritual running on `theme`'s island now (the culture clock), or null (M22: bell hour, cap toss). */
   festival?: (theme: string) => { id: string; phase: number } | null;
+  /** Game hour 0..24 (the day clock; capture mode freezes it): the marina town keeps shifts by it. Default 12. */
+  hour?: () => number;
 }
 
 /** Everything the kinds share: world, fields (live motion scale), water, tier. */
@@ -70,6 +72,8 @@ export interface LifeCtx {
   rngFor(label: string): Rng;
   /** The ritual running on `theme`'s island now, or null (no culture clock: always null). */
   festival(theme: string): { id: string; phase: number } | null;
+  /** Game hour 0..24. */
+  hour(): number;
 }
 
 export function makeCtx(deps: LifeDeps): LifeCtx {
@@ -99,6 +103,7 @@ export function makeCtx(deps: LifeDeps): LifeCtx {
     zone: (x, z) => zoneAt(world.height, world.zone, x, z),
     rngFor: (label) => createRng(deps.seed).fork('life').fork(label),
     festival: (theme) => deps.festival?.(theme) ?? null,
+    hour: () => deps.hour?.() ?? 12,
   };
 }
 

@@ -22,6 +22,8 @@ import { buildWorker } from './geo/workers.ts';
 import { chassisIndex, encodeBotCode, eyesIndex, headIndex, ROLE_ITEM_CODE } from './bot-code.ts';
 import { unitHash } from '../core/hash.ts';
 import { buildStops, islandComps, type Stop } from './activity-world.ts';
+import { MARINA_LIFE } from '../content/life-marina.ts';
+import { onShift, strollAt, type StrollPose } from './marina-world.ts';
 import { LandKind, nodesByComponent, type LandOpts, type WorldNodes } from './land.ts';
 import { lineOk, NodeKind, walkRoute, type Mask, type WalkGraph } from './land-world.ts';
 import { SHARED } from '../render/uniforms.ts';
@@ -35,6 +37,7 @@ import {
 } from './workers-world.ts';
 
 const TAU = Math.PI * 2;
+const _stroll: StrollPose = { x: 0, z: 0, hd: 0, moving: false };
 const _tint = new THREE.Color();
 const _hsl = { h: 0, s: 0, l: 0 };
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
@@ -206,6 +209,17 @@ export class Workers extends LandKind {
   private readonly leanV: Float32Array;
   private readonly napAmt: Float32Array;
   private readonly chatHubs: ReadonlySet<string>;
+  // ---- Horseshoe Harbour town (TASK-662)
+  /** Slots of the marina town (strollers, diners, vendors), in plan order. */
+  private readonly townIdx: number[] = [];
+  private readonly isTown: Uint8Array;
+  /** The basin centre (y = deck) the camera focus is measured from; null = no marina. */
+  private readonly townAt: { x: number; y: number; z: number } | null;
+  /** Camera focus within `MARINA_LIFE.wake` of the basin (hysteresis to `sleep`). */
+  private townNear = false;
+  /** Town slots on shift and near the camera now (parallel to `townIdx`), and their bit signature. */
+  private readonly townOn: Uint8Array;
+  private townSig = -1;
 
   constructor(
     o: LandOpts,
@@ -284,6 +298,18 @@ export class Workers extends LandKind {
     this.rankOf = new Uint8Array(n);
     this.wakes = new Uint8Array(n);
     this.tab = spawns.map((sp) => sp.tableau);
+    this.isTown = new Uint8Array(n);
+    spawns.forEach((sp, i) => {
+      if (!sp.tableau?.town) return;
+      this.isTown[i] = 1;
+      this.townIdx.push(i);
+    });
+    this.townOn = new Uint8Array(this.townIdx.length);
+    const basin = ctx.world.islands.find((isl) => isl.anchors.marinaBasin)?.anchors.marinaBasin;
+    this.townAt =
+      this.townIdx.length > 0 && basin
+        ? { x: basin.x, y: ctx.h(basin.x, basin.z), z: basin.z }
+        : null;
     this.poseK = new Uint8Array(n);
     this.leanV = new Float32Array(n);
     this.napAmt = new Float32Array(n);
@@ -722,7 +748,11 @@ export class Workers extends LandKind {
       s === W_LOOP ||
       s === W_WORK ||
       s === W_USE ||
-      (s === W_TABLEAU && this.napAmt[i] < 0.3 && this.leanV[i] >= 0);
+      (s === W_TABLEAU &&
+        this.napAmt[i] < 0.3 &&
+        this.leanV[i] >= 0 &&
+        // a marina stroller keeps its closed-form walk (a wave would freeze it, then jump)
+        !this.tab[i]?.town?.route);
     if (idle && this.cool[i] <= 0 && this.tier >= V.wave.minTier && this.near(i)) {
       this.prev[i] = s;
       this.state[i] = s = W_WAVE;
@@ -991,7 +1021,8 @@ export class Workers extends LandKind {
           ? tb.ritual
           : null;
       this.timer[i] += dt;
-      const t = this.timer[i];
+      // marina town bots (TASK-662) run on the sim clock plus their own phase: asleep / awake never restarts them
+      const t = tb.town ? this.simT + tb.town.offset : this.timer[i];
       // idle beats (TASK-515): the step of the cycle picks the pose and a yaw toward the partner
       let beatYaw = 0;
       let beatPose = tb.pose;
@@ -1005,6 +1036,14 @@ export class Workers extends LandKind {
       const pose = rit ? rit.pose : beatPose;
       const ps = POSES[pose];
       want = tb.hd + beatYaw;
+      if (tb.town?.route) {
+        // the promenade walk: closed form in the clock, heading follows the lane / the stop's gaze
+        const p = strollAt(tb.town.route, t, _stroll);
+        this.x[i] = p.x;
+        this.z[i] = p.z;
+        want = p.hd;
+        moving = p.moving ? 1 : 0;
+      }
       if (tb.pace) {
         // M22 R12: back and forth along the spot's +z axis, a pause at each end (closed form in `t`)
         const P = tb.pace;
@@ -1046,7 +1085,7 @@ export class Workers extends LandKind {
         else talkNod = this.talkNodding(t);
         turn = 8;
       }
-      if (pose === 'stand' || pose === 'gaze' || pose === 'peer')
+      if ((pose === 'stand' || pose === 'gaze' || pose === 'peer') && !moving)
         want += A.scan.yaw * 0.6 * Math.sin(TAU * (A.scan.hz * t + this.phase[i]));
       if (lie > 0) this.restAt(i, tb.x, tb.z, tb.hd);
     }
@@ -1847,10 +1886,38 @@ export class Workers extends LandKind {
     if (cur >= 0 && best !== cur && dist[cur] <= F.radius && bd > dist[cur] * F.switchRatio)
       best = cur;
     this.islDist = dist;
-    if (best !== cur || this.step === 1) {
+    let changed = best !== cur || this.step === 1;
+    if (this.townAt) {
+      const sig = this.updateTown();
+      if (sig !== this.townSig) {
+        this.townSig = sig;
+        changed = true;
+      }
+    }
+    if (changed) {
       this.focus = best;
       this.rebalance();
     }
+  }
+
+  /**
+   * The marina town (TASK-662): near the camera focus, which of its bots are on shift now. Returns a
+   * bit signature (near, then one bit per slot) so `rebalance` runs only when it changes.
+   */
+  private updateTown(): number {
+    const at = this.townAt as { x: number; y: number; z: number };
+    const c = this.ctx.focusPos;
+    const d = Math.hypot(c.x - at.x, c.y - at.y, c.z - at.z);
+    if (this.townNear ? d > MARINA_LIFE.sleep : d < MARINA_LIFE.wake)
+      this.townNear = !this.townNear;
+    const hour = this.ctx.hour();
+    let sig = this.townNear ? 1 : 0;
+    this.townIdx.forEach((i, k) => {
+      const on = this.townNear && onShift((this.tab[i] as TableauBot).town!.shift, hour) ? 1 : 0;
+      this.townOn[k] = on;
+      sig = sig * 2 + on;
+    });
+    return sig;
   }
 
   /**
@@ -1862,9 +1929,16 @@ export class Workers extends LandKind {
     const R = this.residents;
     const want = new Uint8Array(n);
     let used = 0;
+    // the harbour town first while the camera is at the quay (they take pool slots: the agent count holds)
+    this.townIdx.forEach((i, k) => {
+      if (this.townOn[k] && used < R - MARINA_LIFE.reserve) {
+        want[i] = 1;
+        used++;
+      }
+    });
     if (this.focus >= 0)
       for (let i = 0; i < n && used < R; i++)
-        if (this.islandOf[i] === this.focus) {
+        if (this.islandOf[i] === this.focus && !this.isTown[i]) {
           want[i] = 1;
           used++;
         }

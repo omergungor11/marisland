@@ -42,6 +42,7 @@ import { Fireflies, planBugHunt, planEmbers, planSwarms } from './fireflies.ts';
 import { createLandKinds, type LandKind } from './land.ts';
 import { buildSolids, buildWalkGraph, makeMask, makeStopMask } from './land-world.ts';
 import { createWorkers, type Workers } from './workers.ts';
+import { marinaPerches } from './marina-world.ts';
 
 export type { LifeDeps } from './ctx.ts';
 export { AmbientScheduler } from './ambient.ts';
@@ -214,6 +215,8 @@ export function createLife(deps: LifeDeps): LifeSystem {
     const top = GULLS.land.landmarkTop[l.kind];
     if (top !== undefined) perches.push({ x: l.x, y: ctx.h(l.x, l.z) + top, z: l.z });
   }
+  // TASK-662: the Horseshoe Harbour's tower and quay edge (after the dock perches: `setPerchOff` indexes those first)
+  perches.push(...marinaPerches(ctx.world));
   const centres = flockCentres(ctx, ctx.rngFor('flocks'));
   if (centres.length > 0 && plan.flocks > 0) {
     kinds.gulls = new Gulls(base, ctx, deps.quality, centres, perches);

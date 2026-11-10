@@ -28,6 +28,7 @@ import { lotLocalToWorld, lotPivotY } from '../world/lot-frame.ts';
 import type { ThemeId, WorldData } from '../world/types.ts';
 import type { LifeCtx } from './ctx.ts';
 import { allocate, type Mask, type WalkGraph } from './land-world.ts';
+import { planMarina, type TownBot } from './marina-world.ts';
 
 export interface Seat {
   /** Index into `world.lots` / `WORK_SPOTS[def]`. */
@@ -246,6 +247,8 @@ export interface TableauBot {
   /** Bots sharing a story spot: `group` is the spot, `k` the bot's rank in it (chat partners alternate). */
   group: number;
   k: number;
+  /** A marina town bot (TASK-662): works a shift, may walk a closed-form route (marina-world.ts). */
+  town?: TownBot;
 }
 
 /**
@@ -472,5 +475,19 @@ export function planAmbient(
         ambient: true,
       });
   });
+  // TASK-662: the Horseshoe Harbour town, last (the slots before keep their ranks and looks)
+  const town = planMarina(ctx.world, scale);
+  if (town)
+    for (const bot of town.bots)
+      out.push({
+        island: town.island,
+        theme: ctx.world.islands[town.island].theme,
+        comp: comps[town.island] ?? -1,
+        node: -1,
+        seat: -1,
+        anchor: -1,
+        ambient: true,
+        tableau: bot,
+      });
   return out;
 }
