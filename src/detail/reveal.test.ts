@@ -13,6 +13,7 @@ import {
   fadeAt,
   fadeBand,
   isInverted,
+  lod1CastsPast,
   lodArmed,
 } from './reveal.ts';
 
@@ -73,5 +74,14 @@ describe('continuous reveal (TASK-611)', () => {
     expect(bandReaches(100, 180, inv)).toBe(true);
     expect(bandCasts(235, 300, out)).toBe(false);
     expect(bandCasts(100, 190, inv)).toBe(true);
+  });
+
+  it('LOD0 leaves its T0–T1 shadow to LOD1 only past the hand-over cast cut (TASK-652)', () => {
+    const cut = LOD_HANDOFF.band[0] - LOD_HANDOFF.lod1Out / 2;
+    expect(bandCasts(cut + 1, cut + 40, fadeBand(tier0, 1, false))).toBe(true);
+    expect(lod1CastsPast(tier0, cut + 1)).toBe(true);
+    expect(lod1CastsPast(tier0, cut - 1)).toBe(false);
+    expect(lod1CastsPast(def('pine'), cut + 1)).toBe(true); // tree LOD1: far fade, still casting
+    expect(lod1CastsPast(def('bench'), 250)).toBe(false); // tier 2: no LOD1
   });
 });

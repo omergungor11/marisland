@@ -150,5 +150,15 @@ export const HEADLESS_TIME_FACTOR = 40;
  * calls at 170 / 169 MB, 1600 → 269 / 175 at 172 / 170, 2500 → 252 / 160 at 176 / 175.
  * TASK-611 (D-161): TIER_FADE[2] moved to 200–260, so `reach` follows to 260 (W16 −7 calls,
  * +2 MB medium / +4 MB on a low T2 view).
+ * TASK-652: medium / high merge up to `maxVertsShadowed` (each merged group also drops its shadow
+ * pass; the 611 reveal arms the tier-2 groups of every island within 260 u): W16 331 → 320 calls,
+ * memory peak 185 → 188 MB. Low keeps `maxVerts` (its 82 MB budget is measured + 1 %).
  */
-export const NEAR_MERGE = { maxVerts: 1600, reach: 260 } as const;
+export const NEAR_MERGE = { maxVerts: 1600, maxVertsShadowed: 2000, reach: 260 } as const;
+
+/**
+ * TASK-652 (render/shadow-skip.ts): a prop / terrain mesh skips its shadow pass when its bounding
+ * sphere (+ `margin` u for the PCF kernel), swept away from the sun down to `floorY` (the lowest
+ * receiver: sea, shallow seabed), lies outside the view frustum — its shadow lands off screen.
+ */
+export const SHADOW_CULL = { floorY: -6, margin: 2 } as const;

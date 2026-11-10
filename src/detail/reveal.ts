@@ -72,6 +72,22 @@ export function bandReaches(nearest: number, farthest: number, b: FadeBand): boo
   return isInverted(b) ? farthest > b[1] : nearest < b[1];
 }
 
+/**
+ * TASK-652: true when a LOD0 group of `def` whose instances are all at least `nearest` u away can
+ * leave its shadow to LOD1 (LOD1 casts at T0–T1 only, see the batcher): past the cast cut of the
+ * hand-over (half of LOD1's inverted ramp, D-161) LOD1 is still opaque and casts wherever LOD0
+ * would. Trees qualify too: their LOD1 keeps the far fade and casts through the whole LOD0 band
+ * (its canopy sits inside LOD0's, a shadow a pixel or two smaller at that distance).
+ */
+export function lod1CastsPast(def: PropDef, nearest: number): boolean {
+  if (!hasLod1View(def)) return false;
+  const cut = LOD_HANDOFF.band[0] - 0.5 * LOD_HANDOFF.lod1Out;
+  if (nearest <= cut) return false;
+  const b = fadeBand(def, 1, false);
+  const half = 0.5 * (b[0] + b[1]);
+  return isInverted(b) ? half <= cut : half >= 0.5 * (LOD_HANDOFF.band[0] + LOD_HANDOFF.band[1]);
+}
+
 /** The shadow pass discards below half fade: true when some caster can pass it. */
 export function bandCasts(nearest: number, farthest: number, b: FadeBand): boolean {
   const half = 0.5 * (b[0] + b[1]);
