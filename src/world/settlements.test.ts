@@ -142,10 +142,11 @@ describe('settlements — 20-seed sweep', () => {
       // TASK-466: short-street seeds (3 shore headings) hold fewer lots
       expect(s.lots.length, ctx).toBeGreaterThanOrEqual(6);
       // Seven Gates (TASK-466, D-060): the street lots mix offices, cottages, barns and tower houses
+      // (TASK-674: beside the harbour quay's house row, which takes shore the lots had, at least two)
       expect(
         count('hqOffice') + count('meetingPavilion') + count('cottage') + count('barn'),
         ctx,
-      ).toBeGreaterThanOrEqual(3);
+      ).toBeGreaterThanOrEqual(hh.anchors.marinaHouse0 ? 2 : 3);
       expect(count('hqAnnex'), ctx).toBe(1);
       expect(count('coffeeKiosk'), ctx).toBeGreaterThanOrEqual(1);
       // theme-first HQ (D-029): the ferry office replaces the stilt huts, no market stalls

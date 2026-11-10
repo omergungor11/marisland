@@ -466,7 +466,8 @@ describe('HQ Seven Gates plan (TASK-466)', () => {
   it('per-theme snapshot: HQ settlement data is pinned and deterministic', () => {
     const got = [1, 42, 1001].map((seed) => hqHash(world(seed)));
     // TASK-666: the Horseshoe Harbour beside the pier (T-head, ring, town, alleys), re-pinned
-    expect(got).toEqual(['69d1104d233c1daa', '821eff73e102d375', 'dde4ad1a54d60149']);
+    // TASK-674: the open crescent quay on the bay (T-head, quay, town, alleys, walk), re-pinned
+    expect(got).toEqual(['9093cc189d524325', 'edc71d302c530061', 'eda5f743cadcd7ec']);
     expect(hqHash(generateWorld(1001))).toBe(got[2]);
   });
 });

@@ -179,7 +179,11 @@ describe('marina life plan (TASK-662)', () => {
     expect(perches.length).toBeGreaterThanOrEqual(3);
     const A = world().islands.find((i) => i.anchors.marinaTower)!.anchors;
     expect(perches[0].y).toBeCloseTo((A.marinaTower.y ?? 0) + MARINA_LIFE.gull.towerTop, 5);
-    for (const p of perches.slice(1)) expect(p.y).toBeCloseTo(1.35 + MARINA_LIFE.gull.y, 1);
+    // (TASK-674: on the quay point's own ground; the open quay is lower by the pier root)
+    perches.slice(1).forEach((p, j) => {
+      const q = A[`marinaQuay${(j + 1) * MARINA_LIFE.gull.edgeEvery}`];
+      expect(p.y).toBeCloseTo((q.y ?? 0) + MARINA_LIFE.gull.y, 5);
+    });
   });
 });
 
@@ -195,9 +199,13 @@ function rig(q: Quality, hour: number, cam: 'near' | 'far') {
     water: { splat: () => undefined },
     counters: { agents: 0 } as never,
     getTier: () => 2,
+    // (TASK-674: the open quay's bay lies within the town's wake reach of the world centre, so the
+    // far frame looks 200 u off the bay)
     cameraPos:
-      cam === 'near' ? new THREE.Vector3(basin.x, 40, basin.z + 30) : new THREE.Vector3(0, 400, 0),
-    cameraTarget: cam === 'near' ? near : new THREE.Vector3(0, 0, 0),
+      cam === 'near'
+        ? new THREE.Vector3(basin.x, 40, basin.z + 30)
+        : new THREE.Vector3(basin.x + 200, 400, basin.z),
+    cameraTarget: cam === 'near' ? near : new THREE.Vector3(basin.x + 200, 0, basin.z),
     hour: () => hour,
   });
   life.onTier(2);

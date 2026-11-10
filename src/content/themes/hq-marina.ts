@@ -211,24 +211,25 @@ export const HQ_MARINA = {
     /** Radius kept clear of trees / scatter on the horn (u, > outerR). */
     keepOut: 8.4,
     /**
-     * Beside the HQ Horseshoe Harbour (TASK-666, D-171): the walls keep `gap` u off the ring's
-     * flank, its basin and the mouth's way out (`mouthLen` u along it); where the light mole took
-     * the horn the centre moves up to `seaward` u out to sea, then back along the spine by `step`.
-     * The walls also keep `approachGap` u off the ferry approach (HARBOURS.hq `berth.approach`)
-     * and `pierGap` u off the ferry pier.
-     * Last resort: the spot nearest the horn (or the pier end) within `search` u on a `grid`, its
-     * centre `shore` [min, max] u off HQ's coast.
+     * Beside the HQ harbour quay (TASK-666, D-171; the open crescent quay, TASK-674, D-173): the
+     * walls keep `gap` u off the quay's face, its stub jetties and its moored boats (`boat` u round
+     * each), `approachGap` u off the
+     * ferry approach (HARBOURS.hq `berth.approach`) and `pierGap` u off the ferry pier. The fort
+     * stands in the bay's mouth: on a `grid` lattice from `mouthIn` u inside the line between the
+     * two stub heads to `out[1]` u out to sea, `across` u past either head, the valid spot nearest
+     * the point `at` of the way from the light's stub head to the tower's, `out[0]` u out.
      */
     ring: {
-      gap: 3,
-      mouthLen: 20,
-      seaward: 14,
-      step: 2,
+      gap: 2,
+      boat: 3.2,
+      mouthIn: 4,
       approachGap: 1,
       pierGap: 4,
-      search: 60,
+      at: 0.3,
+      out: [6, 30] as const,
+      across: 16,
       grid: 1.5,
-      shore: [3, 10] as const,
+      maxDepth: 9,
     },
   },
   /** Breakwater arm from the fort towards the pier side: bend from the horn heading, lengths tried. */

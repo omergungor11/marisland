@@ -362,11 +362,11 @@ export const planHq: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   if (hubCell < 0) return null;
   const streets = layStreets(ctx, isl, plaza, hubCell, dockSite, rng.fork('streets'));
 
-  // ---- M52 correction (TASK-666, D-171): the Horseshoe Harbour beside the ferry pier in the cove,
-  // after the streets (the ring keeps off the plaza, the lanes and the gates) and before the lots;
-  // a T-head on the pier as laid. No fit = the plain pier and, after the routes, the M29 comb
+  // ---- the harbour town (TASK-674, D-173): an open crescent quay along the bay round the ferry
+  // pier, after the streets (the quay keeps off the plaza, the lanes and the gates) and before the
+  // lots; a T-head on the pier as laid. No fit = the plain pier and, after the routes, the M29 comb
   // marina (world/gen/marina.ts)
-  const marina = planMarina(ctx, isl, dockSite, ctx.docks[dockIdx]?.segments);
+  const marina = planMarina(ctx, isl, dockSite, ctx.docks[dockIdx]?.segments, plaza);
   if (marina)
     carveWater(
       ctx,
@@ -452,7 +452,7 @@ export const planHq: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   placeAvenue(ctx, isl, plaza);
   placeTidePools(ctx, isl, rng.fork('tidepools'));
   paintStreets(ctx, isl, streets);
-  // the marina on the final ground (it levels its deck again; the light mole's anchors read it)
+  // the quay on the final ground (it levels its deck again; the light stub's anchors read it)
   if (marina)
     plan.finish = (paths) => {
       const quay = finishMarina(ctx, marina, paths);

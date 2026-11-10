@@ -192,7 +192,8 @@ describe('terrain mesher (TASK-371)', () => {
           const v = top[e](k);
           const s = side * side + e * side + k;
           expect(pos[s * 3]).toBe(pos[v * 3]);
-          expect(pos[v * 3 + 1] - pos[s * 3 + 1]).toBeGreaterThanOrEqual(L.skirt);
+          // (float32 positions: a deck at 1.35 hangs its skirt 2 − 6e-8 u below)
+          expect(pos[v * 3 + 1] - pos[s * 3 + 1]).toBeGreaterThanOrEqual(L.skirt - 1e-6);
         }
       expect(stats.minY).toBeLessThanOrEqual(Math.min(...pos.filter((_, i) => i % 3 === 1)));
       g.dispose();

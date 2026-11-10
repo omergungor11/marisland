@@ -223,24 +223,33 @@ describe('harbour calm mask (TASK-534)', () => {
     }
   });
 
-  it('calms the whole marina basin and fades out through its mouth (TASK-664)', () => {
+  // TASK-674 (D-173): the marina is an open crescent quay on the bay now; the mask still calms the
+  // lagoon cells of the `marinaBasin` disc (its berth strips at the back of the bay) and leaves the
+  // open sea past the mouth (the follow-up shader task re-fits it to the quay)
+  it('calms the berths at the back of the bay and fades out through its mouth (TASK-664)', () => {
     const w = worlds.get(1001)!;
     const m = w.islands.find((o) => o.anchors.marinaBasin)!;
+    const A = m.anchors;
     const mask = harbourCalmMask(w);
     const h = w.height;
     const at = (x: number, z: number): number =>
       mask[
         Math.round((z - h.originZ) / h.cellSize) * h.n + Math.round((x - h.originX) / h.cellSize)
       ];
-    const c = m.anchors.marinaBasin;
-    const Rb = m.anchors.marinaBasinSize.x / 2;
+    const c = A.marinaBasin;
     const dx = Math.cos(c.rotY);
     const dz = Math.sin(c.rotY);
-    expect(at(c.x, c.z)).toBe(255);
-    // the back of the basin, by the quay face
-    expect(at(c.x - dx * (Rb - 4), c.z - dz * (Rb - 4))).toBe(255);
+    // the berth strip off the quay point at the back of the bay (farthest from the mouth)
+    let back = A.marinaQuay0;
+    for (let k = 0; A[`marinaQuay${k}`]; k++) {
+      const q = A[`marinaQuay${k}`];
+      if ((q.x - c.x) * dx + (q.z - c.z) * dz < (back.x - c.x) * dx + (back.z - c.z) * dz) back = q;
+    }
+    const o = A.marinaQuaySize.x / 2 + 4;
+    expect(at(back.x - Math.sin(back.rotY) * o, back.z + Math.cos(back.rotY) * o)).toBe(255);
     // past the mouth: open sea
-    expect(at(c.x + dx * (Rb + 8), c.z + dz * (Rb + 8))).toBe(0);
+    const mo = A.marinaMouth;
+    expect(at(mo.x + Math.cos(mo.rotY) * 12, mo.z + Math.sin(mo.rotY) * 12)).toBe(0);
   });
 });
 

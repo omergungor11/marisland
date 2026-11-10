@@ -1,140 +1,162 @@
 /**
- * "Horseshoe Harbour" layout (M52 TASK-661, D-170; on HQ since TASK-666, D-171): the numbers of the
- * marina town the plan (world/gen/plans/hq-horseshoe.ts) grows beside the HQ ferry pier. The
- * pieces and their sizes come from MARINA_KIT (hq-horseshoe.ts); this file only says where.
+ * HQ harbour town layout (M52 TASK-661, D-170; on HQ since TASK-666, D-171; an open crescent quay
+ * on Hearthholm's own bay since TASK-674, D-173): the numbers of the quay town the plan
+ * (world/gen/plans/hq-horseshoe.ts) lays along the bay round the HQ ferry pier. The pieces and
+ * their sizes come from MARINA_KIT (hq-horseshoe.ts); this file only says where.
  * Lengths in u, angles in degrees.
  *
- * Shape: a round basin of radius `ring.basinR` wrapped by a stone quay ring `ring.width` u wide
- * (one deck height, `ring.deckY` over the sea) that runs from the light mole's head round the back
- * (the island's foot) to the tower mole's head; the two heads leave a `ring.mouth` u wide mouth to the
- * open sea. The light mole is the one on the ferry pier's side.
+ * Shape: the bay's own waterline, traced from the bay centre (`anchors.harbour`) and smoothed, is
+ * the quay's water edge from horn to horn. Inland of it a paved deck at `ring.deckY` over the sea:
+ * a promenade `ring.promenade` u wide everywhere, the full `ring.width` where the house row stands.
+ * A stone face drops to a berth strip dredged `berth.width` u out; the rest of the bay stays as it
+ * is and open to the sea. A short stub jetty at each end of the quay carries the harbour light
+ * (index-0 end) and the round tower (the other end).
  */
 
 export const MARINA_SITE = {
+  /**
+   * Bay trace: rays from the bay centre every `angleStep`, `rayStep` apart, out to `rMax`, the first
+   * sample with shore SDF > `edge` is the waterline. The bay is the run of hits round the back
+   * (opposite the mouth heading) while neighbouring hits differ by ≤ `jump`; it is resampled every
+   * 1 u and smoothed (`smooth` passes of a 1-2-1 filter), then trimmed at each end while the water
+   * side turns more than `maxOff` away from the bay centre (the horn tips). Shorter than `minArc` =
+   * no bay. Station tangents span ± `tangentSpan` u.
+   */
+  bay: {
+    angleStep: 1.5,
+    rayStep: 0.5,
+    rMin: 4,
+    rMax: 64,
+    edge: 0,
+    jump: 6,
+    smooth: 10,
+    maxOff: 80,
+    minArc: 50,
+    tangentSpan: 3,
+  },
   ring: {
-    /** Basin radius per fit tier (full first): 28 / 26 u across. */
-    basinR: [14, 13] as const,
-    /** Quay ring width: house 4.5 + promenade 3.3 (terrace on the edge, a lane behind) + back inset. */
-    width: 8,
+    /** Quay width, water edge → the house backs: promenade + the deepest house + `house.backInset`. */
+    width: 8.8,
+    /** The promenade strip on the water side (terraces on its edge, the walk behind them). */
+    promenade: 3.4,
     deckY: 1.35,
-    /**
-     * Level deck beyond the ring's nominal outer edge (the 2 u grid's bilinear ground stays flat
-     * under the house backs), tapered to 0 over `taper` u of arc toward each mole head.
-     */
-    edgeFlat: 1.8,
+    /** Level deck past the land edge (the 2 u grid's bilinear ground stays flat under house backs). */
+    edgeFlat: 1.6,
+    /** (ground art, content/ground-art.ts: the coping / face fade toward the quay's ends.) */
     taper: 6,
     /**
-     * The deck also runs `innerFlat` u inside the basin edge (the grid's quay face then lies just
-     * past it, so the edge furniture stands on level ground); boats keep `yacht.faceGap` off.
+     * The deck runs `innerFlat` u past the water edge (the 2 u grid's face then lies just beyond it,
+     * so the edge furniture stands level); the stone face falls from there to the berth floor over
+     * `face` u (a sub-cell waterline).
      */
     innerFlat: 1,
-    /** The quay face falls from the deck to the basin floor over `face` u (sub-cell waterline). */
     face: 2,
-    /** Mole flank: the seabed is reached `flank` u out from the deck's edge (rock armour above sea). */
+    /** Fill behind / under a raised deck reaches the old ground `flank` u out (stub armour too). */
     flank: 2.5,
-    /** Gap between the two mole heads (u, deck edge to deck edge). */
-    mouth: 7.5,
-    /** Fallback tier: the tower mole ends `short` u of arc sooner (wider mouth). */
-    short: 7,
+    /** Cut behind the deck: the old ground is reached `bank` u past the deck's land edge. */
+    bank: 2.5,
+    /** A deck end beside a gap (the pier root) ramps down to the old ground over `ramp` u. */
+    ramp: 3,
   },
-  /** Basin dredged to `depth` (cut only); the mouth water blends to the sea bed over `mouthFall`. */
-  basin: { depth: 1.8, mouthFall: 6 },
+  /** Berth strip in front of the quay, dredged to `depth` (cut only), blended out over `fall`. */
+  berth: { width: 9, depth: 1.8, fall: 4 },
   /**
-   * Fit search in the pier frame (u out along the pier, v across toward the marina side; both
-   * sides tried): basin centre on a `step` grid over u ∈ `u`, v ∈ basinR + `v`; mouth heading
-   * `mouthDeg` from the pier heading toward +v. Rejected when a ring cell must be cut more than
-   * `maxCut` u or filled from deeper than `maxFill`; when it touches another body, a reserved site
-   * (`reserveGap`), or lies within `pierGap` u of the pier, `headGap` of the T crossbar, or the
-   * ferry approach grown by `approachPad`; when basin cells hold land over `basinLand`; when the
-   * mouth's axis does not run out over open water (`mouthLen` u, deeper than `mouthDepth`) or less
-   * than `backAttach` of the back arc's outer edge touches the island (sdf ≥ −`attachSdf`).
-   * Score: fill + `cutW` × cut (u per cell) + `distW` × centre → pier root − `attachW` × attach.
-   * TASK-666 (D-171, on HQ): `u` from −8 (beside the pier root, along the cove's flank) to 36 and `v`
-   * to 50 (Marketing's 4–28 / 34): HQ's 20 u pier and its wide approach left 8 / 32 sweep seeds
-   * without a ring; the wider window fits all 32, the score still takes the nearest.
+   * Fit, per 1 u station of the water edge: the promenade needs the old ground within `maxCut` over
+   * the deck and above −`maxFill`; the house strip within `houseCut` over it (the backs cut into a
+   * hill that little, never a terrace). The pier root's own quay (the Harbour Guild's crane,
+   * crates, awning and timetable, HQ_CULTURE_SITE) keeps `rootGap` u round the root: the deck's gap.
+   * Where the old ground is too high the station's water edge
+   * may be built out over the shallows, `outMax` u at most, the least that fits (the promenade's
+   * where no house stands); the build-out is widened `outWiden` stations each way and smoothed
+   * (`outSmooth` passes), and the built-out edge smoothed again (`edgeSmooth` passes) so it stays
+   * fair. A house stretch shorter than `minRow` u is none. No deck within `pierGap` u of the ferry pier, `headGap` of
+   * its T crossbar, the ferry approach grown by `approachPad`, the pier's leave-the-shore line
+   * (DOCK.awayRate, + `awayPad`), `reserveGap` of a reserved site, `clearOther` of another body;
+   * the ground within `groundGap` u of a pad's core (a gate's, a kiosk's) is left to the pad and no
+   * house stands on it.
+   * Inside the quay a run of unfit stations up to `bridge` u long is a gap in the deck (the pier's
+   * is always one); a longer one ends the quay (the longest stretch is kept). Tiers by houses:
+   * ≥ `fullHouses` full, ≥ `shortHouses` shortened, else none (HQ keeps its plain pier and the M29
+   * comb marina, world/gen/marina.ts).
    */
   fit: {
-    step: 2,
-    u: [-8, 36] as const,
-    v: [2, 50] as const,
-    mouthDeg: [-30, -10, 10, 30, 50, 70] as const,
-    maxCut: 3.6,
-    maxFill: 30,
-    reserveGap: 1,
+    maxCut: 2.6,
+    maxFill: 3,
+    houseCut: 4,
+    outMax: 6.5,
+    outWiden: 6,
+    outSmooth: 20,
+    edgeSmooth: 24,
+    minRow: 4,
     pierGap: 4,
+    rootGap: 9,
     headGap: 4,
-    approachPad: 2.5,
-    basinLand: 1.2,
-    mouthLen: 14,
-    mouthDepth: 1,
-    backAttach: 0.3,
-    attachSdf: 6,
-    cutW: 2,
-    distW: 3,
-    attachW: 400,
-    /** Other islands / islets stay at least this far off the ring. */
-    clearOther: 18,
-    /**
-     * Ring land stays this much past the pier's DOCK.awayRate line (the 2 u grid's slack; TASK-666
-     * 1.5 → 2.5: the flank fill beside HQ's 20 u pier crossed it by 0.4 u on a sweep seed).
-     */
+    approachPad: 1,
     awayPad: 2.5,
+    reserveGap: 1,
+    groundGap: 1.5,
+    clearOther: 18,
+    bridge: 10,
+    fullHouses: 16,
+    shortHouses: 8,
   },
   /**
-   * Houses: rows on the ring's outer part, backs `backInset` u inside the nominal outer edge, fronts
-   * to the basin centre, `gap` u between neighbours at the front, an `alley` u gap where a lane
-   * runs up (`alleys` in the main row, one at each mole root). The back arc (`backDeg` either side
-   * of its middle) holds the main row (≤ `mainMax`), each mole ≤ `moleMax`, the last `headKeep` u of
-   * arc before each head stay free (the light, the tower). Variants follow `cycle` round the ring
-   * (no two neighbours equal); `restaurant` variants get a terrace (house variant → terrace index).
+   * Houses: one row on the land side of the quay, backs `backInset` u inside the quay width, fronts
+   * to the water, `gap` u between neighbours at the front, an `alley` u gap after every
+   * `alleyEvery` houses (a lane up toward the plaza where it stays on land), at most `max`
+   * (trimmed from both ends of the row), none within `endKeep` u of the quay's ends. Variants follow
+   * `cycle` along the row (no two neighbours equal); `restaurant` variants get a terrace
+   * (house variant → terrace index).
    */
   house: {
     backInset: 0.2,
     gap: 0.3,
     alley: 3.2,
-    alleys: 2,
-    backDeg: 68,
-    /** The main row may run `mainDeg` either side of the back arc's middle (≥ backDeg). */
-    mainDeg: 76,
-    mainMax: 8,
-    moleMax: 5,
-    headKeep: 4.5,
+    alleyEvery: 7,
+    max: 18,
+    endKeep: 3,
     maxRelief: 0.25,
     cycle: [0, 4, 1, 5, 3, 2] as const,
     restaurant: { 0: 0, 1: 1, 3: 2 } as Readonly<Record<number, number>>,
   },
-  /** Terraces on the quay edge: front `edge` u back from the basin edge. */
+  /** Terraces on the quay edge: front `edge` u back from the water edge. */
   terrace: { edge: 0.2 },
-  /** Stalls in front of non-restaurant houses (main row first), `count`, variants in order. */
+  /** Stalls in front of non-restaurant houses (middle of the row first), `count`, variants in order. */
   stall: { count: 3, edge: 0.5, variants: [0, 1, 2] as const },
   /**
-   * Moored boats stern-to round the basin edge: sterns `faceGap` u off the deck's edge (the grid's
-   * quay face), `gap` u between hulls at the bow, variants in `cycle` order, at most `max`, none
-   * within `headKeep` u of arc of a mole head.
+   * Moored boats stern-to along the quay: sterns `faceGap` u off the water edge, `gap` u between
+   * hulls, variants in `cycle` order, at most `max`, none within `endKeep` u of a deck end.
    */
-  yacht: { faceGap: 2.2, gap: 0.7, cycle: [0, 1, 3, 2, 1, 0, 3] as const, max: 14, headKeep: 7 },
+  yacht: { faceGap: 2.2, gap: 0.9, cycle: [0, 1, 3, 2, 1, 0, 3] as const, max: 14, endKeep: 3 },
   /**
-   * Finger pontoons: `runs` of `segs` chained segments from the basin edge toward its centre at
-   * `atDeg` from the back arc's middle; a boat alongside each side (`side` u off the pontoon edge),
-   * variants `boats`.
+   * Finger pontoons: `runs` of `segs` chained segments straight out from the water edge at `at`
+   * (fractions of the quay's length; the nearest deck station that fits), a boat alongside each
+   * side (`side` u off the pontoon edge), variants `boats`.
    */
   pontoon: {
     runs: 2,
     segs: 1,
-    atDeg: [-18, 18] as const,
+    at: [0.42, 0.62] as const,
     side: 0.3,
     boats: [2, 3] as const,
   },
-  /** The tower stands on the tower mole's centre line, `back` u of arc in from its head's cap centre. */
-  tower: { back: 2.5 },
+  /**
+   * Stub jetties at the quay's two ends, along the end tangent out over the water: `len` u (then
+   * the shorter `lens` when the long one does not fit), `half` u half width, deck height.
+   */
+  stub: { lens: [7, 5, 3.5] as const, half: 2.4 },
+  /** The tower stands on its stub's centre line, `back` u in from the stub's head. */
+  tower: { back: 2.4 },
   /** Edge furniture (the Carnival kit's defs): lanterns at house joints, a bollard per stern line. */
   lantern: { defId: 'lanternPost', variant: 0, inset: 0.45, every: 2 },
   bollard: { defId: 'barrel', variant: 2, inset: 0.35 },
-  /** `marinaQuay` anchors every ≈ `quayStep` u of the ring's centre line. */
+  /** `marinaQuay` anchors every ≈ `quayStep` u of the quay's centre line. */
   quayStep: 2,
+  /** The quay walk: `walk` u in from the water edge (between the terraces and the house fronts). */
+  walk: 2.9,
   /**
-   * Boat-route keep-out round the ring (r = width / 2 + edgeFlat + `pad`) and the basin; `mouth`
-   * = [from, r]: discs along the mouth's way out from `from` u to `fit.mouthLen` (TASK-666).
+   * Boat-route keep-out: discs every 2 `marinaQuay` points over the berth strip (r = `berth.width`
+   * / 2 + `pad`) and round each stub head.
    */
-  keepOut: { pad: 2, hard: 0.65, mouth: [4, 8] as const },
+  keepOut: { pad: 1.5, hard: 0.65 },
 } as const;

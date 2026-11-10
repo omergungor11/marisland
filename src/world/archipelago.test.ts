@@ -16,23 +16,14 @@ import {
 import { REEFS } from '../content/reefs.ts';
 import { HARBOURS } from '../content/harbours.ts';
 import { anchorPoints } from './gen/plans/research-anchors.ts';
-import { MARINA_SITE } from '../content/themes/hq-horseshoe-site.ts';
+import { inMarina } from './gen/plans/hq-horseshoe.ts';
 import { perfLimit } from '../test/perf.ts';
 import { bitDigest } from '../test/bits.ts';
 
 /** True when (x, z) lies within `r` of the polyline. */
-/** TASK-661: on the marina town's ring or its flank (grown at plan time like a harbour arm; HQ's since TASK-666). */
-function marinaNear(
-  isl: { anchors: Record<string, { x: number; z: number }> },
-  x: number,
-  z: number,
-) {
-  const c = isl.anchors.marinaBasin;
-  const s = isl.anchors.marinaBasinSize;
-  const q = isl.anchors.marinaQuaySize;
-  if (!c || !s || !q) return false;
-  const R = s.x / 2 + q.x + MARINA_SITE.ring.edgeFlat + MARINA_SITE.ring.flank + 1;
-  return Math.hypot(x - c.x, z - c.z) < R;
+/** TASK-661 / TASK-674: on the HQ harbour quay (grown at plan time like a harbour arm; `inMarina`). */
+function marinaNear(isl: IslandData, x: number, z: number) {
+  return inMarina(isl, { x, z });
 }
 
 function armNear(
@@ -138,11 +129,12 @@ describe('archipelago — 30-seed full generation', () => {
     // TASK-615: rim delta, lip knobs and talus change height / zone / props only, re-pinned
     // TASK-661: the Marketing marina town (ring, basin, town, keep-outs), re-pinned
     // TASK-666: the marina town moves to HQ (comb gone), Marketing back to its arm harbour, re-pinned
+    // TASK-674: HQ's harbour town as an open crescent quay on its own bay, re-pinned
     expect(snap).toMatchInlineSnapshot(`
       {
-        "1": "41df5dc53c04ded6",
-        "1001": "60888f7261143aa5",
-        "42": "c4929a9544320f49",
+        "1": "e271b99d7c911892",
+        "1001": "58dfbc435afdcf0a",
+        "42": "2dd5cb559e8f03d8",
       }
     `);
   });
@@ -162,11 +154,12 @@ describe('archipelago — 30-seed full generation', () => {
     // TASK-615: height / zone / props stages (rim delta, lip knobs, talus); sites onward unchanged, re-pinned
     // TASK-661: the Marketing marina town, re-pinned
     // TASK-666: the marina town on HQ, Marketing's arm harbour again, re-pinned
+    // TASK-674: HQ's open crescent quay, re-pinned
     expect(snap).toMatchInlineSnapshot(`
       {
-        "1": "bits:19958324947e0e02 layout:358ca2668fc3f1cc height:c12454da28c3e248 sdf:c77a4474f2a2340f islandMap:f7f7a8eb78db9c57 zone:79fe810e90ac6d89 fields:fde62d37a0223454 chunks:dc7faad7717da3b9 sites:5b0f55e60b9725c0 routes:3e6c9dbb6663bf71 seamarks:cbd543ac89c5cfa9 marina:525a20b06dc9a3a9 props:1c50bb40ab2c63b1",
-        "1001": "bits:3a4c0fd3bf945ffd layout:2747e57b5392567c height:0a17107bb257423f sdf:67b46e81fec813af islandMap:267b58554e2d2d89 zone:0a946c88dc6fa569 fields:fde62d37a0223454 chunks:1854ff6405fc1fbe sites:b171115d21a07fc9 routes:e038d6c990caa1ae seamarks:40c47bd27846d9f2 marina:a351d08628eee137 props:46190ef3579680a2",
-        "42": "bits:1174f22e2afddb56 layout:7d862a142513cf36 height:8de16d83dcfe1173 sdf:c1712e251c11500a islandMap:8a73157565f98dc9 zone:5d9203d01d7edcf6 fields:fde62d37a0223454 chunks:eaeec98061625167 sites:06a91255aeca8511 routes:12add3a66cc48143 seamarks:e874004aa572d75f marina:f1263937b92a7aa7 props:a3c0f6075c10364c",
+        "1": "bits:2d3ba8163b333f3c layout:358ca2668fc3f1cc height:614b10b6d1f37f8a sdf:b8c34b97557c99da islandMap:9f7e0d86517ac7c5 zone:77f59e8fe6c92444 fields:fde62d37a0223454 chunks:dc7faad7717da3b9 sites:a84ef5061a6c56c1 routes:ed59469430e7b725 seamarks:0fe8ac5e6a49ad62 marina:a823bf1c43c7b695 props:c0531c35f7c3cab3",
+        "1001": "bits:bdd6518a7ec759b6 layout:2747e57b5392567c height:bb60d134f48f591b sdf:ab8b4a1da1801c5f islandMap:aac83dd958cec153 zone:bb2902289c50296c fields:fde62d37a0223454 chunks:1854ff6405fc1fbe sites:133ecf8c2464ceda routes:b5ecd2e5f560e126 seamarks:1f07ccb52ce09a2d marina:8c262d777f5d074d props:8e25a21c75a10162",
+        "42": "bits:15b2debe40bf92fc layout:7d862a142513cf36 height:2b1a01fcc82ded55 sdf:80a0ab67504b027f islandMap:0dff0816d09fb54d zone:385e4a0a63c41589 fields:fde62d37a0223454 chunks:a7e456a628d4b886 sites:53f856d565753b83 routes:9b422895ce8e32e9 seamarks:7555ca08c54afb6c marina:14e3937f36034b15 props:b13c020438c480fb",
       }
     `);
   });
@@ -205,7 +198,7 @@ describe('archipelago — 30-seed full generation', () => {
         const isl = w.islands[id - 1];
         const [x, z] = coord(w, i);
         const arm = arms[id - 1];
-        // (TASK-661: the marina ring likewise, checked by plans-hq-horseshoe.test)
+        // (TASK-661: the harbour quay likewise, checked by plans-hq-horseshoe.test)
         if (marinaNear(isl, x, z)) continue;
         if (arm.length > 1 && armNear(arm, x, z, (isl.anchors.harbourArmSize?.x ?? 0) + 3.5)) {
           const lim = isl.reach + (HARBOURS.research?.arm.offset ?? 0) + 4;
@@ -463,7 +456,7 @@ describe('reef shoals + shared-shelf sills (TASK-488, W:D1 / W:K3), 30 seeds', (
         for (let t = 0.3; t <= 0.7; t += 0.05) {
           const x = s.x0 + (s.x1 - s.x0) * t;
           const z = s.z0 + (s.z1 - s.z0) * t;
-          // (TASK-661: the marina ring may stand on a sill's shoulder, checked by its own test)
+          // (TASK-661: the harbour quay may stand on a sill's shoulder, checked by its own test)
           if (w.islands.some((isl) => marinaNear(isl, x, z))) continue;
           const y = heightAt(w.height, x, z);
           expect(
@@ -554,7 +547,7 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       const x = w.height.originX + (i % n) * w.height.cellSize;
       const z = w.height.originZ + Math.floor(i / n) * w.height.cellSize;
       if (arm.some((p) => Math.hypot(p.x - x, p.z - z) < 5)) continue;
-      // (and the HQ Horseshoe Harbour's quay ring and moles: TASK-666)
+      // (and the HQ harbour quay and its stubs: TASK-666 / TASK-674)
       if (marinaNear(isl, x, z)) continue;
       coast++;
       let top = 0;
@@ -612,9 +605,10 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
         expect(deg(0.99), `${ctx} face p99 °`).toBeLessThanOrEqual(78);
         expect(cliff / steep, `${ctx} steep bluff faces that are Zone.cliff`).toBeGreaterThan(0.85);
         // docks stand on the cove's low ground, never on a wall top (TASK-511: 2.5 → 3; the grown
-        // HQ's later pads raise the ferry pier root to 2.99 on seed 7312, walls are ≥ 5 u)
+        // HQ's later pads raise the ferry pier root to 2.99 on seed 7312, walls are ≥ 5 u; TASK-674:
+        // 3 → 3.5, the plaza beside the quay's pier root there relaxes the root to 3.26)
         for (const dk of w.docks.filter((x) => x.islandId === isl.id))
-          expect(heightAt(w.height, dk.x, dk.z), `${ctx} dock root`).toBeLessThanOrEqual(3);
+          expect(heightAt(w.height, dk.x, dk.z), `${ctx} dock root`).toBeLessThanOrEqual(3.5);
       }
     }
     for (const [a, v] of Object.entries(share)) {
@@ -688,8 +682,9 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // TASK-615 the Research campus keeps its bluff: its rim delta, lip knobs and wall-foot talus, re-pinned
       // TASK-661 the Marketing marina town, re-pinned
       // TASK-666 the marina town on HQ, Marketing's arm harbour again, re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('58d4bece3ab24429');
-      expect(generateWorld(1).hashes.world).toBe('1f2321a29a2f717e');
+      // TASK-674 HQ's harbour town as an open crescent quay on its bay, re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('3589e597f5545ca8');
+      expect(generateWorld(1).hashes.world).toBe('6f274638a068cb91');
     } finally {
       for (const b of saved) b.on = true;
     }
