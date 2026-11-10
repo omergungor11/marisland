@@ -112,19 +112,19 @@ describe('near structure merge (TASK-476)', () => {
     for (const g of lod0(b2, 'cultureGate', 0)) expect(g.mesh.visible).toBe(true);
   });
 
-  it('waits for bloom-ins and hides at T0–T1', () => {
+  it('waits for bloom-ins and hides at T0', () => {
     const { b } = build();
     const cam = new THREE.Vector3(20, 15, 40);
-    b.setTier(1, 0);
+    b.setTier(0, 0);
     b.update(0, 0, 0, cam);
-    b.setTier(2, 1); // soft: LOD0 blooms in
+    b.setTier(1, 1); // soft: LOD0 is armed from T1 (TASK-611); in its band already → blooms in
     for (let t = 1; t < 1.5; t += 1 / 30) b.update(t, 0, 0, cam);
     for (const g of lod0(b, 'cultureGate', 0)) expect(g.mesh.visible).toBe(true);
     expect(b.nearMerge!.meshes.every((m) => !m.mesh.visible)).toBe(true);
     for (let t = 1.5; t < 4; t += 1 / 30) b.update(t, 0, 0, cam);
     for (const g of lod0(b, 'cultureGate', 0)) expect(g.mesh.visible).toBe(false);
     expect(b.nearMerge!.meshes.some((m) => m.mesh.visible)).toBe(true);
-    b.setTier(1, 5);
+    b.setTier(0, 5);
     b.update(5, 0, 0, cam);
     expect(b.nearMerge!.meshes.every((m) => !m.mesh.visible)).toBe(true);
   });

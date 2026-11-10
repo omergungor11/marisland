@@ -2374,6 +2374,20 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     fleet: 'mock',
     sets: ['dev'],
   },
+  // TASK-611 D-reveal: the detail-reveal flip-book — one dolly on the Coding island (the ladder
+  // heading, pitch 48°) at the distances named, medium (what a desktop sees, composer on)
+  ...[260, 200, 140, 90, 60].map((dist): ShotPreset => ({
+    id: `D-reveal-${dist}`,
+    title: `Detail reveal · ${dist} u`,
+    seed: 1001,
+    cam: `ladder:coding:${dist}`,
+    time: 14,
+    simt: 2,
+    quality: 'medium',
+    width: 1280,
+    height: 720,
+    sets: ['dev'],
+  })),
   // ---- M43 admin window (TASK-585): the overview with the mock fleet, the window on its Projeler tab
   // (960×540: the default box shrinks to fit right of the fleet card, two-column KB layout)
   {

@@ -4,9 +4,10 @@ import type { PropDef } from '../../content/props.ts';
 import type { PropStore } from '../../world/prop-store.ts';
 import { PropFlag } from '../../world/prop-store.ts';
 import { OCCUPANCY } from '../../content/activity.ts';
+import { bandCasts, bandReaches } from '../../detail/reveal.ts';
 
 /**
- * Far structure merge (TASK-407, D-049): at tiers 0–1 the LOD1 instances of an island are drawn
+ * Far structure merge (TASK-407, D-049; every tier since TASK-611): the LOD1 instances of an island are drawn
  * as ONE pre-transformed mesh per (island, material class, tier class) instead of one
  * InstancedMesh per (def, variant) across islands — the draw-call precedent of the far terrain
  * merge and the merged contact blobs (TASK-406). Same lit / depth program (`uMarMerged` is a
@@ -74,6 +75,8 @@ export interface FarMergeDeps {
    * TASK-476 near merge: 0b1100 over small LOD0 groups.
    */
   tiers?: number;
+  /** Tiers the merged meshes cast map shadows at (bit t = tier t; default all). */
+  shadowTiers?: number;
   /** Mesh name prefix (`props:<name>:…`, default `far`). */
   name?: string;
   /**
@@ -90,7 +93,8 @@ export interface MergedMesh {
   island: number;
   /** Tier mask of its groups (bit t = Tt). */
   tiers: number;
-  fadeFar: number;
+  /** Its material's dither band (`uFadeNear`, `uFadeFar`; inverted = LOD1 hand-over), or null. */
+  fade: readonly [number, number] | null;
 }
 
 export interface FarMerge {
@@ -179,7 +183,7 @@ export function createFarMerge(d: FarMergeDeps): FarMerge {
       island: number;
       tiers: number;
       mats: ReturnType<FarMergeDeps['materialsFor']>;
-      fadeFar: number;
+      fade: readonly [number, number] | null;
       slots: { g: FarMergeGroup; k: number; i: number }[];
       verts: number;
       opt: boolean[];
@@ -189,7 +193,9 @@ export function createFarMerge(d: FarMergeDeps): FarMerge {
       if (!covers(g)) continue;
       const mats = d.materialsFor(g.def);
       const tiers = d.tierMask(g);
-      const fade = (mats.material as { fade?: { uFadeFar: { value: number } } }).fade;
+      const fade = (
+        mats.material as { fade?: { uFadeNear: { value: number }; uFadeFar: { value: number } } }
+      ).fade;
       const geo = g.mesh.geometry;
       const nv = geo.index ? geo.index.count : geo.getAttribute('position').count;
       const arr = g.mesh.instanceMatrix.array as Float32Array;
@@ -207,7 +213,7 @@ export function createFarMerge(d: FarMergeDeps): FarMerge {
             island,
             tiers,
             mats,
-            fadeFar: fade?.uFadeFar.value ?? Infinity,
+            fade: fade ? [fade.uFadeNear.value, fade.uFadeFar.value] : null,
             slots: [],
             verts: 0,
             opt: OPTIONAL.map(() => false),
@@ -306,7 +312,7 @@ export function createFarMerge(d: FarMergeDeps): FarMerge {
       mesh.visible = false;
       mesh.name = `props:${d.name ?? 'far'}:${c.island}:${c.mats.key}:t${c.tiers}`;
       d.root.add(mesh);
-      meshes.push({ mesh, island: c.island, tiers: c.tiers, fadeFar: c.fadeFar });
+      meshes.push({ mesh, island: c.island, tiers: c.tiers, fade: c.fade });
       stats.vertices += n;
       stats.bytes += bytesOf(geo);
     }
@@ -333,7 +339,16 @@ export function createFarMerge(d: FarMergeDeps): FarMerge {
       for (const m of meshes) {
         let vis = on && clean(m.island) && (m.tiers & (1 << tier)) !== 0;
         const sph = m.mesh.boundingSphere;
-        if (vis && cam && sph) vis = cam.distanceTo(sph.center) - sph.radius < m.fadeFar;
+        if (vis && cam && sph && m.fade) {
+          const c = cam.distanceTo(sph.center);
+          vis = bandReaches(c - sph.radius, c + sph.radius, m.fade);
+          // like the groups (TASK-435): no shadow pass once every caster is past half fade —
+          // since TASK-611 also the LOD1 of the island in view, gone inside the hand-over band
+          m.mesh.castShadow =
+            d.castShadows &&
+            (((d.shadowTiers ?? 0b1111) >> tier) & 1) === 1 &&
+            bandCasts(c - sph.radius, c + sph.radius, m.fade);
+        }
         m.mesh.visible = vis;
       }
       if (on)

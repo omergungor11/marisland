@@ -2,6 +2,34 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-161: Detail reveal earlier and continuous — tier arming + per-instance dither bands, LOD1 kept behind LOD0 (TASK-611) — 2026-11-10
+
+**Decision.** The orbit tier no longer decides what is visible, only which prop groups are *armed*; visibility is a per-instance
+distance dither band from `detail/reveal.ts` (`armTier`, `lodArmed`, `fadeBand`, `fadeAt`, `bandReaches` / `bandCasts`). Bands
+(`content/props.ts`): tier 2 120–160 → **200–260 u**, tier 3 props 40–55 → **70–95 u**, ground cover stays 40–55 u but is armed at
+T2 (continuous fade, no grass wave), `LOD_HANDOFF` 200–260 u. During the hand-over LOD0 dithers in while LOD1 stays opaque and is
+drawn *behind* it with a polygon offset (T1 and up only), so overlapping surfaces read as a complementary cross-fade: no holes, no
+z-fight; LOD1 leaves at 175–200 u. Trees keep `TREE_FADE` (the LOD1 canopy sits inside LOD0). Bloom-in springs only for instances
+already inside their band at arm time; a slow dolly gets none. `NEAR_MERGE.reach` 160 → 260 follows the tier-2 band. Shots:
+`D-reveal-{260,200,140,90,60}` flip-book on the Coding ladder heading.
+
+**Why.** User 2026-11-09: "çok yaklaşmam gerekiyor detayların netleşmesi için, o kısım smooth olmalı". On main the 200 u and 140 u
+frames were still LOD1 only; detail arrived in one band pop at 120–160 u. Now detail starts at 260 u and is complete at 140 u, and the
+60 / 90 u frames are unchanged. T0 is pixel-identical (W1 zero diff).
+
+**Cost.** Medium wow 8 frames inside D-156 (W16 327 / 330 calls, W27 142 → 306 calls because the Research buildings next to the
+camera now show LOD0 with lit windows; W2 194 → 224; memory peak 182 / 200 MB). Low ladder ΔE passes on every step and pair
+(worst mean 2.84, worst p95 8.8), but LOD1 + LOD0 together at T2 pushed four islands just over the old low budget (HQ T1 81 MB,
+Marketing pair 175 calls, DevOps / Research T2 371–387k tris); low budgets go to 176 calls / 390k tris / 82 MB (measured + ~1 %,
+the headroom stays with medium; D-156's "low unchanged" is amended). Alternatives tried on low: no near merge at T1 (HQ 191 calls),
+merge every island in reach (+7–10 MB), old T2 arming (pair IoU 0.912 < 0.92 = pop). Chosen: at T1 only the focused island's
+T1-armed groups merge.
+
+**Open.** (1) `factory.ts` FRAG_DITHER with `vFade < 1 - bayer` for reversed ramps (`uFadeFar < uFadeNear`) gives a true
+simultaneous cross-fade and retires `lod1Out`. (2) `content/camera.ts` ladder `pairs` still measure the old 250 / 300 / 120 / 40
+edges; move to 260 / 200 / 95 / 55. (3) `closeUpMerges` infers low from `castShadows`; `world-view.ts` should pass the quality.
+(4) W16 at 327 / 330 is the first frame to watch in M47 / M48. (5) QA on W27's new look (TASK-593).
+
 ## D-159: Material classes + crease edge light + near grain in the one lit program; `fwidth` edge light rejected (TASK-594) — 2026-11-09
 
 **Decision.** Five material classes (matte / wood / metal / glass / fabric) ride in the free range of the `emissive` attribute:

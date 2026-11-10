@@ -67,17 +67,22 @@ export interface Budget {
  * W-cable-dusk 294 calls, W27 175 MB). Building / vegetation LOD0 variants, per-chassis bot meshes and cloud
  * archetypes land on medium: triangles 800k → 950k, drawCalls 300 → 330, gpuMemoryMB 180 → 200. High gains the
  * SSAO / soft shadow / god ray passes: programs 24 → 30. Low unchanged (nothing of M45–M49 ships on low).
+ * D-161 (TASK-611): the earlier prop reveal (tier 2 band 200–260, LOD hand-over with LOD1 kept behind
+ * LOD0 until 175–200) draws LOD1 + LOD0 together at T2 on every quality. Low ladder measured: HQ T1
+ * 81 MB, Marketing pair 175 calls, DevOps / Research T2 371–387k tris; ΔE passes everywhere. Low
+ * drawCalls 170 → 176, triangles 366k → 390k, gpuMemoryMB 80 → 82 (measured + ~1 %, not + 10 %: low
+ * is the fallback tier, the headroom stays with medium).
  */
 export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
   low: {
-    drawCalls: 170,
-    triangles: 366_000,
+    drawCalls: 176,
+    triangles: 390_000,
     instances: 6_000,
     groundCover: 3_000,
     agents: 25,
     particles: 2_000,
     programs: 12,
-    gpuMemoryMB: 80,
+    gpuMemoryMB: 82,
     jsHeapMB: 120,
     newSeedMs: 1500,
   },
@@ -143,5 +148,7 @@ export const HEADLESS_TIME_FACTOR = 40;
  * `reach` u of such a group (= the T2 fade-out, TIER_FADE[2]). The merged copy is memory
  * (≈ 60 B per vertex): sweep 2026-10-23 (W16 / W3, seed 1001, medium) maxVerts 1200 → 284 / 185
  * calls at 170 / 169 MB, 1600 → 269 / 175 at 172 / 170, 2500 → 252 / 160 at 176 / 175.
+ * TASK-611 (D-161): TIER_FADE[2] moved to 200–260, so `reach` follows to 260 (W16 −7 calls,
+ * +2 MB medium / +4 MB on a low T2 view).
  */
-export const NEAR_MERGE = { maxVerts: 1600, reach: 160 } as const;
+export const NEAR_MERGE = { maxVerts: 1600, reach: 260 } as const;

@@ -206,10 +206,42 @@ export const PROP_DEF_INDEX: Record<string, number> = Object.fromEntries(
   PROP_DEFS.map((d, i) => [d.id, i]),
 );
 
-/** Default per-tier fade distances (u) for dither fades: [near, far]. */
+/**
+ * Default per-tier fade distances (u) for dither fades: [near, far] — opaque inside `near`, gone
+ * past `far`, a per-instance dither in between (camera → instance origin).
+ * TASK-611 (D-161): the reveal comes earlier and is armed one orbit tier ahead (detail/reveal.ts),
+ * so the dither band — not the tier switch — carries it. Tier 2 was 120–160 (detail only inside
+ * an orbit of ~126 u), now 200–260: a T1 island view at ~230 u already shows half the village
+ * detail and it is complete by 200 u. Tier 3 was 40–55, now 70–95 (ground cover keeps 40–55,
+ * GROUND_COVER_FADE).
+ */
 export const TIER_FADE: Record<number, [number, number]> = {
   0: [0, 1e9],
   1: [320, 420],
-  2: [120, 160],
-  3: [40, 55],
+  2: [200, 260],
+  3: [70, 95],
+};
+
+/**
+ * Ground cover (grass / flowers / reeds / lily pads, TASK-611): its own dither band, nearer than
+ * the tier-3 props — the old T3 band. Its chunk groups (one per def × variant × chunk) are the
+ * draw-call cost: at 70–95 the close wow shots went over the medium budget (W16 +9 calls). It is
+ * still armed a tier ahead (T2), so it dithers in continuously instead of blooming in as a wave
+ * at the T3 switch.
+ */
+export const GROUND_COVER_FADE: [number, number] = [40, 55];
+
+/**
+ * LOD1 → LOD0 hand-over (TASK-611, D-161) of every def that has a LOD1 view (tier 0–1): LOD0
+ * dithers in over `band` (the tier-2 band, so the structures sharpen with the village detail)
+ * while LOD1 stays opaque behind it — the LOD1 materials draw with a polygon offset of
+ * `polygonOffset` ([factor, units]) so LOD0 wins every depth tie and the two read as one
+ * complementary cross-fade (each pixel is LOD0 where its dither keeps it, LOD1 elsewhere: no
+ * holes, no z-fight). Once LOD0 is opaque, LOD1 dithers out over the next `lod1Out` u inward —
+ * except trees, whose LOD1 keeps TREE_FADE and stays hidden inside the LOD0 canopy close up.
+ */
+export const LOD_HANDOFF = {
+  band: TIER_FADE[2],
+  lod1Out: 25,
+  polygonOffset: [1, 2] as const,
 };

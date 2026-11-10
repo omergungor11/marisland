@@ -9,7 +9,7 @@ import { createPropMaterials } from '../materials/prop-materials.ts';
 import type { LitMaterial } from '../materials/factory.ts';
 
 /**
- * TASK-407 far structure merge: at T0–T1 the LOD1 instances of an island draw as one
+ * TASK-407 far structure merge: at every tier (TASK-611; T0–T1 before) the LOD1 instances of an island draw as one
  * pre-transformed mesh per (island, material class, tier class); tagged LOD1 geometry (windmill
  * blades) stays instanced; bloom-ins / removal fades / outside writes draw through the groups;
  * an edit rebuilds only its island.
@@ -59,7 +59,7 @@ function makeStore() {
   return s;
 }
 
-function build(opts: { instant?: boolean } = {}) {
+function build(opts: { instant?: boolean; closeUp?: boolean } = {}) {
   const store = makeStore();
   const scope = new Scope('t');
   const pm = createPropMaterials(scope);
@@ -73,6 +73,7 @@ function build(opts: { instant?: boolean } = {}) {
     softAppear: true,
     instantEdits: opts.instant ?? false,
     castShadows: true,
+    closeUpMerges: opts.closeUp,
   });
   return { store, scope, pm, b };
 }
@@ -102,11 +103,11 @@ describe('far structure merge (TASK-407)', () => {
     // T0: trees are blobs, only the structure class shows
     b.setTier(0, 10);
     for (let t = 10; t < 13; t += 1 / 30) b.update(t, 0, 0); // tree blobs bloom in first
-    for (const m of farMeshes(b)) expect(m.mesh.visible).toBe(m.tiers === 3);
-    // T2: LOD0 groups; merged meshes hide
+    for (const m of farMeshes(b)) expect(m.mesh.visible).toBe(m.tiers === 0b1111);
+    // T2 (TASK-611): LOD1 stays armed behind the LOD0 hand-over; the merged meshes keep drawing
     b.setTier(2, 20);
-    b.update(20, 0, 0);
-    for (const m of farMeshes(b)) expect(m.mesh.visible).toBe(false);
+    for (let t = 20; t < 23; t += 1 / 30) b.update(t, 0, 0); // LOD0 (no camera: blooms in) settles
+    for (const m of farMeshes(b)) expect(m.mesh.visible).toBe(true);
   });
 
   it('bakes each instance exactly: world vertices, origin, scale and yaw code per vertex', () => {
@@ -118,7 +119,7 @@ describe('far structure merge (TASK-407)', () => {
     for (const g of pines)
       for (let k = 0; k < g.mesh.count; k++) {
         const i = g.members[k];
-        const m = farMeshes(b).find((x) => x.island === store.islandId[i] && x.tiers === 2)!;
+        const m = farMeshes(b).find((x) => x.island === store.islandId[i] && x.tiers === 0b1110)!;
         const geo = m.mesh.geometry;
         const spin = geo.getAttribute('aSpin');
         const mat = new THREE.Matrix4();
@@ -172,24 +173,28 @@ describe('far structure merge (TASK-407)', () => {
   it('uses the same program as the groups: twin materials share the lit cache key', () => {
     const { pm } = build();
     const def = { ...PROP_DEFS[PROP_DEF_INDEX.cottage], tier: 0 as const };
-    const twin = pm.mergedFor(def).material as LitMaterial;
+    const twin = pm.mergedFor(def, 1).material as LitMaterial;
     const own = pm.materialFor(def, 1, false) as LitMaterial;
     expect(twin.customProgramCacheKey()).toBe(own.customProgramCacheKey());
+    expect(twin.fade.uFadeNear.value).toBe(own.fade.uFadeNear.value);
     expect(twin.fade.uFadeFar.value).toBe(own.fade.uFadeFar.value);
-    // same uniforms → same twin
-    expect(pm.mergedFor(def)).toBe(pm.mergedFor(def));
+    // the LOD1 hand-over state (TASK-611): drawn behind LOD0, also when merged
+    expect(twin.polygonOffset && own.polygonOffset).toBe(true);
+    // same uniforms → same twin; the LOD0 twin (near merge) is another class
+    expect(pm.mergedFor(def, 1)).toBe(pm.mergedFor(def, 1));
+    expect(pm.mergedFor(def, 0)).not.toBe(pm.mergedFor(def, 1));
   });
 
   it('waits for bloom-ins: the groups draw until every instance has settled', () => {
     const { b } = build();
-    b.setTier(2, 0);
+    b.setTier(0, 0);
     b.update(0, 0, 0);
-    b.setTier(1, 1); // soft: LOD1 blooms in
+    b.setTier(1, 1); // soft: the tree LOD1 groups bloom in (no camera: every instance)
     for (let t = 1; t < 1.5; t += 1 / 30) b.update(t, 0, 0);
-    for (const g of named(b, 'cottage')) expect(g.mesh.visible).toBe(true);
+    for (const g of named(b, 'pine')) expect(g.mesh.visible).toBe(true);
     expect(farMeshes(b).every((m) => !m.mesh.visible)).toBe(true);
     for (let t = 1.5; t < 4; t += 1 / 30) b.update(t, 0, 0);
-    for (const g of named(b, 'cottage')) expect(g.mesh.visible).toBe(false);
+    for (const g of named(b, 'pine')) expect(g.mesh.visible).toBe(false);
     expect(farMeshes(b).some((m) => m.mesh.visible)).toBe(true);
   });
 
@@ -245,5 +250,22 @@ describe('far structure merge (TASK-407)', () => {
     const n = farMeshes(b).length;
     scope.dispose();
     expect(disposed).toBe(n);
+  });
+
+  it('close up (TASK-611): builds at T2 only with closeUpMerges; LOD1 casts at T0–T1 only', () => {
+    const { b } = build();
+    b.setTier(2, 0);
+    for (let t = 0; t < 3; t += 1 / 30) b.update(t, 0, 0, new THREE.Vector3(0, 400, 0));
+    expect(farMeshes(b).length).toBeGreaterThan(0);
+    expect(farMeshes(b).some((m) => m.mesh.visible)).toBe(true);
+    for (const m of farMeshes(b)) expect(m.mesh.castShadow).toBe(false);
+    for (const g of lod1(b)) expect(g.mesh.castShadow).toBe(false);
+    const { b: low } = build({ closeUp: false });
+    low.setTier(2, 0);
+    for (let t = 0; t < 3; t += 1 / 30) low.update(t, 0, 0);
+    expect(farMeshes(low)).toHaveLength(0); // no merged copies: LOD1 draws instanced
+    low.setTier(1, 3);
+    for (let t = 3; t < 6; t += 1 / 30) low.update(t, 0, 0);
+    expect(farMeshes(low).length).toBeGreaterThan(0);
   });
 });
