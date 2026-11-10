@@ -1,13 +1,13 @@
 /**
  * Horseshoe Harbour moored boats and the finger pontoon (M52 TASK-660, D-170): `quayBoat` variants
  * 0-3 are a sailing yacht (furled sail, tall mast), a motor cruiser, an open day boat and a painted
- * caique; variant 4 is one pontoon segment. Numbers: content/themes/marketing-marina-look.ts.
+ * caique; variant 4 is one pontoon segment. Numbers: content/themes/hq-horseshoe-look.ts.
  *
  * Frames: floating fixtures, pivot on the water line (y = 0), bow +z, the hull sinks `draft` u
  * under it. LOD0 boats bob (`tagBob`); the pontoon does not.
  */
 import * as THREE from 'three';
-import { MARINA_LOOK as L } from '../../content/themes/marketing-marina-look.ts';
+import { MARINA_LOOK as L } from '../../content/themes/hq-horseshoe-look.ts';
 import { hullShape } from '../coastal.ts';
 import { Acc, col, qEuler, qFromTo, type PartOpts } from '../kit.ts';
 import { V, baseBox, cylB, jitterAcc, put } from '../parts.ts';

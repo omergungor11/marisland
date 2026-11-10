@@ -18,7 +18,7 @@
  *    towards the pier side, bent as little as the routes allow; the fort carries the red light.
  * 6. Gates (H11): 4 pairs of red / green `buoy` fixtures along the HQ ferry route round its stop;
  *    the stop's neighbourhood is reserved so the generic seamarks leave it alone.
- * TASK-666 (D-171): where the HQ Horseshoe Harbour stands (plans/marketing-marina.ts, by its
+ * TASK-666 (D-171): where the HQ Horseshoe Harbour stands (plans/hq-horseshoe.ts, by its
  * anchors) it replaces steps 1's spine pieces, 3, 4 and 5: the walks only locate the fort, which
  * keeps off the ring, its mouth, the ferry pier and approach (`fort.ring`); the gates stay. A seed
  * with no ring keeps the comb.
@@ -26,7 +26,7 @@
 import type { Rng } from '../../core/rng.ts';
 import { DOCK } from '../../content/settlements.ts';
 import { HQ_MARINA as M, MARINA_PIER_V as PV, STAR_FORT } from '../../content/themes/hq-marina.ts';
-import { MARINA_SITE } from '../../content/themes/marketing-marina-site.ts';
+import { MARINA_SITE } from '../../content/themes/hq-horseshoe-site.ts';
 import { HARBOURS } from '../../content/harbours.ts';
 import type { DockData, FixtureData, Heightfield, IslandData, Polyline, XZ } from '../types.ts';
 import { heightAt, sampleGrid } from '../types.ts';
@@ -111,7 +111,7 @@ function makeSpine(raw: XZ[]): Spine {
   return { pts: sp, len, at };
 }
 
-/** The HQ Horseshoe Harbour from its anchors (plans/marketing-marina.ts contract), or null. */
+/** The HQ Horseshoe Harbour from its anchors (plans/hq-horseshoe.ts contract), or null. */
 interface Horseshoe {
   quay: XZ[];
   /** Ring centre line half width + level margin + flank (u off a `marinaQuay` point). */
@@ -209,7 +209,7 @@ export function placeMarina(input: MarinaInput, rng: Rng): MarinaResult {
       ),
     );
 
-  // TASK-666 (D-171): the Horseshoe Harbour on HQ (plans/marketing-marina.ts) replaces the comb:
+  // TASK-666 (D-171): the Horseshoe Harbour on HQ (plans/hq-horseshoe.ts) replaces the comb:
   // the walks then only locate the fort (the fort keeps off the ring and its mouth), the gates stay
   const horseshoe = horseshoeOf(hq);
 

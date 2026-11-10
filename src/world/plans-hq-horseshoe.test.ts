@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { HARBOURS } from '../content/harbours.ts';
-import { MARINA_KIT } from '../content/themes/marketing-marina.ts';
-import { MARINA_SITE as M } from '../content/themes/marketing-marina-site.ts';
+import { MARINA_KIT } from '../content/themes/hq-horseshoe.ts';
+import { MARINA_SITE as M } from '../content/themes/hq-horseshoe-site.ts';
 import { HQ_MARINA, STAR_FORT } from '../content/themes/hq-marina.ts';
 import { landSamples, voyageRoute } from '../life/courier-route.ts';
-import { inMarina, marinaKeepOut } from './gen/plans/marketing-marina.ts';
+import { inMarina, marinaKeepOut } from './gen/plans/hq-horseshoe.ts';
 import { rectShape, shapeCorners, shapesOverlap, type Shape } from './gen/sites.ts';
 import {
   generateWorld,

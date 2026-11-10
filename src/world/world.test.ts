@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { createRng } from '../core/rng.ts';
 import { edt } from './gen/coast.ts';
 import { leewardness } from './gen/heightfield.ts';
-import { MARINA_SITE } from '../content/themes/marketing-marina-site.ts';
+import { MARINA_SITE } from '../content/themes/hq-horseshoe-site.ts';
 import {
   CHUNK_HAS_LAND,
   CHUNKS_PER_SIDE,

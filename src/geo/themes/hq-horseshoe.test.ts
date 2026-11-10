@@ -4,10 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { decodeSurface } from '../../content/materials.ts';
 import { PROP_DEF_INDEX, PROP_DEFS } from '../../content/props.ts';
 import { FLOATING_FIXTURES } from '../../content/settlements.ts';
-import { MARINA_KIT, type KitRef } from '../../content/themes/marketing-marina.ts';
-import { MARINA_LOOK } from '../../content/themes/marketing-marina-look.ts';
+import { MARINA_KIT, type KitRef } from '../../content/themes/hq-horseshoe.ts';
+import { MARINA_LOOK } from '../../content/themes/hq-horseshoe-look.ts';
 import { buildProp, PROP_GEO } from '../registry.ts';
-import { glyphParts } from './marketing-marina-glyph.ts';
+import { glyphParts } from './hq-horseshoe-glyph.ts';
 
 const tris = (g: THREE.BufferGeometry): number => g.getAttribute('position').count / 3;
 const box = (g: THREE.BufferGeometry): THREE.Box3 => {

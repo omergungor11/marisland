@@ -1,7 +1,7 @@
 /**
  * "Horseshoe Harbour" kit look (M52 TASK-660, D-170; repainted in the HQ palette, TASK-667, D-171): every colour and dimension of the
  * quay houses, terraces, stalls, moored boats, finger pontoon and mole tower. Geometry:
- * geo/themes/marketing-marina*.ts; the placement contract (keys, sizes): marketing-marina.ts.
+ * geo/themes/hq-horseshoe*.ts; the placement contract (keys, sizes): hq-horseshoe.ts.
  * Palette references only (ART_BIBLE §2): HQ's wall strata (Hearthholm), the cream walls, the roof
  * set, the HQ coral and its light coral (OFFICE_PAL.hq), the harbour blue trim. Lengths in u.
  */

@@ -16,7 +16,7 @@ import {
 import { REEFS } from '../content/reefs.ts';
 import { HARBOURS } from '../content/harbours.ts';
 import { anchorPoints } from './gen/plans/research-anchors.ts';
-import { MARINA_SITE } from '../content/themes/marketing-marina-site.ts';
+import { MARINA_SITE } from '../content/themes/hq-horseshoe-site.ts';
 import { perfLimit } from '../test/perf.ts';
 import { bitDigest } from '../test/bits.ts';
 
@@ -205,7 +205,7 @@ describe('archipelago — 30-seed full generation', () => {
         const isl = w.islands[id - 1];
         const [x, z] = coord(w, i);
         const arm = arms[id - 1];
-        // (TASK-661: the marina ring likewise, checked by plans-marketing-marina.test)
+        // (TASK-661: the marina ring likewise, checked by plans-hq-horseshoe.test)
         if (marinaNear(isl, x, z)) continue;
         if (arm.length > 1 && armNear(arm, x, z, (isl.anchors.harbourArmSize?.x ?? 0) + 3.5)) {
           const lim = isl.reach + (HARBOURS.research?.arm.offset ?? 0) + 4;

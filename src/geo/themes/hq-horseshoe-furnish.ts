@@ -1,13 +1,13 @@
 /**
  * Horseshoe Harbour quay furniture (M52 TASK-660, D-170): `quayFurnish` variants 0-2 are the café
  * terraces (round tables, chairs, striped parasols, a menu board or planters), variants 3-5 the
- * market stalls (fish on ice, fruit crates, a postcard rack). Numbers: content/themes/marketing-marina-look.ts.
+ * market stalls (fish on ice, fruit crates, a postcard rack). Numbers: content/themes/hq-horseshoe-look.ts.
  *
  * Frames: centred on the plan box, pivot on the quay, front = +z. The parasols and canopies use the
  * awning stripe sets of the houses (fabric class).
  */
 import * as THREE from 'three';
-import { MARINA_LOOK as L } from '../../content/themes/marketing-marina-look.ts';
+import { MARINA_LOOK as L } from '../../content/themes/hq-horseshoe-look.ts';
 import type { Acc } from '../kit.ts';
 import { col, qEuler } from '../kit.ts';
 import { V, baseBox, cylB, jitterAcc, put } from '../parts.ts';

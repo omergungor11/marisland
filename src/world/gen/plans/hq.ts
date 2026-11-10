@@ -87,7 +87,7 @@ import {
   type SitePlan,
 } from '../sites.ts';
 import { finishHarbour } from './harbour.ts';
-import { finishMarina, planMarina } from './marketing-marina.ts';
+import { finishMarina, planMarina } from './hq-horseshoe.ts';
 import type { ThemePlanner } from './types.ts';
 import * as dm from '../../../core/math/dmath.ts';
 

@@ -1,12 +1,12 @@
 /**
  * Marketing "Horseshoe Harbour" kit contract (M52, D-170): the pieces the marina town is built
- * from. The plan (world/gen/plans/marketing-marina.ts, TASK-661) places fixtures by these refs and
+ * from. The plan (world/gen/plans/hq-horseshoe.ts, TASK-661) places fixtures by these refs and
  * reads only the keys and sizes; the props task (TASK-660) owns the values and swaps the
- * placeholders for the real defs. Layout numbers live in marketing-marina-site.ts.
+ * placeholders for the real defs. Layout numbers live in hq-horseshoe-site.ts.
  *
  * Frames: pivot on the ground (floating pieces: on the water), front = +z, x and z centred on the
  * piece's box. `w` across the front, `d` front to back, `h` to the roof ridge / mast top (u); the
- * numbers are the measured bounds of the built geometry (geo/themes/marketing-marina.test.ts pins
+ * numbers are the measured bounds of the built geometry (geo/themes/hq-horseshoe.test.ts pins
  * them within 3 %). Three defs: quayHouse (houses + tower), quayFurnish (terraces + stalls), quayBoat.
  */
 export interface KitRef {

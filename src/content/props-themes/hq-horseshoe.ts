@@ -1,6 +1,6 @@
 /**
- * Marketing "Horseshoe Harbour" kit defs (M52 TASK-660, D-170; geometry geo/themes/marketing-marina*.ts,
- * numbers content/themes/marketing-marina-look.ts, contract content/themes/marketing-marina.ts).
+ * Marketing "Horseshoe Harbour" kit defs (M52 TASK-660, D-170; geometry geo/themes/hq-horseshoe*.ts,
+ * numbers content/themes/hq-horseshoe-look.ts, contract content/themes/hq-horseshoe.ts).
  * Appended at the very end of PROP_DEFS so no existing defId shifts. Three defs, all planner-pinned
  * fixtures (never rolled): the variants are the pieces of MARINA_KIT.
  */

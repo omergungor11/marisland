@@ -1,13 +1,13 @@
 /**
  * Horseshoe Harbour life plan (M52 TASK-662, D-170). Pure data: no three.js, no clock, no
  * `Math.random`; every choice is a hash of (world seed, slot). The marina's anchors
- * (world/gen/plans/marketing-marina.ts) become `TableauBot`s of the Workers kind: strollers on a
+ * (world/gen/plans/hq-horseshoe.ts) become `TableauBot`s of the Workers kind: strollers on a
  * closed-form route along the promenade lane, diners in the terrace chairs, vendors beside the
- * stalls. Numbers: content/life-marina.ts, chairs and tables: content/themes/marketing-marina-look.ts.
+ * stalls. Numbers: content/life-marina.ts, chairs and tables: content/themes/hq-horseshoe-look.ts.
  */
 import { MARINA_LIFE, marinaCounts, type Shift } from '../content/life-marina.ts';
-import { MARINA_LOOK } from '../content/themes/marketing-marina-look.ts';
-import { MARINA_SITE } from '../content/themes/marketing-marina-site.ts';
+import { MARINA_LOOK } from '../content/themes/hq-horseshoe-look.ts';
+import { MARINA_SITE } from '../content/themes/hq-horseshoe-site.ts';
 import { unitHash } from '../core/hash.ts';
 import { lotLocalToWorld } from '../world/lot-frame.ts';
 import type { WorldData } from '../world/types.ts';

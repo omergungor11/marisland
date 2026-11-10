@@ -29,7 +29,7 @@ import { beaconRouteKeepOut, beaconSeaKeepOut } from './gen/plans/marketing-anch
 import { tideLabKeepOut } from './gen/plans/research-harbour.ts';
 import { harbourKeepOut } from './gen/plans/harbour.ts';
 import { carnivalKeepOut } from './gen/plans/marketing-harbour.ts';
-import { marinaKeepOut } from './gen/plans/marketing-marina.ts';
+import { marinaKeepOut } from './gen/plans/hq-horseshoe.ts';
 import { carveReefGaps, planReefs, raiseReefs, reefWeights } from './gen/reefs.ts';
 import { placeSeamarks } from './gen/seamarks.ts';
 import { placeMarina } from './gen/marina.ts';

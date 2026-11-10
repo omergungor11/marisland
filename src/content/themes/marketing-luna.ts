@@ -2,7 +2,7 @@
  * Marketing "Deniz Üstü Lunapark" kit contract (M53 TASK-670, D-172): the pieces the sea-top fun park is
  * built from. The plan (world/gen/plans/marketing-harbour.ts, TASK-666) places fixtures by these refs and
  * reads only the keys, sizes and pivots; the props task (TASK-670) owns the values. Look numbers live in
- * marketing-luna-look.ts. Pattern of marketing-marina.ts (MARINA_KIT).
+ * marketing-luna-look.ts. Pattern of hq-horseshoe.ts (MARINA_KIT).
  *
  * Frames. Every ref is `{ defId, variant, w, d, h }`: `w` across the front, `d` front to back, `h` to the
  * highest point (u); the numbers are the measured bounds of the built geometry (geo/themes/

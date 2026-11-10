@@ -4,7 +4,7 @@
  * [-0.5, 0.5]). Stacked layers sit one `LAYER` apart, so no two visible faces are coplanar.
  */
 import * as THREE from 'three';
-import { MARINA_LOOK as L, type Glyph } from '../../content/themes/marketing-marina-look.ts';
+import { MARINA_LOOK as L, type Glyph } from '../../content/themes/hq-horseshoe-look.ts';
 import type { Acc } from '../kit.ts';
 import { V2, put } from '../parts.ts';
 import { qEuler } from '../kit.ts';

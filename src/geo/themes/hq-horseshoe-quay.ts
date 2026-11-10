@@ -1,7 +1,7 @@
 /**
  * Horseshoe Harbour quay houses and the mole tower (M52 TASK-660, D-170): `quayHouse` variants 0-5
  * are the row houses (seafood restaurant, café, bakery, gelato, souvenir shop, chandlery), variant 6
- * the round stone tower. Numbers: content/themes/marketing-marina-look.ts.
+ * the round stone tower. Numbers: content/themes/hq-horseshoe-look.ts.
  *
  * Frames: pivot on the quay, front = +z, x across the front. A house is centred on its plan box
  * (body, awning and sign together), side walls are plain and 0.02 u inside the plan width so a row
@@ -13,14 +13,14 @@ import {
   MARINA_LOOK as L,
   type HouseExtra,
   type HouseSpec,
-} from '../../content/themes/marketing-marina-look.ts';
+} from '../../content/themes/hq-horseshoe-look.ts';
 import { Acc, col, mat, qEuler } from '../kit.ts';
 import { addAwning, hipGeo } from '../building-kit.ts';
 import { V, V2, baseBox, cylB, doorAt, put, ropePoints, tubeAlong } from '../parts.ts';
 import type { Rng } from '../../core/rng.ts';
 import type { BuildOpts, PropGeoDef } from '../types.ts';
 import { addHook, pennant } from './hq.ts';
-import { addGlyph } from './marketing-marina-glyph.ts';
+import { addGlyph } from './hq-horseshoe-glyph.ts';
 
 const H = L.house;
 const P = L.pal;

@@ -32,7 +32,7 @@ import { RESEARCH_M28_PROP_DEFS } from './props-themes/research-m28.ts';
 import { RESEARCH_M31_PROP_DEFS } from './props-themes/research-m31.ts';
 import { CODING_M33_PROP_DEFS } from './props-themes/coding-m33.ts';
 import { QA_COASTER_PROP_DEFS } from './props-themes/qa-coaster.ts';
-import { MARKETING_MARINA_PROP_DEFS } from './props-themes/marketing-marina.ts';
+import { MARKETING_MARINA_PROP_DEFS } from './props-themes/hq-horseshoe.ts';
 import { MARKETING_LUNA_PROP_DEFS } from './props-themes/marketing-luna.ts';
 
 export interface PropDef {

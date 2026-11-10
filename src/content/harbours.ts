@@ -309,7 +309,7 @@ export const HARBOURS: Partial<Record<HarbourTheme, HarbourParams>> = {
       },
     },
   },
-  // TASK-666 (D-171): the HQ cove's Horseshoe Harbour (plans/marketing-marina.ts) grows from this
+  // TASK-666 (D-171): the HQ cove's Horseshoe Harbour (plans/hq-horseshoe.ts) grows from this
   // pier: a T-head ferry pier of HQ's own length and the light on the light mole's head. Only the
   // horseshoe reads it (no breakwater arm on HQ: the arm / basin / kiosk numbers are the shared
   // skeleton's, unused); a seed with no ring keeps HQ's plain pier and the M29 comb marina.

@@ -6,7 +6,7 @@
  * light mole, so `finishHarbour` lays the T-head kit and the light on it unchanged; null = HQ's
  * plain pier and the M29 comb marina (world/gen/marina.ts). The star fort and the channel gates are
  * the post-route stage's (marina.ts), which keeps the fort off the ring and its mouth.
- * Numbers: content/themes/marketing-marina-site.ts; pieces: MARINA_KIT (content/themes/marketing-marina.ts).
+ * Numbers: content/themes/hq-horseshoe-site.ts; pieces: MARINA_KIT (content/themes/hq-horseshoe.ts).
  *
  * 1. Fit: a basin centre on a grid in the pier frame (both sides of the pier), a mouth heading and
  *    a basin radius per tier; the ring = an arc of the centre-line circle (radius basinR + width/2)
@@ -28,7 +28,7 @@
  *    mole's head); lanterns at house joints and a bollard behind every stern line.
  *
  * Anchor contract (world u; rotY = xz heading (cos, sin); `y` = world height on the final ground;
- * `…Size` = two numbers). Missing when the seed has no marina (plans-marketing-marina.test fit table).
+ * `…Size` = two numbers). Missing when the seed has no marina (plans-hq-horseshoe.test fit table).
  * - `marinaBasin` + `marinaBasinSize`: basin centre (y 0), rotY = the mouth heading; size { x, z } =
  *   the basin diameter (the deck's inner edge).
  * - `marinaMouth`: mid-mouth between the mole heads on the water (y 0), rotY = out to sea.
@@ -46,8 +46,8 @@
  * `harbourBasin(Size)` (= the square inside the marina basin, rotY = pier heading), `harbourArm0..K`
  * (the light mole's centre line, 0 = its head → the back arc) and `harbourLight` (on its head).
  */
-import { MARINA_KIT, type KitRef } from '../../../content/themes/marketing-marina.ts';
-import { MARINA_SITE as M } from '../../../content/themes/marketing-marina-site.ts';
+import { MARINA_KIT, type KitRef } from '../../../content/themes/hq-horseshoe.ts';
+import { MARINA_SITE as M } from '../../../content/themes/hq-horseshoe-site.ts';
 import { DOCK, PATHS } from '../../../content/settlements.ts';
 import { lerp, smoothstep } from '../../../core/math/index.ts';
 import {

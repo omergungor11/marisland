@@ -89,7 +89,7 @@ export function groundArtUniforms(world: WorldData): Record<string, THREE.IUnifo
 }
 
 /**
- * Marina quay ring from the anchors (marketing-marina.ts contract): uMarina0 = (centre x, z, basin
+ * Marina quay ring from the anchors (hq-horseshoe.ts contract): uMarina0 = (centre x, z, basin
  * radius, deck y; w 0 = none), uMarina1 = (heading of the mid-mouth, turn sign, arc span from head
  * to head (rad), half ring width), uMarina2 = the two head-cap centres (x, z, x, z).
  */

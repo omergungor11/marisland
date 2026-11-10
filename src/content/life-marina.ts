@@ -2,8 +2,8 @@
  * Horseshoe Harbour life (M52 TASK-662, D-170): the people of the Marketing island's marina town.
  * They are Workers slots (the department bots, tableau mechanism of content/life.ts TABLEAU), not a
  * new kind: they take the pool of awake workers while the camera looks at the harbour, so the
- * agent count never grows. Anchors: world/gen/plans/marketing-marina.ts; chairs and tables:
- * content/themes/marketing-marina-look.ts. Lengths in u, hours in game hours, speeds in u/s.
+ * agent count never grows. Anchors: world/gen/plans/hq-horseshoe.ts; chairs and tables:
+ * content/themes/hq-horseshoe-look.ts. Lengths in u, hours in game hours, speeds in u/s.
  */
 
 /** One working window of a bot, hours on the 24 h circle (`to` may pass midnight: 19.5 → 24.7). */

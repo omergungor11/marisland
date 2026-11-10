@@ -1,7 +1,7 @@
 /**
  * "Horseshoe Harbour" layout (M52 TASK-661, D-170; on HQ since TASK-666, D-171): the numbers of the
- * marina town the plan (world/gen/plans/marketing-marina.ts) grows beside the HQ ferry pier. The
- * pieces and their sizes come from MARINA_KIT (marketing-marina.ts); this file only says where.
+ * marina town the plan (world/gen/plans/hq-horseshoe.ts) grows beside the HQ ferry pier. The
+ * pieces and their sizes come from MARINA_KIT (hq-horseshoe.ts); this file only says where.
  * Lengths in u, angles in degrees.
  *
  * Shape: a round basin of radius `ring.basinR` wrapped by a stone quay ring `ring.width` u wide

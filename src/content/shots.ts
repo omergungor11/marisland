@@ -653,8 +653,8 @@ const FOUNDRY_SHOTS: readonly ShotPreset[] = (
  */
 const CARNIVAL_CAM = (v: string): string => `site:carnivalDeck:${v}`;
 const CARNIVAL_CAMS = {
-  front: CARNIVAL_CAM('-3,10,24,-3.5,1,4'),
-  arrival: CARNIVAL_CAM('-2,9,26,-3.5,1.2,5'),
+  front: CARNIVAL_CAM('-11,3.3,16,13,2.8,0'),
+  arrival: CARNIVAL_CAM('-14,3.8,22,10,2.3,0'),
 };
 /**
  * Dev frames: the arrival as a strip of stills (seed 1001: the ferry stops at sim ≈ 40 s, dwells 8 s), the
@@ -670,10 +670,10 @@ const CARNIVAL_SHOTS: readonly ShotPreset[] = (
     ['D-carnival-4', CARNIVAL_CAMS.arrival, 13, 52],
     ['D-carnival-5', CARNIVAL_CAMS.arrival, 13, 60],
     // the pre-TASK-554 arrival cam: at dusk the lit ritual costs ~30 calls more, the new cam reads 309 here
-    ['D-carnival-dusk', CARNIVAL_CAM('-2,12,30,-3.5,1,3'), 19.5, 41.35],
-    ['D-carnival-deck', CARNIVAL_CAM('-5,5,17,-3.5,2,0'), 12, 8],
+    ['D-carnival-dusk', CARNIVAL_CAM('-20,3,14,10,3.5,0'), 19.5, 41.35],
+    ['D-carnival-deck', CARNIVAL_CAM('-7,3.5,9,2,2.5,0'), 12, 8],
     ['D-carnival-night', CARNIVAL_CAMS.front, 22, 8],
-    ['D-carnival-arm', CARNIVAL_CAM('-38,12,30,-52,1,8'), 11, 8],
+    ['D-carnival-arm', CARNIVAL_CAM('20,10,32,18,0,4'), 11, 8],
   ] as const
 ).map(([id, cam, time, simt]) => ({
   id,
@@ -2648,19 +2648,6 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     height: 540,
     sets: ['dev'],
   })),
-  {
-    id: 'W-marina-dusk',
-    title: 'Marina Dusk',
-    // TASK-505 (D-085): the HQ yacht marina at 19:45 (see MARINA_DUSK_CAM)
-    seed: 1001,
-    cam: MARINA_DUSK_CAM,
-    time: 19.75,
-    simt: 4,
-    quality: 'medium',
-    width: 1920,
-    height: 1080,
-    sets: ['wow'],
-  },
   // ---- TASK-505 (D-085): the HQ yacht marina and the star fort (the "prop showcase" cams of the
   // marina: `pnpm shots dev --only=D-marina-t0,D-marina-t1,D-marina-fort,D-marina-night`; raw cams,
   // seed 1001, re-pin when HQ's layout changes)

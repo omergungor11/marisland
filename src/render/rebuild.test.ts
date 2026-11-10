@@ -4,7 +4,7 @@ import { generateWorld } from '../world/index.ts';
 import { CHUNKS_PER_SIDE, type WorldData } from '../world/types.ts';
 import { EMPTY_DIRTY } from '../world/edit-types.ts';
 import { Scope } from '../core/scope.ts';
-import { createWorldTextures, ringScaleField } from './world-textures.ts';
+import { createWorldTextures, harbourCalmMask, ringScaleField } from './world-textures.ts';
 import { buildTerrain, type TerrainView } from './terrain/terrain.ts';
 import { createPropBatcher } from './props/batcher.ts';
 import { appendSettlementProps } from './props/settlement-props.ts';
@@ -159,7 +159,9 @@ describe('dirty-chunk rebuild (TASK-211)', () => {
     expect(Array.from((textures.height.image as { data: Uint16Array }).data)).toEqual(
       Array.from((fresh.height.image as { data: Uint16Array }).data),
     );
-    const ring = ringScaleField(world);
+    // (the channel is calmed inside a harbour basin: HQ's horseshoe, TASK-666)
+    const calm = harbourCalmMask(world);
+    const ring = ringScaleField(world).map((v, i) => v * (1 - calm[i] / 255));
     let maxRing = 0;
     for (let i = 0; i < ring.length; i++) {
       expect(got[i * 2]).toBe(want[i * 2]);

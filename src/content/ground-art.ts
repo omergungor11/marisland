@@ -21,7 +21,7 @@ import { CULTURE_ACCENT, GROUT, PAVING } from './themes/hq.ts';
 import { DESIGN_CULTURE_KIT } from './props-themes/design.ts';
 import { PRISM_ARCH } from './props-themes/m20.ts';
 import { MARKETING_QUICK } from './themes/marketing.ts';
-import { MARINA_SITE } from './themes/marketing-marina-site.ts';
+import { MARINA_SITE } from './themes/hq-horseshoe-site.ts';
 
 /** Compass mosaic. Distances in u (plaza radius R = district w / 2, 10 today). */
 export const COMPASS_MOSAIC = {
@@ -119,7 +119,7 @@ export const CARPET = {
 
 /**
  * Horseshoe Harbour quay (TASK-664, HQ palette TASK-667). Colours: Hearthholm strata (palette.ts WALL_STRATA.hq,
- * ART_BIBLE §2). Distances in u, measured on the plan's deck shape (marketing-marina.ts `where`).
+ * ART_BIBLE §2). Distances in u, measured on the plan's deck shape (hq-horseshoe.ts `where`).
  */
 const MS = WALL_STRATA.hq;
 export const MARINA_QUAY = {
@@ -153,7 +153,7 @@ export const MARINA_QUAY = {
   heightBand: 0.12,
   /** Below the deck by `faceBelow[0]` → `[1]` u the ground is face (the grid's brink past the edge). */
   faceBelow: [0.08, 0.25] as const,
-  /** Deck shape (marketing-marina-site.ts): taper of the edges toward the mole heads. */
+  /** Deck shape (hq-horseshoe-site.ts): taper of the edges toward the mole heads. */
   taper: MARINA_SITE.ring.taper,
   edgeFlat: MARINA_SITE.ring.edgeFlat,
 } as const;

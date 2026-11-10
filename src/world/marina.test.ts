@@ -31,7 +31,7 @@ describe('HQ yacht marina (gen/marina.ts)', () => {
       expect(['marinaPier', 'starFort', 'sailboat', 'buoy']).toContain(f.defId);
   });
 
-  // TASK-666 (D-171): the Horseshoe Harbour (plans/marketing-marina.ts) took the comb's place in the
+  // TASK-666 (D-171): the Horseshoe Harbour (plans/hq-horseshoe.ts) took the comb's place in the
   // HQ cove on every sweep seed; the stage keeps the fort and the gates, the comb is the fallback
   it('seed 1001: the horseshoe instead of the comb; the fort and 8 gate buoys', () => {
     const w = world(1001);
