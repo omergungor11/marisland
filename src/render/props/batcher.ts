@@ -43,6 +43,7 @@ import {
   bandReaches,
   fadeAt,
   hasLod1View,
+  lod1CastsPast,
   lodArmed,
 } from '../../detail/reveal.ts';
 
@@ -1373,8 +1374,12 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
           // LOD1 casts at T0–T1 only: close up what is left of it (past the hand-over band, or
           // tree LOD1 inside its LOD0 canopy) lies beyond the view-fitted shadow box or under
           // LOD0's own shadow, and its all-islands groups would cost a shadow pass each (TASK-611)
+          // T0–T1: a LOD0 group wholly past the LOD1 cast cut leaves its shadow to LOD1 (TASK-652)
           g.mesh.castShadow =
-            g.casts && (g.lod === 0 || tier <= 1) && (!band || bandCasts(c - r, c + r, band));
+            g.casts &&
+            (g.lod === 0 || tier <= 1) &&
+            (!band || bandCasts(c - r, c + r, band)) &&
+            !(g.lod === 0 && tier <= 1 && lod1CastsPast(g.def, c - r));
         }
       // removal fades that are over → zero-scaled instances (TASK-211)
       if (pending.length) {

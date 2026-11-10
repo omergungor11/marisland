@@ -55,6 +55,8 @@ import type { DirtyRegion } from '../world/edit-types.ts';
 import type { SubImageRenderer } from './gl-subimage.ts';
 import { createPropMirror, type PropMirror } from './props/prop-mirror.ts';
 import { createRebuilder, type Rebuilder } from './rebuild.ts';
+import { createShadowSkip } from './shadow-skip.ts';
+import { NEAR_MERGE } from '../content/budgets.ts';
 import { createCultureClock, type CultureClock, type CultureFestival } from './culture-clock.ts';
 import { SURFACE_QUALITY } from '../content/materials.ts';
 
@@ -315,6 +317,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     mergedMaterialFor: d.propMaterial ? undefined : pm.mergedFor,
     softAppear: d.softAppear ?? true,
     castShadows: d.quality !== 'low',
+    nearMergeMaxVerts: d.quality === 'low' ? NEAR_MERGE.maxVerts : NEAR_MERGE.maxVertsShadowed,
     interiorShadows: d.quality === 'high',
     creases: SURFACE_QUALITY[d.quality][0] > 0,
     instantEdits: d.instantEdits ?? false,
@@ -371,6 +374,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   timings.build = d.now() - t1;
 
   const env = createEnvState();
+  const shadowSkip = createShadowSkip([props.group, terrain.group]);
   let lastTier = -1;
   const culture = createCultureClock(world.islands, d.getHour(), d.getTime());
   d.scope.defer(() => culture.dispose());
@@ -424,6 +428,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
   };
 
   const update = (dt: number, alpha: number): void => {
+    shadowSkip.restore();
     rebuild.update();
     sampleEnv(d.getHour(), env);
     const time = d.getTime();
@@ -480,6 +485,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
       life.onTier(tier);
     }
     props.update(d.getTime(), _focus.x, _focus.z, _camPos);
+    shadowSkip.skip(d.camera, env.sunDir);
     life.update(dt, alpha);
   };
   // No eager update here: the first update runs after the camera preset is applied so the
