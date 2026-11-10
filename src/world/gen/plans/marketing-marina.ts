@@ -677,6 +677,8 @@ function layTown(ctx: SiteCtx, isl: IslandData, mr: Marina): void {
     addShape(ctx, isl, tsh, true);
     mr.tower = { kit: tk, p: tp, rot: trot };
   }
+  // (the boats and their bollards before the promenade is reserved: a bollard stands on it)
+  layBoats(ctx, isl, mr);
   // the promenade: the deck reserved (walkable) along the centre line
   for (let s = 0; s <= sTot(g) + 1e-6; s += 3) {
     const a = g.aL + s / g.Rc;
@@ -685,7 +687,6 @@ function layTown(ctx: SiteCtx, isl: IslandData, mr: Marina): void {
     // (as wide as the level deck, its flat margin included: nothing else stands on its edge)
     addShape(ctx, isl, rectShape(p.x, p.z, t, g.W + 2 * M.ring.edgeFlat + 1, 3.4), false);
   }
-  layBoats(ctx, isl, mr);
   addShape(ctx, isl, discShape(g.C.x, g.C.z, g.Rb), false);
 }
 
