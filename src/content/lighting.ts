@@ -373,6 +373,35 @@ export const POOLS = {
     lavaLantern: { radius: 5.5, intensity: 1.3, offset: 0 },
     // Coding fairy-light grove (TASK-479 C13): a soft warm pool under each wreathed quad-end tree
     fairyWreath: { radius: 4.2, intensity: 0.55, offset: 0 },
+    // Horseshoe Harbour (M52 TASK-662): a pool in front of every quay house (the lit shop front /
+    // restaurant door on the terrace and the water's edge: `offset` = house centre to the promenade),
+    // restaurants (v0 seafood, v1 café, v3 gelato) wider and warmer than shops, the tower lamp a small
+    // one; terraces and stalls a dim one under their parasols and canopies. Under the island's
+    // lanterns and the fair's searchlights these read as one lit ring, not a wash.
+    quayHouse: {
+      radius: 4.2,
+      intensity: 0.45,
+      offset: 3.1,
+      variants: {
+        0: { radius: 5.2, intensity: 0.7 },
+        1: { radius: 5.2, intensity: 0.7 },
+        3: { radius: 5.2, intensity: 0.7 },
+        6: { radius: 4, intensity: 0.5, offset: 0 },
+      },
+    },
+    quayFurnish: {
+      radius: 0,
+      intensity: 0,
+      offset: 0,
+      variants: {
+        0: { radius: 3.4, intensity: 0.35 },
+        1: { radius: 3.6, intensity: 0.35 },
+        2: { radius: 3.2, intensity: 0.35 },
+        3: { radius: 3, intensity: 0.4 },
+        4: { radius: 3, intensity: 0.4 },
+        5: { radius: 3, intensity: 0.4 },
+      },
+    },
   } as Record<string, PoolSourceDef & { variants?: Record<number, Partial<PoolSourceDef>> }>,
   /**
    * Second pool colour (TASK-440): a source's `hue` share blends its pool from `color` toward this
