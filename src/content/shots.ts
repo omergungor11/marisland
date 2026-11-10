@@ -653,8 +653,8 @@ const FOUNDRY_SHOTS: readonly ShotPreset[] = (
  */
 const CARNIVAL_CAM = (v: string): string => `site:carnivalDeck:${v}`;
 const CARNIVAL_CAMS = {
-  front: CARNIVAL_CAM('-11,3.3,16,13,2.8,0'),
-  arrival: CARNIVAL_CAM('-14,3.8,22,10,2.3,0'),
+  front: CARNIVAL_CAM('-3,10,24,-3.5,1,4'),
+  arrival: CARNIVAL_CAM('-2,9,26,-3.5,1.2,5'),
 };
 /**
  * Dev frames: the arrival as a strip of stills (seed 1001: the ferry stops at sim ≈ 40 s, dwells 8 s), the
@@ -670,10 +670,10 @@ const CARNIVAL_SHOTS: readonly ShotPreset[] = (
     ['D-carnival-4', CARNIVAL_CAMS.arrival, 13, 52],
     ['D-carnival-5', CARNIVAL_CAMS.arrival, 13, 60],
     // the pre-TASK-554 arrival cam: at dusk the lit ritual costs ~30 calls more, the new cam reads 309 here
-    ['D-carnival-dusk', CARNIVAL_CAM('-20,3,14,10,3.5,0'), 19.5, 41.35],
-    ['D-carnival-deck', CARNIVAL_CAM('-7,3.5,9,2,2.5,0'), 12, 8],
+    ['D-carnival-dusk', CARNIVAL_CAM('-2,12,30,-3.5,1,3'), 19.5, 41.35],
+    ['D-carnival-deck', CARNIVAL_CAM('-5,5,17,-3.5,2,0'), 12, 8],
     ['D-carnival-night', CARNIVAL_CAMS.front, 22, 8],
-    ['D-carnival-arm', CARNIVAL_CAM('20,10,32,18,0,4'), 11, 8],
+    ['D-carnival-arm', CARNIVAL_CAM('-38,12,30,-52,1,8'), 11, 8],
   ] as const
 ).map(([id, cam, time, simt]) => ({
   id,
@@ -781,6 +781,49 @@ const DEVOPS_M25_SHOTS: readonly ShotPreset[] = DEVOPS_M25_CAMS.map(
     sets: ['dev' as const],
   }),
 );
+
+/**
+ * TASK-663 (M52): Horseshoe Harbour, the Marketing marina town, in the basin's frame (`site:marinaBasin:`,
+ * z = the mouth heading out to sea, x across, scale 1 u). Seed 1001; the wide frame is expected to be heavy.
+ */
+const HORSESHOE_CAM = (v: string): string => `site:marinaBasin:${v}`;
+const HORSESHOE_WOW: readonly ShotPreset[] = (
+  [
+    ['W-horseshoe-day', 'Horseshoe Harbour · day', HORSESHOE_CAM('0,60,55,0,0,-6'), 11],
+    ['W-horseshoe-quay', 'Horseshoe Harbour · quay', HORSESHOE_CAM('0,3.2,6,0,1.8,-24'), 13],
+    ['W-horseshoe-dusk', 'Horseshoe Harbour · dusk', HORSESHOE_CAM('0,22,38,0,0,-2'), 19],
+    ['W-horseshoe-night', 'Horseshoe Harbour · night', HORSESHOE_CAM('0,22,38,0,0,-2'), 22],
+  ] as const
+).map(([id, title, cam, time]) => ({
+  id,
+  title,
+  seed: 1001,
+  cam,
+  time,
+  simt: 6,
+  quality: 'medium' as const,
+  width: 1920,
+  height: 1080,
+  sets: ['wow'] as ShotSet[],
+}));
+const HORSESHOE_DEV: readonly ShotPreset[] = (
+  [
+    ['D-horseshoe-row', 'Horseshoe row', HORSESHOE_CAM('0,4,-2,-6,3,-22'), 12],
+    ['D-horseshoe-mouth', 'Horseshoe mouth', HORSESHOE_CAM('0,6,34,0,2,12'), 12],
+    ['D-horseshoe-wide', 'Horseshoe wide', HORSESHOE_CAM('0,150,120,-30,0,-22'), 12],
+  ] as const
+).map(([id, title, cam, time]) => ({
+  id,
+  title,
+  seed: 1001,
+  cam,
+  time,
+  simt: 6,
+  quality: 'medium' as const,
+  width: 1280,
+  height: 720,
+  sets: ['dev'] as ShotSet[],
+}));
 
 export const SHOT_PRESETS: readonly ShotPreset[] = [
   // ---- bible wow shots (1920×1080, medium quality)
@@ -2921,6 +2964,8 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     fleet: 'mock',
     sets: ['dev'],
   },
+  ...HORSESHOE_WOW,
+  ...HORSESHOE_DEV,
 ];
 
 export const SET_DEFAULTS: Record<
