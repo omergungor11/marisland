@@ -1,18 +1,29 @@
 /**
- * Marketing "Horseshoe Harbour" kit look (M52 TASK-660, D-170): every colour and dimension of the
+ * "Horseshoe Harbour" kit look (M52 TASK-660, D-170; repainted in the HQ palette, TASK-667, D-171): every colour and dimension of the
  * quay houses, terraces, stalls, moored boats, finger pontoon and mole tower. Geometry:
  * geo/themes/marketing-marina*.ts; the placement contract (keys, sizes): marketing-marina.ts.
- * Palette references only (ART_BIBLE §2): the island's wall strata, the cream walls, the roof set,
- * the Marketing accent `#E35D6A`. Lengths in u.
+ * Palette references only (ART_BIBLE §2): HQ's wall strata (Hearthholm), the cream walls, the roof
+ * set, the HQ coral and its light coral (OFFICE_PAL.hq), the harbour blue trim. Lengths in u.
  */
-import { EMISSIVE, FLOWERS, FOLIAGE, ROCK, ROOFS, WALL_STRATA, WALLS, WOOD } from '../palette.ts';
+import { OFFICE_PAL } from '../palette-offices.ts';
+import {
+  EMISSIVE,
+  FLOWERS,
+  FOLIAGE,
+  HAY,
+  ROCK,
+  ROOFS,
+  WALL_STRATA,
+  WALLS,
+  WOOD,
+} from '../palette.ts';
 
-const S = WALL_STRATA.marketing;
-const CORAL = ROOFS[1];
-const TERRA = ROOFS[0];
+const S = WALL_STRATA.hq;
+const CORAL = OFFICE_PAL.hq[0].roof;
+const TERRA = S[3];
 const TEAL = ROOFS[2];
 const GOLD = ROOFS[3];
-const LILAC = ROOFS[4];
+const SALMON = OFFICE_PAL.hq[1].roof;
 const SKY = ROOFS[5];
 const MINT = ROOFS[6];
 const CREAM = WALLS[0];
@@ -71,7 +82,7 @@ export const MARINA_LOOK = {
     gold: GOLD,
     sky: SKY,
     mint: MINT,
-    lilac: LILAC,
+    salmon: SALMON,
     terra: TERRA,
     leaf: FOLIAGE.deciduous[1],
     pink: FLOWERS[0],
@@ -85,7 +96,7 @@ export const MARINA_LOOK = {
     [GOLD, WHITE],
     [SKY, CREAM],
     [MINT, WHITE],
-    [LILAC, CREAM],
+    [SALMON, CREAM],
   ] as const,
   /** 0 seafood restaurant · 1 café · 2 bakery · 3 gelato · 4 souvenir shop · 5 chandlery. */
   houses: [
@@ -115,7 +126,7 @@ export const MARINA_LOOK = {
       rise: 0.95,
       wall: WALLS[3],
       front: TEAL,
-      roofCol: S[2],
+      roofCol: S[3],
       shutters: CORAL,
       doorCol: WOOD.dark,
       awning: [TEAL, CREAM],
@@ -132,7 +143,7 @@ export const MARINA_LOOK = {
       rise: 1.2,
       wall: WALLS[2],
       front: GOLD,
-      roofCol: S[1],
+      roofCol: SALMON,
       shutters: SKY,
       doorCol: S[3],
       awning: [GOLD, WHITE],
@@ -165,11 +176,11 @@ export const MARINA_LOOK = {
       roof: 'flat',
       rise: 0.5,
       wall: S[0],
-      front: LILAC,
+      front: SALMON,
       roofCol: S[2],
       shutters: S[1],
       doorCol: WOOD.dark,
-      awning: [LILAC, CREAM],
+      awning: [SALMON, CREAM],
       doorSide: 1,
       glyph: 'card',
       extras: ['bunting', 'flowerBoxes'],
@@ -183,7 +194,7 @@ export const MARINA_LOOK = {
       rise: 1.25,
       wall: SKY,
       front: S[3],
-      roofCol: S[2],
+      roofCol: CORAL,
       shutters: CREAM,
       doorCol: WOOD.dark,
       awning: [SKY, CREAM],
@@ -213,11 +224,11 @@ export const MARINA_LOOK = {
     parapetCap: 0.08,
   },
   glyphColors: {
-    fish: ['#5DA9E9', '#3E8BC9', '#5A4A55'],
-    cup: ['#E35D6A', '#8A5A3B', '#A9AEB8'],
-    loaf: ['#F2C46B', '#C08458'],
-    cone: ['#E8B77A', '#FF8FB1', '#7FD8B3'],
-    card: ['#5DA9E9', '#E35D6A', '#FFF4E0'],
+    fish: [SKY, '#3E8BC9', '#5A4A55'],
+    cup: [CORAL, '#8A5A3B', '#A9AEB8'],
+    loaf: [HAY, S[1]],
+    cone: [S[2], '#FF8FB1', '#7FD8B3'],
+    card: [SKY, CORAL, CREAM],
     anchor: ['#5A4A55'],
   },
   /** Terraces: tables / chairs / parasols; `r` parasol radius. All x, z from the piece centre. */
@@ -292,7 +303,7 @@ export const MARINA_LOOK = {
     ice: '#DDF3FA',
     crates: [WOOD.planks, WOOD.dock],
     fruit: [CORAL, GOLD, FOLIAGE.deciduous[0], TERRA, '#FF8FB1'],
-    cards: [SKY, CORAL, GOLD, MINT, LILAC, CREAM],
+    cards: [SKY, CORAL, GOLD, MINT, SALMON, CREAM],
     set: [1, 0, 3] as readonly number[],
   },
   /** Boats; `hull` length x beam, bow +z, keel sinks `draft` under the water line. */

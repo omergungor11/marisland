@@ -437,7 +437,7 @@ function house({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   if (has(s, 'finial')) {
     const fy = top + s.rise;
     if (hi) put(acc, baseBox(0.34, 0.1, 0.34), [0, fy, hz - 0.1], P.trim, { aoAmt: 0 });
-    put(acc, cylB(0.01, 0.26, 0.46, 6), [0, fy + (hi ? 0.1 : 0), hz - 0.1], '#E8B77A', {
+    put(acc, cylB(0.01, 0.26, 0.46, 6), [0, fy + (hi ? 0.1 : 0), hz - 0.1], P.stoneWarm, {
       aoAmt: 0,
     });
     put(
