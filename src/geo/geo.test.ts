@@ -117,6 +117,12 @@ const VARIANT_TARGET: Record<string, number> = {
   'buoy:6': 170,
   // TASK-540: the 227 u fixture coaster track (rails, ties, spine, columns), 29 tris per metre
   'coasterTrack:0': 7500,
+  // TASK-670: the fun park's 36 / 42 u platforms and 26 u coaster loop, and the gallery assemblies (a whole park on the M / S deck)
+  'lunaDeck:2': 4000,
+  'lunaCoaster:2': 4000,
+  'lunaPose:3': 4500,
+  'lunaPose:4': 26000,
+  'lunaPose:5': 25000,
 };
 
 /** Props from the buildings/coastal/decor/landmarks families: carry an `emissive` attribute. */
@@ -269,25 +275,38 @@ describe('prop geometry', () => {
               : // TASK-660: the Horseshoe Harbour boats sink 0.2 u under the waterline pivot
                 def.id === 'quayBoat'
                 ? -0.3
-                : def.id === 'pipe'
-                  ? -4.3
-                  : // the marina's pile feet and the fort's plinth reach down past the waterline pivot (TASK-505)
-                    def.id === 'marinaPier' || def.id === 'starFort'
-                    ? -5
-                    : // TASK-533: the Tide-Lab piles reach the seabed under the waterline pivot
-                      def.id === 'tideLab'
-                      ? -1.1
-                      : // TASK-540: the coaster's columns are sunk 0.25 below groundY, the seated rider's boots hang under its hip pivot
-                        def.id === 'coasterTrack' || def.id === 'coasterRider'
-                        ? -0.3
-                        : // TASK-509b: the breakwater foot reaches the seabed, the bridge / deck skirts hide the bank
-                          def.id === 'devopsBreakwater'
-                          ? -2.7
-                          : def.id === 'emberBridge' || def.id === 'craterDeck'
-                            ? -0.65
-                            : def.id === 'stairFlight'
-                              ? -Math.max(...STAIR_FLIGHT.looks.map((L) => L.skirt)) - 0.05
-                              : -0.05;
+                : // TASK-670: the fun park's deck piles, the coaster's sea columns, and its movers that hang
+                  // under (swing chairs, drop gondola seats) or sit just under (platform, boats) their axis pivot
+                  def.id === 'lunaDeck'
+                  ? -0.5
+                  : def.id === 'lunaCoaster' || def.id === 'lunaPose'
+                    ? -1.2
+                    : def.id === 'lunaSwingTop'
+                      ? -4
+                      : def.id === 'lunaDropCar'
+                        ? -0.9
+                        : def.id === 'lunaCarouselTop' || def.id === 'lunaBoat'
+                          ? -0.2
+                          : def.id === 'pipe'
+                            ? -4.3
+                            : // the marina's pile feet and the fort's plinth reach down past the waterline pivot (TASK-505)
+                              def.id === 'marinaPier' || def.id === 'starFort'
+                              ? -5
+                              : // TASK-533: the Tide-Lab piles reach the seabed under the waterline pivot
+                                def.id === 'tideLab'
+                                ? -1.1
+                                : // TASK-540: the coaster's columns are sunk 0.25 below groundY, the seated rider's boots hang under its hip pivot
+                                  def.id === 'coasterTrack' || def.id === 'coasterRider'
+                                  ? -0.3
+                                  : // TASK-509b: the breakwater foot reaches the seabed, the bridge / deck skirts hide the bank
+                                    def.id === 'devopsBreakwater'
+                                    ? -2.7
+                                    : def.id === 'emberBridge' || def.id === 'craterDeck'
+                                      ? -0.65
+                                      : def.id === 'stairFlight'
+                                        ? -Math.max(...STAIR_FLIGHT.looks.map((L) => L.skirt)) -
+                                          0.05
+                                        : -0.05;
           expect(bb.min.y).toBeGreaterThanOrEqual(below);
           const h = def.heights?.[v] ?? def.height;
           expect(bb.max.y).toBeGreaterThanOrEqual(h * 0.65);
