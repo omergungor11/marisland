@@ -118,10 +118,10 @@ export const CARPET = {
 } as const;
 
 /**
- * Marketing marina quay (TASK-664). Colours: Beacon Rock strata (palette.ts WALL_STRATA.marketing,
+ * Horseshoe Harbour quay (TASK-664, HQ palette TASK-667). Colours: Hearthholm strata (palette.ts WALL_STRATA.hq,
  * ART_BIBLE §2). Distances in u, measured on the plan's deck shape (marketing-marina.ts `where`).
  */
-const MS = WALL_STRATA.marketing;
+const MS = WALL_STRATA.hq;
 export const MARINA_QUAY = {
   /** Deck stone, the coping and the quay / mole face. */
   ink: { deck: MS[0], coping: MS[3], face: MS[2] },
