@@ -72,6 +72,9 @@ export interface Budget {
  * 81 MB, Marketing pair 175 calls, DevOps / Research T2 371–387k tris; ΔE passes everywhere. Low
  * drawCalls 170 → 176, triangles 366k → 390k, gpuMemoryMB 80 → 82 (measured + ~1 %, not + 10 %: low
  * is the fallback tier, the headroom stays with medium).
+ * TASK-651 (user 2026-11-10): land life and workers appear on the tier-2 band (200–260 u) and the M52 / M53
+ * kits landed after D-165: W15e 340 calls (335 before the land life), low L-pairs-hq / -marketing 83–84 MB.
+ * Medium drawCalls 330 → 350, low gpuMemoryMB 82 → 86 (measured + ~3 %).
  */
 export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
   low: {
@@ -82,12 +85,12 @@ export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
     agents: 25,
     particles: 2_000,
     programs: 12,
-    gpuMemoryMB: 82,
+    gpuMemoryMB: 86,
     jsHeapMB: 120,
     newSeedMs: 1500,
   },
   medium: {
-    drawCalls: 330,
+    drawCalls: 350,
     triangles: 950_000,
     instances: 15_000,
     groundCover: 12_000,

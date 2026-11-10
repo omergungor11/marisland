@@ -302,6 +302,9 @@ describe('workers: behaviour', () => {
       (k) => w.stateOf(k) === STATE_WORK,
     ) as number;
     expect(i).toBeDefined();
+    expect(w.wave(i)).toBe(false); // hidden: the camera (400 u up) is outside its reveal distance
+    r.cam.set(w.x[i], w.y[i] + 10, w.z[i]);
+    run(r, 40);
     expect(w.wave(i)).toBe(true);
     expect(w.stateOf(i)).toBe(2);
     run(r, Math.ceil((WORKERS.wave.emoteSeconds + 0.5) / FIXED_STEP));
@@ -315,7 +318,12 @@ describe('workers: behaviour', () => {
     r.tier.v = 2;
     r.life.onTier(2);
     run(r, 5);
-    expect(r.w.liveCount).toBe(r.w.residents); // ambient slots sleep until the camera focuses
+    expect(r.w.awake).toBe(r.w.residents); // ambient slots sleep until the camera focuses
+    expect(r.w.liveCount).toBe(0); // simulated, but the camera (400 u up) is past the reveal band
+    const k = Array.from({ length: r.w.capacity }, (_, j) => j).find((j) => r.w.active[j])!;
+    r.cam.set(r.w.x[k], r.w.y[k] + 10, r.w.z[k]);
+    run(r, 40);
+    expect(r.w.liveCount).toBeGreaterThan(0);
   });
 
   it('skips lots hidden by flooding (setLotsHidden)', () => {

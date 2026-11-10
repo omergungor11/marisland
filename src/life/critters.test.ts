@@ -72,19 +72,23 @@ describe('critters: ducks', () => {
         const r = rig(s, q);
         frame(r.life, 5);
         const d = r.life.kinds.ducks;
-        if (d) expect(d.liveCount).toBe(d.capacity);
+        if (d) expect(d.active.reduce((n, a) => n + a, 0)).toBe(d.capacity); // all simulate; the camera reveals them
         expect(r.life.stats.agents).toBe(r.counters.agents);
         expect(r.life.stats.agents).toBeLessThanOrEqual(BUDGETS[q].agents);
       }
     }
   });
 
-  it('are alive only from tier 2', () => {
+  it('are alive only from tier 2 (armed one tier ahead, shown by camera distance)', () => {
     for (const s of SEEDS) {
-      const r = rig(s, 'medium', 1);
+      const r = rig(s, 'medium', 0);
       if (!r.life.kinds.ducks) continue;
       frame(r.life, 5);
-      expect(r.life.kinds.ducks.liveCount).toBe(0);
+      expect(r.life.kinds.ducks.active.reduce((n, a) => n + a, 0)).toBe(0);
+      const t1 = rig(s, 'medium', 1);
+      t1.cam.set(0, 900, 0);
+      frame(t1.life, 5);
+      expect(t1.life.kinds.ducks?.liveCount).toBe(0);
     }
   });
 
