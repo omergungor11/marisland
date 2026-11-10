@@ -136,11 +136,12 @@ describe('archipelago — 30-seed full generation', () => {
   it('stage hashes are locked for seeds 1, 42, 1001 (archipelago mode)', () => {
     const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes.world]));
     // TASK-615: rim delta, lip knobs and talus change height / zone / props only, re-pinned
+    // TASK-661: the Marketing marina town (ring, basin, town, keep-outs), re-pinned
     expect(snap).toMatchInlineSnapshot(`
       {
-        "1": "cf75960c66ff1d65",
-        "1001": "c340fa24449f8812",
-        "42": "f4f5c359efade2ec",
+        "1": "230b905fbe3e5cac",
+        "1001": "6e9d00d6bdfaf20a",
+        "42": "867fd7ee2a55b020",
       }
     `);
   });
@@ -158,11 +159,12 @@ describe('archipelago — 30-seed full generation', () => {
       }),
     );
     // TASK-615: height / zone / props stages (rim delta, lip knobs, talus); sites onward unchanged, re-pinned
+    // TASK-661: the Marketing marina town, re-pinned
     expect(snap).toMatchInlineSnapshot(`
       {
-        "1": "bits:bb6b9295d4dd0e59 layout:358ca2668fc3f1cc height:445c062e1cd9c522 sdf:6d9067df21bb1f7f islandMap:1b3b96d52be1f341 zone:59e738564a2037fb fields:fde62d37a0223454 chunks:dc7faad7717da3b9 sites:53e2af66c0666cdb routes:ba351f92a49adcbe seamarks:4748e8cedf7f5cce marina:55c9f6bd1dec64f8 props:7e6cf47d3a0f0337",
-        "1001": "bits:21c93a95b0290087 layout:2747e57b5392567c height:9967f5587e46f296 sdf:1f288e031c5a88b9 islandMap:82cfda5cfa742363 zone:bbffe5ced3080787 fields:fde62d37a0223454 chunks:1854ff6405fc1fbe sites:b41f90cca5e56460 routes:40cfc256d21e90c8 seamarks:4dcea19104575f6d marina:c87503ceb82482e3 props:aef16da681c47824",
-        "42": "bits:d0ad613beb0fc5fb layout:7d862a142513cf36 height:259a1781e3971cd1 sdf:c78607977e7d130e islandMap:f912f4e15661f0c1 zone:ddf8314af6d41c43 fields:fde62d37a0223454 chunks:a7e456a628d4b886 sites:509c1f91ea58aea0 routes:beacdf5184662811 seamarks:11f15c66622ea092 marina:77cb754f77e64ed7 props:f0c95d678a2d95df",
+        "1": "bits:a7f2538f215731ab layout:358ca2668fc3f1cc height:044232f4cf378ed1 sdf:17eef4b557176e63 islandMap:cc7e5e2a97435fbf zone:8ca8a3b8d4ef6511 fields:fde62d37a0223454 chunks:dc7faad7717da3b9 sites:29745448ce3f1ac7 routes:7b283073173a0eeb seamarks:c011e3e42006ab66 marina:60adb598db35d11a props:0b612588fa1472db",
+        "1001": "bits:c6c68ca45f8a3068 layout:2747e57b5392567c height:e237c8ff092e03b9 sdf:b3c22ad90fb262fe islandMap:cb953553ea33c14b zone:e8bb19d195c49b7e fields:fde62d37a0223454 chunks:0081d8130befb3e6 sites:a1f5ba38d7b44057 routes:c5f8f1adc7453dbd seamarks:18210a323201baba marina:bde34107f195f0db props:2a34e5ac7a6f69e4",
+        "42": "bits:b455bfd16529119d layout:7d862a142513cf36 height:36d5d2e874693dc6 sdf:0014231c0bfb5fed islandMap:6456d26e5c4be993 zone:8372188ea24b9bb8 fields:fde62d37a0223454 chunks:a7e456a628d4b886 sites:b312da90279dfce2 routes:beacdf5184662811 seamarks:11f15c66622ea092 marina:77cb754f77e64ed7 props:8c750050045c0ded",
       }
     `);
   });
@@ -680,8 +682,9 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // TASK-556 Carnival deck arch dropped, party pontoon further off and inshore, re-pinned
       // TASK-550 (D-139) arm rock to the waterline + armoured spur corner, wider sunken-city plaza, re-pinned
       // TASK-615 the Research campus keeps its bluff: its rim delta, lip knobs and wall-foot talus, re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('683d21d39394f508');
-      expect(generateWorld(1).hashes.world).toBe('2e849853cf59251a');
+      // TASK-661 the Marketing marina town, re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('d578749465fd270d');
+      expect(generateWorld(1).hashes.world).toBe('e731c150b9231de1');
     } finally {
       for (const b of saved) b.on = true;
     }
