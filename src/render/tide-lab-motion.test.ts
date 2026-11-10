@@ -213,7 +213,7 @@ describe('harbour calm mask (TASK-534)', () => {
       const i =
         Math.round((c.z - h.originZ) / h.cellSize) * h.n +
         Math.round((c.x - h.originX) / h.cellSize);
-      expect(mask[i], `seed ${w.seed} city`).toBe(1);
+      expect(mask[i], `seed ${w.seed} city`).toBe(255);
       // the dive point lies outside
       const d = isl.anchors.subDive;
       const j =
@@ -221,6 +221,26 @@ describe('harbour calm mask (TASK-534)', () => {
         Math.round((d.x - h.originX) / h.cellSize);
       expect(mask[j], `seed ${w.seed} dive`).toBe(0);
     }
+  });
+
+  it('calms the whole marina basin and fades out through its mouth (TASK-664)', () => {
+    const w = worlds.get(1001)!;
+    const m = w.islands.find((o) => o.anchors.marinaBasin)!;
+    const mask = harbourCalmMask(w);
+    const h = w.height;
+    const at = (x: number, z: number): number =>
+      mask[
+        Math.round((z - h.originZ) / h.cellSize) * h.n + Math.round((x - h.originX) / h.cellSize)
+      ];
+    const c = m.anchors.marinaBasin;
+    const Rb = m.anchors.marinaBasinSize.x / 2;
+    const dx = Math.cos(c.rotY);
+    const dz = Math.sin(c.rotY);
+    expect(at(c.x, c.z)).toBe(255);
+    // the back of the basin, by the quay face
+    expect(at(c.x - dx * (Rb - 4), c.z - dz * (Rb - 4))).toBe(255);
+    // past the mouth: open sea
+    expect(at(c.x + dx * (Rb + 8), c.z + dz * (Rb + 8))).toBe(0);
   });
 });
 

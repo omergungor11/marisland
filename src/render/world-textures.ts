@@ -48,9 +48,9 @@ export function ringScaleField(world: WorldData): Float32Array {
 }
 
 /**
- * Harbour calm mask (M31 TASK-534): the lagoon water on the coast side of a breakwater arm, written
- * into the SDF texture's ring channel as 0 (the ring scale is ≥ 1 and the shader clamps it, so the
- * bands don't change). The water shader quiets its shore foam there: the lap lines and bands of
+ * Harbour calm mask (M31 TASK-534): the lagoon water on the coast side of a breakwater arm (and the
+ * marina basin, `marinaCalm`), a strength 0..255 that pulls the SDF texture's ring channel toward 0
+ * (the ring scale is ≥ 1 and the shader clamps it, so the bands don't change). The water shader quiets its shore foam there: the lap lines and bands of
  * both shores of a 6 u lagoon crossed the sunken city as white rings.
  */
 export function harbourCalmMask(world: WorldData): Uint8Array {
@@ -90,11 +90,52 @@ export function harbourCalmMask(world: WorldData): Uint8Array {
         const nx = -(a.z - q.z);
         const nz = a.x - q.x;
         const side = (isl.cx - a.x) * nx + (isl.cz - a.z) * nz;
-        if (((x - a.x) * nx + (z - a.z) * nz) * side > 0) out[c] = 1;
+        if (((x - a.x) * nx + (z - a.z) * nz) * side > 0) out[c] = 255;
       }
   }
+  marinaCalm(world, out);
   return out;
 }
+
+/**
+ * Marina basin (M52 TASK-664): every lagoon cell of the `marinaBasin` disc (radius = the basin plus
+ * half the quay ring, so the mouth sector is in) is calm, fading out along the mouth heading from
+ * `fade[0]` u inside the basin edge to `fade[1]` u past it (strength 255 → 0, max with the arm's).
+ */
+function marinaCalm(world: WorldData, out: Uint8Array): void {
+  const h = world.height;
+  const n = h.n;
+  const F = WATER_SHADER.harbourCalm.marinaFade;
+  for (const isl of world.islands) {
+    const c = isl.anchors.marinaBasin;
+    const size = isl.anchors.marinaBasinSize;
+    const quay = isl.anchors.marinaQuaySize;
+    if (!c || !size || !quay) continue;
+    const Rb = size.x / 2;
+    const R = Rb + quay.x / 2;
+    const dx = Math.cos(c.rotY);
+    const dz = Math.sin(c.rotY);
+    const i0 = Math.max(0, Math.floor((c.x - R - h.originX) / h.cellSize));
+    const i1 = Math.min(n - 1, Math.ceil((c.x + R - h.originX) / h.cellSize));
+    const j0 = Math.max(0, Math.floor((c.z - R - h.originZ) / h.cellSize));
+    const j1 = Math.min(n - 1, Math.ceil((c.z + R - h.originZ) / h.cellSize));
+    for (let j = j0; j <= j1; j++)
+      for (let i = i0; i <= i1; i++) {
+        const k = j * n + i;
+        if (world.zone[k] !== Zone.lagoon) continue;
+        const x = h.originX + i * h.cellSize - c.x;
+        const z = h.originZ + j * h.cellSize - c.z;
+        if (x * x + z * z > R * R) continue;
+        const s = (x * dx + z * dz - (Rb - F[0])) / (F[0] + F[1]);
+        const t = Math.min(1, Math.max(0, s));
+        const v = Math.round(255 * (1 - t * t * (3 - 2 * t)));
+        if (v > out[k]) out[k] = v;
+      }
+  }
+}
+
+/** Ring channel value of a sample: the ring scale, pulled to 0 by the calm strength (0..255). */
+const calmRing = (ring: number, calm: number): number => ring * (1 - calm / 255);
 
 /** 1 where `shoreSdf > 0` (the coast mask the ring field's nearest-coast search uses). */
 export function landMask(world: WorldData): Uint8Array {
@@ -350,7 +391,7 @@ export function createWorldTextures(
     for (let i = 0; i < n * n; i++) {
       heightHalf[i] = THREE.DataUtils.toHalfFloat(world.height.data[i]);
       sdfHalf[i * 2] = THREE.DataUtils.toHalfFloat(clampSdf(world.shoreSdf[i]));
-      sdfHalf[i * 2 + 1] = THREE.DataUtils.toHalfFloat(calm[i] ? 0 : ring.ring[i]);
+      sdfHalf[i * 2 + 1] = THREE.DataUtils.toHalfFloat(calmRing(ring.ring[i], calm[i]));
     }
     zoneCopy.set(world.zone);
     // G5 lip texels (TASK-616): the material sees plateau-lip cliff samples as their vegetation
@@ -488,7 +529,7 @@ export function createWorldTextures(
             for (let j = rr.y; j < rr.y + rr.h; j++)
               for (let i = rr.x; i < rr.x + rr.w; i++) {
                 const k = j * n + i;
-                const v = calm[k] ? 0 : rc.ring[k];
+                const v = calmRing(rc.ring[k], calm[k]);
                 sRect.set(sdfHalf, k * 2 + 1, THREE.DataUtils.toHalfFloat(v), i, j);
               }
           }
