@@ -2,6 +2,16 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-165: Shadow passes are skipped where the shadow cannot reach the view; far LOD0 leaves its shadow to LOD1 (TASK-652) — 2026-11-10
+
+**Decision.** `render/shadow-skip.ts`: each frame every prop / terrain mesh's bounding sphere is swept away from the sun down to `SHADOW_CULL.floorY` and tested against the view frustum; a miss skips that mesh's shadow pass for the frame. At T0–T1 a LOD0 group lying wholly past 187.5 u does not cast, its LOD1 does (`reveal.lod1CastsPast`), trees included. `NEAR_MERGE.maxVertsShadowed` 2000 on medium / high (low keeps 1600). `BUDGETS`, `TIER_FADE`, `LOD_HANDOFF` and the reveal distances of D-161 are unchanged.
+
+**Why.** D-161 arms LOD0 groups on every island within 260 u; main and shadow draw each. `wow --assert` fell to 51 / 55 on medium calls (W15c 423, W15e 343, W16 341, W-marina-dusk 337 vs 330). Most of the extra calls were shadow passes: casters inside the square light-space box but outside the view (W15c: 66 LOD0 groups and 25 terrain chunks drawn in the shadow pass only), and LOD1 + LOD0 both casting in the hand-over band. The user wants the earlier reveal kept, so the fix is on the draw side, not the bands or the budgets.
+
+**Result.** wow 59 / 59: W15c 423 → 320, W15e 343 → 315, W16 341 → 320, W4 322 → 235, W27 310 → 201; peak 850k tris, 189 MB (cap 200). Headroom on medium calls is 3 %.
+
+**Open.** Low ladder `L-pairs-hq` / `L-pairs-marketing` read 83–84 MB against 82 on main with or without this change (user decision: low `gpuMemoryMB` 86 or a trim). Far shadows are LOD1-shaped (islet palm at 260 u, turbine base self-shadow at 200 u): qa to judge. About 100 terrain draws remain in W15c; the next lever is terrain-side. FSM boundary shift 140 → 210 (first TASK-651 attempt) rejected: it stacks on D-161.
+
 ## D-172: M53 Marketing "Deniz Üstü Lunapark" — direction B: ring platform on piles with four rides, a mini coaster and bumper boats (TASK-670…673) — 2026-11-10
 
 **Decision.** The Carnival Pier grows into a sea-top fun park: a ring platform on piles beside the ferry pier (`lunaDeck`, M size 36 × 26 u, open pool 22 × 12 u), a ride on each corner (chain swing, drop tower, carousel, the `ferrisWheel` at scale 1.0 replacing the 0.6 one), a kiddie coaster loop over the shore edge (`lunaCoaster`, worm train), bumper boats in the inner pool, a neon gate, ticket booth, three food carts, a prize stall and small furniture. The WELCOME screen, bulb arches and confetti cannons stay. Kit contract `src/content/themes/marketing-luna.ts` (`LUNA_KIT`, `lunaLayout(size)`); moving parts are separate geo with their pivots on the motion axis.
