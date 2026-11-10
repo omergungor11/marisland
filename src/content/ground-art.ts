@@ -11,10 +11,10 @@
  * - Design prism pools (hq-design D3): under every `prismArch` a rainbow pool of sun light thrown
  *   through the prism — offset away from the sun, stretched and brightest at golden hour; at night
  *   (lamps on) a softer pool right under the glowing prism.
- * - Marketing marina quay (TASK-664): over the Horseshoe Harbour's ring (the plan's deck shape,
- *   rebuilt from the `marina*` anchors) cream stone flags laid in courses round the basin, a dark
- *   coping band along every water edge, and a darker stone face below it, so the quay reads as a
- *   built harbour wall, not a beach.
+ * - HQ harbour quay (TASK-664; open crescent TASK-675): along the `marinaQuay*` centre line and its
+ *   two stub jetties, cream stone flags laid in courses that follow the quay's curve, a dark coping
+ *   band along every water edge, and a darker stone face below it, so the quay reads as a built
+ *   harbour wall, not a beach.
  */
 import { WALLS, WALL_STRATA } from './palette.ts';
 import { CULTURE_ACCENT, GROUT, PAVING } from './themes/hq.ts';
@@ -118,8 +118,8 @@ export const CARPET = {
 } as const;
 
 /**
- * Horseshoe Harbour quay (TASK-664, HQ palette TASK-667). Colours: Hearthholm strata (palette.ts WALL_STRATA.hq,
- * ART_BIBLE §2). Distances in u, measured on the plan's deck shape (hq-horseshoe.ts `where`).
+ * HQ harbour quay (TASK-664, HQ palette TASK-667, open crescent TASK-675). Colours: Hearthholm strata
+ * (palette.ts WALL_STRATA.hq, ART_BIBLE §2). Distances in u, across the quay from its drawn water edge.
  */
 const MS = WALL_STRATA.hq;
 export const MARINA_QUAY = {
@@ -132,7 +132,9 @@ export const MARINA_QUAY = {
   deckMix: 0.85,
   /** Share of the paving's own lightness (its flag relief) kept on the deck and coping. */
   deckShade: 0.6,
-  /** The drawn inner edge sits `edgeInset` u inside the basin radius (mid-way down the grid's brink). */
+  /** …on the deck where its own courses are drawn (medium / high): the zone's world-aligned tiles fade under them. */
+  deckRelief: 0.2,
+  /** The drawn water edge sits `edgeInset` u in from the deck's edge (water edge + `ring.innerFlat`; mid-way down the grid's brink). */
   edgeInset: 0.5,
   /** Coping band inside every water edge: `coping` u, never under `copingPx` px. */
   coping: 0.55,
@@ -141,19 +143,34 @@ export const MARINA_QUAY = {
   copingLip: 0.08,
   copingLipPx: 0.6,
   copingLipMix: 0.35,
-  /** Face: from the drawn edge out `faceReach` u (the basin face and the moles' rock flank). */
+  /** Face: from the drawn edge out `faceReach` u (the quay face and the stubs' rock flank). */
   faceReach: MARINA_SITE.ring.flank + 1.5,
   /** The face carries on this far under the water (the shelf colour stops at the wall foot). */
   faceDepth: 1.2,
   /** Lightness of the wall shading (wet band, blocks) kept on the face / coping, as a ratio. */
   faceShade: [0.55, 1.4] as const,
-  /** Outer (sea / bluff) edge: coping and face only where the shore SDF is under this (u). */
+  /** Stub and quay-end edges: coping and face only where the shore SDF is under this (u). */
   seaSdf: [3.5, 5.5] as const,
   /** Deck stone only within ± this of the deck height (lanes up the bluff stay plain). */
   heightBand: 0.12,
   /** Below the deck by `faceBelow[0]` → `[1]` u the ground is face (the grid's brink past the edge). */
   faceBelow: [0.08, 0.25] as const,
-  /** Deck shape (hq-horseshoe-site.ts): taper of the edges toward the mole heads. */
-  taper: MARINA_SITE.ring.taper,
-  edgeFlat: MARINA_SITE.ring.edgeFlat,
+  /**
+   * Open crescent quay (TASK-675, D-173): the shader's copy of the `marinaQuay*` centre line, at most
+   * `maxPoints` points (every `ceil((K + 1) / maxPoints)`th anchor, the last one always).
+   */
+  maxPoints: 40,
+  /** A quay point is level deck when its promenade's middle is within this of the deck height (else a gap / ramp). */
+  deckTol: 0.1,
+  /** Land edge per point: the level plaza inland of the water edge, scanned every `scanStep` u. */
+  scanStep: 0.5,
+  /** Courses parallel to the water edge (`width` u from the coping in), flags `length` u along, staggered. */
+  course: { width: 1.15, length: 1.7 },
+  /** Joint line (u, px floor), darkening, and the fade of the joints once a flag is under `fadePx` px. */
+  joint: 0.07,
+  jointPx: 0.8,
+  jointShade: 0.72,
+  jointFadePx: [5, 9] as const,
+  /** ± lightness per flag (a hash of course × flag). */
+  flagTone: 0.06,
 } as const;

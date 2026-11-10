@@ -16,10 +16,16 @@ export const WATER_SHADER = {
   /**
    * Sheltered harbour water (M31 TASK-534, `harbourCalmMask`): lagoon cells on the coast side of a
    * breakwater arm within `reach` u of it; `foam` = the share taken off the lap and contact line.
-   * Marina basin (TASK-664): its whole disc, fading out along the mouth heading from
-   * `marinaFade[0]` u inside the basin edge to `marinaFade[1]` u past it.
+   * HQ harbour quay (TASK-664; open crescent bay TASK-675, D-173): only the berth strip along the
+   * quay, full out to `marinaBerth.across[0]` u from the water edge and gone by `[1]` (the boats
+   * moor stern-to inside it), fading out toward the mouth over `ends[0]` → `[1]` u of quay from
+   * either end; the open bay keeps its shore rings and foam.
    */
-  harbourCalm: { reach: 14, foam: 0.65, marinaFade: [3, 5] as const },
+  harbourCalm: {
+    reach: 14,
+    foam: 0.65,
+    marinaBerth: { across: [9, 14] as const, ends: [3, 16] as const },
+  },
   /** Alpha per band: sand shows through near the beach. */
   alpha: { lagoon: 0.55, shallow: 0.8, deep: 0.97 },
   /** Seabed depth (u) range over which a steep drop forces deep alpha. */

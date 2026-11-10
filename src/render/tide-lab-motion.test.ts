@@ -223,10 +223,10 @@ describe('harbour calm mask (TASK-534)', () => {
     }
   });
 
-  // TASK-674 (D-173): the marina is an open crescent quay on the bay now; the mask still calms the
-  // lagoon cells of the `marinaBasin` disc (its berth strips at the back of the bay) and leaves the
-  // open sea past the mouth (the follow-up shader task re-fits it to the quay)
-  it('calms the berths at the back of the bay and fades out through its mouth (TASK-664)', () => {
+  // TASK-674 (D-173): the marina is an open crescent quay on the bay now; TASK-675 calms only the
+  // lagoon berth strip along the quay (fading out toward the mouth at either end) and leaves the open
+  // bay and the sea past the mouth their shore rings
+  it('calms the berth strip along the quay, not the open bay (TASK-664, TASK-675)', () => {
     const w = worlds.get(1001)!;
     const m = w.islands.find((o) => o.anchors.marinaBasin)!;
     const A = m.anchors;
@@ -250,6 +250,22 @@ describe('harbour calm mask (TASK-534)', () => {
     // past the mouth: open sea
     const mo = A.marinaMouth;
     expect(at(mo.x + Math.cos(mo.rotY) * 12, mo.z + Math.sin(mo.rotY) * 12)).toBe(0);
+    // the open bay between the quay and the mouth: not calmed
+    expect(at((c.x + mo.x) / 2, (c.z + mo.z) / 2)).toBe(0);
+    // every lagoon cell in the berth strip a third of the way along either arm is calm; the strip
+    // is quieter at the quay's ends than in its middle
+    let K = 0;
+    while (A[`marinaQuay${K + 1}`]) K++;
+    for (const k of [Math.round(K / 3), Math.round((2 * K) / 3)]) {
+      const q = A[`marinaQuay${k}`];
+      expect(at(q.x - Math.sin(q.rotY) * o, q.z + Math.cos(q.rotY) * o), `quay ${k}`).toBe(255);
+    }
+    const strip = (k: number): number => {
+      const q = A[`marinaQuay${k}`];
+      return at(q.x - Math.sin(q.rotY) * o, q.z + Math.cos(q.rotY) * o);
+    };
+    expect(strip(0)).toBeLessThan(strip(Math.round(K / 2)));
+    expect(strip(K)).toBeLessThan(strip(Math.round(K / 2)));
   });
 });
 

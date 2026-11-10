@@ -49,7 +49,7 @@ export function ringScaleField(world: WorldData): Float32Array {
 
 /**
  * Harbour calm mask (M31 TASK-534): the lagoon water on the coast side of a breakwater arm (and the
- * marina basin, `marinaCalm`), a strength 0..255 that pulls the SDF texture's ring channel toward 0
+ * HQ quay's berth strip, `marinaCalm`), a strength 0..255 that pulls the SDF texture's ring channel toward 0
  * (the ring scale is ≥ 1 and the shader clamps it, so the bands don't change). The water shader quiets its shore foam there: the lap lines and bands of
  * both shores of a 6 u lagoon crossed the sunken city as white rings.
  */
@@ -60,7 +60,8 @@ export function harbourCalmMask(world: WorldData): Uint8Array {
   for (const isl of world.islands) {
     const arm: { x: number; z: number }[] = [];
     for (let k = 0; isl.anchors[`harbourArm${k}`]; k++) arm.push(isl.anchors[`harbourArm${k}`]);
-    if (arm.length < 3) continue;
+    // (the HQ quay's arm is its light's stub jetty in an open bay: the berth strip calms instead)
+    if (arm.length < 3 || isl.anchors.marinaQuay1) continue;
     const R = WATER_SHADER.harbourCalm.reach;
     const xs = arm.map((p) => p.x);
     const zs = arm.map((p) => p.z);
@@ -98,38 +99,67 @@ export function harbourCalmMask(world: WorldData): Uint8Array {
 }
 
 /**
- * Marina basin (M52 TASK-664): every lagoon cell of the `marinaBasin` disc (radius = the basin plus
- * half the quay ring, so the mouth sector is in) is calm, fading out along the mouth heading from
- * `fade[0]` u inside the basin edge to `fade[1]` u past it (strength 255 → 0, max with the arm's).
+ * HQ harbour quay (TASK-664; open crescent TASK-675, D-173): the berth strip along the quay. Every
+ * lagoon cell on the water side of the `marinaQuay*` centre line is calm out to `across[0]` u from
+ * the water edge (centre + `marinaQuaySize.x / 2`), fading to 0 by `across[1]`, and the strip fades
+ * out toward the bay's mouth over `ends[0]` → `ends[1]` u of quay from either end (strength
+ * 255 → 0, max with the arm's). The open bay water keeps its shore rings.
  */
 function marinaCalm(world: WorldData, out: Uint8Array): void {
   const h = world.height;
   const n = h.n;
-  const F = WATER_SHADER.harbourCalm.marinaFade;
+  const F = WATER_SHADER.harbourCalm.marinaBerth;
+  const ss = (e0: number, e1: number, x: number): number => {
+    const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
+    return t * t * (3 - 2 * t);
+  };
   for (const isl of world.islands) {
-    const c = isl.anchors.marinaBasin;
-    const size = isl.anchors.marinaBasinSize;
-    const quay = isl.anchors.marinaQuaySize;
-    if (!c || !size || !quay) continue;
-    const Rb = size.x / 2;
-    const R = Rb + quay.x / 2;
-    const dx = Math.cos(c.rotY);
-    const dz = Math.sin(c.rotY);
-    const i0 = Math.max(0, Math.floor((c.x - R - h.originX) / h.cellSize));
-    const i1 = Math.min(n - 1, Math.ceil((c.x + R - h.originX) / h.cellSize));
-    const j0 = Math.max(0, Math.floor((c.z - R - h.originZ) / h.cellSize));
-    const j1 = Math.min(n - 1, Math.ceil((c.z + R - h.originZ) / h.cellSize));
+    const A = isl.anchors;
+    if (!A.marinaQuay1 || !A.marinaQuaySize) continue;
+    const q: { x: number; z: number }[] = [];
+    for (let k = 0; A[`marinaQuay${k}`]; k++) q.push(A[`marinaQuay${k}`]);
+    const cum = [0];
+    for (let k = 1; k < q.length; k++)
+      cum.push(cum[k - 1] + Math.hypot(q[k].x - q[k - 1].x, q[k].z - q[k - 1].z));
+    const total = cum[q.length - 1];
+    const W2 = A.marinaQuaySize.x / 2;
+    const R = W2 + F.across[1];
+    const xs = q.map((p) => p.x);
+    const zs = q.map((p) => p.z);
+    const i0 = Math.max(0, Math.floor((Math.min(...xs) - R - h.originX) / h.cellSize));
+    const i1 = Math.min(n - 1, Math.ceil((Math.max(...xs) + R - h.originX) / h.cellSize));
+    const j0 = Math.max(0, Math.floor((Math.min(...zs) - R - h.originZ) / h.cellSize));
+    const j1 = Math.min(n - 1, Math.ceil((Math.max(...zs) + R - h.originZ) / h.cellSize));
     for (let j = j0; j <= j1; j++)
       for (let i = i0; i <= i1; i++) {
-        const k = j * n + i;
-        if (world.zone[k] !== Zone.lagoon) continue;
-        const x = h.originX + i * h.cellSize - c.x;
-        const z = h.originZ + j * h.cellSize - c.z;
-        if (x * x + z * z > R * R) continue;
-        const s = (x * dx + z * dz - (Rb - F[0])) / (F[0] + F[1]);
-        const t = Math.min(1, Math.max(0, s));
-        const v = Math.round(255 * (1 - t * t * (3 - 2 * t)));
-        if (v > out[k]) out[k] = v;
+        const c = j * n + i;
+        if (world.zone[c] !== Zone.lagoon) continue;
+        const x = h.originX + i * h.cellSize;
+        const z = h.originZ + j * h.cellSize;
+        // nearest segment of the centre line: offset toward the water (normal = tangent + 90°), arc
+        let bd = Infinity;
+        let off = 0;
+        let s = 0;
+        for (let k = 0; k + 1 < q.length; k++) {
+          const ax = q[k + 1].x - q[k].x;
+          const az = q[k + 1].z - q[k].z;
+          const l2 = Math.max(ax * ax + az * az, 1e-9);
+          const t = Math.min(1, Math.max(0, ((x - q[k].x) * ax + (z - q[k].z) * az) / l2));
+          const dx = x - q[k].x - ax * t;
+          const dz = z - q[k].z - az * t;
+          const d = dx * dx + dz * dz;
+          if (d >= bd) continue;
+          bd = d;
+          const l = Math.sqrt(l2);
+          off = (ax * (z - q[k].z) - az * (x - q[k].x)) / l;
+          s = cum[k] + t * l;
+        }
+        if (off <= W2 || off > R) continue;
+        const v =
+          (1 - ss(F.across[0], F.across[1], off - W2)) *
+          ss(F.ends[0], F.ends[1], Math.min(s, total - s));
+        const b = Math.round(255 * v);
+        if (b > out[c]) out[c] = b;
       }
   }
 }
