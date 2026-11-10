@@ -65,7 +65,7 @@ export function createFleetBeacons(
       let n = 0;
       for (const { bot: i, island } of list) {
         if (n >= cap) break;
-        if (!workers.active[i]) continue;
+        if (!workers.active[i] || workers.scale[i] <= 0) continue;
         const sc = workers.pscale[i] + (workers.scale[i] - workers.pscale[i]) * a;
         const ph = workers.phase[i];
         const bob = Math.sin((t / M.period + ph) * Math.PI * 2) * M.bob * ms * sc;

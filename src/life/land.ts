@@ -9,6 +9,7 @@ import {
   VILLAGERS,
   type LifePlan,
 } from '../content/life.ts';
+import { TIER_FADE } from '../content/props.ts';
 import { hashString, unitHash } from '../core/hash.ts';
 import { springIn } from '../core/math/spring.ts';
 import { AgentKind, wrapAngle, type AgentKindOpts } from './agents.ts';
@@ -36,12 +37,12 @@ const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.m
 const damp = (dt: number, lambda: number): number => 1 - Math.exp(-lambda * dt);
 
 /**
- * Shared behaviour of the land critters: tier-gated spring reveal (bloom-in / ease-out), a
+ * Shared behaviour of the land critters: distance-gated spring reveal (bloom-in / ease-out), a
  * per-instance `aSeed` + `aGait` for the limb shader, hash-based per-agent random draws (so one
  * agent's choices never depend on how many another made) and the picking feed.
  */
 export abstract class LandKind extends AgentKind {
-  /** Zoom tier from which this kind is alive. */
+  /** Zoom tier from which this kind is alive; one tier earlier it is armed (simulated, hidden). */
   readonly minTier: number;
   /** Uniform instance size (content), multiplied into the reveal scale. */
   readonly size: number;
@@ -55,6 +56,8 @@ export abstract class LandKind extends AgentKind {
   protected readonly appearT: Float32Array;
   protected readonly leaveT: Float32Array;
   protected readonly home: Float32Array; // hx, hz per agent
+  /** Camera → agent distance (u) under which the agent shows: a fixed spread over the kind's tier band. */
+  private readonly showDist: Float32Array;
   protected tier = 0;
   private readonly draws: Uint32Array;
   private readonly kindSalt: number;
@@ -93,6 +96,7 @@ export abstract class LandKind extends AgentKind {
     this.appearT = new Float32Array(n);
     this.leaveT = new Float32Array(n);
     this.home = new Float32Array(n * 2);
+    this.showDist = new Float32Array(n);
     this.draws = new Uint32Array(n);
     this.kindSalt = hashString(name);
     this.gait = new Float32Array(n * 3);
@@ -101,8 +105,10 @@ export abstract class LandKind extends AgentKind {
     geometry.setAttribute('aGait', this.gaitAttr);
     const seed = new Float32Array(n);
     const col = new THREE.Color();
+    const [bandNear, bandFar] = TIER_FADE[minTier] ?? TIER_FADE[2];
     for (let i = 0; i < n; i++) {
       seed[i] = this.phase[i];
+      this.showDist[i] = bandFar - (bandFar - bandNear) * unitHash(o.seed, i, this.kindSalt + 11);
       this.gPhase[i] = this.phase[i] * TAU;
       col.set(
         tints[Math.floor(unitHash(o.seed, i, this.kindSalt + 5) * tints.length) % tints.length],
@@ -128,51 +134,106 @@ export abstract class LandKind extends AgentKind {
     this.gait[i * 3 + 2] = this.gPhase[i];
   }
 
-  /** Tier gate: reveal with a staggered spring (instant before the first simulated step), hide with an ease-out. */
+  /** True when the orbit tier arms this kind (one tier ahead of `minTier`, like `armTier`). */
+  protected get armed(): boolean {
+    return this.tier >= this.minTier - 1;
+  }
+
+  /** True while agent `i` is drawn (shown or easing out); hidden-but-armed agents still simulate. */
+  protected drawn(i: number): boolean {
+    return this.vis[i] !== 0;
+  }
+
+  /** Tier gate: the tier only arms the kind (agents simulate, hidden); the camera distance reveals each one. */
   syncTier(tier: number): void {
     this.tier = tier;
-    const want = tier >= this.minTier;
-    const instant = this.step === 0;
+    const arm = this.armed;
     for (let i = 0; i < this.capacity; i++) {
       if (!this.spawned[i]) continue;
-      if (want && this.vis[i] !== 1) {
-        if (this.vis[i] === 0) {
-          this.active[i] = 1;
-          this.scale[i] = instant ? this.size : 0;
-          this.appearT[i] = instant
-            ? -10
-            : this.simT + LAND.appearStagger * unitHash(this.seed, i, this.kindSalt + 9);
-          this.snap(i);
-        } else {
-          this.appearT[i] = this.simT;
-          this.scale[i] = 0;
-        }
-        this.vis[i] = 1;
-      } else if (!want && this.vis[i] === 1) {
-        this.vis[i] = 2;
-        this.leaveT[i] = this.simT;
+      if (arm && !this.active[i]) {
+        this.active[i] = 1;
+        this.scale[i] = 0;
+        this.snap(i);
+      } else if (!arm) {
+        if (this.vis[i] === 1) {
+          this.vis[i] = 2;
+          this.leaveT[i] = this.simT;
+        } else if (this.vis[i] === 0) this.active[i] = 0;
       }
     }
   }
 
   protected override beginStep(_dt: number, t: number): void {
     const calm = this.motionScale < 1;
+    const arm = this.armed;
+    const c = this.ctx.cameraPos;
     for (let i = 0; i < this.capacity; i++) {
       const v = this.vis[i];
-      if (v === 1) {
+      if (arm && this.spawned[i]) {
+        const dx = c.x - this.x[i];
+        const dy = c.y - this.y[i];
+        const dz = c.z - this.z[i];
+        const r = this.showDist[i] + (v === 1 ? LAND.revealHysteresis : 0);
+        if (dx * dx + dy * dy + dz * dz < r * r) {
+          if (v !== 1) {
+            const instant = this.step === 1 && v === 0;
+            this.appearT[i] = instant
+              ? -10
+              : t + LAND.appearStagger * unitHash(this.seed, i, this.kindSalt + 9);
+            this.scale[i] = instant ? this.size : 0;
+            this.vis[i] = 1;
+          }
+        } else if (v === 1) {
+          this.vis[i] = 2;
+          this.leaveT[i] = t;
+        }
+      }
+      const w = this.vis[i];
+      if (w === 1) {
         const e = t - this.appearT[i];
         this.scale[i] =
           this.size *
           (calm ? clamp(e / LAND.calmInSeconds, 0, 1) : springIn(e, BLOOM_IN.k, BLOOM_IN.c));
-      } else if (v === 2) {
+      } else if (w === 2) {
         const u = (t - this.leaveT[i]) / LAND.outSeconds;
         if (u >= 1) {
           this.vis[i] = 0;
-          this.active[i] = 0;
+          this.active[i] = arm && this.spawned[i] ? 1 : 0;
           this.scale[i] = 0;
         } else this.scale[i] = this.size * (1 - u * u);
       }
     }
+  }
+
+  override positions(out: Float32Array, ids?: Uint16Array): number {
+    let n = 0;
+    const room = Math.floor(out.length / 4);
+    for (let i = 0; i < this.capacity && n < room; i++) {
+      if (!this.active[i] || !this.drawn(i)) continue;
+      out[n * 4] = this.x[i];
+      out[n * 4 + 1] = this.y[i] + this.pickHeight;
+      out[n * 4 + 2] = this.z[i];
+      out[n * 4 + 3] = this.pickRadius;
+      if (ids) ids[n] = i;
+      n++;
+    }
+    return n;
+  }
+
+  override get liveCount(): number {
+    let c = 0;
+    for (let i = 0; i < this.capacity; i++) c += this.active[i] && this.drawn(i) ? 1 : 0;
+    return c;
+  }
+
+  protected override finishUpdate(_top: number): void {
+    let top = 0;
+    for (let i = this.capacity - 1; i >= 0; i--)
+      if (this.active[i] && this.drawn(i)) {
+        top = i + 1;
+        break;
+      }
+    super.finishUpdate(top);
   }
 
   override update(alpha: number): void {

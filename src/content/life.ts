@@ -389,7 +389,7 @@ export const LIFE_COLORS = {
  * u/s. Allocation across islands is D'Hondt over `weights` (key = settlement kind or archetype).
  */
 export const LAND = {
-  /** First zoom tier at which each kind is alive (ART_BIBLE §6: villagers/sheep T2, crabs T3). */
+  /** First zoom tier at which each kind is alive (ART_BIBLE §6: villagers/sheep T2, crabs T3); the tier before only arms it. */
   minTier: { villagers: 2, workers: 2, cats: 2, sheep: 2, crabs: 3 },
   /**
    * Instance size multiplier per kind (chunky-cute: figures are drawn bigger than life). TASK-192
@@ -399,6 +399,12 @@ export const LAND = {
   /** Reveal: staggered spring-in (BLOOM_IN k/c), then a short ease-out when the tier drops. */
   appearStagger: 0.22,
   outSeconds: 0.14,
+  /**
+   * Reveal: an agent shows when the camera is closer than its own distance, spread evenly over the
+   * kind's prop band (`TIER_FADE[minTier]`: none past the far edge, all inside the near edge, D-161).
+   * It hides again only this much (u) farther, so an agent on its edge does not flicker.
+   */
+  revealHysteresis: 6,
   /** Reduced motion: ease-in without overshoot over this long. */
   calmInSeconds: 0.3,
   /** Terrain clearance of the feet. */
@@ -548,7 +554,7 @@ export interface ItineraryStep {
 
 export const ACTIVITY = {
   /** Focus: nearest campus hub within `radius` u (3-D) of the camera at tier >= `minTier`, re-evaluated every `every` steps; a rival must be `switchRatio` times nearer. */
-  focus: { minTier: 2, radius: 190, every: 15, switchRatio: 0.8 },
+  focus: { minTier: 1, radius: 190, every: 15, switchRatio: 0.8 },
   /** Ambient slots per island at ambientScale 1 (seat count is the soft limit). */
   slots: { hq: 12, coding: 12, marketing: 9, qa: 9, design: 9, devops: 10, research: 9 },
   /** Outposts (no walk graph) host at most this many ambient bots. */
