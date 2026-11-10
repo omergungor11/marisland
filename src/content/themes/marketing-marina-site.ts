@@ -53,7 +53,7 @@ export const MARINA_SITE = {
   fit: {
     step: 2,
     u: [4, 28] as const,
-    v: [2, 20] as const,
+    v: [2, 34] as const,
     mouthDeg: [-30, -10, 10, 30, 50, 70] as const,
     maxCut: 3.6,
     maxFill: 30,
@@ -70,7 +70,9 @@ export const MARINA_SITE = {
     distW: 3,
     attachW: 400,
     /** Other islands / islets stay at least this far off the ring. */
-    clearOther: 10,
+    clearOther: 18,
+    /** Ring land stays this much past the pier's DOCK.awayRate line (the 2 u grid's slack). */
+    awayPad: 1.5,
   },
   /**
    * Houses: rows on the ring's outer part, backs `backInset` u inside the nominal outer edge, fronts
@@ -82,13 +84,15 @@ export const MARINA_SITE = {
    */
   house: {
     backInset: 0.2,
-    gap: 0.35,
-    alley: 3.6,
+    gap: 0.3,
+    alley: 3.2,
     alleys: 2,
     backDeg: 68,
+    /** The main row may run `mainDeg` either side of the back arc's middle (≥ backDeg). */
+    mainDeg: 76,
     mainMax: 8,
     moleMax: 5,
-    headKeep: 6,
+    headKeep: 4.5,
     maxRelief: 0.25,
     cycle: [0, 4, 1, 5, 3, 2] as const,
     restaurant: { 0: 0, 1: 1, 3: 2 } as Readonly<Record<number, number>>,
@@ -115,6 +119,8 @@ export const MARINA_SITE = {
     side: 0.3,
     boats: [2, 3] as const,
   },
+  /** The tower stands on the tower mole's centre line, `back` u of arc in from its head's cap centre. */
+  tower: { back: 2.5 },
   /** Edge furniture (the Carnival kit's defs): lanterns at house joints, a bollard per stern line. */
   lantern: { defId: 'lanternPost', variant: 0, inset: 0.45, every: 2 },
   bollard: { defId: 'barrel', variant: 2, inset: 0.35 },

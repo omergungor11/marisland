@@ -16,10 +16,25 @@ import {
 import { REEFS } from '../content/reefs.ts';
 import { HARBOURS } from '../content/harbours.ts';
 import { anchorPoints } from './gen/plans/research-anchors.ts';
+import { MARINA_SITE } from '../content/themes/marketing-marina-site.ts';
 import { perfLimit } from '../test/perf.ts';
 import { bitDigest } from '../test/bits.ts';
 
 /** True when (x, z) lies within `r` of the polyline. */
+/** TASK-661: on the marina town's ring or its flank (grown at plan time like a harbour arm). */
+function marinaNear(
+  isl: { anchors: Record<string, { x: number; z: number }> },
+  x: number,
+  z: number,
+) {
+  const c = isl.anchors.marinaBasin;
+  const s = isl.anchors.marinaBasinSize;
+  const q = isl.anchors.marinaQuaySize;
+  if (!c || !s || !q) return false;
+  const R = s.x / 2 + q.x + MARINA_SITE.ring.edgeFlat + MARINA_SITE.ring.flank + 1;
+  return Math.hypot(x - c.x, z - c.z) < R;
+}
+
 function armNear(
   line: readonly { x: number; z: number }[],
   x: number,
@@ -186,6 +201,8 @@ describe('archipelago — 30-seed full generation', () => {
         const isl = w.islands[id - 1];
         const [x, z] = coord(w, i);
         const arm = arms[id - 1];
+        // (TASK-661: the marina ring likewise, checked by plans-marketing-marina.test)
+        if (marinaNear(isl, x, z)) continue;
         if (arm.length > 1 && armNear(arm, x, z, (isl.anchors.harbourArmSize?.x ?? 0) + 3.5)) {
           const lim = isl.reach + (HARBOURS.research?.arm.offset ?? 0) + 4;
           expect(Math.hypot(x - isl.cx, z - isl.cz), `seed ${seed} harbour arm`).toBeLessThan(lim);
@@ -422,6 +439,8 @@ describe('reef shoals + shared-shelf sills (TASK-488, W:D1 / W:K3), 30 seeds', (
       for (let i = 0; i < w.reefWeight.length; i++) {
         if (w.reefWeight[i] === 0) continue;
         const id = w.islandMap[i];
+        if (id > 0 && id <= w.islands.length && marinaNear(w.islands[id - 1], ...coord(w, i)))
+          continue;
         if (id > 0 && id <= w.islands.length && arms[id - 1].length > 1) {
           const [x, z] = coord(w, i);
           if (armNear(arms[id - 1], x, z, (w.islands[id - 1].anchors.harbourArmSize?.x ?? 0) + 3.5))
@@ -438,7 +457,11 @@ describe('reef shoals + shared-shelf sills (TASK-488, W:D1 / W:K3), 30 seeds', (
       for (const s of w.reefs.filter((r) => r.kind === 'sill')) {
         const L = axisLen(s);
         for (let t = 0.3; t <= 0.7; t += 0.05) {
-          const y = heightAt(w.height, s.x0 + (s.x1 - s.x0) * t, s.z0 + (s.z1 - s.z0) * t);
+          const x = s.x0 + (s.x1 - s.x0) * t;
+          const z = s.z0 + (s.z1 - s.z0) * t;
+          // (TASK-661: the marina ring may stand on a sill's shoulder, checked by its own test)
+          if (w.islands.some((isl) => marinaNear(isl, x, z))) continue;
+          const y = heightAt(w.height, x, z);
           expect(
             y,
             `seed ${seed} sill ${s.islands.join('-')} (${L.toFixed(0)} u) at ${t}`,

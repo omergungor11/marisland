@@ -182,9 +182,15 @@ interface PierFrame {
   head: Shape;
 }
 
-function nearPier(f: PierFrame, p: XZ, pad: number): boolean {
+function nearPier(f: PierFrame, p: XZ, pad: number, land = true): boolean {
   const F = M.fit;
   if (segDist(p, f.root, f.end) < F.pierGap + pad) return true;
+  // land keeps the pier leaving the shore (DOCK.awayRate at every segment end, + `awayPad`)
+  if (land)
+    for (let t = DOCK.segment; t <= f.L + 1e-6; t += DOCK.segment) {
+      const q = add(f.root, f.u, t);
+      if (dist(p, q) < DOCK.awayRate * t - DOCK.awaySlack + F.awayPad) return true;
+    }
   if (shapeDist(f.head, p.x, p.z) < F.headGap + pad) return true;
   const dx = p.x - f.root.x;
   const dz = p.z - f.root.z;
@@ -285,7 +291,7 @@ function score(
   for (let t = 0; t <= F.mouthLen + 1e-6; t += 2) {
     const q = add(mc, md, t);
     if (heightAt(ctx.h, q.x, q.z) > -F.mouthDepth) return Infinity;
-    if (nearPier(f, q, -1.5)) return Infinity;
+    if (nearPier(f, q, -1.5, false)) return Infinity;
   }
   const s0 = sampleGrid(ctx.h, ctx.sdf, mc.x, mc.z, -999);
   const q = add(mc, md, F.mouthLen);
@@ -534,7 +540,7 @@ function layTown(ctx: SiteCtx, isl: IslandData, mr: Marina): void {
   const rH = g.Rc + g.W / 2 - H.backInset - kitD / 2;
   const rF = rH - kitD / 2;
   const mid = (g.aL + TAU - g.aT) / 2;
-  const B = H.backDeg * DEG;
+  const B = H.mainDeg * DEG;
   const lo = g.aL + H.headKeep / g.Rc;
   const hi = TAU - g.aT - H.headKeep / g.Rc;
   const alleyA = H.alley / rF;
@@ -663,7 +669,8 @@ function layTown(ctx: SiteCtx, isl: IslandData, mr: Marina): void {
   }
   // the tower on the tower mole's head
   const tk = MARINA_KIT.tower;
-  const tp = capT(g);
+  // (`tower.back` u of arc in from the cap centre: the cap alone is too small a level for its box)
+  const tp = at(g, TAU - g.aT - M.tower.back / g.Rc, g.Rc);
   const trot = toCentre(g, tp);
   const tsh = rectShape(tp.x, tp.z, trot, tk.w, tk.d);
   if (level(ctx, isl, tsh, 0.4) && clear(ctx, isl, tsh, 0.2)) {
@@ -675,7 +682,8 @@ function layTown(ctx: SiteCtx, isl: IslandData, mr: Marina): void {
     const a = g.aL + s / g.Rc;
     const p = at(g, a, g.Rc);
     const t = ang(-(p.z - g.C.z), p.x - g.C.x);
-    addShape(ctx, isl, rectShape(p.x, p.z, t, g.W, 3.4), false);
+    // (as wide as the level deck, its flat margin included: nothing else stands on its edge)
+    addShape(ctx, isl, rectShape(p.x, p.z, t, g.W + 2 * M.ring.edgeFlat + 1, 3.4), false);
   }
   layBoats(ctx, isl, mr);
   addShape(ctx, isl, discShape(g.C.x, g.C.z, g.Rb), false);

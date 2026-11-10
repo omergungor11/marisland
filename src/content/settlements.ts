@@ -287,6 +287,10 @@ export const FIXTURE_RADIUS: Readonly<Record<string, number>> = {
   selfieSpot: 1.4,
   posterRoll: 0.55,
   megaphoneStand: 0.45,
+  // Marketing marina town (TASK-661; houses / tower, terraces / stalls, boats / pontoons afloat)
+  quayHouse: 2.2,
+  quayFurnish: 1.1,
+  quayBoat: 1.6,
   // Design
   sculptureArch: 2.4,
   sculptureStack: 1.3,

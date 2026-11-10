@@ -227,7 +227,9 @@ describe('TASK-661 marina: the town', () => {
         expect(heightAt(w.height, b.x, b.z), `seed ${seed} boat`).toBeLessThan(-0.5);
         expect(near(b, c), `seed ${seed}`).toBeLessThan(Rb);
       }
-      expect(near(A.marinaTower, quay[quay.length - 1]), `seed ${seed} tower`).toBeLessThan(1);
+      expect(near(A.marinaTower, quay[quay.length - 1]), `seed ${seed} tower`).toBeLessThan(
+        M.tower.back + 1,
+      );
       expect(near(A.harbourLight, quay[0]), `seed ${seed} light`).toBeLessThan(2);
       // the island's own pieces on the ring are only the town (and the harbour light)
       const fx = w.fixtures.filter((f) => f.islandId === isl.id && inMarina(isl, f));
