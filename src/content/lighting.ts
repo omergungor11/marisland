@@ -341,6 +341,28 @@ export const POOLS = {
       offset: 0,
       variants: { 5: { radius: 5, intensity: 0.75 } },
     },
+    // M53 TASK-671: the sea-top fun park on the dusk water: the neon gate, the three rides' bulb rings
+    // (swing canopy, drop tower, carousel fascia), the ticket booth and the string-bulb posts; the
+    // stands and the rest of the furniture none
+    lunaGate: { radius: 5, intensity: 0.8, offset: 0 },
+    lunaRide: {
+      radius: 5.5,
+      intensity: 0.7,
+      offset: 0,
+      variants: { 1: { radius: 3.6, intensity: 0.55 } },
+    },
+    lunaStand: {
+      radius: 0,
+      intensity: 0,
+      offset: 0,
+      variants: { 0: { radius: 3, intensity: 0.5, offset: 0.9 } },
+    },
+    lunaDecor: {
+      radius: 0,
+      intensity: 0,
+      offset: 0,
+      variants: { 3: { radius: 3.4, intensity: 0.5 } },
+    },
     // M31 TASK-534: the stilt lab's windows and tide tank on the dusk water
     tideLab: { radius: 7.5, intensity: 0.85, offset: 0 },
     // M33 TASK-545: Data Lake blue LEDs and the pavilion on the shore, the Drone Port's rim lamps

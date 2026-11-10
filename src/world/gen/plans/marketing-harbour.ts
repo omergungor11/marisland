@@ -140,7 +140,8 @@ export function carnivalKeepOut(
     const c = isl.anchors.carnivalDeck;
     const size = isl.anchors.carnivalDeckSize;
     const hard = harbourParams(isl.theme)?.keepOut.hard;
-    if (!c || !size || hard === undefined) continue;
+    // (TASK-671: the fun park's platform is lunaKeepOut's)
+    if (!c || !size || hard === undefined || isl.anchors.lunaDeck) continue;
     const side = { x: dm.sin(c.rotY), z: -dm.cos(c.rotY) };
     const n = Math.ceil(size.x / size.z);
     for (let k = 0; k < n; k++) {

@@ -76,6 +76,7 @@ import {
 import { finishHarbour, inApproach, placeKiosks, planHarbour, type Harbour } from './harbour.ts';
 import { reserveBeaconAnchors } from './marketing-anchors.ts';
 import { placeCarnivalKit, planCarnivalPier } from './marketing-harbour.ts';
+import { placeLunaPark, planLunaPark } from './marketing-luna.ts';
 import { placeBeaconKit } from './marketing-m27.ts';
 import type { ThemePlanner } from './types.ts';
 import * as dm from '../../../core/math/dmath.ts';
@@ -587,7 +588,9 @@ export const planMarketing: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   // (the run-out segments may leave the depth the dock site found: the head is dredged; only the
   // head, a channel from the root would drown the way onto the pier)
   if (hb) carveWater(ctx, hb.end, hb.end, DOCK.headCarve, DOCK.headCarveFall, DOCK.channelDepth);
-  const pier = hb ? planCarnivalPier(ctx, hb) : null;
+  // M53 (TASK-671): the sea-top fun park beside the pier; no tier fits = the small Carnival deck
+  const luna = hb ? planLunaPark(ctx, hb) : null;
+  const pier = hb ? (luna ? { hb, deck: null } : planCarnivalPier(ctx, hb)) : null;
   dockWithLink(
     ctx,
     isl,
@@ -658,6 +661,7 @@ export const planMarketing: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   plan.finish = (paths) => {
     if (hb) finishHarbour(ctx, hb);
     if (pier) placeCarnivalKit(ctx, pier);
+    if (luna) placeLunaPark(ctx, luna);
     reserveBeaconAnchors(ctx, isl, lh, heightAt(ctx.h, lh.x, lh.z), paths);
     // M27 kit on the anchors (TASK-518)
     placeBeaconKit(ctx, isl);
