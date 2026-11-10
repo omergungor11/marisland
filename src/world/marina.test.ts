@@ -31,21 +31,26 @@ describe('HQ yacht marina (gen/marina.ts)', () => {
       expect(['marinaPier', 'starFort', 'sailboat', 'buoy']).toContain(f.defId);
   });
 
-  it('seed 1001: 15–20 boats, a comb, the breakwater with its head, the fort, 8 gate buoys', () => {
+  // TASK-666 (D-171): the Horseshoe Harbour (plans/marketing-marina.ts) took the comb's place in the
+  // HQ cove on every sweep seed; the stage keeps the fort and the gates, the comb is the fallback
+  it('seed 1001: the horseshoe instead of the comb; the fort and 8 gate buoys', () => {
     const w = world(1001);
-    const boats = ofDef(w, 'sailboat');
-    expect(boats.length).toBeGreaterThanOrEqual(15);
-    expect(boats.length).toBeLessThanOrEqual(HQ_MARINA.berths.max);
-    for (const b of boats) expect([0, 1, 6, 7, 8]).toContain(b.variant);
-    const fingers =
-      ofDef(w, 'marinaPier', MARINA_PIER_V.finger).length +
-      ofDef(w, 'marinaPier', MARINA_PIER_V.fingerShort).length;
-    expect(fingers).toBeGreaterThanOrEqual(3);
-    expect(ofDef(w, 'marinaPier', MARINA_PIER_V.spine).length).toBeGreaterThanOrEqual(6);
-    expect(ofDef(w, 'marinaPier', MARINA_PIER_V.mole).length).toBeGreaterThanOrEqual(1);
-    expect(ofDef(w, 'marinaPier', MARINA_PIER_V.moleHead)).toHaveLength(1);
+    expect(w.islands.find((i) => i.theme === 'hq')?.anchors.marinaBasin).toBeDefined();
+    expect(ofDef(w, 'sailboat')).toHaveLength(0);
+    expect(ofDef(w, 'marinaPier')).toHaveLength(0);
     expect(ofDef(w, 'starFort')).toHaveLength(1);
     expect(ofDef(w, 'buoy')).toHaveLength(2 * HQ_MARINA.gates.arcs.length);
+  });
+
+  it('fallback: a seed with no ring (1526) keeps the plain pier, the comb, its boats and the breakwater', () => {
+    const w = world(1526);
+    const hq = w.islands.find((i) => i.theme === 'hq');
+    expect(hq?.anchors.marinaBasin).toBeUndefined();
+    expect(hq?.anchors.harbourPier1).toBeUndefined();
+    expect(ofDef(w, 'marinaPier').length).toBeGreaterThanOrEqual(3);
+    expect(ofDef(w, 'marinaPier', MARINA_PIER_V.spine).length).toBeGreaterThan(0);
+    expect(ofDef(w, 'sailboat').length).toBeGreaterThanOrEqual(4);
+    expect(ofDef(w, 'starFort')).toHaveLength(1);
   });
 
   it.each(SEEDS)(
@@ -99,14 +104,21 @@ describe('HQ yacht marina (gen/marina.ts)', () => {
     },
   );
 
-  it('boat counts: never above the cap, 4+ everywhere, 9+ on most seeds; gates in pairs, port first', () => {
+  it('boat counts: never above the cap, 4+ everywhere (horseshoe: 9+), 9+ on most seeds; gates in pairs', () => {
     let rich = 0;
     for (const seed of SEEDS) {
       const w = world(seed);
       const n = ofDef(w, 'sailboat').length;
       expect(n, `seed ${seed}`).toBeLessThanOrEqual(HQ_MARINA.berths.max);
-      expect(n, `seed ${seed}`).toBeGreaterThanOrEqual(4);
-      if (n >= 9) rich++;
+      // (beside a horseshoe the comb gives way: its boats are the horseshoe's, marinaBerth)
+      const hq = w.islands.find((i) => i.theme === 'hq');
+      if (hq?.anchors.marinaBasin) {
+        expect(n, `seed ${seed}`).toBe(0);
+        if (hq.anchors.marinaBerth8) rich++;
+      } else {
+        expect(n, `seed ${seed}`).toBeGreaterThanOrEqual(4);
+        if (n >= 9) rich++;
+      }
       const gates = ofDef(w, 'buoy');
       for (let i = 0; i < gates.length; i += 2) {
         expect(gates[i].variant).toBe(HQ_MARINA.gates.port);

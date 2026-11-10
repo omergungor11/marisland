@@ -1,12 +1,12 @@
 /**
- * Marketing "Horseshoe Harbour" layout (M52 TASK-661, D-170): the numbers of the marina town the
- * plan (world/gen/plans/marketing-marina.ts) grows round the Carnival Pier's flank. The pieces and
- * their sizes come from MARINA_KIT (marketing-marina.ts); this file only says where they go.
+ * "Horseshoe Harbour" layout (M52 TASK-661, D-170; on HQ since TASK-666, D-171): the numbers of the
+ * marina town the plan (world/gen/plans/marketing-marina.ts) grows beside the HQ ferry pier. The
+ * pieces and their sizes come from MARINA_KIT (marketing-marina.ts); this file only says where.
  * Lengths in u, angles in degrees.
  *
  * Shape: a round basin of radius `ring.basinR` wrapped by a stone quay ring `ring.width` u wide
  * (one deck height, `ring.deckY` over the sea) that runs from the light mole's head round the back
- * (the Rock's foot) to the tower mole's head; the two heads leave a `ring.mouth` u wide mouth to the
+ * (the island's foot) to the tower mole's head; the two heads leave a `ring.mouth` u wide mouth to the
  * open sea. The light mole is the one on the ferry pier's side.
  */
 
@@ -49,11 +49,14 @@ export const MARINA_SITE = {
    * mouth's axis does not run out over open water (`mouthLen` u, deeper than `mouthDepth`) or less
    * than `backAttach` of the back arc's outer edge touches the island (sdf ≥ −`attachSdf`).
    * Score: fill + `cutW` × cut (u per cell) + `distW` × centre → pier root − `attachW` × attach.
+   * TASK-666 (D-171, on HQ): `u` from −8 (beside the pier root, along the cove's flank) to 36 and `v`
+   * to 50 (Marketing's 4–28 / 34): HQ's 20 u pier and its wide approach left 8 / 32 sweep seeds
+   * without a ring; the wider window fits all 32, the score still takes the nearest.
    */
   fit: {
     step: 2,
-    u: [4, 28] as const,
-    v: [2, 34] as const,
+    u: [-8, 36] as const,
+    v: [2, 50] as const,
     mouthDeg: [-30, -10, 10, 30, 50, 70] as const,
     maxCut: 3.6,
     maxFill: 30,
@@ -71,8 +74,11 @@ export const MARINA_SITE = {
     attachW: 400,
     /** Other islands / islets stay at least this far off the ring. */
     clearOther: 18,
-    /** Ring land stays this much past the pier's DOCK.awayRate line (the 2 u grid's slack). */
-    awayPad: 1.5,
+    /**
+     * Ring land stays this much past the pier's DOCK.awayRate line (the 2 u grid's slack; TASK-666
+     * 1.5 → 2.5: the flank fill beside HQ's 20 u pier crossed it by 0.4 u on a sweep seed).
+     */
+    awayPad: 2.5,
   },
   /**
    * Houses: rows on the ring's outer part, backs `backInset` u inside the nominal outer edge, fronts
@@ -126,6 +132,9 @@ export const MARINA_SITE = {
   bollard: { defId: 'barrel', variant: 2, inset: 0.35 },
   /** `marinaQuay` anchors every ≈ `quayStep` u of the ring's centre line. */
   quayStep: 2,
-  /** Boat-route keep-out round the ring (r = width / 2 + edgeFlat + `pad`) and the basin. */
-  keepOut: { pad: 2, hard: 0.65 },
+  /**
+   * Boat-route keep-out round the ring (r = width / 2 + edgeFlat + `pad`) and the basin; `mouth`
+   * = [from, r]: discs along the mouth's way out from `from` u to `fit.mouthLen` (TASK-666).
+   */
+  keepOut: { pad: 2, hard: 0.65, mouth: [4, 8] as const },
 } as const;

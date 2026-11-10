@@ -347,7 +347,8 @@ export function carveReefGaps(h: Heightfield, f: ReefField, routes: readonly Pol
   for (let k = 0; k < n * n; k++) {
     if (pull[k] <= 0) continue;
     f.weight[k] *= 1 - pull[k];
-    if (!f.raised[k]) continue;
+    // (land built over a shoal stays: a Horseshoe Harbour flank, TASK-666; reefs only rise under water)
+    if (!f.raised[k] || h.data[k] > 0) continue;
     const y = Math.min(h.data[k], lerp(h.data[k], -G.depth, pull[k]));
     h.data[k] = Math.max(base[k], y);
   }

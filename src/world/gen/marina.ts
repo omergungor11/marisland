@@ -18,10 +18,16 @@
  *    towards the pier side, bent as little as the routes allow; the fort carries the red light.
  * 6. Gates (H11): 4 pairs of red / green `buoy` fixtures along the HQ ferry route round its stop;
  *    the stop's neighbourhood is reserved so the generic seamarks leave it alone.
+ * TASK-666 (D-171): where the HQ Horseshoe Harbour stands (plans/marketing-marina.ts, by its
+ * anchors) it replaces steps 1's spine pieces, 3, 4 and 5: the walks only locate the fort, which
+ * keeps off the ring, its mouth, the ferry pier and approach (`fort.ring`); the gates stay. A seed
+ * with no ring keeps the comb.
  */
 import type { Rng } from '../../core/rng.ts';
 import { DOCK } from '../../content/settlements.ts';
-import { HQ_MARINA as M, MARINA_PIER_V as PV } from '../../content/themes/hq-marina.ts';
+import { HQ_MARINA as M, MARINA_PIER_V as PV, STAR_FORT } from '../../content/themes/hq-marina.ts';
+import { MARINA_SITE } from '../../content/themes/marketing-marina-site.ts';
+import { HARBOURS } from '../../content/harbours.ts';
 import type { DockData, FixtureData, Heightfield, IslandData, Polyline, XZ } from '../types.ts';
 import { heightAt, sampleGrid } from '../types.ts';
 import { discShape, type Shape } from './sites.ts';
@@ -52,6 +58,7 @@ interface Spine {
 }
 
 const DEG = Math.PI / 180;
+const APPROACH = HARBOURS.hq?.berth.approach ?? { len: 0, half: 0 };
 const EMPTY: MarinaResult = { fixtures: [], shapes: [], reserved: [], boats: 0 };
 const dist = (a: XZ, b: XZ): number => Math.hypot(a.x - b.x, a.z - b.z);
 const headingOf = (dx: number, dz: number): number => dm.atan2(dz, dx);
@@ -104,6 +111,64 @@ function makeSpine(raw: XZ[]): Spine {
   return { pts: sp, len, at };
 }
 
+/** The HQ Horseshoe Harbour from its anchors (plans/marketing-marina.ts contract), or null. */
+interface Horseshoe {
+  quay: XZ[];
+  /** Ring centre line half width + level margin + flank (u off a `marinaQuay` point). */
+  reach: number;
+  basin: XZ;
+  rc: number;
+  mouth: XZ;
+  out: XZ;
+  /** The ferry approach: from the berth `len` u out along the pier heading, `half` u wide. */
+  berth: XZ | null;
+  approach: XZ;
+}
+
+function horseshoeOf(isl: IslandData): Horseshoe | null {
+  const A = isl.anchors;
+  if (!A.marinaBasin || !A.marinaBasinSize || !A.marinaQuaySize || !A.marinaMouth) return null;
+  const quay: XZ[] = [];
+  for (let k = 0; A[`marinaQuay${k}`]; k++) quay.push(A[`marinaQuay${k}`]);
+  const W = A.marinaQuaySize.x;
+  return {
+    quay,
+    reach: W / 2 + MARINA_SITE.ring.edgeFlat + MARINA_SITE.ring.flank,
+    basin: A.marinaBasin,
+    rc: A.marinaBasinSize.x / 2 + W / 2,
+    mouth: A.marinaMouth,
+    out: { x: dm.cos(A.marinaMouth.rotY), z: dm.sin(A.marinaMouth.rotY) },
+    berth: A.ferryBerth ?? null,
+    approach: A.ferryBerth
+      ? {
+          x: A.ferryBerth.x + dm.cos(A.ferryBerth.rotY) * APPROACH.len,
+          z: A.ferryBerth.z + dm.sin(A.ferryBerth.rotY) * APPROACH.len,
+        }
+      : { x: 0, z: 0 },
+  };
+}
+
+/**
+ * The fort's walls keep `fort.ring.gap` u off the ring, its basin and the mouth's way out, and
+ * `fort.ring.approachGap` u off the ferry's approach to the T-head (the ferry comes in by it).
+ */
+function ringFree(h: Horseshoe | null, c: XZ): boolean {
+  if (!h) return true;
+  const F = M.fort;
+  const R = STAR_FORT.outerR + F.ring.gap;
+  if (dist(c, h.basin) < h.rc + R) return false;
+  if (h.quay.some((q) => dist(c, q) < h.reach + R)) return false;
+  const far = {
+    x: h.mouth.x + h.out.x * F.ring.mouthLen,
+    z: h.mouth.z + h.out.z * F.ring.mouthLen,
+  };
+  if (segDist(c, h.mouth, far) < R + MARINA_SITE.ring.mouth) return false;
+  return (
+    !h.berth ||
+    segDist(c, h.berth, h.approach) >= STAR_FORT.outerR + APPROACH.half + F.ring.approachGap
+  );
+}
+
 export function placeMarina(input: MarinaInput, rng: Rng): MarinaResult {
   const { h, sdf, islands, docks, routes } = input;
   const hq = islands.find((i) => i.theme === 'hq');
@@ -144,6 +209,10 @@ export function placeMarina(input: MarinaInput, rng: Rng): MarinaResult {
       ),
     );
 
+  // TASK-666 (D-171): the Horseshoe Harbour on HQ (plans/marketing-marina.ts) replaces the comb:
+  // the walks then only locate the fort (the fort keeps off the ring and its mouth), the gates stay
+  const horseshoe = horseshoeOf(hq);
+
   // ---- 1. spines: the contour `offshore` u off the shore, walked away from the pier
   const S = M.spine;
   const D = M.depth;
@@ -152,7 +221,7 @@ export function placeMarina(input: MarinaInput, rng: Rng): MarinaResult {
     const p = { x: root.x + dir.x * t, z: root.z + dir.z * t };
     if (sdfAt(p) <= -S.offshore) p0 = p;
   }
-  if (!p0) return EMPTY;
+  if (!p0 && !horseshoe) return EMPTY;
   const walk = (sign: 1 | -1): XZ[] => {
     let p = p0 as XZ;
     const rec: XZ[] = [];
@@ -186,14 +255,16 @@ export function placeMarina(input: MarinaInput, rng: Rng): MarinaResult {
     }
     return rec;
   };
-  const walks = ([1, -1] as const).map((s) => walk(s)).filter((c) => arcOf(c) >= S.minLen);
-  if (walks.length === 0) return EMPTY;
+  const walks = p0
+    ? ([1, -1] as const).map((s) => walk(s)).filter((c) => arcOf(c) >= S.minLen)
+    : [];
+  if (walks.length === 0 && !horseshoe) return EMPTY;
   // the main spine ends nearest the cove mouth (the ferry stop); without a stop the longer one
   walks.sort((a, b) =>
     stop ? dist(a[a.length - 1], stop) - dist(b[b.length - 1], stop) : arcOf(b) - arcOf(a),
   );
   const spines = walks.map(makeSpine);
-  const main = spines[0];
+  const main: Spine | undefined = spines[0];
 
   const out: FixtureData[] = [];
   const push = (defId: string, p: XZ, rotY: number, variant: number): void => {
@@ -202,12 +273,52 @@ export function placeMarina(input: MarinaInput, rng: Rng): MarinaResult {
 
   // ---- 2. fort: on the horn's tip, just seaward of the main spine's end
   const F = M.fort;
-  const end = main.pts[main.pts.length - 1];
-  const gEnd = gradAt(end);
   let fort: XZ | null = null;
-  for (let shift = F.seaward; shift >= 0 && !fort; shift -= 0.75) {
-    const c = { x: end.x - gEnd.x * shift, z: end.z - gEnd.z * shift };
-    if (depthAt(c) <= D.mole - 1 && routeClear(c, F.clearRoute)) fort = c;
+  let gEnd: XZ = { x: 0, z: 0 };
+  const ok = (c: XZ): boolean =>
+    depthAt(c) <= D.mole - 1 &&
+    ringFree(horseshoe, c) &&
+    (!horseshoe || segDist(c, root, pierEnd) >= STAR_FORT.outerR + F.ring.pierGap) &&
+    routeClear(c, F.clearRoute);
+  if (main) {
+    const end = main.pts[main.pts.length - 1];
+    gEnd = gradAt(end);
+    for (let shift = F.seaward; shift >= 0 && !fort; shift -= 0.75) {
+      const c = { x: end.x - gEnd.x * shift, z: end.z - gEnd.z * shift };
+      if (ok(c)) fort = c;
+    }
+    // (beside a horseshoe whose light mole took the horn: further out, then back along the spine)
+    if (horseshoe)
+      for (let back = 0; back <= main.len && !fort; back += F.ring.step) {
+        const { p } = main.at(main.len - back);
+        const g = gradAt(p);
+        for (let shift = 0; shift <= F.ring.seaward && !fort; shift += 0.75) {
+          const c = { x: p.x - g.x * shift, z: p.z - g.z * shift };
+          if (ok(c)) fort = c;
+        }
+      }
+  }
+  // (last: the nearest spot off this coast, `ring.shore` u out, to the horn the walk reached, or
+  // to the pier end; a grid search within `ring.search` u)
+  if (horseshoe && !fort) {
+    const target = main ? main.pts[main.pts.length - 1] : pierEnd;
+    let bd = Infinity;
+    const R = F.ring.search;
+    for (let dz = -R; dz <= R; dz += F.ring.grid)
+      for (let dx = -R; dx <= R; dx += F.ring.grid) {
+        const c = { x: target.x + dx, z: target.z + dz };
+        const d = Math.hypot(dx, dz);
+        if (d > R || d >= bd) continue;
+        const sd = sdfAt(c);
+        if (sd > -F.ring.shore[0] || sd < -F.ring.shore[1] || depthAt(c) < D.min || !ok(c))
+          continue;
+        const owner = islands.find(
+          (i) => Math.hypot(c.x - i.cx, c.z - i.cz) < Math.hypot(c.x - hq.cx, c.z - hq.cz),
+        );
+        if (owner) continue;
+        bd = d;
+        fort = c;
+      }
   }
   const shapes: Shape[] = [];
   if (fort) {
@@ -217,10 +328,10 @@ export function placeMarina(input: MarinaInput, rng: Rng): MarinaResult {
   }
   const fortFree = (p: XZ, clear: number): boolean => !fort || dist(p, fort) >= clear;
 
-  // ---- spine pieces and 3. comb fingers
+  // ---- spine pieces and 3. comb fingers (none beside a horseshoe)
   const FG = M.fingers;
   const fingers: { root: XZ; n: XZ; len: number }[] = [];
-  for (const sp of spines) {
+  for (const sp of horseshoe ? [] : spines) {
     const pieces = Math.floor(sp.len / S.piece);
     for (let i = 0; i < pieces; i++) {
       const a = sp.at(i * S.piece).p;
@@ -269,7 +380,7 @@ export function placeMarina(input: MarinaInput, rng: Rng): MarinaResult {
 
   // ---- 4. breakwater arm from the fort towards the pier side (its lee side carries berths too)
   const moleSlots: { p: XZ; yaw: number }[] = [];
-  if (fort) {
+  if (fort && !horseshoe) {
     const MO = M.mole;
     const hd = { x: -gEnd.x, z: -gEnd.z };
     const toPier = dm.atan2(pierEnd.z - fort.z, pierEnd.x - fort.x);
@@ -387,7 +498,7 @@ export function placeMarina(input: MarinaInput, rng: Rng): MarinaResult {
       slots.push({ p: m.p, yaw: m.yaw, keep, variant, group: 2 });
   }
   // boats alongside the spines' seaward edge, between the fingers
-  for (const sp of spines)
+  for (const sp of horseshoe ? [] : spines)
     for (let t = B.spineFirst; t <= sp.len - 2; t += B.spinePitch) {
       const { p, t: tan } = sp.at(t);
       const g = gradAt(p);

@@ -230,7 +230,9 @@ describe('settlements — 20-seed sweep', () => {
         expect(heightAt(w.height, e.x, e.z), ctx).toBeLessThanOrEqual(-want + 1e-3);
         if (isl.archetype === 'hearthholm') {
           n++;
-          expect([Zone.mid, Zone.deep], ctx).toContain(zoneAt(w.height, w.zone, e.x, e.z));
+          // (beside the HQ Horseshoe Harbour the T-head lies in the ring's own band: TASK-666)
+          if (!isl.anchors.marinaBasin)
+            expect([Zone.mid, Zone.deep], ctx).toContain(zoneAt(w.height, w.zone, e.x, e.z));
         }
         // never runs along the shore: shore distance grows with the pier
         for (let k = 1; k <= d.segments; k++) {

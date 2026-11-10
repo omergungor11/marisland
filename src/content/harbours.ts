@@ -130,8 +130,11 @@ export interface HarbourParams {
   };
 }
 
+/** Islands with harbour numbers (TASK-666: HQ for its Horseshoe Harbour's T-head pier). */
+type HarbourTheme = 'research' | 'marketing' | 'design' | 'hq';
+
 /** Per-theme harbours (D-112: Research pilot; Marketing / Design reuse the skeleton later). */
-export const HARBOURS: Partial<Record<'research' | 'marketing' | 'design', HarbourParams>> = {
+export const HARBOURS: Partial<Record<HarbourTheme, HarbourParams>> = {
   research: {
     pier: { segments: 6, minSegments: 4, sideClear: 1.6, head: { w: 8, d: 2.4 } },
     berth: { out: 3, approach: { len: 18, half: 5 } },
@@ -297,6 +300,68 @@ export const HARBOURS: Partial<Record<'research' | 'marketing' | 'design', Harbo
       board: HV.pierSignpost + DESIGN_LIVERY,
       bollard: {
         variant: HV.barrel + DESIGN_LIVERY,
+        at: [
+          [-3.65, 0.9],
+          [-1.4, 0.9],
+          [1.4, 0.9],
+          [3.65, 0.9],
+        ],
+      },
+    },
+  },
+  // TASK-666 (D-171): the HQ cove's Horseshoe Harbour (plans/marketing-marina.ts) grows from this
+  // pier: a T-head ferry pier of HQ's own length and the light on the light mole's head. Only the
+  // horseshoe reads it (no breakwater arm on HQ: the arm / basin / kiosk numbers are the shared
+  // skeleton's, unused); a seed with no ring keeps HQ's plain pier and the M29 comb marina.
+  hq: {
+    pier: { segments: 10, minSegments: 4, sideClear: 1.6, head: { w: 8, d: 2.4 } },
+    berth: { out: 3, approach: { len: 18, half: 5 } },
+    arm: {
+      offset: 10,
+      step: 1,
+      tipArc: 13,
+      length: 26,
+      minLength: 16,
+      maxTurnDeg: 110,
+      depth: [0.4, 3.2],
+      idealDepth: 1.3,
+      crestY: 1.35,
+      crestDome: 0.3,
+      half: [1.2, 1.5],
+      flank: 2,
+      clearOther: 18,
+      mouth: 5,
+      rockY: 0.7,
+      armour: 0.2,
+      armourY: 0.15,
+      rockTip: 6,
+      rockSpur: 6,
+    },
+    basin: { from: 1.5, pierGap: 1.2, armGap: 1.4, depth: 1.8, fall: 1.5 },
+    kiosks: {
+      search: 9,
+      step: 0.5,
+      minShore: 0.8,
+      maxRelief: [0.8, 1.6] as const,
+      laneGap: 1.6,
+      gap: 0.6,
+      padMargin: 1.2,
+      shelter: { at: [-3.2, -4], size: [3.2, 2.2] },
+      booth: { at: [-2.6, 3.4], size: [1.6, 1.6] },
+      board: { at: [-1.6, -1.9], size: [1.2, 0.5] },
+    },
+    light: { inset: 0.6 },
+    keepOut: { pier: 2.5, head: 3, hard: 0.65 },
+    kit: {
+      head: { variant: 0, plank: 1.2, lift: 0.02 },
+      deckY: 0.7,
+      light: HV.lighthouse,
+      // (HQ's ferry awning, timetable board and office are the Harbour Guild's: no harbour kiosks)
+      shelter: null,
+      booth: null,
+      board: HV.pierSignpost,
+      bollard: {
+        variant: HV.barrel,
         at: [
           [-3.65, 0.9],
           [-1.4, 0.9],

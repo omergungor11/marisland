@@ -25,6 +25,7 @@
  * draws from a labelled fork of `rng`.
  */
 import {
+  DOCK,
   FIXTURE_RADIUS,
   FLATTEN,
   LOT_FOOTPRINT,
@@ -47,6 +48,7 @@ import {
   addShape,
   ang,
   bestSample,
+  carveWater,
   cellOf,
   cellPos,
   clear,
@@ -84,6 +86,8 @@ import {
   type SiteCtx,
   type SitePlan,
 } from '../sites.ts';
+import { finishHarbour } from './harbour.ts';
+import { finishMarina, planMarina } from './marketing-marina.ts';
 import type { ThemePlanner } from './types.ts';
 import * as dm from '../../../core/math/dmath.ts';
 
@@ -315,7 +319,7 @@ export const planHq: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
     edge: true,
   });
   const boatsRng = rng.fork('moorings');
-  dockWithLink(ctx, isl, plan, dockSite, boatsRng, {
+  const dockIdx = dockWithLink(ctx, isl, plan, dockSite, boatsRng, {
     rowboats: boatsRng.int(P.moorings.rowboats[0], P.moorings.rowboats[1]),
     sailboats: boatsRng.int(P.moorings.sailboats[0], P.moorings.sailboats[1]),
   });
@@ -357,6 +361,21 @@ export const planHq: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
   const hubCell = seedHub(ctx, isl, plan, plaza);
   if (hubCell < 0) return null;
   const streets = layStreets(ctx, isl, plaza, hubCell, dockSite, rng.fork('streets'));
+
+  // ---- M52 correction (TASK-666, D-171): the Horseshoe Harbour beside the ferry pier in the cove,
+  // after the streets (the ring keeps off the plaza, the lanes and the gates) and before the lots;
+  // a T-head on the pier as laid. No fit = the plain pier and, after the routes, the M29 comb
+  // marina (world/gen/marina.ts)
+  const marina = planMarina(ctx, isl, dockSite, ctx.docks[dockIdx]?.segments);
+  if (marina)
+    carveWater(
+      ctx,
+      marina.hb.end,
+      marina.hb.end,
+      DOCK.headCarve,
+      DOCK.headCarveFall,
+      DOCK.channelDepth,
+    );
 
   // ---- coffee kiosks on the plaza edge, flanking the harbour lane, facing the centre, off the
   // street rays (a kiosk in a ray would block that street at the rim)
@@ -418,12 +437,28 @@ export const planHq: ThemePlanner = ({ ctx, isl, rng, sIdx }) => {
     });
   }
 
+  // the marina's alleys: lanes up behind the quay houses, toward the plaza
+  for (const pin of marina?.alleys ?? [])
+    plan.links.push({
+      pin,
+      kind: 'stair',
+      corridor: { a: pin, b: plaza, half: 7 },
+      done: () => undefined,
+    });
+
   if (dockSite) paintQuay(ctx, isl, dockSite.root, dockSite.dir);
   placeStreetKit(ctx, isl, plaza, streets, kit, rng.fork('stalls'));
   paintLawn(ctx, isl, plaza);
   placeAvenue(ctx, isl, plaza);
   placeTidePools(ctx, isl, rng.fork('tidepools'));
   paintStreets(ctx, isl, streets);
+  // the marina on the final ground (it levels its deck again; the light mole's anchors read it)
+  if (marina)
+    plan.finish = (paths) => {
+      const quay = finishMarina(ctx, marina, paths);
+      finishHarbour(ctx, marina.hb);
+      return quay;
+    };
   return plan;
 };
 

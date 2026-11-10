@@ -694,8 +694,10 @@ export function harbourKeepOut(
     // the crossbar between its ends: just its own depth (the berth node sits `berth.out` u out)
     for (const k of [-0.25, 0, 0.25])
       out.push({ x: b.x - u.z * size.x * k, z: b.z + u.x * size.x * k, r: size.z / 2 + 0.6, hard });
-    // the basin mouth (arm tip → the crossbar's nearer end): the ferry comes in from the sea
-    const tip = isl.anchors.harbourArm0;
+    // the basin mouth (arm tip → the crossbar's nearer end): the ferry comes in from the sea.
+    // (TASK-666: not beside a Horseshoe Harbour; its light mole's head may lie far off the T-head,
+    // the ring's and the basin's own keep-outs are marinaKeepOut's)
+    const tip = isl.anchors.marinaBasin ? undefined : isl.anchors.harbourArm0;
     if (tip) {
       const ends = [-0.5, 0.5].map((k) => ({
         x: b.x - u.z * size.x * k,

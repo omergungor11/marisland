@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { createRng } from '../core/rng.ts';
 import { edt } from './gen/coast.ts';
 import { leewardness } from './gen/heightfield.ts';
+import { MARINA_SITE } from '../content/themes/marketing-marina-site.ts';
 import {
   CHUNK_HAS_LAND,
   CHUNKS_PER_SIDE,
@@ -17,6 +18,18 @@ import {
 // Tests measure wall time; generation itself never reads a clock.
 // eslint-disable-next-line no-restricted-properties
 const now = (): number => performance.now();
+
+/** On or round a Horseshoe Harbour ring (its anchors; deck, flank and the dredged basin). */
+function inRing(w: WorldData, x: number, z: number): boolean {
+  return w.islands.some((isl) => {
+    const c = isl.anchors.marinaBasin;
+    const s = isl.anchors.marinaBasinSize;
+    const q = isl.anchors.marinaQuaySize;
+    if (!c || !s || !q) return false;
+    const R = s.x / 2 + q.x + MARINA_SITE.ring.edgeFlat + MARINA_SITE.ring.flank + 1;
+    return Math.hypot(x - c.x, z - c.z) < R;
+  });
+}
 
 const cache = new Map<number, WorldData>();
 const world = (seed: number): WorldData => {
@@ -37,52 +50,53 @@ describe('generateWorld — determinism', () => {
   it('stage hashes are locked for seeds 1, 42, 1001', () => {
     const snap = Object.fromEntries([1, 42, 1001].map((s) => [s, world(s).hashes]));
     // TASK-615: rim delta + lip knobs (height, zone) and wall-foot talus (props); sites unchanged, re-pinned
+    // TASK-666: the one-island world is HQ: its Horseshoe Harbour replaces the comb, re-pinned
     expect(snap).toMatchInlineSnapshot(`
       {
         "1": {
           "chunks": "87a628cc5d3a2131",
           "fields": "fde62d37a0223454",
-          "height": "6e2b359d021fc1f6",
-          "islandMap": "a655e399542d6130",
+          "height": "a23b6ef0c11cc9c9",
+          "islandMap": "a66cc8d948f6c214",
           "layout": "ec97224b9dcc8315",
-          "marina": "928deff0972a713f",
-          "props": "302c4c3518dd07ac",
-          "routes": "7c3fb900a1631df7",
-          "sdf": "f25821e68b9fc27b",
+          "marina": "e843ca86511cf571",
+          "props": "ba63e4aac5df0dbf",
+          "routes": "674b51c7a8684ae0",
+          "sdf": "5e0d097052c4572b",
           "seamarks": "37638d086076f1f5",
-          "sites": "a6a1634722304952",
-          "world": "082d26add0391adb",
-          "zone": "996c8320c7eebf5e",
+          "sites": "de98f3e8ce11f710",
+          "world": "838d17e0f25c96f4",
+          "zone": "0e8dd27e66601f04",
         },
         "1001": {
           "chunks": "2308622b7f481c60",
           "fields": "fde62d37a0223454",
-          "height": "00d1f3a87af1d6b2",
-          "islandMap": "2108575841e697b4",
+          "height": "70b7169293ebbb6b",
+          "islandMap": "bf704ee17811d30e",
           "layout": "833741d3e076ff8e",
-          "marina": "cc37bb5a62908c23",
-          "props": "5e6aba20c0e071a5",
-          "routes": "ad9143a5f0133361",
-          "sdf": "cc52d61ebf22894e",
+          "marina": "a3421d589e10caee",
+          "props": "fbd57159fa82b88a",
+          "routes": "2afe51bbc79ed781",
+          "sdf": "91c004bf6d845129",
           "seamarks": "0d7eafafa2581373",
-          "sites": "80bfe5be6a24be3d",
-          "world": "9f4ed16fe64b63a4",
-          "zone": "089ce2b6d87fce24",
+          "sites": "dc95e69f1a1fe85d",
+          "world": "48963f1450c9d8fc",
+          "zone": "4d6221ecc2558487",
         },
         "42": {
           "chunks": "4a2f6ca6294e6b92",
           "fields": "fde62d37a0223454",
-          "height": "f49537bfbb88dc5c",
-          "islandMap": "2b8b157174488c2e",
+          "height": "a447ccaee377389b",
+          "islandMap": "23abb4b4605b9de5",
           "layout": "b960bfa440f8e205",
-          "marina": "3918904952974faa",
-          "props": "3f671eb094fe682d",
-          "routes": "96c6c80ad3e5b6b0",
-          "sdf": "e18b47a56ddfcd47",
-          "seamarks": "bfe51c4b8f7d446c",
-          "sites": "3efc3da8f20c8121",
-          "world": "1df73b55225d5501",
-          "zone": "7d5565e45c1d6010",
+          "marina": "04bad7794667da8e",
+          "props": "8479575d114bb8e4",
+          "routes": "ffacd9955d147693",
+          "sdf": "9926e71a8cd49a65",
+          "seamarks": "e4b103414fa46bb3",
+          "sites": "bf71f9af97b2111f",
+          "world": "46a2f5684bd19c6b",
+          "zone": "001fe514462db5b0",
         },
       }
     `);
@@ -140,11 +154,13 @@ describe('coast and shelf', () => {
           const i = iz * n + ix;
           if (sdf[i] <= 0) continue;
           if (sdf[i - 1] > 0 && sdf[i + 1] > 0 && sdf[i - n] > 0 && sdf[i + n] > 0) continue;
+          const [x, z] = coord(w, i);
+          // (the HQ Horseshoe Harbour's quay ring stands on the sea bed: built, not shelf; TASK-666)
+          if (inRing(w, x, z)) continue;
           edges++;
           const gx = sdf[i + 1] - sdf[i - 1];
           const gz = sdf[i + n] - sdf[i - n];
           const len = Math.hypot(gx, gz) || 1;
-          const [x, z] = coord(w, i);
           for (let d = 4; d <= 10; d++) {
             const y = heightAt(w.height, x - (gx / len) * d, z - (gz / len) * d);
             if (y > 0 || y < -3.5) {

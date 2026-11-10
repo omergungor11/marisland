@@ -1,9 +1,11 @@
 /**
- * Marketing "Horseshoe Harbour" (M52 TASK-661, D-170): the marina town round a round basin on the
- * Carnival Pier's flank. Pure data, no rng. It replaces the skeleton's breakwater arm (harbour.ts)
- * when it fits: `planMarina` runs where `planHarbour` would, keeps the ferry pier, its T-head, the
- * berth and the skeleton anchors, and returns a `Harbour` whose arm is the light mole, so the
- * Carnival Pier, the kiosks and `finishHarbour` work on it unchanged; null = today's harbour.
+ * "Horseshoe Harbour" (M52 TASK-661, D-170; moved from Marketing to HQ by TASK-666, D-171): the
+ * marina town round a round basin beside the HQ ferry pier in the cove. Pure data, no rng.
+ * `planMarina` (hq.ts) runs on the cove dock: it runs the pier out to a T-head (HARBOURS.hq), keeps
+ * the berth and publishes the harbour skeleton's anchors, and returns a `Harbour` whose arm is the
+ * light mole, so `finishHarbour` lays the T-head kit and the light on it unchanged; null = HQ's
+ * plain pier and the M29 comb marina (world/gen/marina.ts). The star fort and the channel gates are
+ * the post-route stage's (marina.ts), which keeps the fort off the ring and its mouth.
  * Numbers: content/themes/marketing-marina-site.ts; pieces: MARINA_KIT (content/themes/marketing-marina.ts).
  *
  * 1. Fit: a basin centre on a grid in the pier frame (both sides of the pier), a mouth heading and
@@ -80,6 +82,7 @@ import {
   type ArmPoint,
   type Harbour,
 } from './harbour.ts';
+import type { HarbourParams } from '../../../content/harbours.ts';
 import * as dm from '../../../core/math/dmath.ts';
 
 const TAU = Math.PI * 2;
@@ -180,10 +183,13 @@ interface PierFrame {
   L: number;
   end: XZ;
   head: Shape;
+  /** The island's harbour numbers (pier head, berth, approach). */
+  P: HarbourParams;
 }
 
 function nearPier(f: PierFrame, p: XZ, pad: number, land = true): boolean {
   const F = M.fit;
+  const P = f.P;
   if (segDist(p, f.root, f.end) < F.pierGap + pad) return true;
   // land keeps the pier leaving the shore (DOCK.awayRate at every segment end, + `awayPad`)
   if (land)
@@ -196,8 +202,6 @@ function nearPier(f: PierFrame, p: XZ, pad: number, land = true): boolean {
   const dz = p.z - f.root.z;
   const uu = dx * f.u.x + dz * f.u.z;
   const vv = dx * f.v.x + dz * f.v.z;
-  const P = harbourParams('marketing');
-  if (!P) return false;
   const A = P.berth.approach;
   const ap = F.approachPad + pad;
   return uu >= f.L - ap && uu <= f.L + P.berth.out + A.len + ap && Math.abs(vv) <= A.half + ap;
@@ -246,43 +250,22 @@ function masks(ctx: SiteCtx, isl: IslandData, c: XZ, R: number) {
 /** Outer reach of the ground the ring touches (deck, flank, mouth blend). */
 const reach = (g: Ring): number => g.Rc + g.W / 2 + M.ring.edgeFlat + M.ring.flank + 1;
 
-/** Fit score of a ring (lower is better), Infinity when it breaks a rule. */
+/**
+ * Fit score of a ring (lower is better), Infinity when it breaks a rule or cannot beat `cap` (the
+ * best so far: fill and cut only add, so the cheap mouth / attach tests run first and the cell walk
+ * stops once the running score reaches it; the pick is the same as a full walk).
+ */
 function score(
   ctx: SiteCtx,
   isl: IslandData,
   f: PierFrame,
   g: Ring,
   mk: { reserved: Uint8Array; other: Uint8Array },
+  cap: number,
 ): number {
   const F = M.fit;
   const deckY = M.ring.deckY;
   const own = isl.id + 1;
-  const R = reach(g);
-  const [x0, x1] = gridRange(g.C.x - R, g.C.x + R);
-  const [z0, z1] = gridRange(g.C.z - R, g.C.z + R);
-  let fill = 0;
-  let cut = 0;
-  for (let iz = z0; iz <= z1; iz++)
-    for (let ix = x0; ix <= x1; ix++) {
-      const i = iz * ctx.n + ix;
-      const p = { x: cellX(ix), z: cellZ(iz) };
-      const w = where(g, p);
-      if (w.d > M.ring.flank) continue;
-      const h0 = ctx.h.data[i];
-      const m = ctx.islandMap[i];
-      if ((m !== 0 && m !== own) || mk.other[i]) return Infinity;
-      if (w.d <= 0) {
-        if (h0 > deckY + F.maxCut || h0 < -F.maxFill || mk.reserved[i]) return Infinity;
-        // the ring stays on its side of the pier
-        if ((p.x - f.root.x) * f.v.x + (p.z - f.root.z) * f.v.z < 1) return Infinity;
-        if (nearPier(f, p, 0)) return Infinity;
-        fill += Math.max(0, deckY - h0);
-        cut += Math.max(0, h0 - deckY);
-      } else if (inBasin(g, w)) {
-        if (h0 > F.basinLand || (mk.reserved[i] && h0 > 0)) return Infinity;
-        cut += Math.max(0, h0 + M.basin.depth) * 0.25;
-      } else if (h0 < deckY && w.d < 1 && nearPier(f, p, -1)) return Infinity;
-    }
   // the mouth opens on the sea
   const a = capL(g);
   const b = capT(g);
@@ -313,7 +296,38 @@ function score(
   }
   const attach = hit / Math.max(1, cnt);
   if (attach < F.backAttach) return Infinity;
-  return fill + F.cutW * cut + F.distW * dist(g.C, f.root) - F.attachW * attach;
+  const base = F.distW * dist(g.C, f.root) - F.attachW * attach;
+  if (base >= cap) return Infinity;
+  // the ground the ring takes
+  const R = reach(g);
+  const [x0, x1] = gridRange(g.C.x - R, g.C.x + R);
+  const [z0, z1] = gridRange(g.C.z - R, g.C.z + R);
+  let fill = 0;
+  let cut = 0;
+  for (let iz = z0; iz <= z1; iz++)
+    for (let ix = x0; ix <= x1; ix++) {
+      const i = iz * ctx.n + ix;
+      const p = { x: cellX(ix), z: cellZ(iz) };
+      const w = where(g, p);
+      if (w.d > M.ring.flank) continue;
+      const h0 = ctx.h.data[i];
+      const m = ctx.islandMap[i];
+      if ((m !== 0 && m !== own) || mk.other[i]) return Infinity;
+      if (w.d <= 0) {
+        if (h0 > deckY + F.maxCut || h0 < -F.maxFill || mk.reserved[i]) return Infinity;
+        // the ring stays on its side of the pier
+        if ((p.x - f.root.x) * f.v.x + (p.z - f.root.z) * f.v.z < 1) return Infinity;
+        if (nearPier(f, p, 0)) return Infinity;
+        fill += Math.max(0, deckY - h0);
+        cut += Math.max(0, h0 - deckY);
+        if (base + fill + F.cutW * cut >= cap) return Infinity;
+      } else if (inBasin(g, w)) {
+        if (h0 > F.basinLand || (mk.reserved[i] && h0 > 0)) return Infinity;
+        cut += Math.max(0, h0 + M.basin.depth) * 0.25;
+        if (base + fill + F.cutW * cut >= cap) return Infinity;
+      } else if (h0 < deckY && w.d < 1 && nearPier(f, p, -1)) return Infinity;
+    }
+  return fill + F.cutW * cut + base;
 }
 
 /** Mouth heading (world): the bisector between the caps, out of the basin. */
@@ -336,7 +350,7 @@ function fit(
   L: number,
 ): { g: Ring; f: PierFrame; sigma: 1 | -1; tier: Marina['tier'] } | null {
   const F = M.fit;
-  const P = harbourParams('marketing');
+  const P = harbourParams(isl.theme);
   if (!P) return null;
   const u = site.dir;
   const end = add(site.root, u, L);
@@ -352,7 +366,7 @@ function fit(
     let best: { g: Ring; f: PierFrame; sigma: 1 | -1; s: number } | null = null;
     for (const sigma of [1, -1] as const) {
       const v = { x: -u.z * sigma, z: u.x * sigma };
-      const f: PierFrame = { root: site.root, u, v, L, end, head };
+      const f: PierFrame = { root: site.root, u, v, L, end, head, P };
       for (let cu = F.u[0]; cu <= F.u[1] + 1e-6; cu += F.step)
         for (let cv = F.v[0]; cv <= F.v[1] + 1e-6; cv += F.step) {
           const C = add(add(site.root, u, cu), v, T.Rb + cv);
@@ -368,7 +382,7 @@ function fit(
             const side = (site.root.x - C.x) * -dir.z + (site.root.z - C.z) * dir.x;
             const ps: 1 | -1 = side >= 0 ? 1 : -1;
             const g = makeRing(C, phi, ps, T.Rb, T.short);
-            const s = score(ctx, isl, f, g, mk);
+            const s = score(ctx, isl, f, g, mk, best?.s ?? Infinity);
 
             if (s < (best?.s ?? Infinity)) best = { g, f, sigma, s };
           }
@@ -452,16 +466,22 @@ const cyc = <T>(list: readonly T[], k: number): T =>
   list[((k % list.length) + list.length) % list.length];
 
 /**
- * Plan the marina on the island's cove dock `site`; null when no ring fits (the caller plans
- * today's harbour). Reserves the town; `finishMarina` places it on the final ground.
+ * Plan the marina on the island's cove dock `site`; null when no ring fits (the caller keeps its
+ * plain pier). Reserves the town; `finishMarina` places it on the final ground. `laid`: the pier is
+ * already placed with this many segments (HQ: the T-head goes on its end, no run-out).
  */
-export function planMarina(ctx: SiteCtx, isl: IslandData, site: DockSite | null): Marina | null {
+export function planMarina(
+  ctx: SiteCtx,
+  isl: IslandData,
+  site: DockSite | null,
+  laid?: number,
+): Marina | null {
   const P = harbourParams(isl.theme);
   if (!P || !site) return null;
   // (the skeleton's run-out, capped at `pier.segments` the way its re-check after the arm does; no
   // DOCK.awayRate re-check: the ring keeps `fit.pierGap` off the whole pier instead, its tower mole
   // would otherwise shorten it to the stub)
-  const segments = Math.min(P.pier.segments, pierSegments(ctx, P, site));
+  const segments = laid ?? Math.min(P.pier.segments, pierSegments(ctx, P, site));
   if (segments < P.pier.minSegments) return null;
   const L = segments * DOCK.segment;
   const pick = fit(ctx, isl, site, L);
@@ -882,8 +902,7 @@ function promenade(ctx: SiteCtx, mr: Marina, paths: readonly Polyline[]): Polyli
 
 /**
  * True when `p` lies on the marina's deck (within its nominal outer edge) or in its basin: the town's
- * pieces, told apart from the island's other fixtures (tests; the kit's placeholder defs repeat
- * island defs until TASK-660 lands).
+ * pieces, told apart from the island's other fixtures (tests).
  */
 export function inMarina(isl: IslandData, p: XZ): boolean {
   const c = isl.anchors.marinaBasin;
@@ -893,7 +912,7 @@ export function inMarina(isl: IslandData, p: XZ): boolean {
   return dist(c, p) < s.x / 2 + q.x;
 }
 
-/** Boat-route keep-out discs round every marina ring and basin (world/index.ts). */
+/** Boat-route keep-out discs round every marina ring, basin and mouth (world/index.ts). */
 export function marinaKeepOut(
   islands: readonly IslandData[],
 ): { x: number; z: number; r: number; hard: number }[] {
@@ -909,6 +928,16 @@ export function marinaKeepOut(
       const q = isl.anchors[`marinaQuay${k}`];
       out.push({ x: q.x, z: q.z, r, hard: M.keepOut.hard });
     }
+    // (TASK-666: and the mouth's way out, so no route runs across it)
+    const m = isl.anchors.marinaMouth;
+    if (m)
+      for (let t = M.keepOut.mouth[0]; t <= M.fit.mouthLen + 1e-6; t += 2)
+        out.push({
+          x: m.x + dm.cos(m.rotY) * t,
+          z: m.z + dm.sin(m.rotY) * t,
+          r: M.keepOut.mouth[1],
+          hard: M.keepOut.hard,
+        });
   }
   return out;
 }

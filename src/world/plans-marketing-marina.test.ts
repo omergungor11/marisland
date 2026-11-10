@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { HARBOURS } from '../content/harbours.ts';
 import { MARINA_KIT } from '../content/themes/marketing-marina.ts';
 import { MARINA_SITE as M } from '../content/themes/marketing-marina-site.ts';
+import { HQ_MARINA, STAR_FORT } from '../content/themes/hq-marina.ts';
 import { landSamples, voyageRoute } from '../life/courier-route.ts';
 import { inMarina, marinaKeepOut } from './gen/plans/marketing-marina.ts';
 import { rectShape, shapeCorners, shapesOverlap, type Shape } from './gen/sites.ts';
@@ -14,9 +15,12 @@ import {
   type XZ,
 } from './index.ts';
 
-/** TASK-661 (D-170): the Horseshoe Harbour marina town on the Marketing Rock, 30 seeds + the shot seeds. */
+/**
+ * TASK-661 (D-170): the Horseshoe Harbour marina town; on the HQ island beside its ferry pier since
+ * TASK-666 (D-171). 30 seeds + the shot seeds.
+ */
 const SEEDS = [1001, 2024, ...Array.from({ length: 30 }, (_, k) => 1000 + k * 263)];
-const P = HARBOURS.marketing as NonNullable<typeof HARBOURS.marketing>;
+const P = HARBOURS.hq as NonNullable<typeof HARBOURS.hq>;
 const cache = new Map<number, WorldData>();
 const world = (seed: number): WorldData => {
   let w = cache.get(seed);
@@ -30,8 +34,8 @@ const list = (isl: IslandData, key: string) => {
 };
 const site = (seed: number) => {
   const w = world(seed);
-  const isl = w.islands.find((i) => i.theme === 'marketing');
-  if (!isl) throw new Error('no Marketing island');
+  const isl = w.islands.find((i) => i.theme === 'hq');
+  if (!isl) throw new Error('no HQ island');
   const A = isl.anchors;
   const quay = list(isl, 'marinaQuay');
   const houses = list(isl, 'marinaHouse');
@@ -55,7 +59,8 @@ describe('TASK-661 marina: seed fit', () => {
     const table = { full: 0, reduced: 0, short: 0, none: 0 };
     for (const seed of SEEDS) table[tier(seed)]++;
     expect(tier(1001)).toBe('full');
-    // (pinned to today's sweep: 32 / 32 full, so a regression shows)
+    // (pinned to today's sweep: 31 / 32 full, 1526 none (HQ's plain pier + the comb), so a
+    // regression shows)
     expect(table.full).toBeGreaterThanOrEqual(FULL_MIN);
     expect(table.full + table.reduced + table.short + table.none).toBe(SEEDS.length);
   }, 300_000);
@@ -134,8 +139,13 @@ describe('TASK-661 marina: ground', () => {
     for (const seed of SEEDS) {
       const { w, A, isl } = site(seed);
       if (!A.marinaBasin) continue;
-      expect(w.docks.find((d) => d.islandId === isl.id)?.segments, `seed ${seed}`).toBe(
-        P.pier.segments,
+      // (the T-head pier: HQ's run-out, at least `minSegments`, ending at `harbourPier1`)
+      const dock = w.docks.find((d) => d.islandId === isl.id);
+      expect(dock?.segments ?? 0, `seed ${seed}`).toBeGreaterThanOrEqual(P.pier.minSegments);
+      expect(dock?.segments ?? 0, `seed ${seed}`).toBeLessThanOrEqual(P.pier.segments);
+      expect(near(A.harbourPier0, A.harbourPier1), `seed ${seed}`).toBeCloseTo(
+        (dock?.segments ?? 0) * 2,
+        6,
       );
       const b = A.ferryBerth;
       const u = { x: Math.cos(b.rotY), z: Math.sin(b.rotY) };
@@ -296,14 +306,14 @@ describe('TASK-661 marina: boats keep off it', () => {
     }
   }, 300_000);
 
-  it('courier voyages to and from the Rock stay on open water', () => {
+  it('courier voyages to and from HQ stay on open water', () => {
     for (const seed of [1001, 2024, 1263]) {
       const { w, A } = site(seed);
       const c = A.marinaBasin;
       const Rc = A.marinaBasinSize.x / 2 + W / 2;
       for (const t of THEME_IDS) {
-        if (t === 'marketing') continue;
-        for (const r of [voyageRoute(w, 'marketing', t), voyageRoute(w, t, 'marketing')]) {
+        if (t === 'hq') continue;
+        for (const r of [voyageRoute(w, 'hq', t), voyageRoute(w, t, 'hq')]) {
           expect(r, `seed ${seed} ${t}`).not.toBeNull();
           if (!r) continue;
           expect(landSamples(w, r.pts, r.lens), `seed ${seed} ${t} land`).toBe(0);
@@ -315,10 +325,80 @@ describe('TASK-661 marina: boats keep off it', () => {
   }, 300_000);
 });
 
+describe("TASK-666 (D-171): the horseshoe is HQ's, the comb gives way, the fort stays", () => {
+  it('marina anchors on HQ only; Marketing is back to its arm harbour', () => {
+    for (const seed of SEEDS) {
+      const { w, isl } = site(seed);
+      for (const o of w.islands) {
+        if (o === isl) continue;
+        const keys = Object.keys(o.anchors).filter((k) => k.startsWith('marina'));
+        expect(keys, `seed ${seed} ${o.theme}`).toEqual([]);
+      }
+      const mk = w.islands.find((i) => i.theme === 'marketing');
+      if (mk?.anchors.harbourPier0) expect(mk.anchors.harbourArm0, `seed ${seed}`).toBeDefined();
+    }
+  }, 300_000);
+
+  it('no comb pieces or comb boats beside a horseshoe; the fort clear of the ring and its mouth', () => {
+    for (const seed of SEEDS) {
+      const { w, A, quay } = site(seed);
+      if (!A.marinaBasin) continue;
+      const m = `seed ${seed}`;
+      expect(
+        w.marina.filter((f) => f.defId === 'marinaPier' || f.defId === 'sailboat'),
+        m,
+      ).toEqual([]);
+      const forts = w.marina.filter((f) => f.defId === 'starFort');
+      expect(forts.length, m).toBe(1);
+      const fort = forts[0];
+      const R = STAR_FORT.outerR;
+      const reach = W / 2 + M.ring.edgeFlat + M.ring.flank;
+      expect(near(fort, A.marinaBasin), m).toBeGreaterThan(A.marinaBasinSize.x / 2 + W / 2 + R);
+      for (const q of quay) expect(near(fort, q), m).toBeGreaterThan(reach + R);
+      const mo = A.marinaMouth;
+      for (let t = 0; t <= 14; t += 1) {
+        const p = { x: mo.x + Math.cos(mo.rotY) * t, z: mo.z + Math.sin(mo.rotY) * t };
+        expect(near(fort, p), `${m} mouth +${t}`).toBeGreaterThan(R + M.ring.mouth);
+      }
+      // off the ferry pier
+      const a = A.harbourPier0;
+      const e = A.harbourPier1;
+      for (let t = 0; t <= 1; t += 0.05) {
+        const p = { x: a.x + (e.x - a.x) * t, z: a.z + (e.z - a.z) * t };
+        expect(near(fort, p), `${m} pier`).toBeGreaterThan(R + HQ_MARINA.fort.ring.pierGap - 0.01);
+      }
+      // and off the ferry's approach to the T-head
+      const b = A.ferryBerth;
+      for (let t = 0; t <= P.berth.approach.len; t += 1) {
+        const p = { x: b.x + Math.cos(b.rotY) * t, z: b.z + Math.sin(b.rotY) * t };
+        expect(near(fort, p), `${m} approach +${t}`).toBeGreaterThan(R + P.berth.approach.half);
+      }
+      // the gates still mark the ferry stop
+      expect(w.marina.filter((f) => f.defId === 'buoy').length, m).toBeGreaterThan(0);
+    }
+  }, 300_000);
+
+  it('the mouth opens clear of the boat routes', () => {
+    for (const seed of SEEDS) {
+      const { w, A } = site(seed);
+      if (!A.marinaBasin) continue;
+      const mo = A.marinaMouth;
+      for (const r of w.boatRoutes)
+        for (const q of r.points)
+          for (let t = 0; t <= M.fit.mouthLen; t += 2) {
+            const p = { x: mo.x + Math.cos(mo.rotY) * t, z: mo.z + Math.sin(mo.rotY) * t };
+            expect(near(p, q), `seed ${seed} ${r.kind} across the mouth +${t}`).toBeGreaterThan(
+              M.ring.mouth / 2 + 1,
+            );
+          }
+    }
+  }, 300_000);
+});
+
 describe('TASK-661 determinism', () => {
   it('same seed, same marina', () => {
     const pick = (w: WorldData) => {
-      const isl = w.islands.find((i) => i.theme === 'marketing') as IslandData;
+      const isl = w.islands.find((i) => i.theme === 'hq') as IslandData;
       const anchors = Object.entries(isl.anchors).filter(([k]) => k.startsWith('marina'));
       return JSON.stringify([anchors, w.fixtures.filter((f) => inMarina(isl, f))]);
     };
@@ -326,4 +406,4 @@ describe('TASK-661 determinism', () => {
   });
 });
 
-const FULL_MIN = 32;
+const FULL_MIN = 31;
