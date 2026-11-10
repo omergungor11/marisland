@@ -67,17 +67,22 @@ export interface Budget {
  * W-cable-dusk 294 calls, W27 175 MB). Building / vegetation LOD0 variants, per-chassis bot meshes and cloud
  * archetypes land on medium: triangles 800k → 950k, drawCalls 300 → 330, gpuMemoryMB 180 → 200. High gains the
  * SSAO / soft shadow / god ray passes: programs 24 → 30. Low unchanged (nothing of M45–M49 ships on low).
+ * D-161 (TASK-611): the earlier prop reveal (tier 2 band 200–260, LOD hand-over with LOD1 kept behind
+ * LOD0 until 175–200) draws LOD1 + LOD0 together at T2 on every quality. Low ladder measured: HQ T1
+ * 81 MB, Marketing pair 175 calls, DevOps / Research T2 371–387k tris; ΔE passes everywhere. Low
+ * drawCalls 170 → 176, triangles 366k → 390k, gpuMemoryMB 80 → 82 (measured + ~1 %, not + 10 %: low
+ * is the fallback tier, the headroom stays with medium).
  */
 export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
   low: {
-    drawCalls: 170,
-    triangles: 366_000,
+    drawCalls: 176,
+    triangles: 390_000,
     instances: 6_000,
     groundCover: 3_000,
     agents: 25,
     particles: 2_000,
     programs: 12,
-    gpuMemoryMB: 80,
+    gpuMemoryMB: 82,
     jsHeapMB: 120,
     newSeedMs: 1500,
   },
