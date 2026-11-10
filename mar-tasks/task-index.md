@@ -553,6 +553,19 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 | TASK-665 | M52 follow-ups: basin face as a 2–3 u sloped bank (needs geometry on a 2 u grid), mole outline sawtooth from low sea views, dev frames with the Rock campus behind over budget (`D-horseshoe-row` 369, `D-carnival-deck` 367), `quayFurnish` tier 2, diners 1.7× bot size beside 0.74 u tables, no mast-head lights on moored boats, house windows dark 23:00–23:40 (`quayHouse` not in `NIGHT.alwaysOn`), stall-front anchors for a browsing pose, fallback branches of the fit untested by the sweep, low quality shows at most 4 town bots | props + worldgen + life | S | PENDING | TASK-660, TASK-661, TASK-662 |
 
 
+| TASK-666 | M52 düzeltmesi: Horseshoe Harbour Marketing'den HQ adasına taşınır (HQ koyundaki M29 tarak iskeleleri / yatları / tarak mendireği kalkar, yıldız kale ve kanal şamandıraları kalır); Marketing M52 öncesi kollu limana + Carnival Pier'e döner; 32 seed fit tablosu HQ için; world hash re-pin (user 2026-11-10: "hq adasına bu tasarımı uyguladığımızı sanıyordum", D-171) | worldgen | L | IN PROGRESS | TASK-661 |
+| TASK-667 | Horseshoe kit'i ve rıhtım zemini HQ paletinde (`MARINA_LOOK`, `MARINA_QUAY`); geometri / sayılar aynı (D-171) | props | S | IN PROGRESS | TASK-660, TASK-664 |
+| TASK-668 | Taşıma sonrası: dosya adları `marketing-marina*` → `hq-horseshoe*`, `W-marina-*` / `D-marina-*` / `W-horseshoe-*` kadrajları, yaşam sayıları kontrolü, `wow --assert`, ART_BIBLE HQ + Beacon Rock satırları, D-171 | orchestrator + docs | S | PENDING | TASK-666, TASK-667 |
+
+### M53 — Marketing "Deniz Üstü Lunapark": Carnival Pier genişler (user 2026-11-10: "marketing adasının limanını lunapark olanı genişletelim ve detaylar ekleyelim"; yön B: kazıklar üstünde halka platform, dört alet, mini coaster, iç havuzda çarpışan tekneler; D-172)
+
+| ID | Task | Agent | Complexity | Status | Dependencies |
+|---|---|---|---|---|---|
+| TASK-670 | Lunapark kit'i (props): halka platform güvertesi, zincirli salıncak, düşüş kulesi, atlıkarınca, büyük dönme dolap, mini coaster rayı + tren, çarpışan tekneler, neon kapı, bilet gişesi, yiyecek arabaları × 3, ödül standı, küçük mobilya; kontrat `content/themes/marketing-luna.ts` (`LUNA_KIT`); hareketli parçalar ayrı pivotlu; hedef ≤ +25 call / +120k tri | props | L | IN PROGRESS | — |
+| TASK-671 | Lunapark yerleşimi (worldgen): feribot iskelesi yanında halka platform, alet köşeleri, coaster halkası, iç havuz, tekne rotası keep-out; WELCOME panosu / kemerler / konfeti topları korunur; `luna*` anchor'ları; hash re-pin | worldgen | M | PENDING | TASK-666, TASK-670 |
+| TASK-672 | Lunapark hareketi + yaşam: salıncak / atlıkarınca / kule / tren mover'ları, çarpışan tekneler, gezen botlar, gece ampul ve neon | life | M | PENDING | TASK-670, TASK-671 |
+| TASK-673 | M53 çekimleri + QA + belgeler: `W-luna-*` / `D-luna-*` preset'leri, Carnival kadrajları, bütçe, ART_BIBLE, D-172 | qa + docs | S | PENDING | TASK-672 |
+
 ## Phase 5: Visual upgrade — richer surfaces, prop variety, agent identity, high tier (plan `mar-plans/VISUAL_UPGRADE.md`, details `phases/phase-5.md`, budget D-156)
 
 ### M45 — Agent identity and portrait
