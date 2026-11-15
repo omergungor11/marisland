@@ -492,6 +492,20 @@ export function compareFrames(
   for (let dy = -slack; dy <= slack; dy++)
     for (let dx = -slack; dx <= slack; dx++)
       Bs.push(cellsToLab(downsample(far, (u, v) => map(u + dx / GRID.w, v + dy / GRID.h))));
+  // blob only: a structure cell is not a NEW element when it matches along its radial parallax
+  // corridor (TASK-678, the solid IoU's rule below, TASK-487): the far frame sampled on the near
+  // grid at radius t·r, t ∈ [f, 1). Mean / p95 / heat keep the plain ±slack match. Marketing's
+  // cable-car pylon deck on its sea stack, bottom edge of pair 45 (47.7 → 42.3 u): 2 cells hot
+  const corridor: Lab[][] = [];
+  if (parallax < 1) {
+    const steps = Math.ceil(2 * Math.hypot(GRID.w, GRID.h) * 0.5 * (1 - parallax));
+    for (let i = 0; i < steps; i++) {
+      const t = parallax + ((1 - parallax) * i) / steps;
+      corridor.push(
+        cellsToLab(downsample(far, (u, v) => map(0.5 + (u - 0.5) * t, 0.5 + (v - 0.5) * t))),
+      );
+    }
+  }
   const heat = new Float64Array(n).fill(NaN);
   const vals: number[] = [];
   const hot: boolean[] = new Array<boolean>(n).fill(false);
@@ -501,7 +515,10 @@ export function compareFrames(
     for (const B of Bs) d = Math.min(d, deltaE2000(B[k], A[k]));
     heat[k] = d;
     vals.push(d);
-    hot[k] = d > T.blobDeltaE;
+    let dHot = d;
+    if (d > T.blobDeltaE && mA.struct[k] >= 0.5)
+      for (const B of corridor) dHot = Math.min(dHot, deltaE2000(B[k], A[k]));
+    hot[k] = dHot > T.blobDeltaE;
   }
   const compared = vals.length;
   const sorted = [...vals].sort((a, b) => a - b);

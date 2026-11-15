@@ -185,6 +185,24 @@ describe('ladder metrics: steps', () => {
       expect(pair(scene(mast), scene(sideways), f).iou).toBeLessThan(LADDER_THRESHOLDS.pairIou);
     });
 
+    it('blob: a structure slid along its corridor is no new element; mean / heat unchanged (TASK-678)', () => {
+      // a red deck near the lower right corner, where the corridor is ~2 cells wide
+      const deck = (u: number, v: number): boolean => u > 0.84 && u < 0.94 && v > 0.8 && v < 0.95;
+      const frame = (s: (u: number, v: number) => boolean): Img =>
+        img((u, v) => (s(u, v) ? [200, 30, 40] : meadow(u, v)));
+      const mask = (s: (u: number, v: number) => boolean): Img =>
+        img((u, v) => (s(u, v) ? roof : land));
+      const slidDeck = toward(deck, f + 0.005);
+      const run = (p: number): ReturnType<typeof compareFrames> =>
+        compareFrames(frame(deck), mask(deck), frame(slidDeck), mask(slidDeck), identityMap, 1, p);
+      const plain = run(1);
+      const withCorridor = run(f);
+      expect(plain.blobCells).toBeGreaterThan(2);
+      expect(withCorridor.blobCells).toBe(0);
+      expect(withCorridor.mean).toBe(plain.mean);
+      expect(withCorridor.p95).toBe(plain.p95);
+    });
+
     it('a building appearing between rungs still fails the step with the corridor on', () => {
       const a = img(meadow);
       const inBlob = (u: number, v: number): boolean => Math.hypot(u - 0.6, v - 0.4) < 0.08;

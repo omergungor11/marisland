@@ -75,6 +75,11 @@ export interface Budget {
  * TASK-651 (user 2026-11-10): land life and workers appear on the tier-2 band (200–260 u) and the M52 / M53
  * kits landed after D-165: W15e 340 calls (335 before the land life), low L-pairs-hq / -marketing 83–84 MB.
  * Medium drawCalls 330 → 350, low gpuMemoryMB 82 → 86 (measured + ~3 %).
+ * TASK-678 (D-181), budgets unchanged (user 2026-11-15: low memory stays 86): a prop group draws only
+ * while one of its instances is inside its dither band, and a group with no shadow to cast only while
+ * one is inside the view frustum (its island-wide bounding sphere met both). Pixel-identical; low
+ * L-pairs-marketing 265 u 178 → 146 calls, W-carnival-noon / -dusk / -arrival 281 / 302 / 228 →
+ * 262 / 280 / 198. Memory is not touched by this (L-pairs-hq still reads 86 MB at 148.4 u).
  */
 export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
   low: {

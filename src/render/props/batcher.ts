@@ -180,7 +180,10 @@ export interface Group {
   visible: boolean;
   /** Casts map shadows at all (quality, def flags); `update(cam)` drops it per frame by distance. */
   casts: boolean;
-  /** Last `update(cam)`: some instance lies inside its material's dither band (TASK-611). */
+  /**
+   * Last `update(cam)`: the group's bounding sphere reaches its material's dither band (TASK-611);
+   * gates its contact blobs. The draw itself also needs an instance in the band (TASK-678).
+   */
   inReach: boolean;
   cx: number;
   cz: number;
@@ -201,8 +204,16 @@ export interface PropBatcher {
    * (TASK-405), a visible group (LOD0 per island or LOD1) whose bounding sphere lies wholly past
    * its material's dither fade-out distance skips its draw (every instance is dithered away
    * already, colour and shadow alike); its contact blobs and visibility state are untouched.
+   * With `view` (the camera frustum, TASK-678), a group that casts no shadow this frame and has
+   * no instance inside the frustum skips its draw too (its island-wide sphere still met it).
    */
-  update(time: number, focusX: number, focusZ: number, cam?: THREE.Vector3): void;
+  update(
+    time: number,
+    focusX: number,
+    focusZ: number,
+    cam?: THREE.Vector3,
+    view?: THREE.Frustum,
+  ): void;
   /** Groups for picking / debugging. */
   readonly groups: readonly Group[];
   /**
@@ -676,6 +687,71 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
     ).fade;
     return f ? [f.uFadeNear.value, f.uFadeFar.value] : null;
   };
+  /**
+   * TASK-678: camera distance of a group's nearest / farthest live instance origin (the point the
+   * dither ramp measures, factory.ts `marOrigin`). The bounding sphere spans the whole island, so a
+   * group whose every instance lies past its band still passed the sphere test and cost a call
+   * (low ladder Marketing 265 u: 13 such groups). Zero-scale slots (removed) are skipped.
+   */
+  const instanceRange = (g: Group, cam: THREE.Vector3, out: [number, number]): void => {
+    const e = g.mesh.instanceMatrix.array as Float32Array;
+    const w = g.mesh.matrixWorld.elements;
+    let lo = Infinity;
+    let hi = 0;
+    for (let i = 0, o = 0; i < g.mesh.count; i++, o += 16) {
+      if (e[o] === 0 && e[o + 1] === 0 && e[o + 2] === 0) continue;
+      const x = e[o + 12];
+      const y = e[o + 13];
+      const z = e[o + 14];
+      const dd = Math.hypot(
+        w[0] * x + w[4] * y + w[8] * z + w[12] - cam.x,
+        w[1] * x + w[5] * y + w[9] * z + w[13] - cam.y,
+        w[2] * x + w[6] * y + w[10] * z + w[14] - cam.z,
+      );
+      if (dd < lo) lo = dd;
+      if (dd > hi) hi = dd;
+    }
+    out[0] = lo;
+    out[1] = hi;
+  };
+  const range: [number, number] = [0, 0];
+  const _c = new THREE.Vector3();
+  /**
+   * TASK-678: some instance's bounding sphere (geometry sphere through its instance matrix,
+   * + 10 % + 0.5 u for wind sway / squash) meets the frustum.
+   */
+  const instanceInView = (g: Group, view: THREE.Frustum): boolean => {
+    const geo = g.mesh.geometry;
+    if (!geo.boundingSphere) geo.computeBoundingSphere();
+    const bs = geo.boundingSphere!;
+    const e = g.mesh.instanceMatrix.array as Float32Array;
+    const w = g.mesh.matrixWorld;
+    const ws = w.getMaxScaleOnAxis();
+    for (let i = 0, o = 0; i < g.mesh.count; i++, o += 16) {
+      const s2 = Math.max(
+        e[o] * e[o] + e[o + 1] * e[o + 1] + e[o + 2] * e[o + 2],
+        e[o + 4] * e[o + 4] + e[o + 5] * e[o + 5] + e[o + 6] * e[o + 6],
+        e[o + 8] * e[o + 8] + e[o + 9] * e[o + 9] + e[o + 10] * e[o + 10],
+      );
+      if (s2 === 0) continue;
+      const { x, y, z } = bs.center;
+      _c.set(
+        e[o] * x + e[o + 4] * y + e[o + 8] * z + e[o + 12],
+        e[o + 1] * x + e[o + 5] * y + e[o + 9] * z + e[o + 13],
+        e[o + 2] * x + e[o + 6] * y + e[o + 10] * z + e[o + 14],
+      ).applyMatrix4(w);
+      const r = (bs.radius * Math.sqrt(s2) * 1.1 + 0.5) * ws;
+      let inside = true;
+      for (const p of view.planes)
+        if (p.distanceToPoint(_c) < -r) {
+          inside = false;
+          break;
+        }
+      if (inside) return true;
+    }
+    return false;
+  };
+  const _groupSph = new THREE.Sphere();
 
   const show = (g: Group, time: number, instantIn: boolean): void => {
     if (g.visible) return;
@@ -1334,7 +1410,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
       lod1Behind();
       snapshot();
     },
-    update(time, fx, fz, cam) {
+    update(time, fx, fz, cam, view) {
       if (cam) (lastCam ??= new THREE.Vector3()).copy(cam);
       // ground cover: only chunks near the focus, from its arm tier (T2; the band opens at T2)
       if (tier >= 0) {
@@ -1367,8 +1443,21 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
           const sph = g.mesh.boundingSphere;
           const c = sph ? cam.distanceTo(sph.center) : 0;
           const r = sph ? sph.radius : Infinity;
+          range[0] = c - r;
+          range[1] = c + r;
+          // the sphere straddles a band edge: measure the instances (TASK-678)
+          if (
+            band &&
+            sph &&
+            c - r < Math.max(band[0], band[1]) &&
+            c + r > Math.min(band[0], band[1])
+          )
+            instanceRange(g, cam, range);
+          const [nearest, farthest] = range;
+          // `inReach` keeps the sphere test: it gates the group's contact blobs (merged, not
+          // faded), which TASK-678 leaves as they were
           g.inReach = !band || bandReaches(c - r, c + r, band);
-          g.mesh.visible = g.inReach;
+          g.mesh.visible = !band || bandReaches(nearest, farthest, band);
           // the depth material cuts at half fade (vFade < 0.5): past that every caster fragment is
           // discarded, so the shadow pass would only cost a draw call (TASK-435)
           // LOD1 casts at T0–T1 only: close up what is left of it (past the hand-over band, or
@@ -1378,8 +1467,14 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
           g.mesh.castShadow =
             g.casts &&
             (g.lod === 0 || tier <= 1) &&
-            (!band || bandCasts(c - r, c + r, band)) &&
-            !(g.lod === 0 && tier <= 1 && lod1CastsPast(g.def, c - r));
+            (!band || bandCasts(nearest, farthest, band)) &&
+            !(g.lod === 0 && tier <= 1 && lod1CastsPast(g.def, nearest));
+          // no shadow to cast: the main pass alone decides, by the instances in view (TASK-678)
+          if (g.mesh.visible && view && sph && !g.mesh.castShadow && g.mesh.frustumCulled) {
+            _groupSph.copy(sph).applyMatrix4(g.mesh.matrixWorld);
+            if (view.intersectsSphere(_groupSph) && !instanceInView(g, view))
+              g.mesh.visible = false;
+          }
         }
       // removal fades that are over → zero-scaled instances (TASK-211)
       if (pending.length) {

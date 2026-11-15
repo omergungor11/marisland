@@ -161,6 +161,8 @@ const _focus = new THREE.Vector3();
 const _camPos = new THREE.Vector3();
 const _camTarget = new THREE.Vector3();
 const _camDir = new THREE.Vector3();
+const _view = new THREE.Frustum();
+const _viewPV = new THREE.Matrix4();
 const _aerial = new THREE.Color(AERIAL.color);
 
 export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
@@ -489,7 +491,10 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
       props.setTier(tier, d.getTime());
       life.onTier(tier);
     }
-    props.update(d.getTime(), _focus.x, _focus.z, _camPos);
+    _view.setFromProjectionMatrix(
+      _viewPV.multiplyMatrices(d.camera.projectionMatrix, d.camera.matrixWorldInverse),
+    );
+    props.update(d.getTime(), _focus.x, _focus.z, _camPos, _view);
     shadowSkip.skip(d.camera, env.sunDir);
     life.update(dt, alpha);
   };
