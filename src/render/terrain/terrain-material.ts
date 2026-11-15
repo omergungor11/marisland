@@ -52,7 +52,8 @@ export const BRUSH_UNIFORMS = {
  * onBeforeCompile for
  *  (a) the semantic debug mask (SHARED.uDebugMask) — flat unlit zone colours,
  *  (b) a subtle fresnel rim × horizon colour on grazing land faces (ART_BIBLE §3),
- *  (c) scrolling caustics below y = 0 (define MAR_CAUSTICS; off on low quality),
+ *  (c) shallow voronoi caustics 0–3 u below y = 0, by day (TASK-596, content TERRAIN_FX.caustic;
+ *      define MAR_CAUSTICS, off on low quality),
  *  (d) the wet-sand shore lap (SDF band, 4.5 s period) that the water foam matches,
  *  (f) lantern pools at night (TASK-171, chunks/night.glsl.ts): additive warm light × albedo,
  *  (g) the low weather mist band after three's fog (TASK-172, chunks/mist.glsl.ts),
@@ -197,13 +198,27 @@ ${GROUND_LIGHT_PARS_GLSL}
 vec2 marTerrainUv(vec2 xz) {
   return ((xz - uTerrainGrid.xy) * uTerrainGrid.z + 0.5) / uTerrainGrid.w;
 }
-float marCaustic(vec2 p, float t) {
-  vec2 q = p * 0.42;
-  float a = sin(q.x + 1.7 * sin(q.y * 0.9 + t * 0.9)) * sin(q.y * 1.1 + 1.5 * sin(q.x * 0.8 - t * 0.7));
-  vec2 r = p * 0.61 + vec2(13.1, 7.7);
-  float b = sin(r.x * 0.9 - 1.6 * sin(r.y * 1.2 - t * 0.8)) * sin(r.y + 1.4 * sin(r.x * 1.1 + t * 1.1));
-  float c = 1.0 - abs(a + b) * 0.5;
-  return smoothstep(0.72, 0.98, c);
+/* Caustic web (TASK-596): voronoi edge F2 - F1 (cell units) of points orbiting their cell centre. */
+float marVoroEdge(vec2 p, float t) {
+  vec2 i = floor(p);
+  vec2 fr = fract(p);
+  float d1 = 8.0;
+  float d2 = 8.0;
+  for (int k = 0; k < 9; k++) {
+    vec2 o = vec2(float(k - 3 * (k / 3) - 1), float(k / 3 - 1));
+    vec2 h = vec2(marHash12(i + o), marHash12(i + o + 17.3));
+    vec2 q = o + 0.5 + 0.38 * vec2(sin(t + 6.2832 * h.x), cos(0.87 * t + 6.2832 * h.y)) - fr;
+    float d = dot(q, q);
+    if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) { d2 = d; }
+  }
+  return sqrt(d2) - sqrt(d1);
+}
+/* One caustic octave: thin bright lines on the cell edges, widened to >= ~1 px and dimmed by the same
+   factor (mean kept), folding into the flat far lift while cells shrink toward a pixel. */
+float marCausticOct(vec2 p, float t, float cpx) {
+  float w = max(${f(F.caustic.width)}, 1.2 * cpx);
+  float line = (1.0 - smoothstep(0.0, w, marVoroEdge(p, t))) * ${f(F.caustic.width)} / w;
+  return mix(line, ${f(F.caustic.farLift)}, smoothstep(${f(F.caustic.fade[0])}, ${f(F.caustic.fade[1])}, cpx));
 }`,
       )
       .replace(
@@ -229,10 +244,21 @@ ${LAKE_COLOR_GLSL}
       diffuseColor.rgb = mix(diffuseColor.rgb, uSandWet * 0.9, wet * ${f(F.lapWetMix)});
   }
 #ifdef MAR_CAUSTICS
-  if (vMarWorld.y < 0.0) {
-    float depthFade = smoothstep(0.0, 0.6, -vMarWorld.y) * (1.0 - smoothstep(4.0, ${f(F.causticDepth)}, -vMarWorld.y));
-    float cst = marCaustic(vMarWorld.xz, uTime) + 0.6 * marCaustic(vMarWorld.zx * 1.37 + 31.0, uTime * 1.3);
-    diffuseColor.rgb *= 1.0 + ${f(F.caustic)} * min(cst, 1.4) * depthFade;
+  {
+    // (c) shallow caustics (TASK-596): two octaves of animated voronoi edges on the seabed, 0–3 u
+    // deep, by day with the sun up (golden hour / night: none); footprint taken in uniform flow
+    float marCd = -vMarWorld.y;
+    float marCk = smoothstep(0.0, ${f(F.caustic.depth[0])}, marCd) * (1.0 - smoothstep(${f(F.caustic.depth[1])}, ${f(F.caustic.depth[2])}, marCd))
+                * (1.0 - uNight) * smoothstep(${f(F.caustic.sunY[0])}, ${f(F.caustic.sunY[1])}, normalize(uSunDir).y) * (1.0 - uDebugMask);
+    float marCpx = max(length(marDPx.xz), length(marDPy.xz)) / ${f(F.caustic.cell)};
+    if (marCk > 0.0) {
+      float marCt = uTime * ${f(F.caustic.speed)};
+      vec2 marCp = vMarWorld.xz / ${f(F.caustic.cell)} + vec2(0.031, 0.022) * uTime;
+      float marCst = marCausticOct(marCp, marCt, marCpx);
+      vec2 marCq = mat2(0.8, 0.6, -0.6, 0.8) * marCp * ${f(F.caustic.octave)} - vec2(0.047, 0.018) * uTime + 13.7;
+      marCst += ${f(F.caustic.second)} * marCausticOct(marCq, -1.3 * marCt, marCpx * ${f(F.caustic.octave)});
+      diffuseColor.rgb *= 1.0 + ${f(F.caustic.gain)} * marCst * marCk;
+    }
   }
 #endif`,
       )

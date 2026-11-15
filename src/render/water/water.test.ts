@@ -51,6 +51,15 @@ describe('water shader source', () => {
     expect(WATER_FRAG).toContain('#include <colorspace_fragment>');
     expect(WATER_FRAG).toContain('uDebugMask');
   });
+  it('second foam band sits outside the widest contact line and is off in calm berths (TASK-596)', () => {
+    const s = WATER_SHADER.foam.second;
+    // contact line reaches at most lap advance + max width; the gap keeps the two rings apart
+    expect(s.gap).toBeGreaterThan(WATER_SHADER.foam.lapAdvance + WATER_BANDS.foamLine[1]);
+    // the band (at full retreat, widest) stays inside the lagoon ring
+    expect(s.gap + s.advance + s.width[1]).toBeLessThan(WATER_BANDS.lagoonMax);
+    expect(waterDefines()).toContain(`#define MAR_F2_GAP`);
+    expect(WATER_FRAG).toMatch(/f2Fade = .*\(1\.0 - calm\)/);
+  });
 });
 
 describe('radial grid', () => {
