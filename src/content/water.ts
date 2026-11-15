@@ -110,6 +110,12 @@ export const WATER_SHADER = {
     jitter: 0.24,
     maskScale: 1.9,
     maskThreshold: [0.67, 0.77] as const,
+    /**
+     * TASK-679: near the camera a finer noise (`scale` per u, kept above `threshold`) cuts each
+     * mask blob into a few sharp fragments, so inside the sun's mirror lobe the glints read as
+     * glitter, not soft white flakes; fades out with the same footprint term as the jitter.
+     */
+    breakup: { scale: 6.5, threshold: [0.5, 0.62] as const },
   },
   /**
    * Moon glitter path (D6; ART_BIBLE §2 night "moon glitter streak"). A pixel can glint when the
@@ -158,8 +164,8 @@ export const WATER_SHADER = {
    */
   daySun: {
     lobe: { across: 28, along: 14 },
-    sparkle: { density: 0.9, fraction: 0.22, radius: 0.12, rate: 0.7, gain: 1.6 },
-    shallow: 0.6,
+    sparkle: { density: 0.9, fraction: 0.22, radius: 0.12, rate: 0.7, gain: 2.2 },
+    shallow: 1.0,
     shallowLobe: 0.35,
     glow: 0.05,
     farGlow: 0.09,

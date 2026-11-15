@@ -2773,6 +2773,21 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     sets: ['wow'],
   },
   {
+    // TASK-679: the shallow-ring sun glitter (D-177) only shows inside the sun's mirror lobe. At 10:00
+    // sunDir ≈ (−0.33, 0.94, 0.01): a camera 34 u up and 12 u toward +x has the mirror point at the
+    // frame centre, here the W8 breakwater, with the shallow / mid rings on two sides in the lobe
+    id: 'W-glitter-am',
+    title: 'Morning Glitter',
+    seed: 1001,
+    cam: '-52,34,3,-64,0,3',
+    time: 10,
+    simt: 5,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  {
     id: 'W-tide-lab-dusk',
     title: 'Tide-Lab Dusk',
     // 19:15, the ferry just in (sim 229): the lit lab and its pool on the water, the harbour light's

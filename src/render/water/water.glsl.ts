@@ -98,6 +98,9 @@ export function waterDefines(): string {
     `#define MAR_GLINT_MSCALE ${f(g.maskScale)}`,
     `#define MAR_GLINT_TH0 ${f(g.maskThreshold[0])}`,
     `#define MAR_GLINT_TH1 ${f(g.maskThreshold[1])}`,
+    `#define MAR_GLINT_BSCALE ${f(g.breakup.scale)}`,
+    `#define MAR_GLINT_B0 ${f(g.breakup.threshold[0])}`,
+    `#define MAR_GLINT_B1 ${f(g.breakup.threshold[1])}`,
     `#define MAR_GLITTER_SWELL ${f(W.moon.normal[0])}`,
     `#define MAR_GLITTER_RIPPLE ${f(W.moon.normal[1])}`,
     `#define MAR_GLITTER_FADE0 ${f(W.moon.swellFade[0])}`,
@@ -523,6 +526,8 @@ void main() {
   float farG = 1.0 - glintF;
   float mask = smoothstep(MAR_GLINT_TH0 + 0.22 * farG, MAR_GLINT_TH1 + 0.22 * farG,
                           marNoise(xz * MAR_GLINT_MSCALE + vec2(-t * 0.9, t * 0.7) * uMotionScale));
+  // TASK-679: near field, a finer noise breaks each blob into sharp fragments (glitter, not flakes)
+  mask *= mix(1.0, smoothstep(MAR_GLINT_B0, MAR_GLINT_B1, marNoise(xz * MAR_GLINT_BSCALE + vec2(t * 1.3, t * 0.4) * uMotionScale + 7.3)), glintF);
   float glint = spec * mask * MAR_GLINT_STRENGTH * (1.0 + (MAR_GLINT_GOLDEN - 1.0) * uGolden);
   glint *= (1.0 - uNight) * dayK * (1.0 - foam);
   // overcast veil (TASK-172): no sun to glint
