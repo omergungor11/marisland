@@ -164,11 +164,20 @@ describe('workers wear their look (TASK-590)', () => {
     };
     w.setLook(seated, want);
     life.update(1, 0);
+    // eyes at once, the chassis follows once the squash-and-poof swap (TASK-592) has run its course
+    expect(w.lookOf(seated).eyes).toBe('gate');
+    for (let i = 0; i < 20; i++) {
+      life.fixedUpdate(FIXED_STEP);
+      life.update(1, 0);
+    }
     expect(w.chassisOf(seated)).toBe(chassisIndex(other));
     expect(w.lookOf(seated).head).toBe('cam');
     expect(decodeBotCode(w.seedOf(seated))).toMatchObject({ head: 2, eyes: 2, item: 10 });
     w.setLook(seated, null);
-    life.update(1, 0);
+    for (let i = 0; i < 20; i++) {
+      life.fixedUpdate(FIXED_STEP);
+      life.update(1, 0);
+    }
     expect(w.chassisOf(seated)).toBe(before);
     expect(w.lookOf(seated).eyes).toBe('idle');
     expect(decodeBotCode(w.seedOf(seated)).item).not.toBe(10);

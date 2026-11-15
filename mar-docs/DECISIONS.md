@@ -2,6 +2,17 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-176: Bot motion variety — per-chassis gait, idle beats, gate head-tip, done hop, swap poof, `?bots=lineup` (TASK-592) — 2026-11-15
+
+**Decision.** Numbers live in `content/bot-motion.ts` (per-chassis gait, four idle beats, gate head-tip + amber gem,
+done hop, swap squash, line-up grid); the closed-form curves are `life/bot-motion.ts` (no three), applied in `Workers.stepAgent` on the sim
+clock as one additive pose (`bp`), so scout stays pixel-identical (its gait numbers ARE `WORKERS`). Beats run on their own hash stream (`seed ^ 0x5ea7`,
+no `draw()` counter shifts): all four at a node pause when the whole beat fits, head-turn only at a desk. A look swap at rest is now squash (0.16 s) →
+swap under a poof → spring pop (0.5 s); hidden bots and reduced motion swap at once. Done hop + swap poof are `BotFxEvent`s the sim queues (only while
+`fxOn`) and `life/bot-fx.ts` turns into bursts in a pool of its own (96, `life:bot-fx`, zero draw calls idle). The gem pulses amber in
+`fleet-beacons.ts` (instance colour, one lerp per gated bot). `?bots=lineup` (`life/bot-lineup.ts`) adds 3 extra meshes (15 bots each, same program),
+closed-form poses from the engine clock, no sim; shots `F-bot-lineup[-6|-10]`, `F-bots-6|-10`. The line-up sits SW of the plaza (offset −8 / +6): the
+plaza itself is 6 u wide and the grid needs ~16 × 9 u. Not done: the beacon height over the spire antenna.
 ## D-175: Boats and dock dressing v2: `harbourBoat` (3 hulls x 8 island sets), `dockDressing`, three buoy variants; waterline pivot, no route change (TASK-601) — 2026-11-15
 
 **Decision.** `harbourBoat` (new def, tier 1, `windy | noShadow`, `geo/boats-v2.ts`): variant = `biomeIndex * 3 + hull`, hull 0 dinghy (open well, thwarts, lug sail), 1 cabin fishing boat (wheelhouse with lit windows, derrick mast, crates, net drum), 2 sloop (mainsail, jib, hatch, pennant); hull / sail / stripe from `BOAT_SETS` per island (`content/biomes.ts`, palette and `WALL_STRATA` hues, DevOps basalt + ember, Research lavender + sand). Bow +z, pivot on the waterline, the hull sinks by `HARBOUR_BOAT.draft` (0.12 / 0.28 / 0.42 u), like `quayBoat`; heights 1.0 / 3.6 / 5.4. 24 variants, LOD0 178 / 254 / 206 tris, LOD1 32 / 56 / 36. `dockDressing` (tier 3, grounded, deck-top pivot): 0 net on a drying rack, 1 lobster pot, 2 rope coil, 3 ladder (reaches 1.1 u under the pivot). Buoy variants 7 spar, 8 mooring ball, 9 pot floats appended to the old `buoy` def after the Colour Wharf pots (`withBuoyV2`, after the harbour and wharf kits; `variants` 7 -> 10, `rollVariants` stays 1).
@@ -140,6 +151,7 @@ mesh compacts to its active bots per frame, so wow triangles FELL (W5 789,739 �
 closer tries showed one bot): TASK-592 adds a deterministic bot line-up shot before motion work, TASK-593 judges heads / eyes there.
 Chassis swap at the desk is a hard pop (592: squash or poof); the beacon sits ~0.18 u low over the spire's antenna; slot-indexed
 tooling must use `Workers.seedOf` / `chassisOf`.
+**Addendum.** Bot motion, line-up and the swap squash / poof are decided in D-176 (TASK-592).
 
 ## D-162: M50 Ground Look — direction "layered rock + painted light"; wall colour comes from a per-theme strata table, bands grow with height, walls are shaded in the terrain program at every distance — 2026-11-09
 

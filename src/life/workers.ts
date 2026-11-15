@@ -14,6 +14,8 @@ import {
 } from '../content/life.ts';
 import { FLEET_BOTS } from '../content/fleet.ts';
 import { BOT_CHASSIS, botLook, type BotLook } from '../content/bot-look.ts';
+import { BOT_BEAT, BOT_BEATS, BOT_GAIT, BOT_GATE } from '../content/bot-motion.ts';
+import { beatPose, doneHop, restPose, swapScale, type BotPose } from './bot-motion.ts';
 import { CARRIED_ITEM_SLOT, THEMES } from '../content/themes.ts';
 import { springIn } from '../core/math/spring.ts';
 import { wrapAngle } from './agents.ts';
@@ -42,6 +44,19 @@ const _stroll: StrollPose = { x: 0, z: 0, hd: 0, moving: false };
 const _tint = new THREE.Color();
 const _hsl = { h: 0, s: 0, l: 0 };
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
+const _bp: BotPose = restPose();
+/** Salt of the idle-beat hash stream (a stream of its own: the kind's draw counters stay untouched). */
+const BEAT_SALT = 0x5ea7;
+
+/** A one-shot effect the bot-fx system turns into particles (TASK-592): done sparkles, swap poof. */
+export interface BotFxEvent {
+  kind: 'done' | 'poof';
+  x: number;
+  y: number;
+  z: number;
+  /** Height of the bot (u) the burst anchors to. */
+  h: number;
+}
 const damp = (dt: number, lambda: number): number => 1 - Math.exp(-lambda * dt);
 
 const W_WALK = 0;
@@ -171,6 +186,20 @@ export class Workers extends LandKind {
   private readonly asked: (BotLook | null)[];
   /** Bots whose shown look differs from the asked one and have not reached a rest pose yet. */
   private readonly lookPending = new Set<number>();
+  // ---- bot motion (TASK-592)
+  /** Idle beat running (index into BOT_BEATS, -1 none), its age, the countdown to the next and its hash counter. */
+  private readonly beatId: Int8Array;
+  private readonly beatT: Float32Array;
+  private readonly beatIn: Float32Array;
+  private readonly beatN: Uint16Array;
+  /** Gate head-tip amount 0..1, done-hop age (s, -1 none), look-swap age (s, -1 none) and whether the swap already happened. */
+  private readonly gateAmt: Float32Array;
+  private readonly doneT: Float32Array;
+  private readonly swapT: Float32Array;
+  private readonly swapApplied: Uint8Array;
+  /** Effects raised by the sim since the bot-fx system last drained them; only filled once `fxOn` is set. */
+  readonly fx: BotFxEvent[] = [];
+  fxOn = false;
   /** Role item code (ROLE_ITEM_CODE) a bound bot carries over the itinerary's, 0 = none. */
   private readonly roleCode: Uint8Array;
   private readonly gStep: Int16Array;
@@ -301,6 +330,16 @@ export class Workers extends LandKind {
     this.byGoal = new Uint8Array(n);
     this.rankOf = new Uint8Array(n);
     this.wakes = new Uint8Array(n);
+    this.beatId = new Int8Array(n).fill(-1);
+    this.beatT = new Float32Array(n);
+    this.beatN = new Uint16Array(n);
+    this.beatIn = new Float32Array(n);
+    for (let i = 0; i < n; i++)
+      this.beatIn[i] = unitHash(this.seed ^ BEAT_SALT, i, 0) * BOT_BEAT.firstMax;
+    this.gateAmt = new Float32Array(n);
+    this.doneT = new Float32Array(n).fill(-1);
+    this.swapT = new Float32Array(n).fill(-1);
+    this.swapApplied = new Uint8Array(n);
     this.tab = spawns.map((sp) => sp.tableau);
     this.isTown = new Uint8Array(n);
     spawns.forEach((sp, i) => {
@@ -1172,26 +1211,54 @@ export class Workers extends LandKind {
     if (seated) this.y[i] -= this.seats[this.seatOf[i]].sit * this.sitAmt[i];
     this.y[i] += NAP.lift * this.napAmt[i];
 
+    // bot motion (TASK-592): idle beat, gate head-tip, done hop, look-swap squash, all additive on one pose
+    const bp = _bp;
+    bp.yaw = bp.pitch = bp.roll = bp.y = bp.arm = 0;
+    bp.sy = 1;
+    const G = BOT_GAIT[this.shown[i].chassis];
+    this.stepBeat(i, dt, bp);
+    const gateTo = this.shown[i].eyes === 'gate' ? 1 : 0;
+    this.gateAmt[i] += (gateTo - this.gateAmt[i]) * damp(dt, BOT_GATE.lambda);
+    if (this.doneT[i] >= 0) {
+      this.doneT[i] += dt;
+      if (!doneHop(this.doneT[i], bp)) this.doneT[i] = -1;
+    }
+    if (this.swapT[i] >= 0) {
+      this.swapT[i] += dt;
+      const sw = swapScale(this.swapT[i]);
+      if (sw.swapped && !this.swapApplied[i]) {
+        this.swapApplied[i] = 1;
+        this.applyLook(i);
+        this.emitFx(i, 'poof');
+      }
+      bp.sy *= sw.sy;
+      if (sw.done) this.swapT[i] = -1;
+    }
+
     // turn, gait, hop
-    this.hd[i] += wrapAngle(want - this.hd[i]) * damp(dt, turn);
+    this.hd[i] += wrapAngle(want + bp.yaw * m - this.hd[i]) * damp(dt, turn);
     this.yaw[i] = -this.hd[i];
     this.gMove[i] += (moving - this.gMove[i]) * damp(dt, 8);
-    const poseWave = wave > 0 ? wave : Math.max(stretch * 0.7, talkWave);
+    const poseWave = wave > 0 ? wave : Math.max(stretch * 0.7, talkWave, bp.arm * m);
     const poseType = this.typeAmt[i] > 1e-3 && wave <= 0 ? this.typeAmt[i] : 0;
     // typing 2 + amount; culture arm poses 4 * code + amount (life-material.ts mode 7)
     const pk = this.poseK[i];
     this.gPose[i] =
       poseWave > 0 ? poseWave : poseType > 0 ? (pk > 0 ? 4 * pk : 2) + clamp(poseType, 0, 1.4) : 0;
-    this.gPhase[i] += ((Math.PI * 2) / (2 * V.stepPeriod)) * dt * this.gMove[i];
-    const hop = Math.abs(Math.sin(this.gPhase[i]));
+    this.gPhase[i] += ((Math.PI * 2) / (2 * G.stepPeriod)) * dt * this.gMove[i];
+    const sn = Math.sin(this.gPhase[i]);
+    const hop = G.glide ? sn * sn : Math.abs(sn);
     const k = this.gMove[i] * m;
-    this.y[i] += V.hop * hop * k;
-    const sq = 1 - V.squash * Math.pow(1 - hop, 4) * k + 0.05 * stretch * m + talkSq * m;
+    this.y[i] += G.hop * hop * k + bp.y * m;
+    const sq =
+      (1 - G.squash * Math.pow(1 - hop, 4) * k + 0.05 * stretch * m + talkSq * m) *
+      (1 + (bp.sy - 1) * m);
     this.sy[i] = sq;
     this.sx[i] = this.sz[i] = 1 / Math.sqrt(sq);
-    this.roll[i] = V.sway * Math.sin(this.gPhase[i]) * k;
+    this.roll[i] = G.roll * sn * k + bp.roll * m;
     this.pitch[i] =
       0.14 * stretch * m +
+      (bp.pitch + BOT_GATE.lookPitch * this.gateAmt[i] - G.lean * this.gMove[i]) * m +
       talkNod * m +
       this.leanV[i] * clamp(this.typeAmt[i], 0, 1) +
       NAP.pitch * this.napAmt[i];
@@ -1318,6 +1385,27 @@ export class Workers extends LandKind {
     );
   }
 
+  /** Copy the wanted chassis / head / shade / item into the shown look (the swap instant). */
+  private applyLook(i: number): void {
+    const want = this.asked[i] ?? this.resident[i];
+    const cur = this.shown[i];
+    cur.chassis = want.chassis;
+    cur.head = want.head;
+    cur.shade = want.shade;
+    cur.item = want.item;
+    cur.role = want.role;
+    this.paint(i);
+    this.roleCode[i] = this.asked[i] ? ROLE_ITEM_CODE[want.item] : 0;
+    this.setItem(i, this.dayItem[i]);
+    this.writeSeed(i);
+  }
+
+  /** Queue an effect for the bot-fx system (nothing is stored while no system listens). */
+  private emitFx(i: number, kind: BotFxEvent['kind']): void {
+    if (!this.fxOn) return;
+    this.fx.push({ kind, x: this.x[i], y: this.y[i], z: this.z[i], h: 1.1 * this.scale[i] });
+  }
+
   private syncLooks(): void {
     for (const i of this.lookPending) {
       const want = this.asked[i] ?? this.resident[i];
@@ -1326,22 +1414,24 @@ export class Workers extends LandKind {
       if (cur.eyes !== want.eyes) {
         cur.eyes = want.eyes;
         dirty = true;
+        // a finished session: one hop and sparkles (hidden bots skip the show)
+        if (want.eyes === 'done' && this.active[i] && this.vis[i] === 1) {
+          this.doneT[i] = 0;
+          this.emitFx(i, 'done');
+        }
       }
       const same =
         cur.chassis === want.chassis &&
         cur.head === want.head &&
         cur.shade === want.shade &&
         cur.item === want.item;
-      if (!same && Workers.atRest(this.state[i])) {
-        cur.chassis = want.chassis;
-        cur.head = want.head;
-        cur.shade = want.shade;
-        cur.item = want.item;
-        cur.role = want.role;
-        this.paint(i);
-        this.roleCode[i] = this.asked[i] ? ROLE_ITEM_CODE[want.item] : 0;
-        this.setItem(i, this.dayItem[i]);
-        dirty = true;
+      if (!same && this.swapT[i] < 0 && Workers.atRest(this.state[i])) {
+        if (!this.active[i] || this.vis[i] !== 1 || this.motionScale < 1) this.applyLook(i);
+        else {
+          // squash, swap under a poof, pop back (advanced by stepAgent)
+          this.swapT[i] = 0;
+          this.swapApplied[i] = 0;
+        }
       }
       if (dirty) this.writeSeed(i);
       if (
@@ -1349,10 +1439,54 @@ export class Workers extends LandKind {
         cur.head === want.head &&
         cur.shade === want.shade &&
         cur.item === want.item &&
-        cur.eyes === want.eyes
+        cur.eyes === want.eyes &&
+        this.swapT[i] < 0
       )
         this.lookPending.delete(i);
     }
+  }
+
+  /**
+   * Idle beats (stretch, look around, foot tap, wrist check) on a hash(id) schedule, written into `bp`.
+   * They run at a node pause (room for the whole beat left) and the head-turn one also at a desk.
+   */
+  private stepBeat(i: number, dt: number, bp: BotPose): void {
+    const s = this.state[i];
+    const B = BOT_BEAT;
+    const room =
+      s === W_PAUSE
+        ? this.dur[i] - this.timer[i]
+        : s === W_WORK && this.sitAmt[i] > 0.95 && this.stretchT[i] < 0
+          ? 1e9
+          : -1;
+    if (this.beatId[i] >= 0) {
+      const beat = BOT_BEATS[this.beatId[i]];
+      this.beatT[i] += dt;
+      const u = this.beatT[i] / B.len[beat];
+      if (u < 1 && room >= 0) {
+        beatPose(beat, u, bp);
+        return;
+      }
+      this.beatId[i] = -1;
+      this.beatIn[i] = B.every[0] + (B.every[1] - B.every[0]) * this.beatRoll(i);
+      return;
+    }
+    if (room < 0 || this.tab[i]) return;
+    this.beatIn[i] -= dt;
+    if (this.beatIn[i] > 0) return;
+    const k = Math.floor(this.beatRoll(i) * BOT_BEATS.length) % BOT_BEATS.length;
+    const beat = BOT_BEATS[k];
+    // seated: only the head-turn; at a pause the whole beat must fit before the bot walks on
+    if (s === W_WORK ? beat !== 'look' : room < B.len[beat] + 0.3) {
+      this.beatIn[i] = 1.5;
+      return;
+    }
+    this.beatId[i] = k;
+    this.beatT[i] = 0;
+  }
+
+  private beatRoll(i: number): number {
+    return unitHash(this.seed ^ BEAT_SALT, i, ++this.beatN[i]);
   }
 
   override update(alpha: number): void {

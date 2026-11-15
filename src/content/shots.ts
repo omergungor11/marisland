@@ -41,6 +41,8 @@ export interface ShotPreset {
   edit?: string;
   /** Fleet feed (`fleet=`, TASK-563): the deterministic mock fills the island panel. */
   fleet?: 'mock';
+  /** Bot line-up (`bots=lineup`, TASK-592): all looks x eye states on the Coding plaza. */
+  bots?: 'lineup';
   /** Fleet panel (M41): open the first live row's terminal after the warm-up, or this session's (M42). */
   fleetOpen?: 'running' | `mock-${string}`;
   /** Mock request chain variant (M42): the Design gate allowed, its child running (default: both gates pending). */
@@ -2965,6 +2967,49 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     fleet: 'mock',
     sets: ['dev'],
   },
+  // TASK-592 F-bot-lineup: all 9 looks (3 chassis x 3 heads) x 5 eye states on the Coding plaza (`bots=lineup`)
+  {
+    id: 'F-bot-lineup',
+    title: 'Bot line-up · 9 looks x 5 eye states · Coding plaza',
+    seed: 1001,
+    cam: '-118,30,177,-118,9,157.5',
+    width: 1600,
+    height: 900,
+    time: 14,
+    simt: 2,
+    quality: 'medium',
+    fleet: 'mock',
+    bots: 'lineup',
+    sets: ['dev'],
+  },
+  // TASK-592 motion QA: the same two frames at simt 6 and 10 (poses differ: beats, gate head-tip, done hops)
+  ...[6, 10].flatMap((simt): ShotPreset[] => [
+    {
+      id: `F-bots-${simt}`,
+      title: `Fleet bots · Coding pergolas · simt ${simt}`,
+      seed: 1001,
+      cam: '-108,25,170,-106,9.5,148',
+      time: 14,
+      simt,
+      quality: 'medium',
+      fleet: 'mock',
+      sets: ['dev'],
+    },
+    {
+      id: `F-bot-lineup-${simt}`,
+      title: `Bot line-up · simt ${simt}`,
+      seed: 1001,
+      cam: '-118,30,177,-118,9,157.5',
+      time: 14,
+      simt,
+      quality: 'medium',
+      fleet: 'mock',
+      bots: 'lineup',
+      width: 1600,
+      height: 900,
+      sets: ['dev'],
+    },
+  ]),
   ...HORSESHOE_WOW,
   ...HORSESHOE_DEV,
 ];

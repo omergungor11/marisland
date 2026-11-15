@@ -7,6 +7,8 @@
  */
 import * as THREE from 'three';
 import { FLEET_BOTS } from '../content/fleet.ts';
+import { BOT_GATE } from '../content/bot-motion.ts';
+import type { BotLook } from '../content/bot-look.ts';
 import { THEMES } from '../content/themes.ts';
 import type { Scope } from '../core/scope.ts';
 import type { System } from '../core/loop.ts';
@@ -27,11 +29,12 @@ const _s = new THREE.Vector3();
 const _m = new THREE.Matrix4();
 const _e = new THREE.Euler();
 const _c = new THREE.Color();
+const _amber = new THREE.Color(BOT_GATE.gem.color);
 
 export function createFleetBeacons(
   group: THREE.Object3D,
   scope: Scope,
-  workers: AgentKind,
+  workers: AgentKind & { lookOf?(i: number): BotLook },
   bound: () => readonly BoundBot[],
 ): System {
   const cap = FLEET_BOTS.maxBeacons;
@@ -53,6 +56,8 @@ export function createFleetBeacons(
   scope.add(mesh);
   // which bot each instance currently shows (the accent is only rewritten when it changes)
   const shown = new Int32Array(cap).fill(-1);
+  /** 1 while instance n wears the amber gate pulse (its accent is rewritten when it stops). */
+  const pulsing = new Uint8Array(cap);
   const M = FLEET_BOTS.beaconMotion;
 
   return {
@@ -68,6 +73,9 @@ export function createFleetBeacons(
         if (!workers.active[i] || workers.scale[i] <= 0) continue;
         const sc = workers.pscale[i] + (workers.scale[i] - workers.pscale[i]) * a;
         const ph = workers.phase[i];
+        // waiting gate (eyes 'gate'): the gem pulses amber and swells a touch (TASK-592)
+        const gate = workers.lookOf?.(i).eyes === 'gate';
+        const pulse = gate ? 0.5 + 0.5 * Math.sin((t / BOT_GATE.gem.period + ph) * Math.PI * 2) : 0;
         const bob = Math.sin((t / M.period + ph) * Math.PI * 2) * M.bob * ms * sc;
         _p.set(
           workers.px[i] + (workers.x[i] - workers.px[i]) * a,
@@ -77,12 +85,16 @@ export function createFleetBeacons(
         const yaw = workers.pyaw[i] + wrapAngle(workers.yaw[i] - workers.pyaw[i]) * a;
         _e.set(0, yaw + (t * M.spin + ph * Math.PI * 2) * ms, 0, 'YZX');
         _q.setFromEuler(_e);
-        _s.set(sc, sc, sc);
+        const gs = sc * (1 + BOT_GATE.gem.scale * pulse * ms);
+        _s.set(gs, gs, gs);
         _m.compose(_p, _q, _s);
         mesh.setMatrixAt(n, _m);
-        if (shown[n] !== i) {
+        if (gate || pulsing[n] || shown[n] !== i) {
           shown[n] = i;
-          mesh.setColorAt(n, _c.set(THEMES[island].accent));
+          _c.set(THEMES[island].accent);
+          if (gate) _c.lerp(_amber, BOT_GATE.gem.mix * (0.35 + 0.65 * pulse));
+          mesh.setColorAt(n, _c);
+          pulsing[n] = gate ? 1 : 0;
           if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
         }
         n++;
