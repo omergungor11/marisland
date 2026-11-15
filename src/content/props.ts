@@ -4,6 +4,7 @@
  * content/placement.ts (TASK-122). Index in PROP_DEFS = PropStore.defId.
  */
 import { PropFlag } from '../world/prop-store.ts';
+import { BIOME_DEF_VARIANTS, BOULDER_VARIANTS, DRIFT_LOG, KELP, SHAPES } from './biomes.ts';
 import { PROP_DEFS_BUILDINGS } from './props-buildings.ts';
 import { HQ_PROP_DEFS, HQ_CULTURE_PROP_DEFS } from './props-themes/hq.ts';
 import {
@@ -67,7 +68,7 @@ export interface PropDef {
   fromT0?: true;
 }
 
-const { grounded, windy, groundCover, clusterable } = PropFlag;
+const { grounded, windy, groundCover, clusterable, underwater } = PropFlag;
 
 const VEGETATION_DEFS: readonly PropDef[] = [
   // vegetation
@@ -131,6 +132,69 @@ const VEGETATION_DEFS: readonly PropDef[] = [
 ];
 
 /**
+ * TASK-599 (D-174): vegetation, rock and shore v2. NEW defs appended after
+ * every old one: the old defs' variant counts (scatter rolls `rng.int(0, variants - 1)`) and the
+ * clustered T0 blob colours stay as they are, so no world hash moves until TASK-600 places these.
+ * The island colour set rides in the variant (content/biomes.ts: biomeVariant / splitVariant).
+ * `rollVariants` = the neutral biome block (what a plain random roll may pick).
+ */
+const VEGETATION_V2_DEFS: readonly PropDef[] = [
+  {
+    id: 'canopyTree',
+    geo: 'canopyTree',
+    tier: 1,
+    variants: BIOME_DEF_VARIANTS.canopyTree,
+    rollVariants: SHAPES.canopyTree,
+    footprint: 0.8,
+    flags: grounded | windy | clusterable,
+  },
+  {
+    id: 'leanPalm',
+    geo: 'leanPalm',
+    tier: 1,
+    variants: BIOME_DEF_VARIANTS.leanPalm,
+    rollVariants: SHAPES.leanPalm,
+    footprint: 0.9,
+    flags: grounded | windy | clusterable,
+  },
+  {
+    id: 'floraBush',
+    geo: 'floraBush',
+    tier: 2,
+    variants: BIOME_DEF_VARIANTS.floraBush,
+    rollVariants: SHAPES.floraBush,
+    footprint: 0.6,
+    flags: grounded | windy,
+  },
+  // 5 silhouettes x (bare | moss | lichen): variant = cap * 5 + silhouette
+  {
+    id: 'boulder',
+    geo: 'boulder',
+    tier: 1,
+    variants: BOULDER_VARIANTS,
+    rollVariants: 5,
+    footprint: 1.1,
+    flags: grounded,
+  },
+  {
+    id: 'kelp',
+    geo: 'kelp',
+    tier: 3,
+    variants: KELP.variants,
+    footprint: 0.35,
+    flags: windy | underwater,
+  },
+  {
+    id: 'driftLog',
+    geo: 'driftLog',
+    tier: 3,
+    variants: DRIFT_LOG.variants,
+    footprint: 0.8,
+    flags: grounded,
+  },
+];
+
+/**
  * Vegetation/rocks first (scatter indices stay stable), then buildings/landmarks/decor, then the
  * M14b theme structures (content/props-themes/<theme>.ts) in fixed theme order.
  */
@@ -190,6 +254,8 @@ const ALL_DEFS: readonly PropDef[] = [
   ...MARKETING_MARINA_PROP_DEFS,
   // ==== TASK-670 (M53, D-172): Marketing sea-top fun park (lunaDeck, lunaRide, lunaCoaster, lunaGate, lunaStand, lunaDecor) ====
   ...MARKETING_LUNA_PROP_DEFS,
+  // ==== TASK-599 (D-174): vegetation, rock and shore v2 ====
+  ...VEGETATION_V2_DEFS,
 ];
 
 /**

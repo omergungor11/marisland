@@ -12,9 +12,14 @@ export interface GalleryItem {
 
 /**
  * Every def x variant x lod on a grid: one row per def, variant-major then lod. `only` restricts the
- * rows to those def ids (the prop showcase: `?gallery=1&ids=m20` or `ids=cultureGate,goodsStall`).
+ * rows to those def ids (the prop showcase: `?gallery=1&ids=m20` or `ids=cultureGate,goodsStall`); `vars`
+ * keeps only those variants of every row.
  */
-export function buildGalleryScene(only?: readonly string[]): {
+export function buildGalleryScene(
+  only?: readonly string[],
+  /** TASK-599: show only these variant indices (`?vars=0,1,2`), e.g. one island's block of a v2 def. */
+  vars?: readonly number[],
+): {
   group: THREE.Group;
   items: GalleryItem[];
 } {
@@ -38,6 +43,7 @@ export function buildGalleryScene(only?: readonly string[]): {
     z += spacing / 2;
     let col = 0;
     for (let v = 0; v < def.variants; v++) {
+      if (vars && !vars.includes(v)) continue;
       for (const lod of [0, 1] as const) {
         const x = col * spacing;
         const mesh = new THREE.Mesh(buildProp(def.id, 1, v, lod), material);

@@ -2,8 +2,9 @@
  * Prop showcase capture (TASK-465): screenshots of the `?gallery=1` scene for a set of def ids, so
  * a prop can be judged on its own (no world needed). One image per def (a row of every variant at
  * LOD0 + LOD1) and one close 3/4 view of variant 0 LOD0.
+ * TASK-599: `vegetation` shoots one tile per island colour set / cap (`?vars=`) and tile them.
  *
- *   pnpm exec tsx scripts/gallery-shots.ts [m20|coding22|research|qa24|marina|quay|luna|devops25|devops26|marketing27|research28|harbours|research31|coding33|coaster|buildings|id,id,...] [--port=5199] [--out=shots/gallery-m20]
+ *   pnpm exec tsx scripts/gallery-shots.ts [m20|coding22|research|qa24|marina|quay|luna|vegetation|devops25|devops26|marketing27|research28|harbours|research31|coding33|coaster|buildings|id,id,...] [--port=5199] [--out=shots/gallery-m20]
  *
  * Starts its own `vite` dev server on `--port` (killed at the end; a server already on the port is
  * reused and left alone). Software GL (swiftshader), so no GPU is needed.
@@ -13,6 +14,13 @@ import { mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { chromium } from 'playwright';
 import sharp from 'sharp';
+import {
+  BIOME_IDS,
+  BOULDER,
+  SHAPES,
+  VEGETATION_SHOWCASE_IDS,
+  themeVariants,
+} from '../src/content/biomes.ts';
 import { COURIER_PROP_IDS } from '../src/content/fleet-ships.ts';
 import { CODING_M22_SHOWCASE_IDS } from '../src/content/props-themes/coding.ts';
 import { M20_PROP_IDS } from '../src/content/props-themes/m20.ts';
@@ -75,17 +83,19 @@ const ids =
                                 ? COURIER_PROP_IDS
                                 : which === 'buildings'
                                   ? BUILDINGS_V2_IDS
-                                  : which === 'quay'
-                                    ? MARINA_QUAY_PROP_IDS
-                                    : which === 'luna'
-                                      ? LUNA_PROP_IDS
-                                      : which.split(',');
+                                  : which === 'vegetation'
+                                    ? VEGETATION_SHOWCASE_IDS
+                                    : which === 'quay'
+                                      ? MARINA_QUAY_PROP_IDS
+                                      : which === 'luna'
+                                        ? LUNA_PROP_IDS
+                                        : which.split(',');
 const PORT = Number(opt('port') ?? 5199);
 const ROOT = resolve(import.meta.dirname, '..');
 const OUT = resolve(
   ROOT,
   opt('out') ??
-    `shots/gallery-${['m20', 'coding22', 'research', 'qa24', 'qa30', 'marina', 'devops25', 'devops26', 'marketing27', 'research28', 'harbours', 'research31', 'coding33', 'coaster', 'couriers', 'buildings', 'quay', 'luna'].includes(which) ? which : 'custom'}`,
+    `shots/gallery-${['m20', 'coding22', 'research', 'qa24', 'qa30', 'marina', 'devops25', 'devops26', 'marketing27', 'research28', 'harbours', 'research31', 'coding33', 'coaster', 'couriers', 'buildings', 'quay', 'luna', 'vegetation'].includes(which) ? which : 'custom'}`,
 );
 const BASE = `http://localhost:${PORT}/`;
 /** `--night`: the lamp-class vertices glow over a dim rig (TASK-670 luna); `luna` always shoots over a turquoise floor. */
@@ -133,6 +143,7 @@ async function main(): Promise<void> {
     cam: number[],
     w = 1280,
     h = 720,
+    vars?: readonly number[],
   ): Promise<void> => {
     const page = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: 1 });
     const errors: string[] = [];
@@ -147,6 +158,7 @@ async function main(): Promise<void> {
       quality: 'low',
       time: '12',
       ...(which === 'luna' ? { sea: '1' } : {}),
+      ...(vars ? { vars: vars.join(',') } : {}),
       ...(NIGHT ? { night: '1' } : {}),
     });
     await page.goto(`${BASE}?${q}`, { waitUntil: 'load' });
@@ -190,6 +202,73 @@ async function main(): Promise<void> {
             960,
             720,
           );
+        continue;
+      }
+      if (which === 'vegetation') {
+        // TASK-599: one 640x360 tile per island colour set (or boulder cap), then one grid per def
+        const groups: Array<[string, number[]]> =
+          id in SHAPES
+            ? BIOME_IDS.map((b) => [b, [...themeVariants(id as keyof typeof SHAPES, b)]])
+            : id === 'boulder'
+              ? Array.from({ length: BOULDER.silhouettes }, (_, k) => [
+                  `sil${k}`,
+                  Array.from({ length: BOULDER.caps }, (_, c) => c * BOULDER.silhouettes + k),
+                ])
+              : [['all', Array.from({ length: def.variants }, (_, k) => k)]];
+        const tiles: string[] = [];
+        const close = (vars: number[], name: string): Promise<void> => {
+          const items = buildGalleryScene([id], vars).items;
+          const cx = (items[0].x + items[items.length - 1].x) / 2;
+          const hh = Math.max(...vars.map((v) => def.heights?.[v] ?? def.height));
+          const dist = Math.max(
+            ((items[items.length - 1].x - items[0].x) / 2 + def.footprint) * 1.1,
+            hh * 1.6,
+            3,
+          );
+          return shoot(
+            id,
+            name,
+            [cx + dist * 0.2, hh * 0.6 + dist * 0.15, items[0].z + dist, cx, hh * 0.4, items[0].z],
+            1280,
+            560,
+            vars,
+          );
+        };
+        await close(groups[0][1], `${id}-close`);
+        for (const [label, vars] of groups) {
+          const items = buildGalleryScene([id], vars).items;
+          const x0 = items[0].x;
+          const x1 = items[items.length - 1].x;
+          const z = items[0].z;
+          const cx = (x0 + x1) / 2;
+          const hh = Math.max(...vars.map((v) => def.heights?.[v] ?? def.height));
+          const half = Math.max((x1 - x0) / 2 + def.footprint, def.footprint * 1.6);
+          const dist = Math.max(half * 1.9, hh * 2.2, 6);
+          const name = `${id}-${label}`;
+          await shoot(
+            id,
+            name,
+            [cx, hh * 0.9 + dist * 0.25, z + dist, cx, hh * 0.4, z],
+            640,
+            360,
+            vars,
+          );
+          tiles.push(name);
+        }
+        const gp = await browser.newPage({
+          viewport: { width: 1280, height: 360 * Math.ceil(tiles.length / 2) },
+        });
+        const imgs = tiles.map((t) => readFileSync(resolve(OUT, `${t}.png`)).toString('base64'));
+        await gp.setContent(
+          `<body style="margin:0;display:grid;grid-template-columns:640px 640px">${imgs
+            .map(
+              (b64, i) =>
+                `<div style="position:relative"><img src="data:image/png;base64,${b64}"><b style="position:absolute;left:6px;top:4px;font:bold 18px sans-serif;color:#222">${id} ${tiles[i].slice(id.length + 1)}</b></div>`,
+            )
+            .join('')}</body>`,
+        );
+        await gp.screenshot({ path: resolve(OUT, `${id}-grid.png`) });
+        await gp.close();
         continue;
       }
       if (which === 'buildings' || which === 'quay' || which === 'luna') {

@@ -7,7 +7,7 @@ const UP = new THREE.Vector3(0, 1, 0);
 const TAU = Math.PI * 2;
 const pick3 = <T>(v: number, a: readonly T[]): T => a[v % a.length];
 
-interface LeafOpts {
+export interface LeafOpts {
   origin: THREE.Vector3;
   az: number;
   len: number;
@@ -18,7 +18,7 @@ interface LeafOpts {
 }
 
 /** Palm frond: chained segments (+20, 0, -30 deg), V-section halves (~25 deg), central rib, two-sided. */
-function leaf(acc: Acc, o: LeafOpts): void {
+export function leaf(acc: Acc, o: LeafOpts): void {
   const pitches = o.segs === 1 ? [0.1] : [0.35, 0, -0.52];
   const stations: THREE.Vector3[] = [o.origin.clone()];
   const dirs: THREE.Vector3[] = [];

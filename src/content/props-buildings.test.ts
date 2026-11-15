@@ -34,6 +34,13 @@ describe('PROP_DEFS_BUILDINGS', () => {
       'flower',
       'rockCluster',
       'treeBlob',
+      // TASK-599 (D-174): vegetation / rock / shore v2 defs live in content/props.ts (VEGETATION_V2_DEFS)
+      'canopyTree',
+      'leanPalm',
+      'floraBush',
+      'boulder',
+      'kelp',
+      'driftLog',
       // M14b theme structures are covered by content/props-themes (their own PropDefs)
       ...THEME_GEO.map((d) => d.id),
       // M51 courier ships / crates / scrolls are life-driven, never scattered (no PropDef)

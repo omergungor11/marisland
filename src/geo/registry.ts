@@ -80,6 +80,24 @@ import { tugBoat } from './themes/devops-m26.ts';
 import { courierCrate, courierShip, reportScroll } from './courier.ts';
 import { COURIER_SHIPS } from '../content/fleet-ships.ts';
 import { THEME_IDS } from '../world/types.ts';
+import {
+  BIOME_DEF_VARIANTS,
+  BOULDER,
+  BOULDER_VARIANTS,
+  DRIFT_LOG,
+  KELP,
+} from '../content/biomes.ts';
+import {
+  CANOPY_HEIGHTS,
+  FLORA_BUSH_HEIGHTS,
+  LEAN_PALM_HEIGHTS,
+  boulder,
+  canopyTree,
+  driftLog,
+  floraBush,
+  kelp,
+  leanPalm,
+} from './vegetation-v2.ts';
 import type { Lod, PropGeoDef } from './types.ts';
 import type * as THREE from 'three';
 
@@ -287,6 +305,41 @@ defs.push(
 );
 // M14b theme structures (geo/themes/<theme>.ts), fixed theme order
 defs.push(...THEME_GEO);
+// TASK-599 (D-174): vegetation, rock and shore v2 defs, appended last
+const cycleH = (n: number, hs: readonly number[]): number[] =>
+  Array.from({ length: n }, (_, v) => hs[v % hs.length]);
+defs.push(
+  D(
+    'canopyTree',
+    BIOME_DEF_VARIANTS.canopyTree,
+    canopyTree,
+    2.2,
+    6,
+    true,
+    cycleH(BIOME_DEF_VARIANTS.canopyTree, CANOPY_HEIGHTS),
+  ),
+  D(
+    'leanPalm',
+    BIOME_DEF_VARIANTS.leanPalm,
+    leanPalm,
+    3,
+    6,
+    true,
+    cycleH(BIOME_DEF_VARIANTS.leanPalm, LEAN_PALM_HEIGHTS),
+  ),
+  D(
+    'floraBush',
+    BIOME_DEF_VARIANTS.floraBush,
+    floraBush,
+    1,
+    1,
+    true,
+    cycleH(BIOME_DEF_VARIANTS.floraBush, FLORA_BUSH_HEIGHTS),
+  ),
+  D('boulder', BOULDER_VARIANTS, boulder, 2.4, 1, false, cycleH(BOULDER_VARIANTS, BOULDER.heights)),
+  D('kelp', KELP.variants, kelp, 0.7, 2, true, KELP.heights),
+  D('driftLog', DRIFT_LOG.variants, driftLog, 1.2, 0.4, false, DRIFT_LOG.heights),
+);
 
 // M31 (TASK-533): the shared harbour kit adds variants to five old defs
 export const PROP_GEO: Record<string, PropGeoDef> = Object.fromEntries(

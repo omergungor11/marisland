@@ -2,6 +2,16 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-174: Vegetation, rock and shore v2 are NEW defs with the biome and shape in the variant index; no old def, blob colour or world hash moves until TASK-600 (TASK-599) — 2026-11-15
+
+**Decision.** `canopyTree` (tall oval / umbrella / layered), `leanPalm` (leaning / twin trunk / grove), `floraBush` (two mounds, biome flower hues), `boulder` (5 silhouettes x bare / moss / lichen cap, strata bands + a pale strata line), `kelp` and `driftLog` (tier 3) are appended after every old def (`geo/vegetation-v2.ts`, `PROP_DEFS` tail). The island colour set rides in the variant: `variant = biomeIndex * shapes + shape`, biome 0 = neutral, 1..7 = `THEME_IDS` (`content/biomes.ts`: `BIOMES`, `biomeVariant`, `splitVariant`, `themeVariants`); boulder `variant = cap * 5 + silhouette`. Variant counts: canopyTree 24, leanPalm 24, floraBush 16, boulder 15, kelp 3, driftLog 3. LOD0 budgets 500 / 700 / 200 / 300 / 150 / 150, LOD1 <= 30 %. Gallery `gallery-shots.ts vegetation` (`?vars=` shows one biome block).
+
+**Why new defs, not more variants of `roundTree` / `pine` / `palm` / `bush` / `rockCluster` (the plan's wording).** Scatter rolls `rng.int(0, def.variants - 1)` (`world/gen/scatter.ts`, two sites), so raising an old def's `variants` moves the world hash before TASK-600; and the T0 blob colour of a species is the area-weighted mean over ALL variants of its reference def (`batcher.ts` `kindColor`), so extra coloured variants would shift every far forest. New defs touch neither.
+
+**Contract for TASK-600.** (1) Put a rule on the new def ids; pick `themeVariants(def, theme)` for the island. (2) In the same commit switch `THEMES[theme].treePalette` to `biomeTreePalette(theme)` so the far blobs (T0) take the biome colour (D-031); today every theme still has `FOLIAGE`, so T0 matches the unchanged T1 trees. (3) `canopyTree` / `leanPalm` are `clusterable` (blob kind: deciduous / palm by `canopyKindOf`; a new def id outside `canopyKindOf` counts as deciduous, add `leanPalm` -> `palm` there). (4) `kelp` is `underwater | windy`, pivot on the seabed; `driftLog` grounded.
+
+**Open.** Palm crowns are thin at 3/4 distance; `floraBush` flowers are 0.11 u wedges (read as colour, not as petals); boulder moss colour is not per biome (the variant carries only the cap kind).
+
 ## D-165: Shadow passes are skipped where the shadow cannot reach the view; far LOD0 leaves its shadow to LOD1 (TASK-652) — 2026-11-10
 
 **Decision.** `render/shadow-skip.ts`: each frame every prop / terrain mesh's bounding sphere is swept away from the sun down to `SHADOW_CULL.floorY` and tested against the view frustum; a miss skips that mesh's shadow pass for the frame. At T0–T1 a LOD0 group lying wholly past 187.5 u does not cast, its LOD1 does (`reveal.lod1CastsPast`), trees included. `NEAR_MERGE.maxVertsShadowed` 2000 on medium / high (low keeps 1600). `BUDGETS`, `TIER_FADE`, `LOD_HANDOFF` and the reveal distances of D-161 are unchanged.
