@@ -258,7 +258,7 @@ export async function boot(): Promise<void> {
 
     SHARED.uDebugMask.value = params.debug === 'mask' ? 1 : 0;
     let stats: StatsOverlay | null = null;
-    if (params.debug === 'stats') stats = createStatsOverlay(root);
+    if (params.debug === 'stats') stats = createStatsOverlay(root, quality);
 
     /** GPU timer queries around each frame while a `perf` run is active. */
     let gpuTimer: GpuTimer | null = null;

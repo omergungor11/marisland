@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 /**
- * Screenshot harness: `pnpm shots [ci|dev|wow|intro|edit|ladder|live] [--assert] [--gpu] [--no-build] [--only=ID,ID] [--base=URL]
+ * Screenshot harness: `pnpm shots [ci|dev|wow|wow-high|intro|edit|ladder|live] [--assert] [--gpu] [--no-build] [--only=ID,ID] [--base=URL]
  *   [--tag=name] [--port=4173] [--no-selftest] [--quality=low|medium|high] [--seed=N]` — `--quality` overrides every
  *   preset's quality (budget sweeps per tier), `--seed=N` every preset's seed (seed sweeps; named
  *   `island:<name>` cams only exist on their own seed); `--tag` builds into dist-<tag>/ and writes shots/<set>-<tag>/
@@ -50,18 +50,22 @@ const args = process.argv.slice(2);
 const flag = (n: string): boolean => args.includes(`--${n}`);
 const opt = (n: string): string | undefined =>
   args.find((a) => a.startsWith(`--${n}=`))?.slice(n.length + 3);
-const set = (args.find((a) => !a.startsWith('--')) ?? 'ci') as ShotSet;
+// TASK-607 (D-185): `wow-high` = the wow set at high quality, tag `high`, asserted against BUDGETS.high
+const setArg = args.find((a) => !a.startsWith('--')) ?? 'ci';
+const WOW_HIGH = setArg === 'wow-high';
+const set = (WOW_HIGH ? 'wow' : setArg) as ShotSet;
 if (!(set in SET_DEFAULTS))
-  throw new Error(`unknown set "${set}" (ci|dev|wow|intro|edit|ladder|live)`);
+  throw new Error(`unknown set "${set}" (ci|dev|wow|intro|edit|ladder|live|wow-high)`);
 const ASSERT = flag('assert');
 const GPU = flag('gpu');
 const ROOT = resolve(import.meta.dirname, '..');
-const TAG = opt('tag');
+const TAG = opt('tag') ?? (WOW_HIGH ? 'high' : undefined);
 const OUT = resolve(ROOT, 'shots', TAG ? `${set}-${TAG}` : set);
 const PORT = Number(opt('port') ?? 4173);
 const DIST = TAG ? `dist-${TAG}` : 'dist';
 const only = opt('only')?.split(',');
-const QUALITY = opt('quality') as 'low' | 'medium' | 'high' | undefined;
+const QUALITY = (opt('quality') ?? (WOW_HIGH ? 'high' : undefined)) as
+  'low' | 'medium' | 'high' | undefined;
 if (QUALITY && !['low', 'medium', 'high'].includes(QUALITY))
   throw new Error(`unknown quality "${QUALITY}" (low|medium|high)`);
 const SEED = opt('seed');

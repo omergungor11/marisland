@@ -2,6 +2,14 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-185: `wow-high` is the wow set at high quality, asserted against `BUDGETS.high`; the stats overlay shows the quality; CI runs a 7-frame subset report-only (TASK-607) — 2026-11-16
+
+**Decision.** `pnpm shots wow-high` = set `wow` + `--quality=high` + tag `high` (out: `shots/wow-high/`, dist-high). `assertBudgets` already read `BUDGETS[snap.quality]`, so no new assert path. Stats overlay line 1 reads `T2  high`. CI job `wow-high` (`continue-on-error`, 30 min) shoots `W1,W8,W16,W-ember-lane-night,W-fairy-night,W-horseshoe-quay,W-sky-dusk`. The quality governor is off in capture, so the set is deterministic (selftest `deterministic: true`).
+
+**Measured (SwiftShader 1920x1080, 61 frames, 1220 s).** Calls 112-321 (max W15c 321, W16 313, W-horseshoe-quay 312; budget 350), tris max 1.10M (W15c; budget 1.6M), programs 18-21 on 57 frames, W8 27, two night frames 29 (budget 30), memory 404-440 MB on most frames. Misses: W-ember-lane-night 485 MB and W-fairy-night 486 MB > 480 (29 programs: the night / star variants). W8 sits on 480 (not over). Budgets NOT raised, left for a user decision.
+
+**Governor.** High at runtime still degrades DPR / tier cap (TASK-191); capture and `perf=1` disable it, so the set measures the configured tier.
+
 ## D-181: A prop group draws only while an instance is in its band and, without a shadow to cast, in the view; low stores prop vertex colour in 16 bits; ladder blob ignores structure parallax (TASK-678) — 2026-11-15
 
 **Decision.** `render/props/batcher.ts` `update(time, fx, fz, cam, view?)`: when a group's island-wide bounding sphere straddles its dither band, the camera distances of its live instance origins (the point the shader's `vFade` measures) decide the draw (`bandReaches` / `bandCasts` / `lod1CastsPast` on the exact nearest / farthest). A group that casts no shadow this frame and whose sphere meets the frustum draws only if one instance sphere (geometry sphere through the instance matrix, +10 % + 0.5 u for sway) is inside it; `world-view.ts` passes the camera frustum (new optional 5th argument, the only interface change). `Group.inReach` keeps the old sphere test because it gates the merged contact blobs: they stay exactly as they were. `scripts/ladder-metrics.ts` `compareFrames`: a hot structure cell (ΔE > 15) that matches the far frame along its radial parallax corridor (`parallaxRatio`, the solid IoU's rule since TASK-487) is not counted in `blob`; mean, p95 and the heat map keep the plain ±1-cell match. Low only: `compactAttributes(g, color)` also stores the prop vertex colour as 16-bit unsigned normalized when every channel lies in [0, 1] (`BatcherDeps.compactColor`, set by `world-view.ts` for low; `geoStats` and the T0 blob classes read it through `floatArray`, the far merge through `getX`). No budget, band, merge or camera value changes; low `gpuMemoryMB` stays 86 (user 2026-11-15).

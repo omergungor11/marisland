@@ -26,7 +26,7 @@ export function readInfo(renderer: WebGLRenderer, out: RenderInfo): RenderInfo {
   return out;
 }
 
-export function createStatsOverlay(root: HTMLElement): StatsOverlay {
+export function createStatsOverlay(root: HTMLElement, quality: string): StatsOverlay {
   const el = document.createElement('div');
   el.className = 'mar-stats';
   root.appendChild(el);
@@ -43,7 +43,7 @@ export function createStatsOverlay(root: HTMLElement): StatsOverlay {
         acc = 0;
       }
       el.textContent =
-        `fps ${shownFps.toFixed(0)}  cpu ${cpuMs.toFixed(1)} ms  T${tier}\n` +
+        `fps ${shownFps.toFixed(0)}  cpu ${cpuMs.toFixed(1)} ms  T${tier}  ${quality}\n` +
         `calls ${info.calls}  tris ${(info.triangles / 1000).toFixed(0)}k  prog ${info.programs}\n` +
         `geo ${info.geometries}  tex ${info.textures}  inst ${c.instances}  gc ${c.groundCover}\n` +
         `agents ${c.agents}  parts ${c.particles}  pops ${c.hardPops}${extra ? '\n' + extra : ''}`;

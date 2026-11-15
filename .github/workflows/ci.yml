@@ -48,3 +48,27 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:perf
+
+  # TASK-607 (D-185): the wow set at high quality against BUDGETS.high, report-only (SwiftShader).
+  # Representative subset (full set = 61 frames, ~20 min on a laptop): tightest memory (W8, both
+  # night frames at 29 programs), calls (W16, W-horseshoe-quay), sky / god rays (W-sky-dusk), W1.
+  wow-high:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm shots wow-high --assert --no-selftest --only=W1,W8,W16,W-ember-lane-night,W-fairy-night,W-horseshoe-quay,W-sky-dusk
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shots-wow-high
+          path: shots/wow-high
+          if-no-files-found: ignore
