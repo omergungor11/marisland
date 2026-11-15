@@ -2,6 +2,19 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-177: Water v2 — shallow voronoi caustics in the terrain program, second foam band, shallow-ring glitter (TASK-596) — 2026-11-15
+
+**Decision.** The old sine caustic (0–14 u, not day-gated) is replaced inside the existing terrain program by two octaves of
+animated voronoi edges, depth window 0–3 u (in by 0.08, full to 1.4), gated by `(1 − uNight)` and key-light height
+(y 0.5 → 0.75, so off at golden hour); lines keep ≥ ~1 px with average brightness held, then fade to a flat lift as cells
+shrink (no T0/T1 shimmer); still behind `MAR_CAUSTICS` (off on low). Tunables `TERRAIN_FX.caustic` (now an object,
+`causticDepth` removed). A thin broken second foam ring 1.9–2.8 u off the shore SDF trails the contact lap by 0.6 s,
+multiplied by `(1 − calm)` so the D-173 berth strip stays calm, faded by shore-pixel size; travelling bands start past it
+(`content/water.ts` `foam.second`). High-sun glitter also covers the shallow / mid rings behind `MAR_DETAIL`
+(`daySun.shallow` / `shallowLobe`). Programs (15 T0 / 17 other) and calls identical before / after. Open: the shallow
+glitter shows in no shot (only inside the sun lobe — needs a sun-facing frame or a wider lobe), the second ring follows the
+SDF not the drawn waterline around breakwaters, caustic gain 0.75 may read busy on the HQ bay (≈ 0.6).
+
 ## D-176: Bot motion variety — per-chassis gait, idle beats, gate head-tip, done hop, swap poof, `?bots=lineup` (TASK-592) — 2026-11-15
 
 **Decision.** Numbers live in `content/bot-motion.ts` (per-chassis gait, four idle beats, gate head-tip + amber gem,
