@@ -81,6 +81,8 @@ export interface Budget {
  * L-pairs-marketing 265 u 178 → 146 calls, W-carnival-noon / -dusk / -arrival 281 / 302 / 228 →
  * 262 / 280 / 198. Low also stores prop vertex colour as 16-bit normalized (batcher `compactColor`,
  * max channel delta 1): every low frame −6 MB, L-pairs-hq 148.4 u 87 → 81 MB after TASK-600.
+ * TASK-681 (user 2026-11-16): medium and high store it 16-bit too, so the high night frames
+ * (W-ember-lane-night 485, W-fairy-night 486 > 480) fit without raising the budget.
  */
 export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
   low: {

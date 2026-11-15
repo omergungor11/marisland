@@ -326,7 +326,8 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     nearMergeMaxVerts: d.quality === 'low' ? NEAR_MERGE.maxVerts : NEAR_MERGE.maxVertsShadowed,
     interiorShadows: d.quality === 'high',
     creases: SURFACE_QUALITY[d.quality][0] > 0,
-    compactColor: d.quality === 'low',
+    // TASK-681 (user 2026-11-16): every tier keeps prop colour 16-bit (max channel delta 1)
+    compactColor: true,
     instantEdits: d.instantEdits ?? false,
     world: { height: world.height, islands: world.islands },
     geometryOverride: (id, lod, variant) =>
