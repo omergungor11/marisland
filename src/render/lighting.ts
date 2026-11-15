@@ -3,7 +3,7 @@ import type { Scope } from '../core/scope.ts';
 import type { EnvState } from '../env/env-state.ts';
 import type { Quality } from '../core/params.ts';
 import { QUALITY_PRESETS } from '../core/quality.ts';
-import { LIGHT_RIG, SHADOW } from '../content/lighting.ts';
+import { LIGHT_RIG, SHADOW, SOFT_SHADOW } from '../content/lighting.ts';
 import { setSurfaceQuality } from './shaders/chunks/surface.glsl.ts';
 import { fitShadow, type ShadowFit } from './shadows.ts';
 
@@ -22,8 +22,30 @@ export interface LightRig {
   update(env: EnvState, camera: THREE.PerspectiveCamera, focus: THREE.Vector3): void;
 }
 
+/** Three's 5-tap PCF sum (r186 `shadowmap_pars_fragment`), replaced on high by a SOFT_SHADOW.taps loop. */
+const PCF_5 =
+  /\(\s*texture\( shadowMap, vec3\( shadowCoord\.xy \+ vogelDiskSample\( 0, 5, phi \)[\s\S]*?\) \* 0\.2;/;
+
+/**
+ * High-tier soft shadows (TASK-606, D-182): more Vogel taps for the wider penumbra. A global chunk
+ * edit is safe because the quality is fixed per page load (a quality switch reloads), so medium and
+ * low never compile it; it changes no program parameter, so the program count is unchanged.
+ */
+export function softenPcf(): void {
+  const chunk = THREE.ShaderChunk.shadowmap_pars_fragment;
+  if (chunk.includes('MAR_SOFT_PCF')) return;
+  const n = SOFT_SHADOW.taps;
+  const loop = `0.0; // MAR_SOFT_PCF
+				for ( int i = 0; i < ${n}; i ++ ) shadow += texture( shadowMap, vec3( shadowCoord.xy + vogelDiskSample( i, ${n}, phi ) * radius, shadowCoord.z ) );
+				shadow *= ${(1 / n).toFixed(6)};`;
+  if (!PCF_5.test(chunk)) throw new Error('softenPcf: three PCF chunk changed (r186 expected)');
+  THREE.ShaderChunk.shadowmap_pars_fragment = chunk.replace(PCF_5, loop);
+}
+
 export function createLightRig(quality: Quality, scope: Scope): LightRig {
   const preset = QUALITY_PRESETS[quality];
+  const soft = quality === 'high';
+  if (soft && preset.shadows) softenPcf();
   // material classes / edge light / near grain (TASK-594): uniform switches, off on low
   setSurfaceQuality(quality);
   const group = new THREE.Group();
@@ -71,6 +93,12 @@ export function createLightRig(quality: Quality, scope: Scope): LightRig {
       _dir.set(env.sunDir.x, env.sunDir.y, env.sunDir.z).normalize();
       if (preset.shadows) {
         fitShadow(sun, camera, _dir, focus, preset.shadowMapSize, maxSize, fit);
+        if (soft)
+          sun.shadow.radius = THREE.MathUtils.clamp(
+            SOFT_SHADOW.penumbra / fit.texel,
+            SHADOW.pcfMin,
+            SOFT_SHADOW.pcfMax,
+          );
       } else {
         sun.target.position.copy(focus);
         sun.position.copy(focus).addScaledVector(_dir, 400);
