@@ -1,5 +1,5 @@
 import { CLOUDS } from '../../content/anim.ts';
-import { CLOUD_BANKS } from '../../content/weather.ts';
+import { CLOUD_BANKS, CLOUD_LAYERS } from '../../content/weather.ts';
 import { createRng } from '../../core/rng.ts';
 
 /**
@@ -388,4 +388,48 @@ export function cloudField(p: CloudFieldParams, x: number, z: number, f: CloudFr
 export function cloudShadowMask(p: CloudFieldParams, x: number, z: number, f: CloudFrame): number {
   if (f.coverage <= 0) return 0;
   return evalBlobs(p, x, z, f, 1);
+}
+
+/** One stratus sheet or wisp (TASK-608): fixed world placement on its archetype's mesh. */
+export interface LayerCloud {
+  x: number;
+  z: number;
+  alt: number;
+  /** Instance scale = length (u). */
+  width: number;
+  yaw: number;
+}
+
+/**
+ * Stratus sheets and wisps (content `CLOUD_LAYERS`, TASK-608): `count` clouds per archetype on a
+ * ring round the archipelago centre, evenly spaced (jittered half a slot), long axis along the
+ * ring with a wobble. From `rng.fork('clouds:stratus' | 'clouds:wisps')` only.
+ */
+export function cloudLayers(
+  seed: number,
+  centreX: number,
+  centreZ: number,
+): { stratus: LayerCloud[]; wisps: LayerCloud[] } {
+  const ring = (label: 'stratus' | 'wisps'): LayerCloud[] => {
+    const L = CLOUD_LAYERS[label];
+    const r = createRng(seed).fork(`clouds:${label}`);
+    const n = r.int(L.count[0], L.count[1]);
+    const turn = r.next() * Math.PI * 2;
+    const out: LayerCloud[] = [];
+    for (let i = 0; i < n; i++) {
+      const ang = turn + ((i + r.range(-0.5, 0.5) * 0.6) / n) * Math.PI * 2;
+      const d = r.range(L.distance[0], L.distance[1]);
+      const tx = -Math.sin(ang);
+      const tz = Math.cos(ang);
+      out.push({
+        x: centreX + Math.cos(ang) * d,
+        z: centreZ + Math.sin(ang) * d,
+        alt: r.range(L.altitude[0], L.altitude[1]),
+        width: r.range(L.length[0], L.length[1]),
+        yaw: -Math.atan2(tz, tx) + r.range(-0.35, 0.35),
+      });
+    }
+    return out;
+  };
+  return { stratus: ring('stratus'), wisps: ring('wisps') };
 }

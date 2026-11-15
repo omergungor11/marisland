@@ -2,6 +2,50 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-183: Sky + clouds v2: cloud archetypes and two-tone + rim on medium / high (same cloud program, +2 meshes); the high sky is a define on the one sky program; god rays are our own depth march merged into the high final pass (TASK-608) — 2026-11-15
+
+**Decision.** Medium and high get three cloud archetypes and a new cloud look; everything else is high only and is
+compiled or constructed only there. Low is untouched (no new mesh, no define).
+- **Archetypes** (`content/weather.ts` `CLOUD_LAYERS`, `render/clouds/cloud-geometry.ts`, `cloudLayers` in
+  `cloud-field.ts`): the TASK-153 cumulus stay as they are (field + horizon banks, shadow parity unchanged). Two new
+  InstancedMeshes on the same cloud material: stratus sheets (4–6 long flat lenses of squashed ellipsoids, 1050–1350 u
+  out, 95–150 u up, above the banks) and wisps (5–8 thin brush-stroke streaks, 420–900 u out, 150–215 u up). Static
+  (breathing only), no ground shadow, own rng forks (`clouds:stratus` / `clouds:wisps`), so no other stream moves.
+  Wisps carry `aShade` 1.6–2: above 1 the shader treats them as translucent (lit all over) — no new attribute.
+- **Look** (`MAR_CLOUD_V2` define on the cloud material for medium / high, numbers in `CLOUD_LOOK`, colours in
+  `palette.ts` `CLOUD`): a soft two-tone step (wrap light + height) between white and a cool lavender shade, the shade
+  warmed toward the sun colour by a low sun; a fresnel rim × sun colour that grows × 4.5 when the sun is behind the
+  cloud plus a silver lining right in front of it, 60 % of it added after the fog so far backlit clouds keep the edge;
+  at night a cool `#BFD4FF` rim from the sky moon (night clouds were flat navy blobs before, now they read). Still one
+  cloud program per quality (the define replaces the old source on medium / high, it adds none).
+- **Calls saved.** Every cloud mesh is now invisible (not drawn) once the tier fade has scaled it to 0 (T2+): before,
+  the three cumulus meshes still drew their banks at scale 0 (3 calls and ≈ 45k triangles on every close frame). Net
+  medium: T0 / T1 +2 calls, T2 / T3 −3 calls.
+- **High sky** (`SKY_HQ`): `MAR_SKY_HQ` compiled into the sky program on high. The dome and every beam material share
+  that program, so the define follows a module-level page quality set by `createSky` (it runs before any beam is
+  built; a quality switch reloads) — 0 extra programs. Sun corona + wide warm halo + a screen-aligned 6-spike lens
+  glint (camera axes from `viewMatrix`); moon phases as a terminator ellipse, c on a cosine cycle of 8 game days of
+  render time from a seeded start (`moonPhaseAt(seed, time)`), kept in [−1 full, 0.55] so the moon is never new (W3
+  glitter, cozy night); star density × 0.85 at the horizon → × 2.1 toward the zenith plus a faint fine star layer
+  above 7°.
+- **God rays** (`render/post/rays-effect.ts`, `RAYS`): not pmndrs `GodRaysEffect` — it renders a light-source mesh
+  into two extra targets, and W8 high sat at 478 / 480 MB. Ours: a half-res R8 target (0.5 MB at 1920×1080), 32 depth
+  taps from each pixel toward the sun's screen position counting open sky (depth = far) inside a soft disc round the
+  sun (a whole-sky source washed the frame warm in the first shots), IGN-jittered with a fixed seed. The composite is
+  merged into the high final pass ahead of bloom / grade / tone mapping (no extra pass). Active only for sun sin
+  elevation −0.05 … 0.34 with the sun in front of the camera and near the screen, fading with the overcast veil and in
+  debug-mask mode; while inactive the march is skipped (no call, its program is never even compiled).
+- **Cost** (SwiftShader, 1920×1080). Medium: +2 calls at T0 / T1 (W1 158 → 160, W11 201 → 203), −3 calls and
+  ≈ −45k triangles at T2+ (W9 181 → 178, W2 222 → 219), +12k triangles at T0 (stratus 2.2–2.5k, wisps 0.3–0.4k per
+  instance), 0 programs (max 17 / 20), gpuMemory max 192 / 200 MB; `wow --assert` 61 / 61 (max calls W15e 331 / 350).
+  High (subset of 11 frames, `--assert` green): programs 27 on W8 (unchanged; the march program only compiles where
+  rays run: W-sky-dusk / W-cable-dusk 21), W8 gpuMemory 478 / 480 MB (unchanged; the R8 target is allocated only
+  where rays ran, +0.5 MB there), +1 call while rays are active. Per active frame: 32 depth taps per half-res pixel and
+  one texture fetch per pixel in the final pass. Low: no define, no mesh, no pass — 0 differing pixels on 5 frames (W1, W4, W11, W-sky-dusk, W-sky-moon) against the pre-change build.
+- **Open.** Shafts are soft (a warm fan under occluders across the sun, not hard beams); fresnel seams show between
+  the cumulus spheres under the strong backlit / moon rim (read as puffy, kept); wisps are thin slivers at the W11
+  distance.
+
 ## D-182: High-tier AO is our own depth-only pmndrs Effect, soft shadows are a high-only PCF chunk swap; medium builds neither (TASK-606) — 2026-11-15
 
 **Decision.** High gets a stylized screen-space AO pass and wider soft shadows. Medium and low are pixel-identical to

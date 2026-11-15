@@ -202,6 +202,34 @@ export const CLOUD_BANKS = {
   altitude: [30, 70] as const,
 } as const;
 
+/**
+ * Cloud archetypes v2 (TASK-608, D-183; medium + high, low draws none): two extra InstancedMeshes
+ * on the cloud material (+2 calls, 0 programs). Static (breathing only), no ground shadow, hidden
+ * with the clouds at T2+ (their meshes are then not drawn at all).
+ * - `stratus`: long flat layered sheets far out round the archipelago, above the horizon banks —
+ *   the dusk layers that catch the rim light. `length` = instance scale (u), `aspect` = depth.
+ * - `wisps`: thin high streaks (cirrus) on a nearer ring, bright and light.
+ * From `rng.fork('clouds:stratus' | 'clouds:wisps')` only (every other stream unchanged).
+ */
+export const CLOUD_LAYERS = {
+  stratus: {
+    count: [4, 6] as const,
+    distance: [1050, 1350] as const,
+    length: [380, 600] as const,
+    altitude: [95, 150] as const,
+    aspect: 0.3,
+    blobs: [8, 11] as const,
+  },
+  wisps: {
+    count: [5, 8] as const,
+    distance: [420, 900] as const,
+    length: [140, 260] as const,
+    altitude: [150, 215] as const,
+    aspect: 0.3,
+    strokes: [3, 5] as const,
+  },
+} as const;
+
 /** FSM timing (seconds of render time, `clock.time`). */
 export const WEATHER_FSM = {
   /** Auto cycle starts here unless `?weather=` forces a state. */

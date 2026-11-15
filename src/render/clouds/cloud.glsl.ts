@@ -69,15 +69,75 @@ const FRAG_OUT = /* glsl */ `
   if (uDebugMask > 0.5) gl_FragColor = linearToOutputTexel(vec4(1.0));
 `;
 
+/**
+ * Clouds. `MAR_CLOUD_V2` (TASK-608, D-183; medium / high): two-tone instead of the gradient — the
+ * wrap light + height term is stepped softly between the lit tone (`uTop`) and the cool shade
+ * tone (`uShade`, toward `uBelly` at the base, warmed by a low sun) — plus a fresnel rim in `uRim`
+ * × sun colour, much stronger when the sun is behind the cloud (golden / dusk backlight) with a
+ * silver lining in front of the sun; at night a cool moon rim (`uRimNight`, sky moon direction).
+ * Part of the rim is added after the fog. Weather grey, the night re-tint and the fog curve follow
+ * `marSoftShade`.
+ */
 export const CLOUD_FRAG = /* glsl */ `
 ${SOFT_FRAG_PARS}
+#ifdef MAR_CLOUD_V2
+uniform vec3 uShade;
+uniform vec3 uRim;
+uniform vec3 uRimNight;
+uniform vec3 uMoonDir;
+uniform vec3 uSkyNight;
+// x, y = lit / shade step, z = height weight, w = rim power
+uniform vec4 uLook;
+// x = rim by day, y = × backlight, z = × golden, w = moon rim at night
+uniform vec4 uRimK;
+// x = silver lining, y = its power, z = rim share after the fog, w = warm belly at a low sun
+uniform vec4 uLook2;
+#endif
 varying vec3 vN;
 varying vec3 vW;
 varying float vShade;
 void main() {
   vec3 n = normalize(vN);
   float g = smoothstep(0.05, 0.7, vShade) * (0.75 + 0.25 * max(n.y, 0.0));
+#ifdef MAR_CLOUD_V2
+  vec3 L = normalize(uSunDir);
+  vec3 V = normalize(uCameraPos - vW);
+  float wrapL = clamp((dot(n, L) + 0.4) / 1.4, 0.0, 1.0);
+  // aShade > 1 = wisp (translucent cirrus): lit all over, no shaded belly
+  float lit = max(smoothstep(uLook.x, uLook.y, mix(wrapL, g, uLook.z)), clamp(vShade - 1.0, 0.0, 1.0));
+  // shade tone: cool lavender, deepening to the belly colour at the flat base; a low sun warms it
+  float lowSun = (1.0 - smoothstep(0.05, 0.4, L.y)) * (1.0 - uNight);
+  vec3 shadeC = mix(uBelly, uShade, smoothstep(0.0, 0.35, vShade));
+  shadeC = mix(shadeC, shadeC * uSunColor * 1.25, uLook2.w * lowSun);
+  vec3 belly = mix(shadeC, uBellyNight, uNight);
+  vec3 top = mix(uTop, mix(uBellyNight, uTop, 0.35), uNight);
+  vec3 base = mix(belly, top, lit);
+  if (uCloudTint.x > 0.0 || uCloudTint.y != 1.0) {
+    float bl = dot(base, vec3(0.2126, 0.7152, 0.0722));
+    base = mix(base, vec3(bl), uCloudTint.x) * mix(uCloudTint.y, 1.0, lit * 0.5);
+  }
+  float dayK = clamp(uSunIntensity / 3.0, 0.0, 1.0);
+  vec3 day = mix(vec3(1.0), uSunColor, 0.35 + 0.25 * uGolden) * (0.78 + 0.2 * wrapL) * (0.85 + 0.15 * dayK);
+  vec3 night = uHemiSky * (0.75 + 0.25 * wrapL) + 0.05;
+  vec3 col = base * mix(day, night, uNight);
+  // rim: grazing edge, sun-side; backlit edges (sun behind the cloud) glow, a silver lining right
+  // in front of the sun; at night the sky moon lights a cool edge instead
+  float fres = pow(1.0 - clamp(dot(n, V), 0.0, 1.0), uLook.w);
+  float back = max(dot(-V, L), 0.0);
+  float side = 0.35 + 0.65 * clamp(dot(n, L) + 0.5, 0.0, 1.0);
+  float rimK = uRimK.x * (1.0 + (uRimK.y - 1.0) * back * back) * (1.0 + (uRimK.z - 1.0) * uGolden);
+  rimK += uLook2.x * pow(back, uLook2.y);
+  vec3 rim = uRim * uSunColor * fres * side * rimK * (1.0 - uNight);
+  vec3 M = normalize(uMoonDir);
+  float mBack = max(dot(-V, M), 0.0);
+  rim += uRimNight * fres * uRimK.w * uSkyNight.x * (0.3 + 0.7 * mBack * mBack) * (0.4 + 0.6 * clamp(dot(n, M) + 0.6, 0.0, 1.0));
+  rim *= 1.0 - uCloudTint.x;
+  float fx = uFogDensity * length(vW - uCameraPos);
+  col = mix(col + rim * (1.0 - uLook2.z), uFogColor, 1.0 - exp(-fx * fx)) + rim * uLook2.z;
+  gl_FragColor = vec4(col, 1.0);
+#else
   gl_FragColor = marSoftShade(g, n, vW);
+#endif
 ${FRAG_OUT}
 }
 `;

@@ -100,3 +100,144 @@ export function buildCloudGeometry(rng: Rng): THREE.BufferGeometry {
   g.computeBoundingSphere();
   return g;
 }
+
+/** An ellipsoid blob: centre and semi-axes (pre-normalisation units). */
+interface Blob {
+  x: number;
+  y: number;
+  z: number;
+  rx: number;
+  ry: number;
+  rz: number;
+}
+
+/**
+ * Ellipsoid blobs → one geometry (TASK-608 archetypes): smooth ellipsoid normals, normalised to
+ * x ∈ [−0.5, 0.5] (instance scale = length) and z depth `aspect`, base at y = 0. `aShade` runs
+ * `shade0` at the base → `shade1` at the top.
+ */
+function blobGeometry(
+  blobs: Blob[],
+  detail: number,
+  aspect: number,
+  shade0: number,
+  shade1: number,
+): THREE.BufferGeometry {
+  const ico = new THREE.IcosahedronGeometry(1, detail);
+  const ip = ico.getAttribute('position');
+  // bounds of the actual vertices (an icosphere's extremes sit inside its ellipsoid)
+  let x0 = Infinity;
+  let x1 = -Infinity;
+  let y0 = Infinity;
+  let y1 = -Infinity;
+  let z0 = Infinity;
+  let z1 = -Infinity;
+  for (const b of blobs)
+    for (let i = 0; i < ip.count; i++) {
+      const x = b.x + ip.getX(i) * b.rx;
+      const y = b.y + ip.getY(i) * b.ry;
+      const z = b.z + ip.getZ(i) * b.rz;
+      x0 = Math.min(x0, x);
+      x1 = Math.max(x1, x);
+      y0 = Math.min(y0, y);
+      y1 = Math.max(y1, y);
+      z0 = Math.min(z0, z);
+      z1 = Math.max(z1, z);
+    }
+  const sx = 1 / (x1 - x0);
+  const sz = aspect / (z1 - z0) / sx;
+  const cx = (x0 + x1) / 2;
+  const cz = (z0 + z1) / 2;
+  const n = blobs.length * ip.count;
+  const pos = new Float32Array(n * 3);
+  const nrm = new Float32Array(n * 3);
+  const shade = new Float32Array(n);
+  let v = 0;
+  for (const b of blobs) {
+    for (let i = 0; i < ip.count; i++, v++) {
+      const ux = ip.getX(i);
+      const uy = ip.getY(i);
+      const uz = ip.getZ(i);
+      const y = b.y + uy * b.ry;
+      pos[v * 3] = (b.x + ux * b.rx - cx) * sx;
+      pos[v * 3 + 1] = (y - y0) * sx;
+      pos[v * 3 + 2] = (b.z + uz * b.rz - cz) * sz * sx;
+      // ellipsoid normal ∝ u / r, then the z squeeze (normal z / sz)
+      const nx = ux / b.rx;
+      const ny = uy / b.ry;
+      const nz = uz / b.rz / sz;
+      const l = Math.hypot(nx, ny, nz) || 1;
+      nrm[v * 3] = nx / l;
+      nrm[v * 3 + 1] = ny / l;
+      nrm[v * 3 + 2] = nz / l;
+      shade[v] = shade0 + (shade1 - shade0) * ((y - y0) / (y1 - y0 || 1));
+    }
+  }
+  ico.dispose();
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+  g.setAttribute('aShade', new THREE.BufferAttribute(shade, 1));
+  g.computeBoundingSphere();
+  return g;
+}
+
+/**
+ * Stratus sheet (TASK-608): a long flat lens of overlapping squashed ellipsoids, thickest in the
+ * middle, with a thinner second layer riding on top. Height ≈ 7 % of the length.
+ */
+export function buildStratusGeometry(
+  rng: Rng,
+  blobs: readonly [number, number],
+  aspect: number,
+): THREE.BufferGeometry {
+  const n = rng.int(blobs[0], blobs[1]);
+  const list: Blob[] = [];
+  for (let i = 0; i < n; i++) {
+    const t = (i + 0.5) / n - 0.5;
+    const swell = 1 - 1.6 * t * t;
+    const r = 0.11 * swell * rng.range(0.85, 1.15);
+    list.push({
+      x: t + rng.range(-0.02, 0.02),
+      y: rng.range(-0.006, 0.006),
+      z: rng.range(-0.06, 0.06),
+      rx: r * 1.5,
+      ry: r * 0.32,
+      rz: r * 1.1,
+    });
+  }
+  const top = Math.max(2, Math.floor(n / 3));
+  for (let i = 0; i < top; i++) {
+    const t = rng.range(-0.28, 0.28);
+    const r = 0.08 * rng.range(0.8, 1.1);
+    list.push({ x: t, y: 0.022, z: rng.range(-0.04, 0.04), rx: r * 1.6, ry: r * 0.3, rz: r });
+  }
+  return blobGeometry(list, 2, aspect, 0.05, 0.85);
+}
+
+/**
+ * Wisp (TASK-608): a few long thin brush strokes, each offset along and across like a cirrus
+ * streak. `aShade` 1.6 → 2: above 1 the V2 cloud shader reads it as "translucent, lit all over" (cirrus has no shaded belly).
+ */
+export function buildWispGeometry(
+  rng: Rng,
+  strokes: readonly [number, number],
+  aspect: number,
+): THREE.BufferGeometry {
+  const n = rng.int(strokes[0], strokes[1]);
+  const list: Blob[] = [];
+  const slant = rng.range(0.25, 0.55) * (rng.next() < 0.5 ? -1 : 1);
+  for (let i = 0; i < n; i++) {
+    const t = (i + 0.5) / n - 0.5;
+    const len = rng.range(0.28, 0.42) * (1 - 0.8 * t * t);
+    list.push({
+      x: t * 0.55 + rng.range(-0.04, 0.04),
+      y: rng.range(-0.004, 0.004),
+      z: t * slant + rng.range(-0.03, 0.03),
+      rx: len,
+      ry: 0.012 * rng.range(0.8, 1.2),
+      rz: 0.06 * rng.range(0.7, 1.2),
+    });
+  }
+  return blobGeometry(list, 1, aspect, 1.6, 2);
+}
