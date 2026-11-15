@@ -1,5 +1,5 @@
 /** Marketing (Beacon Rock, sea stack) — M14b plan §2.4. */
-import { FOLIAGE } from '../palette.ts';
+import { themeTreePalette } from '../biome-scatter.ts';
 import { PLACEMENT_RULES } from '../placement.ts';
 import { Zone } from '../../world/types.ts';
 import type { ThemeDef } from './index.ts';
@@ -69,7 +69,8 @@ export const MARKETING_THEME: ThemeDef = {
   // (two scatter kinds × variants of LOD0 groups in every close-up)
   scatterOff: ['bush', 'rockCluster'],
   life: {},
-  treePalette: FOLIAGE,
+  // TASK-600 (D-179): the biome ramp on the canopy kinds its v2 trees replaced (content/biome-scatter.ts)
+  treePalette: themeTreePalette('marketing'),
 };
 
 /**

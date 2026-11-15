@@ -298,7 +298,8 @@ describe('Research Observatory University plan (TASK-402b) — 30 seeds', () => 
       for (let i = 0; i < p.count; i++) {
         if (p.islandId[i] !== d.isl.id) continue;
         const id = PROP_DEFS[p.defId[i]].id;
-        if (id === 'roundTree' || id === 'pine' || id === 'palm') trees++;
+        // TASK-600: the scatter round trees are its cypress / olive canopyTrees
+        if (id === 'roundTree' || id === 'canopyTree' || id === 'pine' || id === 'palm') trees++;
         if (id === 'crystalCluster') {
           const h = d.w.height;
           const zi =

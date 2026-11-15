@@ -82,6 +82,20 @@ uniform vec3 uConstStarColor;
 uniform vec3 uConstLineColor;
 // row i = glyph i: stars (x, y, brightness, 0) then lines (x0, y0, x1, y1), glyph units
 uniform sampler2D uConstTex;
+#ifdef MAR_SKY_HQ
+// TASK-608 high-tier sky (D-183): x, y = corona strength / power, z, w = wide halo strength / power
+uniform vec4 uSunHq;
+uniform vec3 uSunHaloColor;
+// lens glint: x = spikes, y = length (rad), z = half width at the sun (rad), w = HDR strength
+uniform vec4 uGlint;
+// moon terminator c: -1 full … 1 new (lit where x > c·sqrt(1 − y²) on the disc, x toward the sun)
+uniform float uMoonPhase;
+// stars by altitude: x = density × at the horizon, y = × at the zenith, z = zenith at (sin el),
+// w = fine layer from (sin el)
+uniform vec4 uStarHq;
+// fine star layer: x = cells per rad, y = density, z = brightness
+uniform vec3 uStarFine;
+#endif
 varying vec3 vDir;
 ${BEAM_FRAG_PARS}
 
@@ -134,6 +148,29 @@ void main() {
     // saturated ring around a tone-mapped white core
     vec3 discCol = mix(uSunColor, vec3(1.0, 0.94, 0.84) * max(max(uSunColor.r, uSunColor.g), 1e-3), 0.25);
     col += (discCol * disc * hdr + uSunColor * glow) * sunUp * (1.0 - uNight * 0.85) * above * (1.0 - uWeather.y);
+#ifdef MAR_SKY_HQ
+    {
+      // corona + wide warm halo, and a screen-aligned lens glint (long / short spikes alternate)
+      float cs = max(cosS, 0.0);
+      vec3 hq = uSunColor * pow(cs, uSunHq.y) * uSunHq.x + uSunHaloColor * pow(cs, uSunHq.w) * uSunHq.z;
+      vec3 camR = vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]);
+      vec3 camU = vec3(viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1]);
+      vec3 off = d - sd * cosS;
+      vec2 g2 = vec2(dot(off, camR), dot(off, camU));
+      float rg = length(g2);
+      float seg = 6.2831853 / uGlint.x;
+      float a = atan(g2.y, g2.x) + seg * 0.25;
+      float idx = floor(a / seg);
+      float aa = (a - (idx + 0.5) * seg);
+      float len = uGlint.y * (mod(idx, 2.0) < 0.5 ? 1.0 : 0.55) * mix(1.0, uSun.z, 1.0 - smoothstep(0.0, uSun.w, sd.y));
+      float w = uGlint.z * max(1.0 - rg / len, 0.0) + skyPix * 0.6;
+      float perp = rg * abs(sin(aa));
+      float fall = max(1.0 - rg / len, 0.0);
+      float glint = exp(-perp * perp / (w * w)) * fall * fall * step(0.0, cosS);
+      hq += discCol * glint * uGlint.w;
+      col += hq * sunUp * (1.0 - uNight) * above * (1.0 - uWeather.y);
+    }
+#endif
   }
 
   // --- moon: soft crescent (lit limb faces the sun), earthshine, two-layer halo
@@ -151,8 +188,16 @@ void main() {
     toSun = length(toSun) > 1e-4 ? normalize(toSun) : vec2(0.7071, 0.7071);
     float r = length(p);
     float disc = (1.0 - smoothstep(1.0 - uMoon.y, 1.0 + uMoon.y, r)) * step(0.0, cosM);
+#ifdef MAR_SKY_HQ
+    // phases (TASK-608): terminator ellipse, soft edge
+    float xs = dot(p, toSun);
+    float ys = dot(p, vec2(-toSun.y, toSun.x));
+    float term = uMoonPhase * sqrt(max(1.0 - ys * ys, 0.0));
+    float lit = disc * smoothstep(term - uMoon.y * 1.6, term + uMoon.y * 1.6, xs);
+#else
     float shadow = 1.0 - smoothstep(1.0 - uMoon.y * 1.6, 1.0 + uMoon.y * 1.6, length(p + toSun * uMoon.z));
     float lit = disc * (1.0 - shadow);
+#endif
     // soft maria: low-frequency blotches on the lit face
     float seas = 0.84 + 0.16 * smoothstep(0.35, 0.75, skyHash12(floor(p * 2.2 + 7.0)));
     float limb = 1.0 - 0.18 * r * r;
@@ -217,8 +262,14 @@ void main() {
     vec2 g = vec2((az / 6.2831853 + 0.5) * nx, el * uStars.x);
     vec2 cell = vec2(floor(g.x), row);
     float r = skyHash12(cell);
-    if (r < uStars.y) {
-      float rr = r / uStars.y;
+#ifdef MAR_SKY_HQ
+    // density by altitude (TASK-608): sparse low over the sea haze, rich toward the zenith
+    float dens = uStars.y * mix(uStarHq.x, uStarHq.y, smoothstep(0.0, uStarHq.z, h));
+#else
+    float dens = uStars.y;
+#endif
+    if (r < dens) {
+      float rr = r / dens;
       vec2 c = vec2(skyHash12(cell + 17.3), skyHash12(cell + 41.9)) * 0.7 + 0.15;
       float dist = length(fract(g) - c);
       float size = mix(uStarFx.w * 0.55, uStarFx.w, skyHash12(cell + 3.1));
@@ -230,6 +281,26 @@ void main() {
       vec3 sc = mix(vec3(1.0, 0.92, 0.8), vec3(0.85, 0.9, 1.0), skyHash12(cell + 9.7));
       col += sc * star * uStars.z * starA * fade;
     }
+#ifdef MAR_SKY_HQ
+    // fine faint layer above the haze (TASK-608): a denser grid of small dim stars, ≥ ~1.2 px
+    if (h > uStarHq.w) {
+      float fc = uStarFine.x;
+      float rowF = floor(el * fc);
+      float nxF = max(floor(6.2831853 * cos((rowF + 0.5) / fc) * fc), 1.0);
+      vec2 gF = vec2((az / 6.2831853 + 0.5) * nxF, el * fc);
+      vec2 cellF = vec2(floor(gF.x), rowF) + 311.7;
+      float rF = skyHash12(cellF);
+      if (rF < uStarFine.y) {
+        vec2 c = vec2(skyHash12(cellF + 17.3), skyHash12(cellF + 41.9)) * 0.6 + 0.2;
+        float dist = length(fract(gF) - c);
+        float size = max(0.16, 1.2 * skyPix * fc);
+        float tw = 1.0 - uStars.w + uStars.w * sin(uTime * uStarFx.x * 0.7 + rF * 97.0);
+        float star = (1.0 - smoothstep(size * 0.2, size, dist)) * tw * mix(0.4, 1.0, skyHash12(cellF + 5.7));
+        float fade = smoothstep(uStarHq.w, uStarHq.w + 0.15, h) * (1.0 - moonMask) * (1.0 - cDim);
+        col += vec3(0.9, 0.93, 1.0) * star * uStarFine.z * starA * fade;
+      }
+    }
+#endif
   }
 
   if (uConstLine.w > 0.001) {

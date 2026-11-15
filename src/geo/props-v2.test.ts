@@ -42,6 +42,11 @@ const BUDGET: Record<string, number> = {
   driftLog: 150,
   harbourBoat: 600,
   dockDressing: 300,
+  // TASK-604 (D-180) coast kit
+  rockArch: 800,
+  tidePoolField: 500,
+  duneGrass: 250,
+  ledgeShrub: 350,
 };
 const V2_IDS = Object.keys(BUDGET);
 
@@ -78,7 +83,7 @@ describe('vegetation, rock and boat v2 (TASK-599 / TASK-601)', () => {
       if (d.rollVariants) expect(d.rollVariants, id).toBeLessThanOrEqual(d.variants);
     }
     expect(PROP_DEFS[PROP_DEF_INDEX.canopyTree].variants).toBe(BIOME_DEF_VARIANTS.canopyTree);
-    expect(PROP_DEFS[PROP_DEF_INDEX.boulder].variants).toBe(BOULDER_VARIANTS);
+    expect(PROP_DEFS[PROP_DEF_INDEX.boulder].variants).toBe(BOULDER_VARIANTS * BIOME_IDS.length); // per-island moss sets (TASK-600)
     expect(PROP_DEFS[PROP_DEF_INDEX.harbourBoat].variants).toBe(HARBOUR_BOAT_VARIANTS);
     expect(PROP_DEFS[PROP_DEF_INDEX.buoy].variants).toBe(BUOY_V2.first + BUOY_V2.names.length);
   });

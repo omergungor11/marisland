@@ -4,7 +4,7 @@
  * LOD0 + LOD1) and one close 3/4 view of variant 0 LOD0.
  * TASK-599 / TASK-601: `vegetation` and `boats` shoot one tile per island colour set / cap (`?vars=`) and tile them.
  *
- *   pnpm exec tsx scripts/gallery-shots.ts [m20|coding22|research|qa24|marina|quay|luna|vegetation|boats|devops25|devops26|marketing27|research28|harbours|research31|coding33|coaster|buildings|id,id,...] [--port=5199] [--out=shots/gallery-m20]
+ *   pnpm exec tsx scripts/gallery-shots.ts [m20|coding22|research|qa24|marina|quay|luna|vegetation|boats|coast|devops25|devops26|marketing27|research28|harbours|research31|coding33|coaster|buildings|id,id,...] [--port=5199] [--out=shots/gallery-m20]
  *
  * Starts its own `vite` dev server on `--port` (killed at the end; a server already on the port is
  * reused and left alone). Software GL (swiftshader), so no GPU is needed.
@@ -19,6 +19,7 @@ import {
   BOAT_SHOWCASE_IDS,
   BOULDER,
   BUOY_V2,
+  COAST_SHOWCASE_IDS,
   SHAPES,
   VEGETATION_SHOWCASE_IDS,
   boatVariant,
@@ -91,17 +92,19 @@ const ids =
                                     ? VEGETATION_SHOWCASE_IDS
                                     : which === 'boats'
                                       ? BOAT_SHOWCASE_IDS
-                                      : which === 'quay'
-                                        ? MARINA_QUAY_PROP_IDS
-                                        : which === 'luna'
-                                          ? LUNA_PROP_IDS
-                                          : which.split(',');
+                                      : which === 'coast'
+                                        ? COAST_SHOWCASE_IDS
+                                        : which === 'quay'
+                                          ? MARINA_QUAY_PROP_IDS
+                                          : which === 'luna'
+                                            ? LUNA_PROP_IDS
+                                            : which.split(',');
 const PORT = Number(opt('port') ?? 5199);
 const ROOT = resolve(import.meta.dirname, '..');
 const OUT = resolve(
   ROOT,
   opt('out') ??
-    `shots/gallery-${['m20', 'coding22', 'research', 'qa24', 'qa30', 'marina', 'devops25', 'devops26', 'marketing27', 'research28', 'harbours', 'research31', 'coding33', 'coaster', 'couriers', 'buildings', 'quay', 'luna', 'vegetation', 'boats'].includes(which) ? which : 'custom'}`,
+    `shots/gallery-${['m20', 'coding22', 'research', 'qa24', 'qa30', 'marina', 'devops25', 'devops26', 'marketing27', 'research28', 'harbours', 'research31', 'coding33', 'coaster', 'couriers', 'buildings', 'quay', 'luna', 'vegetation', 'boats', 'coast'].includes(which) ? which : 'custom'}`,
 );
 const BASE = `http://localhost:${PORT}/`;
 /** `--night`: the lamp-class vertices glow over a dim rig (TASK-670 luna); `luna` always shoots over a turquoise floor. */
@@ -163,7 +166,9 @@ async function main(): Promise<void> {
       dpr: '1',
       quality: 'low',
       time: '12',
-      ...(which === 'luna' || which === 'boats' ? { sea: '1' } : {}),
+      ...(which === 'luna' || which === 'boats' || (which === 'coast' && only === 'kelp')
+        ? { sea: '1' }
+        : {}),
       ...(vars ? { vars: vars.join(',') } : {}),
       ...(NIGHT ? { night: '1' } : {}),
     });
@@ -210,7 +215,7 @@ async function main(): Promise<void> {
           );
         continue;
       }
-      if (which === 'vegetation' || which === 'boats') {
+      if (which === 'vegetation' || which === 'boats' || which === 'coast') {
         // TASK-599 / TASK-601: one 640x360 tile per island colour set (or boulder cap), then one grid per def
         const groups: Array<[string, number[]]> =
           id in SHAPES

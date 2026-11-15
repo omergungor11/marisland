@@ -82,6 +82,7 @@ import { COURIER_SHIPS } from '../content/fleet-ships.ts';
 import { THEME_IDS } from '../world/types.ts';
 import {
   BIOME_DEF_VARIANTS,
+  BIOME_IDS,
   BOULDER,
   BOULDER_VARIANTS,
   DOCK_DRESSING,
@@ -89,7 +90,12 @@ import {
   HARBOUR_BOAT,
   HARBOUR_BOAT_VARIANTS,
   KELP,
+  DUNE_GRASS,
+  LEDGE_SHRUB,
+  ROCK_ARCH,
+  TIDE_POOL_FIELD,
 } from '../content/biomes.ts';
+import { duneGrass, ledgeShrub, rockArch, tidePoolField } from './coast-kit.ts';
 import { dockDressing, harbourBoat, withBuoyV2 } from './boats-v2.ts';
 import {
   CANOPY_HEIGHTS,
@@ -104,6 +110,8 @@ import {
 } from './vegetation-v2.ts';
 import type { Lod, PropGeoDef } from './types.ts';
 import type * as THREE from 'three';
+
+const BOULDER_SET_VARIANTS = BOULDER_VARIANTS * BIOME_IDS.length;
 
 const defs: PropGeoDef[] = [
   { id: 'palm', variants: 3, build: palm, footprint: 3, height: 6, windy: true },
@@ -340,7 +348,16 @@ defs.push(
     true,
     cycleH(BIOME_DEF_VARIANTS.floraBush, FLORA_BUSH_HEIGHTS),
   ),
-  D('boulder', BOULDER_VARIANTS, boulder, 2.4, 1, false, cycleH(BOULDER_VARIANTS, BOULDER.heights)),
+  // per-island moss / lichen sets (TASK-600): biomeIndex * 15 + cap * 5 + silhouette
+  D(
+    'boulder',
+    BOULDER_SET_VARIANTS,
+    boulder,
+    2.4,
+    1,
+    false,
+    cycleH(BOULDER_SET_VARIANTS, BOULDER.heights),
+  ),
   D('kelp', KELP.variants, kelp, 0.7, 2, true, KELP.heights),
   D('driftLog', DRIFT_LOG.variants, driftLog, 1.2, 0.4, false, DRIFT_LOG.heights),
   D(
@@ -353,6 +370,29 @@ defs.push(
     cycleH(HARBOUR_BOAT_VARIANTS, HARBOUR_BOAT.height),
   ),
   D('dockDressing', DOCK_DRESSING.names.length, dockDressing, 0.7, 1, false, DOCK_DRESSING.height),
+);
+// TASK-604 (D-180): coast kit, appended after the v2 defs (kelp itself is the TASK-599 def above)
+defs.push(
+  D('rockArch', ROCK_ARCH.variants, rockArch, 3.6, 4, false, ROCK_ARCH.heights),
+  D(
+    'tidePoolField',
+    TIDE_POOL_FIELD.variants,
+    tidePoolField,
+    2.8,
+    0.45,
+    false,
+    TIDE_POOL_FIELD.heights,
+  ),
+  D('duneGrass', DUNE_GRASS.variants, duneGrass, 0.7, 1.5, true, DUNE_GRASS.heights),
+  D(
+    'ledgeShrub',
+    BIOME_DEF_VARIANTS.ledgeShrub,
+    ledgeShrub,
+    0.9,
+    0.9,
+    true,
+    cycleH(BIOME_DEF_VARIANTS.ledgeShrub, LEDGE_SHRUB.heights),
+  ),
 );
 
 // M31 (TASK-533): the shared harbour kit adds variants to five old defs

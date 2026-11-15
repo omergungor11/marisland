@@ -31,6 +31,12 @@ import * as dm from '../../core/math/dmath.ts';
 import { TALUS } from '../../content/islands.ts';
 import { smoothstep } from '../../core/math/index.ts';
 import { bluffOf, coveness } from './heightfield.ts';
+import {
+  BIOME_RULES,
+  BIOME_SCATTER,
+  type IslandBiomeScatter,
+} from '../../content/biome-scatter.ts';
+import { scatterHarbours, scatterLotEdges } from './biome-scatter.ts';
 
 /**
  * Prop scatter (ARCHITECTURE §2 step 7): Bridson Poisson per island per rule in
@@ -170,6 +176,8 @@ export function scatterProps(
     island: Pick<IslandData, 'id' | 'minX' | 'maxX' | 'minZ' | 'maxZ' | 'peakX' | 'peakZ'>,
     rules: readonly PlacementRule[],
     skip: (rule: PlacementRule, r: number) => boolean,
+    label = 'props',
+    biome?: IslandBiomeScatter,
   ): void => {
     // `first` rules claim their spots before the rest; each keeps its own rng fork index
     const order = rules.map((_, r) => r);
@@ -182,7 +190,14 @@ export function scatterProps(
       if (!def) continue;
       const isGround = (def.flags & PropFlag.groundCover) !== 0;
       if (isGround && groundCoverTotal >= GROUND_COVER_CAP) continue;
-      const rng: Rng = root.fork('props', island.id, r);
+      // TASK-600 (D-179): a v2 rule rolls the island's variant list; a swap turns the old def's
+      // placements into the v2 def (same points, same roll count; `share` < 1 rolls once more)
+      const swap = biome?.swap[rule.def];
+      const pick = rule.pick ?? swap?.pick;
+      const list = pick && biome ? biome.picks[pick] : undefined;
+      if (rule.pick && !list?.length) continue;
+      const swapIndex = swap && list?.length ? PROP_DEF_INDEX[swap.def] : undefined;
+      const rng: Rng = root.fork(label, island.id, r);
       const margin = 16;
       const minX = island.minX - margin;
       const maxX = island.maxX + margin;
@@ -234,6 +249,7 @@ export function scatterProps(
         ? [island.peakX, island.peakZ]
         : poissonDisc(rng, minX, minZ, maxX, maxZ, rule.minDist, accept, isGround ? 12000 : 6000);
       let placed = 0;
+      let moved = 0;
       const max = rule.maxPerIsland ?? Infinity;
       for (let i = 0; i < pts.length && placed < max; i += 2) {
         if (rule.density < 1 && rng.next() > rule.density) continue;
@@ -251,35 +267,62 @@ export function scatterProps(
           z = u * sn + v * c;
           if (!accept(x, z)) continue;
         }
+        const swapped =
+          swapIndex !== undefined && (swap!.share === undefined || rng.next() < swap!.share);
+        const pIndex = swapped ? swapIndex : defIndex;
+        const pDef = PROP_DEFS[pIndex];
+        // a swap keeps the old def's footprint: the same points survive the occupancy test
         const radius = def.footprint * scale;
         if (!isGround && !occupancy.isFree(x, z, radius)) continue;
         if (isGround && occupancy.valueAt(x, z) === OCC_STRUCTURE) continue;
         if (isGround && groundCoverTotal >= GROUND_COVER_CAP) break;
         const zone = zoneAt(h, world.zone, x, z);
-        const floats = zone === Zone.lagoon && !(def.flags & PropFlag.underwater);
+        const floats = zone === Zone.lagoon && !(pDef.flags & PropFlag.underwater);
         const y = floats ? 0 : heightAt(h, x, z);
-        const variant = rng.int(0, def.variants - 1);
+        const variant =
+          (swapped || rule.pick) && list
+            ? list[rng.int(0, list.length - 1)]
+            : rng.int(0, def.variants - 1);
         let rotY = rng.range(0, Math.PI * 2);
         // prop yaw −a turns local +x onto the patch axis (cos a, sin a)
         if (rule.fieldRows && fieldAngle !== undefined) rotY = -fieldAngle;
-        store.push(defIndex, variant, x, y, z, rotY, scale, island.id, chunkIdAt(x, z), def.flags);
+        store.push(pIndex, variant, x, y, z, rotY, scale, island.id, chunkIdAt(x, z), pDef.flags);
         if (!isGround) occupancy.mark(x, z, radius);
         else groundCoverTotal++;
         placed++;
+        if (swapped) {
+          counts[pDef.id] = (counts[pDef.id] ?? 0) + 1;
+          moved++;
+        }
         if (store.count >= PROP_CAPACITY - 1) break;
       }
-      counts[rule.def] = (counts[rule.def] ?? 0) + placed;
+      counts[rule.def] = (counts[rule.def] ?? 0) + placed - moved;
     }
   };
 
   for (const island of world.islands) {
     const theme = THEMES[island.theme];
+    const biome = BIOME_SCATTER[island.theme];
     // global rules first (same indices as before M14b), then the theme's own rules
-    scatterBody(island, PLACEMENT_RULES.concat(theme.scatter), (rule, r) => {
-      if (r >= PLACEMENT_RULES.length) return false;
-      if (rule.archetypes && !rule.archetypes.includes(island.archetype)) return true;
-      return theme.scatterOff.includes(rule.def);
-    });
+    scatterBody(
+      island,
+      PLACEMENT_RULES.concat(theme.scatter),
+      (rule, r) => {
+        if (r >= PLACEMENT_RULES.length) return false;
+        if (rule.archetypes && !rule.archetypes.includes(island.archetype)) return true;
+        return theme.scatterOff.includes(rule.def);
+      },
+      'props',
+      biome,
+    );
+    // TASK-600: the biome layers after every other rule, on their own forks
+    scatterBody(
+      island,
+      BIOME_RULES,
+      (_, r) => !BIOME_RULES[r].themes.includes(island.theme),
+      'biome-props',
+      biome,
+    );
   }
   // M23 (TASK-490): only the picked skerries carry a beacon (the rule's own rng fork, index 1)
   const beacons = pickBeaconSkerries(world.islands, world.islets);
@@ -290,6 +333,8 @@ export function scatterProps(
       (rule) => rule.def === 'beaconTower' && !beacons.has(islet.id),
     );
   scatterTalus(world, store, occupancy, root, counts);
+  scatterLotEdges(world, store, occupancy, root, counts);
+  scatterHarbours(world, store, occupancy, root, counts);
   return { props: store, occupancy, counts };
 }
 
@@ -380,7 +425,7 @@ function ownerAt(world: WorldData, x: number, z: number): number {
   return world.islandMap[iz * h.n + ix];
 }
 
-function slopeAt(
+export function slopeAt(
   h: { n: number; cellSize: number; originX: number; originZ: number; data: Float32Array },
   x: number,
   z: number,

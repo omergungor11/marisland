@@ -150,7 +150,7 @@ export type TreePalette = Readonly<Record<PaletteKind, readonly string[]>>;
 /** Canopy kind of a clusterable def (unknown trees count as deciduous). */
 export function canopyKindOf(defId: string): CanopyKind {
   if (defId === 'pine') return 'pine';
-  if (defId === 'palm') return 'palm';
+  if (defId === 'palm' || defId === 'leanPalm') return 'palm';
   if (defId === 'blossomTree') return 'blossom';
   return 'deciduous';
 }

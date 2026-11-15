@@ -546,3 +546,133 @@ export const POST_ZOOM = {
   dofRangeScale: 3,
   maxOffset: 0.6,
 } as const;
+
+/**
+ * High-tier soft shadows (TASK-606, D-182): high only; medium keeps `LIGHTING.shadowPenumbra` /
+ * `SHADOW.pcfMax` and three's 5-tap PCF. On high the penumbra is wider and three's PCF chunk is
+ * swapped for a `taps`-sample Vogel disk (same IGN rotation, deterministic), so the wider radius
+ * stays smooth instead of grainy. Radius in texels = penumbra / texel, clamped to [SHADOW.pcfMin, pcfMax].
+ */
+export const SOFT_SHADOW = {
+  penumbra: 0.5,
+  pcfMax: 9,
+  taps: 12,
+} as const;
+
+/**
+ * High-tier screen-space AO (TASK-606, D-182, render/post/ao-effect.ts): depth only (normals rebuilt
+ * from depth, no extra scene pass), half resolution, `samples` spiral taps rotated by interleaved
+ * gradient noise (+ `seed`), bilateral blur, depth-aware upsample. Stylized contact shade, not grime:
+ * world radius = view distance × `radiusPerU` clamped to `radius` [min, max] u, so T1 views get a
+ * readable contact shade, not a 2 px line (taps further than it, e.g. a prop in front, count nothing: no halo),
+ * occlusion capped at `maxOcclusion`, darkening toward the warm `tint` (the multiplier at full
+ * occlusion), faded out over `fade` u of view distance (the T0 postcard keeps its baked AO only),
+ * spared on HDR emissives (luminance ramp `spare`), × `night` at night.
+ */
+export const AO = {
+  radius: [2, 8] as const,
+  radiusPerU: 0.08,
+  intensity: 8,
+  /** Cosine bias: flat or gently faceted ground does not occlude itself. */
+  bias: 0.2,
+  /** Flat receivers with |world y| below this (sea surface + swell) take no AO. */
+  seaBand: 0.35,
+  maxOcclusion: 0.55,
+  tint: '#B48C78',
+  fade: [200, 600] as const,
+  /** Max screen radius in half-res px (very close views). */
+  maxPx: 40,
+  samples: 12,
+  seed: 0.37,
+  /** Bilateral blur: depth tolerance as a fraction of the view distance. */
+  blurDepth: 0.04,
+  spare: [1.0, 2.0] as const,
+  night: 0.6,
+} as const;
+
+/**
+ * Cloud look v2 (TASK-608, D-183; medium + high, low keeps the TASK-153 gradient). Two-tone: the
+ * wrap light + height term is stepped (soft, `step` [lo, hi]) between the lit tone (`CLOUD.top` ×
+ * the day light) and the cool shade tone (`CLOUD.shade`, then `CLOUD.belly` lower down). Rim: a
+ * fresnel edge (`rimPower`) in `CLOUD.rim` × sun colour, `rim` by day, × `rimBack` when the sun
+ * is behind the cloud (golden / dusk backlight) and × `rimGolden` at golden hour, plus a silver
+ * lining (`lining`, sharpness `liningPower`) on edges right in front of the sun; `afterFog` of the
+ * rim is added after the fog so far backlit clouds keep their edge. A low sun warms the shade tone
+ * (`warmBelly` toward the sun colour). At night the rim follows the sky moon instead
+ * (`rimNight` × `CLOUD.rimNight` × moon visibility).
+ */
+export const CLOUD_LOOK = {
+  step: [0.4, 0.56] as const,
+  /** Shade tone weight of the height term vs the wrap light (0 = light only). */
+  heightWeight: 0.45,
+  rim: 0.22,
+  rimBack: 4.5,
+  rimGolden: 1.4,
+  rimPower: 3.5,
+  lining: 1.6,
+  liningPower: 10,
+  afterFog: 0.6,
+  warmBelly: 0.35,
+  rimNight: 0.55,
+} as const;
+
+/**
+ * High-tier sky (TASK-608, D-183): a `MAR_SKY_HQ` define on the sky / beam program (still one
+ * program, 0 extra); medium and low compile without it (pixel-identical).
+ * - Sun: a tight corona (`corona` strength, power) and a wide warm halo (`halo`) round the disc,
+ *   plus a screen-aligned lens glint: `glintRays` spikes, `glintLength` rad, `glintStrength` HDR,
+ *   fading with the overcast veil and the night.
+ * - Moon phases: lit side toward the sun, terminator ellipse c ∈ [-1 full … 1 new]. c follows a
+ *   cosine cycle of `cycleDays` game days (`dayLength` s each, on the render clock) from a seeded
+ *   start, kept inside `range` (never new: the W3 glitter streak and the cozy moon stay readable).
+ * - Stars by altitude: density × `densityHorizon` at the horizon → × `densityZenith` from
+ *   `zenithAt` (sin elevation) up; plus a faint fine layer (`fineCells` per rad, `fineDensity`,
+ *   `fineBrightness`) above `fineFrom` (sin elevation).
+ */
+export const SKY_HQ = {
+  corona: [0.45, 260] as const,
+  halo: [0.16, 5] as const,
+  haloColor: '#FFD9A8',
+  glintRays: 6,
+  glintLength: 0.09,
+  glintWidth: 0.0045,
+  glintStrength: 0.9,
+  moon: {
+    cycleDays: 8,
+    dayLength: 600,
+    range: [-1, 0.55] as const,
+  },
+  stars: {
+    densityHorizon: 0.85,
+    densityZenith: 2.1,
+    zenithAt: 0.7,
+    fineCells: 150,
+    fineDensity: 0.05,
+    fineBrightness: 0.55,
+    fineFrom: 0.12,
+  },
+} as const;
+
+/**
+ * Dusk / dawn god rays (TASK-608, D-183): high tier only — the effect is never built on medium /
+ * low. A half-res R8 march (`samples` taps from each pixel toward the sun's screen position over
+ * `density` of the way, `decay` per tap, `weight` per tap) counts open sky (depth = far) round the
+ * sun behind clouds and silhouettes; the composite adds `intensity` × sun colour × `tint` to the scene before
+ * bloom. Active while the sun's sin elevation is inside `elevation` [in0, in1, out0, out1], fading
+ * with the overcast veil and as the sun leaves the screen by `edge` (uv). The march is skipped
+ * (0 calls) while inactive.
+ */
+export const RAYS = {
+  samples: 32,
+  density: 1.0,
+  decay: 0.97,
+  weight: 0.07,
+  /** Light source: open sky within this screen radius (uv of the height) of the sun. */
+  sourceRadius: 0.1,
+  intensity: 1.2,
+  tint: '#FFC9A0',
+  elevation: [-0.05, 0.0, 0.2, 0.34] as const,
+  edge: 0.35,
+  /** Jitter of the march start (IGN with a fixed seed: same URL, same pixels). */
+  seed: 0.61,
+} as const;

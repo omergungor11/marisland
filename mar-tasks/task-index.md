@@ -598,7 +598,7 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 |----|------|-------|-----------|--------|-------------|
 | TASK-598 | Building variants v2: roof style × window layout × door × trims, `variants` 3 → 8, LOD1 silhouette kept, LOD0 tris ≤ ×1.25; gallery `buildings` | props | M | COMPLETED (D-160) | — |
 | TASK-599 | Vegetation + rock v2: 3 canopy silhouettes, per-island colour sets (`content/biomes.ts`), palm variants, 5 rock silhouettes + moss / strata, driftwood, kelp; far blobs follow the biome colour | props | M | COMPLETED (D-174) | — |
-| TASK-600 | Biome scatter rules: per-island variant weights, rock fields, flower meadow patches, path edges, lot hedges, garden plots; one world hash re-pin | worldgen | M | PENDING | TASK-598, TASK-599 |
+| TASK-600 | Biome scatter rules: per-island variant weights, rock fields, flower meadow patches, path edges, lot hedges, garden plots; one world hash re-pin | worldgen | M | COMPLETED (D-179; low L-pairs-hq 87 / 86 MB open) | TASK-598, TASK-599 |
 | TASK-601 | Boats + dock dressing v2: 3 hulls, per-island sail / hull sets, net / lobster pot / rope / ladder, buoy variants | props | S | COMPLETED (D-175) | TASK-598 |
 | TASK-602 | M47 QA | qa | S | PENDING (gallery half CONDITIONAL in `mar-docs/qa/wave2-2026-11-15.md`; world half after TASK-600) | TASK-600, TASK-601 |
 
@@ -616,15 +616,15 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
 | TASK-603 | Coast micro-landscapes per archetype: arch / stack clusters, tide-pool fields, dune ridges, kelp beds, cliff ledges, waterfall foot pools; one hash re-pin | worldgen | M | PENDING | TASK-600 |
-| TASK-604 | Coast kit geometry: rockArch, tidePoolField, duneGrass, kelp (wind + water tint), ledgeShrub | props + shader | S | PENDING | — |
+| TASK-604 | Coast kit geometry: rockArch, tidePoolField, duneGrass, kelp (wind + water tint), ledgeShrub | props + shader | S | DONE (D-180) | — |
 | TASK-605 | M48 QA | qa | S | PENDING | TASK-603, TASK-604 |
 
 ### M49 — High tier render
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-606 | High only: SSAO / GTAO pass + PCF soft shadows; medium wow pixel-identical; high programs ≤ 30 | shader | M | PENDING | TASK-594 |
+| TASK-606 | High only: SSAO / GTAO pass + PCF soft shadows; medium wow pixel-identical; high programs ≤ 30 | shader | M | COMPLETED (D-182; depth-only half-res AO EffectPass before tilt-shift, warm tint, sea masked, texel-snapped depth; 12-tap PCF + 0.5 u penumbra on high only; medium 10 frames 0 px diff; high +3 programs (max 27), +4 calls, +4 MB, W8 478 / 480 MB; open: PCSS contact hardening, wow-high set in TASK-607) | TASK-594 |
 | TASK-607 | `wow-high` set (`--quality=high --tag=high`) with `BUDGETS.high` assert, tier in the stats overlay, CI report-only | devops + engine | S | PENDING | TASK-606 |
-| TASK-608 | Sky + clouds v2: 3 cloud archetypes two-tone + rim (medium +≤ 2 calls), sun disc + halo, moon phases, star density, dusk god rays (high) | shader | M | PENDING | TASK-606 |
+| TASK-608 | Sky + clouds v2: 3 cloud archetypes two-tone + rim (medium +≤ 2 calls), sun disc + halo, moon phases, star density, dusk god rays (high) | shader | M | COMPLETED (D-183; stratus + wisp InstancedMeshes on the cloud material, MAR_CLOUD_V2 two-tone + backlit / moon rim on medium + high; cloud meshes skipped at T2+ (−3 calls); high MAR_SKY_HQ on the one sky program: corona, halo, glint, seeded moon phases, stars by altitude; own half-res depth-march god rays merged into the high final pass; medium +2 calls T0/T1, 0 programs, wow --assert 61/61; high W8 27 programs / 478 MB unchanged, rays frames 21; new shots W-sky-dusk / W-sky-moon) | TASK-606 |
 | TASK-609 | M49 QA | qa | S | PENDING | TASK-607, TASK-608 |
 | TASK-610 | Docs: ART_BIBLE §5 / §7 / §11 rows, ARCHITECTURE §8 table, FLEET.md bot identity, MEMORY handoff | docs | XS | PENDING | per milestone |

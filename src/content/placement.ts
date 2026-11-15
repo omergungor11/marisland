@@ -4,6 +4,7 @@
  */
 import type { ArchetypeId, IsletKind } from '../world/types.ts';
 import { Zone } from '../world/types.ts';
+import type { VariantPick } from './biome-scatter.ts';
 
 export interface PlacementRule {
   /** PROP_DEFS id. */
@@ -48,6 +49,8 @@ export interface PlacementRule {
   nearDist?: number;
   /** Placed before every other rule of the body (its rng fork index is unchanged): rows that must win their spots. */
   first?: boolean;
+  /** v2 defs (TASK-600): roll the island's variant list (content/biome-scatter.ts) instead of 0..variants − 1. */
+  pick?: VariantPick;
 }
 
 const {

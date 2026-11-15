@@ -12,6 +12,106 @@
 
 **Open.** Memory is untouched: L-pairs-hq 148.4 u reads 86 / 86 MB (props 53 MB: LOD0 groups 33.6, far merge 11.3, LOD1 5.7, near merge 2.2; canvas 17.8). A margin there needs a trim with a visual cost (MSAA, merge copies) or a smaller prop set. Clouds / whale draws sit outside a T1 ladder frustum too (not props, not touched). The merged meshes (`props:far` / `props:near`) still use their sphere test.
 
+## D-183: Sky + clouds v2: cloud archetypes and two-tone + rim on medium / high (same cloud program, +2 meshes); the high sky is a define on the one sky program; god rays are our own depth march merged into the high final pass (TASK-608) — 2026-11-15
+
+**Decision.** Medium and high get three cloud archetypes and a new cloud look; everything else is high only and is
+compiled or constructed only there. Low is untouched (no new mesh, no define).
+- **Archetypes** (`content/weather.ts` `CLOUD_LAYERS`, `render/clouds/cloud-geometry.ts`, `cloudLayers` in
+  `cloud-field.ts`): the TASK-153 cumulus stay as they are (field + horizon banks, shadow parity unchanged). Two new
+  InstancedMeshes on the same cloud material: stratus sheets (4–6 long flat lenses of squashed ellipsoids, 1050–1350 u
+  out, 95–150 u up, above the banks) and wisps (5–8 thin brush-stroke streaks, 420–900 u out, 150–215 u up). Static
+  (breathing only), no ground shadow, own rng forks (`clouds:stratus` / `clouds:wisps`), so no other stream moves.
+  Wisps carry `aShade` 1.6–2: above 1 the shader treats them as translucent (lit all over) — no new attribute.
+- **Look** (`MAR_CLOUD_V2` define on the cloud material for medium / high, numbers in `CLOUD_LOOK`, colours in
+  `palette.ts` `CLOUD`): a soft two-tone step (wrap light + height) between white and a cool lavender shade, the shade
+  warmed toward the sun colour by a low sun; a fresnel rim × sun colour that grows × 4.5 when the sun is behind the
+  cloud plus a silver lining right in front of it, 60 % of it added after the fog so far backlit clouds keep the edge;
+  at night a cool `#BFD4FF` rim from the sky moon (night clouds were flat navy blobs before, now they read). Still one
+  cloud program per quality (the define replaces the old source on medium / high, it adds none).
+- **Calls saved.** Every cloud mesh is now invisible (not drawn) once the tier fade has scaled it to 0 (T2+): before,
+  the three cumulus meshes still drew their banks at scale 0 (3 calls and ≈ 45k triangles on every close frame). Net
+  medium: T0 / T1 +2 calls, T2 / T3 −3 calls.
+- **High sky** (`SKY_HQ`): `MAR_SKY_HQ` compiled into the sky program on high. The dome and every beam material share
+  that program, so the define follows a module-level page quality set by `createSky` (it runs before any beam is
+  built; a quality switch reloads) — 0 extra programs. Sun corona + wide warm halo + a screen-aligned 6-spike lens
+  glint (camera axes from `viewMatrix`); moon phases as a terminator ellipse, c on a cosine cycle of 8 game days of
+  render time from a seeded start (`moonPhaseAt(seed, time)`), kept in [−1 full, 0.55] so the moon is never new (W3
+  glitter, cozy night); star density × 0.85 at the horizon → × 2.1 toward the zenith plus a faint fine star layer
+  above 7°.
+- **God rays** (`render/post/rays-effect.ts`, `RAYS`): not pmndrs `GodRaysEffect` — it renders a light-source mesh
+  into two extra targets, and W8 high sat at 478 / 480 MB. Ours: a half-res R8 target (0.5 MB at 1920×1080), 32 depth
+  taps from each pixel toward the sun's screen position counting open sky (depth = far) inside a soft disc round the
+  sun (a whole-sky source washed the frame warm in the first shots), IGN-jittered with a fixed seed. The composite is
+  merged into the high final pass ahead of bloom / grade / tone mapping (no extra pass). Active only for sun sin
+  elevation −0.05 … 0.34 with the sun in front of the camera and near the screen, fading with the overcast veil and in
+  debug-mask mode; while inactive the march is skipped (no call, its program is never even compiled).
+- **Cost** (SwiftShader, 1920×1080). Medium: +2 calls at T0 / T1 (W1 158 → 160, W11 201 → 203), −3 calls and
+  ≈ −45k triangles at T2+ (W9 181 → 178, W2 222 → 219), +12k triangles at T0 (stratus 2.2–2.5k, wisps 0.3–0.4k per
+  instance), 0 programs (max 17 / 20), gpuMemory max 192 / 200 MB; `wow --assert` 61 / 61 (max calls W15e 331 / 350).
+  High (subset of 11 frames, `--assert` green): programs 27 on W8 (unchanged; the march program only compiles where
+  rays run: W-sky-dusk / W-cable-dusk 21), W8 gpuMemory 478 / 480 MB (unchanged; the R8 target is allocated only
+  where rays ran, +0.5 MB there), +1 call while rays are active. Per active frame: 32 depth taps per half-res pixel and
+  one texture fetch per pixel in the final pass. Low: no define, no mesh, no pass — 0 differing pixels on 5 frames (W1, W4, W11, W-sky-dusk, W-sky-moon) against the pre-change build.
+- **Open.** Shafts are soft (a warm fan under occluders across the sun, not hard beams); fresnel seams show between
+  the cumulus spheres under the strong backlit / moon rim (read as puffy, kept); wisps are thin slivers at the W11
+  distance.
+
+## D-182: High-tier AO is our own depth-only pmndrs Effect, soft shadows are a high-only PCF chunk swap; medium builds neither (TASK-606) — 2026-11-15
+
+**Decision.** High gets a stylized screen-space AO pass and wider soft shadows. Medium and low are pixel-identical to
+main: the AO object is never constructed and the shadow chunk is never patched there (no uniform switches). Proof: 10
+medium wow frames (W1 + mask, W3, W8 + dt, W16, W-horseshoe-day / -quay / -dusk, W-lava-river-dusk) diffed against
+the pre-change build: 0 differing pixels.
+- **AO** (`render/post/ao-effect.ts`, numbers in `content/lighting.ts` `AO`): its own `EffectPass` between the
+  RenderPass and the tilt-shift pass, so tilt-shift and DOF soften it with the scene. Depth only: view positions from
+  the composer depth texture, normals rebuilt from depth (smaller-difference neighbour). We did not use pmndrs
+  `SSAOEffect` because it needs a `NormalPass`, which renders the scene a second time with an override material. That
+  doubles the calls and misses the props' wind and dither-fade vertex work (AO ghosts under faded instances). N8AO was
+  rejected as a new dependency with its own noise texture. Half-res AO (12 spiral taps, IGN rotation + `AO.seed`,
+  deterministic) → 2 × bilateral blur → depth-aware 4-tap upsample → multiply toward the warm `AO.tint`, capped at
+  `maxOcclusion` 0.55, spared on HDR emissives, × 0.6 at night, off in debug-mask mode. World radius = view distance
+  × 0.08 clamped to 2–8 u: a fixed 1.4 u radius gave a 2–3 px line at T1–T2. Linear range falloff: taps further than
+  the radius count nothing, so there is no halo. Cosine bias 0.2: flat facets get no acne.
+- **Two gotchas found in shots.** (1) The depth texture is nearest-filtered and a half-res pixel centre sits on a
+  full-res texel corner. Rounding flips row by row there, which gave banded normals: horizontal stripes over the sea
+  and distant ground. Fix: snap every depth lookup to the texel centre (`snapUv`). (2) Flat receivers within
+  |y| < `AO.seaBand` 0.35 (the sea and its swell) take no AO, which removes the dark rings round hulls and the
+  swell-trough bands.
+- **Soft shadows** (`render/lighting.ts` `softenPcf`, `SOFT_SHADOW`): penumbra 0.5 u (medium 0.3), PCF radius cap 9
+  texels (medium 5). r186's 5-tap Vogel PCF sum is replaced by a 12-tap loop (same IGN rotation) through a global
+  `ShaderChunk` edit. This is safe because the quality is fixed per page load (a quality switch reloads), and it
+  changes no program parameter. A unit test pins the regex to r186's chunk. `render/shadows.ts` is untouched.
+- **Cost, high** (SwiftShader, 1920×1080): +3 programs (AO, blur, AO EffectPass; W8 24 → 27, others 17 → 20,
+  ≤ 30 D-156), +4 draw calls (3 AO full-screen quads + the pass), +4 MB (two RG16F half-res targets). Per frame:
+  one full-res composite pass, 12 + 5 depth taps per half-res pixel, 2 × 5-tap blur. Contact hardening (PCSS) is not
+  done: it needs a raw-depth read of the shadow map, which r186's `sampler2DShadow` path does not expose.
+
+## D-180: Coast kit v2: `rockArch`, `tidePoolField`, `duneGrass`, `ledgeShrub` are new tail defs; kelp wind and water tint stay baked, no shader hook (TASK-604) — 2026-11-15
+
+**Decision.** Four new defs (`geo/coast-kit.ts`, tables in `content/biomes.ts`, `PropDef`s in `COAST_KIT_DEFS` at the very end of `ALL_DEFS`): no defId shifts, no world hash moves (nothing places them until TASK-603). `rockArch`: a noisy tube swept along a leg - ellipse - leg path (fatter at the feet, strata bands + pale line, wet dark foot, moss cap on v1), v0 sea arch / v1 low mossy bridge / v2 double arch. `tidePoolField`: rock shelf + three rim-ringed pools (turquoise `TINT.pool` discs), starfish, urchins, weed; v0 grey / v1 sandstone / v2 basalt shelf. `duneGrass`: arched double-sided blades with sand-cured colours, v0 marram, v1 sea oats with seed heads, v2 low mat on a sand hump. `ledgeShrub`: biome colours (`BIOMES[...].deciduous` + `flowers`), `SHAPES.ledgeShrub = 3`, variant = `biomeIndex * 3 + shape` (24 variants, `themeVariants('ledgeShrub', theme)`, `rollVariants` 3). `kelp` (TASK-599) is reused: same 3 variants / heights, only the blade colours changed (`KELP.blades` base pulled toward lagoon teal, tip lifted).
+
+**Why no shader hook.** The prop vertex path already sways any vertex with a `wind` weight (`windy` flag + height ramp) and kelp has both; the water tint is the baked vertex colour (the seabed props are drawn through the translucent water, there is no per-def underwater tint in the batcher). Programs: unchanged (no new material or program).
+
+**Tris (LOD0 / LOD1).** rockArch 394/104, 394/104, 746/192 (budget 800); tidePoolField 467/63 x3 (500); duneGrass 216/24, 176/20, 216/32 (250); ledgeShrub 242/18, 201/20, 292/20 per biome (350); kelp unchanged 80/12, 112/12, 108/8.
+
+**Contract for TASK-603 (worldgen).** Ids `rockArch`, `tidePoolField`, `duneGrass`, `ledgeShrub` (kelp existing). Pivots: all on the ground at the group centre, y = terrain height (kelp: seabed, `underwater` flag). Flags: rockArch / tidePoolField `grounded` (tier 1 / 2), duneGrass / ledgeShrub `grounded | windy` (tier 2), kelp `windy | underwater` (tier 3). `rockArch`: the opening runs along local x (bbox 5.4 / 5.7 / 7.0 u wide for v0 / v1 / v2 incl. the small arch, about 3 u deep in z); rotate by yaw so the opening faces the sea; place it on the shoreline with the feet at the waterline (the feet are 0.3 u rubble, clamped at y 0); footprint ~3.6 u. `tidePoolField`: 5.6 u wide (bbox), 0.58 u high, ground-flat shelf: put it on a flat, wet shore sand / rock cell at the waterline, never underwater (the pool discs sit at y 0.28). `duneGrass`: rolls a variant 0..2 freely; a clump is 1.2 u wide; scatter on dune / beach sand above the wet line. `ledgeShrub`: the back is flat toward local -z, growth toward +z: yaw it so -z points into the cliff wall, y = ledge top; variants `biomeVariant('ledgeShrub', theme, shape)` for the island colour, `themeVariants` for a block, 3 shapes (hump 0.8 u, cascading tuft 0.84 u over the lip, sapling 1.17 u).
+
+**Gallery.** `?gallery=1&ids=coast` / `pnpm exec tsx scripts/gallery-shots.ts coast --port=N` -> `shots/gallery-coast/` (grids + fitted closes; kelp over the turquoise floor).
+
+**Open.** Arch rock reads blue-grey under the gallery rig (ROCK strata, same as boulders); the double-arch small span is a plain scaled copy. Kelp sway amplitude is the shared wind amplitude (no slower, larger underwater sway). No LOD cross-check at world scale until placed.
+
+## D-179: Biome scatter — old scatter defs swap to the v2 defs per island, biome layers on their own forks, harbour boats / dock dressing in the prop store, T0 blobs coloured from the v2 geometry (TASK-600) — 2026-11-15
+
+**Decision.** Per-island table `content/biome-scatter.ts` (`BIOME_SCATTER`). A `swap` turns an old def's scatter placements into a v2 def on that island: same Poisson points, same roll count, and the occupancy test keeps the old def's footprint (`share` < 1 costs one extra roll). Each island has variant lists (`picks`; a repeated variant is its weight), built with `biomeVariant`, `boulderVariant` and `boatVariant`. HQ: roundTree → canopyTree (fruit orchard, oval + umbrella; the planned avenue keeps roundTree), bush → floraBush, rockCluster → moss boulder. Marketing: roundTree → orange canopyTree. Coding: bush → floraBush, rockCluster → lichen boulder (its wreathed planned round trees stay). DevOps: bush → ember floraBush. QA: palm → mint leanPalm, plus the bush and rock swaps. Design: 30 % of the pines → lilac layered canopyTree, plus the rock and bush swaps. Research: roundTree → cypress canopyTree. `BIOME_RULES` run after every global and theme rule on `rng.fork('biome-props', island, rule)`: rock fields (clustered boulders), flower meadow patches (dense `flower` ground cover + floraBush pockets; not on HQ), path edges (grass tufts + small boulders, `near: path`), driftLog, and kelp (shallow zone, seabed pivot). Two passes run after the talus (`world/gen/biome-scatter.ts`). Lot edges (`fork('lot-edges', lot)`): floraBush hedges at the back corners and back middle of cottage / tower-house / log-cabin lots, and a flowerBed garden plot behind. Harbours (`fork('harbour', dock)`): up to 2 `harbourBoat` per pier in the free side slots, parallel to the pier, bow seaward, y = 0, clear of the life moorings, boat routes and seamarks; `dockDressing` on the deck at y 0.7, on the side away from the barrels, with the ladder at the deck edge over water ≥ 0.5 u. The boats are props, not `world.moorings` (life reads only rowboat / sailboat moorings). Also: `PlacementRule.pick` added; the `boulder` def / registry variants go 15 → 120 (TASK-680's per-island moss sets); `canopyKindOf` maps leanPalm → palm; `THEMES[*].treePalette = themeTreePalette(theme)`, which is the biome ramp on the kinds a v2 def replaced and FOLIAGE on kinds still drawn by the stock pine / palm / round tree.
+
+**Why the batcher change.** Switching `treePalette` alone left the far blobs off (blob test ΔE p95 10.7 on seed 1): the ramp ratio over the roundTree reference misses the canopy dots and the shape shading. Now a kind drawn by a v2 def on an island takes its blob colour from that def's geometry, area-weighted over the island's picks (`biomeCanopy`), and gets its own class (`${theme}:v2`). One colour per (island, kind) means an island's shapes must agree. The HQ layered and Design oval canopies sat 6.8 / 9.3 ΔE off their mix, so they are left out.
+
+**Memory.** Every distinct (def, variant) adds a LOD0 + LOD1 geometry for the whole world (+≈ 1 MB store-level). So each island rolls one floraBush shape and one boat hull, QA one palm shape, Research one canopy, and the world shares one or two kelp / driftLog variants.
+
+**Result.** World hashes re-pinned once (props stage + bits only; sites, routes and height are unchanged, so TASK-598's cottage variety holds). wow 58 / 58 on medium: W15e 329 → 328 / 350 calls, W16 317 → 320, W15c 327 → 323 calls and 868k → 870k / 950k tris, W1 158 → 160. Low ladder: L-coding passes (max 119 calls, 86 MB). L-pairs-marketing max 175 / 176 calls (178 on main, so its call miss is gone); the pre-existing pair-45 blob 0.6 % > 0.5 % remains (TASK-678). L-pairs-hq fails one rung: 148.4 u at 87 MB > 86 (main 86); every other rung is ≤ 86, main +1–2 MB.
+
+**Open.** L-pairs-hq low memory (above): props +1.3 MB over main at the 148.4 u rung. This needs a budget decision (`BUDGETS.low.gpuMemoryMB` 86 → 88) or deeper cuts (harbour boats / dressing, rock fields, HQ swaps). Marketing canopies read crimson from W1 (orange ramp + red dots: a geometry colour, props). QA's rim row is only 3–5 leanPalms (short since TASK-539), so mint barely shows in W1. Coding keeps FOLIAGE (its wreaths are fitted to roundTree). driftLog finds few spots (0–2 per island). Kelp blades break the surface off the Colour Wharf. TASK-603 adds the kelp beds and coast kits on the same files.
+
 ## D-178: Bot proof shots v2 — `bots=looks|eyes|muster`, hatless heads, working-eye squares, reduced-motion sparkles (TASK-677) — 2026-11-15
 
 **Decision.** A mock fleet only binds the live sessions (2–5 per island, ≈ 1–3 running) and they sit under pergola roofs, so no sim-driven

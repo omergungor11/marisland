@@ -3,7 +3,7 @@ import type { Scope } from '../../core/scope.ts';
 import type { Quality } from '../../core/params.ts';
 import type { EnvState } from '../../env/env-state.ts';
 import { unitHash } from '../../core/hash.ts';
-import { BEAM, COMET, FOG, METEORS, SKY } from '../../content/lighting.ts';
+import { BEAM, COMET, FOG, METEORS, SKY, SKY_HQ } from '../../content/lighting.ts';
 import { SHARED } from '../uniforms.ts';
 import type { CultureState } from '../culture-clock.ts';
 import { SKY_FRAG, SKY_VERT } from './sky.glsl.ts';
@@ -68,6 +68,59 @@ const CONST_U = {
   uConstTex: { value: null as THREE.DataTexture | null },
 };
 
+/**
+ * High-tier sky uniforms (TASK-608, D-183), shared by every sky-program material like CONST_U (the
+ * dome and the beams must agree). Read only under `MAR_SKY_HQ`; `uMoonPhase` is written by the
+ * dome's update (seeded cosine cycle on the render clock).
+ */
+const HQ_U = {
+  uSunHq: {
+    value: new THREE.Vector4(SKY_HQ.corona[0], SKY_HQ.corona[1], SKY_HQ.halo[0], SKY_HQ.halo[1]),
+  },
+  uSunHaloColor: { value: new THREE.Color(SKY_HQ.haloColor) },
+  uGlint: {
+    value: new THREE.Vector4(
+      SKY_HQ.glintRays,
+      SKY_HQ.glintLength,
+      SKY_HQ.glintWidth,
+      SKY_HQ.glintStrength,
+    ),
+  },
+  uMoonPhase: { value: 0 },
+  uStarHq: {
+    value: new THREE.Vector4(
+      SKY_HQ.stars.densityHorizon,
+      SKY_HQ.stars.densityZenith,
+      SKY_HQ.stars.zenithAt,
+      SKY_HQ.stars.fineFrom,
+    ),
+  },
+  uStarFine: {
+    value: new THREE.Vector3(
+      SKY_HQ.stars.fineCells,
+      SKY_HQ.stars.fineDensity,
+      SKY_HQ.stars.fineBrightness,
+    ),
+  },
+};
+
+/**
+ * Quality of the sky program for this page load (set by `createSky`, which runs before any beam
+ * is built; a quality switch reloads). High compiles `MAR_SKY_HQ` into the dome AND every beam
+ * material, so they keep sharing one program.
+ */
+let programQuality: Quality = 'medium';
+
+/**
+ * Moon phase (pure, TASK-608): terminator c ∈ SKY_HQ.moon.range (−1 full … 1 new) on a cosine
+ * cycle of `cycleDays` game days of render time, from a seeded start.
+ */
+export function moonPhaseAt(seed: number, time: number): number {
+  const M = SKY_HQ.moon;
+  const u = unitHash(seed, 0, 0x4d4f) + time / (M.cycleDays * M.dayLength);
+  return M.range[0] + (M.range[1] - M.range[0]) * (0.5 - 0.5 * Math.cos(u * Math.PI * 2));
+}
+
 /** The world grid's shore SDF (world-textures.ts `sdf`, R > 0 on land) and its `uGridMap`. */
 export interface BeamLand {
   sdf: THREE.Texture;
@@ -90,7 +143,7 @@ export function createSkyProgramMaterial(
     /** TASK-549: fade the cone over land (shore SDF + its grid mapping); unset = no fade. */
     land?: BeamLand;
   } = {},
-  quality: Quality = 'medium',
+  quality: Quality = programQuality,
 ): THREE.ShaderMaterial {
   const isBeam = mode === 'beam';
   const stars = SKY.stars[quality];
@@ -98,6 +151,7 @@ export function createSkyProgramMaterial(
     name: isBeam ? 'mar-beam' : 'mar-sky',
     vertexShader: SKY_VERT,
     fragmentShader: SKY_FRAG,
+    defines: programQuality === 'high' ? { MAR_SKY_HQ: '' } : {},
     side: THREE.BackSide,
     depthWrite: false,
     depthTest: isBeam,
@@ -166,6 +220,7 @@ export function createSkyProgramMaterial(
       uMeteorLook: { value: new THREE.Vector3(METEORS.widthDeg * DEG, METEORS.intensity, 0) },
       uMeteorColor: { value: new THREE.Color(METEORS.color) },
       ...CONST_U,
+      ...HQ_U,
       uBeamColor: { value: new THREE.Color(BEAM.color) },
       uBeamMotion: {
         value: new THREE.Vector4(
@@ -290,6 +345,7 @@ export function createSky(
   seed = 0,
   islands: readonly Pick<IslandData, 'theme' | 'cx' | 'cz'>[] = [],
 ): SkyView {
+  programQuality = quality;
   const fog = new THREE.FogExp2(0xd6eef7, FOG.density);
   // culture constellations (TASK-491): glyph caps from the world layout + the glyph data texture
   const tex = scope.add(
@@ -359,6 +415,7 @@ export function createSky(
       fog.density = SHARED.uFogDensity.value;
       (scene.background as THREE.Color).setRGB(env.fog.r, env.fog.g, env.fog.b);
       mesh.position.copy(cameraPos);
+      HQ_U.uMoonPhase.value = moonPhaseAt(seed, time);
       // comet: the Star Academy's Comet Night ritual phase (culture clock), night only
       const fest = culture?.festival.research;
       const phase = fest && fest.id === 'cometNight' ? fest.phase : -1;

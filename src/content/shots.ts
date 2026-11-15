@@ -2970,6 +2970,33 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     height: 1080,
     sets: ['wow'],
   },
+  // TASK-608 sky v2: the low sun and the pre-dawn moon from the west side of the archipelago,
+  // looking west-north-west over the sea (sun disc, halo, glint, god rays on high; moon phase +
+  // stars by altitude on high; stratus sheets, wisps and cloud rims on medium / high)
+  {
+    id: 'W-sky-dusk',
+    title: 'Sky Dusk',
+    seed: 1001,
+    cam: '60,24,40,349.8,34.5,117.7',
+    time: 18.9,
+    simt: 5,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
+  {
+    id: 'W-sky-moon',
+    title: 'Sky Moon',
+    seed: 1001,
+    cam: '60,24,40,345.8,73.5,116.6',
+    time: 4.25,
+    simt: 5,
+    quality: 'medium',
+    width: 1920,
+    height: 1080,
+    sets: ['wow'],
+  },
   // TASK-677 bot proof shots (retires F-bot-lineup): QA bots on open ground W of the Coding solar field
   // (plaza + (-40.3, 28.6) = -150.5, 178.2, ground 8.3), a low front camera (pitch 25-40 deg). `bots=` picks the staging.
   ...(

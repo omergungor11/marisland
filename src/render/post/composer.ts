@@ -17,13 +17,19 @@ import type { EnvState } from '../../env/env-state.ts';
 import { LIGHTING } from '../../content/palette.ts';
 import { NIGHT, POST } from '../../content/lighting.ts';
 import { SHARED } from '../uniforms.ts';
+import { MarAOEffect } from './ao-effect.ts';
 import { MarGradeEffect } from './grade-effect.ts';
+import { MarRaysEffect } from './rays-effect.ts';
 import { bandOffset, zoomBlurAt } from './zoom-blur.ts';
 
 /**
  * pmndrs post chain (ARCHITECTURE §3 "Post", ART_BIBLE §3). Passes:
  *   medium: Render → [TiltShift + Bloom + Grade + ToneMapping NEUTRAL] → [FXAA]
- *   high:   Render(MSAA×4) → [TiltShift] → [DOF, enabled at T3 only] → [Bloom + Grade + ToneMapping]
+ *   high:   Render(MSAA×4) → [AO] → [TiltShift] → [DOF, enabled at T3 only] → [Rays + Bloom + Grade + ToneMapping]
+ * AO (TASK-606, D-182): high only, its own pass before the blurs so tilt-shift / DOF soften it with
+ * the scene; medium builds no AO object at all (pixel-identical, not a disabled uniform).
+ * Rays (TASK-608, D-183): dusk / dawn god rays, high only, merged into the final pass (its half-res
+ * march runs only while the low sun is on screen); medium / low never build it.
  * Bloom: mipmap blur, gated so only emissives / sun disc / glints bloom. At night
  * (SHARED.uSkyNight.z) intensity rises × NIGHT.bloomBoost and the threshold drops to
  * NIGHT.bloomThreshold so windows, lanterns, moon and the beam flare glow (TASK-171).
@@ -98,9 +104,13 @@ export function createPostChain(
   const grade = new MarGradeEffect();
   const tone = new ToneMappingEffect({ mode: ToneMappingMode.NEUTRAL });
   if (dofPass) {
-    // high: tilt-shift must precede DOF, so it gets its own pass
+    // high: AO on the sharp scene, then tilt-shift (must precede DOF) in its own pass
+    composer.addPass(
+      new EffectPass(camera, new MarAOEffect(camera)),
+      composer.passes.indexOf(dofPass),
+    );
     composer.addPass(new EffectPass(camera, tilt), composer.passes.indexOf(dofPass));
-    composer.addPass(new EffectPass(camera, bloom, grade, tone));
+    composer.addPass(new EffectPass(camera, new MarRaysEffect(camera), bloom, grade, tone));
   } else {
     // medium: one merged pass; tilt first so bloom is added on top of the band blur
     composer.addPass(new EffectPass(camera, tilt, bloom, grade, tone));

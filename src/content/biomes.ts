@@ -115,6 +115,8 @@ export const SHAPES = {
   leanPalm: 3,
   /** 0 tall mound with flower sprays, 1 low spreading mound. */
   floraBush: 2,
+  /** 0 windswept hump, 1 cascading tuft over the lip, 2 twisted sapling shrub (TASK-604). */
+  ledgeShrub: 3,
 } as const;
 export type BiomeDef = keyof typeof SHAPES;
 
@@ -138,6 +140,7 @@ export const BIOME_DEF_VARIANTS: Readonly<Record<BiomeDef, number>> = {
   canopyTree: SHAPES.canopyTree * BIOME_IDS.length,
   leanPalm: SHAPES.leanPalm * BIOME_IDS.length,
   floraBush: SHAPES.floraBush * BIOME_IDS.length,
+  ledgeShrub: SHAPES.ledgeShrub * BIOME_IDS.length,
 };
 
 /** The theme's `treePalette` once its biome variants are placed (same shape as FOLIAGE). */
@@ -228,13 +231,55 @@ export const BUOY_V2 = {
 /** `kelp` (tier 3, windy, water-tinted) and `driftLog` (tier 3). */
 export const KELP = {
   variants: 3,
-  /** Blade colours bottom -> tip, water tinted (palette seaweed + lagoon). */
-  blades: ['#2E7F66', '#3E9A6A', '#6FBF7A'],
+  /** Blade colours bottom -> tip, water tinted (D-180: base pulled toward the lagoon teal, tip lifted so it reads through the water). */
+  blades: ['#2B7C78', '#3E9A6A', '#7FCF88'],
   heights: [1.8, 1.1, 2.4],
 } as const;
 export const DRIFT_LOG = { variants: 3, heights: [0.52, 0.55, 0.42] } as const;
 
-/** Gallery showcases (`?gallery=1&ids=vegetation|boats`, scripts/gallery-shots.ts). */
+// ------------------------------------------------------------------ coast kit (TASK-604, D-180)
+
+/** `rockArch` (tier 1, grounded): 0 sea arch, 1 low mossy bridge, 2 double arch. Pivot = ground centre of the span. */
+export const ROCK_ARCH = {
+  variants: 3,
+  /** Half span between the leg axes, leg height under the springing line, vertical stretch of the arc, lintel radius. */
+  span: [1.7, 2.1, 1.5],
+  leg: [1.3, 0.6, 1.5],
+  rise: [1.15, 0.7, 1.2],
+  tube: [0.72, 0.62, 0.62],
+  heights: [3.95, 2.6, 3.8],
+  /** Moss on the cap of variant 1 (palette GRASS shade pair). */
+  moss: ['#7BC950', '#5FAE45'],
+  /** Wet foot band: below this y the rock is darkened toward `wet`. */
+  wetY: 0.35,
+  wet: '#4F5666',
+} as const;
+
+/** `tidePoolField` (tier 2, grounded): a rock shelf with 3 pools; rock tint per variant (grey / sandstone / basalt). */
+export const TIDE_POOL_FIELD = {
+  variants: 3,
+  rock: [
+    ['#A9AEB8', '#8A909C', '#666C7A'],
+    ['#E3C79A', '#C9A56F', '#A8845A'],
+    ['#6E6A80', '#524E64', '#3E3A4E'],
+  ],
+  creatures: ['#F2765A', '#F5C84C', '#C77FCB', '#E9F0F4'],
+  heights: [0.58, 0.58, 0.58],
+} as const;
+
+/** `duneGrass` (tier 2, grounded + windy): 0 marram clump, 1 sea oats with seed heads, 2 low mat on a sand hump. */
+export const DUNE_GRASS = {
+  variants: 3,
+  /** Blade colours root -> tip (sun-bleached, sand-cured). */
+  blades: ['#8DB85A', '#C3D47A', '#EAE2A2'],
+  seed: '#D9B866',
+  heights: [0.75, 1.55, 0.55],
+} as const;
+
+/** `ledgeShrub` heights per shape (def `heights` cycles these over the island blocks). Pivot on the ledge, back to -z. */
+export const LEDGE_SHRUB = { heights: [0.8, 0.84, 1.17] } as const;
+
+/** Gallery showcases (`?gallery=1&ids=vegetation|boats|coast`, scripts/gallery-shots.ts). */
 export const VEGETATION_SHOWCASE_IDS: readonly string[] = [
   'canopyTree',
   'leanPalm',
@@ -242,5 +287,12 @@ export const VEGETATION_SHOWCASE_IDS: readonly string[] = [
   'boulder',
   'kelp',
   'driftLog',
+];
+export const COAST_SHOWCASE_IDS: readonly string[] = [
+  'rockArch',
+  'tidePoolField',
+  'duneGrass',
+  'kelp',
+  'ledgeShrub',
 ];
 export const BOAT_SHOWCASE_IDS: readonly string[] = ['harbourBoat', 'dockDressing', 'buoy'];
