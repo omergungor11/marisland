@@ -42,6 +42,11 @@ const BUDGET: Record<string, number> = {
   driftLog: 150,
   harbourBoat: 600,
   dockDressing: 300,
+  // TASK-604 (D-180) coast kit
+  rockArch: 800,
+  tidePoolField: 500,
+  duneGrass: 250,
+  ledgeShrub: 350,
 };
 const V2_IDS = Object.keys(BUDGET);
 

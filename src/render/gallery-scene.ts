@@ -16,7 +16,11 @@ import { CODING_M33_PROP_IDS } from '../content/props-themes/coding-m33.ts';
 import { QA_COASTER_PROP_IDS } from '../content/props-themes/qa-coaster.ts';
 import { LUNA_PROP_IDS } from '../content/props-themes/marketing-luna.ts';
 import { M20_PROP_IDS } from '../content/props-themes/m20.ts';
-import { BOAT_SHOWCASE_IDS, VEGETATION_SHOWCASE_IDS } from '../content/biomes.ts';
+import {
+  BOAT_SHOWCASE_IDS,
+  COAST_SHOWCASE_IDS,
+  VEGETATION_SHOWCASE_IDS,
+} from '../content/biomes.ts';
 import { M22_MARKETING_PROP_IDS } from '../content/themes/marketing.ts';
 import type { CameraWorld } from '../camera/controls.ts';
 import type { TestScene } from './test-scene.ts';
@@ -44,6 +48,7 @@ function showcaseIds(): readonly string[] | undefined {
   if (raw === 'luna') return LUNA_PROP_IDS;
   if (raw === 'vegetation') return VEGETATION_SHOWCASE_IDS;
   if (raw === 'boats') return BOAT_SHOWCASE_IDS;
+  if (raw === 'coast') return COAST_SHOWCASE_IDS;
   return raw === 'm20' ? M20_PROP_IDS : raw.split(',');
 }
 

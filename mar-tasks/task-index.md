@@ -616,7 +616,7 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
 | TASK-603 | Coast micro-landscapes per archetype: arch / stack clusters, tide-pool fields, dune ridges, kelp beds, cliff ledges, waterfall foot pools; one hash re-pin | worldgen | M | PENDING | TASK-600 |
-| TASK-604 | Coast kit geometry: rockArch, tidePoolField, duneGrass, kelp (wind + water tint), ledgeShrub | props + shader | S | PENDING | — |
+| TASK-604 | Coast kit geometry: rockArch, tidePoolField, duneGrass, kelp (wind + water tint), ledgeShrub | props + shader | S | DONE (D-180) | — |
 | TASK-605 | M48 QA | qa | S | PENDING | TASK-603, TASK-604 |
 
 ### M49 — High tier render

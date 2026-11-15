@@ -44,6 +44,11 @@ describe('PROP_DEFS_BUILDINGS', () => {
       // TASK-601 (D-175): harbourBoat / dockDressing, same file
       'harbourBoat',
       'dockDressing',
+      // TASK-604 (D-180): coast kit, same file
+      'rockArch',
+      'tidePoolField',
+      'duneGrass',
+      'ledgeShrub',
       // M14b theme structures are covered by content/props-themes (their own PropDefs)
       ...THEME_GEO.map((d) => d.id),
       // M51 courier ships / crates / scrolls are life-driven, never scattered (no PropDef)

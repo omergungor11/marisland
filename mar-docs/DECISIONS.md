@@ -2,6 +2,20 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-180: Coast kit v2: `rockArch`, `tidePoolField`, `duneGrass`, `ledgeShrub` are new tail defs; kelp wind and water tint stay baked, no shader hook (TASK-604) — 2026-11-15
+
+**Decision.** Four new defs (`geo/coast-kit.ts`, tables in `content/biomes.ts`, `PropDef`s in `COAST_KIT_DEFS` at the very end of `ALL_DEFS`): no defId shifts, no world hash moves (nothing places them until TASK-603). `rockArch`: a noisy tube swept along a leg - ellipse - leg path (fatter at the feet, strata bands + pale line, wet dark foot, moss cap on v1), v0 sea arch / v1 low mossy bridge / v2 double arch. `tidePoolField`: rock shelf + three rim-ringed pools (turquoise `TINT.pool` discs), starfish, urchins, weed; v0 grey / v1 sandstone / v2 basalt shelf. `duneGrass`: arched double-sided blades with sand-cured colours, v0 marram, v1 sea oats with seed heads, v2 low mat on a sand hump. `ledgeShrub`: biome colours (`BIOMES[...].deciduous` + `flowers`), `SHAPES.ledgeShrub = 3`, variant = `biomeIndex * 3 + shape` (24 variants, `themeVariants('ledgeShrub', theme)`, `rollVariants` 3). `kelp` (TASK-599) is reused: same 3 variants / heights, only the blade colours changed (`KELP.blades` base pulled toward lagoon teal, tip lifted).
+
+**Why no shader hook.** The prop vertex path already sways any vertex with a `wind` weight (`windy` flag + height ramp) and kelp has both; the water tint is the baked vertex colour (the seabed props are drawn through the translucent water, there is no per-def underwater tint in the batcher). Programs: unchanged (no new material or program).
+
+**Tris (LOD0 / LOD1).** rockArch 394/104, 394/104, 746/192 (budget 800); tidePoolField 467/63 x3 (500); duneGrass 216/24, 176/20, 216/32 (250); ledgeShrub 242/18, 201/20, 292/20 per biome (350); kelp unchanged 80/12, 112/12, 108/8.
+
+**Contract for TASK-603 (worldgen).** Ids `rockArch`, `tidePoolField`, `duneGrass`, `ledgeShrub` (kelp existing). Pivots: all on the ground at the group centre, y = terrain height (kelp: seabed, `underwater` flag). Flags: rockArch / tidePoolField `grounded` (tier 1 / 2), duneGrass / ledgeShrub `grounded | windy` (tier 2), kelp `windy | underwater` (tier 3). `rockArch`: the opening runs along local x (bbox 5.4 / 5.7 / 7.0 u wide for v0 / v1 / v2 incl. the small arch, about 3 u deep in z); rotate by yaw so the opening faces the sea; place it on the shoreline with the feet at the waterline (the feet are 0.3 u rubble, clamped at y 0); footprint ~3.6 u. `tidePoolField`: 5.6 u wide (bbox), 0.58 u high, ground-flat shelf: put it on a flat, wet shore sand / rock cell at the waterline, never underwater (the pool discs sit at y 0.28). `duneGrass`: rolls a variant 0..2 freely; a clump is 1.2 u wide; scatter on dune / beach sand above the wet line. `ledgeShrub`: the back is flat toward local -z, growth toward +z: yaw it so -z points into the cliff wall, y = ledge top; variants `biomeVariant('ledgeShrub', theme, shape)` for the island colour, `themeVariants` for a block, 3 shapes (hump 0.8 u, cascading tuft 0.84 u over the lip, sapling 1.17 u).
+
+**Gallery.** `?gallery=1&ids=coast` / `pnpm exec tsx scripts/gallery-shots.ts coast --port=N` -> `shots/gallery-coast/` (grids + fitted closes; kelp over the turquoise floor).
+
+**Open.** Arch rock reads blue-grey under the gallery rig (ROCK strata, same as boulders); the double-arch small span is a plain scaled copy. Kelp sway amplitude is the shared wind amplitude (no slower, larger underwater sway). No LOD cross-check at world scale until placed.
+
 ## D-178: Bot proof shots v2 — `bots=looks|eyes|muster`, hatless heads, working-eye squares, reduced-motion sparkles (TASK-677) — 2026-11-15
 
 **Decision.** A mock fleet only binds the live sessions (2–5 per island, ≈ 1–3 running) and they sit under pergola roofs, so no sim-driven

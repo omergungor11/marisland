@@ -89,7 +89,12 @@ import {
   HARBOUR_BOAT,
   HARBOUR_BOAT_VARIANTS,
   KELP,
+  DUNE_GRASS,
+  LEDGE_SHRUB,
+  ROCK_ARCH,
+  TIDE_POOL_FIELD,
 } from '../content/biomes.ts';
+import { duneGrass, ledgeShrub, rockArch, tidePoolField } from './coast-kit.ts';
 import { dockDressing, harbourBoat, withBuoyV2 } from './boats-v2.ts';
 import {
   CANOPY_HEIGHTS,
@@ -353,6 +358,29 @@ defs.push(
     cycleH(HARBOUR_BOAT_VARIANTS, HARBOUR_BOAT.height),
   ),
   D('dockDressing', DOCK_DRESSING.names.length, dockDressing, 0.7, 1, false, DOCK_DRESSING.height),
+);
+// TASK-604 (D-180): coast kit, appended after the v2 defs (kelp itself is the TASK-599 def above)
+defs.push(
+  D('rockArch', ROCK_ARCH.variants, rockArch, 3.6, 4, false, ROCK_ARCH.heights),
+  D(
+    'tidePoolField',
+    TIDE_POOL_FIELD.variants,
+    tidePoolField,
+    2.8,
+    0.45,
+    false,
+    TIDE_POOL_FIELD.heights,
+  ),
+  D('duneGrass', DUNE_GRASS.variants, duneGrass, 0.7, 1.5, true, DUNE_GRASS.heights),
+  D(
+    'ledgeShrub',
+    BIOME_DEF_VARIANTS.ledgeShrub,
+    ledgeShrub,
+    0.9,
+    0.9,
+    true,
+    cycleH(BIOME_DEF_VARIANTS.ledgeShrub, LEDGE_SHRUB.heights),
+  ),
 );
 
 // M31 (TASK-533): the shared harbour kit adds variants to five old defs

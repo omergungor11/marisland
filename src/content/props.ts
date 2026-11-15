@@ -8,6 +8,9 @@ import {
   BIOME_DEF_VARIANTS,
   BOULDER_VARIANTS,
   DOCK_DRESSING,
+  DUNE_GRASS,
+  ROCK_ARCH,
+  TIDE_POOL_FIELD,
   DRIFT_LOG,
   HARBOUR_BOAT_VARIANTS,
   KELP,
@@ -222,6 +225,50 @@ const VEGETATION_V2_DEFS: readonly PropDef[] = [
 ];
 
 /**
+ * TASK-604 (D-180): coast kit, appended after the v2 defs (the `kelp` def is TASK-599's). Nothing
+ * places these until TASK-603; the placement contract is in D-180.
+ */
+const COAST_KIT_DEFS: readonly PropDef[] = [
+  // sea arch / low mossy bridge / double arch; pivot = ground centre of the span, the opening runs along x
+  {
+    id: 'rockArch',
+    geo: 'rockArch',
+    tier: 1,
+    variants: ROCK_ARCH.variants,
+    footprint: 2.2,
+    flags: grounded,
+  },
+  // a rock shelf with three pools, pivot at its centre; stands on the shore (not underwater)
+  {
+    id: 'tidePoolField',
+    geo: 'tidePoolField',
+    tier: 2,
+    variants: TIDE_POOL_FIELD.variants,
+    footprint: 2.6,
+    flags: grounded,
+  },
+  // marram / sea oats / low mat; windy blades, sand dunes
+  {
+    id: 'duneGrass',
+    geo: 'duneGrass',
+    tier: 2,
+    variants: DUNE_GRASS.variants,
+    footprint: 0.5,
+    flags: grounded | windy,
+  },
+  // variant = biomeIndex * 3 + shape; back flat to -z (the wall), growing toward +z
+  {
+    id: 'ledgeShrub',
+    geo: 'ledgeShrub',
+    tier: 2,
+    variants: BIOME_DEF_VARIANTS.ledgeShrub,
+    rollVariants: SHAPES.ledgeShrub,
+    footprint: 0.6,
+    flags: grounded | windy,
+  },
+];
+
+/**
  * Vegetation/rocks first (scatter indices stay stable), then buildings/landmarks/decor, then the
  * M14b theme structures (content/props-themes/<theme>.ts) in fixed theme order.
  */
@@ -283,6 +330,8 @@ const ALL_DEFS: readonly PropDef[] = [
   ...MARKETING_LUNA_PROP_DEFS,
   // ==== TASK-599 / TASK-601 (D-174 / D-175): vegetation, rock, shore and boat v2 ====
   ...VEGETATION_V2_DEFS,
+  // ==== TASK-604 (D-180): coast kit (rockArch, tidePoolField, duneGrass, ledgeShrub) ====
+  ...COAST_KIT_DEFS,
 ];
 
 /**
