@@ -110,13 +110,20 @@ export const BOT_SWAP = {
   } as BurstSpec,
 } as const;
 
-/** Line-up (`?bots=lineup`, F-bot-lineup): grid on the Coding plaza, row = eye state, column = look. */
+/** `aSeed` accessory code that matches no hat variant (0..6): the head is bare (line-up `hatless`). */
+export const BOT_NO_HAT = 7;
+
+/**
+ * Line-up v2 (`?bots=<mode>`, TASK-677): QA bots standing on open ground (the empty gravel patch SW of the
+ * Coding solar panels), facing a low front camera. Modes: `looks` = the nine looks in one row, `eyes` = the
+ * five eye states on one look, `muster` = a loose crowd of fleet bots (F-bots), `lineup` = the old
+ * 9 looks x 5 eye states grid (retired shot id F-bot-lineup, URL kept). `hatless` drops the department hat so
+ * the heads read.
+ */
 export const BOT_LINEUP = {
   island: 'coding',
-  gapX: 1.8,
-  gapZ: 2.3,
-  /** Centre offset from the settlement hub (u). */
-  offset: { x: -8, z: 6 },
+  /** Centre offset from the settlement plaza (u): open grass-gravel edge W of the solar field. */
+  offset: { x: -40.3, z: 28.6 },
   /** Roles worn by the nine looks (column order), '' = none. */
   roles: [
     'shader',
@@ -132,4 +139,13 @@ export const BOT_LINEUP = {
   /** Idle breathing bob (u, s) and the done-row hop period (s). */
   bob: { y: 0.02, period: 2.6 },
   doneHopEvery: 3.2,
+  modes: {
+    lineup: { cols: 9, rows: 5, gapX: 1.8, gapZ: 2.3, hatless: true, jitter: 0 },
+    looks: { cols: 9, rows: 1, gapX: 1.2, gapZ: 1, hatless: true, jitter: 0 },
+    eyes: { cols: 5, rows: 1, gapX: 1.5, gapZ: 1, hatless: true, jitter: 0 },
+    muster: { cols: 5, rows: 3, gapX: 2.4, gapZ: 2.2, hatless: false, jitter: 0.45 },
+  },
+  /** Look shown by every bot of the `eyes` mode (chassis index, head index = scout / monitor: the flat face). */
+  eyesLook: { chassis: 0, head: 0 },
 } as const;
+export type BotLineupMode = keyof typeof BOT_LINEUP.modes;

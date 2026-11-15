@@ -2,6 +2,18 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-178: Bot proof shots v2 — `bots=looks|eyes|muster`, hatless heads, working-eye squares, reduced-motion sparkles (TASK-677) — 2026-11-15
+
+**Decision.** A mock fleet only binds the live sessions (2–5 per island, ≈ 1–3 running) and they sit under pergola roofs, so no sim-driven
+frame shows ≥ 10 fleet bots with all five eye states. `?bots=` now takes `lineup` (old 9 x 5 grid, URL kept, shot id `F-bot-lineup` retired),
+`looks` (9 looks, one row), `eyes` (5 eye states on one scout / monitor look) and `muster` (15 hash-scattered bots, department hats on, looks and
+eyes cycled): `life/bot-lineup.ts`, layouts in `content/bot-motion.ts` `BOT_LINEUP.modes`, still no sim / no rng. The spot moved off the plaza to open
+ground W of the Coding solar field (plaza + (−40.3, 28.6): W of the solar field, clear of the steel arch hangar and the tower's foot); the first try (SW gravel) is the solar field itself. `BOT_NO_HAT` (aSeed accessory 7)
+matches no hat variant, so `hatless` modes need no shader change. Shots: `F-bots` (muster, 25-40° pitch), `F-bot-looks` / `F-bot-eyes` (camera
+≈ 12.5 / 8.5 u from the bots, 25° pitch; the task's "12–14 u high" cannot give 120 px at fov 35, distance is what counts), each at simt 2 / 6 / 10, 1600 × 900.
+Idle = two tall pills, working = three fat low squares (3D `eyeStates` x1.55 and lower, portrait SVG rects), so the shapes differ, not only the cyan.
+Done sparkles carry the workers' `motionScale` (`BotFxEvent.ms`): apex lift, ring count and speed shrink with it, none at 0.
+
 ## D-177: Water v2 — shallow voronoi caustics in the terrain program, second foam band, shallow-ring glitter (TASK-596) — 2026-11-15
 
 **Decision.** The old sine caustic (0–14 u, not day-gated) is replaced inside the existing terrain program by two octaves of

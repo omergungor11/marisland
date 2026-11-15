@@ -37,7 +37,7 @@ function eyeGlyph(eyes: BotEyes, single: boolean, color: string, lw: number): st
         ? `<circle r="2.9" fill="${color}"/>`
         : `<rect x="-4.4" y="-2.1" width="2.8" height="4.2" rx="1.4" fill="${color}"/><rect x="1.6" y="-2.1" width="2.8" height="4.2" rx="1.4" fill="${color}"/>`;
     case 'working':
-      return `<g fill="${color}"><circle cx="-3.7" cy="0.6" r="1.25"/><circle cy="0.6" r="1.25"/><circle cx="3.7" cy="0.6" r="1.25"/></g>`;
+      return `<g fill="${color}"><rect x="-5.4" y="-1" width="3.2" height="3.2" rx="0.5"/><rect x="-1.6" y="-1" width="3.2" height="3.2" rx="0.5"/><rect x="2.2" y="-1" width="3.2" height="3.2" rx="0.5"/></g>`;
     case 'gate':
       return `<path d="M-2.1 -1.3C-2.1 -4.1 2.3 -4.1 2.3 -1.5C2.3 0 0 -0.1 0 1.3" ${line}/><circle cy="3.3" r="${n(lw * 0.62)}" fill="${color}"/>`;
     case 'error':

@@ -56,8 +56,23 @@ export function createBotFx(
         _a.floor = e.y;
         if (e.kind === 'done') {
           // sparkles come out at the apex of the hop (their spec delay), so lift the ring by its height
-          _a.y = e.y + BOT_DONE.height;
-          bursts.emit(BOT_DONE.sparkles, _a, t, rng);
+          // reduced motion (TASK-677): the hop shrinks by `ms`, so do the apex, the ring size and its speed
+          if (e.ms > 0) {
+            const sp = BOT_DONE.sparkles;
+            _a.y = e.y + BOT_DONE.height * e.ms;
+            bursts.emit(
+              e.ms >= 1
+                ? sp
+                : {
+                    ...sp,
+                    count: Math.max(2, Math.round(sp.count * e.ms)),
+                    speed: [sp.speed[0] * e.ms, sp.speed[1] * e.ms],
+                  },
+              _a,
+              t,
+              rng,
+            );
+          }
         } else {
           _a.y = e.y;
           bursts.emit(BOT_SWAP.poof, _a, t, rng);

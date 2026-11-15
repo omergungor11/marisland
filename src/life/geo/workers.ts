@@ -406,11 +406,12 @@ function eyeStates(b: TriBuilder, F: Frame, h: number): void {
   const Y = F.headY;
   const tag = (e: number, z = 0): void => b.setLimb(40 + h * 5 + e, Y, z, 8);
   b.setEmissive(2);
-  // 1 working: three dots (limb.z = 1..3 makes them hop in turn)
+  // 1 working: three fat low squares in a row (TASK-677: wider and lower than the tall idle pills, so
+  // the two read apart by shape at distance; limb.z = 1..3 makes them hop in turn)
   const wk = hex(E.working);
-  [-0.6, 0, 0.6].forEach((u, k) => {
+  [-0.7, 0, 0.7].forEach((u, k) => {
     tag(1, k + 1);
-    square(b, f, Y, u, 0, f.dot, f.dot, wk);
+    square(b, f, Y, u, -0.2, f.dot * 1.55, f.dot * 1.55, wk);
   });
   // 2 gate: a question mark
   tag(2);

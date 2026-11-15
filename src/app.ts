@@ -528,13 +528,14 @@ export async function boot(): Promise<void> {
           );
           loop.add(bfx);
           worldScope.defer(() => loop.remove(bfx));
-          if (params.bots === 'lineup') {
+          if (params.bots) {
             const lu = createBotLineup(
               wv.life.group,
               worldScope,
               wv.life.ctx,
               wkr.mesh.material as THREE.Material,
               () => loop.clock.time,
+              params.bots,
             );
             if (lu) {
               loop.add(lu);

@@ -56,6 +56,8 @@ export interface BotFxEvent {
   z: number;
   /** Height of the bot (u) the burst anchors to. */
   h: number;
+  /** The workers' motionScale when raised (done sparkles shrink with the hop; 0 = none). */
+  ms: number;
 }
 const damp = (dt: number, lambda: number): number => 1 - Math.exp(-lambda * dt);
 
@@ -1403,7 +1405,14 @@ export class Workers extends LandKind {
   /** Queue an effect for the bot-fx system (nothing is stored while no system listens). */
   private emitFx(i: number, kind: BotFxEvent['kind']): void {
     if (!this.fxOn) return;
-    this.fx.push({ kind, x: this.x[i], y: this.y[i], z: this.z[i], h: 1.1 * this.scale[i] });
+    this.fx.push({
+      kind,
+      x: this.x[i],
+      y: this.y[i],
+      z: this.z[i],
+      h: 1.1 * this.scale[i],
+      ms: this.motionScale,
+    });
   }
 
   private syncLooks(): void {
