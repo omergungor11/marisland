@@ -12,6 +12,7 @@ import {
   biomeTreePalette,
   biomeVariant,
   boatVariant,
+  boulderVariant,
   splitBoatVariant,
   splitVariant,
   themeVariants,
@@ -180,5 +181,50 @@ describe('vegetation, rock and boat v2 (TASK-599 / TASK-601)', () => {
         ).toBeGreaterThan(0.003);
       }
     }
+  });
+
+  it('TASK-680: boat LOD1 keeps the LOD0 colours, the dinghy is not a toy, the moss follows the island', () => {
+    const share = (g: THREE.BufferGeometry, hex: string): number => {
+      const want = new THREE.Color(hex);
+      const a = g.getAttribute('color');
+      let n = 0;
+      for (let i = 0; i < a.count; i += 3)
+        if (Math.hypot(a.getX(i) - want.r, a.getY(i) - want.g, a.getZ(i) - want.b) < 0.12) n++;
+      return n / (a.count / 3);
+    };
+    for (const b of BIOME_IDS)
+      for (const h of [0, 1, 2]) {
+        const v = boatVariant(b, h);
+        // the hull colour is a real share of the far boat (it used to be the stripe above 45 % of the freeboard)
+        expect(
+          share(buildProp('harbourBoat', 3, v, 1), BOAT_SETS[b].hull),
+          `${b} hull ${h}`,
+        ).toBeGreaterThan(0.2);
+      }
+    const top = (h: number): number => {
+      const g = buildProp('harbourBoat', 3, boatVariant('neutral', h), 0);
+      return g.boundingBox!.max.y;
+    };
+    expect(top(0) / top(2)).toBeGreaterThan(0.35);
+    const moss = (b: (typeof BIOME_IDS)[number]): THREE.Color =>
+      meanColor(buildProp('boulder', 2, boulderVariant(b, 1, 0), 0));
+    expect(moss('neutral').equals(moss('design'))).toBe(false);
+    expect(moss('marketing').equals(moss('devops'))).toBe(false);
+  });
+
+  it('TASK-680: LOD1 palms are a volume and the pebble / twin boulders keep their clusters', () => {
+    for (const v of [0, 1, 2]) {
+      const g = buildProp('leanPalm', 2, v, 1);
+      g.computeBoundingBox();
+      const crown = g.boundingBox!.getSize(new THREE.Vector3());
+      expect(crown.y).toBeGreaterThan(3);
+    }
+    const w = (v: number, lod: 0 | 1): number => {
+      const g = buildProp('boulder', 2, v, lod);
+      return g.boundingBox!.getSize(new THREE.Vector3()).x;
+    };
+    // the far outline spans the cluster, not just its first rock
+    expect(w(0, 1)).toBeGreaterThan(w(0, 0) * 0.8);
+    expect(w(3, 1)).toBeGreaterThan(w(3, 0) * 0.8);
   });
 });

@@ -26,6 +26,11 @@ export interface PartOpts {
   windAbs?: number | ((p: THREE.Vector3) => number);
   /** Also emit back faces (thin cloth / sails / open shells). */
   double?: boolean;
+  /**
+   * Mix (0..1) of the face normals toward +y, both sides of a `double` part alike: thin cloth (sails)
+   * catches the sky light on whichever face is in the shade instead of going flat grey.
+   */
+  softNormal?: number;
   /** Skip the per-face HSL jitter (large smooth fabric: variation comes from the colour fn). */
   noJitter?: boolean;
   /**
@@ -85,6 +90,7 @@ export class Acc {
   cls: MaterialClass | null = null;
   private pos: number[] = [];
   private colr: number[] = [];
+  private soft: number[] = [];
   private wmul: number[] = [];
   private ao: number[] = [];
   private emi: number[] = [];
@@ -134,6 +140,7 @@ export class Acc {
         const q = o.groundClamp ? p.clone().setY(Math.max(0, p.y)) : p;
         this.pos.push(q.x, q.y, q.z);
         this.colr.push(fc.r, fc.g, fc.b);
+        this.soft.push(o.softNormal ?? 0);
         this.wmul.push(wm);
         this.emi.push(o.emissive ?? 0);
         this.nj.push(o.noJitter ? 1 : 0);
@@ -203,6 +210,17 @@ export class Acc {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3));
     g.computeVertexNormals(); // non-indexed => flat per-face normals
+    if (this.soft.some((k) => k > 0)) {
+      const nrm = g.getAttribute('normal');
+      const nv = new THREE.Vector3();
+      for (let i = 0; i < n; i++) {
+        const k = this.soft[i];
+        if (k <= 0) continue;
+        nv.fromBufferAttribute(nrm, i).multiplyScalar(1 - k);
+        nv.y += k;
+        nrm.setXYZ(i, ...nv.normalize().toArray());
+      }
+    }
     g.setAttribute('color', new THREE.BufferAttribute(color, 3));
     g.setAttribute('wind', new THREE.BufferAttribute(wind, 1));
     g.setAttribute('ao', new THREE.BufferAttribute(ao, 1));
