@@ -69,6 +69,8 @@ export interface Params {
    * (`fleet=0` or anything else); '' = unset (live on a local host outside capture, else off).
    */
   fleet: '' | 'live' | 'mock' | 'off';
+  /** `bots=lineup` (TASK-592): the deterministic bot line-up (9 looks x 5 eye states) on the Coding plaza. */
+  bots: '' | 'lineup';
   /**
    * Capture: admin window view (M43, with `panel=admin`): `<tab>[:<arg>]` (`adminSpec`), e.g.
    * `hafiza:island:coding/memory/golge-acne.md` (a KB tab opens that file) or `sessionlar:shader`
@@ -163,6 +165,7 @@ export function parseParams(search: string): Params {
     birds: parseBool(q.get('birds'), true),
     fog: parseBool(q.get('fog'), true),
     tour: q.get('tour') === null ? 'idle' : parseBool(q.get('tour'), true) ? 'now' : 'off',
+    bots: q.get('bots') === 'lineup' ? 'lineup' : '',
     fleet: fleetRaw === null ? '' : fleetRaw === 'live' || fleetRaw === 'mock' ? fleetRaw : 'off',
     admin: q.get('admin') ?? '',
     bridge: Number.isInteger(bridge) && bridge > 0 && bridge < 65536 ? bridge : NaN,

@@ -66,6 +66,8 @@ import { createFleetPanel } from './ui/fleet-panel.ts';
 import { createFleetTip } from './ui/fleet-tip.ts';
 import { createCourierCard } from './ui/courier-card.ts';
 import { createFleetBeacons } from './life/fleet-beacons.ts';
+import { createBotFx } from './life/bot-fx.ts';
+import { createBotLineup } from './life/bot-lineup.ts';
 import { Couriers } from './life/couriers.ts';
 import { bindFleetToBots, type FleetBots } from './life/fleet-bots.ts';
 import { FLEET, FLEET_CARD, FLEET_PANEL } from './content/fleet.ts';
@@ -510,6 +512,36 @@ export async function boot(): Promise<void> {
         wv.life.kinds.couriers = cour;
         courierKind = cour;
         worldScope.defer(() => (courierKind = null));
+      }
+      {
+        // TASK-592: bot particles (done sparkles, swap poof) and the `?bots=lineup` QA grid
+        const wkr = wv.life.kinds.workers;
+        if (wkr) {
+          const bfx = createBotFx(
+            wv.life.group,
+            worldScope,
+            quality,
+            seed,
+            wkr,
+            camera,
+            () => loop.clock.time,
+          );
+          loop.add(bfx);
+          worldScope.defer(() => loop.remove(bfx));
+          if (params.bots === 'lineup') {
+            const lu = createBotLineup(
+              wv.life.group,
+              worldScope,
+              wv.life.ctx,
+              wkr.mesh.material as THREE.Material,
+              () => loop.clock.time,
+            );
+            if (lu) {
+              loop.add(lu);
+              worldScope.defer(() => loop.remove(lu));
+            }
+          }
+        }
       }
       worldWeather = wv.weather;
       if (cam.reducedMotion) wv.life.setMotionScale(motionScale());
@@ -1384,6 +1416,7 @@ function applyShotPreset(p: Params): Params {
   if (!q.has('quality') && s.quality) p.quality = s.quality;
   if (!q.has('edit') && s.edit) p.edit = s.edit;
   if (!q.has('fleet') && s.fleet) p.fleet = s.fleet;
+  if (!q.has('bots') && s.bots) p.bots = s.bots;
   if (!q.has('admin') && s.admin) p.admin = s.admin;
   return p;
 }

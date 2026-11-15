@@ -2,6 +2,18 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-176: Bot motion variety — per-chassis gait, idle beats, gate head-tip, done hop, swap poof, `?bots=lineup` (TASK-592) — 2026-11-15
+
+**Decision.** Numbers live in `content/bot-motion.ts` (per-chassis gait, four idle beats, gate head-tip + amber gem,
+done hop, swap squash, line-up grid); the closed-form curves are `life/bot-motion.ts` (no three), applied in `Workers.stepAgent` on the sim
+clock as one additive pose (`bp`), so scout stays pixel-identical (its gait numbers ARE `WORKERS`). Beats run on their own hash stream (`seed ^ 0x5ea7`,
+no `draw()` counter shifts): all four at a node pause when the whole beat fits, head-turn only at a desk. A look swap at rest is now squash (0.16 s) →
+swap under a poof → spring pop (0.5 s); hidden bots and reduced motion swap at once. Done hop + swap poof are `BotFxEvent`s the sim queues (only while
+`fxOn`) and `life/bot-fx.ts` turns into bursts in a pool of its own (96, `life:bot-fx`, zero draw calls idle). The gem pulses amber in
+`fleet-beacons.ts` (instance colour, one lerp per gated bot). `?bots=lineup` (`life/bot-lineup.ts`) adds 3 extra meshes (15 bots each, same program),
+closed-form poses from the engine clock, no sim; shots `F-bot-lineup[-6|-10]`, `F-bots-6|-10`. The line-up sits SW of the plaza (offset −8 / +6): the
+plaza itself is 6 u wide and the grid needs ~16 × 9 u. Not done: the beacon height over the spire antenna.
+
 ## D-165: Shadow passes are skipped where the shadow cannot reach the view; far LOD0 leaves its shadow to LOD1 (TASK-652) — 2026-11-10
 
 **Decision.** `render/shadow-skip.ts`: each frame every prop / terrain mesh's bounding sphere is swept away from the sun down to `SHADOW_CULL.floorY` and tested against the view frustum; a miss skips that mesh's shadow pass for the frame. At T0–T1 a LOD0 group lying wholly past 187.5 u does not cast, its LOD1 does (`reveal.lod1CastsPast`), trees included. `NEAR_MERGE.maxVertsShadowed` 2000 on medium / high (low keeps 1600). `BUDGETS`, `TIER_FADE`, `LOD_HANDOFF` and the reveal distances of D-161 are unchanged.
@@ -120,6 +132,7 @@ mesh compacts to its active bots per frame, so wow triangles FELL (W5 789,739 �
 closer tries showed one bot): TASK-592 adds a deterministic bot line-up shot before motion work, TASK-593 judges heads / eyes there.
 Chassis swap at the desk is a hard pop (592: squash or poof); the beacon sits ~0.18 u low over the spire's antenna; slot-indexed
 tooling must use `Workers.seedOf` / `chassisOf`.
+**Addendum.** Bot motion, line-up and the swap squash / poof are decided in D-176 (TASK-592).
 
 ## D-162: M50 Ground Look — direction "layered rock + painted light"; wall colour comes from a per-theme strata table, bands grow with height, walls are shaded in the terrain program at every distance — 2026-11-09
 
