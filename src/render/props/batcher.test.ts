@@ -551,5 +551,18 @@ describe('compactAttributes (TASK-478)', () => {
     for (let k = 0; k < ao.count; k++) expect(ao.getX(k)).toBeCloseTo(ao0[k], 4);
     expect(geoStats(g).rgb[0]).toBeCloseTo(before.rgb[0], 4);
     expect(g.getAttribute('position').array).toBeInstanceOf(Float32Array);
+    expect(g.getAttribute('color').array).toBeInstanceOf(Float32Array);
+  });
+
+  it('low (TASK-678): colour in 16 bits too, same floats, same canopy stats', () => {
+    const raw = buildProp('roundTree', 3, 0, 0);
+    const before = geoStats(raw);
+    const c0 = Float32Array.from(raw.getAttribute('color').array);
+    const g = compactAttributes(raw, true);
+    const c = g.getAttribute('color') as THREE.BufferAttribute;
+    expect(c.array).toBeInstanceOf(Uint16Array);
+    expect(c.normalized).toBe(true);
+    for (let k = 0; k < c.count; k++) expect(c.getY(k)).toBeCloseTo(c0[k * 3 + 1], 4);
+    for (let i = 0; i < 3; i++) expect(geoStats(g).rgb[i]).toBeCloseTo(before.rgb[i], 4);
   });
 });

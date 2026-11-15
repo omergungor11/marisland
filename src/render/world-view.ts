@@ -326,6 +326,7 @@ export function buildWorldView(seed: number, d: WorldViewDeps): WorldView {
     nearMergeMaxVerts: d.quality === 'low' ? NEAR_MERGE.maxVerts : NEAR_MERGE.maxVertsShadowed,
     interiorShadows: d.quality === 'high',
     creases: SURFACE_QUALITY[d.quality][0] > 0,
+    compactColor: d.quality === 'low',
     instantEdits: d.instantEdits ?? false,
     world: { height: world.height, islands: world.islands },
     geometryOverride: (id, lod, variant) =>

@@ -116,6 +116,11 @@ export interface BatcherDeps {
    * on low: the edge light is off there, and the float emissive costs ~1 MB of GPU memory.
    */
   creases?: boolean;
+  /**
+   * TASK-678: vertex colour as 16-bit unsigned normalized too (`compactAttributes`; default
+   * false). Low only: −6 MB of prop geometry against its 86 MB budget, step 1.5e-5 per channel.
+   */
+  compactColor?: boolean;
   /** Ground-cover visibility radius around the focus (u). */
   groundCoverRadius?: number;
   /** Contact-shadow blobs under grounded props (default true). */
@@ -291,7 +296,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
       // bevel edge light (TASK-594): near geometry only, never ground cover (LOD1 is drawn beyond
       // the edge-light ramp, the far merge keeps its compact emissive)
       if (d.creases && lod === 0 && (def.flags & PropFlag.groundCover) === 0) g = bakeCreases(g);
-      g = compactAttributes(g);
+      g = compactAttributes(g, d.compactColor ?? false);
       d.scope.add(g);
       geoCache.set(key, g);
     }
@@ -452,7 +457,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
         const base = geometryFor(blobDef, this.shapeOf(cls), 0);
         const own = geoStats(base).rgb;
         const col = base.getAttribute('color') as THREE.BufferAttribute;
-        const arr = Float32Array.from(col.array as Float32Array);
+        const arr = Float32Array.from(floatArray(col));
         for (let v = 0; v < col.count; v++) {
           if (!isCanopy(arr[v * 3], arr[v * 3 + 1], arr[v * 3 + 2])) continue;
           for (let c = 0; c < 3; c++) arr[v * 3 + c] *= own[c] > 0 ? target[c] / own[c] : 1;
@@ -1606,7 +1611,7 @@ export function geoStats(g: THREE.BufferGeometry): CanopyStats {
   const ao = g.getAttribute('ao');
   return canopyStats(
     g.getAttribute('position').array,
-    g.getAttribute('color').array,
+    floatArray(g.getAttribute('color')),
     ao ? floatArray(ao) : null,
     g.index ? g.index.array : null,
   );
@@ -1617,9 +1622,10 @@ export function geoStats(g: THREE.BufferGeometry): CanopyStats {
  * (the far merge's precision, < 0.002°) and the scalar weights `emissive` / `ao` / `wind` as
  * 16-bit unsigned normalized when they lie in [0, 1] (step 1.5e-5). Shaders read the same floats;
  * CPU readers go through `getX` / `fromBufferAttribute` (de-normalized) or `floatArray`. Position
- * and colour stay float32 (`sameGeometry` / `geoStats` read them raw).
+ * stays float32; colour too unless `color` (TASK-678, low: 16-bit unsigned normalized when every
+ * channel lies in [0, 1]; `sameGeometry` compares like with like, `geoStats` reads `floatArray`).
  */
-export function compactAttributes(g: THREE.BufferGeometry): THREE.BufferGeometry {
+export function compactAttributes(g: THREE.BufferGeometry, color = false): THREE.BufferGeometry {
   const n = g.getAttribute('normal');
   if (n instanceof THREE.BufferAttribute && n.array instanceof Float32Array) {
     const src = n.array;
@@ -1628,7 +1634,7 @@ export function compactAttributes(g: THREE.BufferGeometry): THREE.BufferGeometry
       dst[k] = Math.round(Math.max(-1, Math.min(1, src[k])) * 32767);
     g.setAttribute('normal', new THREE.BufferAttribute(dst, n.itemSize, true));
   }
-  for (const name of ['emissive', 'ao', 'wind']) {
+  for (const name of color ? ['emissive', 'ao', 'wind', 'color'] : ['emissive', 'ao', 'wind']) {
     const a = g.getAttribute(name);
     if (!(a instanceof THREE.BufferAttribute) || !(a.array instanceof Float32Array)) continue;
     const src = a.array;

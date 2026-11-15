@@ -79,7 +79,8 @@ export interface Budget {
  * while one of its instances is inside its dither band, and a group with no shadow to cast only while
  * one is inside the view frustum (its island-wide bounding sphere met both). Pixel-identical; low
  * L-pairs-marketing 265 u 178 → 146 calls, W-carnival-noon / -dusk / -arrival 281 / 302 / 228 →
- * 262 / 280 / 198. Memory is not touched by this (L-pairs-hq still reads 86 MB at 148.4 u).
+ * 262 / 280 / 198. Low also stores prop vertex colour as 16-bit normalized (batcher `compactColor`,
+ * max channel delta 1): every low frame −6 MB, L-pairs-hq 148.4 u 87 → 81 MB after TASK-600.
  */
 export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
   low: {
