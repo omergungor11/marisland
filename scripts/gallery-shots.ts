@@ -45,7 +45,8 @@ import { QA_COASTER_PROP_IDS } from '../src/content/props-themes/qa-coaster.ts';
 import { LUNA_PROP_IDS } from '../src/content/props-themes/marketing-luna.ts';
 import { RESEARCH_M22_PROP_IDS } from '../src/content/props-themes/research.ts';
 import { buildGalleryScene } from '../src/geo/gallery.ts';
-import { PROP_GEO } from '../src/geo/registry.ts';
+import * as THREE from 'three';
+import { PROP_GEO, buildProp } from '../src/geo/registry.ts';
 
 const args = process.argv.slice(2);
 const opt = (n: string): string | undefined =>
@@ -225,19 +226,32 @@ async function main(): Promise<void> {
                   ? [['v2', BUOY_V2.names.map((_, k) => BUOY_V2.first + k)]]
                   : [['all', Array.from({ length: def.variants }, (_, k) => k)]];
         const tiles: string[] = [];
+        // TASK-680: the close camera is fitted to the real bounds of the shown items (every variant at
+        // LOD0 and LOD1), so a 0.5 u boulder fills the frame the same way a 6 u palm does
         const close = (vars: number[], name: string): Promise<void> => {
           const items = buildGalleryScene([id], vars).items;
-          const cx = (items[0].x + items[items.length - 1].x) / 2;
-          const hh = Math.max(...vars.map((v) => def.heights?.[v] ?? def.height));
+          const box = new THREE.Box3();
+          for (const it of items) {
+            const bb = buildProp(id, 1, it.variant, it.lod).boundingBox;
+            if (bb) {
+              box.expandByPoint(new THREE.Vector3(bb.min.x + it.x, bb.min.y, bb.min.z + it.z));
+              box.expandByPoint(new THREE.Vector3(bb.max.x + it.x, bb.max.y, bb.max.z + it.z));
+            }
+          }
+          const c = box.getCenter(new THREE.Vector3());
+          const sz = box.getSize(new THREE.Vector3());
+          const tv = Math.tan((35 * Math.PI) / 360);
+          const aspect = 1280 / 560;
+          // 3/4 view from +z: width spans the frame, height with a margin for the camera tilt
           const dist = Math.max(
-            ((items[items.length - 1].x - items[0].x) / 2 + def.footprint) * 1.1,
-            hh * 1.6,
-            3,
+            (sz.x / 2 / (tv * aspect)) * 1.12 + sz.z / 2,
+            (sz.y * 0.9) / (2 * tv) + sz.z / 2,
+            1.5,
           );
           return shoot(
             id,
             name,
-            [cx + dist * 0.2, hh * 0.6 + dist * 0.15, items[0].z + dist, cx, hh * 0.4, items[0].z],
+            [c.x + dist * 0.12, c.y + dist * 0.2, c.z + dist, c.x, c.y, c.z],
             1280,
             560,
             vars,
@@ -245,6 +259,10 @@ async function main(): Promise<void> {
         };
         await close(groups[0][1], `${id}-close`);
         for (const [label, vars] of groups) {
+          await close(vars, `${id}-${label}-close`);
+          // small props (boulders, bushes, buoys): one fitted close per variant (LOD0 + LOD1 pair)
+          if (Math.max(...vars.map((v) => def.heights?.[v] ?? def.height)) < 2.5)
+            for (const v of vars) await close([v], `${id}-v${v}-close`);
           const items = buildGalleryScene([id], vars).items;
           const x0 = items[0].x;
           const x1 = items[items.length - 1].x;

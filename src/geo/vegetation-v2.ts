@@ -4,7 +4,14 @@
  * and the shape ride in the variant index (content/biomes.ts). Pivot on the ground, 1 u = 1 m.
  */
 import * as THREE from 'three';
-import { BOULDER, KELP, splitVariant } from '../content/biomes.ts';
+import {
+  BIOME_IDS,
+  BIOMES,
+  BOULDER,
+  BOULDER_VARIANTS_PER_SET,
+  KELP,
+  splitVariant,
+} from '../content/biomes.ts';
 import { GRASS, ROCK, WALLS, WOOD } from '../content/palette.ts';
 import type { Rng } from '../core/rng.ts';
 import { Acc, blob, col, createNoise, frustum, gradY, mat, qEuler } from './kit.ts';
@@ -118,25 +125,38 @@ export function leanPalm({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry
   const noise = createNoise(r.fork('nut'));
   const N = lod === 0 ? 4 : 2;
   const radial = lod === 0 ? 7 : 4;
-  const crown = (top: THREE.Vector3, fronds: number, lenMul: number): void => {
-    acc.add(blob(0.24, 0, noise, 0.1, 2, 9), {
-      m: mat(top.clone().add(V3(0, 0.05, 0)), null, [1, 0.8, 1]),
-      color: col(WOOD.dark).multiplyScalar(0.8),
-      windMul: 0.5,
-      aoAmt: 0.2,
+  const crown = (top: THREE.Vector3, fronds: number, lenMul: number, segs0 = 3): void => {
+    if (lod === 0)
+      acc.add(blob(0.24, 0, noise, 0.1, 2, 9), {
+        m: mat(top.clone().add(V3(0, 0.05, 0)), null, [1, 0.8, 1]),
+        color: col(WOOD.dark).multiplyScalar(0.8),
+        windMul: 0.5,
+        aoAmt: 0.2,
+      });
+    // leafy heart: a squashed green mass under the fronds so the crown is a volume, not a flat star
+    acc.add(blob(0.55 * Math.sqrt(lenMul), 0, noise, 0.12, 1.6, 4), {
+      m: mat(top.clone().add(V3(0, 0.16, 0)), null, [1, 0.62, 1]),
+      color: col(biome.palm[1]),
+      windMul: 0.8,
+      aoAmt: 0.15,
     });
     const ph = r.range(0, TAU);
-    const n = lod === 0 ? fronds : Math.max(4, fronds - 1);
-    for (let i = 0; i < n; i++)
+    const n = lod === 0 ? fronds : fronds + 1;
+    for (let i = 0; i < n; i++) {
+      // LOD0: every third frond stands up (young leaf), the rest arch and hang; LOD1: one segment,
+      // alternating raised / drooping so the far crown keeps a dome profile from the side
+      const up = i % 3 === 1;
       leaf(acc, {
         origin: top.clone().add(V3(0, 0.12, 0)),
         az: ph + (i / n) * TAU + r.range(-0.15, 0.15),
-        len: r.range(2.4, 3.1) * lenMul,
-        segs: lod === 0 ? 3 : 1,
-        width: r.range(0.5, 0.6),
+        len: r.range(2.4, 3.1) * lenMul * (up ? (lod === 0 ? 0.85 : 0.7) : 1),
+        segs: lod === 0 ? segs0 : 1,
+        width: r.range(0.72, 0.86) * (lod === 0 ? 1.15 : 1.7),
         greens: [biome.palm[0], biome.palm[1]],
         ribHex: biome.palm[1],
+        pitch: lod === 0 ? (up ? 0.38 : r.range(-0.12, 0.06)) : up ? 0.3 : -0.3,
       });
+    }
     if (lod === 0)
       for (let i = 0; i < 2; i++) {
         const a = ph + i * Math.PI + 0.5;
@@ -182,16 +202,18 @@ export function leanPalm({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry
     }
     return pts[N];
   };
-  const az = r.range(0, TAU);
+  // the lean points across the view (+-x, a little spread): every colour set leans like the others
+  const az = (r.chance(0.5) ? 0 : Math.PI) + r.range(-0.45, 0.45);
   const dir = V3(Math.cos(az), 0, Math.sin(az));
   if (shape === 0) {
-    crown(trunk(V3(0, 0, 0), 6.4 * r.range(0.96, 1.04), dir, r.range(0.5, 0.62), 0.36), 7, 1);
+    crown(trunk(V3(0, 0, 0), 6.4 * r.range(0.96, 1.04), dir, r.range(0.5, 0.62), 0.36), 8, 1);
   } else if (shape === 1) {
-    crown(trunk(V3(0, 0, 0), 6.6 * r.range(0.97, 1.03), dir, 0.38, 0.34), 5, 1);
+    crown(trunk(V3(0, 0, 0), 6.6 * r.range(0.97, 1.03), dir, 0.38, 0.34), 6, 1, 2);
     crown(
       trunk(V3(0.15, 0, 0.1), 5.2 * r.range(0.97, 1.03), dir.clone().negate(), 0.34, 0.3),
-      5,
+      6,
       0.92,
+      2,
     );
   } else {
     const Hs = [4.4, 3.6, 3];
@@ -206,8 +228,9 @@ export function leanPalm({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry
           r.range(0.2, 0.34),
           0.26,
         ),
-        3,
+        4,
         0.8,
+        2,
       );
     }
   }
@@ -318,13 +341,15 @@ const BOULDER_PARTS: readonly (readonly Part[])[] = [
 export function boulder({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
   const sil = variant % BOULDER.silhouettes;
   const cap = Math.floor(variant / BOULDER.silhouettes) % BOULDER.caps;
+  // variants >= 15 carry an island colour set (`boulderVariant`); 0..14 stay neutral (TASK-680)
+  const biomeId = BIOME_IDS[Math.floor(variant / BOULDER_VARIANTS_PER_SET) % BIOME_IDS.length];
   const r = rng.fork('boulder');
   const acc = new Acc();
   const noise = createNoise(r.fork('n'));
   const H = BOULDER.heights[sil];
   const bands = [ROCK[2], ROCK[1], ROCK[0]].map(col);
   const line = col(BOULDER.strataLine);
-  const moss = [col(GRASS[2]), col(GRASS[3])];
+  const moss = (biomeId === 'neutral' ? [GRASS[2], GRASS[3]] : BIOMES[biomeId].moss).map(col);
   const lichen = BOULDER.lichen.map(col);
   const lineY = 0.5 + r.range(-0.05, 0.05);
   const colour = (p: THREE.Vector3): THREE.Color => {
@@ -340,7 +365,9 @@ export function boulder({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry 
     }
     return bands[Math.max(0, Math.min(2, Math.floor(t * 2.2 + wob)))].clone();
   };
-  const parts = lod === 0 ? BOULDER_PARTS[sil] : BOULDER_PARTS[sil].slice(0, 1);
+  // LOD1 keeps the whole cluster of the pebble group and the twin boulders as 8-tri octahedra
+  const cluster = lod === 1 && (sil === 0 || sil === 3);
+  const parts = lod === 0 || cluster ? BOULDER_PARTS[sil] : BOULDER_PARTS[sil].slice(0, 1);
   const lean = sil === 1 ? r.range(-0.08, 0.08) : 0;
   parts.forEach((p, i) => {
     const q = qEuler(i === 0 ? lean : 0, r.range(0, TAU), i === 0 ? lean : 0);
@@ -370,14 +397,16 @@ export function boulder({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry 
       return;
     }
     acc.add(
-      blob(
-        ((lod === 1 && p.l1) || p).r * r.range(0.95, 1.05),
-        lod === 0 ? p.d : 0,
-        noise,
-        0.2,
-        1.1,
-        i * 5.5,
-      ),
+      cluster
+        ? new THREE.OctahedronGeometry(p.r * 1.12 * r.range(0.95, 1.05), 0)
+        : blob(
+            ((lod === 1 && p.l1) || p).r * r.range(0.95, 1.05),
+            lod === 0 ? p.d : 0,
+            noise,
+            0.2,
+            1.1,
+            i * 5.5,
+          ),
       {
         m: mat(
           ...((lod === 1 && p.l1 ? [p.l1.at, q, p.l1.s] : [p.at, q, p.s]) as Parameters<

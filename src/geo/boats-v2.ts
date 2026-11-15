@@ -15,6 +15,23 @@ import type { BuildOpts, PropBuilder, PropGeoDef } from './types.ts';
 const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
 const PI = Math.PI;
 const TAU2 = PI * 2;
+/** Normal mix toward +y for sail faces (kit `softNormal`): the shade side keeps sky light. */
+const SAIL_SOFT = 0.65;
+/**
+ * Sail cloth (TASK-680): a light base (the set's sail colour pulled toward white) with a head panel in
+ * the set's stripe colour. The panel and the lighter base keep a hue in the shade instead of the old flat grey / olive.
+ */
+const sailCloth = (
+  base: string,
+  panel: string,
+  y0: number,
+  y1: number,
+  from = 0.72,
+): ((p: THREE.Vector3) => THREE.Color) => {
+  const b = col(base).lerp(new THREE.Color(1, 1, 1), 0.3);
+  const c = col(panel).lerp(new THREE.Color(1, 1, 1), 0.1);
+  return (p) => (p.y > y0 + (y1 - y0) * from ? c : b).clone();
+};
 
 /** Extruded hull plan from y0 up to y1 (shape y -> +z bow), optionally with an open well. */
 function hullBand(L: number, W: number, y0: number, y1: number, well = 0): THREE.BufferGeometry {
@@ -43,7 +60,8 @@ function hull(acc: Acc, lod: number, h: HullSpec, hullHex: string, stripeHex: st
       acc,
       hullBand(h.L, h.W, -h.draft, top),
       [0, 0, 0],
-      (p) => col(p.y > top * 0.45 ? stripeHex : hullHex),
+      // same colours as LOD0: hull side, deck plank (stripe on the open dinghy rim)
+      (p) => col(p.y > top - 0.01 ? (h.well ? stripeHex : h.plank) : hullHex),
       {
         aoAmt: 0.2,
       },
@@ -89,33 +107,35 @@ function hull(acc: Acc, lod: number, h: HullSpec, hullHex: string, stripeHex: st
 function dinghy(acc: Acc, lod: number, set: { hull: string; sail: string; stripe: string }): void {
   const spec: HullSpec = {
     L: HB.length[0],
-    W: 1.15,
+    W: 1.45,
     draft: HB.draft[0],
-    free: 0.5,
-    well: 0.12,
+    free: 0.6,
+    well: 0.14,
     plank: WOOD.planks,
   };
   hull(acc, lod, spec, set.hull, set.stripe);
+  const mastH = HB.height[0] - 0.3;
   if (lod === 1) {
-    put(acc, cylB(0.04, 0.04, 0.95, 4, true), [0, 0.2, 0.2], WOOD.dark, { aoAmt: 0 });
+    put(acc, cylB(0.05, 0.05, mastH, 4, true), [0, 0.3, 0.5], WOOD.dark, { aoAmt: 0 });
     return;
   }
-  // thwarts, a stubby mast with a tiny lug sail, an outboard bracket
-  for (const z of [-0.5, 0.3])
-    put(acc, new THREE.BoxGeometry(0.9, 0.06, 0.22), [0, 0.36, z], WOOD.planks, { aoAmt: 0.1 });
-  put(acc, cylB(0.04, 0.03, 0.95, 5, true), [0, 0.28, 0.45], WOOD.dark, { aoAmt: 0.05 });
+  // thwarts, a mast with a lug sail, an outboard bracket
+  for (const z of [-0.6, 0.35])
+    put(acc, new THREE.BoxGeometry(1.1, 0.07, 0.26), [0, 0.44, z], WOOD.planks, { aoAmt: 0.1 });
+  put(acc, cylB(0.05, 0.035, mastH, 5, true), [0, 0.34, 0.55], WOOD.dark, { aoAmt: 0.05 });
   const sail = gridSurface(2, 2, (u, v) =>
     V(
-      0.12 * Math.sin(PI * u) * Math.sin(PI * v),
-      0.5 + v * 0.65 * (1 - 0.5 * u),
-      0.45 - 0.05 - u * 0.75,
+      0.16 * Math.sin(PI * u) * Math.sin(PI * v),
+      0.75 + v * (mastH - 0.7) * (1 - 0.45 * u),
+      0.55 - 0.06 - u * 1.2,
     ),
   );
-  put(acc, sail, [0, 0, 0], set.sail, {
+  put(acc, sail, [0, 0, 0], sailCloth(set.sail, set.stripe, 0.75, mastH + 0.05), {
     double: true,
+    softNormal: SAIL_SOFT,
     aoAmt: 0,
     noJitter: true,
-    windAbs: (p) => clamp01((0.4 - p.z) / 0.75),
+    windAbs: (p) => clamp01((0.5 - p.z) / 1.2),
     ao: () => 1,
   });
 }
@@ -227,8 +247,9 @@ function sloop(acc: Acc, lod: number, set: { hull: string; sail: string; stripe:
       mastZ - 0.06 - u * Ls,
     ),
   );
-  put(acc, main, [0, 0, 0], set.sail, {
+  put(acc, main, [0, 0, 0], sailCloth(set.sail, set.stripe, y0, y0 + H), {
     double: true,
+    softNormal: SAIL_SOFT,
     aoAmt: 0,
     noJitter: true,
     windAbs: (p) => clamp01((mastZ - p.z) / Ls),
@@ -246,8 +267,9 @@ function sloop(acc: Acc, lod: number, set: { hull: string; sail: string; stripe:
       mastZ + 0.1 + u * 1.7,
     ),
   );
-  put(acc, jib, [0, 0, 0], set.stripe, {
+  put(acc, jib, [0, 0, 0], sailCloth(set.stripe, set.stripe, y0, y0 + H), {
     double: true,
+    softNormal: SAIL_SOFT,
     aoAmt: 0,
     noJitter: true,
     windAbs: (p) => clamp01((p.z - mastZ) / 1.7),

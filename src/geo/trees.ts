@@ -15,11 +15,17 @@ export interface LeafOpts {
   width: number;
   greens: [string, string];
   ribHex: string;
+  /**
+   * Pitch override (rad). One segment: its pitch (default 0.1). 2 / 3 segments: added to every
+   * segment pitch (default 0), so a frond can stand up (+) or hang (-) as a whole.
+   */
+  pitch?: number;
 }
 
 /** Palm frond: chained segments (+20, 0, -30 deg), V-section halves (~25 deg), central rib, two-sided. */
 export function leaf(acc: Acc, o: LeafOpts): void {
-  const pitches = o.segs === 1 ? [0.1] : [0.35, 0, -0.52];
+  const base = o.segs === 1 ? [0.1] : o.segs === 2 ? [0.3, -0.42] : [0.35, 0, -0.52];
+  const pitches = o.segs === 1 ? [o.pitch ?? 0.1] : base.map((p) => p + (o.pitch ?? 0));
   const stations: THREE.Vector3[] = [o.origin.clone()];
   const dirs: THREE.Vector3[] = [];
   for (let k = 0; k < o.segs; k++) {
@@ -32,7 +38,9 @@ export function leaf(acc: Acc, o: LeafOpts): void {
     dirs.push(d);
     stations.push(stations[k].clone().addScaledVector(d, o.len / o.segs));
   }
-  const widths = (o.segs === 1 ? [0.9, 0] : [0.8, 1, 0.7, 0]).map((w) => w * o.width);
+  const widths = (o.segs === 1 ? [0.9, 0] : o.segs === 2 ? [0.85, 1, 0] : [0.8, 1, 0.7, 0]).map(
+    (w) => w * o.width,
+  );
   const L: THREE.Vector3[] = [];
   const R: THREE.Vector3[] = [];
   stations.forEach((m, j) => {

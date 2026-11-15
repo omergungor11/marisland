@@ -13,7 +13,7 @@
  * to `biomeTreePalette(theme)` in the same commit so the far blobs (T0) keep matching (D-031).
  */
 import { THEME_IDS, type ThemeId } from '../world/types.ts';
-import { FLOWERS, FOLIAGE, ROOFS, WALL_STRATA, WALLS } from './palette.ts';
+import { FLOWERS, FOLIAGE, GRASS, ROOFS, WALL_STRATA, WALLS } from './palette.ts';
 
 export type BiomeId = 'neutral' | ThemeId;
 export const BIOME_IDS: readonly BiomeId[] = ['neutral', ...THEME_IDS];
@@ -27,6 +27,8 @@ export interface Biome {
   dots: string | null;
   /** Bush flower hues (two). */
   flowers: readonly [string, string];
+  /** Boulder moss cap hues (two); neutral keeps the palette GRASS pair. */
+  moss: readonly [string, string];
 }
 
 export const BIOMES: Readonly<Record<BiomeId, Biome>> = {
@@ -36,6 +38,7 @@ export const BIOMES: Readonly<Record<BiomeId, Biome>> = {
     palm: FOLIAGE.palm,
     dots: null,
     flowers: [FLOWERS[0], FLOWERS[1]],
+    moss: [GRASS[2], GRASS[3]],
   },
   // Hearthholm: the green orchard, red fruit dots
   hq: {
@@ -44,6 +47,7 @@ export const BIOMES: Readonly<Record<BiomeId, Biome>> = {
     palm: FOLIAGE.palm,
     dots: ROOFS[1],
     flowers: [FLOWERS[0], FLOWERS[2]],
+    moss: [GRASS[2], GRASS[3]],
   },
   // Coding: light spring green
   coding: {
@@ -52,6 +56,7 @@ export const BIOMES: Readonly<Record<BiomeId, Biome>> = {
     palm: ['#98E060', '#72C94A'],
     dots: null,
     flowers: [FLOWERS[3], FLOWERS[2]],
+    moss: ['#6FCB5E', '#4FA84A'],
   },
   // Beacon Rock: orange-yellow, a canopy turned early
   marketing: {
@@ -60,6 +65,7 @@ export const BIOMES: Readonly<Record<BiomeId, Biome>> = {
     palm: ['#C9DB4E', '#9EBF3C'],
     dots: ROOFS[1],
     flowers: [FLOWERS[4], FLOWERS[1]],
+    moss: ['#C9A23A', '#9E8A34'],
   },
   // Palmlagoon: mint
   qa: {
@@ -68,14 +74,16 @@ export const BIOMES: Readonly<Record<BiomeId, Biome>> = {
     palm: ['#8DE0B0', '#5CC490'],
     dots: WALLS[1],
     flowers: [FLOWERS[2], FLOWERS[3]],
+    moss: ['#4FB892', '#3A9C7A'],
   },
   // Design: lilac and plum canopies
   design: {
     deciduous: ['#E3B8FF', '#B79BEA', '#8E6FD8'],
     pine: ['#7F6BC0', '#5E4E9E'],
-    palm: ['#8FD9B0', '#5CB88A'],
+    palm: ['#F2A6D6', '#C77FCB'],
     dots: '#FFC2D4',
     flowers: [FLOWERS[0], FLOWERS[3]],
+    moss: ['#8E6FD8', '#6E55B8'],
   },
   // Emberpeak: dark pine, ember dots
   devops: {
@@ -84,6 +92,7 @@ export const BIOMES: Readonly<Record<BiomeId, Biome>> = {
     palm: ['#6FB04A', '#4E9438'],
     dots: '#FF6A3D',
     flowers: [FLOWERS[4], '#FFB347'],
+    moss: ['#326F42', '#27593A'],
   },
   // Lonely Palm: cypress and olive
   research: {
@@ -92,6 +101,7 @@ export const BIOMES: Readonly<Record<BiomeId, Biome>> = {
     palm: ['#9CCB5A', '#78AB44'],
     dots: '#6B7A52',
     flowers: [FLOWERS[3], FLOWERS[2]],
+    moss: ['#74904F', '#5C7A3F'],
   },
 };
 
@@ -154,6 +164,13 @@ export const BOULDER = {
   heights: [0.55, 1.9, 0.5, 1.2, 0.9],
 } as const;
 export const BOULDER_VARIANTS = BOULDER.silhouettes * BOULDER.caps;
+/** Boulder variants per island colour set (the registry def has 15 = neutral only until worldgen asks for more). */
+export const BOULDER_VARIANTS_PER_SET = BOULDER_VARIANTS;
+/** Boulder in an island's moss / lichen set: variant = biomeIndex * 15 + cap * 5 + silhouette (needs def.variants raised to 15 * 8). */
+export const boulderVariant = (biome: BiomeId, cap: number, sil: number): number =>
+  biomeIndex(biome) * BOULDER_VARIANTS_PER_SET +
+  (cap % BOULDER.caps) * BOULDER.silhouettes +
+  (sil % BOULDER.silhouettes);
 
 // ------------------------------------------------------------------ boats
 
@@ -178,10 +195,10 @@ export const BOAT_SETS: Readonly<Record<BiomeId, BoatSet>> = {
 /** harbourBoat hulls: variant = biomeIndex * 3 + hull. `draft` = how far the keel sits under the waterline pivot. */
 export const HARBOUR_BOAT = {
   hulls: ['dinghy', 'fishingBoat', 'sloop'] as const,
-  length: [2.7, 4.6, 5.2],
-  draft: [0.12, 0.28, 0.42],
+  length: [3.5, 4.6, 5.2],
+  draft: [0.16, 0.28, 0.42],
   /** Mast / top height above the waterline pivot, u. */
-  height: [1.0, 3.6, 5.4],
+  height: [2.2, 3.6, 5.4],
 } as const;
 export const HARBOUR_BOAT_VARIANTS = HARBOUR_BOAT.hulls.length * BIOME_IDS.length;
 export const boatVariant = (biome: BiomeId, hull: number): number =>
