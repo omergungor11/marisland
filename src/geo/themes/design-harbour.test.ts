@@ -1,5 +1,6 @@
 import type * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
+import { BUOY_V2 } from '../../content/biomes.ts';
 import { cultureCapOverride } from '../../content/budgets.ts';
 import { CULTURES } from '../../content/cultures/index.ts';
 import { PROP_DEFS, PROP_DEF_INDEX } from '../../content/props.ts';
@@ -22,9 +23,11 @@ describe('Colour Wharf kit (TASK-537)', () => {
   for (const [id, first, count, lo0, lo1] of KIT) {
     it(`${id}: the added variants are pinned, in budget, deterministic`, () => {
       const d = PROP_DEFS[PROP_DEF_INDEX[id]];
-      expect(d.variants).toBe(first + count);
-      expect(PROP_GEO[id].variants).toBe(first + count);
-      expect(PROP_GEO[id].heights).toHaveLength(first + count);
+      // TASK-601: three buoy variants (spar, mooring ball, pot floats) follow the pots
+      const all = first + count + (id === 'buoy' ? BUOY_V2.names.length : 0);
+      expect(d.variants).toBe(all);
+      expect(PROP_GEO[id].variants).toBe(all);
+      expect(PROP_GEO[id].heights).toHaveLength(all);
       expect(d.rollVariants).toBeLessThanOrEqual(first);
       for (let v = first; v < first + count; v++) {
         const g0 = buildProp(id, 7, v, 0);

@@ -68,7 +68,8 @@ export const PROP_DEFS_BUILDINGS: PropDef[] = [
   // T0: the channel buoys (variants 1 red / 2 green, TASK-474) read as night light lines from the
   // overview; `windy` = the gentle bob; rolls stay on the harbour buoy (variant 0)
   // v3..v6 = the Colour Wharf's paint pots (M31 TASK-537): pinned, never rolled
-  d('buoy', 0, 7, 0.35, windy | noShadow, undefined, { rollVariants: 1 }),
+  // v7 spar, v8 mooring ball, v9 pot floats (TASK-601, D-175): pinned, never rolled
+  d('buoy', 0, 10, 0.35, windy | noShadow, undefined, { rollVariants: 1 }),
   d('driftwood', 2, 2, 0.8, grounded),
   d('tidePool', 3, 2, 1.1, underwater),
   d('shell', 3, 3, 0.12, grounded),

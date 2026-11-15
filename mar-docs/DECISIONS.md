@@ -2,6 +2,16 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-175: Boats and dock dressing v2: `harbourBoat` (3 hulls x 8 island sets), `dockDressing`, three buoy variants; waterline pivot, no route change (TASK-601) — 2026-11-15
+
+**Decision.** `harbourBoat` (new def, tier 1, `windy | noShadow`, `geo/boats-v2.ts`): variant = `biomeIndex * 3 + hull`, hull 0 dinghy (open well, thwarts, lug sail), 1 cabin fishing boat (wheelhouse with lit windows, derrick mast, crates, net drum), 2 sloop (mainsail, jib, hatch, pennant); hull / sail / stripe from `BOAT_SETS` per island (`content/biomes.ts`, palette and `WALL_STRATA` hues, DevOps basalt + ember, Research lavender + sand). Bow +z, pivot on the waterline, the hull sinks by `HARBOUR_BOAT.draft` (0.12 / 0.28 / 0.42 u), like `quayBoat`; heights 1.0 / 3.6 / 5.4. 24 variants, LOD0 178 / 254 / 206 tris, LOD1 32 / 56 / 36. `dockDressing` (tier 3, grounded, deck-top pivot): 0 net on a drying rack, 1 lobster pot, 2 rope coil, 3 ladder (reaches 1.1 u under the pivot). Buoy variants 7 spar, 8 mooring ball, 9 pot floats appended to the old `buoy` def after the Colour Wharf pots (`withBuoyV2`, after the harbour and wharf kits; `variants` 7 -> 10, `rollVariants` stays 1).
+
+**Why new defs.** `rowboat` / `sailboat` are used by the mooring / life code with fixed variants (`life/boats.ts` reads sailboat v0, rowboat v0) and `sailboat` already carries 11 variants pinned by cultures; a new def leaves those routes, the ferry timetable and every pinned hash untouched. Boat routes unchanged.
+
+**Contract for TASK-600 / worldgen.** Moorings: `defId: 'harbourBoat'`, `variant: boatVariant(theme, hull)`; set the instance y to the waterline (the draft is under the pivot). Dock dressing: place on the deck top (`dock` deck y 0.7 in dock-local space); the ladder needs the quay face under it. Nothing places these yet.
+
+**Open.** The sails are flat grey from the shade side at 3/4 (double-sided cloth, as the old sailboat); dinghy is 2.7 u and reads small next to the 5 u sloop at overview distances; no `life/` hook yet (the instanced boat kinds still use sailboat v0).
+
 ## D-174: Vegetation, rock and shore v2 are NEW defs with the biome and shape in the variant index; no old def, blob colour or world hash moves until TASK-600 (TASK-599) — 2026-11-15
 
 **Decision.** `canopyTree` (tall oval / umbrella / layered), `leanPalm` (leaning / twin trunk / grove), `floraBush` (two mounds, biome flower hues), `boulder` (5 silhouettes x bare / moss / lichen cap, strata bands + a pale strata line), `kelp` and `driftLog` (tier 3) are appended after every old def (`geo/vegetation-v2.ts`, `PROP_DEFS` tail). The island colour set rides in the variant: `variant = biomeIndex * shapes + shape`, biome 0 = neutral, 1..7 = `THEME_IDS` (`content/biomes.ts`: `BIOMES`, `biomeVariant`, `splitVariant`, `themeVariants`); boulder `variant = cap * 5 + silhouette`. Variant counts: canopyTree 24, leanPalm 24, floraBush 16, boulder 15, kelp 3, driftLog 3. LOD0 budgets 500 / 700 / 200 / 300 / 150 / 150, LOD1 <= 30 %. Gallery `gallery-shots.ts vegetation` (`?vars=` shows one biome block).

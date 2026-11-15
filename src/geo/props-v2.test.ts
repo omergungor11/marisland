@@ -4,10 +4,15 @@ import {
   BIOME_DEF_VARIANTS,
   BIOME_IDS,
   BIOMES,
+  BOAT_SETS,
   BOULDER_VARIANTS,
+  BUOY_V2,
+  HARBOUR_BOAT_VARIANTS,
   SHAPES,
   biomeTreePalette,
   biomeVariant,
+  boatVariant,
+  splitBoatVariant,
   splitVariant,
   themeVariants,
 } from '../content/biomes.ts';
@@ -26,7 +31,7 @@ const meanColor = (g: THREE.BufferGeometry): THREE.Color => {
   return c.multiplyScalar(1 / a.count);
 };
 
-/** LOD0 triangle budgets per def (TASK-599); LOD1 <= 30 % is pinned by geo.test.ts. */
+/** LOD0 triangle budgets per def (TASK-599 / TASK-601); LOD1 <= 30 % is pinned by geo.test.ts. */
 const BUDGET: Record<string, number> = {
   canopyTree: 500,
   leanPalm: 700,
@@ -34,6 +39,8 @@ const BUDGET: Record<string, number> = {
   boulder: 300,
   kelp: 150,
   driftLog: 150,
+  harbourBoat: 600,
+  dockDressing: 300,
 };
 const V2_IDS = Object.keys(BUDGET);
 
@@ -51,7 +58,7 @@ const OLD_VARIANTS: Record<string, number> = {
   driftwood: 2,
 };
 
-describe('vegetation, rock v2 (TASK-599)', () => {
+describe('vegetation, rock and boat v2 (TASK-599 / TASK-601)', () => {
   it('old scatter defs keep their variant counts and sit before every v2 def', () => {
     for (const [id, n] of Object.entries(OLD_VARIANTS)) {
       expect(PROP_DEFS[PROP_DEF_INDEX[id]].variants, id).toBe(n);
@@ -71,6 +78,8 @@ describe('vegetation, rock v2 (TASK-599)', () => {
     }
     expect(PROP_DEFS[PROP_DEF_INDEX.canopyTree].variants).toBe(BIOME_DEF_VARIANTS.canopyTree);
     expect(PROP_DEFS[PROP_DEF_INDEX.boulder].variants).toBe(BOULDER_VARIANTS);
+    expect(PROP_DEFS[PROP_DEF_INDEX.harbourBoat].variants).toBe(HARBOUR_BOAT_VARIANTS);
+    expect(PROP_DEFS[PROP_DEF_INDEX.buoy].variants).toBe(BUOY_V2.first + BUOY_V2.names.length);
   });
 
   it('variant encoding round-trips and each theme owns a consecutive block', () => {
@@ -84,6 +93,10 @@ describe('vegetation, rock v2 (TASK-599)', () => {
           expect(biomeVariant(def, id, s)).toBe(v);
         });
       });
+    BIOME_IDS.forEach((id) => {
+      for (let h = 0; h < 3; h++) expect(splitBoatVariant(boatVariant(id, h)).hull).toBe(h);
+      expect(splitBoatVariant(boatVariant(id, 0)).set).toBe(BOAT_SETS[id]);
+    });
   });
 
   it('biome tree palettes keep the FOLIAGE shape the far blobs read', () => {
@@ -129,6 +142,19 @@ describe('vegetation, rock v2 (TASK-599)', () => {
           expect(d, `${id} ${BIOME_IDS[i]} vs ${BIOME_IDS[j]}`).toBeGreaterThan(0.004);
         }
     }
+  });
+
+  it('boat sets differ per island and the three hulls differ in size', () => {
+    const hulls = [0, 1, 2].map((h) => {
+      const g = buildProp('harbourBoat', 3, boatVariant('neutral', h), 0);
+      g.computeBoundingBox();
+      return g.boundingBox!.getSize(new THREE.Vector3());
+    });
+    expect(hulls[0].z).toBeLessThan(hulls[1].z);
+    expect(hulls[1].z).toBeLessThan(hulls[2].z);
+    expect(hulls[0].y).toBeLessThan(hulls[2].y);
+    const sets = new Set(BIOME_IDS.map((b) => BOAT_SETS[b].hull));
+    expect(sets.size).toBe(BIOME_IDS.length);
   });
 
   it('the five boulder silhouettes differ in bounds and the caps recolour the top', () => {

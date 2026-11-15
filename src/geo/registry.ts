@@ -84,9 +84,13 @@ import {
   BIOME_DEF_VARIANTS,
   BOULDER,
   BOULDER_VARIANTS,
+  DOCK_DRESSING,
   DRIFT_LOG,
+  HARBOUR_BOAT,
+  HARBOUR_BOAT_VARIANTS,
   KELP,
 } from '../content/biomes.ts';
+import { dockDressing, harbourBoat, withBuoyV2 } from './boats-v2.ts';
 import {
   CANOPY_HEIGHTS,
   FLORA_BUSH_HEIGHTS,
@@ -305,7 +309,7 @@ defs.push(
 );
 // M14b theme structures (geo/themes/<theme>.ts), fixed theme order
 defs.push(...THEME_GEO);
-// TASK-599 (D-174): vegetation, rock and shore v2 defs, appended last
+// TASK-599 / TASK-601 (D-174 / D-175): vegetation, rock, shore and boat v2 defs, appended last
 const cycleH = (n: number, hs: readonly number[]): number[] =>
   Array.from({ length: n }, (_, v) => hs[v % hs.length]);
 defs.push(
@@ -339,11 +343,21 @@ defs.push(
   D('boulder', BOULDER_VARIANTS, boulder, 2.4, 1, false, cycleH(BOULDER_VARIANTS, BOULDER.heights)),
   D('kelp', KELP.variants, kelp, 0.7, 2, true, KELP.heights),
   D('driftLog', DRIFT_LOG.variants, driftLog, 1.2, 0.4, false, DRIFT_LOG.heights),
+  D(
+    'harbourBoat',
+    HARBOUR_BOAT_VARIANTS,
+    harbourBoat,
+    2.8,
+    5,
+    true,
+    cycleH(HARBOUR_BOAT_VARIANTS, HARBOUR_BOAT.height),
+  ),
+  D('dockDressing', DOCK_DRESSING.names.length, dockDressing, 0.7, 1, false, DOCK_DRESSING.height),
 );
 
 // M31 (TASK-533): the shared harbour kit adds variants to five old defs
 export const PROP_GEO: Record<string, PropGeoDef> = Object.fromEntries(
-  defs.map((d) => [d.id, withWharfKit(withHarbourKit(d))]),
+  defs.map((d) => [d.id, withBuoyV2(withWharfKit(withHarbourKit(d)))]),
 );
 
 export function buildProp(

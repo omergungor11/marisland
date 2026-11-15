@@ -4,7 +4,15 @@
  * content/placement.ts (TASK-122). Index in PROP_DEFS = PropStore.defId.
  */
 import { PropFlag } from '../world/prop-store.ts';
-import { BIOME_DEF_VARIANTS, BOULDER_VARIANTS, DRIFT_LOG, KELP, SHAPES } from './biomes.ts';
+import {
+  BIOME_DEF_VARIANTS,
+  BOULDER_VARIANTS,
+  DOCK_DRESSING,
+  DRIFT_LOG,
+  HARBOUR_BOAT_VARIANTS,
+  KELP,
+  SHAPES,
+} from './biomes.ts';
 import { PROP_DEFS_BUILDINGS } from './props-buildings.ts';
 import { HQ_PROP_DEFS, HQ_CULTURE_PROP_DEFS } from './props-themes/hq.ts';
 import {
@@ -68,7 +76,7 @@ export interface PropDef {
   fromT0?: true;
 }
 
-const { grounded, windy, groundCover, clusterable, underwater } = PropFlag;
+const { grounded, windy, groundCover, clusterable, underwater, noShadow } = PropFlag;
 
 const VEGETATION_DEFS: readonly PropDef[] = [
   // vegetation
@@ -132,7 +140,7 @@ const VEGETATION_DEFS: readonly PropDef[] = [
 ];
 
 /**
- * TASK-599 (D-174): vegetation, rock and shore v2. NEW defs appended after
+ * TASK-599 / TASK-601 (D-174 / D-175): vegetation, rock, shore and boat v2. NEW defs appended after
  * every old one: the old defs' variant counts (scatter rolls `rng.int(0, variants - 1)`) and the
  * clustered T0 blob colours stay as they are, so no world hash moves until TASK-600 places these.
  * The island colour set rides in the variant (content/biomes.ts: biomeVariant / splitVariant).
@@ -190,6 +198,25 @@ const VEGETATION_V2_DEFS: readonly PropDef[] = [
     tier: 3,
     variants: DRIFT_LOG.variants,
     footprint: 0.8,
+    flags: grounded,
+  },
+  // hull = variant % 3 (dinghy, cabin fishing boat, sloop), island set = variant / 3; waterline pivot
+  {
+    id: 'harbourBoat',
+    geo: 'harbourBoat',
+    tier: 1,
+    variants: HARBOUR_BOAT_VARIANTS,
+    rollVariants: 3,
+    footprint: 2.2,
+    flags: windy | noShadow,
+  },
+  // deck-top pivot: 0 net rack, 1 lobster pot, 2 rope coil, 3 ladder (hangs under the pivot)
+  {
+    id: 'dockDressing',
+    geo: 'dockDressing',
+    tier: 3,
+    variants: DOCK_DRESSING.names.length,
+    footprint: 0.45,
     flags: grounded,
   },
 ];
@@ -254,7 +281,7 @@ const ALL_DEFS: readonly PropDef[] = [
   ...MARKETING_MARINA_PROP_DEFS,
   // ==== TASK-670 (M53, D-172): Marketing sea-top fun park (lunaDeck, lunaRide, lunaCoaster, lunaGate, lunaStand, lunaDecor) ====
   ...MARKETING_LUNA_PROP_DEFS,
-  // ==== TASK-599 (D-174): vegetation, rock and shore v2 ====
+  // ==== TASK-599 / TASK-601 (D-174 / D-175): vegetation, rock, shore and boat v2 ====
   ...VEGETATION_V2_DEFS,
 ];
 

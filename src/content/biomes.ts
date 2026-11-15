@@ -1,6 +1,6 @@
 /**
  * Per-island colour sets and variant encoding for the vegetation / rock / boat v2 defs
- * (TASK-599, D-174). Pure data: geometry lives in geo/trees.ts, geo/small.ts,
+ * (TASK-599 / TASK-601, D-174). Pure data: geometry lives in geo/trees.ts, geo/small.ts,
  * geo/coastal-v2.ts and geo/boats-v2.ts.
  *
  * Contract for TASK-600 (worldgen scatter, picks the variants):
@@ -13,7 +13,7 @@
  * to `biomeTreePalette(theme)` in the same commit so the far blobs (T0) keep matching (D-031).
  */
 import { THEME_IDS, type ThemeId } from '../world/types.ts';
-import { FLOWERS, FOLIAGE, ROOFS, WALLS } from './palette.ts';
+import { FLOWERS, FOLIAGE, ROOFS, WALL_STRATA, WALLS } from './palette.ts';
 
 export type BiomeId = 'neutral' | ThemeId;
 export const BIOME_IDS: readonly BiomeId[] = ['neutral', ...THEME_IDS];
@@ -155,6 +155,57 @@ export const BOULDER = {
 } as const;
 export const BOULDER_VARIANTS = BOULDER.silhouettes * BOULDER.caps;
 
+// ------------------------------------------------------------------ boats
+
+export interface BoatSet {
+  hull: string;
+  sail: string;
+  stripe: string;
+}
+
+/** Hull / sail / stripe per biome (hull index = same as BIOME_IDS), all palette or WALL_STRATA hues. */
+export const BOAT_SETS: Readonly<Record<BiomeId, BoatSet>> = {
+  neutral: { hull: ROOFS[5], sail: WALLS[1], stripe: ROOFS[0] },
+  hq: { hull: ROOFS[0], sail: WALLS[1], stripe: ROOFS[5] },
+  coding: { hull: ROOFS[2], sail: WALLS[1], stripe: ROOFS[3] },
+  marketing: { hull: ROOFS[1], sail: ROOFS[3], stripe: WALLS[1] },
+  qa: { hull: ROOFS[6], sail: WALLS[0], stripe: ROOFS[2] },
+  design: { hull: ROOFS[4], sail: WALLS[2], stripe: ROOFS[3] },
+  devops: { hull: WALL_STRATA.devops[1], sail: WALL_STRATA.devops[0], stripe: ROOFS[0] },
+  research: { hull: WALL_STRATA.research[1], sail: WALL_STRATA.research[0], stripe: ROOFS[5] },
+};
+
+/** harbourBoat hulls: variant = biomeIndex * 3 + hull. `draft` = how far the keel sits under the waterline pivot. */
+export const HARBOUR_BOAT = {
+  hulls: ['dinghy', 'fishingBoat', 'sloop'] as const,
+  length: [2.7, 4.6, 5.2],
+  draft: [0.12, 0.28, 0.42],
+  /** Mast / top height above the waterline pivot, u. */
+  height: [1.0, 3.6, 5.4],
+} as const;
+export const HARBOUR_BOAT_VARIANTS = HARBOUR_BOAT.hulls.length * BIOME_IDS.length;
+export const boatVariant = (biome: BiomeId, hull: number): number =>
+  biomeIndex(biome) * HARBOUR_BOAT.hulls.length + (hull % HARBOUR_BOAT.hulls.length);
+export const splitBoatVariant = (v: number): { set: BoatSet; hull: number } => ({
+  set: BOAT_SETS[BIOME_IDS[Math.floor(v / HARBOUR_BOAT.hulls.length) % BIOME_IDS.length]],
+  hull: v % HARBOUR_BOAT.hulls.length,
+});
+
+/** Dock dressing variants (deck-top pivot; the ladder hangs below it). */
+export const DOCK_DRESSING = {
+  names: ['net', 'lobsterPot', 'ropeCoil', 'ladder'] as const,
+  height: [0.95, 0.5, 0.26, 0.5],
+  /** The ladder reaches this far under the pivot. */
+  ladderDrop: 1.1,
+} as const;
+
+/** Buoy variants appended after the Colour Wharf paint pots (old buoy def: 0 harbour, 1/2 channel, 3..6 pots). */
+export const BUOY_V2 = {
+  first: 7,
+  names: ['spar', 'mooringBall', 'potFloats'] as const,
+  height: [1.5, 0.6, 0.33],
+} as const;
+
 // ------------------------------------------------------------------ coast litter
 
 /** `kelp` (tier 3, windy, water-tinted) and `driftLog` (tier 3). */
@@ -175,3 +226,4 @@ export const VEGETATION_SHOWCASE_IDS: readonly string[] = [
   'kelp',
   'driftLog',
 ];
+export const BOAT_SHOWCASE_IDS: readonly string[] = ['harbourBoat', 'dockDressing', 'buoy'];

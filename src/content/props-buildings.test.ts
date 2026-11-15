@@ -41,6 +41,9 @@ describe('PROP_DEFS_BUILDINGS', () => {
       'boulder',
       'kelp',
       'driftLog',
+      // TASK-601 (D-175): harbourBoat / dockDressing, same file
+      'harbourBoat',
+      'dockDressing',
       // M14b theme structures are covered by content/props-themes (their own PropDefs)
       ...THEME_GEO.map((d) => d.id),
       // M51 courier ships / crates / scrolls are life-driven, never scattered (no PropDef)

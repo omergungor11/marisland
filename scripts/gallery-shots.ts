@@ -2,9 +2,9 @@
  * Prop showcase capture (TASK-465): screenshots of the `?gallery=1` scene for a set of def ids, so
  * a prop can be judged on its own (no world needed). One image per def (a row of every variant at
  * LOD0 + LOD1) and one close 3/4 view of variant 0 LOD0.
- * TASK-599: `vegetation` shoots one tile per island colour set / cap (`?vars=`) and tile them.
+ * TASK-599 / TASK-601: `vegetation` and `boats` shoot one tile per island colour set / cap (`?vars=`) and tile them.
  *
- *   pnpm exec tsx scripts/gallery-shots.ts [m20|coding22|research|qa24|marina|quay|luna|vegetation|devops25|devops26|marketing27|research28|harbours|research31|coding33|coaster|buildings|id,id,...] [--port=5199] [--out=shots/gallery-m20]
+ *   pnpm exec tsx scripts/gallery-shots.ts [m20|coding22|research|qa24|marina|quay|luna|vegetation|boats|devops25|devops26|marketing27|research28|harbours|research31|coding33|coaster|buildings|id,id,...] [--port=5199] [--out=shots/gallery-m20]
  *
  * Starts its own `vite` dev server on `--port` (killed at the end; a server already on the port is
  * reused and left alone). Software GL (swiftshader), so no GPU is needed.
@@ -16,9 +16,12 @@ import { chromium } from 'playwright';
 import sharp from 'sharp';
 import {
   BIOME_IDS,
+  BOAT_SHOWCASE_IDS,
   BOULDER,
+  BUOY_V2,
   SHAPES,
   VEGETATION_SHOWCASE_IDS,
+  boatVariant,
   themeVariants,
 } from '../src/content/biomes.ts';
 import { COURIER_PROP_IDS } from '../src/content/fleet-ships.ts';
@@ -85,17 +88,19 @@ const ids =
                                   ? BUILDINGS_V2_IDS
                                   : which === 'vegetation'
                                     ? VEGETATION_SHOWCASE_IDS
-                                    : which === 'quay'
-                                      ? MARINA_QUAY_PROP_IDS
-                                      : which === 'luna'
-                                        ? LUNA_PROP_IDS
-                                        : which.split(',');
+                                    : which === 'boats'
+                                      ? BOAT_SHOWCASE_IDS
+                                      : which === 'quay'
+                                        ? MARINA_QUAY_PROP_IDS
+                                        : which === 'luna'
+                                          ? LUNA_PROP_IDS
+                                          : which.split(',');
 const PORT = Number(opt('port') ?? 5199);
 const ROOT = resolve(import.meta.dirname, '..');
 const OUT = resolve(
   ROOT,
   opt('out') ??
-    `shots/gallery-${['m20', 'coding22', 'research', 'qa24', 'qa30', 'marina', 'devops25', 'devops26', 'marketing27', 'research28', 'harbours', 'research31', 'coding33', 'coaster', 'couriers', 'buildings', 'quay', 'luna', 'vegetation'].includes(which) ? which : 'custom'}`,
+    `shots/gallery-${['m20', 'coding22', 'research', 'qa24', 'qa30', 'marina', 'devops25', 'devops26', 'marketing27', 'research28', 'harbours', 'research31', 'coding33', 'coaster', 'couriers', 'buildings', 'quay', 'luna', 'vegetation', 'boats'].includes(which) ? which : 'custom'}`,
 );
 const BASE = `http://localhost:${PORT}/`;
 /** `--night`: the lamp-class vertices glow over a dim rig (TASK-670 luna); `luna` always shoots over a turquoise floor. */
@@ -157,7 +162,7 @@ async function main(): Promise<void> {
       dpr: '1',
       quality: 'low',
       time: '12',
-      ...(which === 'luna' ? { sea: '1' } : {}),
+      ...(which === 'luna' || which === 'boats' ? { sea: '1' } : {}),
       ...(vars ? { vars: vars.join(',') } : {}),
       ...(NIGHT ? { night: '1' } : {}),
     });
@@ -204,8 +209,8 @@ async function main(): Promise<void> {
           );
         continue;
       }
-      if (which === 'vegetation') {
-        // TASK-599: one 640x360 tile per island colour set (or boulder cap), then one grid per def
+      if (which === 'vegetation' || which === 'boats') {
+        // TASK-599 / TASK-601: one 640x360 tile per island colour set (or boulder cap), then one grid per def
         const groups: Array<[string, number[]]> =
           id in SHAPES
             ? BIOME_IDS.map((b) => [b, [...themeVariants(id as keyof typeof SHAPES, b)]])
@@ -214,7 +219,11 @@ async function main(): Promise<void> {
                   `sil${k}`,
                   Array.from({ length: BOULDER.caps }, (_, c) => c * BOULDER.silhouettes + k),
                 ])
-              : [['all', Array.from({ length: def.variants }, (_, k) => k)]];
+              : id === 'harbourBoat'
+                ? BIOME_IDS.map((b) => [b, [0, 1, 2].map((h) => boatVariant(b, h))])
+                : id === 'buoy'
+                  ? [['v2', BUOY_V2.names.map((_, k) => BUOY_V2.first + k)]]
+                  : [['all', Array.from({ length: def.variants }, (_, k) => k)]];
         const tiles: string[] = [];
         const close = (vars: number[], name: string): Promise<void> => {
           const items = buildGalleryScene([id], vars).items;
