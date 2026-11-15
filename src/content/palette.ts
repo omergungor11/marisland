@@ -92,6 +92,12 @@ export const CLOUD = {
   belly: '#DDE6F5',
   bellyNight: '#3A4577',
   intro: '#FFF3DA',
+  /** TASK-608 two-tone (medium / high): the shade tone below the lit / shade step (cool lavender). */
+  shade: '#C3CBEA',
+  /** TASK-608 rim: the sun-side silhouette light (× sun colour), warm cream. */
+  rim: '#FFE7C4',
+  /** TASK-608 night rim: moonlit silver edge (the ART_BIBLE §2 night moon colour). */
+  rimNight: '#BFD4FF',
 } as const;
 export const SPARKLE = '#FFF6C2';
 

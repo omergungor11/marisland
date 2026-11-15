@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { BEAM, COMET, METEORS } from '../../content/lighting.ts';
-import { cometAt, createSkyProgramMaterial, meteorAt } from './sky.ts';
+import { BEAM, COMET, METEORS, SKY_HQ } from '../../content/lighting.ts';
+import { cometAt, createSkyProgramMaterial, meteorAt, moonPhaseAt } from './sky.ts';
+import { raysElevationK } from '../post/rays-effect.ts';
 
 const DEG = Math.PI / 180;
 
@@ -79,5 +80,36 @@ describe('beam land fade (TASK-549)', () => {
     expect(land.uniforms.uBeamGrid).toBe(gridMap); // shared: follows the world's grid mapping
     // one program: both materials supply every uniform
     expect(Object.keys(land.uniforms).sort()).toEqual(Object.keys(sky.uniforms).sort());
+  });
+});
+
+describe('high-tier sky (TASK-608)', () => {
+  it('moon phase: seeded, deterministic, cycles inside the range (never new)', () => {
+    const [lo, hi] = SKY_HQ.moon.range;
+    const cycle = SKY_HQ.moon.cycleDays * SKY_HQ.moon.dayLength;
+    expect(moonPhaseAt(1001, 12.5)).toBe(moonPhaseAt(1001, 12.5));
+    expect(moonPhaseAt(1001, 0)).not.toBe(moonPhaseAt(2024, 0));
+    let min = Infinity;
+    let max = -Infinity;
+    for (let t = 0; t < cycle; t += cycle / 200) {
+      const c = moonPhaseAt(1001, t);
+      min = Math.min(min, c);
+      max = Math.max(max, c);
+    }
+    expect(min).toBeGreaterThanOrEqual(lo - 1e-9);
+    expect(max).toBeLessThanOrEqual(hi + 1e-9);
+    expect(max - min).toBeGreaterThan((hi - lo) * 0.95);
+    expect(moonPhaseAt(1001, 3)).toBeCloseTo(moonPhaseAt(1001, 3 + cycle), 9);
+  });
+
+  it('the HQ define is compiled only into high sky programs', () => {
+    expect(createSkyProgramMaterial('sky', {}, 'medium').defines).toEqual({});
+    expect(createSkyProgramMaterial('beam').defines).toEqual({});
+  });
+
+  it('god rays: dusk / dawn window only', () => {
+    expect(raysElevationK(0.6)).toBe(0);
+    expect(raysElevationK(-0.2)).toBe(0);
+    expect(raysElevationK(0.1)).toBe(1);
   });
 });

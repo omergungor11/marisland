@@ -7,18 +7,21 @@ import type { EnvState } from '../../env/env-state.ts';
 import { createRng } from '../../core/rng.ts';
 import { CLOUDS } from '../../content/anim.ts';
 import { CLOUD } from '../../content/palette.ts';
+import { CLOUD_LOOK } from '../../content/lighting.ts';
+import { CLOUD_LAYERS } from '../../content/weather.ts';
 import { SHARED } from '../uniforms.ts';
 import {
   cellBlob,
   cellU,
   cloudBanks,
+  cloudLayers,
   coverThresholds,
   edgeFade,
   fieldForSeed,
   windOffset,
   type CloudFieldParams,
 } from './cloud-field.ts';
-import { buildCloudGeometry } from './cloud-geometry.ts';
+import { buildCloudGeometry, buildStratusGeometry, buildWispGeometry } from './cloud-geometry.ts';
 import { CLOUD_FRAG, CLOUD_VERT } from './cloud.glsl.ts';
 import { createPuffs, PUFF_SPRING, PUFF_STEAM, type Puffs } from '../particles/puffs.ts';
 
@@ -31,6 +34,9 @@ import { createPuffs, PUFF_SPRING, PUFF_STEAM, type Puffs } from '../particles/p
  *
  * Cost: 3 InstancedMeshes (one per variant: ≤ 16 field cells + the horizon banks (TASK-392,
  * ≈ 27–45 instances), 0.9–1.6k tris each) + 1 puff InstancedMesh → ≤ 4 draw calls, 2 programs.
+ * TASK-608 (D-183), medium / high: + the stratus and wisp meshes (CLOUD_LAYERS, ≤ 6 / 8
+ * instances, 2.5–3.5k / 0.3–0.4k tris each) → ≤ 6 calls, still 2 programs; `MAR_CLOUD_V2`
+ * two-tone + rim shading. Every cloud mesh is skipped (not drawn) once the tier fade hides it.
  */
 export interface CloudsView {
   group: THREE.Group;
@@ -108,6 +114,7 @@ export function createClouds(world: WorldData, quality: Quality, scope: Scope): 
 
   const defines: Record<string, string> = {};
   if (quality === 'low') defines.MAR_DIRECT = '';
+  else defines.MAR_CLOUD_V2 = '';
   /** Weather cloud colour (TASK-172): x = toward grey 0..1, y = brightness ×. */
   const tint = { value: new THREE.Vector2(0, 1) };
   const mat = scope.add(
@@ -131,6 +138,35 @@ export function createClouds(world: WorldData, quality: Quality, scope: Scope): 
         uBelly: { value: new THREE.Color(CLOUD.belly) },
         uBellyNight: { value: new THREE.Color(CLOUD.bellyNight) },
         uCloudTint: tint,
+        uShade: { value: new THREE.Color(CLOUD.shade) },
+        uRim: { value: new THREE.Color(CLOUD.rim) },
+        uLook: {
+          value: new THREE.Vector4(
+            CLOUD_LOOK.step[0],
+            CLOUD_LOOK.step[1],
+            CLOUD_LOOK.heightWeight,
+            CLOUD_LOOK.rimPower,
+          ),
+        },
+        uRimK: {
+          value: new THREE.Vector4(
+            CLOUD_LOOK.rim,
+            CLOUD_LOOK.rimBack,
+            CLOUD_LOOK.rimGolden,
+            CLOUD_LOOK.rimNight,
+          ),
+        },
+        uLook2: {
+          value: new THREE.Vector4(
+            CLOUD_LOOK.lining,
+            CLOUD_LOOK.liningPower,
+            CLOUD_LOOK.afterFog,
+            CLOUD_LOOK.warmBelly,
+          ),
+        },
+        uRimNight: { value: new THREE.Color(CLOUD.rimNight) },
+        uMoonDir: SHARED.uMoonDir,
+        uSkyNight: SHARED.uSkyNight,
       },
       fog: false,
       lights: false,
@@ -209,6 +245,59 @@ export function createClouds(world: WorldData, quality: Quality, scope: Scope): 
     }
     meshes.push({ mesh, list });
     group.add(mesh);
+  }
+
+  // TASK-608 archetypes (medium / high): stratus sheets + wisps, static apart from breathing
+  const layers: { mesh: THREE.InstancedMesh; list: Slot[] }[] = [];
+  if (quality !== 'low') {
+    const lay = cloudLayers(world.seed, cx, cz);
+    const layRng = rng.fork('layers');
+    const kinds = [
+      {
+        name: 'stratus',
+        clouds: lay.stratus,
+        geo: buildStratusGeometry(
+          rng.fork('geo:stratus'),
+          CLOUD_LAYERS.stratus.blobs,
+          CLOUD_LAYERS.stratus.aspect,
+        ),
+      },
+      {
+        name: 'wisps',
+        clouds: lay.wisps,
+        geo: buildWispGeometry(
+          rng.fork('geo:wisps'),
+          CLOUD_LAYERS.wisps.strokes,
+          CLOUD_LAYERS.wisps.aspect,
+        ),
+      },
+    ];
+    for (const k of kinds) {
+      const geo = scope.add(k.geo);
+      if (k.clouds.length === 0) continue;
+      const mesh = new THREE.InstancedMesh(geo, mat, k.clouds.length);
+      mesh.name = `clouds:${k.name}`;
+      mesh.frustumCulled = false;
+      mesh.castShadow = false;
+      mesh.receiveShadow = false;
+      const list = k.clouds.map((c, index): Slot => ({
+        mesh,
+        index,
+        ix: 0,
+        iz: 0,
+        jx: 0,
+        jz: 0,
+        width: c.width,
+        yaw: c.yaw,
+        alt: c.alt,
+        phase: layRng.next() * Math.PI * 2,
+        rank: -1,
+        bank: { x: c.x, z: c.z },
+      }));
+      for (const sl of list) slots.push(sl);
+      layers.push({ mesh, list });
+      group.add(mesh);
+    }
   }
 
   // smoke & steam
@@ -292,7 +381,12 @@ export function createClouds(world: WorldData, quality: Quality, scope: Scope): 
       )
         n++;
       mesh.count = n;
-      mesh.visible = n > 0;
+      // hidden by the tier fade (scale 0): not drawn at all (TASK-608, saves the calls at T2+)
+      mesh.visible = n > 0 && eased > 0;
+      mesh.instanceMatrix.needsUpdate = true;
+    }
+    for (const { mesh } of layers) {
+      mesh.visible = eased > 0;
       mesh.instanceMatrix.needsUpdate = true;
     }
     group.visible = true;
