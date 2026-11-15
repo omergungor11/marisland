@@ -140,5 +140,5 @@ contact sheet'e bak → push → bridge restart (session-end ritual).
 - Panelde her session satırı portreli; portre = 3D bot (QA yan yana karşılaştırır).
 - W8 / W16 / W-morning-shift önce / sonra: kenar ışığı, malzeme farkı, bina varyantı çıplak gözle okunur.
 - Seed 1001'de iki aynı cottage yok; her adanın ağaç renk seti farklı (W1 postcard'da okunur).
-- `wow --assert` 55 / 55 (yeni bütçeyle), ladder geçer, low ladder 80 MB altında kalır.
+- `wow --assert` 55 / 55 (yeni bütçeyle), ladder geçer, low ladder `BUDGETS.low.gpuMemoryMB` (86 MB, TASK-651 / D-165 eki; 2026-11-15 kullanıcı onayı) içinde kalır.
 - `wow-high` seti ilk kez çekilmiş, `BUDGETS.high` ile assert edilmiş.
