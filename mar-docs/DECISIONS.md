@@ -27,6 +27,17 @@ multiplied by `(1 − calm)` so the D-173 berth strip stays calm, faded by shore
 glitter shows in no shot (only inside the sun lobe — needs a sun-facing frame or a wider lobe), the second ring follows the
 SDF not the drawn waterline around breakwaters, caustic gain 0.75 may read busy on the HQ bay (≈ 0.6).
 
+**Addendum (TASK-679, 2026-11-15).** HQ bay "cracked glass" fixed by breaking the evenness, not by a view-pitch fade: `caustic.gain` 0.75 → 0.6; the cell
+lattice is bent by value noise (`caustic.warp` 12 u, 0.7 cells → cells grow and shrink); a slow patch field (`caustic.patch` 9 u, × 0.5–1.5, mean 1, folds to
+its mean with the far lift, so T0 / T1 unchanged) gathers the web into bright and quiet patches; `caustic.bright` takes 30 % of the gain off where the seabed
+albedo luminance runs 0.4 → 0.75 (the pale east shelf no longer goes yellow-white). Pitch fade rejected: W-sunken-noon looks down steeper (view y ≈ 0.81)
+than W-horseshoe-day (≈ 0.70), so any fade that calms the bay dims the noon shot first. Glitter: new wow `W-glitter-am` (10:00, sunDir ≈ −0.33, 0.94, 0.01;
+cam `-52,34,3,-64,0,3` puts the mirror point on the W8 breakwater with sea on two sides; the brief's `-46.5,34,-7.7,…` frame was in the lobe but its centre
+was the plaza). There the old glint mask read as soft white flakes, so `glint.breakup` (6.5 / u, kept above 0.5–0.62, near field only via the jitter footprint
+term) cuts each blob into sharp fragments; `daySun.shallow` 0.6 → 1.0 and `daySun.sparkle.gain` 1.6 → 2.2 so the round sparkles hold up beside them. Cost:
+two value-noise taps per caustic pixel (inside the existing `marCk > 0` branch, medium / high only) and one noise tap per water pixel; programs (15 T0 / 17)
+and calls identical before / after.
+
 ## D-176: Bot motion variety — per-chassis gait, idle beats, gate head-tip, done hop, swap poof, `?bots=lineup` (TASK-592) — 2026-11-15
 
 **Decision.** Numbers live in `content/bot-motion.ts` (per-chassis gait, four idle beats, gate head-tip + amber gem,

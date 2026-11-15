@@ -253,11 +253,20 @@ ${LAKE_COLOR_GLSL}
     float marCpx = max(length(marDPx.xz), length(marDPy.xz)) / ${f(F.caustic.cell)};
     if (marCk > 0.0) {
       float marCt = uTime * ${f(F.caustic.speed)};
-      vec2 marCp = vMarWorld.xz / ${f(F.caustic.cell)} + vec2(0.031, 0.022) * uTime;
+      // TASK-679: uneven cells (lattice bent by value noise) and a slow patch field, so the web
+      // stops reading as an even net from above; less gain over pale sand
+      vec2 marCw = vMarWorld.xz / ${f(F.caustic.warp.scale)};
+      vec2 marCp = vMarWorld.xz / ${f(F.caustic.cell)} + vec2(0.031, 0.022) * uTime
+                 + ${f(2 * F.caustic.warp.amount)} * (vec2(marVNoise(marCw), marVNoise(marCw + 31.7)) - 0.5);
       float marCst = marCausticOct(marCp, marCt, marCpx);
       vec2 marCq = mat2(0.8, 0.6, -0.6, 0.8) * marCp * ${f(F.caustic.octave)} - vec2(0.047, 0.018) * uTime + 13.7;
       marCst += ${f(F.caustic.second)} * marCausticOct(marCq, -1.3 * marCt, marCpx * ${f(F.caustic.octave)});
-      diffuseColor.rgb *= 1.0 + ${f(F.caustic.gain)} * marCst * marCk;
+      float marCpa = mix(${f(F.caustic.patch.range[0])}, ${f(F.caustic.patch.range[1])},
+                         smoothstep(0.2, 0.8, marVNoise((vMarWorld.xz + ${f(F.caustic.patch.drift)} * uTime) / ${f(F.caustic.patch.scale)})));
+      marCpa = mix(marCpa, ${f((F.caustic.patch.range[0] + F.caustic.patch.range[1]) / 2)}, smoothstep(${f(F.caustic.fade[0])}, ${f(F.caustic.fade[1])}, marCpx));
+      float marCl = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+      float marCg = ${f(F.caustic.gain)} * (1.0 - ${f(F.caustic.bright.amount)} * smoothstep(${f(F.caustic.bright.lum[0])}, ${f(F.caustic.bright.lum[1])}, marCl));
+      diffuseColor.rgb *= 1.0 + marCg * marCst * marCpa * marCk;
     }
   }
 #endif`,

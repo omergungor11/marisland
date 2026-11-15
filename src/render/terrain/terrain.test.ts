@@ -349,6 +349,9 @@ describe('terrain shallow caustics (TASK-596)', () => {
     expect(med.fragmentShader).toContain('marVoroEdge(');
     expect(med.fragmentShader).toMatch(/marCk = [^;]*\(1\.0 - uNight\)/);
     expect(med.defines).toHaveProperty('MAR_CAUSTICS');
+    // TASK-679: uneven cells + patch field, the patch folds to its mean with the far lift
+    expect(med.fragmentShader).toMatch(/marCp = [^;]*marVNoise\(marCw\)/);
+    expect(med.fragmentShader).toMatch(/marCpa = mix\(marCpa, [^;]*marCpx\)/);
     expect(patch('low').defines).not.toHaveProperty('MAR_CAUSTICS');
   });
 });

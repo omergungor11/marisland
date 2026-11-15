@@ -184,9 +184,15 @@ export const TERRAIN_FX = {
    * night carry none. Folds into a flat `farLift` × gain once the octave cells per pixel pass
    * `fade` (no shimmer at T1 / T0). `gain` = albedo brightening
    * (× (1 + gain · c)); the 0.55 lagoon alpha shows about half of it.
+   * TASK-679 (the even "cracked glass" net on the HQ bay from above): `warp` bends the cell lattice
+   * by value noise (`scale` u wavelength, `amount` cells) so cells grow and shrink across the bay;
+   * `patch` scales the web by a slow noise field (`scale` u, drifting `drift` u/s) between
+   * `range[0]` and `range[1]` (folds to its mean with the far lift); `bright` takes `bright.amount`
+   * of the gain off where the seabed albedo luminance (linear) runs `bright.lum[0]` → `[1]`, so the
+   * lines over pale sand stop going yellow-white.
    */
   caustic: {
-    gain: 0.75,
+    gain: 0.6,
     cell: 2.6,
     octave: 1.9,
     second: 0.6,
@@ -196,6 +202,9 @@ export const TERRAIN_FX = {
     sunY: [0.5, 0.75] as const,
     fade: [0.05, 0.16] as const,
     farLift: 0.12,
+    warp: { scale: 12, amount: 0.7 },
+    patch: { scale: 9, drift: 0.06, range: [0.5, 1.5] as const },
+    bright: { lum: [0.4, 0.75] as const, amount: 0.3 },
   },
   /** Shore lap: period s, advance u, SDF band u. */
   lapPeriod: 4.5,
