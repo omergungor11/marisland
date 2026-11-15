@@ -1,5 +1,5 @@
 /** DevOps (Emberpeak, volcano) — M14b plan §2.3. */
-import { FOLIAGE } from '../palette.ts';
+import { themeTreePalette } from '../biome-scatter.ts';
 import { Zone } from '../../world/types.ts';
 import type { ThemeDef } from './index.ts';
 
@@ -168,7 +168,8 @@ export const DEVOPS_THEME: ThemeDef = {
   // creature weights: THEME_LIFE.devops (none)
   life: {},
   // scatter pines are the stock pine geometry, so blobs keep the stock canopy hexes (D-031)
-  treePalette: FOLIAGE,
+  // TASK-600 (D-179): the biome ramp on the canopy kinds its v2 trees replaced (content/biome-scatter.ts)
+  treePalette: themeTreePalette('devops'),
 };
 
 /**

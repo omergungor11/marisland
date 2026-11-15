@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { generateWorld } from './index.ts';
 import { scatterProps, createOccupancy } from './gen/scatter.ts';
-import { PROP_DEFS } from '../content/props.ts';
+import { PROP_DEFS, PROP_DEF_INDEX } from '../content/props.ts';
 import { PropFlag } from './prop-store.ts';
 import { heightAt, zoneAt, Zone } from './types.ts';
 import { PLACEMENT_RULES } from '../content/placement.ts';
 import { perfLimit } from '../test/perf.ts';
 import { THEMES, type ThemeDef } from '../content/themes/index.ts';
+import { BIOME_RULES, BIOME_SCATTER, HARBOUR_DRESSING } from '../content/biome-scatter.ts';
+import { HARBOUR_BOAT, splitBoatVariant } from '../content/biomes.ts';
+import { DOCK } from '../content/settlements.ts';
 
 describe('prop scatter', () => {
   const world = generateWorld(1001, { islands: 1 });
@@ -23,7 +26,8 @@ describe('prop scatter', () => {
   });
 
   it('places trees and ground cover on Hearthholm', () => {
-    expect(res.counts.roundTree).toBeGreaterThan(30);
+    // TASK-600: Hearthholm's scatter round trees are its orchard canopyTrees
+    expect(res.counts.canopyTree).toBeGreaterThan(30);
     expect(res.counts.grassTuft).toBeGreaterThan(200);
     expect(res.counts.palm).toBeGreaterThan(0);
     console.info(`scatter ${res.props.count} props in ${ms.toFixed(0)} ms`, res.counts);
@@ -33,6 +37,8 @@ describe('prop scatter', () => {
     const p = res.props;
     for (let i = 0; i < p.count; i++) {
       const def = PROP_DEFS[p.defId[i]];
+      // the harbour pass (boats on the water, deck dressing) is checked below
+      if (def.id === 'harbourBoat' || def.id === 'dockDressing') continue;
       const zone = zoneAt(world.height, world.zone, p.x[i], p.z[i]);
       // the island's rule list as scatterProps builds it: global minus scatterOff, + theme rules
       const isl = world.islands.find((x) => x.id === p.islandId[i]);
@@ -41,8 +47,17 @@ describe('prop scatter', () => {
         (r) =>
           !theme.scatterOff.includes(r.def) &&
           (!r.archetypes || (isl !== undefined && r.archetypes.includes(isl.archetype))),
-      ).concat(theme.scatter);
-      const ok = rules.some((r) => r.def === def.id && r.zones.includes(zone));
+      )
+        .concat(theme.scatter)
+        .concat(BIOME_RULES.filter((r) => isl && r.themes.includes(isl.theme)));
+      // TASK-600 swaps: an old def's rule places the v2 def; lot edges sit on the same lawn zones
+      const swap = BIOME_SCATTER[isl?.theme ?? 'hq'].swap;
+      const ok =
+        rules.some(
+          (r) => (r.def === def.id || swap[r.def]?.def === def.id) && r.zones.includes(zone),
+        ) ||
+        ((def.id === 'floraBush' || def.id === 'flowerBed') &&
+          [Zone.grass, Zone.meadow, Zone.forest, Zone.sandDry, Zone.rock].includes(zone as never));
       expect(ok, `${def.id} on zone ${zone}`).toBe(true);
       expect(p.y[i]).toBeGreaterThan(-5);
       if (zone === Zone.lagoon) expect(p.y[i]).toBe(0);
@@ -53,10 +68,44 @@ describe('prop scatter', () => {
     }
   });
 
+  it('TASK-600 harbour: boats float on deep enough water beside a pier, dressing on its deck', () => {
+    const p = res.props;
+    let boats = 0;
+    for (let i = 0; i < p.count; i++) {
+      const id = PROP_DEFS[p.defId[i]].id;
+      if (id !== 'harbourBoat' && id !== 'dockDressing') continue;
+      // distance from the nearest pier axis (segment) and along it
+      let best = Infinity;
+      for (const d of world.docks) {
+        const fx = Math.cos(d.rotY);
+        const fz = Math.sin(d.rotY);
+        const t = (p.x[i] - d.x) * fx + (p.z[i] - d.z) * fz;
+        const lat = Math.abs(-(p.x[i] - d.x) * fz + (p.z[i] - d.z) * fx);
+        if (t >= 0 && t <= d.segments * DOCK.segment + 1) best = Math.min(best, lat);
+      }
+      if (id === 'harbourBoat') {
+        boats++;
+        const { hull } = splitBoatVariant(p.variant[i]);
+        expect(p.y[i]).toBe(0);
+        expect(heightAt(world.height, p.x[i], p.z[i])).toBeLessThanOrEqual(
+          -(HARBOUR_BOAT.draft[hull] + HARBOUR_DRESSING.keel),
+        );
+        expect(best).toBeCloseTo(DOCK.mooringSide, 3);
+      } else {
+        expect(p.y[i]).toBeCloseTo(HARBOUR_DRESSING.deckY, 5);
+        expect(best).toBeLessThanOrEqual(HARBOUR_DRESSING.ladderSide + 1e-3);
+      }
+    }
+    expect(boats).toBeGreaterThan(0);
+  });
+
   it('no overlaps among occupancy-marked props', () => {
     const p = res.props;
     const solid: number[] = [];
-    for (let i = 0; i < p.count; i++) if (!(p.flags[i] & PropFlag.groundCover)) solid.push(i);
+    // (the harbour pass is checked above: a dock ladder hangs beside its boat on purpose)
+    const harbour = [PROP_DEF_INDEX.harbourBoat, PROP_DEF_INDEX.dockDressing];
+    for (let i = 0; i < p.count; i++)
+      if (!(p.flags[i] & PropFlag.groundCover) && !harbour.includes(p.defId[i])) solid.push(i);
     let overlaps = 0;
     for (let a = 0; a < solid.length; a++) {
       const i = solid[a];

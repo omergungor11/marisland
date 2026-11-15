@@ -6,7 +6,8 @@
 import { PropFlag } from '../world/prop-store.ts';
 import {
   BIOME_DEF_VARIANTS,
-  BOULDER_VARIANTS,
+  BIOME_IDS,
+  BOULDER_VARIANTS_PER_SET,
   DOCK_DRESSING,
   DUNE_GRASS,
   ROCK_ARCH,
@@ -177,12 +178,13 @@ const VEGETATION_V2_DEFS: readonly PropDef[] = [
     footprint: 0.6,
     flags: grounded | windy,
   },
-  // 5 silhouettes x (bare | moss | lichen): variant = cap * 5 + silhouette
+  // 5 silhouettes x (bare | moss | lichen) per island moss set (TASK-600):
+  // variant = biomeIndex * 15 + cap * 5 + silhouette (`boulderVariant`); 0..14 = neutral
   {
     id: 'boulder',
     geo: 'boulder',
     tier: 1,
-    variants: BOULDER_VARIANTS,
+    variants: BOULDER_VARIANTS_PER_SET * BIOME_IDS.length,
     rollVariants: 5,
     footprint: 1.1,
     flags: grounded,

@@ -4,7 +4,8 @@
  * observatory, a quad of faculty halls around the library, formal gardens, a glasshouse row, a
  * research base, radio dishes and a sculpture walk; the research vessel at the cove pier.
  */
-import { FOLIAGE, SAND } from '../palette.ts';
+import { SAND } from '../palette.ts';
+import { themeTreePalette } from '../biome-scatter.ts';
 import { Zone } from '../../world/types.ts';
 import type { ThemeDef } from './index.ts';
 
@@ -149,7 +150,8 @@ export const RESEARCH_THEME: ThemeDef = {
   scatterOff: ['bush', 'grassTuft', 'flower', 'rockCluster'],
   // creature weights: THEME_LIFE.research
   life: {},
-  treePalette: FOLIAGE,
+  // TASK-600 (D-179): the biome ramp on the canopy kinds its v2 trees replaced (content/biome-scatter.ts)
+  treePalette: themeTreePalette('research'),
 };
 
 /**

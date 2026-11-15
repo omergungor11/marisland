@@ -5,7 +5,7 @@
  * Yard and a Hack Garden. No farm leftovers: no windmills, crops, hay, barns, cottages, fences or
  * sheep. The planner is world/gen/plans/coding.ts; the numbers it uses are `CODING_PLAN` below.
  */
-import { FOLIAGE } from '../palette.ts';
+import { themeTreePalette } from '../biome-scatter.ts';
 import type { CampusSpec } from '../settlements.ts';
 import type { PlacementRule } from '../placement.ts';
 import type { RimWalkwaySpec } from '../rim-walkway.ts';
@@ -306,6 +306,7 @@ export const CODING_THEME: ThemeDef = {
   scatterOff: ['cropRow', 'haybale', 'roundTree', 'pine', 'bush'],
   // creature weights: content/life.ts THEME_LIFE (coding: no sheep)
   life: {},
-  // scatter trees are the shared roundTree geometry (palette FOLIAGE); blobs must match them
-  treePalette: FOLIAGE,
+  // the planned (wreathed) trees are the shared roundTree geometry (FOLIAGE); blobs must match them
+  // TASK-600 (D-179): the biome ramp on the canopy kinds its v2 trees replaced (content/biome-scatter.ts)
+  treePalette: themeTreePalette('coding'),
 };

@@ -132,11 +132,12 @@ describe('archipelago — 30-seed full generation', () => {
     // TASK-661: the Marketing marina town (ring, basin, town, keep-outs), re-pinned
     // TASK-666: the marina town moves to HQ (comb gone), Marketing back to its arm harbour, re-pinned
     // TASK-674 + TASK-671: HQ's open crescent quay and the Marketing sea-top fun park, re-pinned
+    // TASK-600: biome scatter (v2 vegetation / rock / boat defs, props stage only), re-pinned
     expect(snap).toMatchInlineSnapshot(`
       {
-        "1": "fe946c52689fad15",
-        "1001": "3fcc21794508938a",
-        "42": "2dc78991dd135fe4",
+        "1": "9885e0f1f22302c0",
+        "1001": "7733ee22d8c342ee",
+        "42": "15c16d5d51fd3a71",
       }
     `);
   });
@@ -159,9 +160,9 @@ describe('archipelago — 30-seed full generation', () => {
     // TASK-674: HQ's open crescent quay, re-pinned
     expect(snap).toMatchInlineSnapshot(`
       {
-        "1": "bits:11a24c1f80046a03 layout:358ca2668fc3f1cc height:2f9e892ba7b38514 sdf:b8c34b97557c99da islandMap:9f7e0d86517ac7c5 zone:77f59e8fe6c92444 fields:fde62d37a0223454 chunks:dc7faad7717da3b9 sites:4eafc17955f7d0f0 routes:bd97bc6524447266 seamarks:c9d059790fa28055 marina:70c1073d7d97e4a2 props:c0531c35f7c3cab3",
-        "1001": "bits:42ee24f922f56acd layout:2747e57b5392567c height:21713a0d6295f1d2 sdf:ab8b4a1da1801c5f islandMap:aac83dd958cec153 zone:bb2902289c50296c fields:fde62d37a0223454 chunks:1854ff6405fc1fbe sites:a3e96d2f5762c26a routes:beedf704bf1c8fdc seamarks:adfaff5cff52a702 marina:38b0ff7652234c8c props:8e25a21c75a10162",
-        "42": "bits:6f9f336d08d137db layout:7d862a142513cf36 height:b205e21fd45fe9b5 sdf:80a0ab67504b027f islandMap:0dff0816d09fb54d zone:385e4a0a63c41589 fields:fde62d37a0223454 chunks:a7e456a628d4b886 sites:d405fd34612029fd routes:9b422895ce8e32e9 seamarks:7555ca08c54afb6c marina:14e3937f36034b15 props:b13c020438c480fb",
+        "1": "bits:b3aaa046a6dd945c layout:358ca2668fc3f1cc height:2f9e892ba7b38514 sdf:b8c34b97557c99da islandMap:9f7e0d86517ac7c5 zone:77f59e8fe6c92444 fields:fde62d37a0223454 chunks:dc7faad7717da3b9 sites:4eafc17955f7d0f0 routes:bd97bc6524447266 seamarks:c9d059790fa28055 marina:70c1073d7d97e4a2 props:405d9f6ad245977d",
+        "1001": "bits:2921938c2164d3fa layout:2747e57b5392567c height:21713a0d6295f1d2 sdf:ab8b4a1da1801c5f islandMap:aac83dd958cec153 zone:bb2902289c50296c fields:fde62d37a0223454 chunks:1854ff6405fc1fbe sites:a3e96d2f5762c26a routes:beedf704bf1c8fdc seamarks:adfaff5cff52a702 marina:38b0ff7652234c8c props:6d20e9a94eeadc01",
+        "42": "bits:2941e8a888aa073e layout:7d862a142513cf36 height:b205e21fd45fe9b5 sdf:80a0ab67504b027f islandMap:0dff0816d09fb54d zone:385e4a0a63c41589 fields:fde62d37a0223454 chunks:a7e456a628d4b886 sites:d405fd34612029fd routes:9b422895ce8e32e9 seamarks:7555ca08c54afb6c marina:14e3937f36034b15 props:fbf5ea9af5d65f69",
       }
     `);
   });
@@ -692,8 +693,9 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // TASK-661 the Marketing marina town, re-pinned
       // TASK-666 the marina town on HQ, Marketing's arm harbour again, re-pinned
       // TASK-674 + TASK-671: HQ's open crescent quay and the Marketing sea-top fun park, re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('ae774ec91c9ff071');
-      expect(generateWorld(1).hashes.world).toBe('f53d1f584e5f798f');
+      // TASK-600 biome scatter (v2 vegetation / rock / boat defs), re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('c8047ae418ae14ef');
+      expect(generateWorld(1).hashes.world).toBe('3869dbbdc8f5de0d');
     } finally {
       for (const b of saved) b.on = true;
     }

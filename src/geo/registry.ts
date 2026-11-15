@@ -82,6 +82,7 @@ import { COURIER_SHIPS } from '../content/fleet-ships.ts';
 import { THEME_IDS } from '../world/types.ts';
 import {
   BIOME_DEF_VARIANTS,
+  BIOME_IDS,
   BOULDER,
   BOULDER_VARIANTS,
   DOCK_DRESSING,
@@ -109,6 +110,8 @@ import {
 } from './vegetation-v2.ts';
 import type { Lod, PropGeoDef } from './types.ts';
 import type * as THREE from 'three';
+
+const BOULDER_SET_VARIANTS = BOULDER_VARIANTS * BIOME_IDS.length;
 
 const defs: PropGeoDef[] = [
   { id: 'palm', variants: 3, build: palm, footprint: 3, height: 6, windy: true },
@@ -345,7 +348,16 @@ defs.push(
     true,
     cycleH(BIOME_DEF_VARIANTS.floraBush, FLORA_BUSH_HEIGHTS),
   ),
-  D('boulder', BOULDER_VARIANTS, boulder, 2.4, 1, false, cycleH(BOULDER_VARIANTS, BOULDER.heights)),
+  // per-island moss / lichen sets (TASK-600): biomeIndex * 15 + cap * 5 + silhouette
+  D(
+    'boulder',
+    BOULDER_SET_VARIANTS,
+    boulder,
+    2.4,
+    1,
+    false,
+    cycleH(BOULDER_SET_VARIANTS, BOULDER.heights),
+  ),
   D('kelp', KELP.variants, kelp, 0.7, 2, true, KELP.heights),
   D('driftLog', DRIFT_LOG.variants, driftLog, 1.2, 0.4, false, DRIFT_LOG.heights),
   D(
