@@ -2,6 +2,36 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-182: High-tier AO is our own depth-only pmndrs Effect, soft shadows are a high-only PCF chunk swap; medium builds neither (TASK-606) — 2026-11-15
+
+**Decision.** High gets a stylized screen-space AO pass and wider soft shadows. Medium and low are pixel-identical to
+main: the AO object is never constructed and the shadow chunk is never patched there (no uniform switches). Proof: 10
+medium wow frames (W1 + mask, W3, W8 + dt, W16, W-horseshoe-day / -quay / -dusk, W-lava-river-dusk) diffed against
+the pre-change build: 0 differing pixels.
+- **AO** (`render/post/ao-effect.ts`, numbers in `content/lighting.ts` `AO`): its own `EffectPass` between the
+  RenderPass and the tilt-shift pass, so tilt-shift and DOF soften it with the scene. Depth only: view positions from
+  the composer depth texture, normals rebuilt from depth (smaller-difference neighbour). We did not use pmndrs
+  `SSAOEffect` because it needs a `NormalPass`, which renders the scene a second time with an override material. That
+  doubles the calls and misses the props' wind and dither-fade vertex work (AO ghosts under faded instances). N8AO was
+  rejected as a new dependency with its own noise texture. Half-res AO (12 spiral taps, IGN rotation + `AO.seed`,
+  deterministic) → 2 × bilateral blur → depth-aware 4-tap upsample → multiply toward the warm `AO.tint`, capped at
+  `maxOcclusion` 0.55, spared on HDR emissives, × 0.6 at night, off in debug-mask mode. World radius = view distance
+  × 0.08 clamped to 2–8 u: a fixed 1.4 u radius gave a 2–3 px line at T1–T2. Linear range falloff: taps further than
+  the radius count nothing, so there is no halo. Cosine bias 0.2: flat facets get no acne.
+- **Two gotchas found in shots.** (1) The depth texture is nearest-filtered and a half-res pixel centre sits on a
+  full-res texel corner. Rounding flips row by row there, which gave banded normals: horizontal stripes over the sea
+  and distant ground. Fix: snap every depth lookup to the texel centre (`snapUv`). (2) Flat receivers within
+  |y| < `AO.seaBand` 0.35 (the sea and its swell) take no AO, which removes the dark rings round hulls and the
+  swell-trough bands.
+- **Soft shadows** (`render/lighting.ts` `softenPcf`, `SOFT_SHADOW`): penumbra 0.5 u (medium 0.3), PCF radius cap 9
+  texels (medium 5). r186's 5-tap Vogel PCF sum is replaced by a 12-tap loop (same IGN rotation) through a global
+  `ShaderChunk` edit. This is safe because the quality is fixed per page load (a quality switch reloads), and it
+  changes no program parameter. A unit test pins the regex to r186's chunk. `render/shadows.ts` is untouched.
+- **Cost, high** (SwiftShader, 1920×1080): +3 programs (AO, blur, AO EffectPass; W8 24 → 27, others 17 → 20,
+  ≤ 30 D-156), +4 draw calls (3 AO full-screen quads + the pass), +4 MB (two RG16F half-res targets). Per frame:
+  one full-res composite pass, 12 + 5 depth taps per half-res pixel, 2 × 5-tap blur. Contact hardening (PCSS) is not
+  done: it needs a raw-depth read of the shadow map, which r186's `sampler2DShadow` path does not expose.
+
 ## D-180: Coast kit v2: `rockArch`, `tidePoolField`, `duneGrass`, `ledgeShrub` are new tail defs; kelp wind and water tint stay baked, no shader hook (TASK-604) — 2026-11-15
 
 **Decision.** Four new defs (`geo/coast-kit.ts`, tables in `content/biomes.ts`, `PropDef`s in `COAST_KIT_DEFS` at the very end of `ALL_DEFS`): no defId shifts, no world hash moves (nothing places them until TASK-603). `rockArch`: a noisy tube swept along a leg - ellipse - leg path (fatter at the feet, strata bands + pale line, wet dark foot, moss cap on v1), v0 sea arch / v1 low mossy bridge / v2 double arch. `tidePoolField`: rock shelf + three rim-ringed pools (turquoise `TINT.pool` discs), starfish, urchins, weed; v0 grey / v1 sandstone / v2 basalt shelf. `duneGrass`: arched double-sided blades with sand-cured colours, v0 marram, v1 sea oats with seed heads, v2 low mat on a sand hump. `ledgeShrub`: biome colours (`BIOMES[...].deciduous` + `flowers`), `SHAPES.ledgeShrub = 3`, variant = `biomeIndex * 3 + shape` (24 variants, `themeVariants('ledgeShrub', theme)`, `rollVariants` 3). `kelp` (TASK-599) is reused: same 3 variants / heights, only the blade colours changed (`KELP.blades` base pulled toward lagoon teal, tip lifted).

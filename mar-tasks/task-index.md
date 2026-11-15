@@ -623,7 +623,7 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-606 | High only: SSAO / GTAO pass + PCF soft shadows; medium wow pixel-identical; high programs ≤ 30 | shader | M | PENDING | TASK-594 |
+| TASK-606 | High only: SSAO / GTAO pass + PCF soft shadows; medium wow pixel-identical; high programs ≤ 30 | shader | M | COMPLETED (D-182; depth-only half-res AO EffectPass before tilt-shift, warm tint, sea masked, texel-snapped depth; 12-tap PCF + 0.5 u penumbra on high only; medium 10 frames 0 px diff; high +3 programs (max 27), +4 calls, +4 MB, W8 478 / 480 MB; open: PCSS contact hardening, wow-high set in TASK-607) | TASK-594 |
 | TASK-607 | `wow-high` set (`--quality=high --tag=high`) with `BUDGETS.high` assert, tier in the stats overlay, CI report-only | devops + engine | S | PENDING | TASK-606 |
 | TASK-608 | Sky + clouds v2: 3 cloud archetypes two-tone + rim (medium +≤ 2 calls), sun disc + halo, moon phases, star density, dusk god rays (high) | shader | M | PENDING | TASK-606 |
 | TASK-609 | M49 QA | qa | S | PENDING | TASK-607, TASK-608 |

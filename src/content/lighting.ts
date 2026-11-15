@@ -546,3 +546,46 @@ export const POST_ZOOM = {
   dofRangeScale: 3,
   maxOffset: 0.6,
 } as const;
+
+/**
+ * High-tier soft shadows (TASK-606, D-182): high only; medium keeps `LIGHTING.shadowPenumbra` /
+ * `SHADOW.pcfMax` and three's 5-tap PCF. On high the penumbra is wider and three's PCF chunk is
+ * swapped for a `taps`-sample Vogel disk (same IGN rotation, deterministic), so the wider radius
+ * stays smooth instead of grainy. Radius in texels = penumbra / texel, clamped to [SHADOW.pcfMin, pcfMax].
+ */
+export const SOFT_SHADOW = {
+  penumbra: 0.5,
+  pcfMax: 9,
+  taps: 12,
+} as const;
+
+/**
+ * High-tier screen-space AO (TASK-606, D-182, render/post/ao-effect.ts): depth only (normals rebuilt
+ * from depth, no extra scene pass), half resolution, `samples` spiral taps rotated by interleaved
+ * gradient noise (+ `seed`), bilateral blur, depth-aware upsample. Stylized contact shade, not grime:
+ * world radius = view distance × `radiusPerU` clamped to `radius` [min, max] u, so T1 views get a
+ * readable contact shade, not a 2 px line (taps further than it, e.g. a prop in front, count nothing: no halo),
+ * occlusion capped at `maxOcclusion`, darkening toward the warm `tint` (the multiplier at full
+ * occlusion), faded out over `fade` u of view distance (the T0 postcard keeps its baked AO only),
+ * spared on HDR emissives (luminance ramp `spare`), × `night` at night.
+ */
+export const AO = {
+  radius: [2, 8] as const,
+  radiusPerU: 0.08,
+  intensity: 8,
+  /** Cosine bias: flat or gently faceted ground does not occlude itself. */
+  bias: 0.2,
+  /** Flat receivers with |world y| below this (sea surface + swell) take no AO. */
+  seaBand: 0.35,
+  maxOcclusion: 0.55,
+  tint: '#B48C78',
+  fade: [200, 600] as const,
+  /** Max screen radius in half-res px (very close views). */
+  maxPx: 40,
+  samples: 12,
+  seed: 0.37,
+  /** Bilateral blur: depth tolerance as a fraction of the view distance. */
+  blurDepth: 0.04,
+  spare: [1.0, 2.0] as const,
+  night: 0.6,
+} as const;
