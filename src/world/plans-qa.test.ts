@@ -411,7 +411,8 @@ describe('QA quick wins (TASK-480), 30 seeds', () => {
   });
 
   it('Q18 palm rim: palms inland of the walk, near it; two hammocks on the rim', () => {
-    const palm = PROP_DEF_INDEX.palm;
+    // TASK-600: the rim row is QA's mint leanPalms (a swap of the palm rule)
+    const palms = [PROP_DEF_INDEX.palm, PROP_DEF_INDEX.leanPalm];
     let rows = 0;
     let hammocks = 0;
     for (const seed of SEEDS) {
@@ -420,7 +421,7 @@ describe('QA quick wins (TASK-480), 30 seeds', () => {
       const ctx = `seed ${seed}`;
       let n = 0;
       for (let i = 0; i < w.props.count; i++) {
-        if (w.props.defId[i] !== palm || w.props.islandId[i] !== isl.id) continue;
+        if (!palms.includes(w.props.defId[i]) || w.props.islandId[i] !== isl.id) continue;
         n++;
         const c = cellOf(w, w.props.x[i], w.props.z[i]);
         expect(w.shoreSdf[c], `${ctx} palm inland of the walk`).toBeGreaterThan(8.5);

@@ -18,6 +18,7 @@ import { smoothHeightAt } from '../../shared/terrain-sample.ts';
 import { EDIT_RENDER } from '../../content/edit.ts';
 import { THEMES } from '../../content/themes/index.ts';
 import { FOLIAGE } from '../../content/palette.ts';
+import { biomeCanopy } from '../../content/biome-scatter.ts';
 import { makeBlobs, writeBlobMatrix } from './contact-blobs.ts';
 import {
   CANOPY_KINDS,
@@ -358,7 +359,27 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
       blossom: 'blossomTree',
     };
     const kindBase = new Map<CanopyKind, Rgb>();
-    const kindColor = (pal: TreePalette, k: CanopyKind): Rgb => {
+    const biomeBase = new Map<string, Rgb>();
+    const kindColor = (pal: TreePalette, k: CanopyKind, theme?: ThemeId): Rgb => {
+      // TASK-600 (D-179): a kind drawn by a v2 def on this island takes that geometry's canopy
+      // (area-weighted over the island's variant picks); the palette ramp ratio would miss its dots
+      const src = theme ? biomeCanopy(theme, k) : null;
+      if (theme && src) {
+        let b = biomeBase.get(`${theme}:${k}`);
+        if (!b) {
+          b = [0, 0, 0];
+          const def = PROP_DEFS[PROP_DEF_INDEX[src.def]];
+          let a = 0;
+          for (const v of src.variants) {
+            const st = treeStats(def, v);
+            for (let c = 0; c < 3; c++) b[c] += st.rgb[c] * st.area;
+            a += st.area;
+          }
+          if (a > 0) for (let c = 0; c < 3; c++) b[c] /= a;
+          biomeBase.set(`${theme}:${k}`, b);
+        }
+        return b;
+      }
       let base = kindBase.get(k);
       if (!base) {
         base = [0, 0, 0];
@@ -378,7 +399,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
     };
     const palettes: TreePalette[] = [];
     const paletteSig: string[] = [];
-    const classes = new Map<string, { pal: TreePalette; counts: number[] }>();
+    const classes = new Map<string, { pal: TreePalette; counts: number[]; theme?: ThemeId }>();
     const geos = new Map<string, THREE.BufferGeometry>();
     return {
       /** Colour class of a non-empty cell: `${palette}:${lattice counts}`. */
@@ -386,7 +407,8 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
         const theme = d.world?.islands[c.island]?.theme;
         const pal: TreePalette = theme ? THEMES[theme].treePalette : FOLIAGE;
         // only the cell's own species ramp matters: palettes that agree on it share one class
-        const sig = c.kind === 'blossom' ? 'blossom' : pal[c.kind].join(',');
+        const v2 = theme && biomeCanopy(theme, c.kind) ? theme : undefined;
+        const sig = c.kind === 'blossom' ? 'blossom' : v2 ? `${v2}:v2` : pal[c.kind].join(',');
         let pi = paletteSig.indexOf(sig);
         if (pi < 0) {
           pi = paletteSig.push(sig) - 1;
@@ -395,7 +417,7 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
         // one species per cell (clusters.ts): a pure lattice class
         const counts = CANOPY_KINDS.map((k) => (k === c.kind ? BLOB_MIX_STEPS : 0));
         const key = `${pi}:${counts.join(',')}`;
-        if (!classes.has(key)) classes.set(key, { pal: palettes[pi], counts });
+        if (!classes.has(key)) classes.set(key, { pal: palettes[pi], counts, theme: v2 });
         return key;
       },
       /** Shape variant: the dominant kind's (ties → first kind). */
@@ -409,11 +431,11 @@ export function createPropBatcher(store: PropStore, d: BatcherDeps): PropBatcher
       geometryOf(cls: string): THREE.BufferGeometry {
         let g = geos.get(cls);
         if (g) return g;
-        const { pal, counts } = classes.get(cls)!;
+        const { pal, counts, theme } = classes.get(cls)!;
         const target: Rgb = [0, 0, 0];
         CANOPY_KINDS.forEach((k, ki) => {
           if (!counts[ki]) return;
-          const kc = kindColor(pal, k);
+          const kc = kindColor(pal, k, theme);
           for (let c = 0; c < 3; c++) target[c] += (kc[c] * counts[ki]) / BLOB_MIX_STEPS;
         });
         const base = geometryFor(blobDef, this.shapeOf(cls), 0);

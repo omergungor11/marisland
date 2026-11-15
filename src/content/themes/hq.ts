@@ -2,7 +2,7 @@
  * HQ / Orchestrator (Hearthholm, harbour crescent) — M14b plan §2.1, remade as the Seven Gates
  * Crossroads (M20 TASK-466, D-057 / D-058 / D-060; zones `mar-plans/study/hq-design.md` §1.2).
  */
-import { FOLIAGE } from '../palette.ts';
+import { themeTreePalette } from '../biome-scatter.ts';
 import { streetZone, THEME_IDS, Zone } from '../../world/types.ts';
 import type { ThemeDef } from './index.ts';
 import { CODING_THEME } from './coding.ts';
@@ -166,8 +166,9 @@ export const HQ_THEME: ThemeDef = {
   scatterOff: ['cropRow', 'haybale'],
   // creature weights: content/life.ts THEME_LIFE (TASK-379)
   life: {},
-  // palette FOLIAGE: a canopy of its own would add a T0 blob colour class (draw calls, D-033)
-  treePalette: FOLIAGE,
+  // the hq biome ramp is FOLIAGE: no extra T0 blob colour class (draw calls, D-033)
+  // TASK-600 (D-179): the biome ramp on the canopy kinds its v2 trees replaced (content/biome-scatter.ts)
+  treePalette: themeTreePalette('hq'),
 };
 
 /**

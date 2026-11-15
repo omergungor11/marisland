@@ -4,7 +4,7 @@
  * hangars joined by conveyor bridges, a crash-test loop track and the QA tower (a giant green
  * check on a lattice mast) as the one dominant vertical. Cheerful and toy-like, not grim.
  */
-import { FOLIAGE } from '../palette.ts';
+import { themeTreePalette } from '../biome-scatter.ts';
 import { PLACEMENT_RULES } from '../placement.ts';
 import type { RimWalkwaySpec } from '../rim-walkway.ts';
 import { Zone } from '../../world/types.ts';
@@ -98,7 +98,8 @@ export const QA_THEME: ThemeDef = {
   })),
   scatterOff: ['palm'],
   life: {},
-  treePalette: FOLIAGE,
+  // TASK-600 (D-179): the biome ramp on the canopy kinds its v2 trees replaced (content/biome-scatter.ts)
+  treePalette: themeTreePalette('qa'),
 };
 
 /**

@@ -482,10 +482,14 @@ describe('T0 blobs and grounding (TASK-373)', () => {
     s.push(PROP_DEF_INDEX.roundTree, 0, 1, 1, 1, 0, 1, 0, 0, TREE);
     s.push(PROP_DEF_INDEX.roundTree, 0, 41, 1, 1, 0, 1, 1, 0, TREE);
     const height = generateWorld(1).height;
-    const b = make(s, { height, islands: [{ theme: 'hq' }, { theme: 'coding' }] });
+    // two islands whose round trees are the stock def (TASK-600: no v2 canopy on either)
+    const b = make(s, { height, islands: [{ theme: 'devops' }, { theme: 'coding' }] });
     const sameHexes =
-      JSON.stringify(THEMES.hq.treePalette) === JSON.stringify(THEMES.coding.treePalette);
+      JSON.stringify(THEMES.devops.treePalette) === JSON.stringify(THEMES.coding.treePalette);
     expect(b.groups.filter((g) => g.def.id === 'treeBlob')).toHaveLength(sameHexes ? 1 : 2);
+    // a v2-canopy island (hq orchard, D-179) takes its own class even with FOLIAGE hexes
+    const c = make(s, { height, islands: [{ theme: 'hq' }, { theme: 'coding' }] });
+    expect(c.groups.filter((g) => g.def.id === 'treeBlob')).toHaveLength(2);
   });
 
   it('smooth-twin grounding: drawn y = smoothHeightAt where it differs > 0.02 u; store y unchanged', () => {
