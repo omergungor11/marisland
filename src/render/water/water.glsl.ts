@@ -76,6 +76,20 @@ export function waterDefines(): string {
     `#define MAR_DOT_FRACTION ${f(fo.dotFraction)}`,
     `#define MAR_DOT_RADIUS ${f(fo.dotRadius)}`,
     `#define MAR_DOT_DRIFT ${f(fo.dotDrift)}`,
+    // TASK-596: second foam band + shallow day glitter
+    `#define MAR_F2_GAP ${f(fo.second.gap)}`,
+    `#define MAR_F2_ADVANCE ${f(fo.second.advance)}`,
+    `#define MAR_F2_LAG ${f(fo.second.lag)}`,
+    `#define MAR_F2_W0 ${f(fo.second.width[0])}`,
+    `#define MAR_F2_W1 ${f(fo.second.width[1])}`,
+    `#define MAR_F2_NOISE ${f(fo.second.noiseScale)}`,
+    `#define MAR_F2_BRK0 ${f(fo.second.breakUp[0])}`,
+    `#define MAR_F2_BRK1 ${f(fo.second.breakUp[1])}`,
+    `#define MAR_F2_GAIN ${f(fo.second.gain)}`,
+    `#define MAR_F2_PX0 ${f(fo.second.pxFade[0])}`,
+    `#define MAR_F2_PX1 ${f(fo.second.pxFade[1])}`,
+    `#define MAR_DAY_SHALLOW ${f(W.daySun.shallow)}`,
+    `#define MAR_DAY_SHALLOW_LOBE ${f(W.daySun.shallowLobe)}`,
     `#define MAR_GLINT_EXP ${f(g.exponent)}`,
     `#define MAR_GLINT_STRENGTH ${f(g.strength)}`,
     `#define MAR_GLINT_GOLDEN ${f(g.goldenBoost)}`,
@@ -436,10 +450,24 @@ void main() {
   float foam = lower * (1.0 - smoothstep(hi - 0.5 * px, hi + px, d));
   foam *= mix(smoothstep(0.12, 0.3, brk), 1.0, farFoam);
 
-  // travelling bands toward the shore
+  // second foam band (TASK-596): a thinner broken ring outside the contact line, trailing its lap;
+  // none in calm berths, gone before it would alias (T1 / T0)
+  float f2Fade = (1.0 - smoothstep(MAR_F2_PX0, MAR_F2_PX1, px)) * (1.0 - calm);
+  float lap2 = marLap(t - MAR_F2_LAG) * uMotionScale + (1.0 - uMotionScale) * 0.5;
+  float lo2 = MAR_F2_GAP + MAR_F2_ADVANCE * (1.0 - lap2);
+  float n2 = marNoise(xz * MAR_F2_NOISE + vec2(-t * 0.06, t * 0.09) * uMotionScale + 23.0);
+  float hi2 = lo2 + mix(MAR_F2_W0, MAR_F2_W1, n2);
+  if (f2Fade > 0.0) {
+    float band2 = smoothstep(lo2 - px, lo2 + 0.5 * px, d) * (1.0 - smoothstep(hi2 - 0.5 * px, hi2 + px, d));
+    band2 *= smoothstep(MAR_F2_BRK0, MAR_F2_BRK1, n2);
+    foam = max(foam, band2 * f2Fade * MAR_F2_GAIN);
+  }
+
+  // travelling bands toward the shore (start past the second band, so the two rings stay clear)
+  float bandStart = mix(hi, hi2 + 0.4, f2Fade);
   float bandWave = sin(d * MAR_FBAND_K + t * MAR_FBAND_W);
   float bands = smoothstep(MAR_FBAND_TH, 1.0, bandWave);
-  bands *= smoothstep(hi, hi + 1.0, d) * (1.0 - smoothstep(MAR_FBAND_FADE0, MAR_FBAND_FADE1, d));
+  bands *= smoothstep(bandStart, bandStart + 1.0, d) * (1.0 - smoothstep(MAR_FBAND_FADE0, MAR_FBAND_FADE1, d));
   bands *= smoothstep(0.35, 0.6, marNoise(xz * 0.45 + vec2(-t * 0.05, t * 0.08)));
   bands *= 1.0 - smoothstep(0.25, 0.7, px);
   bands *= 1.0 - calm;
@@ -529,12 +557,17 @@ void main() {
   }
   vec3 warmCol = mix(uSunColor, uSunColor * vec3(1.0, 0.82, 0.6), 0.5);
 #ifdef MAR_DETAIL
-  // high-sun glitter on the open sea (TASK-472 K5): wide short lobe toward the sun, deep band only
+  // high-sun glitter (TASK-472 K5): wide short lobe toward the sun over the open sea; TASK-596 also
+  // over the shallow / mid rings (fewer lit cells), the lagoon over sand stays clear
   float dayCpx = fp * MAR_DAY_SPARK.x;
-  float dayOn = smoothstep(MAR_LOWSUN_Y0, MAR_LOWSUN_Y1, L.y) * (1.0 - lowSun) * (1.0 - uNight) * dayK * (1.0 - uWeather.y) * s3;
+  float dayOn = smoothstep(MAR_LOWSUN_Y0, MAR_LOWSUN_Y1, L.y) * (1.0 - lowSun) * (1.0 - uNight) * dayK * (1.0 - uWeather.y) * s1;
   if (dayOn > 0.0) {
-    vec2 dg = marGlitter(L, V, nS, xz, t * uMotionScale, dayCpx, MAR_DAY_LOBE, MAR_DAY_SPARK, 29.0);
-    float glowW = mix(MAR_DAY_GLOW, MAR_DAY_FARGLOW, smoothstep(0.22, 0.5, dayCpx));
+    // shallow / mid rings: fewer lit cells over a wider lobe (sparkles only: the sheen stays on the
+    // deep band, so the rings look the same once the cells fold away at T1 / T0)
+    vec4 daySp = MAR_DAY_SPARK;
+    daySp.y *= mix(MAR_DAY_SHALLOW, 1.0, s3);
+    vec2 dg = marGlitter(L, V, nS, xz, t * uMotionScale, dayCpx, MAR_DAY_LOBE * mix(MAR_DAY_SHALLOW_LOBE, 1.0, s3), daySp, 29.0);
+    float glowW = mix(MAR_DAY_GLOW, MAR_DAY_FARGLOW, smoothstep(0.22, 0.5, dayCpx)) * s3;
     glint += (dg.x * MAR_DAY_GAIN + dg.y * glowW) * dayOn * (1.0 - foam);
   }
 #endif

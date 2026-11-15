@@ -83,6 +83,23 @@ export const WATER_SHADER = {
     dotRadius: 0.14,
     /** Wave phase speed for riding the crests (= 28 u / 7 s). */
     dotDrift: 4,
+    /**
+     * Second foam band (TASK-596): a thinner broken ring outside the contact line, `gap` u from
+     * the shore at full lap plus `advance` u at full retreat, trailing the first line's lap by
+     * `lag` s; `width` u (± noise to `width[1]`), broken where the noise (`noiseScale` per u) is
+     * under `breakUp`, `gain` of full foam. Gone in calm berths; fades out while the shore
+     * distance per pixel goes `pxFade` (no aliased thin ring at T1 / T0).
+     */
+    second: {
+      gap: 1.9,
+      advance: 0.5,
+      lag: 0.6,
+      width: [0.22, 0.42] as const,
+      noiseScale: 0.55,
+      breakUp: [0.3, 0.5] as const,
+      gain: 0.85,
+      pxFade: [0.12, 0.35] as const,
+    },
   },
   glint: {
     exponent: 300,
@@ -134,11 +151,16 @@ export const WATER_SHADER = {
    * High-sun glitter on the open sea (TASK-472 K5, the TASK-353 sun-glint debt): the same glitter
    * model as the moon path with a wide, short lobe, so by day the deep water carries a loose field
    * of sparkles toward the sun that folds into a faint sheen at map scale. Medium / high only
-   * (`MAR_DETAIL`); fades out as the low-sun path takes over.
+   * (`MAR_DETAIL`); fades out as the low-sun path takes over. TASK-596: the field also covers the
+   * shallow and mid rings (`shallow` = lit-cell share there vs the deep band, `shallowLobe` = lobe
+   * sharpness there, < 1 wider; sparkles only, no sheen; the lagoon over sand stays clear so
+   * sparkles never read as foam).
    */
   daySun: {
     lobe: { across: 28, along: 14 },
     sparkle: { density: 0.9, fraction: 0.22, radius: 0.12, rate: 0.7, gain: 1.6 },
+    shallow: 0.6,
+    shallowLobe: 0.35,
     glow: 0.05,
     farGlow: 0.09,
   },

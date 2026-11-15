@@ -175,9 +175,28 @@ export const TERRAIN_FX = {
   /** Fresnel rim strength × horizon colour (ART_BIBLE §3). */
   rim: 0.15,
   rimPower: 3,
-  /** Caustics: brightening amount and depth range (u below 0). */
-  caustic: 0.1,
-  causticDepth: 14,
+  /**
+   * Shallow caustics (TASK-596, terrain underwater term, medium / high): two octaves of animated
+   * voronoi edges (F2 − F1 < `width` cells) on the seabed; octave 2 is `octave` × finer, `second`
+   * strong and drifts the other way. `cell` u per octave-1 cell, `speed` = cell-point orbit rad/s.
+   * Depth window (u below 0): fades in over `depth[0]`, full to `depth[1]`, gone by `depth[2]`.
+   * Day-gated: × (1 − uNight) × smoothstep(`sunY`) on the key light height, so golden hour and
+   * night carry none. Folds into a flat `farLift` × gain once the octave cells per pixel pass
+   * `fade` (no shimmer at T1 / T0). `gain` = albedo brightening
+   * (× (1 + gain · c)); the 0.55 lagoon alpha shows about half of it.
+   */
+  caustic: {
+    gain: 0.75,
+    cell: 2.6,
+    octave: 1.9,
+    second: 0.6,
+    width: 0.16,
+    speed: 0.85,
+    depth: [0.08, 1.4, 3] as const,
+    sunY: [0.5, 0.75] as const,
+    fade: [0.05, 0.16] as const,
+    farLift: 0.12,
+  },
   /** Shore lap: period s, advance u, SDF band u. */
   lapPeriod: 4.5,
   lapAdvance: 0.8,

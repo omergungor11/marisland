@@ -3,10 +3,11 @@ import * as THREE from 'three';
 import { generateWorld } from '../../world/index.ts';
 import { CHUNK_CELLS, CHUNKS_PER_SIDE } from '../../world/types.ts';
 import { Scope } from '../../core/scope.ts';
-import { TERRAIN_LOD } from '../../content/terrain.ts';
+import { TERRAIN_FX, TERRAIN_LOD } from '../../content/terrain.ts';
 import { sampleSurface } from '../../shared/terrain-sample.ts';
 import { createWorldTextures } from '../world-textures.ts';
 import { buildTerrain, pickLevel, type TerrainView } from './terrain.ts';
+import { createTerrainMaterial } from './terrain-material.ts';
 import { buildChunkGeometry, morphBands, morphWeight } from './terrain-mesh.ts';
 
 const world = generateWorld(1001, { islands: 1 });
@@ -325,4 +326,29 @@ describe('distance LOD (TASK-371)', () => {
     a.s.dispose();
     b.s.dispose();
   }, 90_000); // two full high-quality builds: ~23 s on 2-core CI runners
+});
+
+describe('terrain shallow caustics (TASK-596)', () => {
+  it('patch the underwater term: voronoi, 0–3 u deep, day-gated, compiled out on low', () => {
+    const C = TERRAIN_FX.caustic;
+    expect(C.depth[2]).toBeLessThanOrEqual(3);
+    expect(C.depth[0]).toBeLessThan(C.depth[1]);
+    const patch = (q: 'low' | 'medium'): THREE.WebGLProgramParametersWithUniforms => {
+      const material = createTerrainMaterial(world, textures, q).material;
+      const shader = {
+        uniforms: {},
+        defines: {},
+        vertexShader: THREE.ShaderLib.lambert.vertexShader,
+        fragmentShader: THREE.ShaderLib.lambert.fragmentShader,
+      } as unknown as THREE.WebGLProgramParametersWithUniforms;
+      material.onBeforeCompile(shader, {} as THREE.WebGLRenderer);
+      material.dispose();
+      return shader;
+    };
+    const med = patch('medium');
+    expect(med.fragmentShader).toContain('marVoroEdge(');
+    expect(med.fragmentShader).toMatch(/marCk = [^;]*\(1\.0 - uNight\)/);
+    expect(med.defines).toHaveProperty('MAR_CAUSTICS');
+    expect(patch('low').defines).not.toHaveProperty('MAR_CAUSTICS');
+  });
 });
