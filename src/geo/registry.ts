@@ -373,7 +373,15 @@ defs.push(
 );
 // TASK-604 (D-180): coast kit, appended after the v2 defs (kelp itself is the TASK-599 def above)
 defs.push(
-  D('rockArch', ROCK_ARCH.variants, rockArch, 3.6, 4, false, ROCK_ARCH.heights),
+  D(
+    'rockArch',
+    ROCK_ARCH.variants,
+    rockArch,
+    3.6,
+    4,
+    false,
+    cycleH(ROCK_ARCH.variants, ROCK_ARCH.heights),
+  ),
   D(
     'tidePoolField',
     TIDE_POOL_FIELD.variants,

@@ -237,6 +237,7 @@ const COAST_KIT_DEFS: readonly PropDef[] = [
     geo: 'rockArch',
     tier: 1,
     variants: ROCK_ARCH.variants,
+    rollVariants: ROCK_ARCH.shapes,
     footprint: 2.2,
     flags: grounded,
   },

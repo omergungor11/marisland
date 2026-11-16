@@ -5,13 +5,14 @@
  */
 import * as THREE from 'three';
 import {
+  ARCH_STONE,
   DUNE_GRASS,
   LEDGE_SHRUB,
   ROCK_ARCH,
   TIDE_POOL_FIELD,
   splitVariant,
 } from '../content/biomes.ts';
-import { ROCK, SAND } from '../content/palette.ts';
+import { SAND } from '../content/palette.ts';
 import type { Rng } from '../core/rng.ts';
 import { Acc, blob, col, createNoise, gradY, mat, qEuler } from './kit.ts';
 import { TINT } from './parts.ts';
@@ -96,26 +97,27 @@ function archPath(x0: number, R: number, leg: number, rise: number, n: number): 
 
 /** Rock arch: 0 sea arch, 1 low mossy bridge, 2 double arch (a small span sharing the right leg). */
 export function rockArch({ rng, lod, variant }: BuildOpts): THREE.BufferGeometry {
-  const shape = variant % ROCK_ARCH.variants;
+  const { biomeId, shape } = splitVariant('rockArch', variant);
   const r = rng.fork('arch');
   const acc = new Acc();
   const noise = createNoise(r.fork('n'));
   const A = ROCK_ARCH;
   const H = A.heights[shape];
-  const bands = [ROCK[2], ROCK[1], ROCK[0]].map(col);
-  const wet = col(A.wet);
+  const stone = ARCH_STONE[biomeId];
+  const bands = stone.bands.map(col);
+  const wet = col(A.wet).lerp(bands[0], 0.5);
   const moss = A.moss.map(col);
-  const line = col('#CFD3DA');
+  const line = col(stone.line).lerp(new THREE.Color('#FFFFFF'), 0.3);
   const lineY = 0.55 + r.range(-0.04, 0.04);
   const colour = (p: THREE.Vector3): THREE.Color => {
     const t = Math.max(0, p.y) / H;
     if (shape === 1 && t > 0.8)
       return moss[noise.n3(p.x * 3, p.y * 3, p.z * 3) > 0 ? 0 : 1].clone();
     if (Math.abs(t - lineY) < 0.035) return line.clone();
-    const c =
-      bands[
-        Math.max(0, Math.min(2, Math.floor(t * 2.6 + 0.25 * Math.sin(p.x * 3 + p.z * 2))))
-      ].clone();
+    const w = t * 2.6 + 0.25 * Math.sin(p.x * 3 + p.z * 2);
+    const c = bands[Math.max(0, Math.min(2, Math.floor(w)))].clone();
+    // fine horizontal banding echoing the cliff strata
+    c.offsetHSL(0, 0, Math.floor(t * 9 + 0.4 * Math.sin(p.x * 2.5 - p.z * 2)) % 2 ? 0.035 : -0.025);
     return p.y < A.wetY ? c.lerp(wet, 0.5 * (1 - p.y / A.wetY)) : c;
   };
   const N = lod === 0 ? 22 : 11;

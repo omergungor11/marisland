@@ -13,7 +13,7 @@
  * to `biomeTreePalette(theme)` in the same commit so the far blobs (T0) keep matching (D-031).
  */
 import { THEME_IDS, type ThemeId } from '../world/types.ts';
-import { FLOWERS, FOLIAGE, GRASS, ROOFS, WALL_STRATA, WALLS } from './palette.ts';
+import { FLOWERS, FOLIAGE, GRASS, ROCK, ROOFS, WALL_STRATA, WALLS } from './palette.ts';
 
 export type BiomeId = 'neutral' | ThemeId;
 export const BIOME_IDS: readonly BiomeId[] = ['neutral', ...THEME_IDS];
@@ -117,6 +117,8 @@ export const SHAPES = {
   floraBush: 2,
   /** 0 windswept hump, 1 cascading tuft over the lip, 2 twisted sapling shrub (TASK-604). */
   ledgeShrub: 3,
+  /** 0 sea arch, 1 low mossy bridge, 2 double arch; the biome block carries the stone colour (TASK-683). */
+  rockArch: 3,
 } as const;
 export type BiomeDef = keyof typeof SHAPES;
 
@@ -141,6 +143,7 @@ export const BIOME_DEF_VARIANTS: Readonly<Record<BiomeDef, number>> = {
   leanPalm: SHAPES.leanPalm * BIOME_IDS.length,
   floraBush: SHAPES.floraBush * BIOME_IDS.length,
   ledgeShrub: SHAPES.ledgeShrub * BIOME_IDS.length,
+  rockArch: SHAPES.rockArch * BIOME_IDS.length,
 };
 
 /** The theme's `treePalette` once its biome variants are placed (same shape as FOLIAGE). */
@@ -241,7 +244,9 @@ export const DRIFT_LOG = { variants: 3, heights: [0.52, 0.55, 0.42] } as const;
 
 /** `rockArch` (tier 1, grounded): 0 sea arch, 1 low mossy bridge, 2 double arch. Pivot = ground centre of the span. */
 export const ROCK_ARCH = {
-  variants: 3,
+  /** Shapes x biome blocks: variant = biomeIndex * 3 + shape (`biomeVariant('rockArch', ...)`); the block picks the stone. */
+  variants: SHAPES.rockArch * BIOME_IDS.length,
+  shapes: SHAPES.rockArch,
   /** Half span between the leg axes, leg height under the springing line, vertical stretch of the arc, lintel radius. */
   span: [1.7, 2.1, 1.5],
   leg: [1.3, 0.6, 1.5],
@@ -254,6 +259,26 @@ export const ROCK_ARCH = {
   wetY: 0.35,
   wet: '#4F5666',
 } as const;
+
+const lum = (hex: string): number => {
+  const n = parseInt(hex.slice(1), 16);
+  return 0.2126 * (n >> 16) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255);
+};
+/**
+ * Arch stone per biome, bottom -> top (dark, mid, light) plus the pale strata line: the island's
+ * own wall strata ordered by luminance, so the arch reads as eroded from the same cliff
+ * (hq / marketing sandstone and red rock, devops basalt). `neutral` keeps the grey ROCK set.
+ */
+const ROCK_BANDS = [ROCK[2], ROCK[1], ROCK[0]] as const;
+export const ARCH_STONE: Readonly<Record<BiomeId, { bands: readonly string[]; line: string }>> =
+  Object.fromEntries(
+    BIOME_IDS.map((id) => {
+      if (id === 'neutral') return [id, { bands: ROCK_BANDS, line: '#CFD3DA' }];
+      const s = [...WALL_STRATA[id]].sort((a, b) => lum(a) - lum(b));
+      // the three bands span the darkest, a mid and the lightest tone; the line is the lightest
+      return [id, { bands: [s[0], s[2], s[3]], line: s[3] }];
+    }),
+  ) as Record<BiomeId, { bands: readonly string[]; line: string }>;
 
 /** `tidePoolField` (tier 2, grounded): a rock shelf with 3 pools; rock tint per variant (grey / sandstone / basalt). */
 export const TIDE_POOL_FIELD = {
