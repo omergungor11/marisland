@@ -1524,6 +1524,19 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     quality: 'high',
     sets: ['dev'],
   },
+  {
+    id: 'D-puffins-ledge',
+    title: 'Ledge · puffin colony (Marketing)',
+    seed: 1001,
+    // TASK-332: the colony stands on a bare Media Rock coast shelf at about (-221.5, 4, -32.5) (planPuffinLedges,
+    // the sea is to -z); low has no puffins (LIFE_PLAN.low.puffins = 0). Re-pin if the seed 1001 layout changes.
+    cam: '-217.5,6.4,-40.5,-221.5,4.6,-32.5',
+    time: 14,
+    simt: 12,
+    deltaT: 2,
+    quality: 'medium',
+    sets: ['dev'],
+  },
   // Sky craft close looks (TASK-404). Raw cams aimed at the closed-form orbit position at simt 2
   // (seed 1001, medium): balloon 0 at (66.4, 60.6, -7.1), the airship at (-144.4, 96, 54.5) heading
   // ≈ +z, seen from its +x flank. Re-pin if `skyCraftPaths` or the seed layout changes.

@@ -1,4 +1,5 @@
 import type * as THREE from 'three';
+import { PUFFINS } from '../../content/life-critters.ts';
 import { SPOT_LIFE } from '../../content/life-spot-critters.ts';
 import { hex, TriBuilder, v3 } from './builder.ts';
 
@@ -228,6 +229,47 @@ export function buildButterfly(): THREE.BufferGeometry {
     wing(v3(-0.02, 0, 0.02 * s), v3(-0.08, 0, 0.27 * s), v3(-0.17, 0, 0.12 * s), dot);
   }
   b.ellipsoid(v3(0, 0, 0), 0.14, 0.035, 0.035, 5, 3, () => body);
+  b.clearLimb();
+  return b.finish();
+}
+
+/**
+ * Puffin ≈ 150 tris, origin on the ground, forward +x: a plump dark barrel with a white belly and
+ * cheek patches (white = instance tint), a stout yellow-and-orange beak, dark eyes, two wings
+ * (mode 1: lift in a flutter while `aGait.x` > 0) and two orange feet (mode 0: swing while
+ * waddling, `limb.z` = π is the opposite foot).
+ */
+export function buildPuffin(): THREE.BufferGeometry {
+  const b = new TriBuilder();
+  const back = hex(PUFFINS.tints.back);
+  const orange = hex('#FF7A2E');
+  const yellow = hex('#FFC93C');
+  const eye = hex('#17171D');
+  const grey = hex('#8E8E9A');
+  b.clearLimb();
+  // body: a dark barrel with the white belly in front
+  b.ellipsoid(v3(-0.02, 0.2, 0), 0.19, 0.2, 0.15, 7, 4, () => back);
+  b.ellipsoid(v3(0.06, 0.17, 0), 0.12, 0.15, 0.115, 6, 4, () => WHITE);
+  // head: dark cap over white cheeks, grey face mask
+  b.ellipsoid(v3(0.09, 0.42, 0), 0.115, 0.1, 0.11, 7, 4, () => back);
+  for (const s of [1, -1]) {
+    b.ellipsoid(v3(0.13, 0.4, 0.07 * s), 0.07, 0.075, 0.05, 5, 3, () => WHITE);
+    b.ellipsoid(v3(0.17, 0.43, 0.085 * s), 0.035, 0.03, 0.03, 4, 2, () => grey);
+    b.ellipsoid(v3(0.19, 0.435, 0.088 * s), 0.018, 0.02, 0.02, 4, 2, () => eye);
+  }
+  // beak: yellow root, orange tip
+  b.ellipsoid(v3(0.23, 0.39, 0), 0.07, 0.06, 0.04, 5, 3, () => yellow);
+  b.ellipsoid(v3(0.29, 0.385, 0), 0.05, 0.05, 0.03, 5, 3, () => orange);
+  // wings lift in a flutter at the sides
+  for (const s of [1, -1]) {
+    b.setLimb(0.09, 0, s > 0 ? 0 : 0.6, 1);
+    b.ellipsoid(v3(-0.03, 0.26, 0.15 * s), 0.14, 0.07, 0.035, 5, 3, () => back);
+  }
+  // feet swing opposite each other
+  for (const s of [1, -1]) {
+    b.setLimb(0.05, 0.06, s > 0 ? 0 : Math.PI, 0);
+    b.ellipsoid(v3(0.04, 0.02, 0.07 * s), 0.07, 0.02, 0.04, 5, 2, () => orange);
+  }
   b.clearLimb();
   return b.finish();
 }

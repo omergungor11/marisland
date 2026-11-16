@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { BUTTERFLIES, DUCKS } from '../content/life-critters.ts';
+import { BUTTERFLIES, DUCKS, PUFFINS } from '../content/life-critters.ts';
 import { BUDGETS } from '../content/budgets.ts';
 import { CULTURES } from '../content/cultures/index.ts';
 import { LIFE_PLAN } from '../content/life.ts';
@@ -9,7 +9,7 @@ import { Scope } from '../core/scope.ts';
 import type { Quality } from '../core/params.ts';
 import { SHARED } from '../render/uniforms.ts';
 import { generateWorld, type WorldData } from '../world/index.ts';
-import type { Ducks } from './critters.ts';
+import type { Ducks, Puffins } from './critters.ts';
 import { Butterflies, findPools, planZooSites } from './critters.ts';
 import { createLife, type LifeSystem } from './index.ts';
 import { makeCtx } from './ctx.ts';
@@ -458,5 +458,144 @@ describe('critters: Bug Zoo ladybugs (TASK-433)', () => {
       expect(l.mesh.count).toBe(0);
     }
     expect(seen).toBe(true);
+  });
+});
+
+type PuffinPoseLike = {
+  x: number;
+  y: number;
+  z: number;
+  yaw: number;
+  move: number;
+  action: number;
+};
+
+describe('critters: puffins (TASK-332)', () => {
+  const pose = (p: Puffins, i: number, t: number): PuffinPoseLike => {
+    const out = {
+      x: 0,
+      y: 0,
+      z: 0,
+      yaw: 0,
+      pitch: 0,
+      roll: 0,
+      sy: 1,
+      move: 0,
+      phase: 0,
+      action: 0,
+    };
+    p.pose(i, t, out);
+    return out;
+  };
+
+  it('nest on Marketing ledges above the sea, never on low, never as agents', () => {
+    let seen = false;
+    for (const s of SEEDS) {
+      for (const q of ['low', 'medium', 'high'] as const) {
+        const r = rig(s, q);
+        const p = r.life.kinds.puffins;
+        if (q === 'low') {
+          expect(p).toBeUndefined();
+          continue;
+        }
+        if (!p) continue;
+        seen = true;
+        expect(p.capacity).toBeGreaterThanOrEqual(PUFFINS.minBirds);
+        expect(p.capacity).toBeLessThanOrEqual(LIFE_PLAN[q].puffins);
+        frame(r.life, 4);
+        expect(p.liveCount).toBe(0);
+        expect(r.life.stats.agents).toBe(r.counters.agents);
+        const isl = world(s).islands.find((i) => i.theme === 'marketing');
+        for (let i = 0; i < p.capacity; i++) {
+          const o = pose(p, i, 0);
+          expect(Math.hypot(o.x - (isl?.cx ?? 0), o.z - (isl?.cz ?? 0))).toBeLessThan(
+            (isl?.reach ?? 0) + 1,
+          );
+          expect(o.y).toBeGreaterThanOrEqual(PUFFINS.ledge.minY - 0.5);
+        }
+      }
+    }
+    expect(seen).toBe(true);
+  });
+
+  it('stand clear of the anchored structures (stacks, dive tower) and share one shelf', () => {
+    for (const s of SEEDS) {
+      const p = rig(s, 'high').life.kinds.puffins;
+      if (!p) continue;
+      const isl = world(s).islands.find((i) => i.theme === 'marketing');
+      const colony = p.home;
+      for (const o of colony) {
+        for (const a of Object.values(isl?.anchors ?? {}))
+          expect(Math.hypot(o.x - a.x, o.z - a.z)).toBeGreaterThanOrEqual(
+            PUFFINS.clear.anchor - 0.5,
+          );
+        for (const q of colony)
+          expect(Math.hypot(o.x - q.x, o.z - q.z)).toBeLessThan(PUFFINS.radius * 2 + 1);
+      }
+    }
+  });
+
+  it('are hidden below tier 2', () => {
+    const r = rig(1001, 'medium', 1);
+    const p = r.life.kinds.puffins;
+    expect(p).toBeDefined();
+    if (!p) return;
+    frame(r.life, 3);
+    expect(p.mesh.count).toBe(0);
+    const r2 = rig(1001, 'medium', 2);
+    frame(r2.life, 3);
+    expect(r2.life.kinds.puffins?.mesh.count).toBe(r2.life.kinds.puffins?.capacity);
+  });
+
+  it('are a pure function of the clock, out of sync, and each action shows up', () => {
+    const a = rig(1001, 'medium').life.kinds.puffins;
+    const b = rig(1001, 'medium').life.kinds.puffins;
+    expect(a && b).toBeTruthy();
+    if (!a || !b) return;
+    const seen = new Set<number>();
+    for (let t = 0; t < 300; t += 0.25)
+      for (let i = 0; i < a.capacity; i++) {
+        const pa = pose(a, i, t);
+        expect(pa).toEqual(pose(b, i, t));
+        expect(Number.isFinite(pa.x + pa.y + pa.z + pa.yaw)).toBe(true);
+        seen.add(pa.action);
+      }
+    expect([...seen].sort()).toEqual([0, 1, 2]);
+    const yaws = new Set(
+      Array.from({ length: a.capacity }, (_, i) => pose(a, i, 5).yaw.toFixed(3)),
+    );
+    expect(yaws.size).toBe(a.capacity);
+  });
+
+  it('flights and waddles are continuous (no teleport at a cycle edge)', () => {
+    const p = rig(1001, 'medium').life.kinds.puffins;
+    expect(p).toBeDefined();
+    if (!p) return;
+    for (let i = 0; i < p.capacity; i++) {
+      let prev = pose(p, i, 0);
+      for (let t = 0.05; t < 200; t += 0.05) {
+        const o = pose(p, i, t);
+        expect(Math.hypot(o.x - prev.x, o.y - prev.y, o.z - prev.z)).toBeLessThan(0.6);
+        prev = o;
+      }
+    }
+  });
+
+  it('reduced motion drops the flights', () => {
+    const r = rig(1001, 'medium');
+    const p = r.life.kinds.puffins;
+    expect(p).toBeDefined();
+    if (!p) return;
+    r.life.setMotionScale(0.3);
+    for (let t = 0; t < 300; t += 0.5)
+      for (let i = 0; i < p.capacity; i++) expect(pose(p, i, t).action).not.toBe(2);
+  });
+
+  it('never adds agents (the gull lesson, D-190)', () => {
+    for (const q of ['medium', 'high'] as const) {
+      const r = rig(1001, q);
+      frame(r.life, 6);
+      expect(r.life.stats.agents).toBeLessThanOrEqual(BUDGETS[q].agents);
+    }
   });
 });

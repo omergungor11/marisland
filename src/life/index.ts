@@ -36,7 +36,7 @@ import { makeCtx, setMotion, type LifeCtx, type LifeDeps } from './ctx.ts';
 import { FishSchools } from './fish.ts';
 import { flockCentres, Gulls, type Perch } from './gulls.ts';
 import type { Cats, Crabs, Sheep, Villagers } from './land.ts';
-import type { Butterflies, SpotCritters } from './critters.ts';
+import type { Butterflies, Puffins, SpotCritters } from './critters.ts';
 import { createCritterKinds, createSpotCritters, type Ducks } from './critters.ts';
 import { Fireflies, planBugHunt, planEmbers, planSwarms } from './fireflies.ts';
 import { createLandKinds, type LandKind } from './land.ts';
@@ -96,6 +96,8 @@ export interface LifeSystem extends System {
     butterflies?: Butterflies;
     /** Bug Zoo ladybugs (TASK-433): the butterfly model in red, particles like the butterflies. */
     ladybugs?: Butterflies;
+    /** Marketing cliff-ledge puffin colony (TASK-332): particles, not agents. */
+    puffins?: Puffins;
     /** Fleet couriers (M51): one ship per island, added by the app when a fleet feed is on. */
     couriers?: AgentKind;
   };
@@ -345,6 +347,7 @@ export function createLife(deps: LifeDeps): LifeSystem {
       kinds.fireflies?.update(alpha);
       kinds.butterflies?.update(alpha);
       kinds.ladybugs?.update(alpha);
+      kinds.puffins?.update(alpha);
       spots?.update();
       recount();
     },
@@ -358,6 +361,7 @@ export function createLife(deps: LifeDeps): LifeSystem {
       if (kinds.fireflies) kinds.fireflies.motionScale = s;
       if (kinds.butterflies) kinds.butterflies.motionScale = s;
       if (kinds.ladybugs) kinds.ladybugs.motionScale = s;
+      if (kinds.puffins) kinds.puffins.motionScale = s;
       if (spots) spots.motionScale = s;
     },
     setCursorWorld(x, z = null) {

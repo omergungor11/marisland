@@ -3,6 +3,8 @@
  * pool and day butterflies over the Design flowers. Data only.
  */
 
+import { Zone } from '../world/types.ts';
+
 export const DUCKS = {
   /** Zoom tier from which the family is alive (bloom-in like the other land critters). */
   minTier: 2,
@@ -63,4 +65,48 @@ export const BUTTERFLIES = {
   tints: ['#FF7FB0', '#FFC93C', '#A98BFF', '#FF8A3D', '#6FC8FF', '#FFFFFF'] as const,
   /** Roll into turns, rad. */
   bank: 0.35,
+} as const;
+
+/**
+ * Puffins on the Marketing cliff ledges (TASK-332, second wave): a small colony on the flat shelves
+ * above the sea. Each bird cycles through idle bobs, a waddle to a neighbour and back, and a short
+ * flight loop out over the water; the cycle length is jittered per bird so the colony never syncs.
+ */
+export const PUFFINS = {
+  /** Zoom tier from which they are alive. */
+  minTier: 2,
+  /** Instance size (the model stands about 0.55 u tall). */
+  size: 1.8,
+  theme: 'marketing',
+  /** Ledge ground: height above the sea (u), flatness (slope) and how far the water must be (u, any direction). */
+  ledge: { minY: 2.4, maxY: 14, maxSlope: 0.2, minSea: 1.8, maxSea: 4.5 },
+  /** Bare ground a colony stands on (rock / cliff / sand zones), not lawn or a fairground. */
+  ground: [Zone.rock, Zone.cliff, Zone.sandDry, Zone.sandWet, Zone.sandBlack] as readonly number[],
+  /** Grid step of the ledge search (u) and clearances from props / fixtures / paths / lot edges (u). */
+  step: 1,
+  clear: { prop: 1.0, fixture: 1.5, path: 1.4, lot: 1.2, anchor: 6 },
+  /** The colony: spots within `radius` u of its centre, at least `separation` u apart. */
+  radius: 4.5,
+  separation: 1.1,
+  jitter: 0.3,
+  minBirds: 3,
+  /** Action cycle length (s) per bird, and the share of cycles that are a flight / a waddle. */
+  cycle: [20, 30] as const,
+  flightShare: 0.3,
+  waddleShare: 0.35,
+  /** Idle: breathing squash, head-nod pitch (rad) and period (s), glance yaw (rad) and period (s). */
+  breath: 0.035,
+  nod: [0.12, 2.6] as const,
+  glance: [0.45, 9] as const,
+  /** Waddle: speed (u/s), pause at the far end (s), stride length (u), body roll (rad), hop height (u). */
+  waddle: { speed: 0.55, pause: 2.5, stride: 0.22, roll: 0.14, hop: 0.03, reach: 1.4 },
+  /** Flight: duration (s), seaward reach / sideways sweep / peak height (u), wing flutter (Hz). */
+  flight: {
+    time: 7,
+    reach: [5, 8] as const,
+    sweep: [1.5, 3] as const,
+    lift: [1.5, 2.6] as const,
+    hz: 7,
+  },
+  tints: { back: '#26262E', belly: '#FFFFFF' },
 } as const;

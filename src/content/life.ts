@@ -52,6 +52,8 @@ export interface LifePlan {
   ducks: number;
   /** Day butterflies over the Design flowers (TASK-332): particles like fireflies, not agents. */
   butterflies: number;
+  /** Puffins on the Marketing cliff ledges (TASK-332): particles like the butterflies, not agents; 0 on low (draw-call cap). */
+  puffins: number;
 }
 export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
   low: {
@@ -76,6 +78,7 @@ export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
     fireflies: 27,
     ducks: 0,
     butterflies: 6,
+    puffins: 0,
   },
   medium: {
     sailboats: 2,
@@ -99,6 +102,7 @@ export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
     fireflies: 54,
     ducks: 4,
     butterflies: 10,
+    puffins: 5,
   },
   high: {
     sailboats: 4,
@@ -122,6 +126,7 @@ export const LIFE_PLAN: Record<'low' | 'medium' | 'high', LifePlan> = {
     fireflies: 72,
     ducks: 5,
     butterflies: 16,
+    puffins: 8,
   },
 };
 
