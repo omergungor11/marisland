@@ -2,6 +2,16 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-186: `rockArch` takes its island's cliff strata: biome variant encoding (variant = biomeIndex * 3 + shape), stone from `WALL_STRATA` (TASK-683) — 2026-11-16
+
+**Decision.** `SHAPES.rockArch = 3`, `BIOME_DEF_VARIANTS.rockArch = 24`; `ARCH_STONE` in `content/biomes.ts` takes each theme's `WALL_STRATA` tones sorted by
+luminance (darkest, 3rd, lightest + a strata line 30 % lighter); `neutral` keeps the old grey. `geo/coast-kit.ts` reads biome + shape via `splitVariant`, tints the
+wet foot toward the dark band, adds ±3 % horizontal banding, keeps the HQ moss cap (shape 1). A world scatter picks arches with `shapes('rockArch', theme, …)`.
+
+**Why.** Wave 4 QA: slate-blue arches on warm strata read as foreign objects (`D-coast-arch-marketing`, `-devops`).
+
+**Cost.** Only drawn variants are built: one LOD0 + LOD1 geometry per distinct island colour in the world.
+
 ## D-185: `wow-high` is the wow set at high quality, asserted against `BUDGETS.high`; the stats overlay shows the quality; CI runs a 7-frame subset report-only (TASK-607) — 2026-11-16
 
 **Decision.** `pnpm shots wow-high` = set `wow` + `--quality=high` + tag `high` (out: `shots/wow-high/`, dist-high). `assertBudgets` already read `BUDGETS[snap.quality]`, so no new assert path. Stats overlay line 1 reads `T2  high`. CI job `wow-high` (`continue-on-error`, 30 min) shoots `W1,W8,W16,W-ember-lane-night,W-fairy-night,W-horseshoe-quay,W-sky-dusk`. The quality governor is off in capture, so the set is deterministic (selftest `deterministic: true`).
@@ -172,6 +182,15 @@ was the plaza). There the old glint mask read as soft white flakes, so `glint.br
 term) cuts each blob into sharp fragments; `daySun.shallow` 0.6 → 1.0 and `daySun.sparkle.gain` 1.6 → 2.2 so the round sparkles hold up beside them. Cost:
 two value-noise taps per caustic pixel (inside the existing `marCk > 0` branch, medium / high only) and one noise tap per water pixel; programs (15 T0 / 17)
 and calls identical before / after.
+
+**Addendum (TASK-686, 2026-11-16).** The even net at distance (wave 4 QA) is fixed by a view-footprint low-pass plus per-edge variation. Low-pass: the geometric
+mean of the pixel's seabed footprint in cells (`sqrt(|dPx.x·dPy.z − dPx.z·dPy.x|) / cell`) folds web and patch field to their mean (`farLift·(1+second)`, patch 1)
+over `caustic.view` [0.012, 0.028] (W-sunken-noon ≈ 0.009, W16 ≈ 0.015, HQ bay from 85 u ≈ 0.023, 105 u overview ≈ 0.04). This replaces the TASK-679 pitch-fade
+rejection: the geometric mean separates the steep noon close-up from the bay overview where pitch alone could not. Per edge: `marVoroEdge` also returns a hash
+of the nearest cell pair and F1; width × `edge.width` 0.45–1.5, weakest edges drop (`edge.drop` 0.12–0.35), lines swell toward junctions (`edge.taper` 0.6–1.3),
+`edge.norm` 1.15 restores the mean, lines dim below `edge.minPx` 1.5 px (was 1.2). Result: W23 and 105 u overviews show no net (faint trace on W23's nearest
+shelf), HQ bay a faint broken web, W-sunken-noon / W16 / W-glitter-am keep close caustics (sunken-noon slightly dimmer far away). Cost: a few ALU ops + one hash
+per octave per caustic pixel, medium / high only; programs 17 / 20, calls unchanged.
 
 ## D-176: Bot motion variety — per-chassis gait, idle beats, gate head-tip, done hop, swap poof, `?bots=lineup` (TASK-592) — 2026-11-15
 
