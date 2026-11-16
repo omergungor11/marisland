@@ -55,7 +55,7 @@ export interface IslandBiomeScatter {
   dressing: readonly number[];
   /**
    * TASK-603: the stones of the coast micro-landscapes (sea stacks beside an arch, the rock ring
-   * round a waterfall foot, stream-mouth gravel). Variants the island (or the world) already
+   * round a waterfall foot). Variants the island (or the world) already
    * draws, so they add no geometry: the island's boulder set, else a world-shared bare boulder.
    */
   stone: { def: string; variants: readonly number[] };
@@ -88,7 +88,7 @@ export const BIOME_SCATTER: Readonly<Record<ThemeId, IslandBiomeScatter>> = {
       boulder: boulders('hq', 1, [0, 3]),
       kelp: NONE,
       driftLog: NONE,
-      arch: [1],
+      arch: shapes('rockArch', 'hq', [0, 1]),
       tide: [0],
       dune: NONE,
       ledge: shapes('ledgeShrub', 'hq', [0, 1]),
@@ -107,7 +107,7 @@ export const BIOME_SCATTER: Readonly<Record<ThemeId, IslandBiomeScatter>> = {
       boulder: NONE,
       kelp: [0],
       driftLog: [0],
-      arch: [0],
+      arch: shapes('rockArch', 'marketing', [1]),
       tide: [0],
       dune: NONE,
       ledge: shapes('ledgeShrub', 'marketing', [0, 1]),
@@ -148,7 +148,7 @@ export const BIOME_SCATTER: Readonly<Record<ThemeId, IslandBiomeScatter>> = {
       boulder: NONE,
       kelp: [1],
       driftLog: [0],
-      arch: [0],
+      arch: shapes('rockArch', 'devops', [1]),
       tide: [2],
       dune: NONE,
       ledge: shapes('ledgeShrub', 'devops', [1]),
@@ -194,7 +194,7 @@ export const BIOME_SCATTER: Readonly<Record<ThemeId, IslandBiomeScatter>> = {
       boulder: boulders('design', 1, [1, 4]),
       kelp: [0],
       driftLog: [0],
-      arch: [1],
+      arch: shapes('rockArch', 'design', [0, 1]),
       tide: [0],
       dune: NONE,
       ledge: shapes('ledgeShrub', 'design', [0, 1]),
@@ -393,8 +393,8 @@ export const BIOME_RULES: readonly BiomeRule[] = [
  * Coast micro-landscape rules (TASK-603, D-184): after every other prop (own fork
  * `coast-props`, island, rule), so nothing placed before moves. Dune crest grass on the
  * backshore sand, shrubs on the bluff wall faces. The arches, sea stacks, tide-pool fields,
- * waterfall foot rocks and stream-mouth gravel are passes (COAST_FEATURES): their spots are a thin
- * band the Poisson seeding of a wide-spaced rule misses.
+ * waterfall foot rocks are passes (COAST_FEATURES): their spots are a thin band the Poisson
+ * seeding of a wide-spaced rule misses.
  */
 export const COAST_RULES: readonly BiomeRule[] = [
   // dune ridge: crest grass clumps in a band behind the beach, gapped by cluster noise
@@ -419,27 +419,31 @@ export const COAST_RULES: readonly BiomeRule[] = [
     pick: 'ledge',
     themes: ['hq', 'marketing', 'coding', 'devops', 'qa', 'design', 'research'],
     zones: [cliff, rock],
-    minDist: 1.6,
-    density: 0.8,
+    minDist: 1.1,
+    density: 1,
     slopeMin: 0.9,
     slopeMax: 99,
     heights: [1.4, 40],
     shore: [0.5, 16],
-    cluster: { scale: 10, threshold: 0.12 },
+    cluster: { scale: 10, threshold: -0.1 },
     scale: [0.85, 1.25],
     face: 'downhill',
-    belowLip: 2.2,
+    // within ~1 u of the lip (TASK-684: 2.2 u let Coding / HQ shrubs sit mid-wall), and off the falls
+    belowLip: 1,
+    fallClear: 1,
     maxPerIsland: 18,
   },
 ];
 
 /**
  * Structured coast features (TASK-603, D-184), placed before COAST_RULES, each on its own fork.
- * Arch (`coast-arch`, island): headland waterline spots scored by the open water round them;
- * the span runs along the shore (legs at the waterline), the opening faces the sea. Sea stacks
- * (`coast-stacks`, island) stand off each arch. Tide-pool fields (`coast-tide`, island). Fall foot (`coast-fall`, fall): stones round the
- * plunge on the wall foot either side of the fall. Gravel (`coast-gravel`, stream): small stones
- * along both banks of a carved stream's last metres.
+ * Arch (`coast-arch`, island): headland waterline spots scored by the open water round them,
+ * pushed seaward and turned until both legs stand clear of the wall and sea or sky shows through
+ * the opening both ways (TASK-682). Sea stacks (`coast-stacks`, island) stand off each arch, off
+ * its opening axis. Tide-pool fields (`coast-tide`, island). Fall foot (`coast-fall`, fall):
+ * stones in the plunge pool and on the flat foot either side of the fall. (No stream-mouth
+ * gravel, TASK-685: the one carved stream, Design's, always ends at the Design harbour, whose
+ * pier, glass bridge and paths fill its mouth.)
  */
 export const COAST_FEATURES = {
   arch: {
@@ -447,7 +451,7 @@ export const COAST_FEATURES = {
     perIsland: 1,
     /** Poisson spacing of the candidates (u) and their window: |shore SDF| ≤ `sdf`, height range. */
     minDist: 3,
-    sdf: 0.8,
+    sdf: 1.2,
     heights: [-0.45, 0.6] as const,
     /** Not inside the harbour cove (heightfield `coveness`). */
     maxCove: 0.2,
@@ -455,9 +459,39 @@ export const COAST_FEATURES = {
     ring: [7, 13] as const,
     rays: 24,
     minWater: 0.58,
-    /** The legs (± half the bbox width along the shore) must sit within `legSdf` u of the waterline. */
-    halfWidth: [2.7, 2.85, 3.5] as const,
-    legSdf: 1.8,
+    /**
+     * TASK-682 siting: from each waterline candidate the arch is pushed seaward 0…`pushMax` u in
+     * `pushStep` steps and turned through `yaws` opening axes (over a half turn). A fit stands
+     * on its legs (leg axes ± `legAt`[variant] × scale along the span, sampled ± `depth` across
+     * it): base y = the legs' mean ground, inside `base`; each leg's ground within + `legBury` /
+     * − `legFloat` u of it (no leg inside a wall, none in the air), the outer flank of each foot
+     * (leg + `tube`) no more than `flankBury` u under ground; under the opening (span
+     * within `legAt` − `tube`) the ground stays `openClear` u under the line between the feet.
+     * View, both ways along the opening axis: sight lines from an eye looking down `eyeSlope`
+     * (drop per u, a cam a few u up) through `openAt` of the opening height at `viewLat` u
+     * across it, walked `viewStep` u to `viewRun` u: a line that meets the sea or runs out sees
+     * sea / sky, one that meets the ground first sees a wall. Each side needs ≥ `minView` clear.
+     * Score = the weaker side + `headland` × the ring score − `pushCost` × push (u).
+     */
+    pushMax: 6,
+    pushStep: 0.5,
+    yaws: 16,
+    legAt: [1.7, 2.1, 2.6] as const,
+    depth: 0.6,
+    base: [-0.9, 0.45] as const,
+    legBury: 0.45,
+    legFloat: 0.45,
+    flankBury: 0.6,
+    tube: 0.7,
+    openClear: 0.25,
+    eyeSlope: [0.2, 0.32] as const,
+    openAt: [0.3, 0.6, 0.85] as const,
+    viewLat: [-0.6, 0, 0.6] as const,
+    viewRun: 30,
+    viewStep: 0.5,
+    minView: 0.8,
+    headland: 0.3,
+    pushCost: 0.02,
     /** Occupancy disc (u) and clearances from a boat route / seamark sample and a dock (u). */
     radius: 2.4,
     routeClear: 6,
@@ -467,8 +501,12 @@ export const COAST_FEATURES = {
     scale: [0.95, 1.15] as const,
   },
   stacks: {
-    /** Stones off each arch: count range, distance seaward (u) and along the shore (u) of the arch. */
+    /**
+     * Stones off each arch: count range, distance seaward (u) and along the shore (u) of the arch;
+     * none within `axisClear` u of the opening axis (they would block the view through it).
+     */
     count: [2, 3] as const,
+    axisClear: 2.5,
     out: [2.6, 6] as const,
     along: 5,
     heights: [-0.45, 0.3] as const,
@@ -494,22 +532,18 @@ export const COAST_FEATURES = {
   fall: {
     /** Stones round each waterfall foot: count range, ring radius past half the fall width (u). */
     count: [4, 6] as const,
-    ring: [0.6, 2.6] as const,
+    ring: [0.4, 4] as const,
     /** Offset along the fall direction (u; + = out to sea). */
-    along: [-1.2, 2.2] as const,
-    heights: [-1, 1.8] as const,
-    slopeMax: 2,
-    scale: [0.7, 1.3] as const,
-    tries: 14,
-  },
-  gravel: {
-    /** Pebbles along the last `length` u of every carved stream, `bank` u off the bed. */
-    count: [6, 9] as const,
-    length: 12,
-    bank: [0.9, 2.2] as const,
-    scale: [0.16, 0.28] as const,
-    slopeMax: 0.8,
-    tries: 24,
+    along: [-0.6, 4.5] as const,
+    /**
+     * In the plunge pool or on the flat foot only (TASK-684: slope cap 2 and up to 1.8 u high put
+     * stones on the wall face), tops above the water.
+     */
+    heights: [-0.55, 0.6] as const,
+    slopeMax: 0.7,
+    /** Smaller than the old 0.7–1.3: the flat foot is a narrow strip, big stones filled it at 2–3. */
+    scale: [0.5, 0.95] as const,
+    tries: 120,
   },
 } as const;
 

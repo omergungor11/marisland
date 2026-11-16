@@ -55,8 +55,13 @@ export interface PlacementRule {
   slopeMin?: number;
   /** TASK-603: yaw local +z down the terrain slope (`downhill`, back to the wall) instead of a random turn. */
   face?: 'downhill';
-  /** TASK-603: only just under a wall top: `belowLip` u up the slope the ground is flat (slope ≤ 0.6) and higher. */
+  /**
+   * TASK-603: only just under a wall top: within `belowLip` u up the slope the ground turns flat
+   * (slope ≤ 0.6) and higher (TASK-684: any sample on the way, not only the one at `belowLip`).
+   */
   belowLip?: number;
+  /** TASK-684: no closer than (fall width + `fallClear`) u to any waterfall fall line (lip → base). */
+  fallClear?: number;
   /** TASK-603: seabed props keep their top (y + heights[variant] × scale) `below` u under the surface. */
   topClear?: { heights: readonly number[]; below: number };
 }

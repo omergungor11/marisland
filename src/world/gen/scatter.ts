@@ -137,7 +137,7 @@ export interface ScatterResult {
   occupancy: OccupancyGrid;
   /** Count per def id. */
   counts: Record<string, number>;
-  /** TASK-603: store index range of the coast feature passes (arches, stacks, tide pools, fall foot, gravel). */
+  /** TASK-603: store index range of the coast feature passes (arches, stacks, tide pools, fall foot). */
   coastFeatures: [from: number, to: number];
 }
 
@@ -225,11 +225,14 @@ export function scatterProps(
         if (slope > rule.slopeMax) return false;
         if (rule.slopeMin !== undefined && slope < rule.slopeMin) return false;
         if (rule.belowLip !== undefined) {
-          // the wall top: `belowLip` u up the slope the ground flattens out above the candidate
+          // the wall top: within `belowLip` u up the slope the ground flattens out above the candidate
           const a = downhillYaw(h, x, z);
-          const ux = x - dm.sin(a) * rule.belowLip;
-          const uz = z - dm.cos(a) * rule.belowLip;
-          if (slopeAt(h, ux, uz) > 0.6 || heightAt(h, ux, uz) <= heightAt(h, x, z)) return false;
+          if (!lipWithin(h, x, z, a, rule.belowLip)) return false;
+        }
+        if (rule.fallClear !== undefined) {
+          const c = rule.fallClear;
+          for (const f of world.waterfalls)
+            if (segDist(x, z, f.x, f.z, f.baseX, f.baseZ) < f.width + c) return false;
         }
         if (
           rule.cluster &&
@@ -470,6 +473,44 @@ export function slopeAt(
   const ix = Math.min(h.n - 1, Math.max(0, Math.round((x - h.originX) / h.cellSize)));
   const iz = Math.min(h.n - 1, Math.max(0, Math.round((z - h.originZ) / h.cellSize)));
   return slopeAtCell(h, ix, iz);
+}
+
+/** Distance (u) from (px, pz) to the segment (ax, az)–(bx, bz). */
+export function segDist(
+  px: number,
+  pz: number,
+  ax: number,
+  az: number,
+  bx: number,
+  bz: number,
+): number {
+  const vx = bx - ax;
+  const vz = bz - az;
+  const l2 = vx * vx + vz * vz;
+  const t = l2 > 0 ? Math.max(0, Math.min(1, ((px - ax) * vx + (pz - az) * vz) / l2)) : 0;
+  return Math.hypot(px - ax - vx * t, pz - az - vz * t);
+}
+
+/**
+ * A wall lip within `d` u up the slope from (x, z) (`yaw` = downhill, local +z): some sample on
+ * the way (0.25 u steps) is flat (slope ≤ 0.6) and higher than the start (TASK-684).
+ */
+export function lipWithin(
+  h: Parameters<typeof slopeAt>[0],
+  x: number,
+  z: number,
+  yaw: number,
+  d: number,
+): boolean {
+  const y = heightAt(h, x, z);
+  const sx = dm.sin(yaw);
+  const sz = dm.cos(yaw);
+  for (let s = 0.25; s <= d + 1e-6; s += 0.25) {
+    const ux = x - sx * s;
+    const uz = z - sz * s;
+    if (slopeAt(h, ux, uz) <= 0.6 && heightAt(h, ux, uz) > y) return true;
+  }
+  return false;
 }
 
 export type { PlacementRule };
