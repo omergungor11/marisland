@@ -10,6 +10,7 @@ import { Scope } from './core/scope.ts';
 import { Emitter, type AppEvents } from './core/events.ts';
 import { createBackend, type RendererBackend } from './render/backend.ts';
 import { createPostChain, type PostChain } from './render/post/composer.ts';
+import { setLitCoverage } from './render/materials/factory.ts';
 import { createLoader } from './ui/loader.ts';
 import { injectStyles, preloadFonts } from './ui/styles.ts';
 import { createStatsOverlay, readInfo, type StatsOverlay } from './debug/stats.ts';
@@ -171,6 +172,8 @@ export async function boot(): Promise<void> {
     });
     if (!params.quality && !stored && backend.isSoftware) quality = 'low';
     const preset = QUALITY_PRESETS[quality];
+    // TASK-687: MSAA (high) fades lit materials by alpha-to-coverage, before any is built
+    setLitCoverage(preset.msaa > 0);
     // If the provisional composer choice disagrees with the final preset, fix tone mapping.
     backend.renderer.toneMapping = preset.composer ? THREE.NoToneMapping : THREE.NeutralToneMapping;
     api.renderer = backend.rendererString;
