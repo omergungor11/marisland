@@ -654,22 +654,32 @@ export const SKY_HQ = {
 } as const;
 
 /**
- * Dusk / dawn god rays (TASK-608, D-183): high tier only — the effect is never built on medium /
- * low. A half-res R8 march (`samples` taps from each pixel toward the sun's screen position over
- * `density` of the way, `decay` per tap, `weight` per tap) counts open sky (depth = far) round the
- * sun behind clouds and silhouettes; the composite adds `intensity` × sun colour × `tint` to the scene before
- * bloom. Active while the sun's sin elevation is inside `elevation` [in0, in1, out0, out1], fading
- * with the overcast veil and as the sun leaves the screen by `edge` (uv). The march is skipped
- * (0 calls) while inactive.
+ * Dusk / dawn god rays (TASK-608, D-183; fan TASK-689, D-189): high tier only — the effect is never
+ * built on medium / low. A half-res R8 march of `samples` taps from each pixel toward the sun's
+ * screen position, over the last `reach` (uv of the height) of the way only: open sky (depth = far)
+ * inside `sourceRadius` of the sun is the light, and every occluded tap between that light and the
+ * pixel (clouds, island silhouettes) takes `absorb` of what is left (`seaAbsorb` under the
+ * horizon) — so the gaps between clouds pour shafts and the clouds cast shadow lanes: a fan, not a
+ * glow. `weight` per lit tap. The
+ * composite adds `intensity` × sun colour × `tint` × exp(−`falloff` × distance to the sun) to the
+ * scene before bloom. Active while the sun's sin elevation is inside `elevation` [in0, in1, out0,
+ * out1], fading with the overcast veil and as the sun leaves the screen by `edge` (uv). The march
+ * is skipped (0 calls) while inactive.
  */
 export const RAYS = {
-  samples: 32,
-  density: 1.0,
-  decay: 0.97,
-  weight: 0.07,
+  samples: 40,
+  /** Only this screen distance round the sun (uv of the height) is marched (light + occluders). */
+  reach: 0.32,
   /** Light source: open sky within this screen radius (uv of the height) of the sun. */
-  sourceRadius: 0.1,
+  sourceRadius: 0.09,
+  /** Share of the light an occluded tap above the horizon takes away (clouds, silhouettes). */
+  absorb: 0.35,
+  /** The same for a tap under the horizon (sea, low land): shafts fade over the water. */
+  seaAbsorb: 0.07,
+  weight: 0.11,
   intensity: 1.2,
+  /** Composite falloff with the distance from the sun (per uv of the height). */
+  falloff: 1.2,
   tint: '#FFC9A0',
   elevation: [-0.05, 0.0, 0.2, 0.34] as const,
   edge: 0.35,
