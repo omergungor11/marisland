@@ -9,7 +9,7 @@ typecheck + lint + test; wave sonunda `wow` + `wow-high --assert`, yeşilse push
 işlere dokunma (560, 561, 573, 586 peer, arch yeniden seçimi, bütçe artışı).
 
 ## Wave A
-- [ ] TASK-688 wall-foot hatch + strata wedges (shader, çalışıyor, port 4181)
+- [x] TASK-688 wall-foot hatch + strata wedges (shader, çalışıyor, port 4181)
 - [x] TASK-635 M50 worldgen polish: Coding waterfalls, right-edge mesh steps (worldgen, port 4182)
 - [x] TASK-332 capybaras (DevOps spring) + puffins (Marketing) (life, port 4183)
 
@@ -33,3 +33,4 @@ işlere dokunma (560, 561, 573, 586 peer, arch yeniden seçimi, bütçe artış�
 ## Günlük
 - 02:35 TASK-332 merge (puffin colony, Marketing; capybaras zaten TASK-433/507 ile vardı). D-195 yazılacak. Nit: D-puffins-ledge kamerası ön planda bulanık kaya. Push wave A sonunda.
 - 03:05 TASK-635 merge: şelaleler pre-rim lip'te sıralanıyor (seed 1001 9 → 11, Coding 1 → 3); yeni otomatik Design arch (−92.6, −116.7) — **kullanıcı onayı / veto: `arch: NONE`**. Mesh basamakları ve DevOps yolları çözülmedi (render işi). Hash'ler yeniden pinlendi (1001 world 9a2bd0a89f280b4a).
+- 03:30 TASK-688 merge (strata row from wall top, ripples flatOnly). LIMIT doldu: push YAPILMADI. Devam: 650/637 sonuçları, tam test + wow/wow-high, docs (D-193…197, task satırları), push, sonra wave B/C + fable review.
