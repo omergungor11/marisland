@@ -352,6 +352,10 @@ describe('terrain shallow caustics (TASK-596)', () => {
     // TASK-679: uneven cells + patch field, the patch folds to its mean with the far lift
     expect(med.fragmentShader).toMatch(/marCp = [^;]*marVNoise\(marCw\)/);
     expect(med.fragmentShader).toMatch(/marCpa = mix\(marCpa, [^;]*marCpx\)/);
+    // TASK-686: the web folds to its mean by view footprint; per-edge width from the edge hash
+    expect(C.view[0]).toBeLessThan(C.view[1]);
+    expect(med.fragmentShader).toMatch(/marCst = mix\(marCst, [^;]*marCv\)/);
+    expect(med.fragmentShader).toMatch(/vec3 e = marVoroEdge\(/);
     expect(patch('low').defines).not.toHaveProperty('MAR_CAUSTICS');
   });
 });

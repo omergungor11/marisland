@@ -190,6 +190,12 @@ export const TERRAIN_FX = {
    * `range[0]` and `range[1]` (folds to its mean with the far lift); `bright` takes `bright.amount`
    * of the gain off where the seabed albedo luminance (linear) runs `bright.lum[0]` → `[1]`, so the
    * lines over pale sand stop going yellow-white.
+   * TASK-686 (the net still read at island scale): `view` folds the web to its far lift by the
+   * pixel's seabed footprint (geometric mean, cells per pixel) — W-sunken-noon ≈ 0.009, W16 ≈ 0.015,
+   * HQ bay from 85 u ≈ 0.023, island overview at 105 u ≈ 0.04; `edge` gives every voronoi edge its
+   * own width (`width` × range by edge hash), drops the weakest (`drop` hash ramp), swells lines
+   * toward the junctions (`taper`, mid-edge → junction), `norm` restores the mean, `minPx` = the
+   * thinnest line in pixels before it dims.
    */
   caustic: {
     gain: 0.6,
@@ -205,6 +211,14 @@ export const TERRAIN_FX = {
     warp: { scale: 12, amount: 0.7 },
     patch: { scale: 9, drift: 0.06, range: [0.5, 1.5] as const },
     bright: { lum: [0.4, 0.75] as const, amount: 0.3 },
+    view: [0.012, 0.028] as const,
+    edge: {
+      width: [0.45, 1.5] as const,
+      drop: [0.12, 0.35] as const,
+      taper: [0.6, 1.3] as const,
+      norm: 1.15,
+      minPx: 1.5,
+    },
   },
   /** Shore lap: period s, advance u, SDF band u. */
   lapPeriod: 4.5,

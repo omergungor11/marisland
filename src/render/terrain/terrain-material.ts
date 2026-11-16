@@ -198,26 +198,36 @@ ${GROUND_LIGHT_PARS_GLSL}
 vec2 marTerrainUv(vec2 xz) {
   return ((xz - uTerrainGrid.xy) * uTerrainGrid.z + 0.5) / uTerrainGrid.w;
 }
-/* Caustic web (TASK-596): voronoi edge F2 - F1 (cell units) of points orbiting their cell centre. */
-float marVoroEdge(vec2 p, float t) {
+/* Caustic web (TASK-596): voronoi edge F2 - F1 (cell units) of points orbiting their cell centre;
+   TASK-686: .y = a hash of the edge (the nearest cell pair, the same on both sides of it),
+   .z = F1 (≈ 0.5 mid-edge, larger toward a junction). */
+vec3 marVoroEdge(vec2 p, float t) {
   vec2 i = floor(p);
   vec2 fr = fract(p);
   float d1 = 8.0;
   float d2 = 8.0;
+  vec2 c1 = vec2(0.0);
+  vec2 c2 = vec2(0.0);
   for (int k = 0; k < 9; k++) {
     vec2 o = vec2(float(k - 3 * (k / 3) - 1), float(k / 3 - 1));
     vec2 h = vec2(marHash12(i + o), marHash12(i + o + 17.3));
     vec2 q = o + 0.5 + 0.38 * vec2(sin(t + 6.2832 * h.x), cos(0.87 * t + 6.2832 * h.y)) - fr;
     float d = dot(q, q);
-    if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) { d2 = d; }
+    if (d < d1) { d2 = d1; c2 = c1; d1 = d; c1 = o; } else if (d < d2) { d2 = d; c2 = o; }
   }
-  return sqrt(d2) - sqrt(d1);
+  return vec3(sqrt(d2) - sqrt(d1), marHash12(2.0 * i + c1 + c2 + 7.13 * abs(c1 - c2) + 3.1), sqrt(d1));
 }
-/* One caustic octave: thin bright lines on the cell edges, widened to >= ~1 px and dimmed by the same
-   factor (mean kept), folding into the flat far lift while cells shrink toward a pixel. */
+/* One caustic octave: bright lines on the cell edges, widened to >= ~1.5 px and dimmed by the same
+   factor (mean kept), folding into the flat far lift while cells shrink toward a pixel. TASK-686:
+   each edge draws its own width (weak edges drop out) and swells toward the junctions, so the web
+   breaks up instead of drawing an even mesh. */
 float marCausticOct(vec2 p, float t, float cpx) {
-  float w = max(${f(F.caustic.width)}, 1.2 * cpx);
-  float line = (1.0 - smoothstep(0.0, w, marVoroEdge(p, t))) * ${f(F.caustic.width)} / w;
+  vec3 e = marVoroEdge(p, t);
+  float we = ${f(F.caustic.width)} * mix(${f(F.caustic.edge.width[0])}, ${f(F.caustic.edge.width[1])}, e.y)
+           * mix(${f(F.caustic.edge.taper[0])}, ${f(F.caustic.edge.taper[1])}, smoothstep(0.45, 0.7, e.z));
+  float w = max(we, ${f(F.caustic.edge.minPx)} * cpx);
+  float line = (1.0 - smoothstep(0.0, w, e.x)) * we / w
+             * smoothstep(${f(F.caustic.edge.drop[0])}, ${f(F.caustic.edge.drop[1])}, e.y) * ${f(F.caustic.edge.norm)};
   return mix(line, ${f(F.caustic.farLift)}, smoothstep(${f(F.caustic.fade[0])}, ${f(F.caustic.fade[1])}, cpx));
 }`,
       )
@@ -266,6 +276,13 @@ ${LAKE_COLOR_GLSL}
       marCpa = mix(marCpa, ${f((F.caustic.patch.range[0] + F.caustic.patch.range[1]) / 2)}, smoothstep(${f(F.caustic.fade[0])}, ${f(F.caustic.fade[1])}, marCpx));
       float marCl = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
       float marCg = ${f(F.caustic.gain)} * (1.0 - ${f(F.caustic.bright.amount)} * smoothstep(${f(F.caustic.bright.lum[0])}, ${f(F.caustic.bright.lum[1])}, marCl));
+      // TASK-686: low-pass by view footprint (geometric mean of the pixel's seabed footprint, in
+      // cells): from above the web folds to its mean long before the lines thin to a pixel, so the
+      // HQ bay from 85 u keeps a faint web and the shelf ring at island scale none
+      float marCva = sqrt(abs(marDPx.x * marDPy.z - marDPx.z * marDPy.x)) / ${f(F.caustic.cell)};
+      float marCv = smoothstep(${f(F.caustic.view[0])}, ${f(F.caustic.view[1])}, marCva);
+      marCst = mix(marCst, ${f(F.caustic.farLift * (1 + F.caustic.second))}, marCv);
+      marCpa = mix(marCpa, 1.0, marCv);
       diffuseColor.rgb *= 1.0 + marCg * marCst * marCpa * marCk;
     }
   }
