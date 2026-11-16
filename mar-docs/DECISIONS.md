@@ -2,6 +2,19 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-190: Bot proof spot on the paved lawn E of the Coding pool; hauler tracks proud; `birds: false` presets meet the low agent budget (TASK-690) — 2026-11-16
+
+**Context.** Wave 4 QA (TASK-593): the muster patch W of the Coding solar field had gained a turbine, tent and posts; scout and hauler looked alike (the
+hauler's tracks sat hidden under the body and read as boots); the portrait hauler drew treads no visible 3D bot had; `F-bot-hud` counted 29 agents > 25 (low).
+
+**Decision.** `BOT_LINEUP.offset` `{-22.5, -2}` from the plaza (paved lawn E of the reflecting pool), `gapX` 2.1, jitter 0.4; F-bots / F-bot-looks / F-bot-eyes
+cams re-aimed. `BOT_FRAMES.hauler` `legZ` 0.3, `armZ` 0.37 so the tracks stand proud (fender + three hub studs); the portrait hauler draws two flanking track
+blocks. New dev shot `F-bot-pair` (`?bots=pair`): scout / hauler / spire each with its panel portrait as a DOM chip (world scope). `ShotPreset.birds: false`
+(harness `birds=0`) drops the 6 gull agents: F-bot / F-bot-hud 29 → 23 at low, the bot proof shots 44 / 60. At tier 3 the count is 29 from any camera, so
+only dropping agents fixes it. `budgets.ts` unchanged. `shots --only` accepts prefix globs (`F-bot*`).
+
+**Open.** `selftest=regen` (+1 geometry) and `selftest=edit` (+3) leak at tier-3 Coding cams on HEAD, with or without this change → TASK-693.
+
 ## D-187: The post chain's ping-pong output buffer is single-sample and colour-only on every quality (TASK-691) — 2026-11-16
 
 **Context.** High W-fairy-night measured 480.4 MB against a 480 MB budget, passing only on the rounded total. Both `EffectComposer.Buffer` targets were
