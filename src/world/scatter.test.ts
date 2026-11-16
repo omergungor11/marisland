@@ -7,7 +7,12 @@ import { heightAt, zoneAt, Zone } from './types.ts';
 import { PLACEMENT_RULES } from '../content/placement.ts';
 import { perfLimit } from '../test/perf.ts';
 import { THEMES, type ThemeDef } from '../content/themes/index.ts';
-import { BIOME_RULES, BIOME_SCATTER, HARBOUR_DRESSING } from '../content/biome-scatter.ts';
+import {
+  BIOME_RULES,
+  BIOME_SCATTER,
+  COAST_RULES,
+  HARBOUR_DRESSING,
+} from '../content/biome-scatter.ts';
 import { HARBOUR_BOAT, splitBoatVariant } from '../content/biomes.ts';
 import { DOCK } from '../content/settlements.ts';
 
@@ -35,7 +40,9 @@ describe('prop scatter', () => {
 
   it('every prop sits on an accepted zone and above the seabed', () => {
     const p = res.props;
+    // (the TASK-603 coast feature passes are checked in coast.test.ts)
     for (let i = 0; i < p.count; i++) {
+      if (i >= res.coastFeatures[0] && i < res.coastFeatures[1]) continue;
       const def = PROP_DEFS[p.defId[i]];
       // the harbour pass (boats on the water, deck dressing) is checked below
       if (def.id === 'harbourBoat' || def.id === 'dockDressing') continue;
@@ -49,7 +56,8 @@ describe('prop scatter', () => {
           (!r.archetypes || (isl !== undefined && r.archetypes.includes(isl.archetype))),
       )
         .concat(theme.scatter)
-        .concat(BIOME_RULES.filter((r) => isl && r.themes.includes(isl.theme)));
+        .concat(BIOME_RULES.filter((r) => isl && r.themes.includes(isl.theme)))
+        .concat(COAST_RULES.filter((r) => isl && r.themes.includes(isl.theme)));
       // TASK-600 swaps: an old def's rule places the v2 def; lot edges sit on the same lawn zones
       const swap = BIOME_SCATTER[isl?.theme ?? 'hq'].swap;
       const ok =

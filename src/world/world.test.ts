@@ -45,6 +45,7 @@ describe('generateWorld — determinism', () => {
     // TASK-666: the one-island world is HQ: its Horseshoe Harbour replaces the comb, re-pinned
     // TASK-674: its harbour town is an open crescent quay on the bay, re-pinned
     // TASK-600: biome scatter (v2 vegetation / rock / boat defs, props stage only), re-pinned
+    // TASK-603: coast micro-landscapes (props stage only), re-pinned
     expect(snap).toMatchInlineSnapshot(`
       {
         "1": {
@@ -54,12 +55,12 @@ describe('generateWorld — determinism', () => {
           "islandMap": "684e9e3500384b14",
           "layout": "ec97224b9dcc8315",
           "marina": "1343615c9ef89fa8",
-          "props": "91b78b37dd9b8038",
+          "props": "83f69512e2147aa8",
           "routes": "86c8f5e0cf9d10dc",
           "sdf": "d2891de7f2c7cfa2",
           "seamarks": "c932570e632a8768",
           "sites": "92a39e8e93a523e5",
-          "world": "c5757f3fbdedd1cc",
+          "world": "9433f79eb6a43b72",
           "zone": "9c62682927f431ac",
         },
         "1001": {
@@ -69,12 +70,12 @@ describe('generateWorld — determinism', () => {
           "islandMap": "ba527487134ebd21",
           "layout": "833741d3e076ff8e",
           "marina": "8b4af76d8d9adaa9",
-          "props": "d8b3d54687805740",
+          "props": "9ea7aa7f80d1a7fc",
           "routes": "849f2b5b9979330f",
           "sdf": "2a1ea7952a200f76",
           "seamarks": "0d7eafafa2581373",
           "sites": "01928339536af183",
-          "world": "ce64869a8bb4a513",
+          "world": "8f69b0c8a7360036",
           "zone": "9e88bb17fccd1405",
         },
         "42": {
@@ -84,12 +85,12 @@ describe('generateWorld — determinism', () => {
           "islandMap": "1d62ec4b1284772f",
           "layout": "b960bfa440f8e205",
           "marina": "39ff5177b745af6a",
-          "props": "813c5036913be6ef",
+          "props": "22ac7cec43358543",
           "routes": "59c3f85a90f98e2d",
           "sdf": "136183ead0ceb2fa",
           "seamarks": "bfe51c4b8f7d446c",
           "sites": "25b2db6290d7246e",
-          "world": "b92d9fb19ca86d9a",
+          "world": "ebc030d614fba3f0",
           "zone": "7801c71e45d188e4",
         },
       }

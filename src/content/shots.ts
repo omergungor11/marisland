@@ -2650,6 +2650,27 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     height: 540,
     sets: ['dev'],
   })),
+  // ---- TASK-603 (D-184): coast micro-landscapes on seed 1001 (raw cams from the sea; re-pin when
+  // the coast pass moves them): the HQ mossy bridge, the Emberpeak and Beacon Rock sea arches, an HQ tide-pool shelf
+  ...(
+    [
+      ['D-coast-arch-hq', 'Coast · HQ arch', '80.3,5.5,20.8,65.3,1.2,15.8'],
+      ['D-coast-arch-devops', 'Coast · Emberpeak arch', '277.4,5.5,-65.2,263.2,1.2,-60.1'],
+      ['D-coast-arch-marketing', 'Coast · Beacon Rock arch', '-137.9,6,-39.9,-145.9,1.2,-26.3'],
+      ['D-coast-tide-hq', 'Coast · HQ tide pools', '-52.6,9,-50.8,-44.6,0.3,-59.8'],
+    ] as const
+  ).map(([id, title, cam]): ShotPreset => ({
+    id,
+    title,
+    seed: 1001,
+    cam,
+    time: 11,
+    simt: 4,
+    quality: 'medium',
+    width: 1280,
+    height: 720,
+    sets: ['dev'],
+  })),
   // ---- TASK-505 (D-085): the HQ yacht marina and the star fort (the "prop showcase" cams of the
   // marina: `pnpm shots dev --only=D-marina-t0,D-marina-t1,D-marina-fort,D-marina-night`; raw cams,
   // seed 1001, re-pin when HQ's layout changes)

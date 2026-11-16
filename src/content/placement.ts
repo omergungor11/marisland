@@ -51,6 +51,14 @@ export interface PlacementRule {
   first?: boolean;
   /** v2 defs (TASK-600): roll the island's variant list (content/biome-scatter.ts) instead of 0..variants − 1. */
   pick?: VariantPick;
+  /** TASK-603: min terrain slope (rise / run): wall faces only (cliff-ledge shrubs). */
+  slopeMin?: number;
+  /** TASK-603: yaw local +z down the terrain slope (`downhill`, back to the wall) instead of a random turn. */
+  face?: 'downhill';
+  /** TASK-603: only just under a wall top: `belowLip` u up the slope the ground is flat (slope ≤ 0.6) and higher. */
+  belowLip?: number;
+  /** TASK-603: seabed props keep their top (y + heights[variant] × scale) `below` u under the surface. */
+  topClear?: { heights: readonly number[]; below: number };
 }
 
 const {

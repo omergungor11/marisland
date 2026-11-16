@@ -18,13 +18,24 @@
  * the blob ΔE bound (render/props/batcher.test.ts, p95 ≤ 4.5): the hq layered and the design oval
  * canopies shade 6.8 / 9.3 off their island's mix and are left out.
  */
-import { biomeTreePalette, biomeVariant, boulderVariant, type BiomeDef } from './biomes.ts';
+import { biomeTreePalette, biomeVariant, boulderVariant, KELP, type BiomeDef } from './biomes.ts';
 import { FOLIAGE } from './palette.ts';
 import { Zone, type ThemeId } from '../world/types.ts';
 import type { PlacementRule } from './placement.ts';
 
 /** Variant lists a rule or swap may roll from (per island). */
-export type VariantPick = 'canopy' | 'palm' | 'flora' | 'boulder' | 'kelp' | 'driftLog';
+export type VariantPick =
+  | 'canopy'
+  | 'palm'
+  | 'flora'
+  | 'boulder'
+  | 'kelp'
+  | 'driftLog'
+  // TASK-603 coast kit (D-184): rockArch, tidePoolField, duneGrass, ledgeShrub variants
+  | 'arch'
+  | 'tide'
+  | 'dune'
+  | 'ledge';
 
 /** An old scatter def's placements turned into a v2 def (positions and roll count unchanged). */
 export interface ScatterSwap {
@@ -42,6 +53,12 @@ export interface IslandBiomeScatter {
   boats: readonly number[];
   /** dockDressing variants on the dock decks (0 net, 1 lobster pot, 2 rope coil, 3 ladder). */
   dressing: readonly number[];
+  /**
+   * TASK-603: the stones of the coast micro-landscapes (sea stacks beside an arch, the rock ring
+   * round a waterfall foot, stream-mouth gravel). Variants the island (or the world) already
+   * draws, so they add no geometry: the island's boulder set, else a world-shared bare boulder.
+   */
+  stone: { def: string; variants: readonly number[] };
 }
 
 /** Shape weights → a variant list of the theme's biome block. */
@@ -52,6 +69,8 @@ const boulders = (theme: ThemeId, cap: number, silhouettes: readonly number[]): 
   silhouettes.map((s) => boulderVariant(theme, cap, s));
 
 const NONE: readonly number[] = [];
+/** A bare QA boulder (drawn on QA already): the coast stones of islands without a boulder set. */
+const SHARED_STONE: readonly number[] = [boulderVariant('qa', 0, 2)];
 
 export const BIOME_SCATTER: Readonly<Record<ThemeId, IslandBiomeScatter>> = {
   // Hearthholm: fruit orchard canopies over the lawns (the avenue keeps its round trees), mossy
@@ -69,9 +88,14 @@ export const BIOME_SCATTER: Readonly<Record<ThemeId, IslandBiomeScatter>> = {
       boulder: boulders('hq', 1, [0, 3]),
       kelp: NONE,
       driftLog: NONE,
+      arch: [1],
+      tide: [0],
+      dune: NONE,
+      ledge: shapes('ledgeShrub', 'hq', [0, 1]),
     },
     boats: [1],
     dressing: [0, 3],
+    stone: { def: 'boulder', variants: boulders('hq', 1, [0, 3]) },
   },
   // Beacon Rock: umbrella canopies turned orange-yellow among the stock pines
   marketing: {
@@ -83,9 +107,14 @@ export const BIOME_SCATTER: Readonly<Record<ThemeId, IslandBiomeScatter>> = {
       boulder: NONE,
       kelp: [0],
       driftLog: [0],
+      arch: [0],
+      tide: [0],
+      dune: NONE,
+      ledge: shapes('ledgeShrub', 'marketing', [0, 1]),
     },
     boats: [2],
     dressing: [1, 3],
+    stone: { def: 'boulder', variants: SHARED_STONE },
   },
   // Coding: the planned (wreathed) round trees stay; lichen rock fields, spring-green shrubs
   coding: {
@@ -100,9 +129,14 @@ export const BIOME_SCATTER: Readonly<Record<ThemeId, IslandBiomeScatter>> = {
       boulder: boulders('coding', 2, [2, 4]),
       kelp: NONE,
       driftLog: [0],
+      arch: NONE,
+      tide: [0],
+      dune: NONE,
+      ledge: shapes('ledgeShrub', 'coding', [0, 1]),
     },
     boats: [0],
     dressing: [2, 3],
+    stone: { def: 'boulder', variants: boulders('coding', 2, [2, 4]) },
   },
   // Emberpeak: stock pines and basalt; the scrub turns to ember-flowered bushes
   devops: {
@@ -114,9 +148,14 @@ export const BIOME_SCATTER: Readonly<Record<ThemeId, IslandBiomeScatter>> = {
       boulder: NONE,
       kelp: [1],
       driftLog: [0],
+      arch: [0],
+      tide: [2],
+      dune: NONE,
+      ledge: shapes('ledgeShrub', 'devops', [1]),
     },
     boats: [1],
     dressing: [0, 1],
+    stone: { def: 'basaltBoulder', variants: [0, 1, 2] },
   },
   // Palmlagoon: mint leaning palms on the rim, pale bare boulders
   qa: {
@@ -132,9 +171,14 @@ export const BIOME_SCATTER: Readonly<Record<ThemeId, IslandBiomeScatter>> = {
       boulder: boulders('qa', 0, [2, 4]),
       kelp: [1],
       driftLog: [0],
+      arch: NONE,
+      tide: [1],
+      dune: [0, 1],
+      ledge: shapes('ledgeShrub', 'qa', [0, 1]),
     },
     boats: [0],
     dressing: [1, 2],
+    stone: { def: 'boulder', variants: boulders('qa', 0, [2, 4]) },
   },
   // Design: lilac layered canopies among the pines (the blossom groves stay), mossy boulders
   design: {
@@ -150,9 +194,14 @@ export const BIOME_SCATTER: Readonly<Record<ThemeId, IslandBiomeScatter>> = {
       boulder: boulders('design', 1, [1, 4]),
       kelp: [0],
       driftLog: [0],
+      arch: [1],
+      tide: [0],
+      dune: NONE,
+      ledge: shapes('ledgeShrub', 'design', [0, 1]),
     },
     boats: [2],
     dressing: [0, 3],
+    stone: { def: 'boulder', variants: boulders('design', 1, [1, 4]) },
   },
   // Lonely Palm: cypress (tall oval) park groves, olive-flowered shrubs
   research: {
@@ -165,11 +214,16 @@ export const BIOME_SCATTER: Readonly<Record<ThemeId, IslandBiomeScatter>> = {
       palm: NONE,
       flora: shapes('floraBush', 'research', [0, 1]),
       boulder: NONE,
-      kelp: NONE,
+      kelp: [1],
       driftLog: [0],
+      arch: NONE,
+      tide: [1],
+      dune: [0, 2],
+      ledge: shapes('ledgeShrub', 'research', [1]),
     },
     boats: [2],
     dressing: [1, 2],
+    stone: { def: 'boulder', variants: SHARED_STONE },
   },
 };
 
@@ -222,7 +276,7 @@ export interface BiomeRule extends PlacementRule {
   themes: readonly ThemeId[];
 }
 
-const { grass, meadow, rock, sandDry, sandWet, sandBlack, shallow, field, path } = Zone;
+const { grass, meadow, rock, cliff, sandDry, sandWet, sandBlack, shallow, field, path } = Zone;
 const ROCKY: readonly ThemeId[] = ['hq', 'coding', 'qa', 'design'];
 
 /**
@@ -316,21 +370,148 @@ export const BIOME_RULES: readonly BiomeRule[] = [
     scale: [0.85, 1.15],
     maxPerIsland: 3,
   },
+  // TASK-603 kelp beds (D-184): denser clustered beds on the turquoise shelf; the blade tips stay
+  // `topClear.below` u under the surface (D-179: the 1.8 u blades broke it off the Colour Wharf)
   {
     def: 'kelp',
     pick: 'kelp',
-    themes: ['marketing', 'devops', 'qa', 'design'],
+    themes: ['marketing', 'devops', 'qa', 'design', 'research'],
     zones: [shallow],
-    minDist: 1.6,
-    density: 0.7,
+    minDist: 1.25,
+    density: 0.8,
     slopeMax: 1.5,
-    heights: [-2.6, -0.9],
-    shore: [-8, -1.5],
-    cluster: { scale: 14, threshold: 0.25 },
+    heights: [-3.8, -1.4],
+    shore: [-10, -1.5],
+    cluster: { scale: 14, threshold: 0.28 },
     scale: [0.8, 1.2],
-    maxPerIsland: 10,
+    maxPerIsland: 22,
+    topClear: { heights: KELP.heights, below: 0.4 },
   },
 ];
+
+/**
+ * Coast micro-landscape rules (TASK-603, D-184): after every other prop (own fork
+ * `coast-props`, island, rule), so nothing placed before moves. Dune crest grass on the
+ * backshore sand, shrubs on the bluff wall faces. The arches, sea stacks, tide-pool fields,
+ * waterfall foot rocks and stream-mouth gravel are passes (COAST_FEATURES): their spots are a thin
+ * band the Poisson seeding of a wide-spaced rule misses.
+ */
+export const COAST_RULES: readonly BiomeRule[] = [
+  // dune ridge: crest grass clumps in a band behind the beach, gapped by cluster noise
+  {
+    def: 'duneGrass',
+    pick: 'dune',
+    themes: ['qa', 'research'],
+    zones: [sandDry, sandWet, grass],
+    minDist: 1.15,
+    density: 0.85,
+    slopeMax: 0.7,
+    heights: [0.45, 3],
+    shore: [1.4, 6.5],
+    cluster: { scale: 8, threshold: 0.05 },
+    scale: [0.8, 1.25],
+    maxPerIsland: 48,
+  },
+  // cliff ledges: shrub clumps hanging just under the wall top, back to the wall, spilling over
+  // the lip toward the sea (mid-wall puffs read as stuck-on balls, W13 first try)
+  {
+    def: 'ledgeShrub',
+    pick: 'ledge',
+    themes: ['hq', 'marketing', 'coding', 'devops', 'qa', 'design', 'research'],
+    zones: [cliff, rock],
+    minDist: 1.6,
+    density: 0.8,
+    slopeMin: 0.9,
+    slopeMax: 99,
+    heights: [1.4, 40],
+    shore: [0.5, 16],
+    cluster: { scale: 10, threshold: 0.12 },
+    scale: [0.85, 1.25],
+    face: 'downhill',
+    belowLip: 2.2,
+    maxPerIsland: 18,
+  },
+];
+
+/**
+ * Structured coast features (TASK-603, D-184), placed before COAST_RULES, each on its own fork.
+ * Arch (`coast-arch`, island): headland waterline spots scored by the open water round them;
+ * the span runs along the shore (legs at the waterline), the opening faces the sea. Sea stacks
+ * (`coast-stacks`, island) stand off each arch. Tide-pool fields (`coast-tide`, island). Fall foot (`coast-fall`, fall): stones round the
+ * plunge on the wall foot either side of the fall. Gravel (`coast-gravel`, stream): small stones
+ * along both banks of a carved stream's last metres.
+ */
+export const COAST_FEATURES = {
+  arch: {
+    def: 'rockArch',
+    perIsland: 1,
+    /** Poisson spacing of the candidates (u) and their window: |shore SDF| ≤ `sdf`, height range. */
+    minDist: 3,
+    sdf: 0.8,
+    heights: [-0.45, 0.6] as const,
+    /** Not inside the harbour cove (heightfield `coveness`). */
+    maxCove: 0.2,
+    /** Headland score: water share of `rays` samples on rings `ring` u out; candidates need ≥ `minWater`. */
+    ring: [7, 13] as const,
+    rays: 24,
+    minWater: 0.58,
+    /** The legs (± half the bbox width along the shore) must sit within `legSdf` u of the waterline. */
+    halfWidth: [2.7, 2.85, 3.5] as const,
+    legSdf: 1.8,
+    /** Occupancy disc (u) and clearances from a boat route / seamark sample and a dock (u). */
+    radius: 2.4,
+    routeClear: 6,
+    /** Clear of a waterfall foot (its foam disc, mist and rock ring). */
+    fallClear: 12,
+    dockClear: 14,
+    scale: [0.95, 1.15] as const,
+  },
+  stacks: {
+    /** Stones off each arch: count range, distance seaward (u) and along the shore (u) of the arch. */
+    count: [2, 3] as const,
+    out: [2.6, 6] as const,
+    along: 5,
+    heights: [-0.45, 0.3] as const,
+    scale: [0.85, 1.45] as const,
+    tries: 10,
+  },
+  tide: {
+    /**
+     * Tide-pool fields (`coast-tide`, island): a rock shelf with pools on the flat wet shore at
+     * the waterline, never in the water. Candidates on a `minDist` Poisson set, taken in a
+     * shuffled order at least `spacing` u apart.
+     */
+    def: 'tidePoolField',
+    perIsland: 2,
+    zones: [sandWet, sandBlack, rock] as readonly number[],
+    minDist: 2.5,
+    shore: [0.3, 2.4] as const,
+    heights: [0.06, 0.8] as const,
+    slopeMax: 0.45,
+    spacing: 22,
+    scale: [0.8, 1] as const,
+  },
+  fall: {
+    /** Stones round each waterfall foot: count range, ring radius past half the fall width (u). */
+    count: [4, 6] as const,
+    ring: [0.6, 2.6] as const,
+    /** Offset along the fall direction (u; + = out to sea). */
+    along: [-1.2, 2.2] as const,
+    heights: [-1, 1.8] as const,
+    slopeMax: 2,
+    scale: [0.7, 1.3] as const,
+    tries: 14,
+  },
+  gravel: {
+    /** Pebbles along the last `length` u of every carved stream, `bank` u off the bed. */
+    count: [6, 9] as const,
+    length: 12,
+    bank: [0.9, 2.2] as const,
+    scale: [0.16, 0.28] as const,
+    slopeMax: 0.8,
+    tries: 24,
+  },
+} as const;
 
 /**
  * Lot edges (garden side of the house lots): flowering hedge shrubs at the back corners and the

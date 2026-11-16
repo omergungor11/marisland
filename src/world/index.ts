@@ -314,11 +314,12 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
   if (rawLand.rimDelta && rawLand.rimBand)
     applyRim(world, rawLand.rimDelta, rawLand.rimBand, occupancy, zoneNoise(root.fork('zones')));
   raiseOutcrops(world, occupancy, root.fork('outcrops'));
+  // the falls read terrain only; placed before the scatter so the coast pass rims their feet (TASK-603)
+  world.waterfalls = placeWaterfalls(world, root.fork('waterfalls'));
   // spare slots for Phase 2 edits; hashes and consumers only read `count` entries
   world.props = compactPropStore(scatterProps(world, occupancy).props, EDIT_PROPS.propHeadroom);
   world.props.editBase = world.props.count;
   lap('props');
-  world.waterfalls = placeWaterfalls(world, root.fork('waterfalls'));
 
   hashes.layout = hashLayout(windDir, islands, islets);
   hashes.height = hashFloats(height.data);

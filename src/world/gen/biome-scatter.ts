@@ -19,7 +19,7 @@ import { chunkIdAt, slopeAt, type OccupancyGrid } from './scatter.ts';
 type Counts = Record<string, number>;
 type PropStore = ReturnType<typeof createPropStore>;
 
-function pushProp(
+export function pushProp(
   store: PropStore,
   counts: Counts,
   def: string,

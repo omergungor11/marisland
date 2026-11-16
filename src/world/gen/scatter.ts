@@ -34,9 +34,11 @@ import { bluffOf, coveness } from './heightfield.ts';
 import {
   BIOME_RULES,
   BIOME_SCATTER,
+  COAST_RULES,
   type IslandBiomeScatter,
 } from '../../content/biome-scatter.ts';
 import { scatterHarbours, scatterLotEdges } from './biome-scatter.ts';
+import { scatterCoastFeatures } from './coast-scatter.ts';
 
 /**
  * Prop scatter (ARCHITECTURE §2 step 7): Bridson Poisson per island per rule in
@@ -135,6 +137,8 @@ export interface ScatterResult {
   occupancy: OccupancyGrid;
   /** Count per def id. */
   counts: Record<string, number>;
+  /** TASK-603: store index range of the coast feature passes (arches, stacks, tide pools, fall foot, gravel). */
+  coastFeatures: [from: number, to: number];
 }
 
 export function chunkIdAt(x: number, z: number): number {
@@ -217,7 +221,16 @@ export function scatterProps(
         if (y < rule.heights[0] || y > rule.heights[1]) return false;
         const s = sampleGrid(h, world.shoreSdf, x, z, -999);
         if (rule.shore && (s < rule.shore[0] || s > rule.shore[1])) return false;
-        if (slopeAt(h, x, z) > rule.slopeMax) return false;
+        const slope = slopeAt(h, x, z);
+        if (slope > rule.slopeMax) return false;
+        if (rule.slopeMin !== undefined && slope < rule.slopeMin) return false;
+        if (rule.belowLip !== undefined) {
+          // the wall top: `belowLip` u up the slope the ground flattens out above the candidate
+          const a = downhillYaw(h, x, z);
+          const ux = x - dm.sin(a) * rule.belowLip;
+          const uz = z - dm.cos(a) * rule.belowLip;
+          if (slopeAt(h, ux, uz) > 0.6 || heightAt(h, ux, uz) <= heightAt(h, x, z)) return false;
+        }
         if (
           rule.cluster &&
           noise.fbm(x / rule.cluster.scale, z / rule.cluster.scale, 3) < rule.cluster.threshold
@@ -286,6 +299,10 @@ export function scatterProps(
         let rotY = rng.range(0, Math.PI * 2);
         // prop yaw −a turns local +x onto the patch axis (cos a, sin a)
         if (rule.fieldRows && fieldAngle !== undefined) rotY = -fieldAngle;
+        // TASK-603: blade tips under the surface; wall shrubs with their back to the wall
+        const top = rule.topClear;
+        if (top && y + top.heights[variant % top.heights.length] * scale > -top.below) continue;
+        if (rule.face === 'downhill') rotY = downhillYaw(h, x, z);
         store.push(pIndex, variant, x, y, z, rotY, scale, island.id, chunkIdAt(x, z), pDef.flags);
         if (!isGround) occupancy.mark(x, z, radius);
         else groundCoverTotal++;
@@ -335,7 +352,27 @@ export function scatterProps(
   scatterTalus(world, store, occupancy, root, counts);
   scatterLotEdges(world, store, occupancy, root, counts);
   scatterHarbours(world, store, occupancy, root, counts);
-  return { props: store, occupancy, counts };
+  // TASK-603 (D-184): coast micro-landscapes last, on their own forks (nothing above moves); the
+  // features (arches first) claim their spots before the rules
+  const from = store.count;
+  scatterCoastFeatures(world, store, occupancy, root, counts);
+  const coastFeatures: [number, number] = [from, store.count];
+  for (const island of world.islands)
+    scatterBody(
+      island,
+      COAST_RULES,
+      (_, r) => !COAST_RULES[r].themes.includes(island.theme),
+      'coast-props',
+      BIOME_SCATTER[island.theme],
+    );
+  return { props: store, occupancy, counts, coastFeatures };
+}
+
+/** Three yaw turning local +z down the terrain slope at (x, z) (central differences over 1 u). */
+export function downhillYaw(h: WorldData['height'], x: number, z: number): number {
+  const gx = heightAt(h, x + 1, z) - heightAt(h, x - 1, z);
+  const gz = heightAt(h, x, z + 1) - heightAt(h, x, z - 1);
+  return dm.atan2(-gx, -gz);
 }
 
 /**
@@ -417,7 +454,7 @@ function scatterTalus(
 }
 
 /** `islandMap` value at a world position (nearest sample; 0 outside the grid). */
-function ownerAt(world: WorldData, x: number, z: number): number {
+export function ownerAt(world: WorldData, x: number, z: number): number {
   const h = world.height;
   const ix = Math.round((x - h.originX) / h.cellSize);
   const iz = Math.round((z - h.originZ) / h.cellSize);
