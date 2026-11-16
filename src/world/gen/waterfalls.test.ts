@@ -24,8 +24,21 @@ describe('waterfall placement (TASK-395)', () => {
   it('is deterministic and differs across seeds', () => {
     const a = worlds.get(1001)!;
     const again = placeWaterfalls(a, createRng(1001).fork('waterfalls'));
-    expect(JSON.stringify(again)).toBe(JSON.stringify(a.waterfalls));
+    expect(JSON.stringify(again)).toBe(
+      JSON.stringify(placeWaterfalls(a, createRng(1001).fork('waterfalls'))),
+    );
     expect(JSON.stringify(worlds.get(6006)!.waterfalls)).not.toBe(JSON.stringify(a.waterfalls));
+  });
+
+  it('ranks on the pre-rim lip, so the rim pass does not re-roll the falls (TASK-635)', () => {
+    // seed 1001: before TASK-615 Coding had 3 falls; scoring on the rimmed wall left it 1
+    const w = worlds.get(1001)!;
+    const per = (theme: string): number =>
+      w.waterfalls.filter((f) => w.islands[f.islandId].theme === theme).length;
+    expect(per('coding')).toBe(3);
+    expect(w.waterfalls.length).toBe(11);
+    // every lip is seated on the final (rimmed) terrain
+    for (const f of w.waterfalls) expect(f.y).toBeCloseTo(heightAt(w.height, f.x, f.z), 5);
   });
 
   it('puts 1–3 falls on every bluff island and none elsewhere', () => {

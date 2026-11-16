@@ -2675,10 +2675,12 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
       ['D-coast-arch-hq', 'Coast · HQ arch', '-10.3,4.5,86.5,-22,0.9,78.7'],
       ['D-coast-arch-devops', 'Coast · Emberpeak arch', '264.6,4.5,-74.6,264.6,0.8,-60.6'],
       ['D-coast-arch-marketing', 'Coast · Beacon Rock arch', '-197.8,4.3,29.3,-211.5,0.6,26.5'],
+      // TASK-635: the Design arch the moved Design falls left room for (fall foot ≥ 12 u off)
+      ['D-coast-arch-design', 'Coast · Design arch', '-78.9,4.5,-114,-92.6,0.7,-116.7'],
       ['D-coast-tide-hq', 'Coast · HQ tide pools', '-52.6,9,-50.8,-44.6,0.3,-59.8'],
       // TASK-684: a fall foot's rock rim and the ledge shrubs either side of the ribbon
       ['D-coast-fall-coding', 'Coast · Coding fall foot', '-79,7,218,-88,3,201'],
-      ['D-coast-fall-hq', 'Coast · HQ east fall foot', '70,7,9,53,3.5,2'],
+      ['D-coast-fall-hq', 'Coast · HQ east fall foot', '70,7,1,53,3.5,-6'],
     ] as const
   ).map(([id, title, cam]): ShotPreset => ({
     id,

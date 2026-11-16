@@ -20,6 +20,13 @@ export const WATERFALLS = {
   maxCove: 0.25,
   /** Keep-out distances (u): dock root / end, lot edge, landmark, fixture. */
   avoid: { dock: 16, lot: 7, landmark: 10, fixture: 4 },
+  /**
+   * Plunge pool room (TASK-635): at least this share of the fall-foot stone window
+   * (COAST_FEATURES.fall) is low gentle ground ≥ `footFixture` u from any fixture, else the lip
+   * hands its slot to the next one (a cramped foot fits 2–3 of the 4–6 foot stones).
+   */
+  footRoom: 0.42,
+  footFixture: 1.2,
   /** Two falls on one island stand at least this far apart (u). */
   spacing: 28,
   /**

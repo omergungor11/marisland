@@ -7,6 +7,7 @@ import type { Rng } from '../../core/rng.ts';
 import { hypotLess } from '../../core/math/index.ts';
 import { ARCHETYPES } from '../../content/islands.ts';
 import { WATERFALLS as W } from '../../content/waterfalls.ts';
+import { COAST_FEATURES } from '../../content/biome-scatter.ts';
 import { heightAt, Zone, type WaterfallData, type WorldData } from '../types.ts';
 import { bluffOf, coveness } from './heightfield.ts';
 import { cellX, cellZ } from './grid.ts';
@@ -62,10 +63,52 @@ function nearAny(
   return false;
 }
 
-export function placeWaterfalls(world: PlaceInput, rng: Rng): WaterfallData[] {
+/**
+ * Share of the plunge-pool window (the coast pass's fall-foot ring, COAST_FEATURES.fall, both
+ * sides, 0.5 u steps, at the widest fall) that is low, gentle ground clear of fixtures: where the
+ * foot stones can stand (TASK-635).
+ */
+function footRoom(world: PlaceInput, c: Candidate, base: { x: number; z: number }): number {
+  const F = COAST_FEATURES.fall;
+  const h = world.height;
+  const fx = dm.cos(c.rotY);
+  const fz = dm.sin(c.rotY);
+  const half = W.width[1] / 2;
+  let ok = 0;
+  let all = 0;
+  for (const side of [1, -1])
+    for (let lat = half + F.ring[0]; lat <= half + F.ring[1] + 1e-6; lat += 0.5)
+      for (let al = F.along[0]; al <= F.along[1] + 1e-6; al += 0.5) {
+        const x = base.x - fz * side * lat + fx * al;
+        const z = base.z + fx * side * lat + fz * al;
+        all++;
+        const y = heightAt(h, x, z);
+        if (y < F.heights[0] || y > F.heights[1]) continue;
+        const sx = heightAt(h, x + 0.5, z) - heightAt(h, x - 0.5, z);
+        const sz = heightAt(h, x, z + 0.5) - heightAt(h, x, z - 0.5);
+        if (Math.hypot(sx, sz) > F.slopeMax || nearAny(x, z, world.fixtures, W.footFixture))
+          continue;
+        ok++;
+      }
+  return ok / all;
+}
+
+/**
+ * Rank the lips on the terrain as it is now (pre-rim, TASK-635) and return the pick, which runs on
+ * the final terrain: the rim delta and the lip knobs (TASK-615) come between the two. Each island
+ * walks its ranked list and takes a lip only where it still drops cleanly into the sea on the
+ * final heightfield (`minDrop`, `maxRun`, `minSteep`; height and base re-traced along the same
+ * heading), so a lip the rim spoiled hands its slot to the next one. Scoring on the final wall
+ * had re-rolled the count roll (drawn after one jitter draw per candidate): Coding on seed 1001
+ * went from 3 falls to 1 when the rim removed one candidate.
+ */
+export function planWaterfalls(
+  world: PlaceInput,
+  rng: Rng,
+): (final: PlaceInput) => WaterfallData[] {
   const { height: h, zone, shoreSdf: sdf, islandMap } = world;
   const n = h.n;
-  const out: WaterfallData[] = [];
+  const ranked: { r: Rng; want: number; cands: Candidate[] }[] = [];
   const dockPts = world.docks.flatMap((d) => [
     { x: d.x, z: d.z },
     {
@@ -152,19 +195,34 @@ export function placeWaterfalls(world: PlaceInput, rng: Rng): WaterfallData[] {
       }
     }
     cands.sort((a, b) => b.score - a.score || a.z - b.z || a.x - b.x);
-    const want = r.int(W.count[0], W.count[1]);
-    const picked: Candidate[] = [];
-    for (const c of cands) {
-      if (picked.length >= want) break;
-      if (nearAny(c.x, c.z, picked, W.spacing)) continue;
-      picked.push(c);
-    }
-    for (const c of picked) {
-      const { score: _score, ...fall } = c;
-      fall.width = c.stream ? W.width[1] : r.range(W.width[0], W.width[1]);
-      fall.seed = r.next();
-      out.push(fall);
-    }
+    ranked.push({ r, want: r.int(W.count[0], W.count[1]), cands });
   }
-  return out;
+  return (final) => {
+    const out: WaterfallData[] = [];
+    for (const { r, want, cands } of ranked) {
+      const picked: WaterfallData[] = [];
+      for (const c of cands) {
+        if (picked.length >= want) break;
+        if (nearAny(c.x, c.z, picked, W.spacing)) continue;
+        const y = heightAt(final.height, c.x, c.z);
+        if (y < W.minDrop) continue;
+        const base = traceBase(final, c.x, c.z, dm.cos(c.rotY), dm.sin(c.rotY), y);
+        if (!base || y / base.s < W.minSteep) continue;
+        if (footRoom(final, c, base) < W.footRoom) continue;
+        const { score: _score, ...fall } = c;
+        picked.push({ ...fall, y, baseX: base.x, baseZ: base.z });
+      }
+      for (const fall of picked) {
+        fall.width = fall.stream ? W.width[1] : r.range(W.width[0], W.width[1]);
+        fall.seed = r.next();
+        out.push(fall);
+      }
+    }
+    return out;
+  };
+}
+
+/** Rank and pick on the same terrain (no rim pass in between). */
+export function placeWaterfalls(world: PlaceInput, rng: Rng): WaterfallData[] {
+  return planWaterfalls(world, rng)(world);
 }
