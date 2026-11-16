@@ -10,13 +10,16 @@ işlere dokunma (560, 561, 573, 586 peer, arch yeniden seçimi, bütçe artış�
 
 ## Wave A
 - [ ] TASK-688 wall-foot hatch + strata wedges (shader, çalışıyor, port 4181)
-- [ ] TASK-635 M50 worldgen polish: Coding waterfalls, right-edge mesh steps (worldgen, port 4182)
+- [x] TASK-635 M50 worldgen polish: Coding waterfalls, right-edge mesh steps (worldgen, port 4182)
 - [x] TASK-332 capybaras (DevOps spring) + puffins (Marketing) (life, port 4183)
 
 ## Wave B (688 merge olduktan sonra; 636 aynı terrain dosyasına dokunur)
 - [ ] TASK-636 M50 shader polish (shader)
-- [ ] TASK-637 T0 program count +2 (engine, araştırma)
+- [ ] TASK-637 T0 program count +2 (engine, araştırma) — başladı, port 4183
 - [ ] TASK-650 M51 courier follow-ups (life + engine) — başladı 02:40, port 4184
+
+- [ ] TASK-694 (yeni) terrain 2 u mesh sabit köşegen → duvar dibi basamakları (688 sonrası; shader/engine)
+- [ ] TASK-636 brief'ine ekle: DevOps yol "kamuflajı" zone paint ile çözülmüyor (635 denedi, geri aldı) → crisp weight / decal
 
 ## Wave C
 - [ ] Wave 4 CONDITIONAL QA satırlarının yeniden denetimi: 593 / 597 / 602 / 605 / 609 (qa agent)
@@ -29,3 +32,4 @@ işlere dokunma (560, 561, 573, 586 peer, arch yeniden seçimi, bütçe artış�
 
 ## Günlük
 - 02:35 TASK-332 merge (puffin colony, Marketing; capybaras zaten TASK-433/507 ile vardı). D-195 yazılacak. Nit: D-puffins-ledge kamerası ön planda bulanık kaya. Push wave A sonunda.
+- 03:05 TASK-635 merge: şelaleler pre-rim lip'te sıralanıyor (seed 1001 9 → 11, Coding 1 → 3); yeni otomatik Design arch (−92.6, −116.7) — **kullanıcı onayı / veto: `arch: NONE`**. Mesh basamakları ve DevOps yolları çözülmedi (render işi). Hash'ler yeniden pinlendi (1001 world 9a2bd0a89f280b4a).
