@@ -2,6 +2,34 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-192: Lazily built GPU pools are keyed by camera band, never by what the animation shows (TASK-693) — 2026-11-16
+
+**Context.** `selftest=regen` (+1 geometry) and `selftest=edit` (+3) failed at tier-3 Coding cams (`F-bot`, `ladder:coding:30`). The selftests compare
+`renderer.info.memory` at two moments of the same view. `createFoundryMovers` (`render/foundry-movers.ts`) built one InstancedMesh per (item kind, LOD) the first
+time that kind entered the line, so the clock moving on between the two reads added `foundryPart` pools. Every pool was scope-owned, so this was growth, not a leak.
+
+**Decision.** On a LOD's first use, `put()` builds the pools for every kind in `ITEM` at that LOD (arm + 5 part kinds), hidden (`visible=false`, `count=0`) until
+used. Pools stay lazy per LOD, so a far camera pays nothing. Cost: at most 3 small hidden geometries per LOD near the foundry; 0 px change. Regression test
+`render/foundry-movers.test.ts` (fails on the old code with `+part3, +part6, +part7`). `shots dev --assert --only='F-bot*'` and `shots ci --assert` green
+with selftests. Rule for new movers: key lazy pools by camera-distance band, never by animation phase.
+
+## D-191: Biome readability on seed 1001: `PlacementRule.openClear` + `pocketScan` fill the pockets between site pads (TASK-692) — 2026-11-16
+
+**Context.** Wave 4 QA (TASK-602): site pads (structures + 0.75 u pad, paths, story keep-outs) fill the Coding, QA, Design and Research plateaus. Poisson seeding
+missed the few-u pockets and the occupancy test dropped most of what landed: Coding 0 scatter trees, QA 3 palms, Design 0 palms.
+
+**Decision.** New optional `PlacementRule.openClear` (`content/placement.ts`): such rules accept only spots with no site mark within `openClear` u and an exact
+footprint disc free of earlier props, seeded by `pocketScan` (`world/gen/scatter.ts`: a ≤ 1 u grid shuffled on the rule's rng fork, kept ≥ minDist apart).
+Existing rules unchanged; the new rules are appended to `BIOME_RULES` so no earlier fork moves. Coding: stock roundTree groves (same FOLIAGE tree as its
+wreathed fixtures, no new geometry), spring-green floraBush fringe, lichen tors: trees 0 → 44, shrubs 1 → 25. QA: leanPalm on the plateau (≥ 3 u, ≥ 10 u
+inland) + bluff-foot grove (< 2.95 u, excluded from the Q18 inland check), `openClear` 1.5 keeps canopies off the towers: 3 → 10. Design: twin-trunk
+pink-plum leanPalm on the low shore (h ≤ 5, 2.5–12 u inland; a waterline palm hung its far blob over the water in `L-pairs-design`), `BIOME_CANOPY_KINDS.design`
+gains `palm`: 0 → 5. Counts locked in `world/biome-readability.test.ts`. Props stage + raw bits re-pinned (seed 1001 world `0142640532963104` →
+`e45660e33df67491`); layout / height / sites / routes unchanged. `wow --assert` 61 / 61 (W16 325 calls, W15c 924k tris), low ladders HQ / Coding / QA / Design green.
+
+**Open.** Research cypress stays 4 (only ~3 scattered spots free); rows along the Star Stair need a plan task. Coding's middle band reads a bit stringy; Design
+palms are close to the blossom colour at island scale.
+
 ## D-190: Bot proof spot on the paved lawn E of the Coding pool; hauler tracks proud; `birds: false` presets meet the low agent budget (TASK-690) — 2026-11-16
 
 **Context.** Wave 4 QA (TASK-593): the muster patch W of the Coding solar field had gained a turbine, tent and posts; scout and hauler looked alike (the
@@ -14,6 +42,32 @@ blocks. New dev shot `F-bot-pair` (`?bots=pair`): scout / hauler / spire each wi
 only dropping agents fixes it. `budgets.ts` unchanged. `shots --only` accepts prefix globs (`F-bot*`).
 
 **Open.** `selftest=regen` (+1 geometry) and `selftest=edit` (+3) leak at tier-3 Coding cams on HEAD, with or without this change → TASK-693.
+
+## D-189: High god rays march transmittance toward the sun; cumulus bellies are squashed smoothly, not clamped (TASK-689) — 2026-11-16
+
+**Context.** Wave 4 QA (TASK-609): no readable ray fan in `W-sky-dusk` high; `W4` showed ruler-straight cloud edges (the QA note said stratus).
+
+**Decision.** (a) `render/post/rays-effect.ts` / `RAYS` in `content/lighting.ts`: only the last `reach` (0.32 uv) toward the sun is marched; open sky inside
+`sourceRadius` (0.09) is the light; each blocked tap above the sea horizon removes `absorb` (0.35), below it `seaAbsorb` (0.07); off-screen taps count as
+nothing (a clamped edge read as open sky and washed `W9` / `W-cable-dusk`). 40 taps (was 32), same pass, same half-res R8 target, 0 extra programs or calls.
+`density` / `decay` removed. A sum-only march cannot form shafts. (b) `render/clouds/cloud-geometry.ts`: the straight edges were cumulus bellies seen from
+base height (camera y ≈ 57 vs cumulus 60–90), not stratus (whose ends were already round). The belly is squashed with t → c·t/(c+t) (`BELLY_KEEP` 0.3,
+lowest lobe at y = 0) instead of clamped flat; shared by all tiers, tri / vertex counts unchanged. `wow-high --assert` and `wow --assert` 61 / 61.
+ART_BIBLE §3 / §11 stand as written.
+
+**Open.** Shaft edges are crisp (opaque cloud silhouettes); real-GPU cost not measured (`--gpu`).
+
+## D-188: On high, lit materials fade by alpha-to-coverage, not the Bayer discard (TASK-687) — 2026-11-16
+
+**Context.** Wave 4 QA (TASK-609): black stipple on fading ground cover in `W16` high. Not AO (`AO.intensity = 0` left it pixel-identical): MSAA ×4 without
+FXAA keeps the lit program's 4×4 Bayer discard grid crisp, and the dune grass's real shaded colour is dark teal / purple. Medium's FXAA blurs the same grid grey.
+
+**Decision.** `setLitCoverage(preset.msaa > 0)` at boot (`app.ts`); `LitMaterial.alphaToCoverage` is a prototype accessor so each tier keeps one lit program.
+Under `ALPHA_TO_COVERAGE` the fade writes `alpha *= vFade` (discard only at 0); otherwise the Bayer discard stays. `makeDepthMaterial` pins `alphaTest = 0` so
+three's A2C shadow rule (0.5) does not split `mar-lit:depth` from `terrain:depth` (+1 program, 30 / 30). The AO composite writes alpha 1 (resolved A2C alpha < 1
+ghosted in later passes; AO is the first effect on high). Medium / low 0 px; high programs and calls unchanged per shot; `wow-high --assert` 61 / 61.
+
+**Open.** Medium still shows the FXAA-softened grid (grey dots); a lit material drawn into a non-MSAA target on high would skip its fade (none today).
 
 ## D-187: The post chain's ping-pong output buffer is single-sample and colour-only on every quality (TASK-691) — 2026-11-16
 

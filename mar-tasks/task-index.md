@@ -621,13 +621,13 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 | TASK-684 | Ledge shrubs: none within fall width + 1 u of a fall line, all within ~1 u of the lip; foot stones 4–6 per fall, none on the steep wall (or D-184 corrected) | worldgen | S | COMPLETED (D-184 amendment; shrubs ≤ 1 u from lip, 0 near falls; 4–5 foot stones per fall on seed 1001) | — |
 | TASK-685 | Stream-mouth gravel: ≥ 6 pebbles at the Design stream mouth on seed 1001 + test in `coast.test.ts`, or drop it from D-184 | worldgen | XS | DROPPED (D-184 amendment; Design stream mouth is the harbour, no free bank) | — |
 | TASK-686 | Caustic net at distance: no polygon net on the shelf ring at T1 (`W23`, ladder 105 u); HQ bay line contrast down in `W-horseshoe-day`; `W-sunken-noon` unchanged | shader | S | COMPLETED (D-177 addendum; W23 / 105 u net gone, programs 17 / 20, wow 61 / 61) | — |
-| TASK-687 | AO vs dither fade: high `W16` beach shows no black stipple on fading ground cover; budgets unchanged | shader | S | PENDING | — |
+| TASK-687 | AO vs dither fade: high `W16` beach shows no black stipple on fading ground cover; budgets unchanged | shader | S | COMPLETED (D-188; not AO: MSAA kept the Bayer grid crisp; high fades by alpha-to-coverage, medium / low 0 px) | — |
 | TASK-688 | Wall-foot hatch stripes + strata triangular wedges gone in the four coast dev cams | shader | S | PENDING | — |
-| TASK-689 | God rays readable as a fan in `W-sky-dusk` high (or criterion removed from ART_BIBLE §11); no straight stratus edges in `W4` | shader | S | PENDING | — |
+| TASK-689 | God rays readable as a fan in `W-sky-dusk` high (or criterion removed from ART_BIBLE §11); no straight stratus edges in `W4` | shader | S | COMPLETED (D-189; transmittance ray march, fan in `W-sky-dusk`; `W4` edges were cumulus bellies, now smooth-squashed) | — |
 | TASK-690 | Bot proof polish: line-up spot clear of tower / tent / drone; scout vs hauler distinct; portrait chassis matches 3D; portrait-beside-bot shot; `F-bot-hud` within low agent budget | life + engine | S | COMPLETED (D-190; spot E of the Coding pool, hauler tracks proud, `F-bot-pair`, F-bot-hud agents 29 → 23 via `birds: false`) | — |
 | TASK-691 | High memory margin: W-fairy-night unrounded ≤ 478 MB (far-merge copy / `aSpin`), or assert compares the unrounded sum (user decision) | engine | S | COMPLETED (D-187; post output buffer single-sample, W-fairy-night 480.4 → 377.6 MB, 0 px) | — |
-| TASK-692 | Biome readability: Coding scatter readable at T1; QA ≥ 8 mint palms; Design shows its pink palms or the set is dropped | worldgen | S | PENDING | — |
-| TASK-693 | Selftest geometry leak at tier-3 Coding cams: `selftest=regen` 1581 → 1582, `selftest=edit` 1581 → 1584 on HEAD (found by TASK-690); find the undisposed geometry, `shots dev --assert --only=F-bot*` green with selftests | engine | S | PENDING | — |
+| TASK-692 | Biome readability: Coding scatter readable at T1; QA ≥ 8 mint palms; Design shows its pink palms or the set is dropped | worldgen | S | COMPLETED (D-191; Coding trees 0 → 44, QA palms 3 → 10, Design pink palms 0 → 5; Research cypress left at 4) | — |
+| TASK-693 | Selftest geometry leak at tier-3 Coding cams: `selftest=regen` 1581 → 1582, `selftest=edit` 1581 → 1584 on HEAD (found by TASK-690); find the undisposed geometry, `shots dev --assert --only=F-bot*` green with selftests | engine | S | COMPLETED (D-192; foundry movers built part pools per kind on first sight, now every kind per LOD) | — |
 
 ### M48 — Island detail layer
 
