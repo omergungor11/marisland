@@ -536,6 +536,7 @@ export async function boot(): Promise<void> {
               wkr.mesh.material as THREE.Material,
               () => loop.clock.time,
               params.bots,
+              camera,
             );
             if (lu) {
               loop.add(lu);

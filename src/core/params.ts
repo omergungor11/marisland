@@ -7,7 +7,7 @@ import { EDIT_TOOLS, type EditToolKind } from '../content/edit-ui.ts';
 export type Quality = 'low' | 'medium' | 'high';
 export type DebugView =
   'none' | 'stats' | 'mask' | 'overdraw' | 'wire' | 'height' | 'zone' | 'slope' | 'coast';
-const BOT_MODES = ['lineup', 'looks', 'eyes', 'muster'] as const;
+const BOT_MODES = ['lineup', 'looks', 'eyes', 'muster', 'pair'] as const;
 export type WeatherName = 'clear' | 'cloudy' | 'rain' | 'fog';
 
 export interface Params {
@@ -71,7 +71,7 @@ export interface Params {
    */
   fleet: '' | 'live' | 'mock' | 'off';
   /** `bots=lineup|looks|eyes|muster` (TASK-592 / 677): deterministic QA bots on open Coding ground. */
-  bots: '' | 'lineup' | 'looks' | 'eyes' | 'muster';
+  bots: '' | 'lineup' | 'looks' | 'eyes' | 'muster' | 'pair';
   /**
    * Capture: admin window view (M43, with `panel=admin`): `<tab>[:<arg>]` (`adminSpec`), e.g.
    * `hafiza:island:coding/memory/golge-acne.md` (a KB tab opens that file) or `sessionlar:shader`

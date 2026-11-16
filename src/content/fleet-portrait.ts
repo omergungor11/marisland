@@ -21,7 +21,7 @@ export interface PortraitChassis {
   body: PortraitBox & { r: number };
   /** Head box the head kind is drawn into. */
   head: PortraitBox;
-  /** Legs: x centres, width, top / bottom y; `tread` = one wide tread block instead. */
+  /** Legs: x centres, width, top / bottom y; `tread` = a track block at each x instead. */
   legs: { xs: readonly number[]; w: number; y0: number; y1: number; tread: boolean };
   /** Arm stubs: half-gap from the body edge, width, top / bottom y. */
   arms: { w: number; y0: number; y1: number };
@@ -61,11 +61,11 @@ export const PORTRAIT = {
       antenna: { h: 4, ring: 0 },
       hand: { x: 38.5, y: 36 },
     },
-    // squat and wide, tread feet
+    // squat and wide, two track blocks flanking the body (the 3D hauler's tracks, TASK-690)
     hauler: {
       body: { cx: 24, cy: 32, w: 30, h: 11, r: 4 },
       head: { cx: 24, cy: 19.5, w: 26, h: 12 },
-      legs: { xs: [24], w: 32, y0: 38.5, y1: 45, tread: true },
+      legs: { xs: [7.5, 40.5], w: 8, y0: 36.5, y1: 45.5, tread: true },
       arms: { w: 4, y0: 28.5, y1: 35 },
       antenna: { h: 3, ring: 0 },
       hand: { x: 39.4, y: 35 },

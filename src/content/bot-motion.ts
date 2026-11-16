@@ -122,8 +122,8 @@ export const BOT_NO_HAT = 7;
  */
 export const BOT_LINEUP = {
   island: 'coding',
-  /** Centre offset from the settlement plaza (u): open grass-gravel edge W of the solar field. */
-  offset: { x: -40.3, z: 28.6 },
+  /** Centre offset from the settlement plaza (u): the paved lawn E of the Coding reflecting pool (TASK-690: the old gravel patch W of the solar field gained a turbine, tent and posts; picked by scanning props, fixtures, lots, districts and paths for a clear box on seed 1001). */
+  offset: { x: -22.5, z: -2 },
   /** Roles worn by the nine looks (column order), '' = none. */
   roles: [
     'shader',
@@ -143,8 +143,13 @@ export const BOT_LINEUP = {
     lineup: { cols: 9, rows: 5, gapX: 1.8, gapZ: 2.3, hatless: true, jitter: 0 },
     looks: { cols: 9, rows: 1, gapX: 1.2, gapZ: 1, hatless: true, jitter: 0 },
     eyes: { cols: 5, rows: 1, gapX: 1.5, gapZ: 1, hatless: true, jitter: 0 },
-    muster: { cols: 5, rows: 3, gapX: 2.4, gapZ: 2.2, hatless: false, jitter: 0.45 },
+    pair: { cols: 3, rows: 1, gapX: 3.4, gapZ: 1, hatless: true, jitter: 0 },
+    muster: { cols: 5, rows: 3, gapX: 2.1, gapZ: 2.2, hatless: false, jitter: 0.4 },
   },
+  /** `pair` mode: look code (chassis * 3 + head) per column, one per chassis; each gets its panel portrait beside it. */
+  pairLooks: [0, 4, 8],
+  /** `pair` portrait: world offset right of the bot (u) and the share of the bot's screen height it is drawn at. */
+  pairPortrait: { dx: 1.35, scale: 1.05 },
   /** Look shown by every bot of the `eyes` mode (chassis index, head index = scout / monitor: the flat face). */
   eyesLook: { chassis: 0, head: 0 },
 } as const;

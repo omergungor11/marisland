@@ -31,6 +31,8 @@ export interface ShotPreset {
   /** Before capture: dolly in from this distance over `dollySeconds` (hardPops must stay 0). */
   dollyFrom?: number;
   dollySeconds?: number;
+  /** `false`: the harness passes `birds=0` (no gull flocks: 6 fewer agents, the low budget of the T3 fleet frames). */
+  birds?: false;
   /** Show the HUD (the harness defaults to `hud=0`). */
   hud?: boolean;
   /** HUD panel open (`panel=`): photo bar, settings sheet, edit panel (`edit:<tool>`) or the admin window (M43). */
@@ -42,7 +44,7 @@ export interface ShotPreset {
   /** Fleet feed (`fleet=`, TASK-563): the deterministic mock fills the island panel. */
   fleet?: 'mock';
   /** Bot QA staging (`bots=`, TASK-592 / 677): line-up grid, looks row, eyes row or fleet muster. */
-  bots?: 'lineup' | 'looks' | 'eyes' | 'muster';
+  bots?: 'lineup' | 'looks' | 'eyes' | 'muster' | 'pair';
   /** Fleet panel (M41): open the first live row's terminal after the warm-up, or this session's (M42). */
   fleetOpen?: 'running' | `mock-${string}`;
   /** Mock request chain variant (M42): the Design gate allowed, its child running (default: both gates pending). */
@@ -2247,6 +2249,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     time: 14,
     simt: 30,
     fleet: 'mock',
+    birds: false,
     sets: ['dev'],
   },
   // ---- fleet terminal (TASK-569): Coding at T1, the first live session's terminal open (mock history)
@@ -2374,6 +2377,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     simt: 30,
     hud: true,
     fleet: 'mock',
+    birds: false,
     sets: ['dev'],
   },
   // TASK-611 D-reveal: the detail-reveal flip-book — one dolly on the Coding island (the ladder
@@ -3030,19 +3034,25 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
         'F-bots',
         'Fleet muster · 15 bots, 3 chassis, 5 eye states',
         'muster',
-        '-150.5,24.1,196.6,-150.5,8.7,178.2',
+        '-137,23.9,166,-132.7,8.7,147.6',
       ],
       [
         'F-bot-looks',
         'Bot looks · 9 looks in one row, hatless',
         'looks',
-        '-150.5,14.2,189.5,-150.5,8.9,178.2',
+        '-132.7,13.7,158.9,-132.7,8.9,147.6',
       ],
       [
         'F-bot-eyes',
         'Bot eyes · 5 eye states on one look, hatless',
         'eyes',
-        '-150.5,12.4,185.9,-150.5,8.8,178.2',
+        '-132.7,12.6,157.2,-132.7,9.2,147.6',
+      ],
+      [
+        'F-bot-pair',
+        'Bot vs portrait · scout, hauler, spire, each beside its panel portrait',
+        'pair',
+        '-132.7,11.3,159.6,-132.7,8.8,147.6',
       ],
     ] as const
   ).flatMap(([id, title, bots, cam]): ShotPreset[] =>
@@ -3058,6 +3068,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
       quality: 'medium',
       fleet: 'mock',
       bots,
+      birds: false,
       sets: ['dev'],
     })),
   ),

@@ -8,14 +8,15 @@
  * breathing bob, the gate row tips its heads up, the done row hops now and then. No sim, no rng.
  */
 import * as THREE from 'three';
-import { BOT_CHASSIS, BOT_EYES, BOT_HEADS, roleItem } from '../content/bot-look.ts';
+import { BOT_CHASSIS, BOT_EYES, BOT_HEADS, botLook, roleItem } from '../content/bot-look.ts';
 import { BOT_GATE, BOT_LINEUP, BOT_NO_HAT, type BotLineupMode } from '../content/bot-motion.ts';
-import { LAND } from '../content/life.ts';
+import { BOT_FRAMES, LAND } from '../content/life.ts';
 import { THEMES } from '../content/themes.ts';
 import { unitHash } from '../core/hash.ts';
 import type { System } from '../core/loop.ts';
 import type { Scope } from '../core/scope.ts';
 import { SHARED } from '../render/uniforms.ts';
+import { botPortraitSvg } from '../ui/bot-portrait.ts';
 import { encodeBotCode, ROLE_ITEM_CODE } from './bot-code.ts';
 import { doneHop, restPose } from './bot-motion.ts';
 import type { LifeCtx } from './ctx.ts';
@@ -50,6 +51,7 @@ export function createBotLineup(
   material: THREE.Material,
   time: () => number,
   mode: BotLineupMode,
+  camera?: THREE.Camera,
 ): BotLineup | null {
   const L = BOT_LINEUP;
   const M = L.modes[mode];
@@ -76,6 +78,8 @@ export function createBotLineup(
       if (mode === 'eyes') {
         look = L.eyesLook.chassis * BOT_HEADS.length + L.eyesLook.head;
         eyes = col;
+      } else if (mode === 'pair') {
+        look = L.pairLooks[col % L.pairLooks.length];
       } else if (mode === 'muster') {
         look = Math.floor(unitHash(ctx.seed, k, 0x100c) * 9) % 9;
         eyes = k % BOT_EYES.length;
@@ -127,6 +131,56 @@ export function createBotLineup(
     members.push(mine);
   });
 
+  // pair mode: each bot's panel portrait (the same BotLook through ui/bot-portrait) as a DOM chip right of it,
+  // sized from the bot's projected height, so 3D and 2D chassis can be compared in one frame
+  const chips: { el: HTMLElement; slot: Slot; size: number }[] = [];
+  if (mode === 'pair' && camera && typeof document !== 'undefined') {
+    const host = document.createElement('div');
+    host.className = 'mar-pair';
+    host.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:5;';
+    for (const s of slots) {
+      const el = document.createElement('div');
+      el.style.cssText = 'position:absolute;left:0;top:0;line-height:0;';
+      host.appendChild(el);
+      chips.push({ el, slot: s, size: 0 });
+    }
+    document.body.appendChild(host);
+    scope.defer(() => host.remove());
+  }
+  const pv = new THREE.Vector3();
+  const place = (): void => {
+    if (!camera || !chips.length) return;
+    camera.updateMatrixWorld();
+    const rect = document.body.getBoundingClientRect();
+    const proj = (x: number, y: number, z: number): { x: number; y: number } => {
+      pv.set(x, y, z).project(camera as THREE.PerspectiveCamera);
+      return { x: ((pv.x + 1) / 2) * rect.width, y: ((1 - pv.y) / 2) * rect.height };
+    };
+    const hBot = BOT_FRAMES.scout.headY * LAND.size.workers + 0.25;
+    for (const c of chips) {
+      const s = c.slot;
+      const foot = proj(s.x, s.y, s.z);
+      const top = proj(s.x, s.y + hBot, s.z);
+      const size = Math.round(Math.max(16, (foot.y - top.y) * L.pairPortrait.scale));
+      const mid = proj(s.x + L.pairPortrait.dx, s.y + hBot * 0.5, s.z);
+      if (size !== c.size) {
+        const rl = botLook(`pair:${s.col}`, L.island, L.roles[s.col], 'idle');
+        c.el.innerHTML = botPortraitSvg(
+          {
+            ...rl,
+            chassis: BOT_CHASSIS[s.chassis],
+            head: BOT_HEADS[s.head],
+            shade: 1,
+            item: roleItem(L.roles[s.col]),
+          },
+          size,
+        );
+        c.size = size;
+      }
+      c.el.style.transform = `translate(${Math.round(mid.x - size / 2)}px,${Math.round(mid.y - size / 2)}px)`;
+    }
+  };
+
   const bp = restPose();
   const e = new THREE.Euler(0, 0, 0, 'YZX');
   const q = new THREE.Quaternion();
@@ -170,6 +224,7 @@ export function createBotLineup(
         });
         m.instanceMatrix.needsUpdate = true;
       });
+      place();
     },
   };
 }

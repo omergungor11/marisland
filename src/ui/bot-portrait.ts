@@ -145,18 +145,14 @@ export function botPortraitSvg(look: BotLook, size: number): string {
   // legs: two posts, or one tread block with wheels
   const L = ch.legs;
   if (L.tread) {
+    // front view of the 3D hauler: two track blocks flanking the body, a hub on each
     const th = L.y1 - L.y0;
-    const x0 = L.xs[0] - L.w / 2;
-    out.push(
-      `<rect x="${n(x0)}" y="${n(L.y0)}" width="${n(L.w)}" height="${n(th)}" rx="${n(th / 2)}" fill="${C.metal}"/>`,
-    );
     const wheel = mixHex(C.metal, C.white, 0.45);
-    const wx0 = x0 + th / 2;
-    const step = (L.w - th) / 3;
-    const cy = L.y0 + th / 2;
-    out.push(
-      `<g fill="${wheel}" stroke="none">${[0, 1, 2, 3].map((i) => `<circle cx="${n(wx0 + step * i)}" cy="${n(cy)}" r="${n(th * 0.26)}"/>`).join('')}</g>`,
-    );
+    for (const x of L.xs)
+      out.push(
+        `<rect x="${n(x - L.w / 2)}" y="${n(L.y0)}" width="${n(L.w)}" height="${n(th)}" rx="${n(L.w * 0.36)}" fill="${C.metal}"/>`,
+        `<circle cx="${n(x)}" cy="${n(L.y0 + th * 0.62)}" r="${n(L.w * 0.2)}" fill="${wheel}" stroke="none"/>`,
+      );
   } else
     for (const x of L.xs)
       out.push(

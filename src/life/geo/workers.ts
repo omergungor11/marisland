@@ -267,12 +267,14 @@ export function buildWorker(chassis: BotChassis = 'scout'): THREE.BufferGeometry
       b.box(v3(0.04, 0.035, C.legZ * side), 0.1, 0.035, 0.075, foot);
     }
   } else if (chassis === 'hauler') {
-    // tracks: a dark block with a lighter fender, rocking about the hip (a waddle)
+    // tracks (TASK-690): long dark blocks standing proud of the body on both flanks, a lighter fender on
+    // top and three hub studs on the outer face; rocking about the hip (a waddle). Silhouette: wide stance.
     for (const side of [1, -1]) {
       b.setLimb(C.legSwing * side, C.hip, 0, 0);
-      b.box(v3(0.02, 0.07, C.legZ * side), 0.19, 0.07, 0.07, hex(W.head.tread));
-      b.box(v3(0.03, 0.155, C.legZ * side), 0.165, 0.016, 0.078, hex(W.head.treadRib));
-      b.box(v3(0.2, 0.06, C.legZ * side), 0.012, 0.045, 0.05, hex(W.head.treadRib));
+      b.box(v3(0.02, 0.085, C.legZ * side), 0.21, 0.085, 0.075, hex(W.head.tread));
+      b.box(v3(0.03, 0.18, C.legZ * side), 0.19, 0.016, 0.082, hex(W.head.treadRib));
+      for (const x of [-0.12, 0.02, 0.16])
+        b.box(v3(x, 0.085, (C.legZ + 0.077) * side), 0.028, 0.028, 0.008, hex(W.head.treadRib));
     }
   } else {
     // long thin legs, small feet

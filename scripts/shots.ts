@@ -188,6 +188,7 @@ function shotUrl(base: string, p: ShotPreset, extra = ''): string {
     q.set('craft', '0');
     q.set('birds', '0');
   }
+  if (p.birds === false) q.set('birds', '0');
   return `${base}?${q.toString()}${extra}`;
 }
 
@@ -872,7 +873,12 @@ async function main(): Promise<void> {
   const t0 = Date.now();
   const base = opt('base') ?? (await startServer());
   let list = shotsForSet(set);
-  if (only) list = list.filter((s) => only.includes(s.id));
+  if (only) {
+    // ids, or prefix globs (`F-bot*`)
+    const hit = (id: string): boolean =>
+      only.some((o) => (o.endsWith('*') ? id.startsWith(o.slice(0, -1)) : o === id));
+    list = list.filter((s) => hit(s.id));
+  }
   rmSync(OUT, { recursive: true, force: true });
   mkdirSync(OUT, { recursive: true });
   const browser = await chromium.launch({
