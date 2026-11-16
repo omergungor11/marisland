@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BUTTERFLIES, DUCKS } from '../content/life-critters.ts';
+import { BUTTERFLIES, DUCKS, PUFFINS } from '../content/life-critters.ts';
 import {
   LADYBUGS,
   SPOT_CRITTERS,
@@ -22,6 +22,7 @@ import {
   buildFox,
   buildOwl,
   buildPerched,
+  buildPuffin,
   buildSeal,
 } from './geo/critters.ts';
 import { buildCat, buildCrab } from './geo/land.ts';
@@ -419,6 +420,386 @@ export class Butterflies extends AgentKind {
   }
 
   protected stepAgent(): void {}
+}
+
+// ---------------------------------------------------------------------------
+// Puffins (TASK-332)
+
+/** One standing place of the colony: ground point and the unit direction to the nearest water. */
+export interface Ledge {
+  x: number;
+  y: number;
+  z: number;
+  sx: number;
+  sz: number;
+}
+
+/**
+ * Cliff-ledge colony of the Marketing island: flat shelves (Media Rock's terraces) a few units from
+ * the sea, clear of props / fixtures / paths / lots. Candidates are ranked by how many others lie
+ * within `PUFFINS.radius`; the densest neighbourhood becomes the colony. Pure f(world, rng).
+ */
+export function planPuffinLedges(ctx: LifeCtx, count: number, rng: Rng): Ledge[] {
+  const P = PUFFINS;
+  const W = ctx.world;
+  if (count <= 0) return [];
+  const cands: Ledge[] = [];
+  for (const isl of W.islands) {
+    if (isl.theme !== P.theme) continue;
+    const blockers: { x: number; z: number; r: number }[] = [];
+    const bx0 = isl.minX - 2;
+    const bx1 = isl.maxX + 2;
+    const bz0 = isl.minZ - 2;
+    const bz1 = isl.maxZ + 2;
+    const inBox = (x: number, z: number): boolean => x >= bx0 && x <= bx1 && z >= bz0 && z <= bz1;
+    const props = W.props;
+    if (props)
+      for (let i = 0; i < props.count; i++)
+        if (props.islandId[i] === isl.id)
+          blockers.push({ x: props.x[i], z: props.z[i], r: P.clear.prop });
+    for (const f of W.fixtures ?? [])
+      if (f.islandId === isl.id) blockers.push({ x: f.x, z: f.z, r: P.clear.fixture });
+    // anchored structures (cable stacks, dive tower, pool) and landmarks are bigger than their pivot
+    for (const a of Object.values(isl.anchors ?? {}))
+      blockers.push({ x: a.x, z: a.z, r: P.clear.anchor });
+    for (const m of W.landmarks ?? [])
+      if (m.islandId === isl.id) blockers.push({ x: m.x, z: m.z, r: P.clear.anchor });
+    for (const l of W.lots ?? [])
+      if (l.islandId === isl.id)
+        blockers.push({ x: l.x, z: l.z, r: Math.hypot(l.w, l.d) / 2 + P.clear.lot });
+    for (const path of W.paths ?? [])
+      for (const p of path.points)
+        if (inBox(p.x, p.z)) blockers.push({ x: p.x, z: p.z, r: P.clear.path });
+    const L = P.ledge;
+    for (let x = Math.ceil(bx0); x <= bx1; x += P.step)
+      for (let z = Math.ceil(bz0); z <= bz1; z += P.step) {
+        const y = ctx.h(x, z);
+        if (y < L.minY || y > L.maxY) continue;
+        const gx = (ctx.h(x + 0.6, z) - ctx.h(x - 0.6, z)) / 1.2;
+        const gz = (ctx.h(x, z + 0.6) - ctx.h(x, z - 0.6)) / 1.2;
+        if (Math.hypot(gx, gz) > L.maxSlope) continue;
+        if (!P.ground.includes(ctx.zone(x, z))) continue;
+        let best = Infinity;
+        let bdx = 0;
+        let bdz = 0;
+        for (let a = 0; a < 16; a++) {
+          const dx = Math.cos((a * Math.PI) / 8);
+          const dz = Math.sin((a * Math.PI) / 8);
+          for (let r = 1; r <= L.maxSea; r += 0.5) {
+            if (ctx.h(x + dx * r, z + dz * r) < 0) {
+              if (r < best) {
+                best = r;
+                bdx = dx;
+                bdz = dz;
+              }
+              break;
+            }
+          }
+        }
+        if (best < L.minSea || best > L.maxSea) continue;
+        if (blockers.some((b) => Math.hypot(b.x - x, b.z - z) < b.r)) continue;
+        cands.push({ x, y, z, sx: bdx, sz: bdz });
+      }
+  }
+  if (cands.length < P.minBirds) return [];
+  rng.shuffle(cands);
+  let centre = 0;
+  let most = -1;
+  for (let i = 0; i < cands.length; i++) {
+    let n = 0;
+    for (const c of cands) if (Math.hypot(c.x - cands[i].x, c.z - cands[i].z) < P.radius) n++;
+    if (n > most) {
+      most = n;
+      centre = i;
+    }
+  }
+  const c0 = cands[centre];
+  const picked: Ledge[] = [];
+  for (const c of cands) {
+    if (picked.length >= count) break;
+    if (Math.hypot(c.x - c0.x, c.z - c0.z) > P.radius) continue;
+    if (picked.some((p) => Math.hypot(p.x - c.x, p.z - c.z) < P.separation)) continue;
+    // off the search grid, so the colony does not stand in rows
+    const x = c.x + rng.range(-P.jitter, P.jitter);
+    const z = c.z + rng.range(-P.jitter, P.jitter);
+    picked.push({ ...c, x, z, y: ctx.h(x, z) });
+  }
+  if (picked.length < P.minBirds) return [];
+  // stable order for the waddle partners: by angle around the colony centre
+  return picked.sort(
+    (a, b) => Math.atan2(a.z - c0.z, a.x - c0.x) - Math.atan2(b.z - c0.z, b.x - c0.x),
+  );
+}
+
+/** Pose scratch of one puffin. */
+interface PuffinPose {
+  x: number;
+  y: number;
+  z: number;
+  yaw: number;
+  pitch: number;
+  roll: number;
+  sy: number;
+  /** Gait amount (0..1), pose (unused) and the gait / flutter phase (rad). */
+  move: number;
+  phase: number;
+  /** Which action the cycle is in: 0 idle, 1 waddle, 2 flight (tests / debug). */
+  action: number;
+}
+
+/** 0 → 1 across [a, a + r] and back to 0 across [b, b + r]. */
+const ramp = (s: number, a: number, b: number, r: number): number =>
+  smooth(a, a + r, s) * (1 - smooth(b, b + r, s));
+
+/** Shortest-way angle blend. */
+const angleMix = (a: number, b: number, k: number): number => {
+  let d = (b - a) % TAU;
+  if (d > Math.PI) d -= TAU;
+  else if (d < -Math.PI) d += TAU;
+  return a + d * k;
+};
+
+/**
+ * Puffin colony: one InstancedMesh on the shared creature program (one draw), not agents (never
+ * counted or picked). Every pose is a closed form of the engine clock: a per-bird action cycle of
+ * 20-30 s, each cycle idle (breathing, head nod, glance), a waddle to a neighbour and back, or a
+ * short flight loop out over the water and a landing back on its own spot.
+ */
+export class Puffins extends AgentKind {
+  /** The ledge each bird stands on between actions. */
+  readonly home: Ledge[];
+  private readonly T: Float32Array;
+  private readonly off: Float32Array;
+  private readonly ph: Float32Array;
+  private readonly face: Float32Array;
+  private readonly gait: Float32Array;
+  private readonly gaitAttr: THREE.InstancedBufferAttribute;
+  /** Instances drawn in the last frame (tests). */
+  shown = 0;
+  private readonly m = new THREE.Matrix4();
+  private readonly p = new THREE.Vector3();
+  private readonly s = new THREE.Vector3();
+  private readonly q = new THREE.Quaternion();
+  private readonly e = new THREE.Euler(0, 0, 0, 'YZX');
+  private readonly a = this.blank();
+
+  constructor(
+    o: Omit<AgentKindOpts, 'name' | 'capacity' | 'geometry' | 'material'>,
+    private readonly ctx: LifeCtx,
+    ledges: Ledge[],
+  ) {
+    const geometry = buildPuffin();
+    super({
+      ...o,
+      name: 'puffins',
+      capacity: ledges.length,
+      geometry,
+      material: makeLifeMaterial('life:puffins', false),
+    });
+    const n = ledges.length;
+    this.home = ledges;
+    this.T = new Float32Array(n);
+    this.off = new Float32Array(n);
+    this.ph = new Float32Array(n);
+    this.face = new Float32Array(n);
+    this.gait = new Float32Array(n * 3);
+    this.gaitAttr = new THREE.InstancedBufferAttribute(this.gait, 3);
+    this.gaitAttr.setUsage(THREE.DynamicDrawUsage);
+    geometry.setAttribute('aGait', this.gaitAttr);
+    const seed = new Float32Array(n);
+    const white = new THREE.Color(PUFFINS.tints.belly);
+    for (let i = 0; i < n; i++) {
+      const h = (k: number): number => unitHash(o.seed, i, 0x9f10 + k);
+      this.T[i] = lerp(PUFFINS.cycle, h(0));
+      this.off[i] = h(1);
+      this.ph[i] = h(2) * TAU;
+      this.face[i] = rotYFor(ledges[i].sx, ledges[i].sz) + (h(3) - 0.5) * 1.0;
+      seed[i] = h(4);
+      this.mesh.setColorAt(i, white);
+    }
+    geometry.setAttribute('aSeed', new THREE.InstancedBufferAttribute(seed, 1));
+    this.mesh.frustumCulled = false;
+    this.render(0, false);
+  }
+
+  private blank(): PuffinPose {
+    return { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, roll: 0, sy: 1, move: 0, phase: 0, action: 0 };
+  }
+
+  override fixedUpdate(): void {}
+  protected stepAgent(): void {}
+
+  override update(_alpha: number): void {
+    this.render(SHARED.uTime.value as number, this.ctx.getTier() >= PUFFINS.minTier);
+  }
+
+  /** Position and attitude of puffin `i` at clock `t` (the pure f(t, seed) of its life). */
+  pose(i: number, t: number, out: PuffinPose): void {
+    const P = PUFFINS;
+    const calm = this.motionScale;
+    const H = this.home[i];
+    const T = this.T[i];
+    const c = t / T + this.off[i];
+    const k = Math.floor(c);
+    const s = (c - k) * T;
+    const r = (n: number): number => unitHash(this.seed, i * 4099 + k, 0x7a00 + n);
+    // idle base
+    const glance = P.glance[0] * Math.sin((TAU * t) / P.glance[1] + this.ph[i]);
+    const idleYaw = this.face[i] + glance * calm;
+    const nod = Math.max(0, Math.sin((TAU * t) / P.nod[1] + this.ph[i] * 1.7)) ** 6;
+    out.x = H.x;
+    out.y = H.y;
+    out.z = H.z;
+    out.yaw = idleYaw;
+    out.pitch = -P.nod[0] * nod * calm;
+    out.roll = 0;
+    out.sy = 1 + P.breath * Math.sin((TAU * t) / 3.4 + this.ph[i]) * calm;
+    out.move = 0;
+    out.phase = 0;
+    out.action = 0;
+    const pick = r(0);
+    const fly = calm >= 1 && pick < P.flightShare;
+    if (fly) this.flight(i, s, r, out, idleYaw);
+    else if (pick < P.flightShare + P.waddleShare) this.waddle(i, s, r, out, idleYaw);
+  }
+
+  private flight(
+    i: number,
+    s: number,
+    r: (n: number) => number,
+    out: PuffinPose,
+    idleYaw: number,
+  ): void {
+    const F = PUFFINS.flight;
+    const f0 = (0.15 + 0.4 * r(1)) * this.T[i];
+    const u = (s - f0) / F.time;
+    if (u <= 0 || u >= 1) return;
+    const H = this.home[i];
+    const reach = lerp(F.reach, r(2));
+    const sweep = lerp(F.sweep, r(3)) * (r(4) < 0.5 ? 1 : -1);
+    const lift = lerp(F.lift, r(5));
+    const at = (uu: number, o: { x: number; y: number; z: number }): void => {
+      const rad = reach * Math.sin(Math.PI * uu);
+      const w = sweep * Math.sin(2 * Math.PI * uu);
+      o.x = H.x + H.sx * rad - H.sz * w;
+      o.z = H.z + H.sz * rad + H.sx * w;
+      o.y = Math.max(
+        H.y + lift * Math.sin(Math.PI * uu) ** 0.7,
+        this.ctx.h(o.x, o.z) + 0.6 * Math.sin(Math.PI * uu),
+      );
+    };
+    const d = 0.4 / F.time;
+    const u1 = Math.min(u + d, 1);
+    const u0 = Math.max(u - d, 0);
+    at(u0, this.pa);
+    at(u1, this.pb);
+    at(u, this.pc);
+    const vx = this.pb.x - this.pa.x;
+    const vz = this.pb.z - this.pa.z;
+    const vy = this.pb.y - this.pa.y;
+    const fw = ramp(u, 0, 0.88, 0.1);
+    out.x = this.pc.x;
+    out.y = this.pc.y;
+    out.z = this.pc.z;
+    out.yaw = angleMix(idleYaw, rotYFor(vx, vz), fw);
+    out.pitch = Math.max(-0.5, Math.min(0.5, Math.atan2(vy, Math.hypot(vx, vz) + 1e-4))) * fw;
+    out.roll = 0.3 * Math.cos(2 * Math.PI * u) * Math.sign(sweep) * fw;
+    out.move = ramp(u, 0, 0.9, 0.08);
+    out.phase = TAU * F.hz * (s - f0);
+    out.sy = 1;
+    out.action = 2;
+  }
+
+  private waddle(
+    i: number,
+    s: number,
+    r: (n: number) => number,
+    out: PuffinPose,
+    idleYaw: number,
+  ): void {
+    const W = PUFFINS.waddle;
+    const calm = this.motionScale;
+    const H = this.home[i];
+    const mate = this.home[(i + 1) % this.home.length];
+    const raw = Math.hypot(mate.x - H.x, mate.z - H.z);
+    if (raw < 0.4) return;
+    // toward the neighbour, never more than `W.reach` u (the shelf is small)
+    const dist = Math.min(W.reach, raw * (0.4 + 0.2 * r(6)));
+    const tx = ((mate.x - H.x) / raw) * dist;
+    const tz = ((mate.z - H.z) / raw) * dist;
+    const speed = W.speed * (0.4 + 0.6 * calm);
+    const wt = dist / speed;
+    const w0 = (0.15 + 0.25 * r(7)) * this.T[i];
+    const end = w0 + 2 * wt + W.pause;
+    const x = s - w0;
+    if (x <= -0.4 || x >= end - w0 + 0.4) return;
+    // distance along the path: out, hold, back
+    let dd: number;
+    let trav: number;
+    if (x < wt) {
+      dd = (x < 0 ? 0 : x) * speed;
+      trav = dd;
+    } else if (x < wt + W.pause) {
+      dd = dist;
+      trav = dist;
+    } else {
+      const y = Math.min(x - wt - W.pause, wt);
+      dd = dist - y * speed;
+      trav = dist + y * speed;
+    }
+    const back = x >= wt + W.pause;
+    const ux = tx / dist;
+    const uz = tz / dist;
+    out.x = H.x + ux * Math.max(0, dd);
+    out.z = H.z + uz * Math.max(0, dd);
+    const gy = this.ctx.h(out.x, out.z);
+    const mv = ramp(x, 0, wt - 0.25, 0.25) + ramp(x, wt + W.pause, 2 * wt + W.pause - 0.25, 0.25);
+    const ph = (TAU * trav) / W.stride;
+    const turn = back ? rotYFor(-ux, -uz) : rotYFor(ux, uz);
+    const wk = ramp(x, -0.4, 2 * wt + W.pause, 0.4);
+    out.yaw = angleMix(idleYaw, turn, wk);
+    out.y = gy + W.hop * Math.abs(Math.sin(ph)) * mv * calm;
+    out.roll = W.roll * Math.sin(ph) * mv * calm;
+    out.move = Math.min(1, mv);
+    out.phase = ph;
+    out.action = 1;
+  }
+
+  private readonly pa = { x: 0, y: 0, z: 0 };
+  private readonly pb = { x: 0, y: 0, z: 0 };
+  private readonly pc = { x: 0, y: 0, z: 0 };
+
+  /** Pose every puffin for clock `t`; count 0 below the tier. */
+  render(t: number, on: boolean): void {
+    const n = this.capacity;
+    if (!on || n === 0) {
+      this.mesh.count = 0;
+      this.mesh.visible = false;
+      this.shown = 0;
+      return;
+    }
+    const arr = this.mesh.instanceMatrix.array as Float32Array;
+    const sc = PUFFINS.size;
+    for (let i = 0; i < n; i++) {
+      this.pose(i, t, this.a);
+      const P = this.a;
+      this.p.set(P.x, P.y, P.z);
+      this.e.set(P.roll, P.yaw, P.pitch, 'YZX');
+      this.q.setFromEuler(this.e);
+      this.s.set(sc, sc * P.sy, sc);
+      this.m.compose(this.p, this.q, this.s);
+      this.m.toArray(arr, i * 16);
+      this.gait[i * 3] = P.move;
+      this.gait[i * 3 + 1] = 0;
+      this.gait[i * 3 + 2] = P.phase;
+    }
+    this.shown = n;
+    this.mesh.count = n;
+    this.mesh.visible = true;
+    this.mesh.instanceMatrix.needsUpdate = true;
+    this.gaitAttr.needsUpdate = true;
+    this.mesh.computeBoundingSphere();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -847,6 +1228,8 @@ export interface CritterKinds {
   butterflies?: Butterflies;
   /** QA Bug Zoo ladybugs (the butterfly model, red). */
   ladybugs?: Butterflies;
+  /** Marketing cliff-ledge colony (TASK-332). */
+  puffins?: Puffins;
 }
 
 /** Bug Zoo sites: the QA terrariums (`LADYBUGS.zooDef` fixtures), in world order. */
@@ -873,7 +1256,7 @@ export function familyPools(ctx: LifeCtx, pools: Pool[]): Pool[] {
 export function createCritterKinds(
   o: LandOpts,
   ctx: LifeCtx,
-  plan: Pick<LifePlan, 'ducks' | 'butterflies'>,
+  plan: Pick<LifePlan, 'ducks' | 'butterflies' | 'puffins'>,
 ): CritterKinds {
   const out: CritterKinds = {};
   const rng = ctx.rngFor('critters');
@@ -891,6 +1274,10 @@ export function createCritterKinds(
     const n = Math.round(plan.butterflies * LADYBUGS.share);
     if (zoo.length > 0 && n > 0)
       out.ladybugs = new Butterflies(o, ctx, zoo, n, LADYBUGS, 'ladybugs');
+  }
+  if (plan.puffins > 0) {
+    const ledges = planPuffinLedges(ctx, plan.puffins, rng.fork('puffins'));
+    if (ledges.length > 0) out.puffins = new Puffins(o, ctx, ledges);
   }
   return out;
 }
