@@ -625,7 +625,7 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 | TASK-688 | Wall-foot hatch stripes + strata triangular wedges gone in the four coast dev cams | shader | S | PENDING | — |
 | TASK-689 | God rays readable as a fan in `W-sky-dusk` high (or criterion removed from ART_BIBLE §11); no straight stratus edges in `W4` | shader | S | PENDING | — |
 | TASK-690 | Bot proof polish: line-up spot clear of tower / tent / drone; scout vs hauler distinct; portrait chassis matches 3D; portrait-beside-bot shot; `F-bot-hud` within low agent budget | life + engine | S | PENDING | — |
-| TASK-691 | High memory margin: W-fairy-night unrounded ≤ 478 MB (far-merge copy / `aSpin`), or assert compares the unrounded sum (user decision) | engine | S | PENDING | — |
+| TASK-691 | High memory margin: W-fairy-night unrounded ≤ 478 MB (far-merge copy / `aSpin`), or assert compares the unrounded sum (user decision) | engine | S | COMPLETED (D-187; post output buffer single-sample, W-fairy-night 480.4 → 377.6 MB, 0 px) | — |
 | TASK-692 | Biome readability: Coding scatter readable at T1; QA ≥ 8 mint palms; Design shows its pink palms or the set is dropped | worldgen | S | PENDING | — |
 
 ### M48 — Island detail layer

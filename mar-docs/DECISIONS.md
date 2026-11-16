@@ -2,6 +2,19 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-187: The post chain's ping-pong output buffer is single-sample and colour-only on every quality (TASK-691) — 2026-11-16
+
+**Context.** High W-fairy-night measured 480.4 MB against a 480 MB budget, passing only on the rounded total. Both `EffectComposer.Buffer` targets were
+118.7 MB on high: pmndrs clones the output buffer from the MSAA ×4 input buffer, with its own `OutputDepth` texture.
+
+**Decision.** `createPostChain` disposes the output buffer's depth texture and sets `depthBuffer` / `stencilBuffer` false and `samples = 0` (extends TASK-495).
+Only the RenderPass draws geometry, always into `inputBuffer`; every pass reads depth from the composer's stable depth target; the output buffer only gets
+full-screen quads. High output buffer 118.7 → 15.8 MB: W-fairy-night 480.4 → 377.6, W-ember-lane-night 479.6 → 376.8, W8 474.4 → 371.6 MB. wow-high 61 / 61,
+wow 61 / 61, low ladder subset green; high / medium / low 0 px different (`pixdiff`). Budgets unchanged.
+
+**Open.** A second geometry RenderPass after an odd number of swaps would need the depth back. Untouched levers: canvas depth buffer on high (15.8 → 7.9 MB,
+`backend`), DOF / luminance full-res HalfFloat targets (15.8 MB each, would change pixels).
+
 ## D-186: `rockArch` takes its island's cliff strata: biome variant encoding (variant = biomeIndex * 3 + shape), stone from `WALL_STRATA` (TASK-683) — 2026-11-16
 
 **Decision.** `SHAPES.rockArch = 3`, `BIOME_DEF_VARIANTS.rockArch = 24`; `ARCH_STONE` in `content/biomes.ts` takes each theme's `WALL_STRATA` tones sorted by
