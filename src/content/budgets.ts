@@ -83,6 +83,10 @@ export interface Budget {
  * max channel delta 1): every low frame −6 MB, L-pairs-hq 148.4 u 87 → 81 MB after TASK-600.
  * TASK-681 (user 2026-11-16): medium and high store it 16-bit too, so the high night frames
  * (W-ember-lane-night 485, W-fairy-night 486 > 480) fit without raising the budget.
+ * TASK-691 (user 2026-11-16, budgets unchanged): the post chain's ping-pong output buffer drops the
+ * MSAA ×4 copy and the unread OutputDepth texture (high 118.7 → 15.8 MB at 1920×1080, pixel-identical):
+ * W-fairy-night 480.2 → 377.3 MB, W-ember-lane-night 479.5 → 376.7, W8 474.4 → 371.6. Medium / low
+ * never had either.
  */
 export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
   low: {

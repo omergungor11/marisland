@@ -118,12 +118,18 @@ export function createPostChain(
   if (msaa === 0) composer.addPass(new EffectPass(camera, new FXAAEffect()));
   // TASK-495: only the RenderPass draws geometry, always into `inputBuffer`; the ping-pong
   // `outputBuffer` (a clone) only takes full-screen effect quads, so its depth renderbuffer was
-  // never read (7.9 MB at 1920×1080). Kept when a pass needs the depth texture (high: DOF).
-  if (composer.outputBuffer.depthTexture === null) {
-    composer.outputBuffer.depthBuffer = false;
-    composer.outputBuffer.stencilBuffer = false;
-    composer.outputBuffer.dispose();
-  }
+  // never read (7.9 MB at 1920×1080).
+  // TASK-691: on high the clone also carried MSAA ×4 and the composer's OutputDepth texture
+  // (118.7 MB at 1920×1080). Every pass reads depth from the composer's stable depth target
+  // (blitted from `inputBuffer` after the RenderPass), and a full-screen quad writes the same value
+  // to every sample, so a single-sample colour-only output resolves to the same pixels (15.8 MB).
+  const out = composer.outputBuffer;
+  out.depthTexture?.dispose();
+  out.depthTexture = null;
+  out.depthBuffer = false;
+  out.stencilBuffer = false;
+  out.samples = 0;
+  out.dispose();
 
   const setTilt = (band: number, blurPx: number): void => {
     tiltActive = band > 0 && blurPx > 0;
