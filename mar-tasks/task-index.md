@@ -581,7 +581,7 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 | TASK-611 | Detail reveal: earlier and continuous (user 2026-11-09: "çok yaklaşmam gerekiyor detayların netleşmesi için, o kısım smooth olmalı"). Tier-2 / tier-3 prop reveal moves out (`TIER_FADE` 2: 120–160 → ~200–260 u, 3: 40–55 → ~70–95 u) with wide dither cross-fades instead of a band pop; the tilt-shift sharp band follows the orbit target and widens so the focused island is never blurred at T1–T2; high DOF focus range scales with distance; budgets re-measured (more LOD0 in view). Composer / tilt-shift side moved to TASK-586 (peer session); 611 = prop reveal bands + cross-fade + flip-book only | engine | S | COMPLETED (D-161; bands T2 200–260, T3 70–95, LOD hand-over 200–260; low budgets 176 / 390k / 82 MB; open: dither `1 - bayer` cross-fade, camera.ts ladder pairs 260 / 200 / 95 / 55, W16 327 / 330, W27 QA) | — |
 | TASK-652 | wow budgets green after TASK-611 (W15c 423, W15e 343, W16 341, W-marina-dusk 337 calls vs 330): per-frame shadow-pass skip for prop / terrain meshes whose swept shadow misses the view (`render/shadow-skip.ts`, `SHADOW_CULL`), LOD0 groups past 187.5 u leave their shadow to LOD1 at T0–T1 (`lod1CastsPast`), `NEAR_MERGE.maxVertsShadowed` 2000 on medium / high; budgets and fade bands unchanged | engine | M | COMPLETED (D-165; wow 59 / 59, peak 320 calls W15c / W16, 850k tris, 189 MB; ci 4 / 4; open: low ladder L-pairs-hq / -marketing 83–84 MB > 82 on main before and after, qa to judge LOD1-shaped far shadows in D-reveal-260 / -200) | TASK-611 |
 | TASK-651 | Land life follows the reveal band (user 2026-11-10: "adanın detaylarını görebilmem için çok yaklaşmam gerekiyor"): the orbit tier only arms a land kind one tier ahead, each villager / cat / sheep / duck appears by camera distance on `TIER_FADE[2]` (none past 260 u, all by 200 u; crabs on the tier-3 band), `LAND.revealHysteresis` 6 u; workers wake at T1 (`ACTIVITY.focus.minTier` 1). Sim state stays camera-independent. The first attempt (FSM boundaries 140 → 210 / 45 → 68) was dropped: it stacks on TASK-611 | life | S | COMPLETED (D-165 addendum; medium drawCalls 330 → 350, low gpuMemoryMB 82 → 86 by user decision; wow subset 10 / 10, peak W15e 340 calls; low L-pairs hq / devops / research pass; open: L-pairs-marketing low 189 / 184 calls > 176 and pair-45 blob 0.6 %, same on main before the merge, from M53) | TASK-652 |
-| TASK-593 | M45 QA: portraits vs 3D bots, F-* shots, wow budgets W5 / W26 / W-morning-shift / W-funicular-dawn, low ladder | qa | S | CONDITIONAL (`mar-docs/qa/wave2-2026-11-15.md`; code / determinism / wow PASS, F-bots empty + line-up framing → TASK-677, low ladder → TASK-678) | TASK-590, TASK-591, TASK-592 |
+| TASK-593 | M45 QA: portraits vs 3D bots, F-* shots, wow budgets W5 / W26 / W-morning-shift / W-funicular-dawn, low ladder | qa | S | CONDITIONAL (wave 4, `mar-docs/qa/wave4-2026-11-16.md`: 15 bots + eyes PASS; line-up spot cluttered, scout≈hauler, portrait treads, F-bot-hud agents 29 > 25 → TASK-690) | TASK-590, TASK-591, TASK-592 |
 
 ### M46 — Surface quality
 
@@ -590,7 +590,7 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 | TASK-594 | Material classes (matte / wood / metal / glass / fabric) in the free `emissive` code range, per-class specular / fresnel / edge light, `fwidth` bevel edge light + triplanar near grain (60 → 140 u fade), same programs | shader | M | COMPLETED (D-159; crease bake instead of fwidth; buildings untagged) | — |
 | TASK-595 | Terrain detail: cliff strata bands, scree speckles, moss creep, wet sand glint, path edge wear (terrain program) | shader | S | FOLDED INTO TASK-613 / 614 (M50 Ground Look, peer session) | TASK-594 |
 | TASK-596 | Water: shallow caustics (terrain underwater term, day-gated), sun glitter sparkle, second foam band | shader | S | COMPLETED (D-177; voronoi caustics 0–3 u day-gated, second foam band off in calm berth, programs and calls unchanged; open: shallow-ring glitter not visible in any shot, caustic gain 0.75 on the HQ bay may be busy) | TASK-594 |
-| TASK-597 | M46 QA: before / after on 8 wow ids, ladder, low ladder, programs, `wow --assert` | qa | S | CONDITIONAL (`mar-docs/qa/wave2-2026-11-15.md`; W8 / W16 / W1 / sunken / gold / night PASS, HQ bay busy + glitter unjudged → TASK-679) | TASK-595, TASK-596 |
+| TASK-597 | M46 QA: before / after on 8 wow ids, ladder, low ladder, programs, `wow --assert` | qa | S | CONDITIONAL (wave 4, `mar-docs/qa/wave4-2026-11-16.md`: glitter PASS; caustic net at island scale → TASK-686) | TASK-595, TASK-596 |
 
 ### M47 — Prop variety
 
@@ -600,7 +600,7 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 | TASK-599 | Vegetation + rock v2: 3 canopy silhouettes, per-island colour sets (`content/biomes.ts`), palm variants, 5 rock silhouettes + moss / strata, driftwood, kelp; far blobs follow the biome colour | props | M | COMPLETED (D-174) | — |
 | TASK-600 | Biome scatter rules: per-island variant weights, rock fields, flower meadow patches, path edges, lot hedges, garden plots; one world hash re-pin | worldgen | M | COMPLETED (D-179; low L-pairs-hq 87 / 86 MB open) | TASK-598, TASK-599 |
 | TASK-601 | Boats + dock dressing v2: 3 hulls, per-island sail / hull sets, net / lobster pot / rope / ladder, buoy variants | props | S | COMPLETED (D-175) | TASK-598 |
-| TASK-602 | M47 QA | qa | S | PENDING (gallery half CONDITIONAL in `mar-docs/qa/wave2-2026-11-15.md`; world half after TASK-600) | TASK-600, TASK-601 |
+| TASK-602 | M47 QA | qa | S | CONDITIONAL (`mar-docs/qa/wave4-2026-11-16.md`: HQ / Marketing / Design + cottages read; Coding / QA / Research thin, Design 0 palms → TASK-692) | TASK-600, TASK-601 |
 
 ### Wave 2 QA follow-ups (fable audit 2026-11-15, `mar-docs/qa/wave2-2026-11-15.md`)
 
@@ -612,13 +612,29 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 | TASK-680 | Props v2 polish before TASK-600 places them: thicker palm crowns LOD0 / LOD1, Design palm set (pink-purple, now = QA mint), Marketing palms lean; sloop sail colour readable from the shade side; boat LOD1 colour = LOD0 (HQ fishing boat orange, Marketing white at LOD1); larger dinghy; boulder LOD1 keeps the cluster outline, moss per biome; gallery close camera fitted to prop bounds | props | S | DONE | TASK-599, TASK-601 |
 | TASK-681 | Prop vertex colour 16-bit on medium + high too (user 2026-11-16, after TASK-607): `compactColor` on every tier, ~10 MB per frame, max channel delta 1; fixes high W-ember-lane-night 485 / W-fairy-night 486 > 480 and eases medium W-horseshoe-quay 192 / 200 | engine | XS | COMPLETED (wow-high 61 / 61: W-fairy-night 486 → 480 / 480, W-ember-lane-night 485 → 479, W8 474; medium 61 / 61, W-horseshoe-quay 192 → 188; ~6 MB not 10; high night frames have zero margin) | TASK-678, TASK-607 |
 
+### Wave 4 QA follow-ups (fable audit 2026-11-16, `mar-docs/qa/wave4-2026-11-16.md`)
+
+| ID | Task | Agent | Complexity | Status | Dependencies |
+|----|------|-------|-----------|--------|-------------|
+| TASK-682 | Arch siting: sea or sky through each opening from `D-coast-arch-*`; no leg inside terrain; Beacon Rock arch off the stack wall | worldgen | S | PENDING | — |
+| TASK-683 | Arch stone colour takes the island's stone / strata tone (no slate-blue on warm strata) | props | XS | PENDING | — |
+| TASK-684 | Ledge shrubs: none within fall width + 1 u of a fall line, all within ~1 u of the lip; foot stones 4–6 per fall, none on the steep wall (or D-184 corrected) | worldgen | S | PENDING | — |
+| TASK-685 | Stream-mouth gravel: ≥ 6 pebbles at the Design stream mouth on seed 1001 + test in `coast.test.ts`, or drop it from D-184 | worldgen | XS | PENDING | — |
+| TASK-686 | Caustic net at distance: no polygon net on the shelf ring at T1 (`W23`, ladder 105 u); HQ bay line contrast down in `W-horseshoe-day`; `W-sunken-noon` unchanged | shader | S | PENDING | — |
+| TASK-687 | AO vs dither fade: high `W16` beach shows no black stipple on fading ground cover; budgets unchanged | shader | S | PENDING | — |
+| TASK-688 | Wall-foot hatch stripes + strata triangular wedges gone in the four coast dev cams | shader | S | PENDING | — |
+| TASK-689 | God rays readable as a fan in `W-sky-dusk` high (or criterion removed from ART_BIBLE §11); no straight stratus edges in `W4` | shader | S | PENDING | — |
+| TASK-690 | Bot proof polish: line-up spot clear of tower / tent / drone; scout vs hauler distinct; portrait chassis matches 3D; portrait-beside-bot shot; `F-bot-hud` within low agent budget | life + engine | S | PENDING | — |
+| TASK-691 | High memory margin: W-fairy-night unrounded ≤ 478 MB (far-merge copy / `aSpin`), or assert compares the unrounded sum (user decision) | engine | S | PENDING | — |
+| TASK-692 | Biome readability: Coding scatter readable at T1; QA ≥ 8 mint palms; Design shows its pink palms or the set is dropped | worldgen | S | PENDING | — |
+
 ### M48 — Island detail layer
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
 | TASK-603 | Coast micro-landscapes per archetype: arch / stack clusters, tide-pool fields, dune ridges, kelp beds, cliff ledges, waterfall foot pools; one hash re-pin | worldgen | M | COMPLETED (D-184; props-only, one re-pin; dunes ≈ 0 on seed 1001, high W-fairy-night 480 / 480) | TASK-600 |
 | TASK-604 | Coast kit geometry: rockArch, tidePoolField, duneGrass, kelp (wind + water tint), ledgeShrub | props + shader | S | DONE (D-180) | — |
-| TASK-605 | M48 QA | qa | S | PENDING | TASK-603, TASK-604 |
+| TASK-605 | M48 QA | qa | S | CONDITIONAL (`mar-docs/qa/wave4-2026-11-16.md`: tide pools + kelp PASS; arch siting / colour, ledge shrubs, foot stones, gravel → TASK-682…685, 688) | TASK-603, TASK-604 |
 
 ### M49 — High tier render
 
@@ -627,5 +643,5 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 | TASK-606 | High only: SSAO / GTAO pass + PCF soft shadows; medium wow pixel-identical; high programs ≤ 30 | shader | M | COMPLETED (D-182; depth-only half-res AO EffectPass before tilt-shift, warm tint, sea masked, texel-snapped depth; 12-tap PCF + 0.5 u penumbra on high only; medium 10 frames 0 px diff; high +3 programs (max 27), +4 calls, +4 MB, W8 478 / 480 MB; open: PCSS contact hardening, wow-high set in TASK-607) | TASK-594 |
 | TASK-607 | `wow-high` set (`--quality=high --tag=high`) with `BUDGETS.high` assert, tier in the stats overlay, CI report-only | devops + engine | S | COMPLETED (D-185; `pnpm shots wow-high`, 61 frames 1220 s, 2 frames over memory 485 / 486 > 480 reported, CI report-only 7-frame subset) | TASK-606 |
 | TASK-608 | Sky + clouds v2: 3 cloud archetypes two-tone + rim (medium +≤ 2 calls), sun disc + halo, moon phases, star density, dusk god rays (high) | shader | M | COMPLETED (D-183; stratus + wisp InstancedMeshes on the cloud material, MAR_CLOUD_V2 two-tone + backlit / moon rim on medium + high; cloud meshes skipped at T2+ (−3 calls); high MAR_SKY_HQ on the one sky program: corona, halo, glint, seeded moon phases, stars by altitude; own half-res depth-march god rays merged into the high final pass; medium +2 calls T0/T1, 0 programs, wow --assert 61/61; high W8 27 programs / 478 MB unchanged, rays frames 21; new shots W-sky-dusk / W-sky-moon) | TASK-606 |
-| TASK-609 | M49 QA | qa | S | PENDING | TASK-607, TASK-608 |
+| TASK-609 | M49 QA | qa | S | CONDITIONAL (`mar-docs/qa/wave4-2026-11-16.md`: wow-high 61 / 61, sky v2 PASS; AO stipple, no ray fan, 480.2 MB → TASK-687, 689, 691) | TASK-607, TASK-608 |
 | TASK-610 | Docs: ART_BIBLE §5 / §7 / §11 rows, ARCHITECTURE §8 table, FLEET.md bot identity, MEMORY handoff | docs | XS | PENDING | per milestone |
