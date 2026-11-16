@@ -616,10 +616,10 @@ Plan `mar-plans/FLEET.md`, details `phases/phase-4.md`, contract `src/fleet/prot
 
 | ID | Task | Agent | Complexity | Status | Dependencies |
 |----|------|-------|-----------|--------|-------------|
-| TASK-682 | Arch siting: sea or sky through each opening from `D-coast-arch-*`; no leg inside terrain; Beacon Rock arch off the stack wall | worldgen | S | PENDING | — |
-| TASK-683 | Arch stone colour takes the island's stone / strata tone (no slate-blue on warm strata) | props | XS | COMPLETED (D-186; geometry + content, in-world picks land with TASK-682) | — |
-| TASK-684 | Ledge shrubs: none within fall width + 1 u of a fall line, all within ~1 u of the lip; foot stones 4–6 per fall, none on the steep wall (or D-184 corrected) | worldgen | S | PENDING | — |
-| TASK-685 | Stream-mouth gravel: ≥ 6 pebbles at the Design stream mouth on seed 1001 + test in `coast.test.ts`, or drop it from D-184 | worldgen | XS | PENDING | — |
+| TASK-682 | Arch siting: sea or sky through each opening from `D-coast-arch-*`; no leg inside terrain; Beacon Rock arch off the stack wall | worldgen | S | COMPLETED (D-184 amendment; sea through every opening, Beacon Rock off the stack) | — |
+| TASK-683 | Arch stone colour takes the island's stone / strata tone (no slate-blue on warm strata) | props | XS | COMPLETED (D-186; in-world picks via `shapes()` landed with TASK-682) | — |
+| TASK-684 | Ledge shrubs: none within fall width + 1 u of a fall line, all within ~1 u of the lip; foot stones 4–6 per fall, none on the steep wall (or D-184 corrected) | worldgen | S | COMPLETED (D-184 amendment; shrubs ≤ 1 u from lip, 0 near falls; 4–5 foot stones per fall on seed 1001) | — |
+| TASK-685 | Stream-mouth gravel: ≥ 6 pebbles at the Design stream mouth on seed 1001 + test in `coast.test.ts`, or drop it from D-184 | worldgen | XS | DROPPED (D-184 amendment; Design stream mouth is the harbour, no free bank) | — |
 | TASK-686 | Caustic net at distance: no polygon net on the shelf ring at T1 (`W23`, ladder 105 u); HQ bay line contrast down in `W-horseshoe-day`; `W-sunken-noon` unchanged | shader | S | COMPLETED (D-177 addendum; W23 / 105 u net gone, programs 17 / 20, wow 61 / 61) | — |
 | TASK-687 | AO vs dither fade: high `W16` beach shows no black stipple on fading ground cover; budgets unchanged | shader | S | PENDING | — |
 | TASK-688 | Wall-foot hatch stripes + strata triangular wedges gone in the four coast dev cams | shader | S | PENDING | — |
