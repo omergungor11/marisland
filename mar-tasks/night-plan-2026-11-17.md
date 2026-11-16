@@ -11,12 +11,12 @@ işlere dokunma (560, 561, 573, 586 peer, arch yeniden seçimi, bütçe artış�
 ## Wave A
 - [ ] TASK-688 wall-foot hatch + strata wedges (shader, çalışıyor, port 4181)
 - [ ] TASK-635 M50 worldgen polish: Coding waterfalls, right-edge mesh steps (worldgen, port 4182)
-- [ ] TASK-332 capybaras (DevOps spring) + puffins (Marketing) (life, port 4183)
+- [x] TASK-332 capybaras (DevOps spring) + puffins (Marketing) (life, port 4183)
 
 ## Wave B (688 merge olduktan sonra; 636 aynı terrain dosyasına dokunur)
 - [ ] TASK-636 M50 shader polish (shader)
 - [ ] TASK-637 T0 program count +2 (engine, araştırma)
-- [ ] TASK-650 M51 courier follow-ups (life + engine)
+- [ ] TASK-650 M51 courier follow-ups (life + engine) — başladı 02:40, port 4184
 
 ## Wave C
 - [ ] Wave 4 CONDITIONAL QA satırlarının yeniden denetimi: 593 / 597 / 602 / 605 / 609 (qa agent)
@@ -28,3 +28,4 @@ işlere dokunma (560, 561, 573, 586 peer, arch yeniden seçimi, bütçe artış�
 - [ ] MEMORY.md handoff, push, worktree temizlik satırı.
 
 ## Günlük
+- 02:35 TASK-332 merge (puffin colony, Marketing; capybaras zaten TASK-433/507 ile vardı). D-195 yazılacak. Nit: D-puffins-ledge kamerası ön planda bulanık kaya. Push wave A sonunda.
