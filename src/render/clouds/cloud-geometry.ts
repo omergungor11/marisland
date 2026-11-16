@@ -2,11 +2,14 @@ import * as THREE from 'three';
 import type { Rng } from '../../core/rng.ts';
 import { CLOUDS } from '../../content/anim.ts';
 
+/** Depth the deepest belly lobe keeps under the flat line, as a share of its sphere depth. */
+const BELLY_KEEP = 0.3;
+
 /**
  * One cloud variant (ART_BIBLE §3): 5–9 smooth icospheres (detail 2, analytic
- * sphere normals), bottom 30 % flattened. Normalised so the footprint spans
- * x ∈ [−0.5, 0.5], z ∈ ±aspect/2 (instance scale = cloud width), flat base at
- * y = 0. `aShade` = 0 at the flat belly → 1 at the top.
+ * sphere normals), bottom 30 % squashed into shallow lobes. Normalised so the footprint spans
+ * x ∈ [−0.5, 0.5], z ∈ ±aspect/2 (instance scale = cloud width), lowest lobe at
+ * y = 0. `aShade` = 0 at the belly → 1 at the top.
  */
 export function buildCloudGeometry(rng: Rng): THREE.BufferGeometry {
   const n = rng.int(5, 9);
@@ -63,30 +66,35 @@ export function buildCloudGeometry(rng: Rng): THREE.BufferGeometry {
     z1 = Math.max(z1, pos[i + 2]);
   }
   const flat = y0 + 0.3 * (y1 - y0);
+  // belly depth t below the flat line → c·t / (c + t): slope 1 at the line (no crease), the deepest
+  // sphere ends at BELLY_KEEP of its depth, shallower ones relatively deeper (lobes stay distinct)
+  const c = ((flat - y0) * BELLY_KEEP) / (1 - BELLY_KEEP);
+  const base = flat - (c * (flat - y0)) / (c + flat - y0);
   const sx = 1 / (x1 - x0);
   const sz = CLOUDS.aspect / (z1 - z0) / sx; // in pre-x-scale units
   const cx = (x0 + x1) / 2;
   const cz = (z0 + z1) / 2;
-  const top = (y1 - flat) * sx;
+  const top = (y1 - base) * sx;
   const shade = new Float32Array(pos.length / 3);
   for (let i = 0, v = 0; i < pos.length; i += 3, v++) {
     let y = pos[i + 1];
-    let nx = nrm[i];
+    const nx = nrm[i];
     let ny = nrm[i + 1];
     let nz = nrm[i + 2];
     if (y < flat) {
-      // flattened belly: soft (not creased) normals bent downward
-      y = flat;
-      const k = 0.75;
-      nx *= 1 - k;
-      nz *= 1 - k;
-      ny = ny * (1 - k) - k;
+      // flattened belly (TASK-689, D-189): squashed, not cut — each sphere keeps a shallow round
+      // lobe under the flat line, so the underside is scalloped instead of one ruler edge (seen
+      // edge-on from belly height, W4). Normal: y scaled by 1 / slope of the squash.
+      const t = flat - y;
+      const k = c / (c + t);
+      y = flat - t * k;
+      ny /= k * k;
     }
     // z is squeezed by sz → normal z scales by 1/sz
     nz /= sz;
     const l = Math.hypot(nx, ny, nz) || 1;
     pos[i] = (pos[i] - cx) * sx;
-    pos[i + 1] = (y - flat) * sx;
+    pos[i + 1] = (y - base) * sx;
     pos[i + 2] = (pos[i + 2] - cz) * sz * sx;
     nrm[i] = nx / l;
     nrm[i + 1] = ny / l;

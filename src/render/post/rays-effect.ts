@@ -7,9 +7,11 @@ import { SHARED } from '../uniforms.ts';
  * Dusk / dawn god rays, high tier only (TASK-608, D-183; numbers in content/lighting.ts `RAYS`).
  * Built only by the composer's high branch — medium / low never construct it.
  *   update(): while active, a half-res R8 march: from each pixel `RAYS.samples` depth taps toward
- *             the sun's screen position count open sky (depth = far plane) inside a soft disc round
- *             the sun (`RAYS.sourceRadius`) with a per-tap decay, so clouds, islands and landmarks
- *             cut shafts out of the low sun's glow. The start is
+ *             the sun's screen position over the last `RAYS.reach` of the way. Open sky (depth =
+ *             far plane) inside a soft disc round the sun (`RAYS.sourceRadius`) is the light; every
+ *             occluded tap between it and the pixel (clouds, islands, landmarks) takes
+ *             `RAYS.absorb` of what is left (TASK-689, D-189), so cloud gaps pour shafts and the
+ *             clouds cast shadow lanes — a fan instead of a glow. The start is
  *             jittered by interleaved gradient noise with a fixed seed (same URL, same pixels).
  *             Inactive (sun high, below the horizon, behind the camera, off screen, overcast,
  *             debug mask) → no march, no draw call; the composite adds 0.
@@ -31,23 +33,37 @@ const MARCH_FRAG = /* glsl */ `
 #define SAMPLES ${RAYS.samples}
 uniform highp sampler2D tDepth;
 uniform vec4 uSun; // xy = sun uv, z = aspect, w = source radius (uv height)
-uniform vec3 uParams; // density, decay, weight
+uniform vec3 uParams; // reach, absorb, weight
 uniform float uSeed;
+uniform float uHorizon; // screen v of the sea horizon (no camera roll: a horizontal line)
+uniform float uSeaAbsorb;
 varying vec2 vUv;
 void main() {
-  vec2 delta = (uSun.xy - vUv) * (uParams.x / float(SAMPLES));
+  vec2 asp = vec2(uSun.z, 1.0);
+  vec2 toPx = vUv - uSun.xy;
+  float len = length(toPx * asp);
+  // march only the last reach of the way (the light and the occluders next to it), pixel to sun
+  vec2 start = uSun.xy + toPx * min(1.0, uParams.x / max(len, 1e-4));
+  vec2 delta = (uSun.xy - start) / float(SAMPLES);
   vec2 g = gl_FragCoord.xy + uSeed * 64.0;
   float j = fract(52.9829189 * fract(dot(g, vec2(0.06711056, 0.00583715))));
-  vec2 uv = vUv + delta * j;
-  float illum = 1.0;
+  vec2 uv = start + delta * j;
+  float trans = 1.0;
   float sum = 0.0;
   for (int i = 0; i < SAMPLES; i++) {
+    float d = texture(tDepth, uv).r;
+    // off screen = unknown: neither light nor occluder (a clamped edge would read as open sky and
+    // light the whole frame while the sun sits just past the edge)
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
+    } else if (d >= 1.0) {
+      // light = open sky inside a soft disc round the sun, dimmed by what lies between it and the pixel
+      sum += (1.0 - smoothstep(uSun.w * 0.35, uSun.w, length((uv - uSun.xy) * asp))) * trans;
+    } else {
+      // silhouettes above the horizon occlude; the sea under it only dims the light a little per
+      // tap, so shafts run on over the water and fade instead of lighting the whole sea
+      trans *= 1.0 - mix(uSeaAbsorb, uParams.y, smoothstep(uHorizon - 0.004, uHorizon + 0.004, uv.y));
+    }
     uv += delta;
-    float d = texture(tDepth, clamp(uv, vec2(0.0), vec2(1.0))).r;
-    // light source = open sky inside a soft disc round the sun (no global wash from all the sky)
-    float src = 1.0 - smoothstep(uSun.w * 0.3, uSun.w, length((uv - uSun.xy) * vec2(uSun.z, 1.0)));
-    sum += (d >= 1.0 ? src : 0.0) * illum;
-    illum *= uParams.y;
   }
   gl_FragColor = vec4(min(sum * uParams.z, 1.0), 0.0, 0.0, 1.0);
 }`;
@@ -55,12 +71,12 @@ void main() {
 const COMPOSITE_FRAG = /* glsl */ `
 uniform sampler2D tRays;
 uniform vec3 uRayColor;
-uniform vec3 uSunUv; // xy = sun uv, z = aspect
+uniform vec4 uSunUv; // xy = sun uv, z = aspect, w = falloff
 uniform float uK;
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth, out vec4 outputColor) {
   float r = texture(tRays, uv).r;
-  float fall = exp(-length((uv - uSunUv.xy) * vec2(uSunUv.z, 1.0)) * 1.2);
+  float fall = exp(-length((uv - uSunUv.xy) * vec2(uSunUv.z, 1.0)) * uSunUv.w);
   outputColor = vec4(inputColor.rgb + uRayColor * (r * fall * uK), inputColor.a);
 }`;
 
@@ -81,7 +97,7 @@ export class MarRaysEffect extends Effect {
   private readonly marchMaterial: THREE.ShaderMaterial;
   private readonly camera: THREE.PerspectiveCamera;
   private readonly k: THREE.Uniform<number>;
-  private readonly sunUv: THREE.Uniform<THREE.Vector3>;
+  private readonly sunUv: THREE.Uniform<THREE.Vector4>;
   private readonly color: THREE.Uniform<THREE.Color>;
   private readonly tint = new THREE.Color(RAYS.tint);
   private readonly _v = new THREE.Vector3();
@@ -89,7 +105,7 @@ export class MarRaysEffect extends Effect {
 
   constructor(camera: THREE.PerspectiveCamera) {
     const k = new THREE.Uniform(0);
-    const sunUv = new THREE.Uniform(new THREE.Vector3(0.5, 0.5, 1));
+    const sunUv = new THREE.Uniform(new THREE.Vector4(0.5, 0.5, 1, RAYS.falloff));
     const color = new THREE.Uniform(new THREE.Color());
     const tex = new THREE.Uniform<THREE.Texture | null>(null);
     super('MarRaysEffect', COMPOSITE_FRAG, {
@@ -120,8 +136,10 @@ export class MarRaysEffect extends Effect {
       uniforms: {
         tDepth: { value: null },
         uSun: { value: new THREE.Vector4(0.5, 0.5, 1, RAYS.sourceRadius) },
-        uParams: { value: new THREE.Vector3(RAYS.density, RAYS.decay, RAYS.weight) },
+        uParams: { value: new THREE.Vector3(RAYS.reach, RAYS.absorb, RAYS.weight) },
         uSeed: { value: RAYS.seed },
+        uHorizon: { value: 0 },
+        uSeaAbsorb: { value: RAYS.seaAbsorb },
       },
       depthTest: false,
       depthWrite: false,
@@ -160,6 +178,12 @@ export class MarRaysEffect extends Effect {
       const s = this.marchMaterial.uniforms.uSun.value as THREE.Vector4;
       s.x = u;
       s.y = v;
+      // the sea horizon under the sun (far along the sun's azimuth, at sea level)
+      this.camera.getWorldPosition(this._v);
+      const h = Math.hypot(dir.x, dir.z) || 1;
+      this._v.set(this._v.x + (dir.x / h) * 2500, 0, this._v.z + (dir.z / h) * 2500);
+      this._v.project(this.camera);
+      this.marchMaterial.uniforms.uHorizon.value = this._v.y * 0.5 + 0.5;
     }
     this.k.value = k > 0.001 ? k * RAYS.intensity : 0;
     if (this.k.value === 0) return;
