@@ -84,6 +84,11 @@ export interface DetailLayerParams {
    * base colour.
    */
   accent?: number;
+  /**
+   * Flat ground only (TASK-688): no triplanar side projections, the layer fades out with the
+   * slope over GROUND_DETAIL.flat (sand ripples on a wall foot read as diagonal hatching).
+   */
+  flatOnly?: boolean;
 }
 
 /** Defaults per layer (TASK-372 tuning; amplitude = ± lightness fraction at full detail). */
@@ -92,7 +97,7 @@ export const DETAIL_LAYERS: Readonly<Record<DetailLayerId, DetailLayerParams>> =
   mow: { tile: 6, amplitude: 0.06, normal: 0.3 },
   speckle: { tile: 3, amplitude: 0.16, normal: 0.25, accent: 0.95 },
   litter: { tile: 3, amplitude: 0.26, normal: 0.5, accent: 0.6 },
-  ripples: { tile: 4, amplitude: 0.1, normal: 0.55 },
+  ripples: { tile: 4, amplitude: 0.1, normal: 0.55, flatOnly: true },
   cracks: { tile: 6.5, amplitude: 0.26, normal: 0.7, accent: 0.45 },
   pebbles: { tile: 2, amplitude: 0.22, normal: 0.75, accent: 0.35 },
   packedEarth: { tile: 3, amplitude: 0.18, normal: 0.45 },
@@ -129,6 +134,11 @@ export const GROUND_DETAIL = {
   accentPatch: 1.7,
   /** Normal-y band where the side projections take over (triplanar on steep ground). */
   steep: [0.55, 0.8] as const,
+  /**
+   * `flatOnly` layers (TASK-688): full above normal y flat[1], gone below flat[0] (≈ 31° → 16°
+   * slope), so sand ripples stay on the beach and never stretch into stripes up a wall foot.
+   */
+  flat: [0.86, 0.96] as const,
 } as const;
 
 /** Layers a material uses unless a `GroundSpec` overrides them (first = primary). */

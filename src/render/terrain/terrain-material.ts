@@ -452,6 +452,10 @@ mat2 marLayerRot(int l) {
   vec4 b = uGLayer2[l];
   return mat2(b.z, b.w, -b.w, b.z);
 }
+/** Flat-ground-only layers (DETAIL_LAYERS flatOnly): no side projections, fade with the slope. */
+bool marFlatOnly(int l) {
+  return ${flatOnlyGlsl()};
+}
 vec4 marLayerTex(int l, vec2 p, vec2 gx, vec2 gy, float ps) {
   float inv = uGLayer[l].x / (uGLayer2[l].y > 0.5 ? ps : 1.0);
   mat2 R = marLayerRot(l);
@@ -479,10 +483,11 @@ vec3 marMaterial(vec4 p0, vec4 p1, vec3 acc, vec3 col, vec3 wp, vec3 wn, vec3 dp
   float amp = fade * p0.b * ${g(255 / P.amp)};
   float ps = max(p1.r * ${g(255 / P.pattern)}, 0.05);
   float flatW = smoothstep(${g(GD.steep[0])}, ${g(GD.steep[1])}, abs(wn.y));
+  float flatO = smoothstep(${g(GD.flat[0])}, ${g(GD.flat[1])}, abs(wn.y));
   int l0 = int(p0.r * 255.0 + 0.5);
   int l1 = int(p0.g * 255.0 + 0.5);
   if (l0 < ${LAYERS}) {
-    if (primary && flatW < 0.999) {
+    if (primary && flatW < 0.999 && !marFlatOnly(l0)) {
       // triplanar: top plane by flatness, the sides by |n.x|^4 : |n.z|^4; side planes squash v
       // (world y) so plates / cracks read as horizontal layers on cliffs
       const vec2 marSq = vec2(1.0, 2.2);
@@ -516,7 +521,7 @@ vec3 marMaterial(vec4 p0, vec4 p1, vec3 acc, vec3 col, vec3 wp, vec3 wn, vec3 dp
       marApply(l0, s, amp, acc, col);
       np += t / max(ws, 1e-4) * amp;
     } else {
-      float a0 = amp * (primary ? 1.0 : flatW);
+      float a0 = amp * (marFlatOnly(l0) ? flatO : primary ? 1.0 : flatW);
       vec4 s = marLayerTex(l0, wp.xz, dpx.xz, dpy.xz, ps);
       marApply(l0, s, a0, acc, col);
       vec2 t = marTilt(l0, s);
@@ -524,7 +529,7 @@ vec3 marMaterial(vec4 p0, vec4 p1, vec3 acc, vec3 col, vec3 wp, vec3 wn, vec3 dp
     }
   }
   if (primary && l1 < ${LAYERS} && flatW > 0.0) {
-    float a1 = amp * flatW * p1.g * ${g(255 / P.amp)};
+    float a1 = amp * (marFlatOnly(l1) ? flatO : flatW) * p1.g * ${g(255 / P.amp)};
     vec4 s = marLayerTex(l1, wp.xz, dpx.xz, dpy.xz, ps);
     marApply(l1, s, a1, acc, col);
     vec2 t = marTilt(l1, s);
@@ -534,6 +539,14 @@ vec3 marMaterial(vec4 p0, vec4 p1, vec3 acc, vec3 col, vec3 wp, vec3 wn, vec3 dp
 }
 #endif
 `;
+}
+
+/** GLSL condition of `marFlatOnly`: the DETAIL_LAYERS flatOnly flags as index checks. */
+function flatOnlyGlsl(): string {
+  const ids = DETAIL_LAYER_IDS.flatMap((id, l) =>
+    DETAIL_LAYERS[id].flatOnly ? [`l == ${l}`] : [],
+  );
+  return ids.length ? ids.join(' || ') : 'false';
 }
 
 /** GLSL body of `marZoneClass`: the CPU `zoneClass` table as range checks. */
@@ -744,6 +757,11 @@ const GROUND_COLOR_GLSL = /* glsl */ `
       float marFoot = vMarWorld.y;
 ${WALL_PROBES_GLSL}
       marFoot = max(marFoot, 0.0);
+      // TASK-688: foot texels past the coastline carry island row 0 (open sea: the default strata);
+      // the nearest-texel row switch drew those 2 u cells as wedges of another wall colour, so a
+      // wall takes its row from its top
+      if (marIsl < 0.5)
+        marIsl = floor(texelFetch(uAlbedo, marTexel(ivec2(floor((marTopXz - uTerrainGrid.xy) * uTerrainGrid.z + 0.5))), 0).a * 255.0 + 0.5);
       // soil walls stand on the beach / sea (a steep hillside further up stays green)
       marWall = (marWallSoil * (1.0 - smoothstep(${g(GW.footMax[0])}, ${g(GW.footMax[1])}, marFoot)) + marWallCliff)
               * smoothstep(${g(-GW.wetBelow)}, ${g(-0.4 * GW.wetBelow)}, vMarWorld.y);
