@@ -34,7 +34,7 @@ import { marinaKeepOut } from './gen/plans/hq-horseshoe.ts';
 import { carveReefGaps, planReefs, raiseReefs, reefWeights } from './gen/reefs.ts';
 import { placeSeamarks } from './gen/seamarks.ts';
 import { placeMarina } from './gen/marina.ts';
-import { placeWaterfalls } from './gen/waterfalls.ts';
+import { planWaterfalls } from './gen/waterfalls.ts';
 import { createOccupancy, scatterProps } from './gen/scatter.ts';
 import { applyRim, raiseOutcrops } from './gen/rim.ts';
 import { compactPropStore, createPropStore } from './prop-store.ts';
@@ -310,12 +310,14 @@ export function generateWorld(seed: number, opts: GenerateOptions = {}): WorldDa
   const occupancy = createOccupancy();
   markSites(occupancy, world, [...sites.shapes, marina.shapes]);
   world.genAux.siteOccupancy = occupancy.data.slice();
+  // the falls are ranked on the pre-rim lip and picked on the final terrain below (TASK-635)
+  const pickFalls = planWaterfalls(world, root.fork('waterfalls'));
   // rim silhouette + lip knobs (TASK-615): terrain only, where the sites left the rim free
   if (rawLand.rimDelta && rawLand.rimBand)
     applyRim(world, rawLand.rimDelta, rawLand.rimBand, occupancy, zoneNoise(root.fork('zones')));
   raiseOutcrops(world, occupancy, root.fork('outcrops'));
   // the falls read terrain only; placed before the scatter so the coast pass rims their feet (TASK-603)
-  world.waterfalls = placeWaterfalls(world, root.fork('waterfalls'));
+  world.waterfalls = pickFalls(world);
   // spare slots for Phase 2 edits; hashes and consumers only read `count` entries
   world.props = compactPropStore(scatterProps(world, occupancy).props, EDIT_PROPS.propHeadroom);
   world.props.editBase = world.props.count;

@@ -89,21 +89,22 @@ describe('coast micro-landscapes', () => {
     const res = scatterProps(world, createOccupancy(world.genAux.siteOccupancy.slice()));
     const q = res.props;
     const F = COAST_FEATURES.fall;
-    const arches: number[] = [];
+    // the passes run arches (+ their sea stacks), tide pools, then the fall feet: the stones after
+    // the last tide-pool field are the fall stones (TASK-635: a Design arch's stack zone overlaps a
+    // fall foot's ring, so a distance test to the arch misfiled one foot stone)
+    let fallFrom = -1;
+    for (let i = res.coastFeatures[0]; i < res.coastFeatures[1]; i++)
+      if (PROP_DEFS[q.defId[i]].id === 'tidePoolField') fallFrom = i + 1;
+    expect(fallFrom).toBeGreaterThan(0);
     const stones: number[] = [];
-    for (let i = res.coastFeatures[0]; i < res.coastFeatures[1]; i++) {
+    for (let i = fallFrom; i < res.coastFeatures[1]; i++) {
       const id = PROP_DEFS[q.defId[i]].id;
-      if (id === 'rockArch') arches.push(i);
-      else if (id === 'boulder' || id === 'basaltBoulder') stones.push(i);
+      if (id === 'boulder' || id === 'basaltBoulder') stones.push(i);
     }
-    const nearArch = (i: number): boolean =>
-      arches.some((a) => Math.hypot(q.x[i] - q.x[a], q.z[i] - q.z[a]) < 8.5);
     expect(world.waterfalls.length).toBeGreaterThan(5);
     for (const f of world.waterfalls) {
       const reach = Math.hypot(f.width / 2 + F.ring[1], F.along[1]) + 0.01;
-      const mine = stones.filter(
-        (i) => Math.hypot(q.x[i] - f.baseX, q.z[i] - f.baseZ) <= reach && !nearArch(i),
-      );
+      const mine = stones.filter((i) => Math.hypot(q.x[i] - f.baseX, q.z[i] - f.baseZ) <= reach);
       expect(
         mine.length,
         `fall at ${f.baseX.toFixed(1)}, ${f.baseZ.toFixed(1)}`,
