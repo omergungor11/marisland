@@ -122,18 +122,25 @@ export function createFoundryMovers(
     }
     return { p, mesh };
   };
-  const put = (it: FoundryItem, lod: Lod): void => {
-    const isArm = it.kind === ITEM.arm;
-    const key = isArm ? 'arm' : `part${it.kind}`;
-    const cap = isArm ? 3 : it.kind === ITEM.bot ? frame.items.length : 2;
-    const { p, mesh } = meshOf(
-      key,
-      isArm ? 'assemblyArm' : 'foundryPart',
-      isArm ? 3 : (it.kind as ItemKind),
-      lod,
+  const poolOf = (kind: ItemKind, lod: Lod) => {
+    const isArm = kind === ITEM.arm;
+    const key = isArm ? 'arm' : `part${kind}`;
+    const cap = isArm ? 3 : kind === ITEM.bot ? frame.items.length : 2;
+    return {
       cap,
-      mat,
-    );
+      ...meshOf(key, isArm ? 'assemblyArm' : 'foundryPart', isArm ? 3 : kind, lod, cap, mat),
+    };
+  };
+  // TASK-693: a LOD's first use builds the pool of every item kind at once, so the set of live meshes
+  // depends on the LODs the camera has reached, not on which kinds the line happens to show at that
+  // moment (a part entering the frame later would read as a geometry leak in the regen / edit checks)
+  const warm = new Set<Lod>();
+  const put = (it: FoundryItem, lod: Lod): void => {
+    if (!warm.has(lod)) {
+      warm.add(lod);
+      for (const kind of Object.values(ITEM)) poolOf(kind, lod);
+    }
+    const { p, mesh, cap } = poolOf(it.kind, lod);
     if (p.cur !== mesh) {
       p.cur = mesh;
       p.n = 0;
