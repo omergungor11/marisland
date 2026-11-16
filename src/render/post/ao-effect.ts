@@ -142,7 +142,9 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth,
   float l = dot(inputColor.rgb, vec3(0.2126, 0.7152, 0.0722));
   ao = mix(ao, 1.0, smoothstep(uSpare.x, uSpare.y, l));
   ao = 1.0 - (1.0 - ao) * uNightK;
-  outputColor = vec4(inputColor.rgb * mix(uTint, vec3(1.0), ao), inputColor.a);
+  // alpha 1: alpha-to-coverage fades (TASK-687) leave the resolved scene alpha < 1 at fading
+  // ground cover, which the later passes read as a lighter ghost; AO is the first effect on high
+  outputColor = vec4(inputColor.rgb * mix(uTint, vec3(1.0), ao), 1.0);
 }`;
 
 function fullscreen(frag: string, uniforms: Record<string, THREE.IUniform>): THREE.ShaderMaterial {

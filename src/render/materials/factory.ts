@@ -434,9 +434,36 @@ const FRAG_CLOUD = /* glsl */ `
 
 const FRAG_DITHER = /* glsl */ `
   #ifdef MAR_DITHER
+  #ifdef ALPHA_TO_COVERAGE
+    if (vFade <= 0.0) discard;
+  #else
     if (vFade < marBayer4(gl_FragCoord.xy)) discard;
   #endif
+  #endif
 `;
+
+/**
+ * TASK-687: under MSAA (high) the fade is alpha-to-coverage instead of the Bayer discard. A discard
+ * kills all 4 samples of a pixel, so MSAA left the 4×4 lattice crisp (dark dots on sand / grass
+ * in W16), while medium's FXAA blurred it; coverage fades each pixel by sample count instead.
+ * Insert before `#include <opaque_fragment>` (OPAQUE is not defined with alpha-to-coverage). The
+ * resolved alpha is put back to 1 by the AO composite (post/ao-effect.ts), the first high effect.
+ */
+const FRAG_COVERAGE = /* glsl */ `
+  #if defined(MAR_DITHER) && defined(ALPHA_TO_COVERAGE)
+    diffuseColor.a *= vFade;
+  #endif
+`;
+
+/**
+ * Lit materials use alpha-to-coverage for the dither fade (TASK-687). Set once at boot from the
+ * quality preset (MSAA only, i.e. high); a quality switch reloads the page. Every lit material
+ * reads the same flag, so they keep sharing one program; off → medium / low compile as before.
+ */
+let litCoverage = false;
+export function setLitCoverage(on: boolean): void {
+  litCoverage = on;
+}
 
 /**
  * Flat-shaded normal with a guard (TASK-435): three's `normalize(cross(dFdx(p), dFdy(p)))` is NaN
@@ -630,6 +657,7 @@ export class LitMaterial extends THREE.MeshLambertMaterial {
       fs = replaceOnce(fs, '#include <normal_fragment_begin>', FRAG_FLAT_NORMAL, 'after');
       fs = replaceOnce(fs, '#include <opaque_fragment>', FRAG_CLOUD, 'before');
       fs = replaceOnce(fs, '#include <opaque_fragment>', FRAG_OUTGOING, 'before');
+      fs = replaceOnce(fs, '#include <opaque_fragment>', FRAG_COVERAGE, 'before');
       fs = replaceOnce(fs, '#include <fog_fragment>', FRAG_MIST, 'after');
       shader.fragmentShader = fs;
     };
@@ -639,6 +667,15 @@ export class LitMaterial extends THREE.MeshLambertMaterial {
     return this.variant.key;
   }
 }
+
+// an accessor on the prototype (three's Material constructor assigns `alphaToCoverage = false`,
+// which lands in the no-op setter), read when three builds the program and sets the GL state
+Object.defineProperty(LitMaterial.prototype, 'alphaToCoverage', {
+  get(this: LitMaterial): boolean {
+    return litCoverage && !this.transparent;
+  },
+  set(): void {},
+});
 
 export function makeLitMaterial(features: LitFeatures, opts?: LitOptions): LitMaterial {
   return new LitMaterial(features, opts);
@@ -675,6 +712,10 @@ export function makeDepthMaterial(
     shader.fragmentShader = fs;
   };
   mat.customProgramCacheKey = () => `${variant.key}:depth`;
+  // three's shadow pass sets alphaTest 0.5 on the depth material of an alpha-to-coverage caster
+  // (TASK-687); this one already cuts at vFade 0.5, and USE_ALPHATEST would split it from the
+  // terrain's depth program (+1 program on high)
+  Object.defineProperty(mat, 'alphaTest', { get: () => 0, set: () => {} });
   return mat;
 }
 
