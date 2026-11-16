@@ -135,11 +135,12 @@ describe('archipelago — 30-seed full generation', () => {
     // TASK-600: biome scatter (v2 vegetation / rock / boat defs, props stage only), re-pinned
     // TASK-603: coast micro-landscapes (props stage only), re-pinned
     // TASK-682 / 684 / 685: arch siting, ledge shrubs, fall feet, no stream gravel (props only), re-pinned
+    // TASK-692: Coding groves, QA / Design palms (props stage only), re-pinned
     expect(snap).toMatchInlineSnapshot(`
       {
-        "1": "9c6ed7a256a84435",
-        "1001": "0142640532963104",
-        "42": "9e396c1c6dd67696",
+        "1": "0669251d1a468369",
+        "1001": "e45660e33df67491",
+        "42": "7f1cac5e6868472e",
       }
     `);
   });
@@ -162,11 +163,12 @@ describe('archipelago — 30-seed full generation', () => {
     // TASK-674: HQ's open crescent quay, re-pinned
     // TASK-603: coast micro-landscapes (props + bits only), re-pinned
     // TASK-682 / 684 / 685: coast siting fixes (props + bits only), re-pinned
+    // TASK-692: Coding groves, QA / Design palms (props + bits only), re-pinned
     expect(snap).toMatchInlineSnapshot(`
       {
-        "1": "bits:6ed03e063673ae20 layout:358ca2668fc3f1cc height:2f9e892ba7b38514 sdf:b8c34b97557c99da islandMap:9f7e0d86517ac7c5 zone:77f59e8fe6c92444 fields:fde62d37a0223454 chunks:dc7faad7717da3b9 sites:4eafc17955f7d0f0 routes:bd97bc6524447266 seamarks:c9d059790fa28055 marina:70c1073d7d97e4a2 props:0d0971835038d645",
-        "1001": "bits:60d623157909c8eb layout:2747e57b5392567c height:21713a0d6295f1d2 sdf:ab8b4a1da1801c5f islandMap:aac83dd958cec153 zone:bb2902289c50296c fields:fde62d37a0223454 chunks:1854ff6405fc1fbe sites:a3e96d2f5762c26a routes:beedf704bf1c8fdc seamarks:adfaff5cff52a702 marina:38b0ff7652234c8c props:79e267f65b55d3ab",
-        "42": "bits:80ddf7d99b9f570f layout:7d862a142513cf36 height:b205e21fd45fe9b5 sdf:80a0ab67504b027f islandMap:0dff0816d09fb54d zone:385e4a0a63c41589 fields:fde62d37a0223454 chunks:a7e456a628d4b886 sites:d405fd34612029fd routes:9b422895ce8e32e9 seamarks:7555ca08c54afb6c marina:14e3937f36034b15 props:aaa27c88a02ac5f4",
+        "1": "bits:64221fbc4df7b1cc layout:358ca2668fc3f1cc height:2f9e892ba7b38514 sdf:b8c34b97557c99da islandMap:9f7e0d86517ac7c5 zone:77f59e8fe6c92444 fields:fde62d37a0223454 chunks:dc7faad7717da3b9 sites:4eafc17955f7d0f0 routes:bd97bc6524447266 seamarks:c9d059790fa28055 marina:70c1073d7d97e4a2 props:c0f85e33fff5cb8a",
+        "1001": "bits:18c7774eae5e2522 layout:2747e57b5392567c height:21713a0d6295f1d2 sdf:ab8b4a1da1801c5f islandMap:aac83dd958cec153 zone:bb2902289c50296c fields:fde62d37a0223454 chunks:1854ff6405fc1fbe sites:a3e96d2f5762c26a routes:beedf704bf1c8fdc seamarks:adfaff5cff52a702 marina:38b0ff7652234c8c props:0ff856e46a551cd1",
+        "42": "bits:9fcef4ebd5ff324b layout:7d862a142513cf36 height:b205e21fd45fe9b5 sdf:80a0ab67504b027f islandMap:0dff0816d09fb54d zone:385e4a0a63c41589 fields:fde62d37a0223454 chunks:a7e456a628d4b886 sites:d405fd34612029fd routes:9b422895ce8e32e9 seamarks:7555ca08c54afb6c marina:14e3937f36034b15 props:9b0f98713b7410d4",
       }
     `);
   });
@@ -700,8 +702,9 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // TASK-600 biome scatter (v2 vegetation / rock / boat defs), re-pinned
       // TASK-603 coast micro-landscapes (props stage only), re-pinned
       // TASK-682 / 684 / 685 coast siting fixes (props stage only), re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('91fdb88d8d35de04');
-      expect(generateWorld(1).hashes.world).toBe('d6ed0bbb2186f523');
+      // TASK-692 Coding groves, QA / Design palms (props stage only), re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('5aa1c69bcb8514f2');
+      expect(generateWorld(1).hashes.world).toBe('b4ffc64f4aaddee8');
     } finally {
       for (const b of saved) b.on = true;
     }

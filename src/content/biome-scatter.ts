@@ -13,7 +13,7 @@
  * rule (same Poisson points, same roll count) and keep each island to 2–3 variants per v2 def.
  * Memory: every distinct (def, variant) is a LOD0 + LOD1 geometry for the whole world (the low
  * ladder L-pairs-hq sits on the 86 MB line), so an island rolls one floraBush shape and one boat
- * hull (QA one palm shape, Research one canopy), the world one or two kelp / driftLog variants.
+ * hull (QA / Design one palm shape, Research one canopy), the world one or two kelp / driftLog variants.
  * T0 blobs: one colour per (island, canopy kind), so an island's canopy shapes must agree within
  * the blob ΔE bound (render/props/batcher.test.ts, p95 ≤ 4.5): the hq layered and the design oval
  * canopies shade 6.8 / 9.3 off their island's mix and are left out.
@@ -189,7 +189,8 @@ export const BIOME_SCATTER: Readonly<Record<ThemeId, IslandBiomeScatter>> = {
     },
     picks: {
       canopy: shapes('canopyTree', 'design', [0, 0, 1]),
-      palm: NONE,
+      // TASK-692: one palm shape (the twin trunk) on the harbour beach
+      palm: shapes('leanPalm', 'design', [0, 1, 0]),
       flora: shapes('floraBush', 'design', [1, 0]),
       boulder: boulders('design', 1, [1, 4]),
       kelp: [0],
@@ -238,7 +239,7 @@ const BIOME_CANOPY_KINDS: Readonly<Record<ThemeId, readonly ('deciduous' | 'palm
   coding: [],
   devops: [],
   qa: ['palm'],
-  design: ['deciduous'],
+  design: ['deciduous', 'palm'],
   research: ['deciduous'],
 };
 
@@ -276,7 +277,8 @@ export interface BiomeRule extends PlacementRule {
   themes: readonly ThemeId[];
 }
 
-const { grass, meadow, rock, cliff, sandDry, sandWet, sandBlack, shallow, field, path } = Zone;
+const { grass, meadow, forest, rock, cliff, sandDry, sandWet, sandBlack, shallow, field, path } =
+  Zone;
 const ROCKY: readonly ThemeId[] = ['hq', 'coding', 'qa', 'design'];
 
 /**
@@ -386,6 +388,105 @@ export const BIOME_RULES: readonly BiomeRule[] = [
     scale: [0.8, 1.2],
     maxPerIsland: 22,
     topClear: { heights: KELP.heights, below: 0.4 },
+  },
+  // ---- TASK-692 signature clusters (D-191): appended, so the rules above keep their forks
+  // Coding: round-tree groves filling the open pockets of the plateau (`openClear`: none in the
+  // slivers between the campus pads), the stock FOLIAGE tree its wreathed quad / nap-grove
+  // fixtures already draw (no new geometry, T0 blobs keep FOLIAGE); a spring-green shrub fringe
+  // round them and big lichen tors (boulder outcrops) in their own noise pockets
+  {
+    def: 'roundTree',
+    themes: ['coding'],
+    zones: [grass, meadow],
+    minDist: 2.9,
+    density: 0.95,
+    slopeMax: 0.5,
+    heights: [1, 30],
+    shore: [6, 1000],
+    openClear: 2,
+    scale: [0.95, 1.25],
+    maxPerIsland: 44,
+  },
+  {
+    def: 'floraBush',
+    pick: 'flora',
+    themes: ['coding'],
+    zones: [grass, meadow],
+    minDist: 2.2,
+    density: 0.85,
+    slopeMax: 0.5,
+    heights: [1, 30],
+    shore: [5, 1000],
+    openClear: 1.5,
+    scale: [0.9, 1.2],
+    maxPerIsland: 24,
+  },
+  {
+    def: 'boulder',
+    pick: 'boulder',
+    themes: ['coding'],
+    zones: [grass, meadow, rock],
+    minDist: 2.2,
+    density: 0.9,
+    slopeMax: 0.9,
+    heights: [1, 40],
+    shore: [4, 1000],
+    openClear: 2,
+    cluster: { scale: 14, threshold: 0.2 },
+    scale: [1.1, 1.7],
+    maxPerIsland: 12,
+  },
+  // QA (Palmlagoon): mint palms in the open pockets of the plateau, inland of the rim walk (the rim
+  // row lost its strip to the Thrill Test Park, TASK-539: 3 palms on 1001), and a grove at the
+  // bluff foot under the walk's 3 u (`QA_RIM_WALK.minY`); plateau palms 10 u inland (plans-qa.test
+  // reads the cell SDF at > 8.5), and `openClear` 1.5 keeps the canopies off the towers and sheds
+  {
+    def: 'leanPalm',
+    pick: 'palm',
+    themes: ['qa'],
+    zones: [grass, meadow],
+    minDist: 2.8,
+    density: 1,
+    slopeMax: 0.5,
+    heights: [3, 14],
+    shore: [10, 1000],
+    openClear: 1.5,
+    scale: [0.9, 1.2],
+    first: true,
+    maxPerIsland: 8,
+  },
+  {
+    def: 'leanPalm',
+    pick: 'palm',
+    themes: ['qa'],
+    zones: [sandDry, grass, meadow],
+    minDist: 2.2,
+    density: 1,
+    slopeMax: 0.5,
+    heights: [0.3, 2.95],
+    shore: [0.5, 12],
+    openClear: 1.5,
+    scale: [0.9, 1.2],
+    first: true,
+    maxPerIsland: 8,
+  },
+  // Design: its pink-plum palms on the low shore (harbour beach, bluff-foot strips); the dome above
+  // stays palm-free (TREE_SPECIES §4). ≥ 2.5 u inland: a palm on the waterline hung its T0 blob
+  // over the water (low ladder L-pairs-design, boundary 380: blob 0.5 %)
+  {
+    def: 'leanPalm',
+    pick: 'palm',
+    themes: ['design'],
+    zones: [sandDry, grass, meadow, forest],
+    minDist: 2.2,
+    density: 1,
+    slopeMax: 0.5,
+    heights: [0.3, 5],
+    shore: [2.5, 12],
+    openClear: 1.5,
+    scale: [0.85, 1.15],
+    first: true,
+    maxPerIsland: 7,
   },
 ];
 

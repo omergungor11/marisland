@@ -422,6 +422,8 @@ describe('QA quick wins (TASK-480), 30 seeds', () => {
       let n = 0;
       for (let i = 0; i < w.props.count; i++) {
         if (!palms.includes(w.props.defId[i]) || w.props.islandId[i] !== isl.id) continue;
+        // TASK-692: the bluff-foot grove under the walk height is not on the rim
+        if (w.props.y[i] < W.minY) continue;
         n++;
         const c = cellOf(w, w.props.x[i], w.props.z[i]);
         expect(w.shoreSdf[c], `${ctx} palm inland of the walk`).toBeGreaterThan(8.5);

@@ -62,6 +62,12 @@ export interface PlacementRule {
   belowLip?: number;
   /** TASK-684: no closer than (fall width + `fallClear`) u to any waterfall fall line (lip → base). */
   fallClear?: number;
+  /**
+   * TASK-692: only where no site (structure or path, `genAux.siteOccupancy`) lies within
+   * `openClear` u, on a spot no earlier prop took: groves fill the open pockets instead of the
+   * slivers between buildings, and the Poisson set is not thinned away by the occupancy test.
+   */
+  openClear?: number;
   /** TASK-603: seabed props keep their top (y + heights[variant] × scale) `below` u under the surface. */
   topClear?: { heights: readonly number[]; below: number };
 }

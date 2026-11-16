@@ -169,6 +169,8 @@ export function scatterProps(
   const counts: Record<string, number> = {};
   const h = world.height;
   const noise = createNoise(root.fork('scatter-noise'));
+  // the site marks alone (no props), for `openClear` (TASK-692)
+  const sites = createOccupancy(world.genAux.siteOccupancy);
   let groundCoverTotal = 0;
 
   /**
@@ -234,6 +236,14 @@ export function scatterProps(
           for (const f of world.waterfalls)
             if (segDist(x, z, f.x, f.z, f.baseX, f.baseZ) < f.width + c) return false;
         }
+        // TASK-692: open ground only, and only spots no earlier prop took (so the candidates land
+        // on the free pockets instead of being thinned away by the occupancy test below)
+        if (
+          rule.openClear !== undefined &&
+          (!sites.isFree(x, z, rule.openClear) ||
+            !occupancy.isFreeDisc(x, z, def.footprint * rule.scale[1]))
+        )
+          return false;
         if (
           rule.cluster &&
           noise.fbm(x / rule.cluster.scale, z / rule.cluster.scale, 3) < rule.cluster.threshold
@@ -263,7 +273,9 @@ export function scatterProps(
       };
       const pts = rule.atPeak
         ? [island.peakX, island.peakZ]
-        : poissonDisc(rng, minX, minZ, maxX, maxZ, rule.minDist, accept, isGround ? 12000 : 6000);
+        : rule.openClear !== undefined
+          ? pocketScan(rng, minX, minZ, maxX, maxZ, rule.minDist, accept)
+          : poissonDisc(rng, minX, minZ, maxX, maxZ, rule.minDist, accept, isGround ? 12000 : 6000);
       let placed = 0;
       let moved = 0;
       const max = rule.maxPerIsland ?? Infinity;
@@ -289,7 +301,12 @@ export function scatterProps(
         const pDef = PROP_DEFS[pIndex];
         // a swap keeps the old def's footprint: the same points survive the occupancy test
         const radius = def.footprint * scale;
-        if (!isGround && !occupancy.isFree(x, z, radius)) continue;
+        // (an `openClear` rule tests the exact footprint disc, as its candidates were)
+        const free =
+          rule.openClear !== undefined
+            ? occupancy.isFreeDisc(x, z, radius)
+            : occupancy.isFree(x, z, radius);
+        if (!isGround && !free) continue;
         if (isGround && occupancy.valueAt(x, z) === OCC_STRUCTURE) continue;
         if (isGround && groundCoverTotal >= GROUND_COVER_CAP) break;
         const zone = zoneAt(h, world.zone, x, z);
@@ -369,6 +386,40 @@ export function scatterProps(
       BIOME_SCATTER[island.theme],
     );
   return { props: store, occupancy, counts, coastFeatures };
+}
+
+/**
+ * TASK-692: candidates of an `openClear` rule. The open pockets left between the sites are a few
+ * u across, and the Poisson seeding (a jittered grid ≥ 2 × minDist apart) misses most of them:
+ * every accepted spot of a `minDist` / 2 (≤ 1 u) lattice instead, shuffled, then kept greedily
+ * at least `minDist` apart (x, z pairs like `poissonDisc`).
+ */
+function pocketScan(
+  rng: Rng,
+  minX: number,
+  minZ: number,
+  maxX: number,
+  maxZ: number,
+  minDist: number,
+  accept: (x: number, z: number) => boolean,
+): number[] {
+  const step = Math.min(1, minDist / 2);
+  const cand: [number, number][] = [];
+  for (let z = minZ; z <= maxZ; z += step)
+    for (let x = minX; x <= maxX; x += step) if (accept(x, z)) cand.push([x, z]);
+  rng.shuffle(cand);
+  const out: number[] = [];
+  const d2 = minDist * minDist;
+  for (const [x, z] of cand) {
+    let ok = true;
+    for (let k = 0; k < out.length && ok; k += 2) {
+      const dx = out[k] - x;
+      const dz = out[k + 1] - z;
+      ok = dx * dx + dz * dz >= d2;
+    }
+    if (ok) out.push(x, z);
+  }
+  return out;
 }
 
 /** Three yaw turning local +z down the terrain slope at (x, z) (central differences over 1 u). */
