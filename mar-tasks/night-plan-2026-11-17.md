@@ -36,3 +36,4 @@ işlere dokunma (560, 561, 573, 586 peer, arch yeniden seçimi, bütçe artış�
 - 03:30 TASK-688 merge (strata row from wall top, ripples flatOnly). LIMIT doldu: push YAPILMADI. Devam: 650/637 sonuçları, tam test + wow/wow-high, docs (D-193…197, task satırları), push, sonra wave B/C + fable review.
 - 05:40 TASK-637 merge (Kawase blur, sadece yorum). TASK-650 bitti, wave A wow bitince merge (+ kendi wow --assert; agent wow koşamadı). **Kullanıcı onayı:** boşta courier gemisi agent sayılmıyor (`liveCount`), alternatif low agents +7. 636 + 694 çalışıyor.
 - 07:40 650 + 694 + 610 merge, birleşik main 4766 test + wow --assert yeşil, push 90f4973. Bekleyen: 636 → sonra wave C QA re-audit → fable review.
+- 10:05 636 ilk agent 05:46'da takıldı (4 saat sessiz) → durduruldu, WIP patch scratchpad/t636-wip.patch, yeni agent devam ediyor (port 4182, t636b). Wave C QA re-audit başladı (qa, port 4187, rapor mar-docs/qa/wave5-reaudit-2026-11-17.md).
