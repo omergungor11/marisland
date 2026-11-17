@@ -529,8 +529,11 @@ export const COAST_RULES: readonly BiomeRule[] = [
     cluster: { scale: 10, threshold: -0.1 },
     scale: [0.85, 1.25],
     face: 'downhill',
-    // within ~1 u of the lip (TASK-684: 2.2 u let Coding / HQ shrubs sit mid-wall), and off the falls
-    belowLip: 1,
+    // a flat step within 1.5 u up the slope and the wall top itself ≤ 1.8 u above (TASK-695: the
+    // flat step alone, at 1 u, passed half way up stepped walls: 14 of 38 shrubs on seed 1001 hung
+    // 2.2–7.6 u under the top), and off the falls
+    belowLip: 1.5,
+    belowTop: { drop: 1.8, reach: 8 },
     fallClear: 1,
     maxPerIsland: 18,
   },

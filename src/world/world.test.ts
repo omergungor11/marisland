@@ -47,6 +47,7 @@ describe('generateWorld — determinism', () => {
     // TASK-600: biome scatter (v2 vegetation / rock / boat defs, props stage only), re-pinned
     // TASK-603: coast micro-landscapes (props stage only), re-pinned
     // TASK-635: falls ranked on the pre-rim lip, picked on the final terrain (props), re-pinned
+    // TASK-695: nothing on a fall sheet, ledge shrubs at the wall top (props), re-pinned
     expect(snap).toMatchInlineSnapshot(`
       {
         "1": {
@@ -56,12 +57,12 @@ describe('generateWorld — determinism', () => {
           "islandMap": "684e9e3500384b14",
           "layout": "ec97224b9dcc8315",
           "marina": "1343615c9ef89fa8",
-          "props": "e3f7c1df3b2c8d7a",
+          "props": "34293ac645e0d1de",
           "routes": "86c8f5e0cf9d10dc",
           "sdf": "d2891de7f2c7cfa2",
           "seamarks": "c932570e632a8768",
           "sites": "92a39e8e93a523e5",
-          "world": "22c3477b331fbf11",
+          "world": "a90c37767ac085f9",
           "zone": "9c62682927f431ac",
         },
         "1001": {
@@ -71,12 +72,12 @@ describe('generateWorld — determinism', () => {
           "islandMap": "ba527487134ebd21",
           "layout": "833741d3e076ff8e",
           "marina": "8b4af76d8d9adaa9",
-          "props": "184491aec2bf563c",
+          "props": "13fdbc99b17157e7",
           "routes": "849f2b5b9979330f",
           "sdf": "2a1ea7952a200f76",
           "seamarks": "0d7eafafa2581373",
           "sites": "01928339536af183",
-          "world": "c5b697adfe2987de",
+          "world": "3144de066b818800",
           "zone": "9e88bb17fccd1405",
         },
         "42": {
@@ -86,12 +87,12 @@ describe('generateWorld — determinism', () => {
           "islandMap": "1d62ec4b1284772f",
           "layout": "b960bfa440f8e205",
           "marina": "39ff5177b745af6a",
-          "props": "c30762f18fc16454",
+          "props": "07379d1b40645d5a",
           "routes": "59c3f85a90f98e2d",
           "sdf": "136183ead0ceb2fa",
           "seamarks": "bfe51c4b8f7d446c",
           "sites": "25b2db6290d7246e",
-          "world": "a580469160f6c64e",
+          "world": "e9b3783fcf44d5db",
           "zone": "7801c71e45d188e4",
         },
       }

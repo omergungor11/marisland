@@ -24,13 +24,14 @@ describe('biome readability (seed 1001)', () => {
     // (before TASK-692: 0 scatter round trees, 1 shrub)
     expect(trees.length).toBeGreaterThanOrEqual(30);
     expect(shrubs.length).toBeGreaterThanOrEqual(15);
-    // groves, not a sprinkle: most trees have two others within 6 u
+    // groves, not a sprinkle: most trees have two others within 6 u (TASK-695: 31 / 44 → 30 / 44,
+    // a grove tree in the channel of the fall at (−90, 198) moved to a lone spot)
     const grouped = trees.filter(
       (i) =>
         trees.filter((j) => j !== i && Math.hypot(p.x[i] - p.x[j], p.z[i] - p.z[j]) < 6).length >=
         2,
     ).length;
-    expect(grouped / trees.length).toBeGreaterThan(0.7);
+    expect(grouped / trees.length).toBeGreaterThan(0.65);
     const sites = createOccupancy(world.genAux.siteOccupancy);
     for (const i of trees) expect(sites.isFree(p.x[i], p.z[i], 2)).toBe(true);
   });

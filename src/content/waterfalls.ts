@@ -40,6 +40,12 @@ export const WATERFALLS = {
   streamReach: 12,
   /** Ribbon width range (u); a stream-fed fall takes the top of the range. */
   width: [2.6, 3.6] as const,
+  /**
+   * TASK-695: scatter rules and the talus keep their footprint (largest scale) this many u off the
+   * fall sheet: its channel (WATERFALL_LOOK.inland u behind the lip) down to the base, at the
+   * widest sheet (width · WATERFALL_LOOK.spread). The fall-foot stones stand beside it by design.
+   */
+  sheetClear: 0.3,
 } as const;
 
 /** Look of the falls (render/waterfalls.ts + the flow branch in materials/activity-glsl.ts). */

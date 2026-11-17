@@ -60,6 +60,11 @@ export interface PlacementRule {
    * (slope ≤ 0.6) and higher (TASK-684: any sample on the way, not only the one at `belowLip`).
    */
   belowLip?: number;
+  /**
+   * TASK-695: the highest ground within `reach` u up the slope stands at most `drop` u over the
+   * candidate (the first flat sample `belowLip` finds can be a step half way up a stepped wall).
+   */
+  belowTop?: { drop: number; reach: number };
   /** TASK-684: no closer than (fall width + `fallClear`) u to any waterfall fall line (lip → base). */
   fallClear?: number;
   /**
