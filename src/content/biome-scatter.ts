@@ -472,21 +472,41 @@ export const BIOME_RULES: readonly BiomeRule[] = [
   },
   // Design: its pink-plum palms on the low shore (harbour beach, bluff-foot strips); the dome above
   // stays palm-free (TREE_SPECIES §4). ≥ 2.5 u inland: a palm on the waterline hung its T0 blob
-  // over the water (low ladder L-pairs-design, boundary 380: blob 0.5 %)
+  // over the water (low ladder L-pairs-design, boundary 380: blob 0.5 %). TASK-696: 5 u apart so
+  // each crown reads on its own at T1 (2.2 u merged four into one pink mass), on the gentle shore
+  // slopes too (slope 0.7, `openClear` 1) so the wider spacing still finds six
   {
     def: 'leanPalm',
     pick: 'palm',
     themes: ['design'],
     zones: [sandDry, grass, meadow, forest],
-    minDist: 2.2,
+    minDist: 5,
     density: 1,
-    slopeMax: 0.5,
+    slopeMax: 0.7,
     heights: [0.3, 5],
     shore: [2.5, 12],
-    openClear: 1.5,
+    openClear: 1,
     scale: [0.85, 1.15],
     first: true,
     maxPerIsland: 7,
+  },
+  // TASK-696 Research (Lonely Palm): cypress in the last free spots of the campus. The pads leave no
+  // pocket for a grove (D-191: 4 cypress) and the lawn strips beside the paths and the Star Stair are
+  // structure pads too, so single trees take any open spot ≥ 0.8 u from a site mark, on gentle
+  // slopes as well (≤ 0.9: the shoulders under the rim)
+  {
+    def: 'canopyTree',
+    pick: 'canopy',
+    themes: ['research'],
+    zones: [grass, meadow, forest],
+    minDist: 2.4,
+    density: 1,
+    slopeMax: 0.9,
+    heights: [1, 30],
+    shore: [2, 1000],
+    openClear: 0.8,
+    scale: [0.9, 1.1],
+    maxPerIsland: 8,
   },
 ];
 

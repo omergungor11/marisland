@@ -138,11 +138,12 @@ describe('archipelago — 30-seed full generation', () => {
     // TASK-692: Coding groves, QA / Design palms (props stage only), re-pinned
     // TASK-635: falls ranked on the pre-rim lip, picked on the final terrain (props stage only), re-pinned
     // TASK-695: nothing on a fall sheet, ledge shrubs within 1.8 u of the wall top (props stage only), re-pinned
+    // TASK-696: Design palms 5 u apart, Research cypress in the free campus spots (props stage only), re-pinned
     expect(snap).toMatchInlineSnapshot(`
       {
-        "1": "21831d8b2c77d5fd",
-        "1001": "e4a4c5fd38f91de3",
-        "42": "59f70b48d99a91c3",
+        "1": "726590b1cd39f8d2",
+        "1001": "5811adea7dcc8e36",
+        "42": "a1e61e352efb80b5",
       }
     `);
   });
@@ -168,11 +169,12 @@ describe('archipelago — 30-seed full generation', () => {
     // TASK-692: Coding groves, QA / Design palms (props + bits only), re-pinned
     // TASK-635: fall picks on the pre-rim lip (props + bits only), re-pinned
     // TASK-695: fall sheets clear, ledge shrubs at the wall top (props + bits only), re-pinned
+    // TASK-696: Design palm spacing, Research cypress (props + bits only), re-pinned
     expect(snap).toMatchInlineSnapshot(`
       {
-        "1": "bits:920402be25916e74 layout:358ca2668fc3f1cc height:2f9e892ba7b38514 sdf:b8c34b97557c99da islandMap:9f7e0d86517ac7c5 zone:77f59e8fe6c92444 fields:fde62d37a0223454 chunks:dc7faad7717da3b9 sites:4eafc17955f7d0f0 routes:bd97bc6524447266 seamarks:c9d059790fa28055 marina:70c1073d7d97e4a2 props:320d365481a52bf1",
-        "1001": "bits:0d2772f992585103 layout:2747e57b5392567c height:21713a0d6295f1d2 sdf:ab8b4a1da1801c5f islandMap:aac83dd958cec153 zone:bb2902289c50296c fields:fde62d37a0223454 chunks:1854ff6405fc1fbe sites:a3e96d2f5762c26a routes:beedf704bf1c8fdc seamarks:adfaff5cff52a702 marina:38b0ff7652234c8c props:0fec4b51c0f85beb",
-        "42": "bits:74905f6dd682b95d layout:7d862a142513cf36 height:b205e21fd45fe9b5 sdf:80a0ab67504b027f islandMap:0dff0816d09fb54d zone:385e4a0a63c41589 fields:fde62d37a0223454 chunks:a7e456a628d4b886 sites:d405fd34612029fd routes:9b422895ce8e32e9 seamarks:7555ca08c54afb6c marina:14e3937f36034b15 props:4b0583f00bbd6f04",
+        "1": "bits:0a00098dd0f40d5b layout:358ca2668fc3f1cc height:2f9e892ba7b38514 sdf:b8c34b97557c99da islandMap:9f7e0d86517ac7c5 zone:77f59e8fe6c92444 fields:fde62d37a0223454 chunks:dc7faad7717da3b9 sites:4eafc17955f7d0f0 routes:bd97bc6524447266 seamarks:c9d059790fa28055 marina:70c1073d7d97e4a2 props:9e75ba406c9cf676",
+        "1001": "bits:a6aee7de3c2ae980 layout:2747e57b5392567c height:21713a0d6295f1d2 sdf:ab8b4a1da1801c5f islandMap:aac83dd958cec153 zone:bb2902289c50296c fields:fde62d37a0223454 chunks:1854ff6405fc1fbe sites:a3e96d2f5762c26a routes:beedf704bf1c8fdc seamarks:adfaff5cff52a702 marina:38b0ff7652234c8c props:2ed41501d276cd7c",
+        "42": "bits:f8039604388571b0 layout:7d862a142513cf36 height:b205e21fd45fe9b5 sdf:80a0ab67504b027f islandMap:0dff0816d09fb54d zone:385e4a0a63c41589 fields:fde62d37a0223454 chunks:a7e456a628d4b886 sites:d405fd34612029fd routes:9b422895ce8e32e9 seamarks:7555ca08c54afb6c marina:14e3937f36034b15 props:e140937b4988dfb6",
       }
     `);
   });
@@ -708,8 +710,9 @@ describe('bluff coasts (TASK-390), 30 seeds', () => {
       // TASK-682 / 684 / 685 coast siting fixes (props stage only), re-pinned
       // TASK-692 Coding groves, QA / Design palms (props stage only), re-pinned
       // TASK-695 fall sheets clear, ledge shrubs at the wall top (props stage only), re-pinned
-      expect(generateWorld(1001).hashes.world).toBe('a8003d9506a21972');
-      expect(generateWorld(1).hashes.world).toBe('b426000f6b6e9230');
+      // TASK-696 Design palm spacing, Research cypress (props stage only), re-pinned
+      expect(generateWorld(1001).hashes.world).toBe('f5e500b0587e7513');
+      expect(generateWorld(1).hashes.world).toBe('2cf2d1f4d41c437e');
     } finally {
       for (const b of saved) b.on = true;
     }
