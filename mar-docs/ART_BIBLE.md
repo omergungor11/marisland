@@ -92,9 +92,10 @@ foliage keeps W10's ≥ 40 % in the rain (D-013).
 ## 3. Lighting & atmosphere
 
 - **Shadows:** one sun/moon directional light, soft PCF, ~0.3 u penumbra at T2. Shadowed colour = lit × 0.6, lerped 35 % toward the shadow tint. Never below L 25 % by day.
+- **Water caustics (D-177, TASK-686):** voronoi edges on the seabed in the 0–3 u shallow depth, gated by night and key-light height (off at golden hour). Seen from far, the web folds to its mean (view footprint, `caustic.view` 0.012–0.028), so overviews show no net; close views keep the cells.
 - **Sky/rim:** hemisphere light, plus a fresnel rim of 0.15 × horizon colour on foliage and roofs so silhouettes separate from the water. Terrain adds a sun-facing silhouette rim (n·sun > 0, grazing view): 0.32 × cream × sun colour, off at night, no outline (M50, TASK-617).
 - **Fog:** exponential, colour = horizon. ≈ 10 % at 200 u, 45 % at 700 u, 75 % at 1200 u. Far islands go pastel; they never vanish.
-- **Clouds:** 6–10 clouds, each 5–9 smooth icospheres with the bottom 30 % flattened. Top `#FFFFFF`, belly `#DDE6F5` (night `#3A4577`). Altitude 60–90 u, width 22–44 u (D-011), drift 1.5 u/s with the wind. They cast soft moving shadows (multiply 0.82, 6 u edge blur). Hidden below T1. **v2 (TASK-608, medium / high):** three archetypes — cumulus (above), long flat stratus sheets far out over the horizon banks, thin bright wisps (cirrus) higher up — shaded two-tone (lit white / cool lavender `#C3CBEA` shade, warmed by a low sun) with a warm `#FFE7C4` rim that glows when the sun is behind the cloud and a cool `#BFD4FF` moon rim at night. **High sky:** sun corona + wide warm halo + 6-spike lens glint, moon phases (seeded, never new), more stars toward the zenith plus a faint fine layer, dusk / dawn god rays.
+- **Clouds:** 6–10 clouds, each 5–9 smooth icospheres with the bottom 30 % squashed (smooth, not clamped; D-189). Top `#FFFFFF`, belly `#DDE6F5` (night `#3A4577`). Altitude 60–90 u, width 22–44 u (D-011), drift 1.5 u/s with the wind. They cast soft moving shadows (multiply 0.82, 6 u edge blur). Hidden below T1. **v2 (TASK-608, medium / high):** three archetypes — cumulus (above), long flat stratus sheets far out over the horizon banks, thin bright wisps (cirrus) higher up — shaded two-tone (lit white / cool lavender `#C3CBEA` shade, warmed by a low sun) with a warm `#FFE7C4` rim that glows when the sun is behind the cloud and a cool `#BFD4FF` moon rim at night. **High sky:** sun corona + wide warm halo + 6-spike lens glint, moon phases (seeded, never new), more stars toward the zenith plus a faint fine layer, dusk / dawn god rays: a fan marched through open sky toward the sun's screen position (transmittance, 40 taps; D-189).
 - **Tilt-shift/DOF:**
 
 | Tier | Effect |
@@ -133,7 +134,7 @@ Research campus (4.2–4.8 u walls) gets no waterfalls (`noWaterfalls`, D-046).
 **Rim silhouette (M50, TASK-615).** Wall height varies along the coast ±15–25 % (headlands high, cove side low, never under 4 u; applied after site planning, so docks / paths / lots do not move); HQ and Design carry a 120° terrace with a ≥ 4 u lower step; 3–6 rock outcrops (`Zone.rock`, terrain, no draw calls) break the plateau lip where it is free of walkways / decks (QA and Research may get none); ≥ 4 u walls carry ≤ 10 `rockCluster` talus per island at the foot (≤ 1.4k tris).
 
 **Waterfalls (TASK-395).** 1–3 per bluff island, 2.6–3.6 u wide ribbons off a bluff lip into a foam disc and
-mist at the foot; the flow scrolls along the sheet. None on cove beaches or on the Research campus.
+mist at the foot; the flow scrolls along the sheet. None on cove beaches or on the Research campus. Lips are ranked before the rim pass and picked on the final terrain, so each plunge pool has room (seed 1001: 11 falls, D-194).
 
 **Hero landmarks (TASK-393)** are 1.6–2× taller than the table's first-pass sizes so they read from the T0
 postcard: lighthouse shaft 15.5 u, wind turbines 24 / 19 / 16 u, cooling towers 13 / 11.5 u, clocktower body
@@ -159,6 +160,7 @@ Tier = the first tier at which the prop appears.
 | Lily pad | Disc with a wedge notch, optional flower | 0.4 u | T3 |
 | Grass tuft | 3–5 flattened tapered cones | 0.3 u | T3 |
 | Flower | Stem + 5 petal spheres around a yellow centre | 0.25 u | T3 |
+| Biome canopy, palm, flora, boulder (v2, D-174 / D-191) | Island colour set in the variant: `canopyTree` (oval / umbrella / layered), `leanPalm` (leaning / twin trunk / grove), `floraBush` (two mounds, biome flower hues), `boulder` (moss / lichen caps). Coding: round-tree groves + spring `floraBush` fringe; QA: mint `leanPalm` on the plateau; Design: pink-plum twin-trunk `leanPalm` on the low shore | 4–7 u | T1 |
 
 Tree species expansion (umbrella pine, cypress, olive, birch, willow, autumn maple, charred snag) and detail upgrades of palm / round tree / pine / blossom: `mar-docs/TREE_SPECIES.md` (spec, not yet built).
 
@@ -188,6 +190,10 @@ Tree species expansion (umbrella pine, cypress, olive, birch, willow, autumn map
 | Tide pool | Rock ring + `#8EEBE0` disc + starfish | 1.5 u | T3 |
 | Shell / starfish | Lathe spiral cone / extruded 5-arm star | 0.15 u | T3 |
 | Footprints | Paired oval sand decals, fade after 20 s | 0.2 u | T3 |
+| Sea arch (`rockArch`, D-180 / D-186) | Noisy tube on a leg–arch–leg path, island strata (`ARCH_STONE`), wet dark foot, moss cap on HQ; 2–3 sea stacks beside it | 5.4–7 u | T1 |
+| Tide-pool field (`tidePoolField`, D-184 / D-180) | Rock shelf (grey / sandstone / basalt), three rim-ringed turquoise pools, starfish, urchins, weed | 5.6 u | T2 |
+| Dune grass (`duneGrass`) | Arched double-sided blades in sand-cured colours (marram / sea oats / low mat); QA and Research backshore | 1.2 u clump | T2 |
+| Ledge shrub (`ledgeShrub`, D-184) | Biome-coloured tuft on a bluff wall top, backed into the wall (hump / cascading tuft / sapling) | 0.8–1.2 u | T2 |
 
 **Decor**
 
@@ -232,6 +238,8 @@ The camera pitch flattens as you zoom in. FOV is a constant 35°. Use ±10 % dis
 - At most 40 pops start per frame.
 
 **Bloom-out:** 140 ms ease-in scale to 0, or a 200 ms dither.
+
+**Fade on high (D-188):** lit materials fade by alpha-to-coverage under MSAA; medium and low keep the Bayer dither.
 
 **Cross-tier consistency (D-031, D-032):** every structure ≥ 3 u, landmark, tree mass and district ground
 exists from T0 with its final colour and silhouette (its own LOD1 built from the LOD0 colours). Detail adds
@@ -284,6 +292,8 @@ Each instance's phase is `hash(id) × period`. Gust waves cross the map at 6 u/s
 | 31 | QA movers · conveyor bridges, loop track | belt 1.1 u/s; cart 3 u/s, 1.2 s dwell at the gate | Crates one per belt segment; cart slows to 50 % at the loop top | linear | Time-driven instances, fade 150–210 u, hidden > 230 u |
 | 32 | QA hangar fans · front walls | with the wind, like the windmill | r 0.42 u | linear | — |
 | 33 | Waterfall flow · bluff lips | 3.2 u/s along the sheet | White streaks, 6 lanes | linear | Foam rings expand 0.9 u/s; mist puffs at the foot |
+| 34 | Puffins · Marketing cliff ledges (D-195; instanced particle colony, alive from tier 2) | idle / waddle; 7 s sea-loop flight per 20–30 s cycle | Flight arc over the sea, phase-offset per instance | closed form of `uTime` | Reduced motion drops the flights |
+| 35 | Fleet bots · paved lawn E of the Coding pool (D-190, `?bots=lineup`) | Per-chassis gait (scout = `WORKERS` numbers); four idle beats at a node | Hauler tracks stand proud of the body | additive pose on the sim clock (D-176) | Hauler tracks read as tracks, not boots; portrait chips match the 3D bot |
 
 **Click reactions.** Every click starts with a squash of 0.85/1.15 on `k=300, c=14`, then a ring of 6 sparkles in `#FFF6C2`. Then, per target:
 
@@ -302,6 +312,10 @@ Each instance's phase is `hash(id) × period`. Gust waves cross the map at 6 u/s
 | Sheep | "Baa" bubble, double hop |
 | Cloud | Splits into 3 clouds that re-merge over 10 s |
 | Lonely Palm | Coconut drops and bounces 3×; the crab runs to it |
+
+### 7.1 Filo (kurye gemileri)
+
+> **Kurye gemileri (fleet).** Her adanın kendi gemisi vardır, liman iskelesine bağlı bekler: HQ yatı, Coding konteyner gemisi, Marketing katamaranı (kanvas yelken), QA kesicisi, Design mavnası (yamalı yelken), DevOps römorkörü, Research balıkçısı. Yedi silüet gri tonda da ayırt edilir (baca, konteyner yığını, panolu yelken, direk ve bayrak, yama yelken, vinç ve baca, kemer). Bir devir onay beklerken güverteye kasa yüklenir ve gemi iskelede bekler; izin verilince kasayla hedef adanın iskelesine yelken açar, kasa iskeleye zıplar. Alt oturum bitince geminin güvertesinde bir rapor rulosuyla döner (hata olursa kırmızı kurdele). Seyir, tekne dalga izi ile aynı kısalıkta köpük V'si bırakır. Gece, direk fenerinin haresi uzaktan okunur. Gemiye tıklayınca ada renginde bilgi kartı açılır (güzergâh, istek, durum, İzin ver / Reddet). Reduced motion: kasa zıplaması ve heel kapanır.
 
 ## 8. Opening sequence (10 s)
 
@@ -411,6 +425,8 @@ Any click or key jumps to the final pose with a 400 ms ease.
 | W-G4 | **Wall Texture Break** (M50) | 1001 · `G-research-t2-*`, `G-devops-t2-*` | ≥ 2 scales (fine cracks + strata groove ≥ 15 px); no crack motif repeats within 400 px. 2026-11-10: PASS |
 | W-G5 | **Clean Lip** (M50) | 1001 · `G-coding-t1-*`, `G-research-t2-*`, `G-hq-t1-*` | no 2 u staircase longer than ~10 u on the lip; grass → sand over 4–6 u. 2026-11-10: WEAK (Coding right-edge mesh steps, Research smoky lip shade, W-sunken grass teeth) |
 | W-G6 | **Living Silhouette** (M50) | 1001 · `G-coding-t0/t1-*`, `G-research-t1-*` | wall height ±25 %, ≥ 3 bumps / notches, 3–6 outcrops; no "cut disc". 2026-11-10: PASS (Research T1 WEAK: 0 outcrops by design) |
+| W-glitter-am | **Glitter AM** (D-177 addendum) | 1001 · cam `-52,34,3,-64,0,3` · 10:00 (sunDir ≈ −0.33, 0.94, 0.01) | Sharp sparkle fragments on the shallow ring at the W8 breakwater's mirror point, sea on two sides; no soft white flakes |
+| F-bot-pair (dev, D-190) | **Bot pair** | 1001 · `?bots=pair` · F-bot-pair cam | Scout, hauler and spire each with its panel portrait chip; hauler tracks visible and proud; each portrait matches its 3D bot |
 
 **Global fail (any shot):**
 - Land pixel with L < 12 %.

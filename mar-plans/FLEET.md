@@ -169,6 +169,26 @@ dosya varsa session `error` olur (`reason: 'out-of-bounds write: <path>'`) ve pa
 (3) Yalnız HQ adasının `addDirs`'inde `fleet` vardır: manifest ve settings değişiklikleri HQ session'ından
 (ya da kullanıcıdan) gelir; adalar "HQ'ya öneri" satırıyla ister. (4) `owner: user` olan adaya HQ da dokunmaz.
 
+## Bot kimliği (görünüm)
+
+Her session adada bir bot olarak görünür. Görünüm (şasi, kafa, gölge, öğe) `botLook` ile seed'den türer;
+saf ve deterministiktir, 3D bot ile panel portresi aynı sonucu okur (D-157).
+
+| Şasi | Gövde | Ayırt edici öğe |
+|---|---|---|
+| **scout** | Eski bot; yürüyüş sayıları `WORKERS` tablosundadır (D-176) | Eski bot gövdesi, referans şasi |
+| **hauler** | 0.9 u geniş; ayaklar yerine paletler | Paletler gövdenin dışına çıkar: `legZ` 0.3, `armZ` 0.37 ile çamurluk ve üç göbek çivisi görünür (D-190) |
+| **spire** | 1.15 u ince gövde | Halkalı anten (D-157) |
+
+- **Portre = 3D.** Panel portresi aynı şasiyi çizer. Hauler portresi iki yanda palet bloğu taşır (D-190).
+- **Göz durumları.** Boşta iki uzun hap, çalışırken üç kalın kare; şekil farkı yalnız renkle değil (D-178).
+- **Hareket.** Şasiye göre yürüyüş, dört boşta beat'i, bitince zıplama ve değişimde poof (D-176).
+- **Kanıt çekimleri.** `F-bot-pair` (`?bots=pair`): scout / hauler / spire yan yana, her biri panel portresi
+  chip'iyle (D-190). `F-bots`, `F-bot-looks`, `F-bot-eyes`, `F-bot-lineup` (`?bots=lineup`) ayrıca var (D-178).
+  Paletli hauler ve portre eşleşmesi `F-bot-pair`'de kontrol edilir.
+- **Gemiler agent sayılmaz.** İskelede bağlı bekleyen kurye gemileri bot değildir ve agent sayısına girmez.
+  Takip: TASK-650. (Bu kural için D-196 kaydı henüz yok.)
+
 ## Milestone merdiveni
 
 | M | Ne | Somut çıktı |
