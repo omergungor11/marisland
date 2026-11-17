@@ -89,6 +89,13 @@ export interface DetailLayerParams {
    * slope over GROUND_DETAIL.flat (sand ripples on a wall foot read as diagonal hatching).
    */
   flatOnly?: boolean;
+  /**
+   * Regular pattern period in u (TASK-636; unset = irregular, no fold): the layer folds to its
+   * mean as one period shrinks under GROUND_DETAIL.periodPx pixels, so evenly spaced crests never
+   * beat against the pixel grid (sand ripples at 3–4 px read as moiré hatching, worst under the
+   * grazing golden-hour sun).
+   */
+  period?: number;
 }
 
 /** Defaults per layer (TASK-372 tuning; amplitude = ± lightness fraction at full detail). */
@@ -97,7 +104,7 @@ export const DETAIL_LAYERS: Readonly<Record<DetailLayerId, DetailLayerParams>> =
   mow: { tile: 6, amplitude: 0.06, normal: 0.3 },
   speckle: { tile: 3, amplitude: 0.16, normal: 0.25, accent: 0.95 },
   litter: { tile: 3, amplitude: 0.26, normal: 0.5, accent: 0.6 },
-  ripples: { tile: 4, amplitude: 0.1, normal: 0.55, flatOnly: true },
+  ripples: { tile: 4, amplitude: 0.1, normal: 0.55, flatOnly: true, period: 4 / 12 },
   cracks: { tile: 6.5, amplitude: 0.26, normal: 0.7, accent: 0.45 },
   pebbles: { tile: 2, amplitude: 0.22, normal: 0.75, accent: 0.35 },
   packedEarth: { tile: 3, amplitude: 0.18, normal: 0.45 },
@@ -127,6 +134,13 @@ export const GROUND_DETAIL = {
    * (linear RGB distance, ramp → full) so smooth ramps stay smooth.
    */
   borderSharpen: 0.85,
+  /**
+   * Per-zone crisp weight (TASK-636, unset = 1): a border takes the lower weight of its two
+   * zones, × `borderSharpen` far off and widening the near blend toward bilinear. The DevOps
+   * switchback roads are 1-cell zigzags on the 2 u grid: thresholded, their legs merge into wide
+   * jagged ribbons ("camouflage" patches on the cone at T1); soft, they read as thin trails.
+   */
+  crispZone: { [Zone.streetDevops]: 0.1 } as Partial<Record<ZoneId, number>>,
   borderContrast: [0.04, 0.12] as const,
   /** Half-width of the border blend (fraction of the cell weight; crisp ≈ 0.06). */
   borderSoft: 0.07,
@@ -139,6 +153,10 @@ export const GROUND_DETAIL = {
    * slope), so sand ripples stay on the beach and never stretch into stripes up a wall foot.
    */
   flat: [0.86, 0.96] as const,
+  /** `period` layers: gone while a period spans under periodPx[0] px, full over periodPx[1]. */
+  periodPx: [4, 8] as const,
+  /** …and their normal tilt over periodNormalPx (a low sun turns a faint tilt into stripes). */
+  periodNormalPx: [7, 14] as const,
 } as const;
 
 /** Layers a material uses unless a `GroundSpec` overrides them (first = primary). */
@@ -253,13 +271,25 @@ export const GROUND_WALL = {
   lipInset: 2.5,
   lipShade: 0.86,
   /**
+   * Lip depth smoothing (TASK-636): a height contour on the 2 u mesh zig-zags where a wall runs
+   * across the grid, so the lip hung in sharp grass teeth (W-sunken). The lip and its line measure
+   * depth against the height texture box-blurred over ±`lipSmooth` u, mixed by `lipSmoothW`.
+   */
+  lipSmooth: 1.6,
+  lipSmoothW: 0.5,
+  /**
    * Dark line under the lip (the overhang's shadow): width (u, never under `lipLinePx` pixels so
    * it survives at T0 / T1), darkening and cool lean (b − r share, ART_BIBLE P4).
    */
-  lipLine: 0.45,
+  lipLine: 0.3,
   lipLinePx: 1.3,
   lipLineDark: 0.5,
   lipLineCool: 0.22,
+  /**
+   * Line profile (TASK-636): full darkness over the first (1 − lipLineSoft) of its width, then a
+   * falloff; the old all-falloff ramp read as a smoky grey haze under light lips (Research).
+   */
+  lipLineSoft: 0.45,
   /** Wall foot: cool darkening over the lowest `footHeight` u of the wall (above its foot). */
   footHeight: 3,
   footDark: 0.4,
@@ -277,7 +307,19 @@ export const GROUND_WALL = {
   wetPx: 2.5,
   wetDark: 0.45,
   wetCool: 0.3,
+  /**
+   * Green share of the wet cool lean (TASK-636; was 0.4): with green kept near red's level, warm
+   * strata (Research sand) darken toward blue-grey, not olive.
+   */
+  wetCoolG: 0.8,
   wetBelow: 2.5,
+  /**
+   * Under the waterline (TASK-636): the wet rock leans further blue by up to `underCool` (r share,
+   * g × wetCoolG) over the first `underDepth` u, so warm strata under the turquoise water read
+   * blue-grey, not olive.
+   */
+  underCool: 0.4,
+  underDepth: 0.8,
   salt: 0.22,
   saltWidth: 0.12,
   saltPx: 1,
@@ -495,7 +537,11 @@ export const DEFAULT_GROUND: Readonly<Record<ZoneId, GroundSpec>> = {
  */
 export const GROUND_LIGHT = {
   rim: 0.32,
-  rimPower: 3,
+  // TASK-636: power 3 → 2 and × `rimFar` from rimFarDist[0] → [1] u camera distance, so the rim
+  // still reads at the 150 u T1 view (bluff faces at ~40–60° to the view); T2 close-ups unchanged
+  rimPower: 2,
+  rimFar: 2.4,
+  rimFarDist: [70, 140] as const,
   /** Facing gate: smoothstep over n·sun. */
   rimFacing: [0.0, 0.45] as const,
   rimColor: WALLS[0],

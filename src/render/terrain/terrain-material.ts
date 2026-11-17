@@ -431,6 +431,11 @@ int marZoneClass(float z) {
   int i = int(z * 255.0 + 0.5) % ${LIP_ZONE_FLAG};
   ${zoneClassGlsl()}
 }
+/** Crisp-border weight of a zone texel (GROUND_DETAIL.crispZone, unset = 1). */
+float marCrispW(float z) {
+  int i = int(z * 255.0 + 0.5) % ${LIP_ZONE_FLAG};
+  ${crispZoneGlsl()}
+}
 vec4 marPal(float zone, float isl, int c) {
   return texelFetch(uPalette, ivec2(int(zone) * ${PALETTE_TEXELS} + c, int(isl)), 0);
 }
@@ -455,6 +460,14 @@ mat2 marLayerRot(int l) {
 /** Flat-ground-only layers (DETAIL_LAYERS flatOnly): no side projections, fade with the slope. */
 bool marFlatOnly(int l) {
   return ${flatOnlyGlsl()};
+}
+/**
+ * Regular-pattern fold (DETAIL_LAYERS period, TASK-636): (colour, tilt) weights, 1 while a period
+ * spans > periodPx / periodNormalPx px (the tilt folds earlier: a low sun turns it into stripes).
+ */
+vec2 marPeriodFade(int l, float fp, float ps) {
+  fp /= uGLayer2[l].y > 0.5 ? ps : 1.0;
+  ${periodFadeGlsl()}
 }
 vec4 marLayerTex(int l, vec2 p, vec2 gx, vec2 gy, float ps) {
   float inv = uGLayer[l].x / (uGLayer2[l].y > 0.5 ? ps : 1.0);
@@ -482,6 +495,7 @@ vec3 marMaterial(vec4 p0, vec4 p1, vec3 acc, vec3 col, vec3 wp, vec3 wn, vec3 dp
                  float fade, bool primary, inout vec3 np) {
   float amp = fade * p0.b * ${g(255 / P.amp)};
   float ps = max(p1.r * ${g(255 / P.pattern)}, 0.05);
+  float fp = max(length(dpx.xz), length(dpy.xz));
   float flatW = smoothstep(${g(GD.steep[0])}, ${g(GD.steep[1])}, abs(wn.y));
   float flatO = smoothstep(${g(GD.flat[0])}, ${g(GD.flat[1])}, abs(wn.y));
   int l0 = int(p0.r * 255.0 + 0.5);
@@ -521,19 +535,21 @@ vec3 marMaterial(vec4 p0, vec4 p1, vec3 acc, vec3 col, vec3 wp, vec3 wn, vec3 dp
       marApply(l0, s, amp, acc, col);
       np += t / max(ws, 1e-4) * amp;
     } else {
-      float a0 = amp * (marFlatOnly(l0) ? flatO : primary ? 1.0 : flatW);
+      vec2 f0 = marPeriodFade(l0, fp, ps);
+      float a0 = amp * (marFlatOnly(l0) ? flatO : primary ? 1.0 : flatW) * f0.x;
       vec4 s = marLayerTex(l0, wp.xz, dpx.xz, dpy.xz, ps);
       marApply(l0, s, a0, acc, col);
       vec2 t = marTilt(l0, s);
-      np += vec3(t.x, 0.0, t.y) * a0;
+      np += vec3(t.x, 0.0, t.y) * a0 * f0.y;
     }
   }
   if (primary && l1 < ${LAYERS} && flatW > 0.0) {
-    float a1 = amp * (marFlatOnly(l1) ? flatO : flatW) * p1.g * ${g(255 / P.amp)};
+    vec2 f1 = marPeriodFade(l1, fp, ps);
+    float a1 = amp * (marFlatOnly(l1) ? flatO : flatW) * p1.g * ${g(255 / P.amp)} * f1.x;
     vec4 s = marLayerTex(l1, wp.xz, dpx.xz, dpy.xz, ps);
     marApply(l1, s, a1, acc, col);
     vec2 t = marTilt(l1, s);
-    np += vec3(t.x, 0.0, t.y) * a1;
+    np += vec3(t.x, 0.0, t.y) * a1 * f1.y;
   }
   return col;
 }
@@ -547,6 +563,29 @@ function flatOnlyGlsl(): string {
     DETAIL_LAYERS[id].flatOnly ? [`l == ${l}`] : [],
   );
   return ids.length ? ids.join(' || ') : 'false';
+}
+
+/** GLSL body of `marPeriodFade`: per `period` layer a footprint fold (pixels per period). */
+function periodFadeGlsl(): string {
+  const [p0, p1] = GROUND_DETAIL.periodPx;
+  const [n0, n1] = GROUND_DETAIL.periodNormalPx;
+  const rows = DETAIL_LAYER_IDS.flatMap((id, l) => {
+    const T = DETAIL_LAYERS[id].period;
+    return T
+      ? [
+          `if (l == ${l}) { float px = ${g(T)} / max(fp, 1e-5); return vec2(smoothstep(${g(p0)}, ${g(p1)}, px), smoothstep(${g(n0)}, ${g(n1)}, px)); }`,
+        ]
+      : [];
+  });
+  return `${rows.join(' ')}\n  return vec2(1.0);`;
+}
+
+/** GLSL body of `marCrispW`: the GROUND_DETAIL.crispZone table as index checks. */
+function crispZoneGlsl(): string {
+  const rows = Object.entries(GROUND_DETAIL.crispZone).map(
+    ([z, w]) => `if (i == ${z}) return ${g(w ?? 1)};`,
+  );
+  return `${rows.join(' ')}\n  return 1.0;`;
 }
 
 /** GLSL body of `marZoneClass`: the CPU `zoneClass` table as range checks. */
@@ -625,15 +664,20 @@ const GROUND_COLOR_GLSL = /* glsl */ `
       ivec2 marI = ivec2(floor(marGp));
       ivec2 marTa = marTexel(marI + ivec2(step(0.5, marF)));
       vec3 marCa = texelFetch(uAlbedo, marTa, 0).rgb;
-      int marKa = marZoneClass(texelFetch(uTerrainZone, marTa, 0).r);
+      float marZa = texelFetch(uTerrainZone, marTa, 0).r;
+      int marKa = marZoneClass(marZa);
       vec3 marCb = marCa;
       float marDb = 0.0;
+      float marZb = marZa;
       for (int k = 0; k < 4; k++) {
         ivec2 t = marTexel(marI + ivec2(k - 2 * (k / 2), k / 2));
         vec3 c = texelFetch(uAlbedo, t, 0).rgb;
         float d = dot(c - marCa, c - marCa);
-        if (d > marDb && marZoneClass(texelFetch(uTerrainZone, t, 0).r) != marKa) { marDb = d; marCb = c; }
+        float z = texelFetch(uTerrainZone, t, 0).r;
+        if (d > marDb && marZoneClass(z) != marKa) { marDb = d; marCb = c; marZb = z; }
       }
+      // per-zone crisp weight (TASK-636): the softer zone of the pair wins
+      marK *= min(marCrispW(marZa), marCrispW(marZb));
       vec3 marAb = marCb - marCa;
       float marT = clamp(dot(diffuseColor.rgb - marCa, marAb) / max(marDb, 1e-6), 0.0, 1.0);
       float marE = clamp(0.75 * marGw, ${g(GD.borderSoft)}, 0.5);
@@ -691,7 +735,9 @@ const GROUND_COLOR_GLSL = /* glsl */ `
     if (marB >= 0) {
       // a corner on the cell edge has weight 0 (f = 0 / 1 exactly): guard the 0 / 0
       marCB /= max(marPw[marB], 1e-6);
-      float e = clamp(0.75 * marGw, ${g(GD.borderSoft)}, 0.5);
+      // TASK-636: a soft zone pair (crispZone) widens the blend toward bilinear
+      float e = mix(0.5, clamp(0.75 * marGw, ${g(GD.borderSoft)}, 0.5),
+                    min(marCrispW(marZn[marA] / 255.0), marCrispW(marZn[marB] / 255.0)));
       marTB = smoothstep(0.5 - e, 0.5 + e, marPw[marB] / (marPw[marA] + marPw[marB]));
     }
     vec3 marCrisp = mix(marCA, marCB, marTB);
@@ -766,7 +812,15 @@ ${WALL_PROBES_GLSL}
       marWall = (marWallSoil * (1.0 - smoothstep(${g(GW.footMax[0])}, ${g(GW.footMax[1])}, marFoot)) + marWallCliff)
               * smoothstep(${g(-GW.wetBelow)}, ${g(-0.4 * GW.wetBelow)}, vMarWorld.y);
       marWall *= smoothstep(${g(GW.minHeight[0])}, ${g(GW.minHeight[1])}, marTop - marFoot);
-      float marD = marTop - vMarWorld.y;
+      // lip depth (TASK-636): a height contour on the 2 u mesh zig-zags where a wall runs across
+      // the grid (grass teeth under the lip, W-sunken), so the lip measures its depth against
+      // the height texture box-blurred over ±lipSmooth u (exact on a plane), mixed by lipSmoothW
+      vec2 marLo = vec2(${g(GW.lipSmooth)}, 0.0);
+      float marHb = 0.25 * (texture2D(uTerrainHeight, marTerrainUv(vMarWorld.xz + marLo)).r
+                          + texture2D(uTerrainHeight, marTerrainUv(vMarWorld.xz - marLo)).r
+                          + texture2D(uTerrainHeight, marTerrainUv(vMarWorld.xz + marLo.yx)).r
+                          + texture2D(uTerrainHeight, marTerrainUv(vMarWorld.xz - marLo.yx)).r);
+      float marDl = marTop - mix(vMarWorld.y, marHb, ${g(GW.lipSmoothW)});
       // strata (TASK-613): the island theme's band tones, cycled bottom → top, in wobbling bands
       // of uneven thickness that grow with height (bandGrow: a 25 u stack gets thicker bands
       // than a 6 u bluff); bands fade to their mean (the wall colour) only under ~2 px
@@ -809,10 +863,11 @@ ${WALL_PROBES_GLSL}
       float marDrip = mix(0.3, smoothstep(0.55, 1.25, marDn), 1.0 - smoothstep(0.3, 0.8, marGw));
       float marLipY = ${g(GW.lip)} + ${g(GW.drip)} * marDrip;
       float marEw = max(0.05, marYw);
-      float marLip = 1.0 - smoothstep(marLipY - marEw, marLipY + marEw, marD);
+      float marLip = 1.0 - smoothstep(marLipY - marEw, marLipY + marEw, marDl);
       vec3 marLipCol = texture2D(uAlbedo, marTerrainUv(marTopXz + marIn * ${g(GW.lipInset)})).rgb * ${g(GW.lipShade)};
       // the overhang's shadow line: never thinner than lipLinePx pixels, so it holds at T0 / T1
-      float marLine = (1.0 - smoothstep(0.0, max(${g(GW.lipLine)}, ${g(GW.lipLinePx)} * marYw), marD - marLipY)) * (1.0 - marLip);
+      float marLw = max(${g(GW.lipLine)}, ${g(GW.lipLinePx)} * marYw);
+      float marLine = (1.0 - smoothstep(${g(1 - GW.lipLineSoft)} * marLw, marLw, marDl - marLipY)) * (1.0 - marLip);
       vec3 marWc = mix(marSoil * mix(vec3(1.0), ${g(1 - GW.lipLineDark)} * vec3(${g(1 - GW.lipLineCool)}, ${g(1 - 0.4 * GW.lipLineCool)}, 1.0), marLine),
                        marLipCol, marLip);
       // wet rock band (TASK-616, G3): 0.6–1.2 u above the water (never under wetPx px), darker and
@@ -823,8 +878,10 @@ ${WALL_PROBES_GLSL}
       float marSaltW = max(${g(GW.saltWidth)}, ${g(GW.saltPx)} * marYw);
       float marSalt = smoothstep(-marEw, 0.0, marSd) * (1.0 - smoothstep(marSaltW, marSaltW + marEw, marSd))
                     * smoothstep(${g(GW.saltLum[0])}, ${g(GW.saltLum[1])}, dot(marBand, vec3(0.2126, 0.7152, 0.0722))) * (1.0 - marLip);
-      marWc *= mix(vec3(1.0), ${g(1 - GW.wetDark)} * vec3(${g(1 - GW.wetCool)}, ${g(1 - 0.4 * GW.wetCool)}, 1.0), marWet)
+      marWc *= mix(vec3(1.0), ${g(1 - GW.wetDark)} * vec3(${g(1 - GW.wetCool)}, ${g(1 - GW.wetCoolG * GW.wetCool)}, 1.0), marWet)
              * (1.0 + ${g(GW.salt)} * marSalt);
+      // under the waterline (TASK-636): a further blue lean, warm strata never read olive in the lagoon
+      marWc *= mix(vec3(1.0), vec3(${g(1 - GW.underCool)}, ${g(1 - GW.wetCoolG * GW.underCool)}, 1.0), smoothstep(0.0, ${g(-GW.underDepth)}, vMarWorld.y));
       // carving: vertical cracks (ridged noise along the wall, stretched in y, mean-compensated)
       // and a ledge roll per strata band, below the lip only
       float marRock = marWall * (1.0 - marLip);
@@ -866,7 +923,8 @@ const GROUND_RIM_GLSL = /* glsl */ `  {
     vec3 marRn = normalize((vec4(normal, 0.0) * viewMatrix).xyz);
     float marRf = pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), ${g(GL.rimPower)});
     float marRs = smoothstep(${g(GL.rimFacing[0])}, ${g(GL.rimFacing[1])}, dot(marRn, normalize(uSunDir)));
-    totalEmissiveRadiance += uGroundRimColor * uSunColor * (${g(GL.rim)} * marRf * marRs
+    float marRd = mix(1.0, ${g(GL.rimFar)}, smoothstep(${g(GL.rimFarDist[0])}, ${g(GL.rimFarDist[1])}, length(vViewPosition)));
+    totalEmissiveRadiance += uGroundRimColor * uSunColor * (${g(GL.rim)} * marRd * marRf * marRs
       * step(0.0, vMarWorld.y) * (1.0 - uNight) * (1.0 - uDebugMask));
   }`;
 

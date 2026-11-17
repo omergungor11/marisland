@@ -37,8 +37,9 @@ export const WALL_STRATA = {
   default: ['#D9B48F', '#B9845A', '#C29A74', '#9E6E4C'],
   // Hearthholm: warm cream / cinnamon / sandstone / rust
   hq: ['#E9C79A', '#C08458', '#D6A574', '#A4603F'],
-  // Coding: pale slate / teal-grey / cool slate / dark slate
-  coding: ['#BCC6D2', '#7FA3A8', '#8D9AB0', '#6C788C'],
+  // Coding: pale slate / teal-grey / cool slate / dark slate (TASK-636: one step warmer and
+  // lighter, the T0 mean read charcoal)
+  coding: ['#C6CAD0', '#8BA8A6', '#9AA0B0', '#7C8090'],
   // Beacon Rock: cream / red rock / terracotta / deep red rock
   marketing: ['#E8CDA6', '#B8604E', '#CC7F5E', '#94503F'],
   // Palmlagoon: pale mint / sage-grey / sand / mint-grey
