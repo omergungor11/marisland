@@ -87,6 +87,10 @@ export interface Budget {
  * MSAA ×4 copy and the unread OutputDepth texture (high 118.7 → 15.8 MB at 1920×1080, pixel-identical):
  * W-fairy-night 480.2 → 377.3 MB, W-ember-lane-night 479.5 → 376.7, W8 474.4 → 371.6. Medium / low
  * never had either.
+ * TASK-637 (budgets unchanged): medium programs are 15 beyond 420 u (W1, W11, W15, W15b) and 17
+ * inside it (G-*-t0 at 380 u, most wow frames). The two are the tilt-shift blur's
+ * `KawaseBlurMaterial` + `CopyMaterial` (POST_ZOOM, TASK-586: blur 0 px at 420 u, 2 px at 380 u),
+ * +4 full-screen calls (3 Kawase + 1 copy). Not a T0 mesh: same program list as T1 / T2.
  */
 export const BUDGETS: Record<'low' | 'medium' | 'high', Budget> = {
   low: {
