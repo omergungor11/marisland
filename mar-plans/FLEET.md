@@ -187,7 +187,7 @@ saf ve deterministiktir, 3D bot ile panel portresi aynı sonucu okur (D-157).
   chip'iyle (D-190). `F-bots`, `F-bot-looks`, `F-bot-eyes`, `F-bot-lineup` (`?bots=lineup`) ayrıca var (D-178).
   Paletli hauler ve portre eşleşmesi `F-bot-pair`'de kontrol edilir.
 - **Gemiler agent sayılmaz.** İskelede bağlı bekleyen kurye gemileri bot değildir ve agent sayısına girmez.
-  Takip: TASK-650. (Bu kural için D-196 kaydı henüz yok.)
+  Yalnızca yükleyen, seyreden, boşaltan ya da dönen gemi sayılır (`Couriers.liveCount`, D-196; kullanıcı onayı bekliyor).
 
 ## Milestone merdiveni
 
