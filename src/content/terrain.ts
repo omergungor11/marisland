@@ -167,6 +167,12 @@ export const TERRAIN_LOD = {
   mergeLevel: 0,
   /** Skirt depth below the edge vertex, u (+ half the larger height step along the edge). */
   skirt: 2,
+  /**
+   * TASK-694 quad split: a free quad takes the anti diagonal (x1,z0)–(x0,z1) only when its height
+   * difference is this much (u) smaller than the main one's, so flat ground keeps the old split and
+   * near ties can't flip between the CPU mesh and the shader's half-float facet twin.
+   */
+  splitBias: 0.1,
   /** Chunks whose every sample is below this are skipped (deep sea). */
   skipBelow: -35,
 } as const;

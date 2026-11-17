@@ -8,7 +8,14 @@ import { sampleSurface } from '../../shared/terrain-sample.ts';
 import { createWorldTextures } from '../world-textures.ts';
 import { buildTerrain, pickLevel, type TerrainView } from './terrain.ts';
 import { createTerrainMaterial } from './terrain-material.ts';
-import { buildChunkGeometry, morphBands, morphWeight } from './terrain-mesh.ts';
+import {
+  buildChunkGeometry,
+  forcedSplit,
+  freeSplitAnti,
+  morphBands,
+  morphWeight,
+  quadSplits,
+} from './terrain-mesh.ts';
 
 const world = generateWorld(1001, { islands: 1 });
 const isl = world.islands[0];
@@ -230,6 +237,128 @@ describe('terrain mesher (TASK-371)', () => {
     );
     const drawn = terrain.group.children.filter((o) => o.visible).length;
     expect(drawn).toBe(world.islands.length);
+  });
+});
+
+/** True where quad (i, j) of a chunk geometry splits on the anti diagonal (x1,z0)–(x0,z1). */
+function isAnti(g: THREE.BufferGeometry, m: number, i: number, j: number): boolean {
+  const idx = g.index!.array;
+  const q = (j * m + i) * 6;
+  return idx[q + 2] === j * (m + 1) + i + 1; // third corner of the first triangle = b
+}
+
+/** Height of a chunk's surface grid at (x, z) through its own split, unmorphed (fast meshY). */
+function gridY(
+  g: THREE.BufferGeometry,
+  level: number,
+  x0: number,
+  z0: number,
+  x: number,
+  z: number,
+) {
+  const s = L.strides[level];
+  const m = Math.round(SIZE / s);
+  const pos = arr(g, 'position');
+  const i = Math.min(m - 1, Math.floor((x - x0) / s));
+  const j = Math.min(m - 1, Math.floor((z - z0) / s));
+  const fx = (x - x0) / s - i;
+  const fz = (z - z0) / s - j;
+  const y = (di: number, dj: number): number => pos[((j + dj) * (m + 1) + i + di) * 3 + 1];
+  if (isAnti(g, m, i, j))
+    return fx + fz <= 1
+      ? y(0, 0) + fx * (y(1, 0) - y(0, 0)) + fz * (y(0, 1) - y(0, 0))
+      : y(1, 1) + (1 - fx) * (y(0, 1) - y(1, 1)) + (1 - fz) * (y(1, 0) - y(1, 1));
+  return fx >= fz
+    ? y(0, 0) + fx * (y(1, 0) - y(0, 0)) + fz * (y(1, 1) - y(1, 0))
+    : y(0, 0) + fz * (y(0, 1) - y(0, 0)) + fx * (y(1, 1) - y(0, 1));
+}
+
+describe('quad split (TASK-694)', () => {
+  it('free split: the diagonal with the smaller height difference, main on ties / flat', () => {
+    expect(freeSplitAnti(0, 0, 0, 0)).toBe(false);
+    // crease along b–c: a low, e high → anti
+    expect(freeSplitAnti(0, 5, 5, 10)).toBe(true);
+    expect(freeSplitAnti(5, 0, 10, 5)).toBe(false);
+    // within the bias the main diagonal holds
+    expect(freeSplitAnti(0, 0, L.splitBias * 0.5, L.splitBias)).toBe(false);
+  });
+
+  it('forced split: fine quads on the parent diagonal follow it, the other two are free', () => {
+    expect(forcedSplit(false, 0, 0)).toBe(false);
+    expect(forcedSplit(false, 1, 1)).toBe(false);
+    expect(forcedSplit(false, 1, 0)).toBeNull();
+    expect(forcedSplit(true, 1, 0)).toBe(true);
+    expect(forcedSplit(true, 0, 1)).toBe(true);
+    expect(forcedSplit(true, 0, 0)).toBeNull();
+  });
+
+  it('an anti-diagonal wall foot splits along the wall at every level (synthetic)', () => {
+    // a step wall along x + z = 16 (in level-2 cells), 9 × 9 grid (level 2 of a 8-quad chunk)
+    const side = 17;
+    const y = new Float64Array(side * side);
+    for (let j = 0; j < side; j++)
+      for (let i = 0; i < side; i++) y[j * side + i] = i + j >= 16 ? 12 : 0;
+    const sp = quadSplits(y, side, 2);
+    expect(sp.map((s) => s.length)).toEqual([16, 64, 256]);
+    // every quad the wall crosses (corners on both sides) takes the anti diagonal
+    for (let l = 0; l <= 2; l++) {
+      const st = 1 << (2 - l);
+      const ml = 16 / st;
+      for (let qj = 0; qj < ml; qj++)
+        for (let qi = 0; qi < ml; qi++) {
+          const v = (di: number, dj: number): number => y[(qj + dj) * st * side + (qi + di) * st];
+          if (v(0, 0) !== v(1, 1)) expect(sp[l][qj * ml + qi], `l${l} ${qi},${qj}`).toBe(1);
+        }
+    }
+  });
+
+  it('seed 1001 cliffs use both splits; every level nests in the coarser one (whole chunk)', () => {
+    // the home chunk and the most rugged chunk of the island (largest height range)
+    const rugged = terrain.chunks
+      .filter((c) => c.levels[0])
+      .map((c) => {
+        const { stats, geometry } = buildChunkGeometry(world, c.cx, c.cz, 1, 0);
+        geometry.dispose();
+        return { c, r: stats.maxY - stats.minY };
+      })
+      .sort((p, q) => q.r - p.r)[0].c;
+    let antis = 0;
+    for (const c of [home, rugged]) {
+      const x0 = h.originX + c.cx * SIZE;
+      const z0 = h.originZ + c.cz * SIZE;
+      for (let level = 1; level < L.strides.length; level++) {
+        const fine = buildChunkGeometry(world, c.cx, c.cz, level, 0).geometry;
+        const coarse = buildChunkGeometry(world, c.cx, c.cz, level - 1, 0).geometry;
+        const pos = arr(fine, 'position');
+        const mor = arr(fine, 'aMorph');
+        const idx = fine.index!.array;
+        const m = Math.round(SIZE / L.strides[level]);
+        for (let j = 0; j < m; j++)
+          for (let i = 0; i < m; i++) antis += isAnti(fine, m, i, j) ? 1 : 0;
+        // fully morphed, every fine triangle's vertices and centroid lie on the coarse mesh
+        let maxErr = 0;
+        for (let t = 0; t < idx.length; t += 3) {
+          let cx = 0;
+          let cy = 0;
+          let cz = 0;
+          for (let k = 0; k < 3; k++) {
+            const v = idx[t + k];
+            const x = pos[v * 3];
+            const y = pos[v * 3 + 1] + mor[v * 4];
+            const z = pos[v * 3 + 2];
+            maxErr = Math.max(maxErr, Math.abs(y - gridY(coarse, level - 1, x0, z0, x, z)));
+            cx += x / 3;
+            cy += y / 3;
+            cz += z / 3;
+          }
+          maxErr = Math.max(maxErr, Math.abs(cy - gridY(coarse, level - 1, x0, z0, cx, cz)));
+        }
+        expect(maxErr, `chunk ${c.cx},${c.cz} level ${level}`).toBeLessThan(1e-3);
+        fine.dispose();
+        coarse.dispose();
+      }
+    }
+    expect(antis).toBeGreaterThan(0);
   });
 });
 

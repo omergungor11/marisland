@@ -13,8 +13,12 @@ import { sampleSurface, type SurfaceSample } from '../../shared/terrain-sample.t
  *    at this xz, yz = that level's normal (x, z; y = √(1 − x² − z²)), w = level index. Even
  *    vertices (shared with the coarser level) carry Δy = 0 and their own normal;
  * No colour / AO attributes: the material reads the albedo world texture (AO baked in, TASK-372).
- * Every quad splits along the same diagonal (x0,z0)–(x1,z1), so level k nests in level k − 1:
- * odd vertices fully morphed lie exactly on the coarser level's triangles (no cracks, no pops).
+ * Quad split (TASK-694, `quadSplits`): each quad takes the diagonal with the smaller height
+ * difference (a wall-foot crease along (x1,z0)–(x0,z1) no longer stair-steps), but a fine quad
+ * that straddles its parent quad's diagonal must follow that diagonal, and the parent's centre
+ * vertex morphs to that diagonal's midpoint, so level k still nests in level k − 1: odd vertices
+ * fully morphed lie exactly on the coarser level's triangles (no cracks, no pops). The choice
+ * reads only world-space corner heights, so it is the same in every chunk and at every level.
  * Skirts: a row of vertices hanging `TERRAIN_LOD.skirt` u below each skirted edge (same normal /
  * morph as the edge, so they follow it) hides sub-pixel seams between neighbours.
  */
@@ -54,6 +58,55 @@ export function morphWeight(level: number, dist: number): number {
 
 const f4 = (v: number): string => v.toFixed(4);
 
+/** Height as the R16F height texture stores it (the shader's facet twin reads that texture). */
+const half = (y: number): number => THREE.DataUtils.fromHalfFloat(THREE.DataUtils.toHalfFloat(y));
+
+/**
+ * Free quad split from its corner heights a (x0,z0), b (x1,z0), c (x0,z1), e (x1,z1): true = the
+ * anti diagonal b–c, when |c − b| beats |e − a| by more than `TERRAIN_LOD.splitBias`.
+ */
+export function freeSplitAnti(a: number, b: number, c: number, e: number): boolean {
+  return Math.abs(half(c) - half(b)) + TERRAIN_LOD.splitBias < Math.abs(half(e) - half(a));
+}
+
+/**
+ * Forced split of a fine quad at (lx, ly) ∈ {0, 1}² inside a parent quad split `parentAnti`: the
+ * two fine quads on the parent's diagonal must follow it (null = free; the other two lie inside
+ * one parent triangle, so either split nests).
+ */
+export function forcedSplit(parentAnti: boolean, lx: number, ly: number): boolean | null {
+  return parentAnti !== (lx === ly) ? parentAnti : null;
+}
+
+/**
+ * Splits of every level 0 … `level` of a chunk (1 = anti), coarse → fine, from the level's own
+ * vertex heights `y` (side × side, stride 1 at `level`; coarser vertices are every 2^d-th one).
+ */
+export function quadSplits(y: ArrayLike<number>, side: number, level: number): Uint8Array[] {
+  const m = side - 1;
+  const out: Uint8Array[] = [];
+  for (let l = 0; l <= level; l++) {
+    const step = 1 << (level - l);
+    const ml = m / step;
+    const s = new Uint8Array(ml * ml);
+    const prev = out[l - 1];
+    for (let qj = 0; qj < ml; qj++)
+      for (let qi = 0; qi < ml; qi++) {
+        const f = prev
+          ? forcedSplit(prev[(qj >> 1) * (ml >> 1) + (qi >> 1)] === 1, qi & 1, qj & 1)
+          : null;
+        let anti = f;
+        if (anti === null) {
+          const v = qj * step * side + qi * step;
+          anti = freeSplitAnti(y[v], y[v + step], y[v + step * side], y[v + step * side + step]);
+        }
+        s[qj * ml + qi] = anti ? 1 : 0;
+      }
+    out.push(s);
+  }
+  return out;
+}
+
 const MORPH_PARS = /* glsl */ `
 layout(location = ${TERRAIN_MORPH_LOCATION}) attribute vec4 aMorph;
 uniform vec2 uMorphBand[${TERRAIN_LOD.strides.length}];
@@ -78,7 +131,7 @@ varying float vMarCoarse;
 uniform sampler2D uMarHeight;
 uniform vec4 uMarHeightGrid;
 `;
-// Flat normal of the 2 u grid triangle under the fragment (diagonal (x0,z0)–(x1,z1), as the mesh)
+// Flat normal of the 2 u grid triangle under the fragment (the mesh's split, `quadSplits`)
 const FACET_NORMAL = /* glsl */ `
   if (vMarCoarse > 0.0) {
     // TASK-486: the 4 u far level lays steep walls back (more sun, lighter and greyer far cliffs:
@@ -100,7 +153,20 @@ const FACET_NORMAL = /* glsl */ `
     float marHb = texelFetch(uMarHeight, marC + ivec2(1, 0), 0).r;
     float marHc = texelFetch(uMarHeight, marC + ivec2(0, 1), 0).r;
     float marHe = texelFetch(uMarHeight, marC + ivec2(1, 1), 0).r;
-    vec2 marD = marF.x >= marF.y ? vec2(marHb - marHa, marHe - marHb) : vec2(marHe - marHc, marHc - marHa);
+    // TASK-694: the mesh's split (quadSplits): the 4 u parent quad's free split, which the two
+    // 2 u quads on its diagonal follow; the other two pick their own smaller height difference
+    ivec2 marP = (marC / 2) * 2;
+    float marP0 = texelFetch(uMarHeight, marP, 0).r;
+    float marP1 = texelFetch(uMarHeight, marP + ivec2(2, 0), 0).r;
+    float marP2 = texelFetch(uMarHeight, marP + ivec2(0, 2), 0).r;
+    float marP3 = texelFetch(uMarHeight, marP + ivec2(2, 2), 0).r;
+    bool marPa = abs(marP2 - marP1) + ${f4(TERRAIN_LOD.splitBias)} < abs(marP3 - marP0);
+    ivec2 marL = marC - marP;
+    bool marAnti = marPa != (marL.x == marL.y) ? marPa
+                 : abs(marHc - marHb) + ${f4(TERRAIN_LOD.splitBias)} < abs(marHe - marHa);
+    vec2 marD = marAnti
+      ? (marF.x + marF.y <= 1.0 ? vec2(marHb - marHa, marHc - marHa) : vec2(marHe - marHc, marHe - marHb))
+      : (marF.x >= marF.y ? vec2(marHb - marHa, marHe - marHb) : vec2(marHe - marHc, marHc - marHa));
     vec3 marFn = normalize(vec3(-marD.x, 1.0 / uMarHeightGrid.z, -marD.y));
     float marFw = 1.0 - smoothstep(${f4(TERRAIN_FACETS.ny[0])}, ${f4(TERRAIN_FACETS.ny[1])}, marFn.y);
     if (marFw > 0.0) {
@@ -134,7 +200,8 @@ function insertAfter(src: string, find: string, insert: string): string {
  * key: the patch is constant, so the program count is unchanged):
  *  - geomorph (vertex): `aMorph` blend by camera distance, `uMorphBand` per level;
  *  - cliff facets (fragment, `TERRAIN_FACETS`): tall steep walls shade with the 2 u grid's flat
- *    triangle normals from the height texture (1 sampler, 4 texel fetches + 4 for the relief gate).
+ *    triangle normals from the height texture (1 sampler, 4 texel fetches + 4 for the mesh split
+ *    (TASK-694) + 4 for the relief gate).
  * Chunks / merges have identity model and instance matrices, so `position` is world space.
  */
 export function addTerrainSurface(
@@ -186,6 +253,7 @@ export function buildChunkGeometry(
   const pos = new Float32Array(nv * 3);
   const nor = new Float32Array(nv * 3);
   const mor = new Float32Array(nv * 4);
+  const ys = new Float64Array(nSurf);
 
   for (let j = 0; j < side; j++)
     for (let i = 0; i < side; i++) {
@@ -197,10 +265,15 @@ export function buildChunkGeometry(
       pos[v * 3] = x;
       pos[v * 3 + 1] = _s.y;
       pos[v * 3 + 2] = z;
+      ys[v] = _s.y;
       nor[v * 3] = -_s.dydx / l;
       nor[v * 3 + 1] = 1 / l;
       nor[v * 3 + 2] = -_s.dydz / l;
     }
+
+  const splits = quadSplits(ys, side, level);
+  const split = splits[level];
+  const parent = level > 0 ? splits[level - 1] : null;
 
   // geomorph targets: the coarser level's (nested) triangles at each odd vertex
   let maxDy = 0;
@@ -214,8 +287,10 @@ export function buildChunkGeometry(
       if (level > 0 && (i & 1 || j & 1)) {
         const di = i & 1;
         const dj = j & 1;
-        a = (j - dj) * side + (i - di);
-        b = (j + dj) * side + (i + di);
+        // centre of a parent quad: the parent's split diagonal (anti: (i+1, j−1)–(i−1, j+1))
+        const anti = di && dj && parent![(j >> 1) * (m >> 1) + (i >> 1)] === 1;
+        a = (j - dj) * side + (anti ? i + 1 : i - di);
+        b = (j + dj) * side + (anti ? i - 1 : i + di);
       }
       if (a === v) {
         mor[o + 1] = nor[v * 3];
@@ -242,12 +317,21 @@ export function buildChunkGeometry(
       const b = a + 1;
       const c = a + side;
       const e = c + 1;
-      index[t++] = a;
-      index[t++] = c;
-      index[t++] = e;
-      index[t++] = a;
-      index[t++] = e;
-      index[t++] = b;
+      if (split[j * m + i]) {
+        index[t++] = a;
+        index[t++] = c;
+        index[t++] = b;
+        index[t++] = b;
+        index[t++] = c;
+        index[t++] = e;
+      } else {
+        index[t++] = a;
+        index[t++] = c;
+        index[t++] = e;
+        index[t++] = a;
+        index[t++] = e;
+        index[t++] = b;
+      }
     }
 
   // skirts: per edge a hanging copy of the edge row, triangles facing outward
