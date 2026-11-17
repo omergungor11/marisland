@@ -22,6 +22,7 @@ import {
   CHUNK_SIZE,
   CHUNKS_PER_SIDE,
   type IslandData,
+  type WaterfallData,
   type WorldData,
 } from '../types.ts';
 import { slopeAtCell } from './zones.ts';
@@ -29,6 +30,7 @@ import { OCC_STRUCTURE } from './settlements.ts';
 import { pickBeaconSkerries } from './beacons.ts';
 import * as dm from '../../core/math/dmath.ts';
 import { TALUS } from '../../content/islands.ts';
+import { WATERFALLS, WATERFALL_LOOK } from '../../content/waterfalls.ts';
 import { smoothstep } from '../../core/math/index.ts';
 import { bluffOf, coveness } from './heightfield.ts';
 import {
@@ -210,6 +212,16 @@ export function scatterProps(
       const minZ = island.minZ - margin;
       const maxZ = island.maxZ + margin;
       const fieldAngle = world.fields.find((f) => f.islandId === island.id)?.rotY;
+      // TASK-695: the falls whose sheet the rule's props could touch (the rock rule's boulders
+      // stood on the HQ ribbon)
+      const sheets = fallSheetsNear(
+        world,
+        minX,
+        minZ,
+        maxX,
+        maxZ,
+        def.footprint * rule.scale[1] + WATERFALLS.sheetClear,
+      );
       const accept = (x: number, z: number): boolean => {
         const zone = zoneAt(h, world.zone, x, z);
         if (!rule.zones.includes(zone) || BLOCKED_ZONES.includes(zone)) return false;
@@ -231,6 +243,11 @@ export function scatterProps(
           const a = downhillYaw(h, x, z);
           if (!lipWithin(h, x, z, a, rule.belowLip)) return false;
         }
+        if (
+          rule.belowTop &&
+          !belowTop(h, x, z, downhillYaw(h, x, z), rule.belowTop.drop, rule.belowTop.reach)
+        )
+          return false;
         if (rule.fallClear !== undefined) {
           const c = rule.fallClear;
           for (const f of world.waterfalls)
@@ -308,6 +325,8 @@ export function scatterProps(
             : occupancy.isFree(x, z, radius);
         if (!isGround && !free) continue;
         if (isGround && occupancy.valueAt(x, z) === OCC_STRUCTURE) continue;
+        // TASK-695: nothing on a fall sheet (here, not in `accept`: the candidate set stays as it was)
+        if (sheets.length && onFallSheet(sheets, x, z, radius + WATERFALLS.sheetClear)) continue;
         if (isGround && groundCoverTotal >= GROUND_COVER_CAP) break;
         const zone = zoneAt(h, world.zone, x, z);
         const floats = zone === Zone.lagoon && !(pDef.flags & PropFlag.underwater);
@@ -451,6 +470,15 @@ function scatterTalus(
     // (a theme that switches the rock clusters off gets no talus either)
     if (!bluffOf(isl) || THEMES[isl.theme].scatterOff.includes(T.def)) continue;
     const rng = root.fork('talus', isl.id);
+    // TASK-695: not on a fall sheet (a talus rock sat on the Coding fall line at the foot)
+    const sheets = fallSheetsNear(
+      world,
+      isl.minX - 4,
+      isl.minZ - 4,
+      isl.maxX + 4,
+      isl.maxZ + 4,
+      def.footprint * T.scale[1] + WATERFALLS.sheetClear,
+    );
     const accept = (x: number, z: number): boolean => {
       const s = sampleGrid(h, world.shoreSdf, x, z, -999);
       if (s < T.shore[0] || s > T.shore[1]) return false;
@@ -495,6 +523,7 @@ function scatterTalus(
       const scale = rng.range(T.scale[0], T.scale[1]);
       const radius = def.footprint * scale;
       if (!occupancy.isFree(x, z, radius)) continue;
+      if (onFallSheet(sheets, x, z, radius + WATERFALLS.sheetClear)) continue;
       const variant = rng.int(0, def.variants - 1);
       const rotY = rng.range(0, Math.PI * 2);
       const y = heightAt(h, x, z);
@@ -562,6 +591,61 @@ export function lipWithin(
     if (slopeAt(h, ux, uz) <= 0.6 && heightAt(h, ux, uz) > y) return true;
   }
   return false;
+}
+
+/**
+ * Falls whose sheet (channel `WATERFALL_LOOK.inland` u behind the lip → base, half width
+ * width · spread / 2) comes within `r` u of the box: the candidates `onFallSheet` tests (TASK-695).
+ */
+function fallSheetsNear(
+  world: Pick<WorldData, 'waterfalls'>,
+  minX: number,
+  minZ: number,
+  maxX: number,
+  maxZ: number,
+  r: number,
+): WaterfallData[] {
+  const pad = WATERFALL_LOOK.inland + r + (WATERFALLS.width[1] * WATERFALL_LOOK.spread) / 2;
+  return world.waterfalls.filter(
+    (f) =>
+      Math.max(f.x, f.baseX) >= minX - pad &&
+      Math.min(f.x, f.baseX) <= maxX + pad &&
+      Math.max(f.z, f.baseZ) >= minZ - pad &&
+      Math.min(f.z, f.baseZ) <= maxZ + pad,
+  );
+}
+
+/** (x, z) within `r` u of a fall sheet: lip − channel → base, at the widest sheet (TASK-695). */
+function onFallSheet(falls: readonly WaterfallData[], x: number, z: number, r: number): boolean {
+  for (const f of falls) {
+    const dx = dm.cos(f.rotY);
+    const dz = dm.sin(f.rotY);
+    const ax = f.x - dx * WATERFALL_LOOK.inland;
+    const az = f.z - dz * WATERFALL_LOOK.inland;
+    if (segDist(x, z, ax, az, f.baseX, f.baseZ) < (f.width * WATERFALL_LOOK.spread) / 2 + r)
+      return true;
+  }
+  return false;
+}
+
+/**
+ * The highest ground within `reach` u up the slope from (x, z) (`yaw` = downhill) stands at most
+ * `drop` u over it: a wall top, not a step half way up the wall (TASK-695).
+ */
+function belowTop(
+  h: Parameters<typeof slopeAt>[0],
+  x: number,
+  z: number,
+  yaw: number,
+  drop: number,
+  reach: number,
+): boolean {
+  const y = heightAt(h, x, z);
+  const sx = dm.sin(yaw);
+  const sz = dm.cos(yaw);
+  for (let s = 0.25; s <= reach + 1e-6; s += 0.25)
+    if (heightAt(h, x - sx * s, z - sz * s) > y + drop) return false;
+  return true;
 }
 
 export type { PlacementRule };

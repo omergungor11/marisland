@@ -2697,6 +2697,21 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
       })),
     ),
   ),
+  // TASK-696: Design at T1 only (its pink-plum shore palms, D-191), same cam style as above
+  ...(
+    [
+      ['noon', 13],
+      ['gold', 17.5],
+    ] as const
+  ).map(([tod, time]): ShotPreset => ({
+    id: `G-design-t1-${tod}`,
+    title: `Ground design T1 ${tod}`,
+    seed: 1001,
+    cam: 'ladder:design:150',
+    time,
+    simt: 3,
+    sets: ['ground'],
+  })),
   ...Array.from({ length: 21 }, (_, i): ShotPreset => ({
     id: `I-${(i * 0.5).toFixed(1)}`,
     title: `Intro ${(i * 0.5).toFixed(1)} s`,

@@ -24,13 +24,14 @@ describe('biome readability (seed 1001)', () => {
     // (before TASK-692: 0 scatter round trees, 1 shrub)
     expect(trees.length).toBeGreaterThanOrEqual(30);
     expect(shrubs.length).toBeGreaterThanOrEqual(15);
-    // groves, not a sprinkle: most trees have two others within 6 u
+    // groves, not a sprinkle: most trees have two others within 6 u (TASK-695: 31 / 44 → 30 / 44,
+    // a grove tree in the channel of the fall at (−90, 198) moved to a lone spot)
     const grouped = trees.filter(
       (i) =>
         trees.filter((j) => j !== i && Math.hypot(p.x[i] - p.x[j], p.z[i] - p.z[j]) < 6).length >=
         2,
     ).length;
-    expect(grouped / trees.length).toBeGreaterThan(0.7);
+    expect(grouped / trees.length).toBeGreaterThan(0.65);
     const sites = createOccupancy(world.genAux.siteOccupancy);
     for (const i of trees) expect(sites.isFree(p.x[i], p.z[i], 2)).toBe(true);
   });
@@ -41,15 +42,31 @@ describe('biome readability (seed 1001)', () => {
     for (const i of palms) expect(BIOME_SCATTER.qa.picks.palm).toContain(p.variant[i]);
   });
 
-  it('Design: its pink-plum palms stand on the low shore (0 before)', () => {
+  it('Design: its pink-plum palms stand on the low shore, crowns apart (0 before)', () => {
     const palms = of('design', 'leanPalm');
-    expect(palms.length).toBeGreaterThanOrEqual(4);
+    // TASK-696: six, each ≥ 5 u from the next so the crowns count one by one at T1 (5 at 1–4 u
+    // apart read as one pink mass in G-design-t1)
+    expect(palms.length).toBeGreaterThanOrEqual(6);
+    for (const i of palms)
+      for (const j of palms)
+        if (i !== j)
+          expect(Math.hypot(p.x[i] - p.x[j], p.z[i] - p.z[j])).toBeGreaterThanOrEqual(5 - 1e-6);
     for (const i of palms) {
       expect(BIOME_SCATTER.design.picks.palm).toContain(p.variant[i]);
       expect(heightAt(world.height, p.x[i], p.z[i])).toBeLessThanOrEqual(5);
       expect(sampleGrid(world.height, world.shoreSdf, p.x[i], p.z[i], -999)).toBeLessThanOrEqual(
         12,
       );
+    }
+  });
+
+  it('Research: at least eight cypress, clear of every structure (4 before)', () => {
+    const trees = of('research', 'canopyTree');
+    expect(trees.length).toBeGreaterThanOrEqual(8);
+    const sites = createOccupancy(world.genAux.siteOccupancy);
+    for (const i of trees) {
+      expect(BIOME_SCATTER.research.picks.canopy).toContain(p.variant[i]);
+      expect(sites.valueAt(p.x[i], p.z[i])).toBe(0);
     }
   });
 });

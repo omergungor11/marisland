@@ -6,6 +6,7 @@ import { createOccupancy, lipWithin, scatterProps, segDist, slopeAt } from './ge
 import { fitArch } from './gen/coast-scatter.ts';
 import { COAST_FEATURES, COAST_RULES } from '../content/biome-scatter.ts';
 import { KELP, ROCK_ARCH } from '../content/biomes.ts';
+import { WATERFALL_LOOK } from '../content/waterfalls.ts';
 
 /** TASK-603 (D-184): coast micro-landscapes on the full seed-1001 archipelago. */
 describe('coast micro-landscapes', () => {
@@ -72,15 +73,43 @@ describe('coast micro-landscapes', () => {
       expect(slopeAt(h, p.x[i], p.z[i])).toBeGreaterThanOrEqual(0.9);
       const out = heightAt(h, p.x[i] + Math.sin(p.rotY[i]), p.z[i] + Math.cos(p.rotY[i]));
       expect(out).toBeLessThan(p.y[i]);
-      // the wall top (flat, higher ground) within ~1 u up the slope: not mid-wall
-      expect(rule.belowLip).toBeLessThanOrEqual(1);
+      // a flat step within 1.5 u up the slope, and the wall top (highest ground 8 u up the slope)
+      // no more than 2.2 u above: not mid-wall (TASK-695)
+      expect(rule.belowLip).toBeLessThanOrEqual(1.5);
       expect(lipWithin(h, p.x[i], p.z[i], p.rotY[i], rule.belowLip!)).toBe(true);
+      let top = -Infinity;
+      for (let s = 0.25; s <= 8; s += 0.25)
+        top = Math.max(
+          top,
+          heightAt(h, p.x[i] - Math.sin(p.rotY[i]) * s, p.z[i] - Math.cos(p.rotY[i]) * s),
+        );
+      expect(p.y[i], `shrub ${p.x[i].toFixed(1)}, ${p.z[i].toFixed(1)}`).toBeGreaterThanOrEqual(
+        top - 2.2,
+      );
       // never on (or beside) a waterfall ribbon
       for (const f of world.waterfalls)
         expect(
           segDist(p.x[i], p.z[i], f.x, f.z, f.baseX, f.baseZ),
           `shrub ${p.x[i].toFixed(1)}, ${p.z[i].toFixed(1)}`,
         ).toBeGreaterThanOrEqual(f.width + 1);
+    }
+  });
+
+  it('nothing stands on a fall ribbon: channel, lip, face, foot (TASK-695)', () => {
+    // the ribbon's centre line in plan: WATERFALL_LOOK.inland u behind the lip down to the base.
+    // Seed 1001 had a rock-rule boulder on the HQ east ribbon mid-wall and a talus rock on the
+    // Coding fall line at the foot.
+    expect(world.waterfalls.length).toBeGreaterThan(5);
+    for (const f of world.waterfalls) {
+      const ax = f.x - Math.cos(f.rotY) * WATERFALL_LOOK.inland;
+      const az = f.z - Math.sin(f.rotY) * WATERFALL_LOOK.inland;
+      for (let i = 0; i < p.count; i++) {
+        const d = segDist(p.x[i], p.z[i], ax, az, f.baseX, f.baseZ);
+        expect(
+          d,
+          `${PROP_DEFS[p.defId[i]].id} at ${p.x[i].toFixed(1)}, ${p.z[i].toFixed(1)}`,
+        ).toBeGreaterThanOrEqual(1.2);
+      }
     }
   });
 
