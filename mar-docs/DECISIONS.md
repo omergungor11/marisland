@@ -2,6 +2,57 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-197: T0 programs 15 → 17 are the tilt-shift Kawase blur; budgets unchanged (TASK-637) — 2026-11-17
+
+**Context.** `G-*-t0-*` frames went 15 → 17 programs and +3–4 calls after 2026-11-09 while W1 / W11 stayed 15.
+
+**Decision.** Cause is TASK-586's `POST_ZOOM`: the tilt-shift blur is 0 px at ≥ 420 u and 2 px at 380 u. While it is on, the composer compiles and runs
+pmndrs `KawaseBlurMaterial` + `CopyMaterial` (3 Kawase + 1 copy full-screen calls). Frames beyond 420 u (W1, W11, W15, W15b) stay at 15; every closer frame
+(all G-t0 / t1 / t2, 57 / 61 wow) is 17. Not a T0 mesh, not 590 / 591 / 594 / 611 / M51. Legitimate, within medium programs 20; a note sits in `budgets.ts`.
+A 15 vs 17 program count only says which side of ~420 u the camera is on.
+
+## D-195: Puffins are a Marketing cliff-ledge colony of particles, not agents; capybaras stay the onsen story critters (TASK-332) — 2026-11-17
+
+**Context.** TASK-332 left capybaras (DevOps) and puffins (Marketing) open. Capybaras had shipped under TASK-433 / 507 as dozing onsen story-spot critters
+(`content/life-spot-critters.ts`, dev shots `D-critter-capybara-onsen`, `D-devops-onsen-town`), so only puffins were built.
+
+**Decision.** `PUFFINS` in `content/life-critters.ts`, `buildPuffin()` (~150 tris, existing limb modes, shared creature shader untouched), `Puffins` in
+`life/critters.ts`: one InstancedMesh, one draw call, poses closed forms of `uTime` (idle / waddle / 7 s sea-loop flight per 20–30 s cycle, phase-offset;
+reduced motion drops flights). `LIFE_PLAN.puffins` low 0 (draw-call cap), medium 5, high 8; alive from tier 2. Placement reads world data only (bare flat
+rock / cliff / sand shelves, slope ≤ 0.2, h 2.4–14 u, 1.8–4.5 u from water; anchors + landmarks cleared at 6 u; densest cluster), so no hash re-pin.
+0 agents, so the D-190 agent caps are untouched. Seed 1001 fits 4. Dev shot `D-puffins-ledge`.
+
+**Open.** No frame shows a bird mid-flight (unit-tested only); `D-puffins-ledge` cam has a blurred rock in the foreground, re-pin it.
+
+## D-194: Waterfalls are ranked on the pre-rim lip and picked on the final terrain; a plunge pool needs room (TASK-635) — 2026-11-17
+
+**Context.** After TASK-615, Coding on seed 1001 had 1 fall instead of 3: the count roll in `placeWaterfalls` followed one jitter draw per candidate, so the
+rim delta removing one candidate re-rolled the count.
+
+**Decision.** `planWaterfalls` (`world/gen/waterfalls.ts`) ranks lips before `applyRim` / `raiseOutcrops` (pre-615 rng order); the returned picker runs
+after them, and each island takes a lip only where, on the final heightfield, the drop is clean (`minDrop` / `maxRun` / `minSteep`, re-traced), spacing
+holds, and `WATERFALLS.footRoom` (0.42) of the `COAST_FEATURES.fall` stone window is low, gentle ground ≥ `footFixture` (1.2 u) from fixtures. Seed 1001:
+9 → 11 falls (Coding 1 → 3, DevOps 1 → 3, QA 2 → 1, Design 3 → 2, HQ 2 shifted). Every foot keeps 4–6 stones (TASK-684). `coast.test` finds fall stones by
+pass order. The moved Design fall frees an automatic Design arch at (−92.6, −116.7), dev cam `D-coast-arch-design`; **the user may veto it with `arch: NONE`**.
+Props / bits / world hashes re-pinned (1001 world `9a2bd0a89f280b4a`). `wow --assert` 61 / 61.
+
+**Not done.** Coding right-edge mesh steps are a render issue (fixed quad diagonal on the 2 u level) → TASK-694. Wider DevOps road paint was tried and
+reverted (soft zone blending merged the ribbons into khaki fields) → needs TASK-636 crisp weight or road decals.
+
+## D-193: Earth walls take their strata row from the wall top; `ripples` is a flat-only detail layer (TASK-688) — 2026-11-17
+
+**Context.** Wave 4 QA: orange / beige triangular wedges on strata walls and diagonal hatch stripes on wall feet in the coast dev cams.
+
+**Decision.** (1) Wedges: the wall block read the island row (`marIsl`) from the nearest albedo texel's alpha; foot texels past the coastline are sea in
+`islandMap` (row 0), so 2 u cells showed default strata as "^" shapes. When `marIsl < 0.5` the row now comes from the wall-top texel (`marTopXz`), every tier.
+(2) Stripes: the sand `ripples` layer was projected triplanar onto steep sand at wall feet and the grazing rim terms amplified it. `DetailLayerParams.flatOnly`
+(`content/ground.ts`): no side projections, fades with slope over `GROUND_DETAIL.flat` [0.86, 0.96]; `ripples` is flat-only. Cost: one conditional texelFetch
+on wall feet, one smoothstep on medium / high; programs, calls, memory unchanged. `wow` and `wow-high --assert` 61 / 61. Rejected: smooth-surface footprint
+for `dFdx(vMarWorld)` (no effect).
+
+**Open.** The steep dune in `D-coast-tide-hq` now reads plain (loosen `GROUND_DETAIL.flat` to taste). Root fix for row 0: `terrain-colors.ts` should give sea
+texels next to land their island's row (changes seabed palette rows, needs its own look check).
+
 ## D-192: Lazily built GPU pools are keyed by camera band, never by what the animation shows (TASK-693) — 2026-11-16
 
 **Context.** `selftest=regen` (+1 geometry) and `selftest=edit` (+3) failed at tier-3 Coding cams (`F-bot`, `ladder:coding:30`). The selftests compare
