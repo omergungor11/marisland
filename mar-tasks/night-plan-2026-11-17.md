@@ -22,8 +22,13 @@ işlere dokunma (560, 561, 573, 586 peer, arch yeniden seçimi, bütçe artış�
 - [ ] TASK-636 brief'ine ekle: DevOps yol "kamuflajı" zone paint ile çözülmüyor (635 denedi, geri aldı) → crisp weight / decal
 
 ## Wave C
-- [ ] Wave 4 CONDITIONAL QA satırlarının yeniden denetimi: 593 / 597 / 602 / 605 / 609 (qa agent)
+- [x] Wave 4 CONDITIONAL QA satırlarının yeniden denetimi: 593 / 597 / 602 / 605 / 609 (qa agent)
 - [x] TASK-610 docs (docs agent)
+
+## Wave D (re-audit follow-ups)
+- [ ] TASK-695 + 696 worldgen (port 4183)
+- [ ] TASK-698 bot pair framing (life, port 4184)
+- [ ] TASK-697 steep dune (shader, 636 sonrası), TASK-699 sea oval (shader), TASK-700 tri headroom (engine)
 
 ## Final
 - [ ] **Fable review agent**: `git diff b219c95..HEAD` kod incelemesi (correctness, determinizm, dispose, bütçe)
@@ -37,3 +42,4 @@ işlere dokunma (560, 561, 573, 586 peer, arch yeniden seçimi, bütçe artış�
 - 05:40 TASK-637 merge (Kawase blur, sadece yorum). TASK-650 bitti, wave A wow bitince merge (+ kendi wow --assert; agent wow koşamadı). **Kullanıcı onayı:** boşta courier gemisi agent sayılmıyor (`liveCount`), alternatif low agents +7. 636 + 694 çalışıyor.
 - 07:40 650 + 694 + 610 merge, birleşik main 4766 test + wow --assert yeşil, push 90f4973. Bekleyen: 636 → sonra wave C QA re-audit → fable review.
 - 10:05 636 ilk agent 05:46'da takıldı (4 saat sessiz) → durduruldu, WIP patch scratchpad/t636-wip.patch, yeni agent devam ediyor (port 4182, t636b). Wave C QA re-audit başladı (qa, port 4187, rapor mar-docs/qa/wave5-reaudit-2026-11-17.md).
+- 11:00 Re-audit: 593 / 597 / 609 PASS, 602 / 605 CONDITIONAL → 695…700 açıldı, push. 695+696 ve 698 başladı; 636 (t636b) devam ediyor.
