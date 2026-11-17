@@ -2,6 +2,19 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-198: Terrain quads split by the smaller height difference while keeping LOD nesting (TASK-694) — 2026-11-17
+
+**Context.** `G-coding-t1` right edge: one-cell staircases at the wall foot. On the 2 u mesh level every quad split on the same diagonal, so a crease along the
+other diagonal became steps (found by TASK-635).
+
+**Decision.** Each quad takes the diagonal with the smaller |Δh|, switching to the anti diagonal only when it wins by > `TERRAIN_LOD.splitBias` (0.1 u); heights
+are rounded to half-float so the shader matches. A fine quad on its parent's diagonal follows the parent's split, and the parent's centre vertex morphs to that
+diagonal's midpoint, so level k still nests in k−1 (no cracks, no pops; whole-chunk nesting test on seed 1001). World-space heights only, so the choice is the
+same in every chunk and level. `FACET_NORMAL` applies the same rule from the height texture (+4 texelFetch per terrain fragment, all tiers). Tris / calls /
+programs unchanged; ground 24 / 24, wow and wow-high 61 / 61, coding ladders green. Rejected: steep chunks on the 1 u level at T1 (≈ 4× tris).
+
+**Open.** Only half of the 2 u quads choose freely, so walls at angles other than 0° / 45° keep a slight wobble. Likely also fixes the D-173 "sawtooth coping".
+
 ## D-197: T0 programs 15 → 17 are the tilt-shift Kawase blur; budgets unchanged (TASK-637) — 2026-11-17
 
 **Context.** `G-*-t0-*` frames went 15 → 17 programs and +3–4 calls after 2026-11-09 while W1 / W11 stayed 15.
@@ -10,6 +23,19 @@
 pmndrs `KawaseBlurMaterial` + `CopyMaterial` (3 Kawase + 1 copy full-screen calls). Frames beyond 420 u (W1, W11, W15, W15b) stay at 15; every closer frame
 (all G-t0 / t1 / t2, 57 / 61 wow) is 17. Not a T0 mesh, not 590 / 591 / 594 / 611 / M51. Legitimate, within medium programs 20; a note sits in `budgets.ts`.
 A 15 vs 17 program count only says which side of ~420 u the camera is on.
+
+## D-196: M51 follow-ups: speed-scaled wake, night lantern halo, `?pick=`, idle moored couriers are not agents (TASK-650) — 2026-11-17
+
+**Decision.** *Wake:* `WakeFoam.stamp(…, speed)` ages dots by `max(1, speed / SAILBOAT.speed)` and the trail splat life scales the same, so couriers (4–12 u/s)
+lay a sailboat-length V (~8 u) and trail (120 u). *Deck presets:* `F-courier-deck-load` / `-out` / `-return` (raw cams; mock chain variants `leaving` /
+`returned`, `ShotPreset.fleetChain`); the scroll takes the next free deck spot (it sat inside crate slot 0). *Night halo:* radius follows camera distance at night
+(`COURIER.glow.perDist` 0.0045, `maxRadius` 1.3), ~7 px dot on a 35 px ship (`F-courier-night`). *`?pick=`:* capture-only (`freeze=1`) `ship:<theme>` or `x,y`
+through the real `interaction.clickAt` path (`src/capture/pick.ts`, `F-courier-pick`). *Gallery:* `P-couriers` steeper cams, 8th cell = crate + scroll.
+*Agents:* `Couriers.liveCount` counts only non-idle ships, so fleet frames fit 25 on low instead of 27 (**user to confirm**; alternative: low agents + 7).
+*`F-courier-card-wide`* shoots at medium (1600×900 canvas > low 86 MB). Tests 4762 green, `wow --assert` 61 / 61.
+
+**Open.** Report scroll not visible by eye in `F-courier-deck-return` (cream on tan, small); returning ship overlaps the target island's ship at the shared berth;
+`F-courier-sail-a/b/c` use stale ladder cams (ship not in frame); `SHIP_B_CAM` pinned to seed 1001.
 
 ## D-195: Puffins are a Marketing cliff-ledge colony of particles, not agents; capybaras stay the onsen story critters (TASK-332) — 2026-11-17
 
