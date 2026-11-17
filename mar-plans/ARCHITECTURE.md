@@ -254,6 +254,12 @@ These are worst case across tiers. CI enforces them **as counts**, because fps u
 | Main thread per frame | ≤8 ms | ≤6 ms | ≤5 ms |
 | New seed (gen + build) | ≤1.5 s | ≤0.8 s | ≤0.5 s |
 
+**Faz 5 bütçe notları.** Sayılar değişmedi; aşağıdakiler bütçe içinde kalan yapısal kararlardır.
+- **Post çıktı tamponu** (D-187): ping-pong çıktı tamponu her kalitede tek örnekli ve yalnız renk. Yüksek kalitede çıktı tamponu 118.7 → 15.8 MB; W-fairy-night 480.4 → 377.6 MB.
+- **Yüksek kalitede solma** (D-188): lit malzemeler alpha-to-coverage ile solar (MSAA); program ve çağrı sayısı değişmedi.
+- **Tilt-shift Kawase** (D-197): `POST_ZOOM` bulanıklığı 420 u'nun içinde açıktır; T0 program sayısı orada 17, dışında 15. Bu bir kare sayacı bilgisidir, bütçe değişikliği değildir (`budgets.ts`'te not var).
+- **Lazy GPU havuzları** (D-192): ilk kullanımda kurulan havuz, kamera bandına göre anahtarlanır, animasyon fazına göre değil. Yeni mover'lar için kural budur; aksi halde `selftest` bellek artışı görünür.
+
 **Measurement.** Stats overlay (fps, CPU ms, `renderer.info`, tiers). Every capture manifest stores `renderer.info`; `shots --assert` checks it against `content/budgets.ts`. `?perf=1` flies a 10 s path and reports p50/p95 frame time (GPU timer where available) — real GPUs only.
 
 **Auto quality.**
