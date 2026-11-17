@@ -10,6 +10,15 @@
 - **Phase 1**: M1 in progress (terrain, water done; lighting/post landing), M2 worldgen in progress, M3 batcher/scatter done early
 
 ## Where I left off
+- **2026-11-17 night run (D-188…D-202, plan + log `mar-tasks/night-plan-2026-11-17.md`)**: merged 687 / 689 / 690 / 692 / 693, then 688 / 635 / 332
+  (puffins) / 637 / 650 / 694 / 610, then wave 5 re-audit (`mar-docs/qa/wave5-reaudit-2026-11-17.md`: 593 / 597 / 609 PASS, 602 / 605 CONDITIONAL) and its
+  follow-ups 695 / 696 / 698 + 636. **NEXT, first thing: the fable review the user asked for** — one fable agent over `git diff b219c95..HEAD` (correctness,
+  determinism, dispose, budgets), report under `mar-docs/qa/`, findings as tasks, review together (auto-memory `fable-review-after-night`). Then open:
+  697 steep dune (shader), 699 dusk sea oval (shader), 700 W15c tris headroom (engine; 926k / 950k), D-199 open list (W-sunken teeth, breakwater humps,
+  DevOps trails smudgy). **User decisions waiting:** Design arch veto (`arch: NONE`, D-194); idle couriers not counted as agents (D-196, alt: low agents + 7);
+  Research cypress rows along the Star Stair (D-201 a / b / c). Gotchas: a stalled agent shows no notification — check worktree file mtimes, stop it, hand
+  its `git diff` to a fresh agent as a patch; network (ENOTFOUND) and usage-limit stops resume with SendMessage; heavy outside load (rustc, load 100+)
+  makes 30-seed world tests time out — rerun alone; `qa` agent writes reports via Bash heredoc (no Write tool). Final combined-main check: tests 4768 + wow 61 / 61 green; **wow-high + ground not re-run on the combined main (stopped at session close) — run them first**.
 - **2026-11-16 Phase 5 waves 2–4 merged + fable audit wave 4 + first follow-ups (D-174…D-186)**: merged 592 / 596 / 599 / 601 (wave 2),
   677–681 (wave 2 QA follow-ups), 600 / 606 / 607 / 608 (wave 3), 603 coast (D-184), then wave 4 QA (`mar-docs/qa/wave4-2026-11-16.md`: 593 / 597 / 602 /
   605 / 609 all CONDITIONAL, budgets green: wow 61 / 61, wow-high 61 / 61, low ladder 14 / 14) and its first follow-ups 682 / 684 arch + shrub + foot-stone

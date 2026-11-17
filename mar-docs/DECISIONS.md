@@ -2,6 +2,51 @@
 
 > Every architectural/technology decision goes here. Newest on top.
 
+## D-202: `F-bot-pair` framed from above; the gate card's "devamı" sits under the prompt (TASK-698) — 2026-11-17
+
+**Decision.** Pair cam raised to pitch ≈ 30° (`-133.2,16.5,160 → -133.2,8.2,146.6`) so the cairn falls below the bot row; `BOT_LINEUP.modes.pair.gapX` 3.4 → 4.4,
+`pairPortrait.dx` 1.35 → 1.75 so the hauler and its chip no longer overlap. `.mar-fgate-more` moved from an overlay on the last clamped prompt line (it hid the last
+words, "5 l devam") to a block under the prompt; clamp and card cap rules (D-155 / TASK-580) unchanged, ~17 px card height only when clamped.
+`dev --assert --only='F-bot*'` green with selftests; `F-bot-hud` 17 / 25 agents.
+
+## D-201: Design palms 5 u apart, Research cypress in the free campus spots; `G-design-t1-*` cams (TASK-696) — 2026-11-17
+
+**Decision.** Design's 5 shore palms stood 1–4 u apart and read as one pink mass at T1: palm rule `minDist` 5, `slopeMax` 0.7, `openClear` 1 → 6 palms, all
+countable in `G-design-t1-noon` (new `G-design-t1-noon` / `-gold`, `ladder:design:150`). Research: the strips beside paths and the Star Stair are structure pads
+(a path-row rule found 2 spots), so an appended cypress pocket rule (`openClear` 0.8, slope ≤ 0.9) → 4 → 8 cypress, 7 visible in `G-research-t1-noon`.
+`biome-readability.test`: Design ≥ 6 palms ≥ 5 u apart, Research ≥ 8 cypress off every structure. Props + bits re-pinned (1001 world e4a4c5fd38f91de3 →
+5811adea7dcc8e36). ground 26 / 26, wow 61 / 61.
+
+**Open (user choice).** True cypress rows along the Star Stair need a Research plan change: (a) reserve a strip beside the stair-foot → harbour approach path
+(moves campus pieces, sites hash), (b) swap some stair lanterns for a cypress pair at each switchback, (c) leave as is.
+
+## D-200: Nothing stands on a fall sheet; ledge shrubs need the wall top within 1.8 u (TASK-695) — 2026-11-17
+
+**Context.** Wave 5 re-audit: a stone on the HQ fall ribbon, a shrub mid-wall on Coding. Not D-194 (ledge `fallClear` already used the final falls): the HQ stone
+was a T1 `rockCluster` boulder (cliff zone, slopeMax 2, HQ mossy swap), the Coding / Design foot rocks were talus (TASK-615); only `ledgeShrub` knew about falls.
+`lipWithin` accepted the first flat-reading step, which on stepped walls is half way up (14 / 38 shrubs 2.2–7.6 u under the top).
+
+**Decision.** Every scatter rule and the talus pass skip a spot whose footprint comes within `WATERFALLS.sheetClear` (0.3 u) of the widest fall sheet (lip −
+`WATERFALL_LOOK.inland` → base), tested at placement so candidate sets / rng forks stay (an accept-stage reject reshuffled `pocketScan`). New
+`PlacementRule.belowTop {drop 1.8, reach 8}`; ledge `belowLip` 1 → 1.5 (36 shrubs). `coast.test`: no prop within 1.2 u of a ribbon centre line, every shrub ≥
+wall top − 2.2 u, fall feet still 4–6 stones. The Coding "mid-wall boulder" is the legitimate wall-foot talus rock seen from above. Coding grove grouping 31 → 30 / 44
+(test floor 0.65). Props + bits re-pinned (1001 world 9a2bd0a89f280b4a → e4a4c5fd38f91de3). W15c 928k → 925.7k tris.
+
+**Open.** The soft green blob on the HQ fall wall is terrain paint, not a prop.
+
+## D-199: Ground polish: regular detail folds by footprint, soft zone borders per zone, lip depth on a blurred height (TASK-636) — 2026-11-17
+
+**Decision.** (1) The golden-hour "water moiré" was the terrain `ripples` layer seen through the water, not the water shader: layers with a regular `period` fold
+their colour under `GROUND_DETAIL.periodPx` [4, 8] px and their tilt under `periodNormalPx` [7, 14] px (footprint ÷ pattern scale). (2) `GROUND_DETAIL.crispZone`:
+a border takes the lower crisp weight of its two zones; `streetDevops` 0.1, so 1-cell switchbacks blur into trails instead of jagged camouflage patches (the fix
+TASK-635 pointed to). (3) Lip and lip line measure depth against the height texture box-blurred over ±`lipSmooth` 1.6 u, weight `lipSmoothW` 0.5 (cuts the 2 u
+contour zig-zag). (4) Crisp lip line (`lipLineSoft` 0.45, `lipLine` 0.3); wet lean `wetCoolG` 0.8 + `underCool` 0.4 over 0.8 u under water. (5) Rim `rimPower` 2,
+×`rimFar` 2.4 over 70–140 u. (6) `WALL_STRATA.coding` one step warmer / lighter. Cost: +4 height taps on wall pixels (all tiers) + a few ALU; programs, calls,
+memory unchanged. ground 24 / 24, wow 61 / 61, wow-high 61 / 61, low ground 24 / 24. Continued from a stalled agent's WIP patch.
+
+**Open.** Large W-sunken grass teeth on the left; Research foot olive band above the waterline; dark olive humps on the W-sunken breakwater (terrain through the
+prop → worldgen / props); DevOps trails read smudgy (`crispZone` 0.1 → 0.3 to taste); faint line on the DevOps cone; beach ripples faded at T2.
+
 ## D-198: Terrain quads split by the smaller height difference while keeping LOD nesting (TASK-694) — 2026-11-17
 
 **Context.** `G-coding-t1` right edge: one-cell staircases at the wall foot. On the 2 u mesh level every quad split on the same diagonal, so a crease along the

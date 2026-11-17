@@ -14,26 +14,26 @@ işlere dokunma (560, 561, 573, 586 peer, arch yeniden seçimi, bütçe artış�
 - [x] TASK-332 capybaras (DevOps spring) + puffins (Marketing) (life, port 4183)
 
 ## Wave B (688 merge olduktan sonra; 636 aynı terrain dosyasına dokunur)
-- [ ] TASK-636 M50 shader polish (shader)
+- [x] TASK-636 M50 shader polish (shader)
 - [x] TASK-637 T0 program count +2 (engine, araştırma) — başladı, port 4183
 - [x] TASK-650 M51 courier follow-ups (life + engine) — başladı 02:40, port 4184
 
 - [x] TASK-694 (yeni) terrain 2 u mesh sabit köşegen → duvar dibi basamakları (688 sonrası; shader/engine)
-- [ ] TASK-636 brief'ine ekle: DevOps yol "kamuflajı" zone paint ile çözülmüyor (635 denedi, geri aldı) → crisp weight / decal
+- [x] TASK-636 brief'ine ekle: DevOps yol "kamuflajı" zone paint ile çözülmüyor (635 denedi, geri aldı) → crisp weight / decal
 
 ## Wave C
 - [x] Wave 4 CONDITIONAL QA satırlarının yeniden denetimi: 593 / 597 / 602 / 605 / 609 (qa agent)
 - [x] TASK-610 docs (docs agent)
 
 ## Wave D (re-audit follow-ups)
-- [ ] TASK-695 + 696 worldgen (port 4183)
-- [ ] TASK-698 bot pair framing (life, port 4184)
+- [x] TASK-695 + 696 worldgen (port 4183)
+- [x] TASK-698 bot pair framing (life, port 4184)
 - [ ] TASK-697 steep dune (shader, 636 sonrası), TASK-699 sea oval (shader), TASK-700 tri headroom (engine)
 
 ## Final
 - [ ] **Fable review agent**: `git diff b219c95..HEAD` kod incelemesi (correctness, determinizm, dispose, bütçe)
   + raporu `mar-docs/qa/` altına yaz; bulguları task olarak aç, kullanıcıyla birlikte değerlendir.
-- [ ] MEMORY.md handoff, push, worktree temizlik satırı.
+- [x] MEMORY.md handoff, push, worktree temizlik satırı.
 
 ## Günlük
 - 02:35 TASK-332 merge (puffin colony, Marketing; capybaras zaten TASK-433/507 ile vardı). D-195 yazılacak. Nit: D-puffins-ledge kamerası ön planda bulanık kaya. Push wave A sonunda.
@@ -43,3 +43,4 @@ işlere dokunma (560, 561, 573, 586 peer, arch yeniden seçimi, bütçe artış�
 - 07:40 650 + 694 + 610 merge, birleşik main 4766 test + wow --assert yeşil, push 90f4973. Bekleyen: 636 → sonra wave C QA re-audit → fable review.
 - 10:05 636 ilk agent 05:46'da takıldı (4 saat sessiz) → durduruldu, WIP patch scratchpad/t636-wip.patch, yeni agent devam ediyor (port 4182, t636b). Wave C QA re-audit başladı (qa, port 4187, rapor mar-docs/qa/wave5-reaudit-2026-11-17.md).
 - 11:00 Re-audit: 593 / 597 / 609 PASS, 602 / 605 CONDITIONAL → 695…700 açıldı, push. 695+696 ve 698 başladı; 636 (t636b) devam ediyor.
+- 13:30 Kullanıcı: agent'lar bitince merge + push + session kaydet ve kapat. 636 / 695 / 696 / 698 merge, D-199…D-202, MEMORY handoff. Fable review bir sonraki session'ın ilk işi. 697 / 699 / 700 açık.
