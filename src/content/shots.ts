@@ -3146,7 +3146,7 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
         'F-bot-pair',
         'Bot vs portrait · scout, hauler, spire, each beside its panel portrait',
         'pair',
-        '-132.7,11.3,159.6,-132.7,8.8,147.6',
+        '-133.2,16.5,160,-133.2,8.2,146.6',
       ],
     ] as const
   ).flatMap(([id, title, bots, cam]): ShotPreset[] =>

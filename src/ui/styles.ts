@@ -451,13 +451,12 @@ export const FLEET_PANEL_CSS = `
 .mar-fgate-row .mar-fgate-acts{margin:0 0 0 auto;gap:5px;flex:none;}
 .mar-fgates .mar-fgate-row .mar-fgate-allow,.mar-fgates .mar-fgate-row .mar-fgate-deny{flex:none;height:26px;padding:0 10px;font-size:12px;}
 .mar-fgates .mar-fgate-row .mar-fgate-allow{box-shadow:0 2px 0 #2A6B3C;}
-/* "devamı" over the end of the clamped prompt; "daha az" under the whole one */
+/* "devamı" under the clamped prompt (TASK-698: it used to sit over the last line and cut the final words); "daha az" under the whole one */
 .mar-fgate{--gbg:${FLEET_GATE.colors.cardBg};}
 .mar-fgroup-on .mar-fgate{--gbg:${UI.surface};}
 .mar-fgate-pwrap{position:relative;}
-.mar-fgates .mar-fgate-more{position:absolute;right:0;bottom:0;border:0;padding:0 0 0 24px;background:linear-gradient(90deg,transparent,var(--gbg) 20px);font:800 12px/1.35 'Nunito',sans-serif;color:#A87412;cursor:pointer;}
+.mar-fgates .mar-fgate-more{display:block;margin-left:auto;border:0;padding:2px 0 0;background:none;font:800 12px/1.35 'Nunito',sans-serif;color:#A87412;cursor:pointer;}
 .mar-fgates .mar-fgate-full{display:block;-webkit-line-clamp:unset;}
-.mar-fgates .mar-fgate-full+.mar-fgate-more{position:static;display:block;margin-left:auto;padding:2px 0 0;background:none;}
 .mar-fgates .mar-fgate-more[hidden]{display:none;}
 @media (hover:hover){.mar-fgates .mar-fgate-more:hover{text-decoration:underline;}}
 /* M42 fleet view: request group label, hand-off children indented with a connector */
