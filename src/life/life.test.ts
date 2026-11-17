@@ -226,6 +226,20 @@ describe('life: boats', () => {
     expect(WakeFoam.armAt(2)).toBeGreaterThan(WakeFoam.armAt(0.5));
   });
 
+  it('wake: a hull faster than the sailboats lays a tail as long in u as theirs (TASK-650)', () => {
+    const foam = rig().life.kinds.sailboats!.foam;
+    const w = SAILBOAT.wake;
+    const T = 1e6;
+    const v = SAILBOAT.speed * 4;
+    foam.stamp(0, 0, 0, 0, 1, T); // a sailboat dot pair
+    foam.stamp(1, 0, 0, 0, 1, T, v); // a hull four times as fast
+    expect(foam.alive(T + w.life * 0.2)).toBe(2);
+    // at 4x the speed the pair is gone after a quarter of the life: same tail length in u
+    expect(foam.alive(T + w.life * 0.3)).toBe(1);
+    expect(foam.alive(T + w.life * 1.1)).toBe(0);
+    expect(v * w.life * 0.25).toBeCloseTo(SAILBOAT.speed * w.life, 6);
+  });
+
   it('wake dots sit within the wake length behind the boats, deterministically', () => {
     const grab = (): { out: number[]; near: number } => {
       const r = rig();

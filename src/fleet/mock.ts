@@ -170,8 +170,12 @@ export function mockHistory(seed: number, s: FleetSession): FleetLine[] {
   }));
 }
 
-/** Scripted request chain variant (M42): both gates pending, or the Design one allowed with its child running. */
-export type FleetChain = 'pending' | 'allowed';
+/**
+ * Scripted request chain variant (M42): both gates pending, or the Design one allowed with its child running.
+ * TASK-650 (capture, courier deck close-ups): `leaving` = allowed `leaveAgoS` ago (the ship is just casting
+ * off), `returned` = the Design child finished `returnedAgoS` ago (the ship is just returning with the scroll).
+ */
+export type FleetChain = 'pending' | 'allowed' | 'leaving' | 'returned';
 
 type RawLine = Omit<FleetLine, 'sessionId' | 'seq' | 'at'>;
 /** `raw` spread evenly from `from` to `to` (ms), seq dense from 0. */
@@ -236,6 +240,12 @@ export function mockChain(
       lastSeq: pl.length - 1,
     },
   ];
+  const answeredAgoS =
+    variant === 'leaving'
+      ? C.leaveAgoS
+      : variant === 'returned'
+        ? C.returnedChildAgoS
+        : C.childAgoS;
   const gates: FleetGate[] = C.gates.map((g, i) => ({
     id: g.id,
     requestId: C.requestId,
@@ -243,15 +253,15 @@ export function mockChain(
     fromIsland: C.from,
     toIsland: g.to,
     prompt: g.handoff,
-    status: variant === 'allowed' && i === 0 ? 'allowed' : 'pending',
+    status: variant !== 'pending' && i === 0 ? 'allowed' : 'pending',
     createdAt: ended + i,
-    ...(variant === 'allowed' && i === 0
-      ? { answeredAt: now - C.childAgoS * 1000, childId: g.childId }
+    ...(variant !== 'pending' && i === 0
+      ? { answeredAt: now - answeredAgoS * 1000, childId: g.childId }
       : {}),
   }));
-  if (variant === 'allowed') {
+  if (variant !== 'pending') {
     const g = C.gates[0];
-    const at = now - C.childAgoS * 1000;
+    const at = now - answeredAgoS * 1000;
     const last = Math.max(at, now - 20_000);
     const cl = spread(
       g.childId,
@@ -269,9 +279,10 @@ export function mockChain(
       island: g.to,
       agent: g.childAgent,
       title: draftTitle(g.handoff),
-      status: 'running',
+      status: variant === 'returned' ? 'done' : 'running',
       startedAt: at,
       updatedAt: last,
+      ...(variant === 'returned' ? { endedAt: now - C.returnedAgoS * 1000 } : {}),
       turns: 0,
       costUsd: 0,
       parentId: C.parentId,

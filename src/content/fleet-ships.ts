@@ -288,8 +288,20 @@ export const COURIER = {
   },
   /** Crates per deck (rest stack on the slots) and the spare crate / scroll instances for hops. */
   maxCrates: 3,
-  /** Mast lantern halo: radius multiple of the lamp, and how long it takes to light / go out (s). */
-  glow: { radius: 0.34, fadeS: 0.8 },
+  /**
+   * Mast lantern halo: radius multiple of the lamp, and how long it takes to light / go out (s).
+   * TASK-650: at night the halo grows with the camera distance (`perDist` u of radius per u of
+   * distance, about 4 px of radius on a 540 px frame; at most `maxRadius` u) so a ship that is a
+   * 25 px speck still shows its lamp; by day it keeps `radius`. The night is `night` = [dusk start,
+   * dusk end, dawn start, dawn end] game hours (ramps between).
+   */
+  glow: {
+    radius: 0.34,
+    fadeS: 0.8,
+    perDist: 0.0045,
+    maxRadius: 1.3,
+    night: [18, 20.5, 4.5, 7] as const,
+  },
   /** A turn at the berth (arrival heading -> pier heading) is eased over this share of the dwell. */
   turnShare: 1,
 } as const;

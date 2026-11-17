@@ -66,6 +66,7 @@ import { createAdminWin, type AdminWin } from './ui/admin-win.ts';
 import { createFleetPanel } from './ui/fleet-panel.ts';
 import { createFleetTip } from './ui/fleet-tip.ts';
 import { createCourierCard } from './ui/courier-card.ts';
+import { capturePick } from './capture/pick.ts';
 import { createFleetBeacons } from './life/fleet-beacons.ts';
 import { createBotFx } from './life/bot-fx.ts';
 import { createBotLineup } from './life/bot-lineup.ts';
@@ -1370,6 +1371,12 @@ export async function boot(): Promise<void> {
     if (params.panel === 'admin' && params.admin) admin?.show(params.admin);
     // capture: the edit panel's thumbnails (the admin window's KB loads) must be done before the screenshot
     if (params.panel && hud) await Promise.all([hud.settled(), admin?.settled()]);
+    // TASK-650: `?pick=` (capture only) clicks through the real pick path; (assigned inside buildWorld: widen)
+    const pickIa = interaction as Interaction | null;
+    if (params.pick && pickIa) {
+      capturePick(params.pick, pickIa.clickAt, courierKind as Couriers | null, camera, canvas);
+      syncFleet();
+    }
     booted = true;
     api.ready = gpuReady;
     // ---- TASK-213: first-edit prewarm (interactive only, idle time after ready) ----------
