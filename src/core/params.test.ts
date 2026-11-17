@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { parsePick } from '../capture/pick.ts';
 import { adminSpec, parseParams } from './params.ts';
 
 describe('params', () => {
@@ -94,5 +95,26 @@ describe('params', () => {
     expect(parseParams('').bridge).toBeNaN();
     expect(parseParams('?bridge=abc').bridge).toBeNaN();
     expect(parseParams('?bridge=70000').bridge).toBeNaN();
+  });
+
+  it('parses ?pick= (TASK-650): a ship or a pixel, capture only', () => {
+    expect(parseParams('?freeze=1').pick).toBeNull();
+    expect(parseParams('?freeze=1&pick=ship:marketing').pick).toEqual({
+      kind: 'ship',
+      theme: 'marketing',
+    });
+    expect(parseParams('?freeze=1&pick=480,270.5').pick).toEqual({ kind: 'xy', x: 480, y: 270.5 });
+    // not in capture mode: ignored
+    expect(parseParams('?pick=ship:marketing').pick).toBeNull();
+    expect(parseParams('?freeze=0&pick=10,20').pick).toBeNull();
+    // malformed: ignored
+    for (const bad of ['ship:atlantis', 'ship:', '12', '12,', 'a,b', '1,2,3', '']) {
+      expect(parseParams(`?freeze=1&pick=${bad}`).pick, bad).toBeNull();
+    }
+  });
+  it('parsePick: null and undefined are no pick', () => {
+    expect(parsePick(null)).toBeNull();
+    expect(parsePick(undefined)).toBeNull();
+    expect(parsePick('ship:hq')).toEqual({ kind: 'ship', theme: 'hq' });
   });
 });

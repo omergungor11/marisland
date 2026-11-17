@@ -3,6 +3,7 @@
  * the resulting object, never from `location` directly.
  */
 import { EDIT_TOOLS, type EditToolKind } from '../content/edit-ui.ts';
+import { parsePick, type PickSpec } from '../capture/pick.ts';
 
 export type Quality = 'low' | 'medium' | 'high';
 export type DebugView =
@@ -78,6 +79,11 @@ export interface Params {
    * (TASK-630: the search text of the Session'lar tab); '' = the default (Projeler).
    */
   admin: string;
+  /**
+   * Capture: `pick=ship:<theme>` or `pick=<x>,<y>` (CSS px) clicks that point once the world is ready, so a
+   * pick-driven card opens in a headless shot (TASK-650). Only with `freeze=1`; null otherwise.
+   */
+  pick: PickSpec | null;
   /** `bridge=5177`: port of the fleet bridge to connect to (TASK-577); NaN = the default `FLEET_PORT`. */
   bridge: number;
 }
@@ -169,6 +175,7 @@ export function parseParams(search: string): Params {
     bots: BOT_MODES.find((m) => m === q.get('bots')) ?? '',
     fleet: fleetRaw === null ? '' : fleetRaw === 'live' || fleetRaw === 'mock' ? fleetRaw : 'off',
     admin: q.get('admin') ?? '',
+    pick: parseBool(q.get('freeze'), false) ? parsePick(q.get('pick')) : null,
     bridge: Number.isInteger(bridge) && bridge > 0 && bridge < 65536 ? bridge : NaN,
   };
 }

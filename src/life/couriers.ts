@@ -209,6 +209,20 @@ export class Couriers extends AgentKind {
   }
 
   /**
+   * The agents budget counts ships with something to do (loading, sailing, unloading, returning, a
+   * scroll being put away); a moored idle ship is bobbing scenery (TASK-650: all 7 counted put every
+   * fleet frame at 27 / 25 on low, a ship with no gate is no simulated agent).
+   */
+  override get liveCount(): number {
+    let c = 0;
+    for (let i = 0; i < this.capacity; i++) {
+      const p = this.plans[i];
+      if (this.active[i] && p && (p.phase !== 'idle' || p.scroll || p.lift)) c++;
+    }
+    return c;
+  }
+
+  /**
    * Picking (TASK-622): one sphere per ship sized by its own hull (`FLEET_CARD.pick`), centred on
    * the deck, instead of the kind-wide `pickRadius` / `pickHeight`.
    */
@@ -327,21 +341,23 @@ export class Couriers extends AgentKind {
     if (!Number.isNaN(px)) this.odo[i] += Math.hypot(x - px, z - this.last[i * 2 + 1]);
     this.last[i * 2] = x;
     this.last[i * 2 + 1] = z;
-    if (speed > 0.3 && t > 0) this.stampWake(i, x, z, fx, fz);
+    if (speed > 0.3 && t > 0) this.stampWake(i, x, z, fx, fz, speed);
   }
 
-  private stampWake(i: number, x: number, z: number, fx: number, fz: number): void {
+  private stampWake(i: number, x: number, z: number, fx: number, fz: number, speed: number): void {
     const d = this.odo[i];
     const T = SAILBOAT.trail;
     if (Number.isNaN(this.trailAt[i]) || Math.abs(d - this.trailAt[i]) >= T.spacing) {
       this.trailAt[i] = d;
-      this.ctx.water.splat(x - fx * T.back, z - fz * T.back, T.radius.ferry, T.strength, T.life, 0);
+      // a ship faster than the sailboats keeps their trail LENGTH in u (TASK-650), not their trail time
+      const life = T.life * Math.min(1, SAILBOAT.speed / speed);
+      this.ctx.water.splat(x - fx * T.back, z - fz * T.back, T.radius.ferry, T.strength, life, 0);
     }
     const w = SAILBOAT.wake;
     if (this.ctx.getTier() < w.minTier) return;
     if (!Number.isNaN(this.wakeAt[i]) && Math.abs(d - this.wakeAt[i]) < w.spacing) return;
     this.wakeAt[i] = d;
-    this.foam.stamp(i, x - fx * w.back, z - fz * w.back, -fz, fx, this.simT);
+    this.foam.stamp(i, x - fx * w.back, z - fz * w.back, -fz, fx, this.simT, speed);
   }
 
   override fixedUpdate(dt?: number): void {
@@ -371,6 +387,24 @@ export class Couriers extends AgentKind {
     for (const b of this.crates) b.flush();
     for (const b of this.scrolls) b.flush();
     this.glow.flush();
+  }
+
+  /**
+   * Halo scale at world point `p` (TASK-650): 1 by day; at night the radius follows the camera
+   * distance (`glow.perDist`, capped at `glow.maxRadius`) so the lamp reads on a far speck.
+   */
+  private haloGrow(p: THREE.Vector3): number {
+    const G = COURIER.glow;
+    const h = this.ctx.hour();
+    const [a0, a1, b0, b1] = G.night;
+    const ramp = (x: number, lo: number, hi: number): number => {
+      const u = Math.min(1, Math.max(0, (x - lo) / (hi - lo)));
+      return u * u * (3 - 2 * u);
+    };
+    const night = Math.max(ramp(h, a0, a1), 1 - ramp(h, b0, b1));
+    if (night <= 0) return 1;
+    const want = Math.min(G.maxRadius, G.perDist * this.ctx.cameraPos.distanceTo(p));
+    return 1 + night * Math.max(0, want / G.radius - 1);
   }
 
   /** Crates, scroll and lantern halo of ship `i` at fleet time `now` (ms). */
@@ -442,17 +476,19 @@ export class Couriers extends AgentKind {
     }
     // report scroll: loaded at the target pier, unloaded at home
     if (plan.scroll) {
+      // next free deck spot: a crate still waiting for the next hand-off keeps its own (TASK-650)
+      const free = Math.min(plan.crates.length, C.maxCrates);
       const bin = this.scrolls[plan.scroll === 'fail' ? 1 : 0];
       if (plan.phase === 'returning') {
         const from = dock(plan.from);
         const u = hopU();
-        if (from && u < 1) putAt(bin, from.clone(), slot(0).clone(), u);
-        else putAt(bin, slot(0).clone(), null, 1);
+        if (from && u < 1) putAt(bin, from.clone(), slot(free).clone(), u);
+        else putAt(bin, slot(free).clone(), null, 1);
       } else {
         const to = dock(plan.island);
         const el = now - plan.t0;
         if (to && el < hopMs + C.moor.restS * S)
-          putAt(bin, slot(0).clone(), to.clone(), el / hopMs);
+          putAt(bin, slot(free).clone(), to.clone(), el / hopMs);
       }
     }
     // lantern halo: lit while loading / sailing, fades at the berth
@@ -467,7 +503,7 @@ export class Couriers extends AgentKind {
       const l = this.lantern[i];
       _p.copy(l).applyMatrix4(ship);
       _q.identity();
-      _s.setScalar(lit);
+      _s.setScalar(lit * this.haloGrow(_p));
       this.glow.put(_t.compose(_p, _q, _s));
     }
   }

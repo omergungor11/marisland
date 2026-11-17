@@ -180,6 +180,7 @@ function shotUrl(base: string, p: ShotPreset, extra = ''): string {
     quality: QUALITY ?? p.quality ?? SET_DEFAULTS[set].quality,
   });
   if (p.panel) q.set('panel', p.panel);
+  if (p.pick) q.set('pick', p.pick);
   if (p.edit) q.set('edit', p.edit);
   if (p.introt !== undefined) q.set('introt', String(p.introt));
   // zoom-ladder frames: no sky craft (TASK-450) and no gulls (TASK-478: a flock near the lens

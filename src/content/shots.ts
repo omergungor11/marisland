@@ -47,12 +47,17 @@ export interface ShotPreset {
   bots?: 'lineup' | 'looks' | 'eyes' | 'muster' | 'pair';
   /** Fleet panel (M41): open the first live row's terminal after the warm-up, or this session's (M42). */
   fleetOpen?: 'running' | `mock-${string}`;
-  /** Mock request chain variant (M42): the Design gate allowed, its child running (default: both gates pending). */
-  fleetChain?: 'allowed';
+  /**
+   * Mock request chain variant (M42): the Design gate allowed, its child running (default: both gates pending);
+   * `leaving` = allowed 1 s ago (ship casting off), `returned` = the child ended so that the ship has just turned for home (ship returning with the scroll).
+   */
+  fleetChain?: 'allowed' | 'leaving' | 'returned';
   /** Fleet view search text (M41). */
   fleetQuery?: string;
   /** M51 (TASK-622): open the courier ship card of this island (theme id) at boot. */
   fleetCard?: ThemeId;
+  /** `pick=` (TASK-650): click this once ready (`ship:<theme>` or `x,y` CSS px) through the real pick path. */
+  pick?: string;
   /** Opening-sequence still at this time (s) (`introt=`). */
   introt?: number;
   /**
@@ -79,6 +84,13 @@ export const EDIT_LOGS = {
   mixed:
     'AekHBQdjb3R0YWdlBHBhbG0GZmxvd2VyC2xhbnRlcm5Qb3N0BWJlbmNoFgatzn8CpH76NKACgCACAAAAAAMAAGDLHQQAAJ8BAQLAAYACX8wTAmAAAP8JAgAAAAACYAAAmQcCAAAAAAJQAB_LAQIAAAAAA68BAGCZAQQgAD8DFQAA3wKvAocDgAIVAAHAAXDjDpoCFQABvwLPAewSjQIVAALgAfABxAGAAhUAAj8QzwaAAhUAAj8f2wuAAhUAA6ABTwCAAhUABM8BMIcDgAI',
 } as const;
+
+/**
+ * TASK-650: Marketing's courier 18 s into the allowed voyage to Design (F-courier-sail-b's moment, simt 8 +
+ * the 10 s the gate was answered before), seed 1001: at (-250.7, -84.4); the ladder:marketing:140 frame no
+ * longer holds it. Raw cam ~136 u over it (the hull ~35 px). Re-pin with `voyageRoute` when routes change.
+ */
+const SHIP_B_CAM = '-250.7,110,-4.4,-250.7,0.5,-84.4';
 
 /** Department themes on seed 1001 (findIsland matches the theme id) with their display names. */
 const CAMPUS_THEMES = [
@@ -2326,6 +2338,71 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     fleetChain: 'allowed',
     sets: ['dev'],
   },
+  // ---- TASK-650: the same moment as F-courier-sail-b at night: the mast lantern halo must read on a ~25 px ship
+  {
+    id: 'F-courier-night',
+    title: 'Courier · mast lantern at night, ~25 px ship',
+    seed: 1001,
+    cam: SHIP_B_CAM,
+    time: 22,
+    simt: 8,
+    hud: false,
+    fleet: 'mock',
+    fleetChain: 'allowed',
+    sets: ['dev'],
+  },
+  // ---- TASK-650: the card opened by a real ship pick (`?pick=ship:marketing`), not by the `fleetCard` preset field
+  {
+    id: 'F-courier-pick',
+    title: 'Courier · card opened by a pick on the sailing ship',
+    seed: 1001,
+    cam: SHIP_B_CAM,
+    time: 14,
+    simt: 8,
+    hud: true,
+    fleet: 'mock',
+    fleetChain: 'allowed',
+    pick: 'ship:marketing',
+    sets: ['dev'],
+  },
+  // ---- TASK-650: deck close-ups (raw cam, ~9 u from the deck) so the crate and the report scroll are
+  // verified by eye. Marketing's berth on seed 1001 is (-262.5, -23.6); the loading / outbound frames
+  // look at it from the seaward side, the returning frame 5 s into the return leg off Design's berth (-168.2, -188.0)
+  {
+    id: 'F-courier-deck-load',
+    title: 'Courier deck · two crates loaded, waiting at the pier',
+    seed: 1001,
+    cam: '-264.6,7.5,-16.9,-262.5,1,-23.6',
+    time: 14,
+    simt: 2,
+    hud: false,
+    fleet: 'mock',
+    sets: ['dev'],
+  },
+  {
+    id: 'F-courier-deck-out',
+    title: 'Courier deck · outbound, casting off with the crate aboard',
+    seed: 1001,
+    cam: '-264,10.5,-19.1,-262.5,1,-23.6',
+    time: 14,
+    simt: 0,
+    hud: false,
+    fleet: 'mock',
+    fleetChain: 'leaving',
+    sets: ['dev'],
+  },
+  {
+    id: 'F-courier-deck-return',
+    title: 'Courier deck · returning with the report scroll (5 s out of the Design berth)',
+    seed: 1001,
+    cam: '-166.9,10.5,-193,-168.2,1,-188',
+    time: 14,
+    simt: 14,
+    hud: false,
+    fleet: 'mock',
+    fleetChain: 'returned',
+    sets: ['dev'],
+  },
   // ---- TASK-572: a terminal open over the fleet view (the overview: the list behind it has sticky
   // island heads that used to paint through the overlay); the terminal must be opaque and on top
   {
@@ -2477,6 +2554,8 @@ export const SHOT_PRESETS: readonly ShotPreset[] = [
     cam: 'ladder:marketing:140',
     time: 14,
     simt: 8,
+    // medium: the low memory budget (86 MB) is set at 960x540 and 1600x900 needs 115 MB of canvas buffers
+    quality: 'medium',
     width: 1600,
     height: 900,
     hud: true,

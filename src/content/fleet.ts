@@ -419,6 +419,14 @@ export const FLEET_MOCK = {
     gateAgoS: 150,
     /** `allowed`: the first gate's answer and its child's start. */
     childAgoS: 10,
+    /** `leaving` (TASK-650 deck close-up): the gate was allowed this long ago, the ship is casting off. */
+    leaveAgoS: 1,
+    /**
+     * `returned`: the gate was allowed this long ago and the child ended `returnedAgoS` s before the capture clock
+     * (negative = after it; F-courier-deck-return runs simt 14 and so lands 5 s into the return leg, the ship clear of the Design barge at the same berth).
+     */
+    returnedChildAgoS: 120,
+    returnedAgoS: -9,
     turns: 6,
     costUsd: 0.31,
     parentLines: [

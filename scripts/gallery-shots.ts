@@ -370,11 +370,22 @@ async function main(): Promise<void> {
         z,
       ]);
       const h = def.height;
-      const d = Math.max(def.footprint * 2.6, h * 1.8, 6);
+      const d = Math.max(
+        def.footprint * 2.6,
+        h * 1.8,
+        which === 'couriers' && def.footprint < 1 ? 1.6 : 6,
+      );
       await shoot(
         id,
         `${id}-close`,
-        [x0 + d * 0.55, h * 0.55 + d * 0.3, z + d * 0.85, x0, h * 0.45, z],
+        [
+          x0 + d * 0.55,
+          h * 0.55 + d * (which === 'couriers' ? 0.75 : 0.3),
+          z + d * 0.85,
+          x0,
+          h * 0.45,
+          z,
+        ],
         960,
         720,
       );
@@ -395,7 +406,14 @@ async function main(): Promise<void> {
           await shoot(
             id,
             `${id}-v${v}-close`,
-            [it.x + dv * 0.55, hv * 0.55 + dv * 0.2, z + dv * 0.9, it.x, hv * 0.5, z],
+            [
+              it.x + dv * 0.55,
+              hv * 0.55 + dv * (which === 'couriers' ? 0.75 : 0.2),
+              z + dv * 0.9,
+              it.x,
+              hv * 0.5,
+              z,
+            ],
             960,
             720,
           );
@@ -417,15 +435,30 @@ async function main(): Promise<void> {
       ];
       const cw = 640;
       const ch = 480;
+      const cell = (i: number): { left: number; top: number } => ({
+        left: (i % 4) * cw,
+        top: Math.floor(i / 4) * ch,
+      });
       const tiles = await Promise.all(
         names.map(async (n, i) => ({
           input: await sharp(resolve(OUT, `${n}.png`))
             .resize(cw, ch)
             .toBuffer(),
-          left: (i % 4) * cw,
-          top: Math.floor(i / 4) * ch,
+          ...cell(i),
         })),
       );
+      // the 8th cell: the cargo, crate (left half) and report scroll (right half), centre-cropped
+      const half = cw / 2;
+      for (const [k, n] of ['courierCrate-close', 'reportScroll-close'].entries()) {
+        tiles.push({
+          input: await sharp(resolve(OUT, `${n}.png`))
+            .resize(cw, ch)
+            .extract({ left: Math.round(half / 2), top: 0, width: half, height: ch })
+            .toBuffer(),
+          left: cell(7).left + k * half,
+          top: cell(7).top,
+        });
+      }
       await sharp({
         create: { width: cw * 4, height: ch * 2, channels: 3, background: '#7FB6D9' },
       })

@@ -63,6 +63,8 @@ export class WakeFoam extends AgentKind {
   private readonly nz: Float32Array;
   private readonly t0: Float32Array;
   private readonly dr: Float32Array;
+  /** Age multiplier per stamp (>= 1: a hull faster than the sailboats lays a wake as short in u, TASK-650). */
+  private readonly rate: Float32Array;
   private readonly head: Int32Array;
   private seq = 0;
   /** Dots drawn last frame (tests / debug). */
@@ -92,6 +94,7 @@ export class WakeFoam extends AgentKind {
     this.nz = new Float32Array(n);
     this.t0 = new Float32Array(n).fill(-1e9);
     this.dr = new Float32Array(n);
+    this.rate = new Float32Array(n).fill(1);
     this.head = new Int32Array(boats);
     this.mesh.frustumCulled = false;
     // an instanceColor attribute keeps the program parameters identical to the land critters'
@@ -100,8 +103,20 @@ export class WakeFoam extends AgentKind {
     this.mesh.visible = false;
   }
 
-  /** Lay one dot pair for boat `b`: stern point (x, z), unit across-track (nx, nz), sim time `t`. */
-  stamp(b: number, x: number, z: number, nx: number, nz: number, t: number): void {
+  /**
+   * Lay one dot pair for boat `b`: stern point (x, z), unit across-track (nx, nz), sim time `t`.
+   * `speed` (u/s; default the sailboats') shortens the dots' life so the tail is as long in u as a
+   * sailboat's (`SAILBOAT.speed * life`) and as wide; slower hulls keep the sailboat life.
+   */
+  stamp(
+    b: number,
+    x: number,
+    z: number,
+    nx: number,
+    nz: number,
+    t: number,
+    speed: number = SAILBOAT.speed,
+  ): void {
     const k = b * WAKE_PAIRS + this.head[b];
     this.head[b] = (this.head[b] + 1) % WAKE_PAIRS;
     const W = SAILBOAT.wake;
@@ -110,6 +125,7 @@ export class WakeFoam extends AgentKind {
     this.nx[k] = nx;
     this.nz[k] = nz;
     this.t0[k] = t;
+    this.rate[k] = Math.max(1, speed / SAILBOAT.speed);
     this.dr[k] = W.radius * (1 + W.jitter * (unitHash(this.seed, this.seq++, 0x3a4e) * 2 - 1));
   }
 
@@ -117,7 +133,7 @@ export class WakeFoam extends AgentKind {
   alive(t: number): number {
     let n = 0;
     for (let k = 0; k < this.t0.length; k++) {
-      const a = t - this.t0[k];
+      const a = (t - this.t0[k]) * this.rate[k];
       if (a >= 0 && a < SAILBOAT.wake.life) n++;
     }
     return n;
@@ -145,7 +161,7 @@ export class WakeFoam extends AgentKind {
     let n = 0;
     const visible = this.ctx.getTier() >= W.minTier;
     for (let k = 0; visible && k < this.t0.length; k++) {
-      const age = t - this.t0[k];
+      const age = (t - this.t0[k]) * this.rate[k];
       const sc = WakeFoam.scaleAt(age);
       if (sc <= 0.01) continue;
       const arm = WakeFoam.armAt(age);
